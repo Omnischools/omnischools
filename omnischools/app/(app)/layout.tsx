@@ -1,4 +1,5 @@
 import { requireSchool } from "@/lib/auth/server";
+import { signOutAction } from "@/lib/actions/auth";
 import { AppSidebar } from "@/components/app/sidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -17,9 +18,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {user.roles[0]?.replaceAll("_", " ").toLowerCase()}
             </div>
           </div>
-          <span className="flex shrink-0 items-center gap-1.5 rounded-pill bg-green-bg px-2.5 py-1 text-xs font-medium text-green">
-            ● Connected
-          </span>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="flex items-center gap-1.5 rounded-pill bg-green-bg px-2.5 py-1 text-xs font-medium text-green">
+              ● Connected
+            </span>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="hover:bg-bg rounded-md px-3 py-1.5 text-xs font-semibold text-navy-2 transition-colors"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
         </header>
         <main className="flex-1 p-6">{children}</main>
       </div>
