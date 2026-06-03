@@ -10,3 +10,5 @@ export * from "./periods";
 export * from "./audit";
 export * from "./anomaly";
 export * from "./marketing";
+export * from "./students";
+export * from "./admissions";

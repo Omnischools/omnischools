@@ -46,7 +46,11 @@ BEGIN
     'role_assignment',
     'ref_academic_period_config',
     'academic_period',
-    'audit_log'
+    'audit_log',
+    'students',
+    'student_guardian',
+    'admission_application',
+    'admission_document'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);

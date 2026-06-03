@@ -37,3 +37,26 @@ export const periodSourceEnum = pgEnum("period_source", [
 
 // Anomaly engine
 export const anomalySeverityEnum = pgEnum("anomaly_severity", ["LOW", "MEDIUM", "HIGH"]);
+
+// Students & admissions
+export const sexEnum = pgEnum("sex", ["MALE", "FEMALE"]);
+export const studentStatusEnum = pgEnum("student_status", [
+  "ACTIVE",
+  "INACTIVE",
+  "GRADUATED",
+  "WITHDRAWN",
+  "TRANSFERRED",
+]);
+export const guardianRelationEnum = pgEnum("guardian_relation", [
+  "MOTHER",
+  "FATHER",
+  "GUARDIAN",
+  "OTHER",
+]);
+export const admissionStatusEnum = pgEnum("admission_status", [
+  "SUBMITTED",
+  "UNDER_REVIEW",
+  "ACCEPTED",
+  "REJECTED",
+  "WAITLISTED",
+]);
