@@ -9,13 +9,11 @@ const NAV = [
   { href: "/admissions", label: "Admissions", icon: "A" },
   { href: "/fees", label: "Fees", icon: "F" },
   { href: "/attendance", label: "Attendance", icon: "T" },
+  { href: "/gradebook", label: "Gradebook", icon: "G" },
 ];
 
 // Roadmap items (later Phase 3 slices) — shown disabled to convey the shape.
-const SOON = [
-  { label: "Gradebook", icon: "G" },
-  { label: "Communication", icon: "C" },
-];
+const SOON = [{ label: "Communication", icon: "C" }];
 
 export function AppSidebar() {
   const pathname = usePathname();

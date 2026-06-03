@@ -14,3 +14,4 @@ export * from "./students";
 export * from "./admissions";
 export * from "./fees";
 export * from "./attendance";
+export * from "./gradebook";
