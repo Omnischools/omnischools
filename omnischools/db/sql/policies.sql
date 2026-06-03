@@ -60,7 +60,11 @@ BEGIN
     'payment_audit_log',
     'class',
     'attendance_record',
-    'attendance_correction'
+    'attendance_correction',
+    'subject',
+    'gradebook_config',
+    'gradebook_score',
+    'report_card'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);

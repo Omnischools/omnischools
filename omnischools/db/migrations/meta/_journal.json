@@ -36,6 +36,13 @@
       "when": 1780512680059,
       "tag": "0004_sticky_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780514679348,
+      "tag": "0005_bright_stone_men",
+      "breakpoints": true
     }
   ]
 }
