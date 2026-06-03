@@ -64,7 +64,10 @@ BEGIN
     'subject',
     'gradebook_config',
     'gradebook_score',
-    'report_card'
+    'report_card',
+    'announcement',
+    'sms_template',
+    'notification_log'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);

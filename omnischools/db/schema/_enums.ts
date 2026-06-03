@@ -128,3 +128,7 @@ export const correctionStatusEnum = pgEnum("correction_status", [
   "APPROVED",
   "REJECTED",
 ]);
+
+// Communications
+export const audienceEnum = pgEnum("audience", ["WHOLE_SCHOOL", "CLASS"]);
+export const notifStatusEnum = pgEnum("notif_status", ["QUEUED", "SENT", "FAILED"]);

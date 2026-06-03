@@ -43,6 +43,13 @@
       "when": 1780514679348,
       "tag": "0005_bright_stone_men",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780516496000,
+      "tag": "0006_amazing_rictor",
+      "breakpoints": true
     }
   ]
 }
