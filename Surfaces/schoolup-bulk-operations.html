@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Bulk operations pattern</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:720px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1320px; }
+.sidebar.tall { min-height:1480px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 18px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:26px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:12px; color:var(--navy-3); margin-top:4px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.terra { background:var(--terra); color:white; border-color:var(--terra); font-weight:700; }
+.btn.sm { padding:6px 11px; font-size:11px; }
+
+.body { padding:22px 36px 60px; }
+
+/* Filter bar above table */
+.toolbar { display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:14px; flex-wrap:wrap; }
+.toolbar-left { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.filter-pill { padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.filter-pill .ct { font-family:'JetBrains Mono',monospace; font-size:9px; opacity:0.55; }
+.filter-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill.active em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.filter-pill.active .ct { opacity:0.85; }
+.toolbar-right { font-size:11px; color:var(--navy-3); display:flex; gap:10px; align-items:center; }
+.toolbar-right b { color:var(--navy); font-weight:600; }
+.search-box { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:100px; font-size:11px; color:var(--navy-3); }
+
+/* TABLE */
+.table-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.tbl { width:100%; border-collapse:collapse; }
+.tbl thead th { background:var(--bg); border-bottom:1px solid var(--border); padding:12px 14px; text-align:left; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.tbl thead th.right { text-align:right; }
+.tbl thead th.center { text-align:center; }
+.tbl thead th.cb { width:36px; padding:12px 4px 12px 14px; }
+.tbl tbody td { padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:12px; }
+.tbl tbody td.cb { padding:10px 4px 10px 14px; }
+.tbl tbody tr:last-child td { border-bottom:none; }
+.tbl tbody tr.selected { background:var(--gold-bg); }
+.tbl tbody tr:hover { background:var(--bg); cursor:pointer; }
+.tbl tbody tr.selected:hover { background:var(--gold-bg); }
+
+.cb-input { width:18px; height:18px; border:2px solid var(--border-2); border-radius:4px; background:var(--surface); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+.cb-input.checked { background:var(--navy); border-color:var(--navy); color:white; }
+.cb-input.checked::after { content:"✓"; font-size:11px; font-weight:700; color:white; }
+.cb-input.indeterminate { background:var(--gold); border-color:var(--gold); }
+.cb-input.indeterminate::after { content:"−"; font-size:14px; font-weight:700; color:var(--navy); line-height:1; }
+
+.s-name-cell { display:grid; grid-template-columns:30px 1fr; gap:10px; align-items:center; }
+.s-av { width:28px; height:28px; border-radius:50%; background:var(--gold-bg); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:10px; }
+.s-name { font-weight:600; color:var(--navy); }
+.s-name .meta { display:block; font-size:10px; color:var(--navy-3); font-weight:500; margin-top:1px; font-style:italic; }
+
+.tag { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.tag.green { background:var(--green-bg); color:var(--green); }
+.tag.warn { background:var(--warn-bg); color:var(--warn); }
+.tag.terra { background:var(--terra-bg); color:var(--terra); }
+.tag.subtle { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+
+.balance-cell { font-family:'JetBrains Mono',monospace; font-weight:700; }
+.balance-cell.terra { color:var(--terra); }
+.balance-cell.green { color:var(--green); }
+.balance-cell.subtle { color:var(--navy-3); }
+
+/* SELECTION BAR (sticky bottom-ish) */
+.selection-bar { position:sticky; bottom:0; background:var(--navy); color:var(--bg); border-radius:14px; padding:14px 22px; margin:18px 0 0; display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:center; box-shadow:0 -8px 24px -8px rgba(26,43,71,0.3); background-image:radial-gradient(circle at 80% 0%, rgba(200,151,91,0.16) 0%, transparent 55%); }
+.selection-bar .sel-count { display:flex; align-items:center; gap:10px; }
+.selection-bar .sel-count .cb-input.large { width:24px; height:24px; background:var(--gold); border-color:var(--gold); }
+.selection-bar .sel-count .cb-input.large::after { color:var(--navy); }
+.selection-bar .sel-count .label .num { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.018em; color:var(--gold); line-height:1; }
+.selection-bar .sel-count .label .num em { font-style:italic; }
+.selection-bar .sel-count .label .of { font-size:10px; color:var(--gold-soft); margin-top:2px; font-weight:500; letter-spacing:0.04em; }
+.selection-bar .smart-helpers { display:flex; gap:6px; align-items:center; }
+.selection-bar .smart-helpers .helper { padding:4px 10px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.16); color:var(--bg); border-radius:100px; font-size:10px; font-weight:600; cursor:pointer; }
+.selection-bar .smart-helpers .helper.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); }
+.selection-bar .smart-helpers .meta { font-size:10px; color:rgba(232,212,184,0.7); font-style:italic; padding-left:6px; }
+.selection-bar .actions-row { display:flex; gap:8px; align-items:center; }
+.selection-bar .actions-row .more { padding:9px 12px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:var(--bg); border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; }
+.selection-bar .actions-row .gold-action { padding:9px 16px; background:var(--gold); color:var(--navy); border:none; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; }
+.selection-bar .actions-row .clear-btn { font-size:10px; color:var(--gold-soft); cursor:pointer; padding:0 8px; font-weight:500; }
+
+/* CONFIRM MODAL */
+.confirm-card { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; overflow:hidden; box-shadow:0 12px 32px -8px rgba(200,151,91,0.32); }
+.confirm-head { background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); padding:20px 26px; }
+.confirm-head .eye { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:5px; }
+.confirm-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; }
+.confirm-head h3 em { font-style:italic; color:var(--gold); font-weight:500; }
+.confirm-head .lede { font-size:12px; color:var(--navy-2); margin-top:6px; line-height:1.55; max-width:560px; }
+.confirm-head .lede b { color:var(--navy); font-weight:600; }
+
+.confirm-body { padding:0; }
+.confirm-step { padding:18px 26px; border-bottom:1px solid var(--border); }
+.confirm-step:last-of-type { border-bottom:none; }
+.confirm-step .step-row { display:flex; align-items:baseline; gap:10px; margin-bottom:10px; }
+.confirm-step .step-num { width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.confirm-step .step-name { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.confirm-step .step-name em { font-style:italic; color:var(--gold); }
+.confirm-step .step-meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+
+/* Action picker */
+.action-picker { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.action-card { background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:11px 14px; cursor:pointer; }
+.action-card.selected { border-color:var(--gold); background:var(--gold-bg); }
+.action-card .top { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.action-card .radio { width:14px; height:14px; border-radius:50%; border:2px solid var(--border-2); flex-shrink:0; position:relative; }
+.action-card.selected .radio { border-color:var(--gold); }
+.action-card.selected .radio::after { content:""; position:absolute; top:1px; left:1px; width:8px; height:8px; border-radius:50%; background:var(--gold); }
+.action-card .name { font-weight:600; font-size:12px; color:var(--navy); }
+.action-card .desc { font-size:10px; color:var(--navy-3); padding-left:22px; line-height:1.5; margin-top:2px; }
+.action-card .desc b { color:var(--navy-2); font-weight:600; }
+
+/* Parameter input */
+.param-row { display:grid; grid-template-columns:140px 1fr; gap:14px; padding:10px 0; border-bottom:1px dashed var(--border); align-items:start; font-size:12px; }
+.param-row:last-child { border-bottom:none; }
+.param-row .lbl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; padding-top:5px; }
+.param-row .input { padding:7px 11px; background:var(--bg); border:1.5px solid var(--gold); border-radius:7px; font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--navy); font-size:12px; }
+.param-row .input.subtle { border-color:var(--border); font-family:inherit; font-weight:500; }
+.param-row .input em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+.param-row .help { font-size:10px; color:var(--navy-3); font-style:italic; margin-top:4px; }
+
+/* Preview list */
+.preview-list { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px 14px; max-height:200px; overflow-y:auto; }
+.preview-list .pl-row { display:grid; grid-template-columns:24px 1fr auto auto; gap:10px; padding:5px 0; font-size:11px; align-items:center; border-bottom:1px dashed var(--border); }
+.preview-list .pl-row:last-child { border-bottom:none; }
+.preview-list .pl-num { font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; color:var(--navy-3); }
+.preview-list .pl-name { font-weight:600; color:var(--navy); }
+.preview-list .pl-name .meta { display:block; font-size:9px; color:var(--navy-3); font-style:italic; font-weight:500; margin-top:1px; }
+.preview-list .pl-from { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--terra); text-decoration:line-through; text-decoration-color:rgba(184,74,57,0.4); }
+.preview-list .pl-to { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--green); font-weight:700; }
+.preview-list .pl-arrow { color:var(--navy-3); }
+
+/* Skip warnings */
+.skip-warn { background:var(--warn-bg); border:1px solid rgba(197,138,46,0.3); border-radius:8px; padding:10px 14px; font-size:11px; color:var(--navy-2); line-height:1.55; margin-top:10px; }
+.skip-warn b { color:var(--warn); font-weight:700; }
+.skip-warn em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+/* Final commit row */
+.commit-row { background:var(--terra-bg); border:1px solid rgba(184,74,57,0.3); border-radius:10px; padding:14px 18px; margin-top:14px; display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:start; }
+.commit-row .ic { width:24px; height:24px; border-radius:50%; background:var(--terra); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; }
+.commit-row .text { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.commit-row .text b { color:var(--navy); font-weight:700; }
+.commit-row .text em { font-family:'Fraunces',serif; font-style:italic; color:var(--terra); font-weight:600; }
+
+/* Confirm action bar */
+.confirm-actions { padding:16px 26px; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.confirm-actions .summary { font-family:'Fraunces',serif; font-size:13px; font-weight:600; }
+.confirm-actions .summary em { font-style:italic; color:var(--gold); }
+.confirm-actions .acts { display:flex; gap:8px; }
+
+/* PROGRESS / RESULT card */
+.result-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.result-head { padding:20px 26px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:center; }
+.result-head .ring { width:54px; height:54px; border-radius:50%; background:var(--green-bg); color:var(--green); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:700; }
+.result-head .info .eye { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--green); font-weight:700; margin-bottom:3px; }
+.result-head .info h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.018em; }
+.result-head .info h3 em { font-style:italic; color:var(--gold); }
+.result-head .info .meta { font-size:11px; color:var(--navy-3); margin-top:4px; }
+.result-head .info .meta b { color:var(--navy-2); font-weight:600; }
+
+.result-grid { display:grid; grid-template-columns:repeat(4,1fr); padding:16px 26px; gap:14px; border-bottom:1px solid var(--border); }
+.result-stat .lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.result-stat .val { font-family:'Fraunces',serif; font-size:22px; font-weight:600; letter-spacing:-0.018em; line-height:1.05; margin-top:4px; }
+.result-stat .val em { font-style:italic; color:var(--gold); }
+.result-stat .val.green { color:var(--green); }
+.result-stat .val.warn { color:var(--warn); }
+.result-stat .sub { font-size:10px; color:var(--navy-3); margin-top:3px; }
+
+.result-section { padding:18px 26px; }
+.result-section .sec-row { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; }
+.result-section .sec-num { font-family:'Fraunces',serif; font-style:italic; font-size:14px; color:var(--gold); font-weight:600; }
+.result-section .sec-name { font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
+.result-section .sec-name em { font-style:italic; color:var(--gold); }
+.result-section .sec-meta { margin-left:auto; font-size:10px; color:var(--navy-3); font-style:italic; }
+
+.outcome-row { display:grid; grid-template-columns:auto 1fr auto; gap:12px; padding:8px 0; font-size:11px; align-items:center; border-bottom:1px dashed var(--border); }
+.outcome-row:last-child { border-bottom:none; }
+.outcome-row .ic-tag { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+.outcome-row .ic-tag.green { background:var(--green-bg); color:var(--green); }
+.outcome-row .ic-tag.warn { background:var(--warn-bg); color:var(--warn); }
+.outcome-row .name { font-weight:600; color:var(--navy); font-size:11px; }
+.outcome-row .name .meta { display:block; font-size:10px; color:var(--navy-3); font-weight:500; font-style:italic; margin-top:1px; }
+.outcome-row .change { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-2); }
+.outcome-row .change b { color:var(--green); font-weight:700; }
+.outcome-row .change .from { color:var(--terra); text-decoration:line-through; opacity:0.6; }
+
+.audit-link { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:14px 18px; margin-top:14px; display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center; font-size:12px; }
+.audit-link .ic { width:28px; height:28px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; }
+.audit-link .text { color:var(--navy-2); line-height:1.5; }
+.audit-link .text b { color:var(--navy); font-weight:600; }
+.audit-link .text em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+/* Pattern catalog */
+.catalog-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.cat-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.cat-card .ic-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.cat-card .ic { width:36px; height:36px; border-radius:8px; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; }
+.cat-card .ic.green { background:var(--green-bg); color:var(--green); }
+.cat-card .ic.terra { background:var(--terra-bg); color:var(--terra); }
+.cat-card .ic.warn { background:var(--warn-bg); color:var(--warn); }
+.cat-card .name { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.cat-card .name em { font-style:italic; color:var(--gold); }
+.cat-card .desc { font-size:11px; color:var(--navy-3); line-height:1.55; margin-bottom:10px; }
+.cat-card .desc b { color:var(--navy-2); font-weight:600; }
+.cat-card .actions-list { font-size:10px; color:var(--navy-2); }
+.cat-card .actions-list b { color:var(--navy); font-weight:600; }
+.cat-card .actions-list .label { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:4px; }
+.cat-card .actions-list ul { list-style:none; }
+.cat-card .actions-list li { padding:3px 0; padding-left:10px; position:relative; }
+.cat-card .actions-list li::before { content:"·"; position:absolute; left:0; color:var(--gold); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .selection-bar { grid-template-columns:1fr; gap:12px; }
+  .catalog-grid { grid-template-columns:1fr; }
+  .action-picker { grid-template-columns:1fr; }
+  .result-grid { grid-template-columns:1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 4 · Operational parity · 2 of 4</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Click <em>once</em>, change <em>many</em></h1>
+  <div class="gold-rule"></div>
+  <p>Bulk operations as a system-wide pattern. Schools handle hundreds of students; clicking through one record at a time when the same change applies to 47 of them is the kind of friction that makes admin staff abandon software. Selection becomes a first-class object. Demonstrated here on the student list — the same multi-select toolbar, sticky selection bar, confirm-with-preview flow, and post-action result card apply to billing, attendance, communications, and staff lists. <b>One pattern, every list.</b></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Selection in flight · 47 students chosen</div>
+    <div class="section-meta">Student list with multi-select active · sticky selection bar at the bottom</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / students</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item active"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb">Students</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">All <em>students</em></h1>
+                <div class="lede"><b>312 enrolled</b> · 9 classes · last sync 2 min ago · select rows to bulk-edit</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Import CSV</button>
+                <button class="btn">Export →</button>
+                <button class="btn primary">+ New student</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <div class="toolbar">
+              <div class="toolbar-left">
+                <div class="filter-pill active">All<span class="ct">312</span></div>
+                <div class="filter-pill">JHS 1<span class="ct">98</span></div>
+                <div class="filter-pill">JHS 2<span class="ct">115</span></div>
+                <div class="filter-pill">JHS 3<span class="ct">99</span></div>
+                <div class="filter-pill">Active<span class="ct">309</span></div>
+                <div class="filter-pill">Withdrawn<span class="ct">3</span></div>
+                <div class="search-box">🔍 Search by name, ID, parent…</div>
+              </div>
+              <div class="toolbar-right">Sort: <b>Class</b> ↓</div>
+            </div>
+
+            <div class="table-card">
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th class="cb"><div class="cb-input indeterminate"></div></th>
+                    <th>Student</th>
+                    <th>Class</th>
+                    <th>Status</th>
+                    <th>Term 1 fee</th>
+                    <th class="right">Last attendance</th>
+                  </tr>
+                </thead>
+                <tbody>
+
+                  <tr class="selected">
+                    <td class="cb"><div class="cb-input checked"></div></td>
+                    <td><div class="s-name-cell"><div class="s-av">AB</div><div class="s-name">Akosua Boateng<span class="meta">SU-2024-0118 · age 13</span></div></div></td>
+                    <td>JHS 2A</td>
+                    <td><span class="tag green">Active</span></td>
+                    <td><div class="balance-cell terra">GHS 340.00</div><span style="font-size:9px;color:var(--navy-3);font-style:italic">15d overdue</span></td>
+                    <td style="text-align:right">Today</td>
+                  </tr>
+
+                  <tr class="selected">
+                    <td class="cb"><div class="cb-input checked"></div></td>
+                    <td><div class="s-name-cell"><div class="s-av">DA</div><div class="s-name">Daniel Asante<span class="meta">SU-2024-0119 · age 12</span></div></div></td>
+                    <td>JHS 1A</td>
+                    <td><span class="tag green">Active</span></td>
+                    <td><div class="balance-cell terra">GHS 350.00</div><span style="font-size:9px;color:var(--navy-3);font-style:italic">18d overdue</span></td>
+                    <td style="text-align:right">Today</td>
+                  </tr>
+
+                  <tr class="selected">
+                    <td class="cb"><div class="cb-input checked"></div></td>
+                    <td><div class="s-name-cell"><div class="s-av">MO</div><div class="s-name">Mary Owusu<span class="meta">SU-2024-0120 · age 14</span></div></div></td>
+                    <td>JHS 3B</td>
+                    <td><span class="tag green">Active</span></td>
+                    <td><div class="balance-cell terra">GHS 750.00</div><span style="font-size:9px;color:var(--navy-3);font-style:italic">22d overdue</span></td>
+                    <td style="text-align:right">Today</td>
+                  </tr>
+
+                  <tr class="selected">
+                    <td class="cb"><div class="cb-input checked"></div></td>
+                    <td><div class="s-name-cell"><div class="s-av">FM</div><div class="s-name">Faith Mensah<span class="meta">SU-2024-0124 · age 13</span></div></div></td>
+                    <td>JHS 1B</td>
+                    <td><span class="tag green">Active</span></td>
+                    <td><div class="balance-cell terra">GHS 600.00</div><span style="font-size:9px;color:var(--navy-3);font-style:italic">10d overdue</span></td>
+                    <td style="text-align:right">Today</td>
+                  </tr>
+
+                  <tr>
+                    <td class="cb"><div class="cb-input"></div></td>
+                    <td><div class="s-name-cell"><div class="s-av">KO</div><div class="s-name">Kojo Owusu-Ampofo<span class="meta">SU-2024-0125 · age 12</span></div></div></td>
+                    <td>JHS 1A</td>
+                    <td><span class="tag green">Active</span></td>
+                    <td><div class="balance-cell green">GHS 0.00</div><span style="font-size:9px;color:var(--navy-3);font-style:italic">paid in full</span></td>
+                    <td style="text-align:right">Today</td>
+                  </tr>
+
+                  <tr class="selected">
+                    <td class="cb"><div class="cb-input checked"></div></td>
+                    <td><div class="s-name-cell"><div class="s-av">EK</div><div class="s-name">Esther Kwame<span class="meta">SU-2024-0126 · age 13</span></div></div></td>
+                    <td>JHS 2B</td>
+                    <td><span class="tag green">Active</span></td>
+                    <td><div class="balance-cell terra">GHS 410.00</div><span style="font-size:9px;color:var(--navy-3);font-style:italic">8d overdue</span></td>
+                    <td style="text-align:right">Today</td>
+                  </tr>
+
+                  <tr>
+                    <td class="cb"><div class="cb-input"></div></td>
+                    <td><div class="s-name-cell"><div class="s-av">ED</div><div class="s-name">Emmanuel Darko<span class="meta">SU-2024-0128 · age 14</span></div></div></td>
+                    <td>JHS 3A</td>
+                    <td><span class="tag warn">Withdrawn</span></td>
+                    <td><div class="balance-cell subtle">— closed —</div></td>
+                    <td style="text-align:right">3 weeks ago</td>
+                  </tr>
+
+                  <tr class="selected">
+                    <td class="cb"><div class="cb-input checked"></div></td>
+                    <td><div class="s-name-cell"><div class="s-av">YM</div><div class="s-name">Yaa Mensah<span class="meta">SU-2024-0130 · age 13</span></div></div></td>
+                    <td>JHS 2A</td>
+                    <td><span class="tag green">Active</span></td>
+                    <td><div class="balance-cell terra">GHS 280.00</div><span style="font-size:9px;color:var(--navy-3);font-style:italic">12d overdue</span></td>
+                    <td style="text-align:right">Today</td>
+                  </tr>
+
+                  <tr><td colspan="6" style="padding:14px 18px;background:var(--bg);text-align:center;font-size:11px;color:var(--navy-3);font-style:italic"><b>304 more students</b> · scroll to load · <b>40 more selected</b> below the visible window</td></tr>
+
+                </tbody>
+              </table>
+            </div>
+
+            <!-- SELECTION BAR -->
+            <div class="selection-bar">
+              <div class="sel-count">
+                <div class="cb-input large checked"></div>
+                <div class="label">
+                  <div class="num display"><em>47</em></div>
+                  <div class="of">of 312 students</div>
+                </div>
+              </div>
+              <div class="smart-helpers">
+                <div class="helper gold">All overdue families</div>
+                <div class="helper">Page (8)</div>
+                <div class="helper">JHS 2 only (15)</div>
+                <div class="helper">All 312</div>
+                <div class="meta">Smart helpers · expand or narrow selection</div>
+              </div>
+              <div class="actions-row">
+                <button class="more">Send message ▾</button>
+                <button class="more">Update class ▾</button>
+                <button class="more">More ▾</button>
+                <button class="gold-action">Apply discount →</button>
+                <span class="clear-btn">Clear selection</span>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Selection mechanics</h4>
+      <ul>
+        <li><b>Master checkbox in the table header has 3 states:</b> empty / checked / indeterminate (gold dash). When some rows are selected, the master shows indeterminate — clicking it deselects all. <b>Standard semantics</b>; matches user expectations from email and spreadsheet apps.</li>
+        <li><b>Selected rows have gold-tinted background</b> matching the Selection Bar at the bottom. The visual ties the selection state to the action surface — admin sees what they've chosen and the action affordance simultaneously without moving their eyes far.</li>
+        <li><b>Selection persists across pagination and filter changes.</b> If admin selects 47 students, then filters to JHS 2 to verify, the count stays at 47 and the bar still shows "47 of 312." <b>Selection is a property of the session</b>, not of the visible page; this is how schools actually work — they want to see "is everyone in my selection in JHS 2?" without losing the selection.</li>
+        <li><b>Withdrawn students show "— closed —" with subtle balance</b>; selecting a withdrawn student is technically possible but most bulk actions skip them or warn. <b>The skip-warning step in the confirm flow</b> (next region) catches this.</li>
+        <li><b>Selection bar is the most consequential UI element:</b> sticky to the bottom (position:sticky), navy background to match the sidebar (visual continuity with system chrome), gold accents for the count and primary action. <b>The bar appears the moment any row is selected and disappears when none are</b>; it's not always-visible chrome.</li>
+        <li><b>Selection bar has 3 zones:</b> count + master checkbox (left) / smart helpers (centre) / actions (right). <b>The smart helpers row is the pattern's signature</b>: based on what's selected, the system suggests adjacent selections — "All overdue families" (the apparent intent of the current 47-row selection in gold), "Page (8)" (just the visible page), "JHS 2 only (15)" (intersect with current filter), "All 312" (everything).</li>
+        <li><b>Smart helpers are inferred</b>: the system noticed that 47 of the selected rows have the same property (overdue), so it's offering "All overdue families" as a one-click superset/lock-in. <b>If admin meant "all overdue" but missed a couple, this lets them recover</b> without manually scrolling.</li>
+        <li><b>Action buttons use the intent vocabulary</b>: "Send message ▾" (with dropdown for channel), "Update class ▾", "More ▾" (catch-all for role-related actions), and the primary "Apply discount →" in gold. <b>The primary suggested action is contextual to selection content</b>: 47 students all with overdue balances surfaces "Apply discount" as the high-confidence guess.</li>
+        <li><b>Clear selection is a small italic gold link</b>, not a styled button — it's deliberately less visually weighted than the action buttons. <b>The path of least resistance is to act, not to clear</b>; admin chose these rows on purpose.</li>
+        <li><b>Count uses Fraunces italic gold "47"</b> in a 20px display setting — visually echoes the editorial cards elsewhere. <b>The count is the headline of the action</b>; 47 is a meaningful number, not a database statistic.</li>
+        <li><b>"304 more students · scroll to load · 40 more selected below the visible window"</b> · the table foot tells admin that selection extends beyond the visible page. <b>This is what makes "select all overdue" trustable</b>; admin can verify the count without hunting through pages.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Confirm before commit · the bulk action sheet</div>
+    <div class="section-meta">From "Apply discount →" · preview of changes before they happen</div>
+  </div>
+
+  <div class="layout">
+    <div class="confirm-card">
+      <div class="confirm-head">
+        <div class="eye">Bulk action · review &amp; confirm</div>
+        <h3 class="display">Apply discount to <em>47 students</em></h3>
+        <div class="lede">You're about to change the Term 1 fee balance for <b>47 students</b>. This will create <b>47 audit log entries</b> grouped under one bulk event · receipts will be regenerated · parents will be notified via their preferred channel within 5 minutes of confirmation</div>
+      </div>
+
+      <div class="confirm-body">
+
+        <!-- Step 1: Action -->
+        <div class="confirm-step">
+          <div class="step-row">
+            <div class="step-num">1</div>
+            <div class="step-name display">Choose <em>discount type</em></div>
+          </div>
+          <div class="action-picker">
+            <div class="action-card selected">
+              <div class="top">
+                <div class="radio"></div>
+                <div class="name">Fixed amount off</div>
+              </div>
+              <div class="desc">Subtract the same <b>GHS amount</b> from every selected student's balance · most common for sibling discounts &amp; staff children</div>
+            </div>
+            <div class="action-card">
+              <div class="top">
+                <div class="radio"></div>
+                <div class="name">Percentage off</div>
+              </div>
+              <div class="desc">Subtract the same <b>%</b> from every balance · amounts will vary per student</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Parameters -->
+        <div class="confirm-step">
+          <div class="step-row">
+            <div class="step-num">2</div>
+            <div class="step-name display">Set <em>amount &amp; reason</em></div>
+            <div class="step-meta">Reason is preserved on every audit entry</div>
+          </div>
+          <div class="param-row">
+            <div class="lbl">Amount</div>
+            <div>
+              <div class="input">GHS <em>50.00</em> per student</div>
+              <div class="help">Same amount for all 47 · estimated total reduction <b>GHS 2,350</b></div>
+            </div>
+          </div>
+          <div class="param-row">
+            <div class="lbl">Reason</div>
+            <div>
+              <div class="input subtle">Goodwill discount · Term 1 affordability gesture</div>
+              <div class="help">Visible in audit log · printed on each receipt · parents see this on their invoice</div>
+            </div>
+          </div>
+          <div class="param-row">
+            <div class="lbl">Effective</div>
+            <div>
+              <div class="input subtle">Immediately on confirm · 22 Oct 2024 · 2:18 PM</div>
+              <div class="help">Discount applies to outstanding balance · already-paid amounts unaffected · <em>forward-only</em></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Preview -->
+        <div class="confirm-step">
+          <div class="step-row">
+            <div class="step-num">3</div>
+            <div class="step-name display">Preview the <em>changes</em></div>
+            <div class="step-meta">First 6 rows shown · all 47 will be applied</div>
+          </div>
+          <div class="preview-list">
+            <div class="pl-row">
+              <span class="pl-num">01</span>
+              <div class="pl-name">Akosua Boateng <span class="meta">JHS 2A</span></div>
+              <span class="pl-from">340.00</span>
+              <span class="pl-arrow">→</span>
+              <span class="pl-to">290.00</span>
+            </div>
+            <div class="pl-row">
+              <span class="pl-num">02</span>
+              <div class="pl-name">Daniel Asante <span class="meta">JHS 1A</span></div>
+              <span class="pl-from">350.00</span>
+              <span class="pl-arrow">→</span>
+              <span class="pl-to">300.00</span>
+            </div>
+            <div class="pl-row">
+              <span class="pl-num">03</span>
+              <div class="pl-name">Mary Owusu <span class="meta">JHS 3B</span></div>
+              <span class="pl-from">750.00</span>
+              <span class="pl-arrow">→</span>
+              <span class="pl-to">700.00</span>
+            </div>
+            <div class="pl-row">
+              <span class="pl-num">04</span>
+              <div class="pl-name">Faith Mensah <span class="meta">JHS 1B</span></div>
+              <span class="pl-from">600.00</span>
+              <span class="pl-arrow">→</span>
+              <span class="pl-to">550.00</span>
+            </div>
+            <div class="pl-row">
+              <span class="pl-num">05</span>
+              <div class="pl-name">Esther Kwame <span class="meta">JHS 2B</span></div>
+              <span class="pl-from">410.00</span>
+              <span class="pl-arrow">→</span>
+              <span class="pl-to">360.00</span>
+            </div>
+            <div class="pl-row">
+              <span class="pl-num">06</span>
+              <div class="pl-name">Yaa Mensah <span class="meta">JHS 2A</span></div>
+              <span class="pl-from">280.00</span>
+              <span class="pl-arrow">→</span>
+              <span class="pl-to">230.00</span>
+            </div>
+            <div class="pl-row" style="background:var(--bg);justify-content:center;color:var(--navy-3);font-style:italic">
+              41 more rows · all by GHS 50
+            </div>
+          </div>
+
+          <!-- Skip warnings -->
+          <div class="skip-warn">
+            <b>⚠ 2 of the 47 selected students will be skipped:</b><br>
+            · <b>Sandra Osei (JHS 1B)</b> · already at <em>GHS 0</em> balance · discount would create credit · skipped<br>
+            · <b>Joseph Asante (JHS 3C)</b> · invoice marked <em>under review</em> by Joyce · discount paused until released
+          </div>
+        </div>
+
+        <!-- Final commit warning -->
+        <div class="confirm-step">
+          <div class="step-row">
+            <div class="step-num">4</div>
+            <div class="step-name display">Acknowledge &amp; <em>commit</em></div>
+          </div>
+          <div class="commit-row">
+            <div class="ic">!</div>
+            <div class="text">
+              This action will <b>change 45 invoice balances</b> · <em>discounts are forward-only</em> and cannot be reversed automatically · undoing requires manually adding the GHS 50 back to each student's invoice (also recordable as a single bulk action). The full 45-row audit entry will be visible to all admins immediately and sealed at midnight.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="confirm-actions">
+        <div class="summary display">Reducing <em>45 of 47 balances</em> by <em>GHS 50</em> each</div>
+        <div class="acts">
+          <button class="btn">Cancel</button>
+          <button class="btn">Save as draft</button>
+          <button class="btn gold">Apply discount to 45 →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Confirm-before-commit principles</h4>
+      <ul>
+        <li><b>Bulk actions never apply on the first click.</b> The selection bar's gold "Apply discount →" opens this confirm sheet · admin must walk through the 4 steps before the action commits. <b>The action is reversible-via-cancel until the final button</b>; mistakes are caught before they're recorded.</li>
+        <li><b>Header restates the scope</b>: "Apply discount to <em>47 students</em>." Then meta tells admin the consequences in plain English: "47 audit log entries grouped under one bulk event · receipts regenerated · parents notified within 5 minutes." <b>Side effects are visible upfront</b>; admin doesn't discover them after the fact.</li>
+        <li><b>Step 1 picks the action variant.</b> Discount can be fixed amount or percentage — same shape, different math. <b>The selection determines step 2's input</b>; if percentage chosen, step 2 swaps to a percent input.</li>
+        <li><b>Step 2 captures parameters with the audit-log labels visible</b>: "Reason · Visible in audit log · printed on each receipt · parents see this on their invoice." <b>The reason field is required</b> (no anonymous bulk discounts) and admin sees exactly where it appears.</li>
+        <li><b>"Effective: Immediately on confirm · 22 Oct 2024 · 2:18 PM"</b> with help text "<em>forward-only</em>." <b>Locks in the temporal semantics</b>; bulk discount doesn't retroactively change paid receipts, only outstanding balances. Already-paid amounts are not refunded by this action.</li>
+        <li><b>Step 3 preview shows the actual diff per row</b>: "GHS 340.00 → GHS 290.00" with terra strike-through on old, green bold on new. <b>Admin sees exactly what the changes will be before they happen</b>; the preview is the dress rehearsal.</li>
+        <li><b>Skip warnings in warn-tinted card</b>: "2 of the 47 selected students will be skipped." Lists each skipped student by name with reason. <b>The system makes the safe call</b>: Sandra Osei has zero balance (discount would create credit, which is a different operation); Joseph Asante's invoice is under review (locked by Joyce). Admin sees this <em>before</em> committing and can choose to investigate or proceed.</li>
+        <li><b>Step 4 is the consent gate</b>: terra-tinted card with explicit consequence statement. <b>"Discounts are forward-only and cannot be reversed automatically · undoing requires manually adding GHS 50 back to each student's invoice"</b> · admin understands the asymmetry before committing.</li>
+        <li><b>Commit footer summarises the final action</b> in editorial Fraunces: "Reducing <em>45 of 47 balances</em> by <em>GHS 50</em> each." <b>Note: 45, not 47</b> — the count adjusted for the 2 skipped students. The number admin commits to matches what actually happens.</li>
+        <li><b>3 footer buttons</b>: neutral Cancel / neutral Save as draft / gold Apply (the commit). <b>Save as draft is a deliberate option</b> — admin can prepare a bulk action and have a co-admin review the preview before applying. Useful for sensitive ops at multi-admin schools (file links to the activation-segregation pattern from earlier).</li>
+        <li><b>Consistent confirm-flow vocabulary across modules</b>: this same 4-step shape (Choose action / Set parameters / Preview changes / Acknowledge &amp; commit) applies to bulk class promotion, bulk attendance correction, bulk SMS send. <b>Once admin learns the rhythm, every bulk operation feels familiar</b>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">After commit · the bulk result card</div>
+    <div class="section-meta">2 minutes after Apply · summary + per-row outcomes + audit-log link</div>
+  </div>
+
+  <div class="layout">
+    <div class="result-card">
+      <div class="result-head">
+        <div class="ring">✓</div>
+        <div class="info">
+          <div class="eye">Bulk action complete · 22 Oct 2:18 PM</div>
+          <h3 class="display">Discount <em>applied</em> to 45 students</h3>
+          <div class="meta"><b>2 students skipped</b> · 45 receipts regenerated · 45 parents notified · <b>1 audit event</b> recorded · sealing at midnight</div>
+        </div>
+        <div class="actions">
+          <button class="btn">View audit entry →</button>
+          <button class="btn primary">Download receipts</button>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-stat">
+          <div class="lbl">Applied</div>
+          <div class="val display green"><em>45</em></div>
+          <div class="sub">Of 47 selected · 95.7%</div>
+        </div>
+        <div class="result-stat">
+          <div class="lbl">Skipped</div>
+          <div class="val display warn"><em>2</em></div>
+          <div class="sub">See reasons below</div>
+        </div>
+        <div class="result-stat">
+          <div class="lbl">Total reduced</div>
+          <div class="val display"><em>GHS 2,250</em></div>
+          <div class="sub">Across 45 invoices</div>
+        </div>
+        <div class="result-stat">
+          <div class="lbl">Parents notified</div>
+          <div class="val display"><em>45</em></div>
+          <div class="sub">38 WA · 7 SMS · within 5 min</div>
+        </div>
+      </div>
+
+      <div class="result-section">
+        <div class="sec-row">
+          <div class="sec-num">01</div>
+          <div class="sec-name display">Per-student <em>outcomes</em></div>
+          <div class="sec-meta">Showing first 5 + 2 skipped · full list in audit entry</div>
+        </div>
+
+        <div class="outcome-row">
+          <div class="ic-tag green">✓</div>
+          <div class="name">Akosua Boateng<span class="meta">JHS 2A · receipt #2219</span></div>
+          <div class="change"><span class="from">340.00</span> → <b>290.00</b></div>
+        </div>
+        <div class="outcome-row">
+          <div class="ic-tag green">✓</div>
+          <div class="name">Daniel Asante<span class="meta">JHS 1A · receipt #2220</span></div>
+          <div class="change"><span class="from">350.00</span> → <b>300.00</b></div>
+        </div>
+        <div class="outcome-row">
+          <div class="ic-tag green">✓</div>
+          <div class="name">Mary Owusu<span class="meta">JHS 3B · receipt #2221</span></div>
+          <div class="change"><span class="from">750.00</span> → <b>700.00</b></div>
+        </div>
+        <div class="outcome-row">
+          <div class="ic-tag green">✓</div>
+          <div class="name">Faith Mensah<span class="meta">JHS 1B · receipt #2222</span></div>
+          <div class="change"><span class="from">600.00</span> → <b>550.00</b></div>
+        </div>
+        <div class="outcome-row">
+          <div class="ic-tag green">✓</div>
+          <div class="name">Esther Kwame<span class="meta">JHS 2B · receipt #2223</span></div>
+          <div class="change"><span class="from">410.00</span> → <b>360.00</b></div>
+        </div>
+        <div class="outcome-row" style="background:var(--warn-bg);margin:0 -8px;padding:8px 8px;border-radius:6px;border-bottom:none">
+          <div class="ic-tag warn">⊘</div>
+          <div class="name">Sandra Osei<span class="meta">JHS 1B · skipped · already GHS 0 balance</span></div>
+          <div class="change" style="color:var(--warn);font-style:italic">no change</div>
+        </div>
+        <div class="outcome-row" style="background:var(--warn-bg);margin:0 -8px;padding:8px 8px;border-radius:6px;border-bottom:none">
+          <div class="ic-tag warn">⊘</div>
+          <div class="name">Joseph Asante<span class="meta">JHS 3C · skipped · invoice under review</span></div>
+          <div class="change" style="color:var(--warn);font-style:italic">no change</div>
+        </div>
+
+        <div class="audit-link">
+          <div class="ic">A</div>
+          <div class="text">This action created audit event <b>ev_2024_10_22_14_18_103</b> · grouped <em>45 invoice updates</em> + <em>45 receipt regenerations</em> + <em>45 parent notifications</em> as one bulk record · all visible to other admins immediately</div>
+          <button class="btn sm">Open in audit log →</button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="notes">
+      <h4>The result card</h4>
+      <ul>
+        <li><b>Result card opens in place of the confirm sheet</b> immediately after commit. <b>No modal, no navigation away</b>; admin sees the outcome of their action in the same surface they configured it.</li>
+        <li><b>Big green checkmark ring + editorial header</b>: "Discount <em>applied</em> to 45 students." <b>One sentence answers "did it work?"</b> · meta line tells the secondary story: "2 skipped · 45 receipts · 45 notifications · 1 audit event · sealing at midnight."</li>
+        <li><b>4-stat grid summarises the action</b>: Applied (45 green) · Skipped (2 warn) · Total reduced (GHS 2,250) · Parents notified (45 with channel breakdown). <b>The accountancy of the bulk action is visible at a glance</b>; this is what admin will refer back to next week when reconciling.</li>
+        <li><b>Per-student outcome rows show the actual change</b>: "<span style="text-decoration:line-through;opacity:0.5">340.00</span> → <b>290.00</b>" with green checkmark ic. The 2 skipped rows are warn-tinted with ⊘ icon and italic "no change" — clearly distinguishable from the successes. <b>Same diff format as the confirm preview</b>; admin recognises the visual continuity.</li>
+        <li><b>Receipt numbers attached to each outcome</b>: "JHS 2A · receipt #2219." <b>The new receipts are a tangible byproduct</b>; admin can drill from any row into the regenerated PDF if a parent disputes.</li>
+        <li><b>Gold-tinted audit link footer</b>: "This action created audit event <b>ev_2024_10_22_14_18_103</b> · grouped 45 invoice updates + 45 receipt regenerations + 45 parent notifications as one bulk record." <b>Direct link to the audit-log surface</b> from file 1 of this batch · the bulk row in the audit feed is the same event referenced here.</li>
+        <li><b>"all visible to other admins immediately"</b> · transparency is built into the action. <b>Joyce will see Florence's bulk discount in her audit feed within 30 seconds</b> (the auto-refresh interval); no need for a separate notification — the audit log is the notification channel.</li>
+        <li><b>Header has 2 actions</b>: "View audit entry →" (jumps to the audit drill panel for this event) and "Download receipts" (zip of all 45 PDFs). <b>The two next steps after a bulk action</b>: review the record, or distribute the artefacts.</li>
+        <li><b>Skipped rows preserve the reason</b>: "Sandra Osei · already GHS 0 balance" / "Joseph Asante · invoice under review." <b>The skip reason matches the warning shown in the confirm step</b> — admin knew this was going to happen and the result confirms the system did what it said.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Same pattern · across the system</div>
+    <div class="section-meta">9 lists support bulk operations · same selection bar, same confirm flow</div>
+  </div>
+
+  <div class="catalog-grid">
+
+    <div class="cat-card">
+      <div class="ic-row">
+        <div class="ic">S</div>
+        <div class="name display"><em>Students</em> list</div>
+      </div>
+      <div class="desc">The example shown in this file · 312 records · most-used bulk surface · admin and headmistress access</div>
+      <div class="actions-list">
+        <div class="label">Bulk actions available</div>
+        <ul>
+          <li>Apply / remove <b>discount</b></li>
+          <li>Move to <b>different class</b></li>
+          <li>Mark <b>withdrawn</b> · with date</li>
+          <li>Add <b>tag</b> (e.g. needs-review)</li>
+          <li>Send <b>WhatsApp</b> or <b>SMS</b> to parents</li>
+          <li>Export <b>profiles to CSV</b></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="ic-row">
+        <div class="ic green">B</div>
+        <div class="name display"><em>Billing</em> · invoices &amp; payments</div>
+      </div>
+      <div class="desc">Bulk reconciliation is the most powerful surface · 47-row MoMo statement matched to invoices in 2.3 seconds</div>
+      <div class="actions-list">
+        <div class="label">Bulk actions available</div>
+        <ul>
+          <li>Reconcile against <b>MoMo statement</b></li>
+          <li>Send <b>fee reminder</b> SMS</li>
+          <li>Mark <b>multiple as paid</b></li>
+          <li>Generate <b>invoices</b> for new term</li>
+          <li>Apply <b>late fee</b> to overdue</li>
+          <li>Export <b>statements</b> for accountant</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="ic-row">
+        <div class="ic warn">A</div>
+        <div class="name display"><em>Attendance</em> · daily marks</div>
+      </div>
+      <div class="desc">Bulk-mark a class as present (typical) · then individually flip absentees · single audit entry per day per class</div>
+      <div class="actions-list">
+        <div class="label">Bulk actions available</div>
+        <ul>
+          <li>Mark <b>class as all present</b> (1-tap)</li>
+          <li>Apply <b>excuse code</b> to multiple</li>
+          <li>Correct <b>past register</b> (logged + reason)</li>
+          <li>Export <b>register</b> for GES return</li>
+          <li>Send <b>absence SMS</b> to parents</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="ic-row">
+        <div class="ic">C</div>
+        <div class="name display"><em>Communications</em> · sends</div>
+      </div>
+      <div class="desc">Bulk send to a saved segment · the reminder-series feature from Tier 3 is the scheduled automation of this</div>
+      <div class="actions-list">
+        <div class="label">Bulk actions available</div>
+        <ul>
+          <li>Send <b>announcement</b> via WA + SMS</li>
+          <li>Mark threads as <b>resolved</b></li>
+          <li>Assign threads to <b>admin / staff</b></li>
+          <li>Re-send to <b>failed recipients</b></li>
+          <li>Export <b>send history</b></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="ic-row">
+        <div class="ic terra">P</div>
+        <div class="name display"><em>Parents</em> list</div>
+      </div>
+      <div class="desc">Manage contact details, opt-ins, preferred channels · bulk fix-ups are common after enrolment season</div>
+      <div class="actions-list">
+        <div class="label">Bulk actions available</div>
+        <ul>
+          <li>Update <b>preferred channel</b></li>
+          <li>Send <b>contact-confirmation SMS</b></li>
+          <li>Mark <b>opt-in / opt-out</b> from comms</li>
+          <li>Tag for <b>follow-up</b> (stale numbers)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="ic-row">
+        <div class="ic">T</div>
+        <div class="name display"><em>Staff</em> list</div>
+      </div>
+      <div class="desc">Smaller list (typically 12—40 records) but bulk actions still useful for term setup &amp; payroll prep</div>
+      <div class="actions-list">
+        <div class="label">Bulk actions available</div>
+        <ul>
+          <li>Assign to <b>class</b> as form master</li>
+          <li>Apply <b>salary adjustment</b></li>
+          <li>Move to <b>archived</b> (former staff)</li>
+          <li>Reset <b>password</b> for multiple</li>
+          <li>Export <b>payroll</b> sheet</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</div>
+</body>
+</html>

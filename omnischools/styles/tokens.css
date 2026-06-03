@@ -1,0 +1,71 @@
+/**
+ * Omnischools design tokens — single source of truth for brand styling.
+ * Extracted from md files/design-tokens.json (v1.0.0).
+ * Semantic (shadcn-compatible) variables map brand colours to component roles.
+ * Do not hardcode hex in components — use Tailwind classes bound to these vars.
+ */
+:root {
+  /* ---- brand palette ---- */
+  --navy: #1a2b47; /* primary brand · body text · CTAs */
+  --navy-2: #2d3f5c; /* secondary text · hover */
+  --navy-3: #5c6675; /* muted text · meta */
+  --gold: #c8975b; /* accent · italics · highlights */
+  --gold-soft: #e8d4b8; /* gold borders */
+  --gold-bg: #f5ebdc; /* gold-tinted surfaces */
+  --bg: #faf7f2; /* page background · off-white */
+  --surface: #ffffff; /* cards · panels · drawers */
+  --green: #2f6b47; /* success · paid · operational */
+  --green-bg: #e5efe8;
+  --terra: #b84a39; /* error · failed · destructive */
+  --terra-bg: #f5e1dc;
+  --warn: #c58a2e; /* warning · pending · partial */
+  --warn-bg: #f5e9d0;
+  --border-1: #e5dfd3; /* default border */
+  --border-2: #d4ccba; /* stronger border · inputs */
+
+  /* extensions (scoped usage) */
+  --wa-green: #25a859;
+  --wa-bg: #e7f8ee;
+  --paper: #fbfaf6;
+  --paper-line: #c9c2b0;
+
+  /* ---- semantic roles (shadcn/ui) ---- */
+  --background: var(--bg);
+  --foreground: var(--navy);
+  --card: var(--surface);
+  --card-foreground: var(--navy);
+  --popover: var(--surface);
+  --popover-foreground: var(--navy);
+  --primary: var(--navy);
+  --primary-foreground: #ffffff;
+  --secondary: var(--gold-bg);
+  --secondary-foreground: var(--navy);
+  --muted: var(--gold-bg);
+  --muted-foreground: var(--navy-3);
+  --accent: var(--gold);
+  --accent-foreground: var(--navy);
+  --destructive: var(--terra);
+  --destructive-foreground: #ffffff;
+  --success: var(--green);
+  --success-foreground: #ffffff;
+  --warning: var(--warn);
+  --warning-foreground: var(--navy);
+  --border: var(--border-1);
+  --input: var(--border-2);
+  --ring: var(--gold);
+
+  /* ---- radius ---- */
+  --radius: 8px;
+
+  /* ---- shadows ---- */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(26, 43, 71, 0.08);
+  --shadow-lg: 0 24px 60px -20px rgba(26, 43, 71, 0.25);
+  --shadow-xl: 0 30px 80px -20px rgba(26, 43, 71, 0.5);
+
+  /* ---- motion ---- */
+  --duration-fast: 0.15s;
+  --duration-base: 0.25s;
+  --duration-slow: 0.4s;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}

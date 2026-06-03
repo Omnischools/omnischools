@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Audit log viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:720px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1820px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:30px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:720px; line-height:1.55; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.page-head .lede em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+
+.body { padding:24px 36px 60px; }
+
+/* Hero summary row */
+.hero-row { display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr; gap:14px; margin-bottom:24px; }
+.hero-main { background:var(--navy); color:var(--bg); border-radius:14px; padding:22px 26px; background-image:radial-gradient(circle at 90% 0%, rgba(200,151,91,0.16) 0%, transparent 55%); }
+.hero-main .lbl { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; margin-bottom:6px; }
+.hero-main .val { font-family:'Fraunces',serif; font-size:26px; font-weight:500; letter-spacing:-0.018em; line-height:1.25; color:var(--bg); }
+.hero-main .val em { font-style:italic; color:var(--gold); font-weight:500; }
+.hero-main .val b { font-weight:600; }
+.hero-main .meta { margin-top:10px; font-size:11px; color:rgba(232,212,184,0.85); line-height:1.55; }
+.hero-main .meta b { color:var(--bg); font-weight:600; }
+.hero-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 18px; }
+.hero-tile.warn { background:linear-gradient(180deg,var(--warn-bg) 0%,var(--surface) 80%); border-color:rgba(197,138,46,0.25); }
+.hero-tile.green { background:linear-gradient(180deg,var(--green-bg) 0%,var(--surface) 80%); border-color:rgba(47,107,71,0.25); }
+.hero-tile .lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.hero-tile .val { font-family:'Fraunces',serif; font-size:22px; font-weight:600; letter-spacing:-0.018em; line-height:1.05; margin-top:4px; }
+.hero-tile .val em { font-style:italic; color:var(--gold); }
+.hero-tile.warn .val { color:var(--warn); }
+.hero-tile.green .val { color:var(--green); }
+.hero-tile .sub { font-size:10px; color:var(--navy-3); margin-top:3px; }
+.hero-tile .sub b { color:var(--navy-2); font-weight:600; }
+
+/* Filter rail */
+.filter-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; margin-bottom:18px; }
+.filter-card .filter-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px; }
+.filter-card .filter-head h3 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.filter-card .filter-head h3 em { font-style:italic; color:var(--gold); }
+.filter-card .filter-head .clear { font-size:11px; color:var(--terra); font-weight:600; cursor:pointer; }
+
+.filter-grid { display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr; gap:14px; }
+.filter-group .group-lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.filter-pills { display:flex; gap:4px; flex-wrap:wrap; }
+.filter-pill { padding:5px 11px; background:var(--bg); border:1px solid var(--border); border-radius:100px; font-size:10px; font-weight:600; color:var(--navy-2); cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
+.filter-pill .ct { font-family:'JetBrains Mono',monospace; font-size:9px; opacity:0.55; }
+.filter-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill.active em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.filter-pill.active .ct { opacity:0.85; }
+.filter-pill.terra-active { background:var(--terra); color:var(--surface); border-color:var(--terra); }
+
+.range-display { padding:6px 10px; background:var(--bg); border:1.5px solid var(--gold); border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--navy); display:inline-flex; align-items:center; gap:8px; }
+.range-display .arrow { color:var(--navy-3); }
+
+.search-row { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border); display:flex; gap:10px; align-items:center; }
+.search-row .search-box { flex:1; padding:9px 14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:12px; color:var(--navy-3); font-style:italic; }
+.search-row .search-box .pulse { color:var(--gold); font-style:normal; font-weight:600; }
+.search-row .applied-count { font-size:11px; color:var(--navy-3); }
+.search-row .applied-count b { color:var(--navy); font-weight:700; }
+
+/* Audit feed */
+.region { margin-bottom:32px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.005em; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+.day-marker { display:flex; align-items:center; gap:14px; margin:24px 0 12px; }
+.day-marker .line { flex:1; height:1px; background:var(--border); }
+.day-marker .label { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; padding:0 8px; }
+.day-marker .label em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; text-transform:none; letter-spacing:0; font-size:13px; }
+.day-marker .ct { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.day-marker .ct b { color:var(--navy-2); }
+
+.entry-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-bottom:8px; display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:start; }
+.entry-card.warn-bg { background:var(--warn-bg); border-color:rgba(197,138,46,0.3); }
+.entry-card.terra-bg { background:var(--terra-bg); border-color:rgba(184,74,57,0.3); }
+.entry-card.green-bg { background:var(--green-bg); border-color:rgba(47,107,71,0.25); }
+.entry-card.bulk { border-left:3px solid var(--gold); }
+
+.entry-time { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--navy-2); padding-top:2px; min-width:62px; }
+.entry-time .ts { display:block; }
+.entry-time .ago { display:block; font-size:9px; font-weight:500; color:var(--navy-3); margin-top:2px; }
+
+.entry-body { min-width:0; }
+.entry-line-1 { font-size:13px; line-height:1.55; color:var(--navy); margin-bottom:5px; }
+.entry-line-1 .actor { font-weight:700; color:var(--navy); }
+.entry-line-1 .verb { color:var(--navy-2); }
+.entry-line-1 .object { font-weight:600; color:var(--navy); }
+.entry-line-1 .object.subtle { font-weight:500; color:var(--navy-2); }
+.entry-line-1 em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+.entry-line-1 .terra { color:var(--terra); font-weight:600; }
+.entry-line-1 .green { color:var(--green); font-weight:600; }
+.entry-line-1 .warn { color:var(--warn); font-weight:600; }
+.entry-line-1 .tombstone { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-3); font-style:italic; font-weight:500; background:var(--bg); padding:1px 6px; border-radius:3px; border:1px dashed var(--border-2); cursor:help; }
+.entry-line-1 .tombstone:hover { background:var(--gold-bg); border-color:var(--gold-soft); color:var(--navy-2); }
+.entry-row.tombstoned { background:linear-gradient(90deg, rgba(229,223,211,0.18) 0%, transparent 80%); }
+.tombstone-strip { display:flex; align-items:center; gap:8px; padding:4px 10px; margin-top:4px; background:var(--bg); border-left:2px solid var(--border-2); border-radius:0 4px 4px 0; font-size:10px; color:var(--navy-3); }
+.tombstone-strip .ts-dot { width:6px; height:6px; border-radius:50%; background:var(--navy-3); flex-shrink:0; }
+.tombstone-strip b { color:var(--navy-2); font-weight:600; }
+
+.entry-detail { display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:var(--navy-3); margin-top:5px; }
+.entry-detail .pill { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:100px; background:var(--bg); border:1px solid var(--border); font-size:10px; font-weight:600; color:var(--navy-2); }
+.entry-detail .pill .dot { width:6px; height:6px; border-radius:50%; }
+.entry-detail .pill .dot.gold { background:var(--gold); }
+.entry-detail .pill .dot.green { background:var(--green); }
+.entry-detail .pill .dot.terra { background:var(--terra); }
+.entry-detail .pill .dot.warn { background:var(--warn); }
+.entry-detail .pill .dot.navy { background:var(--navy); }
+.entry-detail .pill .dot.subtle { background:var(--navy-3); }
+.entry-detail .pill.bulk-tag { background:var(--gold); color:var(--navy); border-color:var(--gold); }
+.entry-detail .ip { font-family:'JetBrains Mono',monospace; color:var(--navy-3); font-weight:500; font-size:10px; }
+.entry-detail .device { font-style:italic; }
+
+.entry-diff { background:var(--bg); border:1px dashed var(--border); border-radius:6px; padding:8px 12px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.6; }
+.entry-diff .diff-row { display:grid; grid-template-columns:80px 1fr; gap:10px; }
+.entry-diff .diff-row .lbl { color:var(--navy-3); font-weight:600; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; padding-top:1px; }
+.entry-diff .diff-row .val { color:var(--navy-2); }
+.entry-diff .diff-row .val .old { color:var(--terra); text-decoration:line-through; text-decoration-color:rgba(184,74,57,0.4); }
+.entry-diff .diff-row .val .arrow { color:var(--navy-3); margin:0 6px; }
+.entry-diff .diff-row .val .new { color:var(--green); font-weight:700; }
+
+.entry-bulk-summary { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:6px; padding:8px 12px; margin-top:8px; font-size:11px; color:var(--navy-2); line-height:1.55; }
+.entry-bulk-summary b { color:var(--navy); font-weight:600; }
+.entry-bulk-summary em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+.entry-bulk-summary .expand-link { display:inline-block; margin-top:4px; font-size:10px; color:var(--gold); font-weight:700; letter-spacing:0.04em; text-transform:uppercase; cursor:pointer; }
+
+.entry-action { padding:6px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:10px; font-weight:600; color:var(--navy-2); cursor:pointer; white-space:nowrap; }
+.entry-action.gold { background:var(--gold-bg); color:var(--gold); border-color:var(--gold); }
+
+/* Drill detail panel preview */
+.drill-card { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; overflow:hidden; box-shadow:0 8px 24px -8px rgba(200,151,91,0.3); }
+.drill-head { background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); padding:18px 24px; display:grid; grid-template-columns:1fr auto; gap:14px; align-items:start; }
+.drill-head .left .eye { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.drill-head .left h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.018em; line-height:1.1; }
+.drill-head .left h3 em { font-style:italic; color:var(--gold); }
+.drill-head .left .lede { font-size:12px; color:var(--navy-3); margin-top:5px; line-height:1.55; }
+.drill-head .left .lede b { color:var(--navy-2); font-weight:600; }
+.drill-head .actions { display:flex; gap:6px; }
+.drill-head .actions .btn { padding:6px 11px; font-size:11px; }
+
+.drill-body { padding:0; }
+.drill-section { padding:16px 24px; border-bottom:1px solid var(--border); }
+.drill-section:last-child { border-bottom:none; }
+.drill-section .sec-head { display:flex; align-items:baseline; gap:10px; margin-bottom:10px; }
+.drill-section .sec-num { font-family:'Fraunces',serif; font-style:italic; font-size:13px; color:var(--gold); font-weight:600; }
+.drill-section .sec-name { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.drill-section .sec-name em { font-style:italic; color:var(--gold); }
+
+.actor-card { display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center; padding:10px 14px; background:var(--bg); border:1px solid var(--border); border-radius:10px; }
+.actor-card .av { width:38px; height:38px; border-radius:50%; background:var(--gold-bg); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:14px; }
+.actor-card .info .name { font-weight:700; font-size:13px; color:var(--navy); }
+.actor-card .info .role { font-size:11px; color:var(--navy-3); margin-top:1px; font-style:italic; }
+.actor-card .meta { text-align:right; font-size:10px; color:var(--navy-3); font-family:'JetBrains Mono',monospace; line-height:1.5; }
+.actor-card .meta b { color:var(--navy-2); font-weight:700; }
+
+.kv-grid { display:grid; grid-template-columns:140px 1fr; gap:8px 14px; font-size:12px; padding:6px 0; }
+.kv-grid .k { color:var(--navy-3); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; padding-top:2px; }
+.kv-grid .v { color:var(--navy-2); line-height:1.5; }
+.kv-grid .v b { color:var(--navy); font-weight:600; }
+.kv-grid .v em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+.kv-grid .v .mono-val { font-family:'JetBrains Mono',monospace; font-size:11px; }
+
+.target-list { display:grid; gap:5px; max-height:160px; overflow-y:auto; padding-right:6px; }
+.target-list .t-row { display:grid; grid-template-columns:auto 1fr auto auto; gap:10px; padding:6px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:11px; align-items:center; }
+.target-list .t-row .t-id { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.target-list .t-row .t-name { font-weight:600; color:var(--navy); }
+.target-list .t-row .t-name .meta { display:block; font-size:9px; color:var(--navy-3); font-weight:500; font-style:italic; margin-top:1px; }
+.target-list .t-row .t-amount { font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--green); font-size:11px; }
+.target-list .t-row .t-state { font-size:9px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; padding:1px 6px; border-radius:100px; background:var(--green-bg); color:var(--green); }
+
+.audit-fingerprint { background:var(--bg); border:1px dashed var(--border-2); border-radius:8px; padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:10.5px; line-height:1.6; color:var(--navy-2); }
+.audit-fingerprint .fp-row { display:grid; grid-template-columns:120px 1fr; gap:10px; padding:2px 0; }
+.audit-fingerprint .fp-row .k { color:var(--navy-3); font-weight:600; }
+.audit-fingerprint .fp-row .v { color:var(--navy); font-weight:600; word-break:break-all; }
+.audit-fingerprint .fp-row .v.subtle { color:var(--navy-2); font-weight:500; }
+.audit-fingerprint .fp-row .v .seal { color:var(--gold); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .hero-row { grid-template-columns:1fr 1fr; }
+  .filter-grid { grid-template-columns:1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 4 · Operational parity · 1 of 4</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Every action, <em>every actor</em>, every time</h1>
+  <div class="gold-rule"></div>
+  <p>The audit log viewer. Every change to school data has been recorded since onboarding day 1 — admissions decisions, void/refund actions, fee adjustments, attendance edits, settings changes. This is the surface that <b>collects all of those into one queryable place</b>. The school can answer "who did this and when?" without needing the developer's help. When the Omnischools account is shared between two admins, the audit log is what makes that arrangement workable — anything one of them does is visible to the other.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Audit log feed · filtered to today</div>
+    <div class="section-meta">214 events today · 1,847 events term-to-date · append-only</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / audit-log</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="nav-item sub">School profile</div>
+          <div class="nav-item sub">Users &amp; roles</div>
+          <div class="nav-item sub">Billing rules</div>
+          <div class="nav-item sub">SMS &amp; WhatsApp</div>
+          <div class="nav-item sub active">Audit log</div>
+          <div class="nav-item sub">Data &amp; retention</div>
+          <div class="nav-item sub">Security</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Settings</a> / Audit log</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Audit <em>log</em></h1>
+                <div class="lede">Every action by every user, recorded as it happens · <em>append-only</em>: entries cannot be edited or deleted, even by school owners · PII fields are pseudonymised at retention horizon per module policy · the log is your evidence trail when a parent disputes a fee, when GES audits returns, when staff dispute changes</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Export filtered →</button>
+                <button class="btn primary">Saved views</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <!-- Hero summary -->
+            <div class="hero-row">
+              <div class="hero-main">
+                <div class="lbl">Today · Wed 22 October</div>
+                <div class="val display"><em>214 events</em> across <em>3 actors</em> in 11 modules</div>
+                <div class="meta">Most active: <b>Joyce Owusu-Ansah · 138 events</b> (mostly billing) · <b>Florence Addo · 67 events</b> · <b>system · 9 events</b> (auto-fires) · <b>0 anomalies flagged</b> · last entry <b>3 minutes ago</b></div>
+              </div>
+              <div class="hero-tile">
+                <div class="lbl">Term to date</div>
+                <div class="val display"><em>1,847</em></div>
+                <div class="sub">Events recorded</div>
+              </div>
+              <div class="hero-tile warn">
+                <div class="lbl">Sensitive ops</div>
+                <div class="val display"><em>23</em></div>
+                <div class="sub">Voids, refunds, role changes</div>
+              </div>
+              <div class="hero-tile green">
+                <div class="lbl">System integrity</div>
+                <div class="val display"><em>✓</em></div>
+                <div class="sub">No anomalies · log <b>sealed nightly</b></div>
+              </div>
+            </div>
+
+            <!-- Filter rail -->
+            <div class="filter-card">
+              <div class="filter-head">
+                <h3 class="display">Filter the <em>log</em></h3>
+                <div class="clear">Clear all filters</div>
+              </div>
+
+              <div class="filter-grid">
+
+                <div class="filter-group">
+                  <div class="group-lbl">Module</div>
+                  <div class="filter-pills">
+                    <div class="filter-pill active">All<span class="ct">214</span></div>
+                    <div class="filter-pill">Billing<span class="ct">138</span></div>
+                    <div class="filter-pill">Attendance<span class="ct">31</span></div>
+                    <div class="filter-pill">Students<span class="ct">14</span></div>
+                    <div class="filter-pill">Comms<span class="ct">12</span></div>
+                    <div class="filter-pill">Books<span class="ct">8</span></div>
+                    <div class="filter-pill">Settings<span class="ct">6</span></div>
+                    <div class="filter-pill">Staff<span class="ct">3</span></div>
+                    <div class="filter-pill">Reports<span class="ct">2</span></div>
+                  </div>
+                </div>
+
+                <div class="filter-group">
+                  <div class="group-lbl">Actor</div>
+                  <div class="filter-pills">
+                    <div class="filter-pill active">Anyone</div>
+                    <div class="filter-pill">Florence<span class="ct">67</span></div>
+                    <div class="filter-pill">Joyce<span class="ct">138</span></div>
+                    <div class="filter-pill">System<span class="ct">9</span></div>
+                  </div>
+                </div>
+
+                <div class="filter-group">
+                  <div class="group-lbl">Severity</div>
+                  <div class="filter-pills">
+                    <div class="filter-pill active">Any</div>
+                    <div class="filter-pill">Routine<span class="ct">191</span></div>
+                    <div class="filter-pill">Sensitive<span class="ct">23</span></div>
+                    <div class="filter-pill terra-active">⚠ Anomaly</div>
+                  </div>
+                </div>
+
+                <div class="filter-group">
+                  <div class="group-lbl">When</div>
+                  <div class="filter-pills">
+                    <div class="filter-pill active"><em>Today</em></div>
+                    <div class="filter-pill">7 days</div>
+                    <div class="filter-pill">This term</div>
+                    <div class="filter-pill">Custom</div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="search-row">
+                <div class="search-box">🔍 <span class="pulse">Free-text search</span> · "void", "Patricia Boateng", "GHS 2,000"…</div>
+                <div class="applied-count"><b>214 events</b> match · <b>1 saved view</b> available</div>
+              </div>
+            </div>
+
+            <!-- Audit feed -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">Today's <em>activity</em> · most recent first</h2>
+                <div class="meta">Newest at top · <b>auto-refreshes</b> every 30s</div>
+              </div>
+
+              <!-- Today -->
+              <div class="day-marker">
+                <div class="line"></div>
+                <span class="label"><em>Today</em> · Wed 22 Oct</span>
+                <span class="ct"><b>214</b> events</span>
+                <div class="line"></div>
+              </div>
+
+              <!-- BULK event - flagship -->
+              <div class="entry-card bulk">
+                <div class="entry-time">
+                  <span class="ts">2:14 PM</span>
+                  <span class="ago">3 min ago</span>
+                </div>
+                <div class="entry-body">
+                  <div class="entry-line-1">
+                    <span class="actor">Joyce Owusu-Ansah</span> <span class="verb">reconciled</span> <span class="object">47 MoMo payments</span> <span class="verb">in one bulk action</span> · totalling <em>GHS 14,580</em>
+                  </div>
+                  <div class="entry-detail">
+                    <span class="pill bulk-tag">⚡ BULK · 47</span>
+                    <span class="pill"><span class="dot gold"></span>Billing · MoMo reconciliation</span>
+                    <span class="pill"><span class="dot warn"></span>Sensitive</span>
+                    <span class="ip">IP 197.250.10.182</span>
+                    <span class="device">desktop · Chrome 119</span>
+                  </div>
+                  <div class="entry-bulk-summary">
+                    Matched <em>47 of 49</em> MoMo statement entries against open invoices · <b>2 entries unmatched</b> (saved as suspense pending review) · all 47 receipts auto-emailed to parents · all 47 invoice statuses moved <b>partial → paid</b>
+                    <div class="expand-link">View all 47 receipts →</div>
+                  </div>
+                </div>
+                <button class="entry-action gold">Drill in →</button>
+              </div>
+
+              <!-- Sensitive: Void -->
+              <div class="entry-card warn-bg">
+                <div class="entry-time">
+                  <span class="ts">11:42 AM</span>
+                  <span class="ago">2h ago</span>
+                </div>
+                <div class="entry-body">
+                  <div class="entry-line-1">
+                    <span class="actor">Florence Addo</span> <span class="verb">voided receipt</span> <span class="object">#2156</span> · <em>GHS 750</em> · for <span class="object subtle">Akua Adjei (JHS 2A)</span> — reason: <span class="warn">duplicate entry</span>
+                  </div>
+                  <div class="entry-detail">
+                    <span class="pill"><span class="dot gold"></span>Billing · void</span>
+                    <span class="pill"><span class="dot warn"></span>Sensitive</span>
+                    <span class="ip">IP 197.250.10.182</span>
+                    <span class="device">desktop · Chrome 119</span>
+                  </div>
+                  <div class="entry-diff">
+                    <div class="diff-row"><span class="lbl">Status</span><span class="val"><span class="old">paid</span><span class="arrow">→</span><span class="new">voided</span></span></div>
+                    <div class="diff-row"><span class="lbl">Note</span><span class="val">"Same payment recorded twice — void this duplicate, keep #2155"</span></div>
+                  </div>
+                </div>
+                <button class="entry-action">View receipt</button>
+              </div>
+
+              <!-- Routine: Payment -->
+              <div class="entry-card">
+                <div class="entry-time">
+                  <span class="ts">11:18 AM</span>
+                  <span class="ago">2h ago</span>
+                </div>
+                <div class="entry-body">
+                  <div class="entry-line-1">
+                    <span class="actor">Joyce Owusu-Ansah</span> <span class="verb">recorded payment</span> · <em>GHS 410</em> · cash · for <span class="object">Akosua Boateng (JHS 2A)</span>
+                  </div>
+                  <div class="entry-detail">
+                    <span class="pill"><span class="dot gold"></span>Billing · payment</span>
+                    <span class="pill"><span class="dot subtle"></span>Routine</span>
+                    <span class="ip">IP 197.250.10.182</span>
+                  </div>
+                </div>
+                <button class="entry-action">View receipt</button>
+              </div>
+
+              <!-- Sensitive: Settings change -->
+              <div class="entry-card warn-bg">
+                <div class="entry-time">
+                  <span class="ts">10:31 AM</span>
+                  <span class="ago">3h ago</span>
+                </div>
+                <div class="entry-body">
+                  <div class="entry-line-1">
+                    <span class="actor">Florence Addo</span> <span class="verb">changed</span> <span class="object">SMS reminder schedule</span> · "Weekly overdue reminder" series · <em>before each Friday 9 AM</em>
+                  </div>
+                  <div class="entry-detail">
+                    <span class="pill"><span class="dot gold"></span>Settings · comms</span>
+                    <span class="pill"><span class="dot warn"></span>Sensitive</span>
+                    <span class="ip">IP 197.250.10.182</span>
+                  </div>
+                  <div class="entry-diff">
+                    <div class="diff-row"><span class="lbl">Frequency</span><span class="val"><span class="old">2× weekly</span><span class="arrow">→</span><span class="new">weekly</span></span></div>
+                    <div class="diff-row"><span class="lbl">Day &amp; time</span><span class="val"><span class="old">Tue, Fri at 4 PM</span><span class="arrow">→</span><span class="new">Fri at 9 AM</span></span></div>
+                    <div class="diff-row"><span class="lbl">End condition</span><span class="val">unchanged · end of term</span></div>
+                  </div>
+                </div>
+                <button class="entry-action">View series</button>
+              </div>
+
+              <!-- System event -->
+              <div class="entry-card">
+                <div class="entry-time">
+                  <span class="ts">9:00 AM</span>
+                  <span class="ago">5h ago</span>
+                </div>
+                <div class="entry-body">
+                  <div class="entry-line-1">
+                    <span class="actor">System</span> <span class="verb">fired</span> <span class="object">Weekly overdue reminder</span> · sent to <em>47 parents</em> · <span class="green">43 reached, 2 failed, 2 pending</span>
+                  </div>
+                  <div class="entry-detail">
+                    <span class="pill bulk-tag">⚡ BULK · 47</span>
+                    <span class="pill"><span class="dot navy"></span>Comms · scheduled send</span>
+                    <span class="pill"><span class="dot subtle"></span>Routine</span>
+                  </div>
+                </div>
+                <button class="entry-action">Delivery →</button>
+              </div>
+
+              <!-- Routine: Attendance -->
+              <div class="entry-card">
+                <div class="entry-time">
+                  <span class="ts">8:42 AM</span>
+                  <span class="ago">5h ago</span>
+                </div>
+                <div class="entry-body">
+                  <div class="entry-line-1">
+                    <span class="actor">Florence Addo</span> <span class="verb">marked attendance</span> for <span class="object">JHS 2A</span> · 38 of 41 present · 3 absent
+                  </div>
+                  <div class="entry-detail">
+                    <span class="pill bulk-tag">⚡ BULK · 41</span>
+                    <span class="pill"><span class="dot navy"></span>Attendance · daily mark</span>
+                    <span class="pill"><span class="dot subtle"></span>Routine</span>
+                    <span class="ip">IP 197.250.10.182</span>
+                    <span class="device">mobile · Android</span>
+                  </div>
+                </div>
+                <button class="entry-action">View register</button>
+              </div>
+
+              <!-- Sensitive: Discount applied -->
+              <div class="entry-card warn-bg">
+                <div class="entry-time">
+                  <span class="ts">7:58 AM</span>
+                  <span class="ago">6h ago</span>
+                </div>
+                <div class="entry-body">
+                  <div class="entry-line-1">
+                    <span class="actor">Joyce Owusu-Ansah</span> <span class="verb">applied discount</span> · <em>GHS 200</em> · <span class="object">Daniel Mensah (JHS 1B)</span> — reason: <span class="warn">staff child</span>
+                  </div>
+                  <div class="entry-detail">
+                    <span class="pill"><span class="dot gold"></span>Billing · discount</span>
+                    <span class="pill"><span class="dot warn"></span>Sensitive · forward-only</span>
+                    <span class="ip">IP 197.250.10.182</span>
+                  </div>
+                </div>
+                <button class="entry-action">View student</button>
+              </div>
+
+              <!-- Yesterday divider -->
+              <div class="day-marker">
+                <div class="line"></div>
+                <span class="label"><em>Yesterday</em> · Tue 21 Oct</span>
+                <span class="ct"><b>187</b> events</span>
+                <div class="line"></div>
+              </div>
+
+              <!-- TERRA: Anomaly -->
+              <div class="entry-card terra-bg">
+                <div class="entry-time">
+                  <span class="ts">11:48 PM</span>
+                  <span class="ago">14h ago</span>
+                </div>
+                <div class="entry-body">
+                  <div class="entry-line-1">
+                    <span class="actor">⚠ System</span> <span class="verb">flagged anomaly</span> · <span class="terra">login attempt outside normal hours</span> · for <span class="object">Joyce Owusu-Ansah</span> · <em>4 failed attempts</em> in 6 minutes
+                  </div>
+                  <div class="entry-detail">
+                    <span class="pill" style="background:var(--terra-bg);color:var(--terra);border-color:var(--terra)"><span class="dot terra"></span>⚠ Security · anomaly</span>
+                    <span class="ip">IP 102.176.45.99 · <b style="color:var(--terra)">unfamiliar</b></span>
+                    <span class="device">mobile · Chrome 118 · Tema area</span>
+                  </div>
+                  <div class="entry-bulk-summary" style="background:var(--terra-bg);border-color:rgba(184,74,57,0.3)">
+                    Login was eventually <b>denied</b> · 2FA challenge unanswered after 3 attempts · account temporarily locked for 30 minutes · Joyce has not yet reported a concern · <b>recommend confirming with Joyce that this wasn't her</b>
+                    <div class="expand-link" style="color:var(--terra)">Investigate →</div>
+                  </div>
+                </div>
+                <button class="entry-action" style="background:var(--terra);color:white;border-color:var(--terra)">Investigate</button>
+              </div>
+
+              <!-- Routine: end of yesterday -->
+              <div class="entry-card">
+                <div class="entry-time">
+                  <span class="ts">3:00 PM</span>
+                  <span class="ago">23h ago</span>
+                </div>
+                <div class="entry-body">
+                  <div class="entry-line-1">
+                    <span class="actor">System</span> <span class="verb">fired</span> <span class="object">Daily attendance SMS</span> · sent to <em>14 parents</em> of absent students · <span class="green">14 reached</span>
+                  </div>
+                  <div class="entry-detail">
+                    <span class="pill bulk-tag">⚡ BULK · 14</span>
+                    <span class="pill"><span class="dot navy"></span>Comms · scheduled</span>
+                    <span class="pill"><span class="dot subtle"></span>Routine</span>
+                  </div>
+                </div>
+                <button class="entry-action">Delivery →</button>
+              </div>
+
+              <!-- Historical entry · tombstoned at retention horizon -->
+              <div class="entry-row tombstoned">
+                <div class="entry-time">
+                  <span class="ts">08:14</span>
+                  <span class="ago">22 Sep 2022</span>
+                </div>
+                <div class="entry-body">
+                  <div class="entry-line-1">
+                    <span class="actor">Florence Addo</span> <span class="verb">voided receipt</span> <span class="object">#1408</span> · <em>GHS 320</em> · for <span class="tombstone" title="PII redacted under 5-year financial-records retention policy · Aug 2027 sweep">[REDACTED-2027-08]</span> — reason: <span class="warn">duplicate entry</span>
+                  </div>
+                  <div class="entry-detail">
+                    <span class="pill"><span class="dot terra"></span>Billing · void</span>
+                    <span class="pill"><span class="dot gold"></span>Sensitive</span>
+                  </div>
+                  <div class="tombstone-strip">
+                    <span class="ts-dot"></span>
+                    <span><b>Subject name &amp; phone pseudonymised</b> on 14 Aug 2027 · 5-yr financial-records retention horizon · underlying student record purged · event preserved · audit row never deleted</span>
+                  </div>
+                </div>
+                <button class="entry-action">Detail →</button>
+              </div>
+
+              <div style="text-align:center;padding:14px;font-size:11px;color:var(--navy-3);font-style:italic">186 more events yesterday · scroll to load · <b>showing 10 of 401 events in the visible window</b> · older entries with redacted PII fields display the retention tombstone marker</div>
+
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Lives under Settings → Audit log</b> as a sub-nav item · sister to School profile, Users &amp; roles, Billing rules, SMS &amp; WhatsApp, Data &amp; retention, Security. <b>Audit log is settings-adjacent</b>: the school's record of itself.</li>
+        <li><b>Hero pillar leads with editorial summary</b>: "<em>214 events</em> across <em>3 actors</em> in 11 modules." Then meta: "Most active: Joyce 138 (mostly billing) · Florence 67 · system 9 · <b>0 anomalies flagged</b>." <b>One sentence answers "is anything weird going on today?"</b>.</li>
+        <li><b>4-tile strip beneath the hero</b>: Term-to-date count (1,847) / Sensitive ops (23, warn-tinted) / System integrity (✓ green, "log sealed nightly"). <b>"Sealed nightly"</b> is a critical phrase — the audit log is hashed at midnight so any subsequent tampering would be detectable; bank-grade integrity guarantee.</li>
+        <li><b>Filter card with 4 dimensions</b>: Module (9 pills with counts) / Actor (4: Anyone, Florence, Joyce, System) / Severity (4: Any, Routine, Sensitive, Anomaly) / When (4: Today active, 7 days, This term, Custom). <b>Severity is a first-class filter</b> — admin can isolate just the sensitive ops in one click; this is how they answer "any voids today?" without scrolling.</li>
+        <li><b>Free-text search box</b> with example placeholder: "void", "Patricia Boateng", "GHS 2,000". <b>Search across all entry text</b>; currency strings are searchable so admin can find a specific transaction by amount when they don't remember the date.</li>
+        <li><b>Each entry is a card with 3-column grid</b>: timestamp + ago / body / action. Timestamps in mono font, "ago" relative time below. <b>Mono font for timestamps and IDs</b> — visual rhythm of the column makes scanning easy.</li>
+        <li><b>Entry headlines are subject-verb-object sentences in plain English</b>: "Joyce Owusu-Ansah <b>reconciled</b> 47 MoMo payments in one bulk action · totalling <em>GHS 14,580</em>." <b>Reads like the school's own diary</b>; parents' names and amounts are bold so they jump off the page.</li>
+        <li><b>Severity-tinted backgrounds</b>: routine is plain white, sensitive is warn-tinted (subtle yellow), anomaly is terra-tinted (subtle red). <b>Visual triage at the row level</b>; admin glancing at the feed sees the warn rows first.</li>
+        <li><b>Bulk events get a gold left-border + "⚡ BULK · 47" pill</b> · this is the operationally interesting category. <b>Joyce's 47-payment reconciliation reads as one event with 47 inside it</b>, not 47 separate entries that would drown the log. Same for the 41-student attendance mark.</li>
+        <li><b>Bulk events have a gold-tinted summary block</b>: "Matched 47 of 49 MoMo entries · 2 unmatched (saved as suspense)..." with a "View all 47 receipts →" expand link. <b>The detail is one click away</b>; the bulk parent entry stays scannable.</li>
+        <li><b>Sensitive events show inline diff blocks</b>: "Status: <span style="color:var(--terra);text-decoration:line-through">paid</span> → <b style="color:var(--green)">voided</b>." <b>Mono diff format</b> like git; admin sees what changed without opening the entity.</li>
+        <li><b>System events have actor "System"</b> not a person — Daily SMS fires, scheduled sends, etc. <b>System is a first-class actor</b>; admin can filter just system events to audit automation.</li>
+        <li><b>Anomaly entry in terra</b>: "⚠ login attempt outside normal hours · 4 failed attempts in 6 minutes · IP unfamiliar" with terra "Investigate →" action. <b>Anomalies are the alert mechanism</b> — admin doesn't need to monitor for security issues, the system surfaces them and demands attention.</li>
+        <li><b>IP and device metadata on every entry</b>: "IP 197.250.10.182 · desktop · Chrome 119" (or "mobile · Android"). <b>Forensic context</b>; if Joyce claims she didn't make a change, admin can see whether it came from her usual IP and device.</li>
+        <li><b>Day markers chunk the feed</b>: "Today · Wed 22 Oct · <b>214</b> events" then "Yesterday · Tue 21 Oct · <b>187</b> events." <b>Counts at the boundary</b> show pacing across days; sudden spikes become visible.</li>
+        <li><b>Per-row action buttons are contextual</b>: bulk reconciliation gets gold "Drill in →", void gets neutral "View receipt", attendance gets "View register", anomaly gets terra "Investigate" with white text. <b>The action follows the entry semantics</b>; admin doesn't have to decide what to do, the system suggests.</li>
+        <li><b>Auto-refresh every 30s</b> noted in the region head. <b>The feed is live</b>; if Joyce is doing something right now, Florence sees it within half a minute. This matters for shared-account scenarios where two admins are both working.</li>
+        <li><b>"append-only · entries cannot be edited or deleted, even by school owners"</b> stated explicitly in the lede. <b>The audit log's value collapses if it's editable</b>; this is the single most important property and it's stated where every viewer will see it.</li>
+        <li><b>PII tombstoning at retention horizon</b> · audit rows are never deleted but PII fields (subject name, phone, NHIS, address) are pseudonymised to <span style="font-family:'JetBrains Mono', monospace; font-size:10px;">[REDACTED-YYYY-MM]</span> markers when the underlying record is purged under module retention policy (Academic 7yr · Financial 5yr · Operational 3yr · all configurable above regulatory floors). The <i>who did what when</i> survives forever; <i>who was affected</i> ages out with the underlying record. The 22 Sep 2022 example row above shows what a tombstoned entry looks like in the viewer · hover the marker to see the redaction reason. Each redaction is itself an append-only entry in the <span style="font-family:'JetBrains Mono', monospace; font-size:10px;">audit_pii_tombstones</span> table — the redaction itself is auditable.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Drill into one event · the bulk reconciliation</div>
+    <div class="section-meta">From Joyce's 2:14 PM bulk action · what's preserved per event</div>
+  </div>
+
+  <div class="layout">
+    <div class="drill-card">
+      <div class="drill-head">
+        <div class="left">
+          <div class="eye">Audit event · #ev_2024_10_22_14_14_007</div>
+          <h3 class="display">Bulk MoMo <em>reconciliation</em> · 47 payments</h3>
+          <div class="lede"><b>Joyce Owusu-Ansah</b> ran a bulk match between MTN MoMo statement and open invoices on <b>Wed 22 Oct at 2:14:08 PM GMT</b> · totalling <em>GHS 14,580</em> across 47 invoices · 2 statement entries went to suspense for review · <b>this event has been sealed</b> with the day's audit hash and cannot be modified</div>
+        </div>
+        <div class="actions">
+          <button class="btn">Open in billing →</button>
+          <button class="btn primary">Export this event</button>
+        </div>
+      </div>
+
+      <div class="drill-body">
+
+        <!-- Actor -->
+        <div class="drill-section">
+          <div class="sec-head">
+            <div class="sec-num">01</div>
+            <div class="sec-name display"><em>Actor</em> · who did this</div>
+          </div>
+          <div class="actor-card">
+            <div class="av">JO</div>
+            <div class="info">
+              <div class="name">Joyce Owusu-Ansah</div>
+              <div class="role">Accountant · joined 12 Sep 2024 · 2nd admin on this account</div>
+            </div>
+            <div class="meta">
+              <b>197.250.10.182</b><br>desktop · Chrome 119<br>logged in 8:43 AM<br><b>2FA verified</b> ✓
+            </div>
+          </div>
+        </div>
+
+        <!-- Action -->
+        <div class="drill-section">
+          <div class="sec-head">
+            <div class="sec-num">02</div>
+            <div class="sec-name display"><em>Action</em> · what happened</div>
+          </div>
+          <div class="kv-grid">
+            <div class="k">Module</div><div class="v"><b>Billing</b> · MoMo reconciliation flow</div>
+            <div class="k">Verb</div><div class="v"><b>BULK_RECONCILE</b> · matched payment statements to invoices</div>
+            <div class="k">Severity</div><div class="v"><em>Sensitive</em> · involves money state changes</div>
+            <div class="k">Trigger</div><div class="v">Manual · Joyce uploaded MTN MoMo statement at 2:11 PM, ran reconciliation at 2:14 PM</div>
+            <div class="k">Duration</div><div class="v">2.3 seconds end-to-end · 47 invoices updated, 2 unmatched, 47 receipts queued</div>
+            <div class="k">Reversibility</div><div class="v"><b>Reversible</b> · individual payments can be voided like any payment · <em>void itself produces a new audit event</em></div>
+          </div>
+        </div>
+
+        <!-- Targets -->
+        <div class="drill-section">
+          <div class="sec-head">
+            <div class="sec-num">03</div>
+            <div class="sec-name display"><em>Affected records</em> · 47 invoices · scrollable</div>
+          </div>
+          <div class="target-list">
+            <div class="t-row">
+              <span class="t-id">INV-2024-1042</span>
+              <div class="t-name">Akosua Boateng <span class="meta">JHS 2A · Term 1 fee</span></div>
+              <span class="t-amount">GHS 410.00</span>
+              <span class="t-state">Paid</span>
+            </div>
+            <div class="t-row">
+              <span class="t-id">INV-2024-1043</span>
+              <div class="t-name">Daniel Asante <span class="meta">JHS 1A · Term 1 fee</span></div>
+              <span class="t-amount">GHS 350.00</span>
+              <span class="t-state">Paid</span>
+            </div>
+            <div class="t-row">
+              <span class="t-id">INV-2024-1044</span>
+              <div class="t-name">Mary Owusu <span class="meta">JHS 3B · Term 1 fee</span></div>
+              <span class="t-amount">GHS 750.00</span>
+              <span class="t-state">Paid</span>
+            </div>
+            <div class="t-row">
+              <span class="t-id">INV-2024-1045</span>
+              <div class="t-name">Kofi Adu-Mensah <span class="meta">JHS 2C · Term 1 fee</span></div>
+              <span class="t-amount">GHS 200.00</span>
+              <span class="t-state">Partial</span>
+            </div>
+            <div class="t-row">
+              <span class="t-id">INV-2024-1046</span>
+              <div class="t-name">Faith Mensah <span class="meta">JHS 1B · Term 1 fee</span></div>
+              <span class="t-amount">GHS 600.00</span>
+              <span class="t-state">Paid</span>
+            </div>
+            <div class="t-row" style="background:var(--warn-bg);border-color:rgba(197,138,46,0.3)">
+              <span class="t-id">SUSP-2024-008</span>
+              <div class="t-name" style="color:var(--warn)">Unmatched · 2:14 PM <span class="meta">No invoice matched ref "EFE49P12X"</span></div>
+              <span class="t-amount" style="color:var(--warn)">GHS 250.00</span>
+              <span class="t-state" style="background:var(--warn-bg);color:var(--warn)">Suspense</span>
+            </div>
+            <div class="t-row" style="background:var(--bg);text-align:center;color:var(--navy-3);font-style:italic;font-size:10px">42 more rows · scroll for full list</div>
+          </div>
+        </div>
+
+        <!-- Audit fingerprint -->
+        <div class="drill-section">
+          <div class="sec-head">
+            <div class="sec-num">04</div>
+            <div class="sec-name display"><em>Integrity fingerprint</em> · cryptographic seal</div>
+          </div>
+          <div class="audit-fingerprint">
+            <div class="fp-row"><span class="k">Event ID</span><span class="v">ev_2024_10_22_14_14_007</span></div>
+            <div class="fp-row"><span class="k">Recorded at</span><span class="v">2024-10-22T14:14:08.341Z · Africa/Accra</span></div>
+            <div class="fp-row"><span class="k">Event hash</span><span class="v subtle">sha256: <b>7f2b1c4e8a09f3d5b6c8a92e7f4d8b1c3e5a7d9f2b4e6c8a09</b>...</span></div>
+            <div class="fp-row"><span class="k">Prev event</span><span class="v subtle">ev_2024_10_22_14_13_915 · chained</span></div>
+            <div class="fp-row"><span class="k">Day seal</span><span class="v"><span class="seal">Pending</span> · seals at 23:59:59 GMT today</span></div>
+            <div class="fp-row"><span class="k">Day hash</span><span class="v subtle">— seal not yet applied —</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>What's preserved per event</h4>
+      <ul>
+        <li><b>Drill panel opens to a 4-section breakdown:</b> Actor / Action / Affected records / Integrity fingerprint. <b>The four classical questions of forensic accounting</b>: who, what, what was changed, can we trust the record? Same shape for every event, so admin learns the structure once.</li>
+        <li><b>Actor card includes 2FA verification state</b>: "2FA verified ✓" · because Joyce passed her second factor at login, the action is attributed to her with high confidence. <b>Without 2FA, the audit log's attribution is weaker</b>; this is one of several reasons 2FA matters (file 4 of this batch).</li>
+        <li><b>Action section uses key-value grid</b>: Module / Verb (in caps · machine-readable) / Severity / Trigger / Duration / Reversibility. <b>Reversibility is named explicitly</b>: "Reversible · individual payments can be voided · <em>void itself produces a new audit event</em>." Reversal is auditable too; the log never shrinks, only grows.</li>
+        <li><b>Verb in mono caps</b>: BULK_RECONCILE. <b>Machine-readable verb space</b> exists because audit data needs to be exportable for external analysis (file 3 of this batch handles export). The display layer renders these in plain English in the feed; the underlying data uses a controlled vocabulary.</li>
+        <li><b>Affected records list is scrollable, max 160px tall, with one suspense row in warn</b>: SUSP-2024-008 · "Unmatched · No invoice matched ref EFE49P12X" with terra warning state. <b>The 2 unmatched entries from the bulk are preserved as part of this event</b>; admin knows exactly which 2 entries didn't process and can investigate from here.</li>
+        <li><b>Each affected-record row shows ID, name+context, amount, final state</b>. The row format is consistent with billing tables elsewhere in the app — same pattern, same widths. <b>Visual continuity across modules</b>; admin doesn't relearn the table.</li>
+        <li><b>Integrity fingerprint section shows hash chain</b>: Event ID · Recorded at (ISO timestamp with timezone) · Event hash (sha256 fingerprint) · Prev event (the audit log is a hash-chained list, like a blockchain) · Day seal · Day hash. <b>This is how the system proves "this entry hasn't been altered"</b>: any change to past data would break the hash chain and be detectable by re-computing.</li>
+        <li><b>"Day seal: Pending · seals at 23:59:59 GMT today"</b> · means today's events are still being added to the chain · at midnight the day hash is computed and posted (anti-tamper checkpoint). <b>Prevents same-day tampering</b>: even an admin with database access couldn't go back and edit today's events without breaking tomorrow's seal.</li>
+        <li><b>Actions on the drill panel header</b>: "Open in billing →" (jump to the actual billing module to see the result of the action) and "Export this event" (download a JSON or PDF with everything from this drill panel). <b>Export per-event</b> matters because banks and lawyers sometimes want a single event's full record without the rest of the log.</li>
+        <li><b>"This event has been sealed with the day's audit hash and cannot be modified"</b> stated in the lede. <b>The seal IS the value</b>; without it the audit log is just a journal, not legal evidence.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

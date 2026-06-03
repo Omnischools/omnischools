@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Attendance · admin dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 680px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+  min-height: 1200px;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--terra);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 100px;
+  min-width: 20px;
+  text-align: center;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main {
+  padding: 28px 36px 60px;
+  background: var(--bg);
+}
+
+.main-head {
+  margin-bottom: 28px;
+  display: flex; justify-content: space-between; align-items: end;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 32px; font-weight: 500; letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.main-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.main-head .lede {
+  font-size: 13px; color: var(--navy-3);
+  margin-top: 6px;
+}
+.main-head .lede b { color: var(--navy-2); font-weight: 600; }
+.main-head .actions { display: flex; gap: 8px; }
+.btn {
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+
+.region {
+  margin-bottom: 36px;
+}
+.region-head {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 14px;
+}
+.region-head .num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.region-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.region-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.region-head .meta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.region-head .meta b { color: var(--navy-2); }
+
+/* ============ REGION 1 — TODAY'S PULSE ============ */
+.pulse-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+  gap: 12px;
+}
+.pulse-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 22px;
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.pulse-tile.hero {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(200,151,91,0.12) 0%, transparent 50%);
+}
+.pulse-tile.hero .lbl {
+  color: rgba(232,212,184,0.7);
+}
+.pulse-tile .lbl {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.pulse-tile .val-row {
+  display: flex; align-items: baseline; gap: 8px;
+}
+.pulse-tile .val {
+  font-family: 'Fraunces', serif;
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+.pulse-tile.hero .val { color: var(--gold); }
+.pulse-tile .val.green { color: var(--green); }
+.pulse-tile .val.warn { color: var(--warn); }
+.pulse-tile .val.terra { color: var(--terra); }
+.pulse-tile .val-suffix {
+  font-size: 14px;
+  color: var(--navy-3);
+  font-weight: 500;
+}
+.pulse-tile.hero .val-suffix {
+  color: rgba(232,212,184,0.6);
+}
+.pulse-tile .delta {
+  font-size: 11px;
+  font-weight: 600;
+}
+.pulse-tile .delta.up { color: var(--green); }
+.pulse-tile .delta.down { color: var(--terra); }
+.pulse-tile .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.pulse-tile.hero .sub { color: rgba(232,212,184,0.7); }
+.pulse-tile .sub b { color: var(--navy-2); font-weight: 600; }
+.pulse-tile.hero .sub b { color: var(--bg); font-weight: 600; }
+
+/* Hero tile breakdown bar */
+.hero-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 100px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.1);
+  margin-top: 4px;
+}
+.hero-bar .seg.present { background: var(--green); }
+.hero-bar .seg.late { background: var(--gold); }
+.hero-bar .seg.excused { background: var(--warn); }
+.hero-bar .seg.absent { background: var(--terra); }
+.hero-bar-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 11px;
+}
+.hero-bar-legend .legend-item {
+  display: flex; align-items: center; gap: 5px;
+  color: rgba(232,212,184,0.85);
+}
+.hero-bar-legend .legend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+.hero-bar-legend .legend-dot.present { background: var(--green); }
+.hero-bar-legend .legend-dot.late { background: var(--gold); }
+.hero-bar-legend .legend-dot.excused { background: var(--warn); }
+.hero-bar-legend .legend-dot.absent { background: var(--terra); }
+.hero-bar-legend b {
+  color: var(--bg);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+/* ============ REGION 2 — CLASS STATUS GRID ============ */
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.class-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  position: relative;
+}
+.class-card:hover { border-color: var(--gold); }
+.class-card .top-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+}
+.class-card .class-name {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.class-card .class-name em { font-style: italic; color: var(--gold); }
+.class-card .student-count {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+.class-card .teacher-line {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-bottom: 12px;
+}
+.class-card .teacher-line b { color: var(--navy-2); font-weight: 600; }
+
+.attendance-bar {
+  display: flex;
+  height: 28px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg);
+  margin-bottom: 10px;
+}
+.attendance-bar .seg {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+}
+.attendance-bar .seg.present { background: var(--green); }
+.attendance-bar .seg.late { background: var(--gold); color: var(--navy); }
+.attendance-bar .seg.excused { background: var(--warn); }
+.attendance-bar .seg.absent { background: var(--terra); }
+.attendance-bar .seg.unmarked {
+  background: var(--bg);
+  color: var(--navy-3);
+  font-style: italic;
+  font-family: 'Manrope', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.class-card .footer-line {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.class-card .footer-line b { color: var(--navy-2); font-weight: 600; }
+.class-card .status-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.class-card .status-pill.complete {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.class-card .status-pill.pending {
+  background: var(--terra-bg);
+  color: var(--terra);
+  animation: pulse-warn 2s ease-in-out infinite;
+}
+.class-card .status-pill.partial {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.class-card .status-pill.excursion {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+@keyframes pulse-warn {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.class-card.unmarked {
+  background: var(--terra-bg-soft);
+  border-color: rgba(184,74,57,0.2);
+}
+
+/* ============ REGION 3 — TERM TREND ============ */
+.trend-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 26px;
+}
+.trend-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 18px;
+}
+.trend-head .left {
+  display: flex; flex-direction: column;
+  gap: 4px;
+}
+.trend-head .label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.trend-head .headline-row {
+  display: flex; align-items: baseline; gap: 14px;
+}
+.trend-head .headline-num {
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--green);
+}
+.trend-head .headline-meta {
+  font-size: 13px;
+  color: var(--navy-3);
+}
+.trend-head .headline-meta b { color: var(--navy-2); font-weight: 600; }
+.trend-head .delta {
+  font-size: 12px;
+  font-weight: 600;
+}
+.trend-head .delta.up { color: var(--green); }
+.trend-head .delta.down { color: var(--terra); }
+.trend-head .right {
+  display: flex; gap: 6px;
+}
+.trend-toggle {
+  padding: 6px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+}
+.trend-toggle.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+
+/* SVG chart */
+.trend-chart {
+  width: 100%;
+  height: 240px;
+  position: relative;
+  background:
+    linear-gradient(to right, var(--bg) 0%, transparent 4%, transparent 96%, var(--bg) 100%);
+}
+.trend-chart svg { width: 100%; height: 100%; display: block; }
+
+.trend-axis-y {
+  position: absolute;
+  left: 0; top: 0; bottom: 28px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 4px 0;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.trend-axis-x {
+  position: absolute;
+  left: 36px; right: 0; bottom: 0;
+  height: 24px;
+  display: flex; justify-content: space-between;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-3);
+  font-weight: 600;
+  padding-top: 4px;
+}
+
+.trend-foot {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.trend-foot-item .foot-lbl {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.trend-foot-item .foot-val {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--navy);
+}
+.trend-foot-item .foot-val.green { color: var(--green); }
+.trend-foot-item .foot-val.terra { color: var(--terra); }
+.trend-foot-item .foot-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+
+/* ============ REGION 4 — STUDENTS NEEDING ATTENTION ============ */
+.attention-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.attention-head {
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--bg);
+}
+.attention-tabs {
+  display: flex;
+  gap: 4px;
+}
+.attention-tab {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-radius: 100px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  font-family: inherit;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.attention-tab.active {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--navy);
+}
+.attention-tab.active.terra {
+  border-color: var(--terra);
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.attention-tab .count {
+  background: var(--bg);
+  color: var(--navy-3);
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+.attention-tab.active.terra .count {
+  background: var(--terra);
+  color: white;
+}
+.attention-tab.active .count {
+  background: var(--gold);
+  color: var(--navy);
+}
+
+.attention-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.attention-table th {
+  text-align: left;
+  padding: 10px 22px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+}
+.attention-table td {
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.attention-table tbody tr:last-child td { border-bottom: none; }
+.attention-table tbody tr:hover { background: var(--bg); }
+
+.student-cell-mini {
+  display: flex; gap: 10px; align-items: center;
+}
+.student-cell-mini .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.student-cell-mini .info { min-width: 0; }
+.student-cell-mini .name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--navy);
+}
+.student-cell-mini .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+
+.flag-cell {
+  display: flex; flex-direction: column;
+  gap: 2px;
+}
+.flag-cell .flag-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+}
+.flag-cell .flag-name.terra { color: var(--terra); }
+.flag-cell .flag-name.warn { color: var(--warn); }
+.flag-cell .flag-detail {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+
+.pct-cell {
+  display: flex; align-items: baseline; gap: 8px;
+}
+.pct-cell .pct-num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.pct-cell .pct-num.terra { color: var(--terra); }
+.pct-cell .pct-num.warn { color: var(--warn); }
+.pct-cell .pct-num.green { color: var(--green); }
+.pct-cell .pct-frac {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+/* Mini sparkline */
+.sparkline {
+  display: flex;
+  gap: 1px;
+  height: 22px;
+  align-items: flex-end;
+}
+.sparkline .bar {
+  width: 4px;
+  background: var(--green);
+  border-radius: 1px;
+}
+.sparkline .bar.late { background: var(--gold); }
+.sparkline .bar.excused { background: var(--warn); }
+.sparkline .bar.absent { background: var(--terra); }
+.sparkline .bar.weekend { background: var(--border); height: 4px; }
+.sparkline .bar.holiday {
+  background: repeating-linear-gradient(45deg, var(--bg), var(--bg) 1px, var(--border-2) 1px, var(--border-2) 2px);
+  height: 4px;
+}
+
+.action-cell {
+  display: flex; gap: 6px; justify-content: flex-end;
+}
+.action-btn {
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  font-family: inherit;
+}
+.action-btn.primary {
+  background: var(--gold);
+  color: var(--navy);
+  border-color: var(--gold);
+}
+.action-btn.subtle {
+  background: transparent;
+  border-color: transparent;
+  color: var(--navy-3);
+}
+
+/* ============ REGION 5 — EDIT REQUESTS ============ */
+.edit-requests-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.edit-request-row {
+  padding: 14px 22px;
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.edit-request-row:last-child { border-bottom: none; }
+.edit-request-row .av-teacher {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+}
+.edit-request-row .body { min-width: 0; }
+.edit-request-row .top-row {
+  font-size: 13px;
+  color: var(--navy);
+  margin-bottom: 3px;
+}
+.edit-request-row .top-row b { font-weight: 700; }
+.edit-request-row .meta-row {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.edit-request-row .meta-row b {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-2);
+  font-weight: 600;
+}
+.edit-request-row .reason-row {
+  font-size: 11px;
+  color: var(--navy-2);
+  margin-top: 5px;
+  font-style: italic;
+  background: var(--bg);
+  border-left: 2px solid var(--gold);
+  padding: 6px 10px;
+  border-radius: 0 4px 4px 0;
+}
+.edit-request-row .reason-row b { color: var(--navy); font-weight: 600; font-style: normal; }
+.edit-request-row .actions-mini {
+  display: flex; gap: 6px;
+}
+.edit-request-row .btn-approve {
+  padding: 7px 14px;
+  background: var(--green);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.edit-request-row .btn-reject {
+  padding: 7px 14px;
+  background: var(--surface);
+  color: var(--terra);
+  border: 1px solid var(--terra);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.empty-edit-requests {
+  padding: 36px 22px;
+  text-align: center;
+  color: var(--navy-3);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.5;
+}
+.empty-edit-requests b {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--navy-2);
+  font-size: 13px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .pulse-row { grid-template-columns: 1fr 1fr; }
+  .class-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Attendance · Admin</div>
+  <h1 class="display">The school, at <em>9:30 AM</em></h1>
+  <div class="gold-rule"></div>
+  <p>The headmistress opens this once a day to know whether the morning went smoothly. Three layers, top to bottom: today's pulse, this term's trend, and the small list of students who need a follow-up. The dashboard ends with names, not charts.</p>
+</header>
+
+<!-- ============ ADMIN ATTENDANCE DASHBOARD ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Admin attendance dashboard</div>
+    <div class="section-meta">Headmistress · 9:34 AM · Friday 2 May</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / attendance / dashboard</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item active"><div class="ic"></div>Attendance<span class="badge">3</span></div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Attendance</div>
+              <h1 class="display">Attendance · <em>today</em></h1>
+              <div class="lede">Friday, 2 May 2026 · Term 1 · Day <b>47 of 62</b></div>
+            </div>
+            <div class="actions">
+              <button class="btn">View term grid</button>
+              <button class="btn">Export term report</button>
+            </div>
+          </div>
+
+          <!-- ============ REGION 1 — TODAY'S PULSE ============ -->
+          <div class="region">
+            <div class="region-head">
+              <div class="num">01</div>
+              <h2 class="display">Today's <em>pulse</em></h2>
+              <div class="meta">Updated <b>5 minutes ago</b> · auto-refreshes as registers come in</div>
+            </div>
+
+            <div class="pulse-row">
+              <!-- Hero tile: school-wide attendance -->
+              <div class="pulse-tile hero">
+                <div class="lbl">School attendance · today</div>
+                <div class="val-row">
+                  <div class="val">93.2%</div>
+                  <div class="val-suffix">·  291 of 312</div>
+                </div>
+                <div class="hero-bar">
+                  <div class="seg present" style="flex:281"></div>
+                  <div class="seg late" style="flex:6"></div>
+                  <div class="seg excused" style="flex:4"></div>
+                  <div class="seg absent" style="flex:21"></div>
+                </div>
+                <div class="hero-bar-legend">
+                  <div class="legend-item"><div class="legend-dot present"></div>Present <b>281</b></div>
+                  <div class="legend-item"><div class="legend-dot late"></div>Late <b>6</b></div>
+                  <div class="legend-item"><div class="legend-dot excused"></div>Excused <b>4</b></div>
+                  <div class="legend-item"><div class="legend-dot absent"></div>Absent <b>21</b></div>
+                </div>
+              </div>
+
+              <!-- Registers complete -->
+              <div class="pulse-tile">
+                <div class="lbl">Registers marked</div>
+                <div class="val-row">
+                  <div class="val warn">7</div>
+                  <div class="val-suffix">of 9</div>
+                </div>
+                <div class="sub"><b>2 pending</b> · JHS 1B, JHS 3C</div>
+              </div>
+
+              <!-- Attention students -->
+              <div class="pulse-tile">
+                <div class="lbl">Need attention</div>
+                <div class="val-row">
+                  <div class="val terra">8</div>
+                </div>
+                <div class="sub"><b>3 critical</b> · 5 watching</div>
+              </div>
+
+              <!-- Edit requests -->
+              <div class="pulse-tile">
+                <div class="lbl">Edit requests</div>
+                <div class="val-row">
+                  <div class="val warn">2</div>
+                </div>
+                <div class="sub"><b>Awaiting your review</b></div>
+              </div>
+
+              <!-- vs yesterday -->
+              <div class="pulse-tile">
+                <div class="lbl">vs yesterday</div>
+                <div class="val-row">
+                  <div class="val green">+2.1%</div>
+                </div>
+                <div class="sub">Yesterday <b>91.1%</b> · 285 of 313</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============ REGION 2 — CLASS STATUS ============ -->
+          <div class="region">
+            <div class="region-head">
+              <div class="num">02</div>
+              <h2 class="display">By <em>class</em></h2>
+              <div class="meta">Click any class to view its register</div>
+            </div>
+
+            <div class="class-grid">
+
+              <!-- JHS 1A · Done · clean -->
+              <div class="class-card">
+                <div class="top-row">
+                  <div class="class-name display">JHS <em>1A</em></div>
+                  <div class="student-count">35</div>
+                </div>
+                <div class="teacher-line">Class teacher · <b>Mrs. Owusu</b></div>
+                <div class="attendance-bar">
+                  <div class="seg present" style="flex:32">32</div>
+                  <div class="seg late" style="flex:1"></div>
+                  <div class="seg absent" style="flex:2">2</div>
+                </div>
+                <div class="footer-line">
+                  <div>marked <b>8:14 AM</b></div>
+                  <div class="status-pill complete">✓ Done</div>
+                </div>
+              </div>
+
+              <!-- JHS 1B · Pending · highlighted -->
+              <div class="class-card unmarked">
+                <div class="top-row">
+                  <div class="class-name display">JHS <em>1B</em></div>
+                  <div class="student-count">36</div>
+                </div>
+                <div class="teacher-line">Class teacher · <b>Mr. Asante</b></div>
+                <div class="attendance-bar">
+                  <div class="seg unmarked" style="flex:36">register not yet marked</div>
+                </div>
+                <div class="footer-line">
+                  <div>last seen <b>8:22 AM yesterday</b></div>
+                  <div class="status-pill pending">! Pending</div>
+                </div>
+              </div>
+
+              <!-- JHS 1C · Done -->
+              <div class="class-card">
+                <div class="top-row">
+                  <div class="class-name display">JHS <em>1C</em></div>
+                  <div class="student-count">35</div>
+                </div>
+                <div class="teacher-line">Class teacher · <b>Ms. Tetteh</b></div>
+                <div class="attendance-bar">
+                  <div class="seg present" style="flex:34">34</div>
+                  <div class="seg absent" style="flex:1"></div>
+                </div>
+                <div class="footer-line">
+                  <div>marked <b>8:08 AM</b></div>
+                  <div class="status-pill complete">✓ Done</div>
+                </div>
+              </div>
+
+              <!-- JHS 2A · Done -->
+              <div class="class-card">
+                <div class="top-row">
+                  <div class="class-name display">JHS <em>2A</em></div>
+                  <div class="student-count">36</div>
+                </div>
+                <div class="teacher-line">Class teacher · <b>Mr. Mensah</b></div>
+                <div class="attendance-bar">
+                  <div class="seg present" style="flex:33">33</div>
+                  <div class="seg late" style="flex:1"></div>
+                  <div class="seg excused" style="flex:1"></div>
+                  <div class="seg absent" style="flex:1"></div>
+                </div>
+                <div class="footer-line">
+                  <div>marked <b>8:05 AM</b></div>
+                  <div class="status-pill complete">✓ Done</div>
+                </div>
+              </div>
+
+              <!-- JHS 2B · Excursion -->
+              <div class="class-card">
+                <div class="top-row">
+                  <div class="class-name display">JHS <em>2B</em></div>
+                  <div class="student-count">34</div>
+                </div>
+                <div class="teacher-line">Class teacher · <b>Mr. Owusu</b> · field trip</div>
+                <div class="attendance-bar">
+                  <div class="seg present" style="flex:33">33 on trip</div>
+                  <div class="seg absent" style="flex:1"></div>
+                </div>
+                <div class="footer-line">
+                  <div>National Museum · <b>back 3:30 PM</b></div>
+                  <div class="status-pill excursion">⛺ Excursion</div>
+                </div>
+              </div>
+
+              <!-- JHS 2C · Done -->
+              <div class="class-card">
+                <div class="top-row">
+                  <div class="class-name display">JHS <em>2C</em></div>
+                  <div class="student-count">34</div>
+                </div>
+                <div class="teacher-line">Class teacher · <b>Ms. Adjei</b></div>
+                <div class="attendance-bar">
+                  <div class="seg present" style="flex:30">30</div>
+                  <div class="seg excused" style="flex:2"></div>
+                  <div class="seg absent" style="flex:2">2</div>
+                </div>
+                <div class="footer-line">
+                  <div>marked <b>8:18 AM</b></div>
+                  <div class="status-pill complete">✓ Done</div>
+                </div>
+              </div>
+
+              <!-- JHS 3A · Done -->
+              <div class="class-card">
+                <div class="top-row">
+                  <div class="class-name display">JHS <em>3A</em></div>
+                  <div class="student-count">34</div>
+                </div>
+                <div class="teacher-line">Class teacher · <b>Mr. Boateng</b></div>
+                <div class="attendance-bar">
+                  <div class="seg present" style="flex:33">33</div>
+                  <div class="seg absent" style="flex:1"></div>
+                </div>
+                <div class="footer-line">
+                  <div>marked <b>8:11 AM</b></div>
+                  <div class="status-pill complete">✓ Done</div>
+                </div>
+              </div>
+
+              <!-- JHS 3B · Done -->
+              <div class="class-card">
+                <div class="top-row">
+                  <div class="class-name display">JHS <em>3B</em></div>
+                  <div class="student-count">35</div>
+                </div>
+                <div class="teacher-line">Class teacher · <b>Ms. Quaye</b></div>
+                <div class="attendance-bar">
+                  <div class="seg present" style="flex:32">32</div>
+                  <div class="seg late" style="flex:2">2</div>
+                  <div class="seg absent" style="flex:1"></div>
+                </div>
+                <div class="footer-line">
+                  <div>marked <b>8:09 AM</b></div>
+                  <div class="status-pill complete">✓ Done</div>
+                </div>
+              </div>
+
+              <!-- JHS 3C · Pending -->
+              <div class="class-card unmarked">
+                <div class="top-row">
+                  <div class="class-name display">JHS <em>3C</em></div>
+                  <div class="student-count">33</div>
+                </div>
+                <div class="teacher-line">Class teacher · <b>Mr. Kwakye</b> · out today</div>
+                <div class="attendance-bar">
+                  <div class="seg unmarked" style="flex:33">no cover assigned</div>
+                </div>
+                <div class="footer-line">
+                  <div>covering teacher needed</div>
+                  <div class="status-pill pending">! Pending</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ============ REGION 3 — TERM TREND ============ -->
+          <div class="region">
+            <div class="region-head">
+              <div class="num">03</div>
+              <h2 class="display">This <em>term's</em> trend</h2>
+              <div class="meta">Daily attendance · <b>47 days</b> marked of 62 in term</div>
+            </div>
+
+            <div class="trend-card">
+              <div class="trend-head">
+                <div class="left">
+                  <div class="label">Term 1 · 2025/26 · school-wide</div>
+                  <div class="headline-row">
+                    <div class="headline-num">93.8%</div>
+                    <div class="headline-meta">term average · <b>vs 91.4%</b> previous term</div>
+                    <div class="delta up">↑ +2.4%</div>
+                  </div>
+                </div>
+                <div class="right">
+                  <button class="trend-toggle active">School</button>
+                  <button class="trend-toggle">By class</button>
+                  <button class="trend-toggle">By gender</button>
+                </div>
+              </div>
+
+              <div class="trend-chart">
+                <div class="trend-axis-y">
+                  <div>100%</div>
+                  <div>90%</div>
+                  <div>80%</div>
+                  <div>70%</div>
+                </div>
+                <svg viewBox="0 0 1000 240" preserveAspectRatio="none">
+                  <!-- Grid lines -->
+                  <line x1="36" y1="20" x2="1000" y2="20" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+                  <line x1="36" y1="80" x2="1000" y2="80" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+                  <line x1="36" y1="140" x2="1000" y2="140" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+                  <line x1="36" y1="200" x2="1000" y2="200" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+
+                  <!-- Reference line at 90% -->
+                  <line x1="36" y1="80" x2="1000" y2="80" stroke="#C8975B" stroke-width="0.5" stroke-dasharray="4 2" opacity="0.5"/>
+
+                  <!-- Holiday bands (shaded vertical regions) -->
+                  <rect x="350" y="20" width="40" height="190" fill="#E5DFD3" opacity="0.3"/>
+                  <rect x="700" y="20" width="20" height="190" fill="#E5DFD3" opacity="0.3"/>
+
+                  <!-- Area under curve (gradient fill) -->
+                  <defs>
+                    <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#2F6B47" stop-opacity="0.18"/>
+                      <stop offset="100%" stop-color="#2F6B47" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M 50,55 L 90,40 L 130,52 L 170,75 L 210,60 L 250,45 L 290,68 L 330,82 L 370,82 L 390,82 L 430,52 L 470,40 L 510,55 L 550,70 L 590,48 L 630,42 L 670,60 L 700,72 L 720,72 L 760,55 L 800,42 L 840,60 L 880,75 L 920,70 L 960,52 L 980,52 L 980,210 L 50,210 Z" fill="url(#trendGrad)"/>
+
+                  <!-- Trend line -->
+                  <polyline
+                    points="50,55 90,40 130,52 170,75 210,60 250,45 290,68 330,82 370,82 390,82 430,52 470,40 510,55 550,70 590,48 630,42 670,60 700,72 720,72 760,55 800,42 840,60 880,75 920,70 960,52 980,52"
+                    fill="none"
+                    stroke="#2F6B47"
+                    stroke-width="2.5"
+                    stroke-linejoin="round"
+                    stroke-linecap="round"
+                  />
+
+                  <!-- Today point -->
+                  <circle cx="980" cy="52" r="5" fill="#C8975B" stroke="#FAF7F2" stroke-width="2"/>
+                  <text x="978" y="40" text-anchor="end" font-family="JetBrains Mono" font-size="11" font-weight="700" fill="#1A2B47">93.2%</text>
+                  <text x="978" y="28" text-anchor="end" font-family="Fraunces" font-style="italic" font-size="10" fill="#C8975B">today</text>
+
+                  <!-- Holiday labels -->
+                  <text x="370" y="225" text-anchor="middle" font-family="Manrope" font-size="9" font-weight="600" fill="#5C6675" letter-spacing="0.04em">EID HOLIDAY</text>
+                  <text x="710" y="225" text-anchor="middle" font-family="Manrope" font-size="9" font-weight="600" fill="#5C6675" letter-spacing="0.04em">MID-TERM</text>
+                </svg>
+                <div class="trend-axis-x">
+                  <div>Wk 1</div>
+                  <div>Wk 2</div>
+                  <div>Wk 3</div>
+                  <div>Wk 4</div>
+                  <div>Wk 5</div>
+                  <div>Wk 6</div>
+                  <div>Wk 7</div>
+                  <div>Wk 8</div>
+                  <div>Wk 9</div>
+                  <div>Wk 10</div>
+                </div>
+              </div>
+
+              <div class="trend-foot">
+                <div class="trend-foot-item">
+                  <div class="foot-lbl">Best day</div>
+                  <div class="foot-val green">98.4%</div>
+                  <div class="foot-meta">Mon 21 Apr</div>
+                </div>
+                <div class="trend-foot-item">
+                  <div class="foot-lbl">Lowest day</div>
+                  <div class="foot-val terra">81.7%</div>
+                  <div class="foot-meta">Fri 17 Apr · rain</div>
+                </div>
+                <div class="trend-foot-item">
+                  <div class="foot-lbl">Mondays avg</div>
+                  <div class="foot-val">95.1%</div>
+                  <div class="foot-meta">across 9 Mondays</div>
+                </div>
+                <div class="trend-foot-item">
+                  <div class="foot-lbl">Fridays avg</div>
+                  <div class="foot-val">90.4%</div>
+                  <div class="foot-meta">across 9 Fridays</div>
+                </div>
+                <div class="trend-foot-item">
+                  <div class="foot-lbl">vs last term</div>
+                  <div class="foot-val green">↑ 2.4%</div>
+                  <div class="foot-meta">Term 3 ended at 91.4%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============ REGION 4 — STUDENTS NEEDING ATTENTION ============ -->
+          <div class="region">
+            <div class="region-head">
+              <div class="num">04</div>
+              <h2 class="display">Students needing <em>attention</em></h2>
+              <div class="meta"><b>8 students</b> across all flag types · drill into any row</div>
+            </div>
+
+            <div class="attention-card">
+              <div class="attention-head">
+                <div class="attention-tabs">
+                  <button class="attention-tab active terra">All flagged <span class="count">8</span></button>
+                  <button class="attention-tab">Below 70% <span class="count">3</span></button>
+                  <button class="attention-tab">Long absence <span class="count">2</span></button>
+                  <button class="attention-tab">Pattern shift <span class="count">3</span></button>
+                </div>
+                <button class="btn">Export list</button>
+              </div>
+
+              <table class="attention-table">
+                <thead>
+                  <tr>
+                    <th style="width: 30%">Student</th>
+                    <th style="width: 22%">Flag</th>
+                    <th style="width: 16%">Term attendance</th>
+                    <th style="width: 18%">Last 14 days</th>
+                    <th style="width: 14%; text-align: right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <div class="student-cell-mini">
+                        <div class="av">JM</div>
+                        <div class="info">
+                          <div class="name">James Mensah</div>
+                          <div class="meta">JHS 2A · CTK-2024-042 · guardian Mary M.</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="flag-cell">
+                        <div class="flag-name terra">Long absence</div>
+                        <div class="flag-detail">3 consecutive days · no contact from home</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="pct-cell">
+                        <div class="pct-num terra">61%</div>
+                        <div class="pct-frac">29/47</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="sparkline">
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <button class="action-btn primary">Follow up →</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="student-cell-mini">
+                        <div class="av">EA</div>
+                        <div class="info">
+                          <div class="name">Esi Asante</div>
+                          <div class="meta">JHS 2A · CTK-2024-031 · guardian Patricia A.</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="flag-cell">
+                        <div class="flag-name warn">Pattern · Fridays</div>
+                        <div class="flag-detail">Misses every Friday · 6 of last 6 weeks</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="pct-cell">
+                        <div class="pct-num warn">72%</div>
+                        <div class="pct-frac">34/47</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="sparkline">
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar excused" style="height:60%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar excused" style="height:60%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <button class="action-btn primary">Follow up →</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="student-cell-mini">
+                        <div class="av">KO</div>
+                        <div class="info">
+                          <div class="name">Kofi Osei</div>
+                          <div class="meta">JHS 1B · CTK-2024-098 · guardian Kwame O.</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="flag-cell">
+                        <div class="flag-name terra">Below 70%</div>
+                        <div class="flag-detail">68% term attendance · dropping</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="pct-cell">
+                        <div class="pct-num terra">68%</div>
+                        <div class="pct-frac">32/47</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="sparkline">
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <button class="action-btn primary">Follow up →</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="student-cell-mini">
+                        <div class="av">FN</div>
+                        <div class="info">
+                          <div class="name">Faith Nuamah</div>
+                          <div class="meta">JHS 1A · CTK-2024-077 · guardian Emmanuel N.</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="flag-cell">
+                        <div class="flag-name warn">Pattern shift</div>
+                        <div class="flag-detail">Was 95%; last 2 weeks at 71%</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="pct-cell">
+                        <div class="pct-num warn">85%</div>
+                        <div class="pct-frac">40/47</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="sparkline">
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <button class="action-btn primary">Follow up →</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="student-cell-mini">
+                        <div class="av">SO</div>
+                        <div class="info">
+                          <div class="name">Stephen Opoku</div>
+                          <div class="meta">JHS 3A · CTK-2024-104 · guardian Akua O.</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="flag-cell">
+                        <div class="flag-name terra">Below 70%</div>
+                        <div class="flag-detail">66% term attendance · BECE candidate</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="pct-cell">
+                        <div class="pct-num terra">66%</div>
+                        <div class="pct-frac">31/47</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="sparkline">
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar absent" style="height:80%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <button class="action-btn primary">Follow up →</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="student-cell-mini">
+                        <div class="av">YA</div>
+                        <div class="info">
+                          <div class="name">Yaa Amponsah</div>
+                          <div class="meta">JHS 2C · CTK-2024-112 · guardian Cynthia A.</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="flag-cell">
+                        <div class="flag-name terra">Long absence</div>
+                        <div class="flag-detail">5 consecutive · excused, illness</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="pct-cell">
+                        <div class="pct-num warn">78%</div>
+                        <div class="pct-frac">37/47</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="sparkline">
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar" style="height:90%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar excused" style="height:60%"></div>
+                        <div class="bar excused" style="height:60%"></div>
+                        <div class="bar excused" style="height:60%"></div>
+                        <div class="bar excused" style="height:60%"></div>
+                        <div class="bar excused" style="height:60%"></div>
+                        <div class="bar weekend"></div>
+                        <div class="bar weekend"></div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <button class="action-btn">Check in</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ============ REGION 5 — EDIT REQUESTS ============ -->
+          <div class="region">
+            <div class="region-head">
+              <div class="num">05</div>
+              <h2 class="display">Register edit <em>requests</em></h2>
+              <div class="meta"><b>2 awaiting</b> your review</div>
+            </div>
+
+            <div class="edit-requests-card">
+
+              <div class="edit-request-row">
+                <div class="av-teacher">SM</div>
+                <div class="body">
+                  <div class="top-row"><b>Mr. Mensah</b> wants to edit JHS 2A · <span style="color:var(--gold);font-weight:600">Wed 30 Apr</span></div>
+                  <div class="meta-row">Submitted <b>30 Apr · 8:11 AM</b> · request made <b>2 May · 9:18 AM</b> · <b>52 hours</b> after edit window</div>
+                  <div class="reason-row">
+                    <b>Change requested:</b> Mark <b>Kwame Adu</b> as Late instead of Present. He arrived at 8:31 AM but I marked Present in error before he came in.
+                  </div>
+                </div>
+                <div class="actions-mini">
+                  <button class="btn-reject">Reject</button>
+                  <button class="btn-approve">Approve</button>
+                </div>
+              </div>
+
+              <div class="edit-request-row">
+                <div class="av-teacher">MA</div>
+                <div class="body">
+                  <div class="top-row"><b>Ms. Adjei</b> wants to edit JHS 2C · <span style="color:var(--gold);font-weight:600">Tue 29 Apr</span></div>
+                  <div class="meta-row">Submitted <b>29 Apr · 8:18 AM</b> · request made <b>2 May · 8:42 AM</b> · <b>72 hours</b> after edit window</div>
+                  <div class="reason-row">
+                    <b>Change requested:</b> Change <b>Yaa Amponsah</b> from Absent to Excused. Mother brought a doctor's note this morning showing she was admitted to hospital that day.
+                  </div>
+                </div>
+                <div class="actions-mini">
+                  <button class="btn-reject">Reject</button>
+                  <button class="btn-approve">Approve</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Five vertical regions, top to bottom: Pulse → By class → Trend → Attention → Edit requests.</b> Most-actionable at the top, most-reflective at the bottom. Headmistress doing a 30-second morning glance gets what she needs in regions 1-2; if she has more time, regions 3-5 are there.</li>
+        <li><b>Region 1 — Pulse</b> has a hero tile (1.4× wide) with the school-wide attendance number, plus four supporting tiles. The hero uses navy bg + gold accent — same brand language as the Cover page on the GES return. <b>The hero attendance number is in gold</b>, not because it's good or bad, but because it's the headline.</li>
+        <li><b>Hero tile breakdown bar</b> shows the four-status proportions inline. 281 / 6 / 4 / 21 across the bar, with a legend below in mono. Same colour mapping (green present / gold late / warn excused / terra absent) used everywhere in attendance.</li>
+        <li><b>"Registers marked: 7 of 9 · 2 pending · JHS 1B, JHS 3C"</b> calls out the names of unmarked classes inline. Headmistress doesn't have to scroll to Region 2 to know which teachers haven't marked. Specificity over generality.</li>
+        <li><b>"vs yesterday: +2.1%"</b> is the smallest tile but most contextual. A 93.2% number alone is meaningless; "we improved 2.1% from yesterday" gives the headmistress directional sense. Yesterday's exact number ("Yesterday 91.1% · 285 of 313") in the sub-line for transparency.</li>
+        <li><b>Region 2 — By class as a 3×3 grid</b> matching the school's actual class structure (JHS 1A/B/C, 2A/B/C, 3A/B/C). <b>The grid mirrors physical school structure</b> — the headmistress can scan the cards in the same mental order she walks the corridors.</li>
+        <li><b>Each class card has a horizontal stacked bar</b> showing today's attendance proportions with embedded counts. "32 present · 1 late · 2 absent" rendered as colour segments with numbers inside. Card with high present count looks mostly green; card with mostly absent looks mostly terra. <b>Visual scan = problem detection</b>.</li>
+        <li><b>Pending classes get terra-tinted background and pulsing pill.</b> JHS 1B (Mr. Asante hasn't marked) and JHS 3C (Mr. Kwakye out, no cover assigned) stand out from the green-tile sea. The pulsing animation is subtle but draws attention without being aggressive.</li>
+        <li><b>Excursion class shows different language:</b> "33 on trip" instead of "33 present", "back 3:30 PM" instead of timestamp, green excursion pill. The data model knows it's an excursion; the card reflects it.</li>
+        <li><b>JHS 3C · "covering teacher needed"</b> footer line surfaces an action item without an explicit button. Headmistress reads "Mr. Kwakye out today · no cover assigned" and knows what she needs to do. <b>The dashboard names problems; the headmistress solves them</b>.</li>
+        <li><b>Region 3 — Term trend</b> is the only chart on the page and it's earned its space. Single metric (school-wide attendance) over time, with reference lines, holiday bands shaded, and today's point highlighted in gold. The chart uses the same green as the Present colour — visual continuity.</li>
+        <li><b>Trend headline shows three numbers:</b> term average (93.8%), comparison to previous term (91.4%), and delta (↑ +2.4%). All three exist because each answers a different question. <b>"Are we doing well?" needs the average. "Are we improving?" needs the delta. "Vs what?" needs the previous term."</b></li>
+        <li><b>Trend footer with five mini-stats:</b> Best day, Lowest day (with annotation: "Fri 17 Apr · rain"), Mondays avg, Fridays avg, vs last term. <b>Day-of-week breakdown reveals patterns</b> — the school's Friday average being meaningfully lower is real and worth knowing.</li>
+        <li><b>Toggle group: School / By class / By gender.</b> The default view is school-wide; admin can pivot to compare classes (line per class) or gender (two lines, M and F). Default is the "boring" view; the slices are there when needed.</li>
+        <li><b>Region 4 — Students needing attention</b> is the dashboard's destination. Tabs: All flagged / Below 70% / Long absence / Pattern shift. <b>"All flagged" tab is in terra colour</b> because it's the catch-all for everything; specific tabs are gold-styled.</li>
+        <li><b>Each row has flag, percentage, sparkline, action.</b> Flag column shows what kind of attention (Long absence / Pattern · Fridays / Below 70% / Pattern shift) with detail line ("3 consecutive days · no contact from home"). Percentage with denominator. Sparkline showing 14-day attendance pattern. Action button.</li>
+        <li><b>Sparkline uses real attendance status colours</b> — green present, gold late, warn excused, terra absent. <b>The same colour vocabulary throughout the system</b> so headmistress doesn't have to re-learn legends. Weekend bars are short stubs; holidays would be hatched (none in this 14-day window).</li>
+        <li><b>Action button changes by flag type</b>: "Follow up →" (gold primary) for terra/warn flags that need contact; "Check in" (subtle) for excused absences where no urgent action is needed but headmistress should know. <b>Visual weight matches urgency</b>.</li>
+        <li><b>Stephen Opoku's flag detail: "BECE candidate"</b> adds context that turns a generic "below 70%" into a specific worry. JHS 3 students sitting BECE need attendance for the school's pass-rate stats and for the student's own preparation. The dashboard knows; the flag says so.</li>
+        <li><b>Region 5 — Edit requests</b> is small most days. Two pending here: Mr. Mensah wants to fix Kwame's Late status, Ms. Adjei wants to change Yaa from Absent to Excused with a doctor's note. Both have legitimate reasons; both need approval.</li>
+        <li><b>Each request shows: who, which register, when submitted, when requested (delta from edit window), what change, why.</b> "Submitted 30 Apr · 8:11 AM · request made 2 May · 9:18 AM · 52 hours after edit window" gives the headmistress audit context — was the request prompt or stale?</li>
+        <li><b>Reason quoted in the gold-bordered callout</b>: "Change requested: Mark Kwame Adu as Late instead of Present. He arrived at 8:31 AM but I marked Present in error before he came in." Direct teacher voice — headmistress reads what they actually said, not a summarised version.</li>
+        <li><b>Approve / Reject buttons inline with each request.</b> Headmistress doesn't have to click through to a separate approval screen for routine requests. <b>The dashboard handles the common case</b>; complex requests can drill through to the audit log via a "more detail" link (not shown here, but the design assumes it).</li>
+        <li><b>Approve = green, Reject = white-with-terra-border.</b> Visual asymmetry — approving is the easy default, rejecting requires conscious choice. Both single-click but visually different weights.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Record payment drawer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 640px; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* App shell with backdrop dimmed */
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 660px;
+  background: var(--bg);
+  position: relative;
+}
+.app-shell.has-drawer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  left: 220px;
+  background: rgba(26,43,71,0.32);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+
+/* Compact billing table behind drawer */
+.bill-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.bill-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.bill-table th, .bill-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.bill-table th {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  background: var(--bg);
+}
+.bill-table tr.selected td { background: var(--gold-bg); }
+.bill-table .amt { font-family: 'Fraunces', serif; font-weight: 600; }
+.status {
+  font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px; border-radius: 4px;
+  display: inline-block;
+}
+.status.paid { background: var(--green-bg); color: var(--green); }
+.status.partial { background: var(--gold-bg); color: var(--gold); }
+.status.overdue { background: var(--terra-bg); color: var(--terra); }
+.status.unpaid { background: var(--bg); color: var(--navy-3); }
+
+/* ============ DRAWER ============ */
+.drawer {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 460px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -16px 0 40px -10px rgba(26,43,71,0.18);
+  z-index: 10;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.drawer-head {
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: start;
+}
+.drawer-head .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+  margin-bottom: 6px;
+}
+.drawer-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.drawer-head h3 em { font-style: italic; color: var(--gold); }
+.drawer-head .close {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.drawer-body {
+  flex: 1;
+  padding: 22px 24px;
+  overflow-y: auto;
+}
+
+/* Student/invoice context block at top of drawer */
+.context-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 22px;
+}
+.context-card .row1 {
+  display: flex; align-items: center; gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border-2);
+  margin-bottom: 12px;
+}
+.context-card .av {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.context-card .stu-name {
+  font-family: 'Fraunces', serif;
+  font-size: 15px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.context-card .stu-meta {
+  font-size: 11px; color: var(--navy-3);
+  margin-top: 2px;
+}
+.context-card .invoice-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.context-card .summ-cell .lbl {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700; margin-bottom: 3px;
+}
+.context-card .summ-cell .val {
+  font-family: 'Fraunces', serif;
+  font-size: 16px; font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.context-card .summ-cell .val.terra { color: var(--terra); }
+.context-card .summ-cell .val.green { color: var(--green); }
+.context-card .summ-cell .inv-id {
+  font-size: 10px; color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+/* Form fields */
+.field { margin-bottom: 16px; }
+
+/* Invoice allocation list */
+.alloc-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.alloc-row {
+  display: grid;
+  grid-template-columns: 22px 1fr 110px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+}
+.alloc-row:first-child { border-top: none; }
+.alloc-row .checkbox {
+  width: 18px; height: 18px;
+  border: 1.5px solid var(--border-2);
+  border-radius: 4px;
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.alloc-row .checkbox.on {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+  font-weight: 700;
+  font-size: 12px;
+}
+.alloc-row .checkbox.on::before { content: "✓"; }
+.alloc-row.allocated { background: var(--gold-bg); }
+.alloc-row.allocated .meta-line { color: var(--navy-2); }
+.alloc-row .body .inv-line {
+  display: flex; align-items: center; gap: 8px;
+}
+.alloc-row .body .inv-id {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.alloc-row .body .inv-title {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.alloc-row .body .meta-line {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 3px;
+}
+.alloc-row .body .meta-line .pill-mini {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+.alloc-row .body .meta-line .pill-mini.overdue { background: var(--terra-bg); color: var(--terra); }
+.alloc-row .body .meta-line .pill-mini.partial { background: var(--gold-bg); color: var(--gold); }
+.alloc-row .body .balance {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--terra);
+}
+.alloc-row .alloc-amount-wrap {
+  position: relative;
+}
+.alloc-row .alloc-amount-wrap .cedi {
+  position: absolute; left: 8px; top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--navy-3);
+  pointer-events: none;
+  z-index: 2;
+}
+.alloc-row .alloc-amount-wrap input {
+  width: 100%;
+  padding: 7px 8px 7px 38px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 5px;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--navy);
+  text-align: right;
+}
+.alloc-row .alloc-amount-wrap input:focus {
+  outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold);
+}
+.alloc-row .alloc-amount-wrap input:disabled {
+  background: var(--bg);
+  color: var(--navy-3);
+}
+.alloc-row.allocated .alloc-amount-wrap input {
+  background: var(--surface);
+  border-color: var(--gold-soft);
+}
+.alloc-row .alloc-empty {
+  text-align: right;
+  font-size: 11px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+
+.alloc-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.alloc-summary .cell .l {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700; margin-bottom: 3px;
+}
+.alloc-summary .cell .v {
+  font-family: 'Fraunces', serif;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.alloc-summary .cell .v.green { color: var(--green); }
+.alloc-summary .cell .v.terra { color: var(--terra); }
+.alloc-summary .cell .v.gold { color: var(--gold); }
+
+.alloc-balance-warn {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--terra-bg);
+  border: 1px solid rgba(184,74,57,0.3);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--navy-2);
+  display: flex; gap: 8px; align-items: start;
+}
+.alloc-balance-warn .ic {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--terra);
+  color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.alloc-balance-warn b { color: var(--terra); }
+
+.auto-allocate-link {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.field label {
+  display: block;
+  font-size: 11px; color: var(--navy-2); font-weight: 600;
+  margin-bottom: 6px; letter-spacing: 0.02em;
+}
+.field label .req { color: var(--terra); margin-left: 2px; }
+.field label .hint {
+  color: var(--navy-3); font-weight: 400; margin-left: 4px; font-size: 10px;
+}
+.input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  font-family: inherit; font-size: 13px;
+  color: var(--navy);
+}
+.input::placeholder { color: var(--navy-3); font-style: italic; opacity: 1; }
+.input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+/* Amount input with cedi prefix and quick fill */
+.amount-block {
+  position: relative;
+}
+.amount-input-large {
+  position: relative;
+}
+.amount-input-large .cedi {
+  position: absolute;
+  left: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--navy-3);
+  pointer-events: none;
+}
+.amount-input-large .input {
+  padding: 14px 14px 14px 56px;
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+}
+.amount-input-large .input::placeholder {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 400;
+  font-style: normal;
+  color: var(--border-2);
+  letter-spacing: -0.01em;
+}
+.quick-fills {
+  display: flex; gap: 6px; margin-top: 8px;
+  flex-wrap: wrap;
+}
+.q-fill {
+  padding: 5px 10px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+}
+.q-fill .lbl { color: var(--navy-3); margin-right: 4px; font-weight: 500; }
+.q-fill.active { background: var(--gold); border-color: var(--gold); }
+
+/* Method picker grid */
+.method-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.method {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.method:hover { border-color: var(--gold-soft); background: var(--gold-bg); }
+.method.active {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.method .m-logo {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 9px;
+  letter-spacing: -0.04em;
+  flex-shrink: 0;
+}
+.method .m-logo.mtn { background: #FFCC00; color: var(--navy); }
+.method .m-logo.tc { background: #E60000; color: white; }
+.method .m-logo.atm { background: #0066B3; color: white; }
+.method .m-logo.cash { background: var(--green-bg); color: var(--green); }
+.method .m-logo.bank { background: var(--navy); color: var(--gold); }
+.method .m-logo.other { background: var(--bg); color: var(--navy-3); border: 1px dashed var(--border-2); }
+.method .m-meta .t1 { font-weight: 700; font-size: 12px; }
+.method .m-meta .t2 { font-size: 10px; color: var(--navy-3); font-weight: 500; margin-top: 1px; }
+
+/* Pre-flight summary */
+.preflight {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.preflight b { color: var(--navy); font-weight: 700; }
+.preflight .head {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+  margin-bottom: 8px;
+}
+.preflight ul { list-style: none; padding: 0; margin: 6px 0 0; }
+.preflight li {
+  padding: 3px 0; padding-left: 16px;
+  position: relative;
+}
+.preflight li::before {
+  content: "✓";
+  position: absolute; left: 0;
+  color: var(--gold); font-weight: 700;
+}
+.preflight.warn {
+  background: var(--terra-bg);
+  border-color: rgba(184,74,57,0.3);
+}
+.preflight.warn .head { color: var(--terra); }
+.preflight.warn li::before { color: var(--terra); }
+
+.sms-toggle {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+.sms-toggle .toggle-mini {
+  width: 32px; height: 18px;
+  background: var(--green);
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sms-toggle .toggle-mini::after {
+  content: "";
+  position: absolute;
+  width: 14px; height: 14px;
+  background: var(--surface);
+  border-radius: 50%;
+  top: 2px; right: 2px;
+}
+.sms-toggle .body .t1 { font-size: 12px; font-weight: 600; }
+.sms-toggle .body .t2 { font-size: 10px; color: var(--navy-3); margin-top: 1px; }
+
+/* Drawer footer */
+.drawer-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  display: flex; gap: 8px; justify-content: space-between;
+  align-items: center;
+}
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.danger { color: var(--terra); border-color: var(--terra-bg); }
+.btn.subtle { background: transparent; border-color: transparent; color: var(--navy-3); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Section divider in drawer */
+.drawer-section-label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+  margin: 22px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.drawer-section-label::before {
+  content: ""; width: 18px; height: 1px; background: var(--gold);
+}
+.drawer-section-label:first-child { margin-top: 0; }
+
+/* SUCCESS STATE */
+.success-state {
+  flex: 1;
+  padding: 44px 32px 22px;
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center;
+}
+.success-state .check-circle {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: var(--green-bg);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+  position: relative;
+}
+.success-state .check-circle::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(47,107,71,0.18);
+}
+.success-state .check-circle svg {
+  width: 32px; height: 32px;
+  color: var(--green);
+}
+.success-state h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 24px; font-weight: 500;
+  letter-spacing: -0.015em;
+  margin-bottom: 6px;
+}
+.success-state h3 em { font-style: italic; color: var(--gold); }
+.success-state .sub-line {
+  font-size: 13px; color: var(--navy-3);
+  margin-bottom: 26px; max-width: 320px;
+}
+
+.receipt-preview {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  text-align: left;
+  margin-bottom: 14px;
+}
+.receipt-row {
+  display: flex; justify-content: space-between;
+  padding: 5px 0;
+  font-size: 12px;
+}
+.receipt-row .lbl { color: var(--navy-3); }
+.receipt-row .val { font-family: 'Fraunces', serif; font-weight: 600; }
+.receipt-divider { border-top: 1px dashed var(--border-2); margin: 8px 0; }
+
+.action-tile-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+.action-tile {
+  padding: 14px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+.action-tile:hover { border-color: var(--gold); background: var(--gold-bg); }
+.action-tile .a-ic {
+  font-size: 16px;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.action-tile .a-t1 {
+  font-size: 12px; font-weight: 700; color: var(--navy);
+  margin-bottom: 2px;
+}
+.action-tile .a-t2 {
+  font-size: 10px; color: var(--navy-3);
+}
+
+.activity-strip {
+  width: 100%;
+  background: var(--green-bg);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px;
+  color: var(--green);
+  font-weight: 600;
+}
+.activity-strip .ic {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--green);
+  color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* EMPTY STATE (cash variant) */
+.cash-note {
+  background: var(--green-bg);
+  border: 1px solid rgba(47,107,71,0.15);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  margin-top: -8px;
+  margin-bottom: 16px;
+}
+.cash-note b { color: var(--green); font-weight: 700; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .drawer { width: 100%; left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Admin billing</div>
+  <h1 class="display">The <em>Record payment</em> drawer</h1>
+  <div class="gold-rule"></div>
+  <p>The screen behind the gold "+ Record payment" button. A payment now flows from the student down to the invoices it covers — letting one MoMo transaction settle multiple terms in a single entry. Three states shown.</p>
+</header>
+
+<!-- ============ STATE 1: EMPTY DRAWER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Open · empty form</div>
+    <div class="section-meta">Triggered from a row · pre-filled with student context</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing / record-payment</div>
+      </div>
+      <div class="app-shell has-drawer">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item active"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Billing / Term 1 · 2026</div>
+              <h2 class="display">Fees <em>collection</em></h2>
+            </div>
+          </div>
+
+          <div class="bill-table-wrap">
+            <table class="bill-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Class</th>
+                  <th>Invoice</th>
+                  <th style="text-align:right">Billed</th>
+                  <th style="text-align:right">Paid</th>
+                  <th style="text-align:right">Balance</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="selected">
+                  <td><b>Akosua Boateng</b></td><td>JHS 2A</td><td>INV-2026-0184</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">GHS 60.00</td>
+                  <td style="text-align:right;color:var(--terra)" class="amt">GHS 340.00</td>
+                  <td><span class="status partial">Partial</span></td>
+                </tr>
+                <tr>
+                  <td>Kofi Owusu</td><td>JHS 2A</td><td>INV-2026-0185</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">—</td>
+                  <td><span class="status paid">Paid</span></td>
+                </tr>
+                <tr>
+                  <td>Yaw Asante</td><td>JHS 2A</td><td>INV-2026-0186</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">—</td>
+                  <td style="text-align:right;color:var(--terra)" class="amt">GHS 400.00</td>
+                  <td><span class="status overdue">Overdue 32d</span></td>
+                </tr>
+                <tr>
+                  <td>Esi Odoom</td><td>JHS 2A</td><td>INV-2026-0188</td>
+                  <td style="text-align:right" class="amt">GHS 200.00</td>
+                  <td style="text-align:right" class="amt">GHS 100.00</td>
+                  <td style="text-align:right;color:var(--terra)" class="amt">GHS 100.00</td>
+                  <td><span class="status partial">Partial</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Drawer overlay -->
+          <aside class="drawer">
+            <div class="drawer-head">
+              <div>
+                <div class="label">New entry</div>
+                <h3>Record a <em>payment</em></h3>
+              </div>
+              <div class="close">×</div>
+            </div>
+
+            <div class="drawer-body">
+              <!-- Student context (no specific invoice yet) -->
+              <div class="context-card">
+                <div class="row1" style="border-bottom:none;padding-bottom:0;margin-bottom:0">
+                  <div class="av">AB</div>
+                  <div style="flex:1">
+                    <div class="stu-name">Akosua Boateng</div>
+                    <div class="stu-meta">JHS 2A · 2 open invoices · GHS 440.00 outstanding</div>
+                  </div>
+                  <button class="btn subtle" style="font-size:11px;padding:5px 8px">Change ↺</button>
+                </div>
+              </div>
+
+              <!-- Amount -->
+              <div class="drawer-section-label">Payment</div>
+
+              <div class="field">
+                <label>Amount paid <span class="req">*</span></label>
+                <div class="amount-input-large">
+                  <span class="cedi">GHS</span>
+                  <input class="input" placeholder="0.00" />
+                </div>
+                <div class="quick-fills">
+                  <span class="q-fill"><span class="lbl">All open</span> GHS 440.00</span>
+                  <span class="q-fill"><span class="lbl">Term 1 only</span> GHS 340.00</span>
+                  <span class="q-fill"><span class="lbl">Half</span> GHS 220.00</span>
+                </div>
+              </div>
+
+              <!-- Allocate to invoices -->
+              <div class="drawer-section-label" style="display:flex;justify-content:space-between;margin-top:24px">
+                <span>Apply to invoices</span>
+                <span style="color:var(--navy-3);font-weight:500;letter-spacing:0;text-transform:none;font-size:11px;font-style:italic">Enter amount above first</span>
+              </div>
+
+              <div class="alloc-card">
+                <div class="alloc-row">
+                  <div class="checkbox"></div>
+                  <div class="body">
+                    <div class="inv-line">
+                      <div>
+                        <div class="inv-id">INV-2026-0184</div>
+                        <div class="inv-title">Term 1 · 2026 fees</div>
+                      </div>
+                    </div>
+                    <div class="meta-line"><span class="balance">GHS 340.00</span> outstanding · GHS 400.00 billed <span class="pill-mini partial">Partial</span></div>
+                  </div>
+                  <div class="alloc-empty">—</div>
+                </div>
+                <div class="alloc-row">
+                  <div class="checkbox"></div>
+                  <div class="body">
+                    <div class="inv-line">
+                      <div>
+                        <div class="inv-id">INV-2025-3084</div>
+                        <div class="inv-title">Term 3 · 2025 fees</div>
+                      </div>
+                    </div>
+                    <div class="meta-line"><span class="balance">GHS 100.00</span> outstanding · GHS 400.00 billed <span class="pill-mini overdue">Overdue 142d</span></div>
+                  </div>
+                  <div class="alloc-empty">—</div>
+                </div>
+              </div>
+
+              <div style="font-size:11px;color:var(--navy-3);margin-top:8px;font-style:italic">When you enter an amount above, we'll auto-allocate to the oldest invoice first. You can adjust amounts per invoice manually.</div>
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn subtle">Cancel</button>
+              <button class="btn gold" disabled>Record payment</button>
+            </div>
+          </aside>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Drawer over modal.</b> The billing table stays visible behind a dimmed overlay — admin sees what they're working from. Closing the drawer doesn't lose the page context.</li>
+        <li><b>Student-level context, not invoice-level.</b> A payment now starts from the student and flows down to whichever invoices it covers. Akosua has 2 open invoices totalling GHS 440.00 — Term 1 partial plus a Term 3 from last year still outstanding. Real Ghanaian school reality.</li>
+        <li><b>"Change ↺"</b> still pivots to a different student without closing — important when a parent calls about a sibling mid-conversation.</li>
+        <li><b>Amount entry comes before allocation.</b> Admin types the amount the parent paid; the system then helps allocate. Reverses the typical flow of "pick invoice, type amount" because parents pay round numbers, not invoice-specific amounts.</li>
+        <li><b>Quick-fill chips reflect the multi-invoice reality:</b> "All open GHS 440.00" pays everything, "Term 1 only GHS 340.00" addresses just the current term, "Half" for partial-and-progressing parents.</li>
+        <li><b>Allocation list shown empty</b> until amount is entered — no work to do yet, but admin sees what invoices exist. The hint text below explains what'll happen.</li>
+        <li><b>Auto-allocation policy:</b> oldest invoice first (FIFO). Most parents paying multiple terms are catching up on the oldest balance first; this matches the implicit intent and reduces clicks.</li>
+        <li><b>Each invoice row shows its overdue/partial badge</b> right next to the balance. The Term 3 from 2025 says "Overdue 142d" so admin knows that even though the parent says "this is for Term 1," the priority should be settling the oldest first.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE 2: FILLED FORM ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Filled · MoMo payment</div>
+    <div class="section-meta">Mid-entry · ready to submit</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing / record-payment</div>
+      </div>
+      <div class="app-shell has-drawer">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item active"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Billing / Term 1 · 2026</div>
+              <h2 class="display">Fees <em>collection</em></h2>
+            </div>
+          </div>
+
+          <div class="bill-table-wrap" style="opacity:0.4">
+            <table class="bill-table">
+              <thead>
+                <tr>
+                  <th>Student</th><th>Class</th><th>Invoice</th>
+                  <th style="text-align:right">Billed</th>
+                  <th style="text-align:right">Paid</th>
+                  <th style="text-align:right">Balance</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="selected">
+                  <td><b>Akosua Boateng</b></td><td>JHS 2A</td><td>INV-2026-0184</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">GHS 60.00</td>
+                  <td style="text-align:right;color:var(--terra)" class="amt">GHS 340.00</td>
+                  <td><span class="status partial">Partial</span></td>
+                </tr>
+                <tr>
+                  <td>Kofi Owusu</td><td>JHS 2A</td><td>INV-2026-0185</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">—</td>
+                  <td><span class="status paid">Paid</span></td>
+                </tr>
+                <tr>
+                  <td>Yaw Asante</td><td>JHS 2A</td><td>INV-2026-0186</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">—</td>
+                  <td style="text-align:right;color:var(--terra)" class="amt">GHS 400.00</td>
+                  <td><span class="status overdue">Overdue 32d</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Drawer with filled state -->
+          <aside class="drawer">
+            <div class="drawer-head">
+              <div>
+                <div class="label">New entry</div>
+                <h3>Record a <em>payment</em></h3>
+              </div>
+              <div class="close">×</div>
+            </div>
+
+            <div class="drawer-body">
+              <div class="context-card">
+                <div class="row1" style="border-bottom:none;padding-bottom:0;margin-bottom:0">
+                  <div class="av">AB</div>
+                  <div style="flex:1">
+                    <div class="stu-name">Akosua Boateng</div>
+                    <div class="stu-meta">JHS 2A · 2 open invoices · GHS 440.00 outstanding</div>
+                  </div>
+                  <button class="btn subtle" style="font-size:11px;padding:5px 8px">Change ↺</button>
+                </div>
+              </div>
+
+              <div class="drawer-section-label">Payment</div>
+
+              <div class="field">
+                <label>Amount paid <span class="req">*</span></label>
+                <div class="amount-input-large">
+                  <span class="cedi">GHS</span>
+                  <input class="input" value="440.00" />
+                </div>
+                <div class="quick-fills">
+                  <span class="q-fill active"><span class="lbl">All open</span> GHS 440.00</span>
+                  <span class="q-fill"><span class="lbl">Term 1 only</span> GHS 340.00</span>
+                  <span class="q-fill"><span class="lbl">Half</span> GHS 220.00</span>
+                </div>
+              </div>
+
+              <!-- Allocate to invoices -->
+              <div class="drawer-section-label" style="display:flex;justify-content:space-between;margin-top:24px">
+                <span>Apply to invoices</span>
+                <a class="auto-allocate-link">↺ Auto-allocate (oldest first)</a>
+              </div>
+
+              <div class="alloc-card">
+                <div class="alloc-row allocated">
+                  <div class="checkbox on"></div>
+                  <div class="body">
+                    <div class="inv-line">
+                      <div>
+                        <div class="inv-id">INV-2025-3084</div>
+                        <div class="inv-title">Term 3 · 2025 fees</div>
+                      </div>
+                    </div>
+                    <div class="meta-line">GHS 100.00 outstanding · GHS 400.00 billed <span class="pill-mini overdue">Overdue 142d</span></div>
+                  </div>
+                  <div class="alloc-amount-wrap">
+                    <span class="cedi">GHS</span>
+                    <input value="100.00" />
+                  </div>
+                </div>
+                <div class="alloc-row allocated">
+                  <div class="checkbox on"></div>
+                  <div class="body">
+                    <div class="inv-line">
+                      <div>
+                        <div class="inv-id">INV-2026-0184</div>
+                        <div class="inv-title">Term 1 · 2026 fees</div>
+                      </div>
+                    </div>
+                    <div class="meta-line">GHS 340.00 outstanding · GHS 400.00 billed <span class="pill-mini partial">Partial</span></div>
+                  </div>
+                  <div class="alloc-amount-wrap">
+                    <span class="cedi">GHS</span>
+                    <input value="340.00" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="alloc-summary">
+                <div class="cell">
+                  <div class="l">Payment</div>
+                  <div class="v">GHS 440.00</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Allocated</div>
+                  <div class="v green">GHS 440.00</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Unallocated</div>
+                  <div class="v">GHS 0.00</div>
+                </div>
+              </div>
+
+              <!-- Method -->
+              <div class="drawer-section-label">Method</div>
+              <div class="method-grid" style="margin-bottom:14px">
+                <div class="method active">
+                  <div class="m-logo mtn">MTN</div>
+                  <div class="m-meta"><div class="t1">MTN MoMo</div><div class="t2">Mobile money</div></div>
+                </div>
+                <div class="method">
+                  <div class="m-logo tc">TC</div>
+                  <div class="m-meta"><div class="t1">Telecel Cash</div><div class="t2">Mobile money</div></div>
+                </div>
+                <div class="method">
+                  <div class="m-logo atm">AT</div>
+                  <div class="m-meta"><div class="t1">AirtelTigo</div><div class="t2">Mobile money</div></div>
+                </div>
+                <div class="method">
+                  <div class="m-logo bank">B</div>
+                  <div class="m-meta"><div class="t1">Bank transfer</div><div class="t2">Direct deposit</div></div>
+                </div>
+                <div class="method">
+                  <div class="m-logo cash">¢</div>
+                  <div class="m-meta"><div class="t1">Cash</div><div class="t2">At the office</div></div>
+                </div>
+                <div class="method">
+                  <div class="m-logo other">·</div>
+                  <div class="m-meta"><div class="t1">Other</div><div class="t2">Cheque, etc.</div></div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>MTN MoMo transaction ID <span class="req">*</span></label>
+                <input class="input" value="TXN78215-MAY01" />
+              </div>
+              <div class="field">
+                <label>Phone number used <span class="hint">— optional</span></label>
+                <input class="input" value="+233 24 555 8392" />
+              </div>
+              <div class="field">
+                <label>Date paid <span class="hint">— defaults to today</span></label>
+                <input class="input" value="Apr 30, 2026" />
+              </div>
+              <div class="field">
+                <label>Note <span class="hint">— optional, internal only</span></label>
+                <input class="input" placeholder="e.g. Caught up on Term 3 carryover plus Term 1" />
+              </div>
+
+              <div class="sms-toggle">
+                <div class="toggle-mini"></div>
+                <div class="body">
+                  <div class="t1">Send SMS confirmation to guardian</div>
+                  <div class="t2">Ama Boateng · +233 24 555 8392</div>
+                </div>
+              </div>
+
+              <div class="preflight">
+                <div class="head">When you record this payment</div>
+                <ul>
+                  <li>Term 3 · 2025 settled — balance becomes <b>GHS 0.00</b>, status <b>Paid</b></li>
+                  <li>Term 1 · 2026 settled — balance becomes <b>GHS 0.00</b>, status <b>Paid</b></li>
+                  <li>One receipt generated covering both invoices</li>
+                  <li>SMS sent to guardian with confirmation &amp; receipt link</li>
+                  <li>Audit entries added to both invoices</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn subtle">Cancel</button>
+              <div style="display:flex;gap:8px">
+                <button class="btn">Save as draft</button>
+                <button class="btn gold">Record GHS 440.00 payment →</button>
+              </div>
+            </div>
+          </aside>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Auto-allocated to oldest first.</b> GHS 440.00 entered, system applied GHS 100.00 to the overdue Term 3 carryover, GHS 340.00 to Term 1 — both settled. Admin can override per-row by typing in the amount field on the right.</li>
+        <li><b>Allocation row turns gold</b> when amount is assigned. Visual reinforcement that this invoice is being paid; mirrors the gold of payment-related affordances throughout the product.</li>
+        <li><b>"Auto-allocate (oldest first)"</b> action sits at the top right of the allocation list — for when admin has manually edited and wants to reset to the default policy.</li>
+        <li><b>Allocation summary trio</b> (Payment / Allocated / Unallocated) makes the math visible and balanced. GHS 440.00 paid, GHS 440.00 allocated, GHS 0.00 unallocated — green confirms the books match.</li>
+        <li><b>Invoice rows preserve their overdue/partial badges</b> through the allocation step. The 142d-overdue tag is a constant reminder of why this invoice is being prioritised.</li>
+        <li><b>MoMo TXN ID is required for MoMo,</b> optional for cash. Each method has its own validation rules.</li>
+        <li><b>Phone number captured</b> for MoMo because it's the only thing that ties a Omnischools record back to MTN's confirmation SMS the parent received. Critical for dispute resolution.</li>
+        <li><b>SMS toggle on by default</b> with the guardian's name and phone shown. Admin sees exactly who will be notified before submitting.</li>
+        <li><b>Pre-flight summary in gold</b> reads back the consequences of submission for <em>each</em> invoice. No surprises. The two "settled" lines are explicit about what changes.</li>
+        <li><b>Submit button confirms the total</b> ("Record GHS 440.00 payment") not the line items. Anchors to the parent's experience: they paid GHS 440.00, that's the canonical number.</li>
+        <li><b>"Save as draft"</b> matters for multi-line because the call from a parent is often "I just sent you GHS 440.00 via MoMo" before they have the TXN ID — admin can record student + amount + allocation, save, return when the TXN comes through.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE 3: SUCCESS ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Recorded · success</div>
+    <div class="section-meta">Post-submit · receipt generated</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing</div>
+      </div>
+      <div class="app-shell has-drawer">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item active"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Billing / Term 1 · 2026</div>
+              <h2 class="display">Fees <em>collection</em></h2>
+            </div>
+          </div>
+
+          <div class="bill-table-wrap" style="opacity:0.5">
+            <table class="bill-table">
+              <thead>
+                <tr>
+                  <th>Student</th><th>Class</th><th>Invoice</th>
+                  <th style="text-align:right">Billed</th>
+                  <th style="text-align:right">Paid</th>
+                  <th style="text-align:right">Balance</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>Akosua Boateng</b></td><td>JHS 2A</td><td>INV-2026-0184</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right;color:var(--green)" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">—</td>
+                  <td><span class="status paid">Paid</span></td>
+                </tr>
+                <tr>
+                  <td><b>Akosua Boateng</b></td><td>JHS 2A</td><td>INV-2025-3084</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right;color:var(--green)" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">—</td>
+                  <td><span class="status paid">Paid</span></td>
+                </tr>
+                <tr>
+                  <td>Kofi Owusu</td><td>JHS 2A</td><td>INV-2026-0185</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">GHS 400.00</td>
+                  <td style="text-align:right" class="amt">—</td>
+                  <td><span class="status paid">Paid</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Drawer success state -->
+          <aside class="drawer">
+            <div class="drawer-head">
+              <div>
+                <div class="label" style="color:var(--green)">Payment recorded</div>
+                <h3>All <em>done</em></h3>
+              </div>
+              <div class="close">×</div>
+            </div>
+
+            <div class="success-state">
+              <div class="check-circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+
+              <h3>GHS 440.00 recorded for <em>Akosua</em></h3>
+              <div class="sub-line">2 invoices settled. Receipt RCT-2026-0541 sent to her guardian via SMS.</div>
+
+              <!-- Mini receipt preview -->
+              <div class="receipt-preview">
+                <div class="receipt-row">
+                  <div class="lbl">Receipt</div>
+                  <div class="val" style="color:var(--gold)">RCT-2026-0541</div>
+                </div>
+                <div class="receipt-row">
+                  <div class="lbl">Student</div>
+                  <div class="val">Akosua Boateng</div>
+                </div>
+                <div class="receipt-row">
+                  <div class="lbl">Method</div>
+                  <div class="val">MTN MoMo · TXN78215</div>
+                </div>
+                <div class="receipt-row">
+                  <div class="lbl">Date</div>
+                  <div class="val">Apr 30, 2026 · 10:24 AM</div>
+                </div>
+                <div class="receipt-divider"></div>
+                <div class="receipt-row" style="font-size:11px">
+                  <div class="lbl">↳ Term 3 · 2025</div>
+                  <div class="val" style="color:var(--green)">GHS 100.00</div>
+                </div>
+                <div class="receipt-row" style="font-size:11px">
+                  <div class="lbl">↳ Term 1 · 2026</div>
+                  <div class="val" style="color:var(--green)">GHS 340.00</div>
+                </div>
+                <div class="receipt-divider"></div>
+                <div class="receipt-row" style="font-size:14px;padding-top:4px">
+                  <div class="lbl" style="color:var(--navy);font-weight:600">Total received</div>
+                  <div class="val" style="font-size:18px;color:var(--green)">GHS 440.00</div>
+                </div>
+              </div>
+
+              <!-- Action tiles -->
+              <div class="action-tile-row">
+                <button class="action-tile">
+                  <div class="a-ic">↓</div>
+                  <div class="a-t1">Download PDF</div>
+                  <div class="a-t2">For your records</div>
+                </button>
+                <button class="action-tile">
+                  <div class="a-ic">✉</div>
+                  <div class="a-t1">Email receipt</div>
+                  <div class="a-t2">To guardian</div>
+                </button>
+              </div>
+
+              <!-- Activity confirmation -->
+              <div class="activity-strip">
+                <div class="ic">✓</div>
+                <div>SMS sent to Ama Boateng · just now</div>
+              </div>
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn subtle">Done</button>
+              <button class="btn primary">Record another payment +</button>
+            </div>
+          </aside>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Success is celebratory but brief.</b> Big green check, the amount and student name in a Fraunces line — feels like an acknowledgment, not a brag.</li>
+        <li><b>Receipt preview shows the allocation breakdown.</b> "↳ Term 3 · 2025 · GHS 100.00" and "↳ Term 1 · 2026 · GHS 340.00" make the multi-line nature explicit. Total at the bottom matches the parent's GHS 440.00 paid — both views of the same truth.</li>
+        <li><b>Sub-line says "2 invoices settled"</b> to confirm the multi-line outcome up front, not buried in the receipt.</li>
+        <li><b>Two action tiles</b> for the immediate next steps: download PDF (admin's records) or email (parent without phone). Both optional — the SMS already went out.</li>
+        <li><b>Activity strip confirms the SMS fired.</b> Important for trust — if the admin saw the toggle "send SMS" but doesn't see confirmation it actually sent, they'll wonder. Explicit closure removes the doubt.</li>
+        <li><b>Background table updated.</b> Both Akosua rows now show GHS 400.00 paid in green, status "Paid". Reinforces that the payment is real, not just promised.</li>
+        <li><b>Single receipt for multiple invoices.</b> Parent gets one receipt with two line items — matches their experience of one MoMo transaction. Avoids the confusion of receiving two SMS messages for one payment.</li>
+        <li><b>"Record another payment +" is the primary footer action.</b> Admins recording payments come in batches.</li>
+        <li><b>No "edit this payment" affordance</b> in success state. Mistakes happen — but corrections go through the audit trail (a void + new entry), not a silent edit. Protects the record.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

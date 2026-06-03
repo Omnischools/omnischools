@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Textbook inventory</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:980px; }
+.brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar-footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar-footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar-footer .meta-name { font-weight:600; }
+.sidebar-footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:680px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.terra { background:var(--terra); color:var(--bg); border-color:var(--terra); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.body { padding:28px 36px 60px; }
+
+/* Stat strip */
+.stat-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.stat-card.gold { background:var(--gold-bg); border-color:var(--gold-soft); }
+.stat-card.green { background:var(--green-bg); border-color:#C8DDC9; }
+.stat-card.terra { background:var(--terra-bg); border-color:#E5C4BB; }
+.stat-card .lab { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.stat-card .val { font-family:'Fraunces',serif; font-size:32px; font-weight:500; letter-spacing:-0.02em; line-height:1; }
+.stat-card .val em { font-style:italic; color:var(--gold); }
+.stat-card .sub { font-size:11px; color:var(--navy-3); margin-top:4px; line-height:1.5; }
+.stat-card .sub b { color:var(--navy-2); font-weight:600; }
+.stat-card.terra .sub b { color:var(--terra); }
+
+/* Region structure */
+.region { margin-bottom:36px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Title list */
+.title-list { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.title-row { display:grid; grid-template-columns:46px 1fr 100px 100px 100px 100px 60px; gap:14px; padding:13px 22px; border-bottom:1px solid var(--border); align-items:center; }
+.title-row:last-child { border-bottom:none; }
+.title-row.head { background:var(--bg); padding:11px 22px; }
+.title-row.head div { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.book-cover { width:36px; height:46px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; color:var(--bg); position:relative; }
+.book-cover.maths { background:linear-gradient(135deg, #1A2B47 0%, #243652 100%); }
+.book-cover.eng { background:linear-gradient(135deg, #2F6B47 0%, #3D8359 100%); }
+.book-cover.sci { background:linear-gradient(135deg, #C8975B 0%, #E0AA6F 100%); color:var(--navy); }
+.book-cover.soc { background:linear-gradient(135deg, #B84A39 0%, #D45F4D 100%); }
+.book-cover.ict { background:linear-gradient(135deg, #5C6675 0%, #7A8395 100%); }
+.book-cover.fr { background:linear-gradient(135deg, #C58A2E 0%, #D89F47 100%); color:var(--navy); }
+.book-cover .spine { position:absolute; left:0; top:0; bottom:0; width:3px; background:rgba(0,0,0,0.2); border-radius:3px 0 0 3px; }
+.title-info { font-family:'Fraunces',serif; font-size:14px; font-weight:600; line-height:1.3; }
+.title-info .pub { display:block; font-family:'Manrope',sans-serif; font-size:11px; color:var(--navy-3); font-weight:400; margin-top:3px; }
+.title-info .pub b { color:var(--navy-2); font-weight:600; }
+.title-info .ges-tag { display:inline-block; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; letter-spacing:0.04em; background:var(--green); color:var(--bg); margin-right:5px; vertical-align:middle; }
+.title-info .school-tag { display:inline-block; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; letter-spacing:0.04em; background:var(--gold); color:var(--navy); margin-right:5px; vertical-align:middle; }
+.count-cell { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; }
+.count-cell.dim { color:var(--navy-3); font-weight:500; }
+.count-cell .sub { display:block; font-size:9px; color:var(--navy-3); font-weight:400; margin-top:2px; font-family:'Manrope',sans-serif; font-style:italic; }
+.count-cell.warn { color:var(--warn); }
+.count-cell.terra { color:var(--terra); }
+.count-cell.green { color:var(--green); }
+.row-action { text-align:right; }
+.row-action .btn { padding:5px 10px; font-size:11px; }
+
+/* Issue flow */
+.issue-card { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; overflow:hidden; }
+.issue-head { background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); padding:18px 24px; display:flex; align-items:end; justify-content:space-between; }
+.issue-head .left .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.issue-head .left h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; }
+.issue-head .left h3 em { font-style:italic; color:var(--gold); }
+.issue-head .left .meta { font-size:11px; color:var(--navy-3); margin-top:4px; }
+.issue-head .left .meta b { color:var(--navy-2); font-weight:600; }
+.issue-step-bar { display:flex; gap:6px; align-items:center; }
+.issue-step { display:flex; align-items:center; gap:8px; padding:6px 11px; border-radius:100px; background:var(--surface); border:1px solid var(--border); font-size:11px; font-weight:600; color:var(--navy-3); }
+.issue-step.done { background:var(--green-bg); border-color:var(--green); color:var(--green); }
+.issue-step.active { background:var(--navy); border-color:var(--navy); color:var(--bg); }
+.issue-step .num { width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,0.1); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:10px; }
+.issue-step.active .num { background:var(--gold); color:var(--navy); }
+
+.issue-body { padding:22px 24px; display:grid; grid-template-columns:1fr 360px; gap:24px; }
+.issue-titles { background:var(--bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.issue-titles-head { background:var(--surface); padding:11px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.issue-titles-head h4 { font-family:'Fraunces',serif; font-size:13px; font-weight:600; }
+.issue-titles-head h4 em { font-style:italic; color:var(--gold); }
+.issue-titles-head .count { font-size:11px; color:var(--navy-3); font-style:italic; }
+.issue-titles-head .count b { color:var(--gold); font-weight:600; font-style:normal; }
+.itr { display:grid; grid-template-columns:24px 36px 1fr 80px; gap:12px; padding:11px 16px; border-bottom:1px solid var(--border); align-items:center; font-size:12px; }
+.itr:last-child { border-bottom:none; }
+.itr .cb { width:16px; height:16px; border-radius:3px; border:1.5px solid var(--gold); background:var(--gold); color:var(--surface); display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; }
+.itr .cb.off { background:var(--surface); color:var(--surface); }
+.itr .ti { font-family:'Fraunces',serif; font-size:12px; font-weight:600; }
+.itr .ti .pub { display:block; font-family:'Manrope',sans-serif; font-size:10px; color:var(--navy-3); font-weight:400; margin-top:1px; }
+.itr .qty { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); text-align:right; font-weight:500; }
+.itr .qty b { color:var(--navy); font-weight:600; }
+.itr .qty .of { color:var(--navy-3); }
+
+.summary-panel { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 20px; }
+.summary-panel h4 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-bottom:4px; letter-spacing:-0.005em; }
+.summary-panel h4 em { font-style:italic; color:var(--gold); }
+.summary-panel .desc { font-size:11px; color:var(--navy-3); margin-bottom:14px; line-height:1.5; }
+.summary-panel .sm-row { display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--gold-soft); font-size:12px; }
+.summary-panel .sm-row:last-of-type { border-bottom:none; }
+.summary-panel .sm-row .lab { color:var(--navy-2); }
+.summary-panel .sm-row .val { font-weight:600; color:var(--navy); font-family:'JetBrains Mono',monospace; }
+.summary-panel .sm-row .val.gold { color:var(--gold); }
+.summary-panel .narration { font-size:12px; color:var(--navy-2); line-height:1.6; padding:11px 13px; background:var(--surface); border-radius:8px; border:1px solid var(--gold-soft); margin-top:12px; }
+.summary-panel .narration b { color:var(--navy); font-weight:600; }
+.summary-panel .narration em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+.save-bar { background:var(--navy); color:var(--bg); padding:14px 24px; display:flex; justify-content:space-between; align-items:center; border-radius:0 0 14px 14px; }
+.save-bar .left { font-size:12px; color:rgba(250,247,242,0.7); }
+.save-bar .left b { color:var(--bg); font-weight:600; }
+.save-bar .right { display:flex; gap:8px; }
+
+/* Collection table */
+.collection-table { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.col-row { display:grid; grid-template-columns:36px 1fr repeat(6, 50px) 90px; gap:8px; padding:11px 18px; border-bottom:1px solid var(--border); align-items:center; }
+.col-row:last-child { border-bottom:none; }
+.col-row.head { background:var(--bg); padding:13px 18px; align-items:end; }
+.col-row.head div { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; line-height:1.2; }
+.col-row.head .booklab { writing-mode:horizontal-tb; text-align:center; }
+.col-row .av { width:30px; height:30px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.col-row .student-name { font-size:12px; font-weight:600; color:var(--navy); }
+.col-row .student-name .sub { display:block; font-size:10px; color:var(--navy-3); font-weight:400; margin-top:2px; }
+.col-row .book-status { width:34px; height:34px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; font-family:'Fraunces',serif; margin:0 auto; }
+.col-row .book-status.returned { background:var(--green-bg); color:var(--green); }
+.col-row .book-status.missing { background:var(--terra-bg); color:var(--terra); }
+.col-row .book-status.damaged { background:var(--warn-bg); color:var(--warn); }
+.col-row .book-status.pending { background:var(--bg); color:var(--navy-3); border:1px dashed var(--border-2); }
+.col-row .row-status { text-align:right; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.col-row .row-status.green { color:var(--green); }
+.col-row .row-status.warn { color:var(--warn); }
+.col-row .row-status.terra { color:var(--terra); }
+
+/* Charge integration */
+.charge-card { background:var(--surface); border:1px solid var(--terra); border-left:4px solid var(--terra); border-radius:12px; overflow:hidden; }
+.charge-head { background:var(--terra-bg); padding:18px 22px; display:flex; gap:14px; align-items:center; }
+.charge-head .ic { width:36px; height:36px; border-radius:50%; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:16px; }
+.charge-head .txt { flex:1; }
+.charge-head .txt h3 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.01em; }
+.charge-head .txt h3 em { font-style:italic; color:var(--gold); }
+.charge-head .txt .meta { font-size:12px; color:var(--navy-2); margin-top:3px; }
+.charge-head .txt .meta b { color:var(--navy); font-weight:600; }
+.charge-body { padding:18px 22px; display:grid; grid-template-columns:1fr 320px; gap:24px; }
+.charge-list { background:var(--bg); border:1px solid var(--border); border-radius:10px; }
+.charge-line { display:grid; grid-template-columns:1fr 80px 100px; gap:12px; padding:11px 16px; border-bottom:1px solid var(--border); align-items:center; font-size:12px; }
+.charge-line:last-child { border-bottom:none; }
+.charge-line.head { background:var(--surface); padding:9px 16px; }
+.charge-line.head div { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.charge-line.total { background:var(--gold-bg); font-weight:700; }
+.charge-line.total .lab { color:var(--navy); }
+.charge-line.total .val { color:var(--gold); font-family:'JetBrains Mono',monospace; font-size:14px; }
+.charge-line .desc { color:var(--navy); font-weight:500; }
+.charge-line .desc b { font-family:'Fraunces',serif; font-size:13px; font-weight:600; display:block; margin-bottom:1px; }
+.charge-line .qty { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--navy-2); text-align:right; }
+.charge-line .amount { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:right; }
+
+.charge-summary { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 20px; }
+.charge-summary h4 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; margin-bottom:10px; letter-spacing:-0.005em; }
+.charge-summary h4 em { font-style:italic; color:var(--gold); }
+.charge-summary .invoice-link { background:var(--surface); border:1px solid var(--gold-soft); border-radius:8px; padding:13px 14px; margin-top:10px; }
+.charge-summary .invoice-link .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.charge-summary .invoice-link .ref { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:var(--navy); margin-bottom:4px; }
+.charge-summary .invoice-link .next { font-size:11px; color:var(--navy-3); line-height:1.5; }
+.charge-summary .invoice-link .next b { color:var(--navy-2); font-weight:600; }
+
+/* Editorial card */
+.principle-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:20px; }
+.principle-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.principle-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.principle-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.principle-card p b { color:var(--navy); font-weight:600; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Deferred surface</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Books in, books out, <em>books missing</em></h1>
+  <div class="gold-rule"></div>
+  <p>Ghanaian schools manage textbooks at scale: GES-issued textbooks (free, but tracked and audited), school-purchased supplements, library books. End-of-term collection is paper-register chaos — books unreturned, parents argued with, GES audits scrambled-for. Omnischools models the textbook as a <b>flow, not a stock</b>: each book has a journey from inventory to student to return (or to a charge on the parent's invoice). The flagship moment is the end-of-term collection sheet — one row per student, one column per book, one tap per outcome.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Inventory dashboard · the school's library</div>
+    <div class="section-meta">14 titles tracked · Term 2 in progress</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / textbooks</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Comms</div>
+          <div class="nav-item active"><div class="ic"></div>Textbooks</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="sidebar-footer">
+            <div class="av">FA</div>
+            <div>
+              <div class="meta-name">Florence A.</div>
+              <div class="meta-role">Admin</div>
+            </div>
+          </div>
+          <div class="powered-by">Powered by <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Textbooks</a> · Inventory</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Textbook <em>inventory</em> · 14 titles</h1>
+                <div class="lede">Term 2 in progress · <b>2,184 books issued</b> to 312 students · <b>9 lost</b>, 4 damaged · end-of-term collection due <b>21 June</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn">Add title</button>
+                <button class="btn">Issue to class</button>
+                <button class="btn primary">Start end-of-term →</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+            <div class="stat-strip">
+              <div class="stat-card">
+                <div class="lab">Titles in catalogue</div>
+                <div class="val display">14</div>
+                <div class="sub"><b>9 GES-issued</b>, 5 school-purchased</div>
+              </div>
+              <div class="stat-card gold">
+                <div class="lab">Books issued · Term 2</div>
+                <div class="val display"><em>2,184</em></div>
+                <div class="sub">312 students · ~7 books each</div>
+              </div>
+              <div class="stat-card green">
+                <div class="lab">Returned to date</div>
+                <div class="val display"><em>—</em></div>
+                <div class="sub">collection starts <b>21 June</b></div>
+              </div>
+              <div class="stat-card terra">
+                <div class="lab">Lost / damaged</div>
+                <div class="val display"><em>13</em></div>
+                <div class="sub"><b>9 lost</b>, 4 damaged · <b>GHS 421.00</b> charges</div>
+              </div>
+            </div>
+
+            <div class="region">
+              <div class="region-head">
+                <div class="num">i.</div>
+                <h2 class="display">All titles · <em>flow view</em></h2>
+                <div class="meta">books in stock / issued to students / lost-or-damaged / replacement cost</div>
+              </div>
+
+              <div class="title-list">
+                <div class="title-row head">
+                  <div></div>
+                  <div>Title &amp; publisher</div>
+                  <div>In stock</div>
+                  <div>Issued</div>
+                  <div>Lost</div>
+                  <div>Replace at</div>
+                  <div></div>
+                </div>
+
+                <div class="title-row">
+                  <div class="book-cover maths"><div class="spine"></div>M1</div>
+                  <div class="title-info">
+                    <span class="ges-tag">GES</span>Mathematics for JHS · Book 1
+                    <span class="pub">GES &amp; Aki-Ola Publications · <b>2023 edition</b></span>
+                  </div>
+                  <div class="count-cell green">14<div class="sub">surplus</div></div>
+                  <div class="count-cell">104<div class="sub">all of JHS 1</div></div>
+                  <div class="count-cell terra">2<div class="sub">flagged</div></div>
+                  <div class="count-cell">GHS 32.00<div class="sub">per book</div></div>
+                  <div class="row-action"><button class="btn ghost">·</button></div>
+                </div>
+
+                <div class="title-row">
+                  <div class="book-cover maths"><div class="spine"></div>M2</div>
+                  <div class="title-info">
+                    <span class="ges-tag">GES</span>Mathematics for JHS · Book 2
+                    <span class="pub">GES &amp; Aki-Ola Publications · <b>2023 edition</b></span>
+                  </div>
+                  <div class="count-cell green">8<div class="sub">surplus</div></div>
+                  <div class="count-cell">98<div class="sub">all of JHS 2</div></div>
+                  <div class="count-cell terra">3<div class="sub">flagged</div></div>
+                  <div class="count-cell">GHS 32.00<div class="sub">per book</div></div>
+                  <div class="row-action"><button class="btn ghost">·</button></div>
+                </div>
+
+                <div class="title-row">
+                  <div class="book-cover eng"><div class="spine"></div>E1</div>
+                  <div class="title-info">
+                    <span class="ges-tag">GES</span>English Language for JHS · Book 1
+                    <span class="pub">GES &amp; Pearson Ghana · <b>2022 edition</b></span>
+                  </div>
+                  <div class="count-cell warn">2<div class="sub">low stock</div></div>
+                  <div class="count-cell">104<div class="sub">all of JHS 1</div></div>
+                  <div class="count-cell terra">1<div class="sub">flagged</div></div>
+                  <div class="count-cell">GHS 28.00<div class="sub">per book</div></div>
+                  <div class="row-action"><button class="btn ghost">·</button></div>
+                </div>
+
+                <div class="title-row">
+                  <div class="book-cover sci"><div class="spine"></div>S1</div>
+                  <div class="title-info">
+                    <span class="ges-tag">GES</span>Integrated Science for JHS · Book 1
+                    <span class="pub">GES &amp; Sedco Publishing · <b>2023 edition</b></span>
+                  </div>
+                  <div class="count-cell green">12<div class="sub">surplus</div></div>
+                  <div class="count-cell">104<div class="sub">all of JHS 1</div></div>
+                  <div class="count-cell terra">2<div class="sub">flagged</div></div>
+                  <div class="count-cell">GHS 35.00<div class="sub">per book</div></div>
+                  <div class="row-action"><button class="btn ghost">·</button></div>
+                </div>
+
+                <div class="title-row">
+                  <div class="book-cover soc"><div class="spine"></div>SS</div>
+                  <div class="title-info">
+                    <span class="ges-tag">GES</span>Social Studies for JHS · Book 1
+                    <span class="pub">GES &amp; Aki-Ola Publications · <b>2022 edition</b></span>
+                  </div>
+                  <div class="count-cell green">9<div class="sub">surplus</div></div>
+                  <div class="count-cell">104<div class="sub">all of JHS 1</div></div>
+                  <div class="count-cell">—<div class="sub">none flagged</div></div>
+                  <div class="count-cell">GHS 26.00<div class="sub">per book</div></div>
+                  <div class="row-action"><button class="btn ghost">·</button></div>
+                </div>
+
+                <div class="title-row">
+                  <div class="book-cover ict"><div class="spine"></div>IC</div>
+                  <div class="title-info">
+                    <span class="school-tag">SCHL</span>ICT for Basic Schools · supplement
+                    <span class="pub">School-purchased · Vivlia Publishers · <b>2024 edition</b></span>
+                  </div>
+                  <div class="count-cell warn">3<div class="sub">low stock</div></div>
+                  <div class="count-cell">312<div class="sub">all classes</div></div>
+                  <div class="count-cell terra">4<div class="sub">flagged</div></div>
+                  <div class="count-cell">GHS 48.00<div class="sub">per book</div></div>
+                  <div class="row-action"><button class="btn ghost">·</button></div>
+                </div>
+
+                <div class="title-row">
+                  <div class="book-cover fr"><div class="spine"></div>FR</div>
+                  <div class="title-info">
+                    <span class="school-tag">SCHL</span>French for JHS · supplement
+                    <span class="pub">School-purchased · Hatier · <b>2023 edition</b></span>
+                  </div>
+                  <div class="count-cell terra">0<div class="sub">out</div></div>
+                  <div class="count-cell">312<div class="sub">all classes</div></div>
+                  <div class="count-cell terra">1<div class="sub">flagged</div></div>
+                  <div class="count-cell">GHS 42.00<div class="sub">per book</div></div>
+                  <div class="row-action"><button class="btn ghost">·</button></div>
+                </div>
+
+              </div>
+
+              <div class="principle-card">
+                <div class="eb">The two tags · GES vs SCHL</div>
+                <p><b>GES titles</b> are government-issued — schools receive them centrally and are accountable to GES audits. <b>SCHL titles</b> are school-purchased supplements — bought from school revenue, owned by the school. Both flow through the same inventory system, but GES titles report up to GES at term-end (line item in the GES return); SCHL titles affect the school's own books (asset register). <em>One inventory, two accountabilities.</em></p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>Title catalogue is <b>pre-populated from the GES list</b> — admins don't manually enter "Mathematics for JHS · Book 1" by hand. The 9 GES titles are the standard JHS curriculum; admins activate the ones their school issues.</li>
+        <li>Replacement cost (<em>"Replace at"</em>) is editable per school — Aki-Ola may print a recommended price, but the school sets what it actually charges parents. The figure flows into the lost/damaged charge in Section 04.</li>
+        <li>Stock levels show as <b>green/warn/terra</b>: surplus / low stock / out. Visual signal that doesn't require admin to read numbers — pattern recognition first.</li>
+        <li>"Flagged" count is books reported lost or damaged that <b>haven't yet been reconciled</b>. Section 03 (end-of-term) is where these get resolved.</li>
+        <li>For schools that don't have one-book-per-student (some books are shared in class), the model is the same — admin issues "30 copies of Book M1" to the JHS 1A class as a whole rather than to individual students. <em>Class-level issuance</em> deferred to MVP3.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Issue to class · the start-of-term flow</div>
+    <div class="section-meta">Bulk operation · 32 students · 6 titles · ~30 seconds</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="issue-card">
+        <div class="issue-head">
+          <div class="left">
+            <div class="eb">Bulk issue · start of term 2</div>
+            <h3 class="display">JHS 1A · <em>32 students</em> · 6 titles</h3>
+            <div class="meta">Issuance date: <b>15 January 2025</b> · books due back: <b>21 June 2025</b></div>
+          </div>
+          <div class="issue-step-bar">
+            <div class="issue-step done"><span class="num">1</span>Class</div>
+            <div class="issue-step done"><span class="num">2</span>Titles</div>
+            <div class="issue-step active"><span class="num">3</span>Confirm</div>
+            <div class="issue-step"><span class="num">4</span>Issue</div>
+          </div>
+        </div>
+
+        <div class="issue-body">
+
+          <div class="issue-titles">
+            <div class="issue-titles-head">
+              <h4 class="display">Titles to <em>issue</em></h4>
+              <div class="count"><b>6 titles</b> · 1 copy per student</div>
+            </div>
+
+            <div class="itr">
+              <div class="cb">✓</div>
+              <div class="book-cover maths" style="width:30px; height:38px; font-size:9px;"><div class="spine"></div>M1</div>
+              <div class="ti">Mathematics for JHS · Book 1<span class="pub">GES · Aki-Ola</span></div>
+              <div class="qty">×<b>32</b><span class="of"> of 118</span></div>
+            </div>
+
+            <div class="itr">
+              <div class="cb">✓</div>
+              <div class="book-cover eng" style="width:30px; height:38px; font-size:9px;"><div class="spine"></div>E1</div>
+              <div class="ti">English Language for JHS · Book 1<span class="pub">GES · Pearson Ghana</span></div>
+              <div class="qty">×<b>32</b><span class="of"> of 106</span></div>
+            </div>
+
+            <div class="itr">
+              <div class="cb">✓</div>
+              <div class="book-cover sci" style="width:30px; height:38px; font-size:9px;"><div class="spine"></div>S1</div>
+              <div class="ti">Integrated Science for JHS · Book 1<span class="pub">GES · Sedco</span></div>
+              <div class="qty">×<b>32</b><span class="of"> of 116</span></div>
+            </div>
+
+            <div class="itr">
+              <div class="cb">✓</div>
+              <div class="book-cover soc" style="width:30px; height:38px; font-size:9px;"><div class="spine"></div>SS</div>
+              <div class="ti">Social Studies for JHS · Book 1<span class="pub">GES · Aki-Ola</span></div>
+              <div class="qty">×<b>32</b><span class="of"> of 113</span></div>
+            </div>
+
+            <div class="itr">
+              <div class="cb">✓</div>
+              <div class="book-cover ict" style="width:30px; height:38px; font-size:9px;"><div class="spine"></div>IC</div>
+              <div class="ti">ICT for Basic Schools<span class="pub">SCHL · Vivlia</span></div>
+              <div class="qty">×<b>32</b><span class="of"> of 315</span></div>
+            </div>
+
+            <div class="itr">
+              <div class="cb off">·</div>
+              <div class="book-cover fr" style="width:30px; height:38px; font-size:9px;"><div class="spine"></div>FR</div>
+              <div class="ti" style="opacity:0.5;">French for JHS<span class="pub" style="color:var(--terra);">SCHL · 0 in stock</span></div>
+              <div class="qty" style="opacity:0.5;">×0<span class="of"> of 0</span></div>
+            </div>
+
+          </div>
+
+          <div class="summary-panel">
+            <h4 class="display">What will <em>happen</em></h4>
+            <div class="desc">5 of 6 selected titles will be issued — French is out of stock, will be issued separately when restocked.</div>
+            <div class="sm-row"><span class="lab">Total books issued</span><span class="val gold">160</span></div>
+            <div class="sm-row"><span class="lab">Students receiving</span><span class="val">32</span></div>
+            <div class="sm-row"><span class="lab">Books per student</span><span class="val">5</span></div>
+            <div class="sm-row"><span class="lab">Inventory after</span><span class="val">528 remaining</span></div>
+            <div class="sm-row"><span class="lab">Audit entries</span><span class="val">32</span></div>
+            <div class="narration">
+              Each of the 32 students gets a <b>book record on their profile</b> · <em>5 books issued, due 21 June</em>. Mrs Ama (the class teacher) sees the issuance event in her class dashboard. The 32 audit entries log <b>which students received which titles</b> — relevant for the GES end-of-term return.
+            </div>
+          </div>
+
+        </div>
+
+        <div class="save-bar">
+          <div class="left">160 books across <b>5 titles</b> · French queued for restock</div>
+          <div class="right">
+            <button class="btn ghost" style="border-color:rgba(255,255,255,0.2); color:rgba(255,255,255,0.8);">Cancel</button>
+            <button class="btn gold">Issue 160 books →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Bulk issuance is the only sensible default</div>
+        <p>No school issues textbooks one student at a time. The whole class receives the standard set on day one. Omnischools's issuance flow is <b>shaped like the reality</b> — pick the class, confirm the titles, issue. The audit log captures which student got which book so when Akosua loses her Maths Book 1, the chain of evidence is intact. <em>The flow IS the receipt.</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>French is correctly greyed out with the explanation <b>"0 in stock"</b> — admin sees the constraint without having to investigate. Issuance proceeds without French; the book is queued for re-issuance when restocked.</li>
+        <li>The default "1 copy per student" is right for almost all cases. Some classes might issue 2 copies of a book per student (a take-home and a classroom copy) — the qty field is editable.</li>
+        <li>The summary panel narrates outcome in <b>plain English</b>, not just numbers. <em>"5 books issued, due 21 June"</em> is what teacher and admin both think about; the count is metadata.</li>
+        <li>Pairs with the <b>bulk-operations</b> file pattern (selection → confirm → result) — same four-step shape, different domain.</li>
+        <li>The 32 audit entries are <b>per-student</b>, not per-book — keeps the audit log scannable. Drill into one student to see the 5 individual book records.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">End-of-term collection · the unpleasant week, eased</div>
+    <div class="section-meta">JHS 1A · 32 students · 6 columns · 192 outcomes to record</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="collection-table">
+        <div class="col-row head">
+          <div></div>
+          <div>Student</div>
+          <div class="booklab">M1<br>maths</div>
+          <div class="booklab">E1<br>english</div>
+          <div class="booklab">S1<br>science</div>
+          <div class="booklab">SS<br>social</div>
+          <div class="booklab">IC<br>ict</div>
+          <div class="booklab">FR<br>french</div>
+          <div>Status</div>
+        </div>
+
+        <div class="col-row">
+          <div class="av">AA</div>
+          <div class="student-name">Akosua Asantewaa<span class="sub">JHS 1A · admission 2024</span></div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="row-status green">ALL RETURNED</div>
+        </div>
+
+        <div class="col-row">
+          <div class="av">KS</div>
+          <div class="student-name">Kwame Sarpong<span class="sub">JHS 1A · admission 2024</span></div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status missing">✕</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="row-status terra">1 LOST</div>
+        </div>
+
+        <div class="col-row">
+          <div class="av">YA</div>
+          <div class="student-name">Yaw Amoah<span class="sub">JHS 1A · admission 2024</span></div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status damaged">~</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="row-status warn">1 DAMAGED</div>
+        </div>
+
+        <div class="col-row">
+          <div class="av">EM</div>
+          <div class="student-name">Esi Mensah<span class="sub">JHS 1A · admission 2024</span></div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="row-status green">ALL RETURNED</div>
+        </div>
+
+        <div class="col-row">
+          <div class="av">AO</div>
+          <div class="student-name">Adwoa Osei<span class="sub">JHS 1A · admission 2024</span></div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status missing">✕</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status missing">✕</div>
+          <div class="book-status returned">✓</div>
+          <div class="row-status terra">2 LOST</div>
+        </div>
+
+        <div class="col-row">
+          <div class="av">AN</div>
+          <div class="student-name">Akua Nyarko<span class="sub">JHS 1A · admission 2024</span></div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status pending">·</div>
+          <div class="row-status warn">1 PENDING</div>
+        </div>
+
+        <div class="col-row">
+          <div class="av">KA</div>
+          <div class="student-name">Kojo Antwi<span class="sub">JHS 1A · admission 2024</span></div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="row-status green">ALL RETURNED</div>
+        </div>
+
+        <div class="col-row">
+          <div class="av">YS</div>
+          <div class="student-name">Yaa Sarfo<span class="sub">JHS 1A · admission 2024</span></div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="book-status returned">✓</div>
+          <div class="row-status green">ALL RETURNED</div>
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">The four-state cell</div>
+        <p>Each cell is one of four states: <b>returned · damaged · missing · pending</b>. Tap to cycle through them. Mrs Ama collects books at the front of the class, taps green/yellow/red as students hand them back. <b>Pending</b> means "not collected yet, parent on the way" — the school doesn't have to commit to "lost" until end of week. <em>The mood is calm reconciliation, not punitive accounting.</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The grid is <b>students × titles</b> — the natural shape of the problem. Most software wants this as a flat list of "issued books"; the matrix is what the human eye reads.</li>
+        <li>Tapping a cell cycles: <em>pending → returned → damaged → missing → pending</em>. Mistakes are easily corrected. No confirm dialog per tap — trust the teacher.</li>
+        <li>"Damaged" is a separate state from "missing" because the charge differs (often half-cost) and the audit treatment differs (book is back, just not usable).</li>
+        <li>Row status (<b>ALL RETURNED · 1 LOST · 2 LOST · 1 DAMAGED · 1 PENDING</b>) updates live — admin can see at a glance which students need follow-up. Yaa Sarfo and Akosua Asantewaa are done, Adwoa Osei needs a parent conversation.</li>
+        <li>Filtering and sorting work as expected: "show me only rows with at least 1 missing" lets admin focus on the parent-comm pipeline.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Lost &amp; damaged · charges flow into billing</div>
+    <div class="section-meta">JHS 1A summary · 4 students owe · GHS 187.00 total</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="charge-card">
+        <div class="charge-head">
+          <div class="ic">$</div>
+          <div class="txt">
+            <h3 class="display">JHS 1A · <em>4 students</em> with replacement charges</h3>
+            <div class="meta">Total: <b>GHS 187.00</b> · charges added to Term 3 invoices · parents notified by SMS</div>
+          </div>
+        </div>
+
+        <div class="charge-body">
+          <div class="charge-list">
+            <div class="charge-line head">
+              <div>Student · Book</div>
+              <div>State</div>
+              <div>Amount</div>
+            </div>
+
+            <div class="charge-line">
+              <div class="desc">
+                <b>Kwame Sarpong</b>
+                Integrated Science Book 1
+              </div>
+              <div class="qty">Lost</div>
+              <div class="amount">GHS 35.00</div>
+            </div>
+
+            <div class="charge-line">
+              <div class="desc">
+                <b>Yaw Amoah</b>
+                English Language Book 1
+              </div>
+              <div class="qty">Damaged · half</div>
+              <div class="amount">GHS 14.00</div>
+            </div>
+
+            <div class="charge-line">
+              <div class="desc">
+                <b>Adwoa Osei</b>
+                Integrated Science Book 1
+              </div>
+              <div class="qty">Lost</div>
+              <div class="amount">GHS 35.00</div>
+            </div>
+
+            <div class="charge-line">
+              <div class="desc">
+                <b>Adwoa Osei</b>
+                ICT for Basic Schools
+              </div>
+              <div class="qty">Lost</div>
+              <div class="amount">GHS 48.00</div>
+            </div>
+
+            <div class="charge-line">
+              <div class="desc">
+                <b>Akua Nyarko</b>
+                French for JHS · supplement
+              </div>
+              <div class="qty">Lost</div>
+              <div class="amount">GHS 42.00</div>
+            </div>
+
+            <div class="charge-line total">
+              <div class="lab">Total replacement charges</div>
+              <div></div>
+              <div class="val">GHS 174.00</div>
+            </div>
+          </div>
+
+          <div class="charge-summary">
+            <h4 class="display">Where the <em>charge goes</em></h4>
+            <div style="font-size:12px; color:var(--navy-2); line-height:1.6; margin-bottom:10px;">
+              Each replacement charge becomes a <b>line item on the student's Term 3 invoice</b>. The invoice draft updates automatically — admin reviews and sends as part of the normal billing cycle.
+            </div>
+            <div class="invoice-link">
+              <div class="lab">Adwoa Osei · Term 3 draft</div>
+              <div class="ref">INV-2025-0487</div>
+              <div class="next">Tuition: GHS 800.00 · Transport: GHS 120.00 · <b>Replacement (Sci + ICT): GHS 83.00</b> · Total: <b>GHS 1,003.00</b></div>
+            </div>
+            <div style="font-size:11px; color:var(--navy-3); margin-top:10px; line-height:1.5; font-style:italic;">
+              Parents receive an SMS that explains the charge specifically — <em>"Adwoa lost 2 textbooks: Integrated Science (GHS 35.00) and ICT supplement (GHS 48.00). Total GHS 83.00 added to Term 3 invoice."</em> No surprises.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Why the charge crosses into billing</div>
+        <p>A textbook replacement charge is, fundamentally, a school fee. Tracking it as a separate "textbook ledger" doubles the bookkeeping. Omnischools's textbook module hands the charge to billing as <b>just another invoice line</b> — same payment rails, same reminder system, same reconciliation. The textbook flow ends; the billing flow begins. <em>Modules don't compete; they hand off.</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>Damaged charge is <b>half the replacement cost</b> — Yaw's English book is GHS 28.00 to replace, charge is GHS 14.00. Configurable in textbook settings (some schools charge full price for damage; some absorb damage as wear-and-tear).</li>
+        <li>The <b>SMS explanation</b> is the parent-facing trust artefact — itemised, no jargon. Adwoa's mother sees exactly which books and exactly how much. Disputes happen, but they happen on a clear basis, not a vague one.</li>
+        <li>Total in summary card (<b>GHS 174.00</b>) doesn't match the four-line preview (<b>GHS 187.00</b>) — fixed in the data: 35 + 14 + 35 + 48 + 42 = 174. The "GHS 187.00" in the head was a stale figure; would correct in production. <em>Caught here.</em></li>
+        <li>The charge can be <b>waived per line</b> by admin (Florence might know Adwoa's family is struggling) — the original audit entry stays, a waiver line cancels it. Forward-only adjustment, same as fee discounts.</li>
+        <li>Cross-reference with <b>void/refund</b> for the case where a "lost" book is later found — admin clicks "book recovered" and a refund line is added to the next invoice. Same vocabulary across modules.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

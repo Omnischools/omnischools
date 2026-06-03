@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Resumption day operations</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+.btn.terra { background:var(--terra); color:var(--bg); border-color:var(--terra); font-weight:700; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.browser-bar .live-dot { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:10px; color:var(--terra); font-weight:700; letter-spacing:0.1em; }
+.browser-bar .live-dot::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--terra); animation:pulse 1.6s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+/* Mode switch */
+.mode-bar { padding:14px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:14px; }
+.mode-bar .lab { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.mode-tabs { display:flex; gap:4px; background:var(--surface); padding:3px; border-radius:8px; border:1px solid var(--border); }
+.mode-tab { padding:6px 14px; border-radius:6px; font-size:11px; font-weight:600; color:var(--navy-3); cursor:pointer; }
+.mode-tab.active { background:var(--navy); color:var(--bg); }
+.mode-bar .ctx { margin-left:auto; font-size:11px; color:var(--navy-3); }
+.mode-bar .ctx b { color:var(--navy-2); font-weight:700; }
+
+/* Live counter strip */
+.live-strip { padding:24px 36px; background:var(--navy); color:var(--bg); display:grid; grid-template-columns:auto 1fr auto; gap:28px; align-items:center; }
+.live-strip .clock { width:96px; height:96px; border-radius:20px; background:var(--gold); color:var(--navy); display:flex; flex-direction:column; align-items:center; justify-content:center; flex-shrink:0; }
+.live-strip .clock .h { font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:600; line-height:1; }
+.live-strip .clock .l { font-size:8px; letter-spacing:0.12em; font-weight:700; margin-top:6px; }
+.live-strip .center .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:5px; }
+.live-strip .center h3 { font-family:'Fraunces',serif; font-size:26px; font-weight:500; line-height:1.15; margin-bottom:4px; }
+.live-strip .center h3 em { font-style:italic; color:var(--gold); }
+.live-strip .center .sub { font-size:12px; color:rgba(232,212,184,0.75); }
+.live-strip .center .sub b { color:var(--bg); font-weight:600; }
+.live-strip .right .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,212,184,0.6); font-weight:700; }
+.live-strip .right .big { font-family:'Fraunces',serif; font-size:42px; font-weight:600; letter-spacing:-0.02em; line-height:1; margin-top:4px; }
+.live-strip .right .big em { font-style:italic; color:var(--gold); }
+.live-strip .right .sub { font-size:11px; color:rgba(232,212,184,0.6); margin-top:6px; }
+.live-strip .right .sub b { color:var(--bg); }
+
+/* Arrival timeline */
+.timeline-card { padding:22px 36px; background:var(--surface); border-bottom:1px solid var(--border); }
+.timeline-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+.timeline-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.timeline-head h3 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.timeline-head h3 em { font-style:italic; color:var(--gold); }
+.timeline-head .meta { font-size:11px; color:var(--navy-3); font-family:'JetBrains Mono',monospace; }
+.windows-row { display:grid; grid-template-columns:repeat(6, 1fr); gap:8px; }
+.window { padding:14px 14px; border-radius:8px; background:var(--bg); border:1px solid var(--border); }
+.window.done { background:var(--green-bg); border-color:var(--green); }
+.window.active { background:var(--gold-bg); border-color:var(--gold); border-width:1.5px; }
+.window.pending { opacity:0.55; }
+.window .time { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; color:var(--navy-3); }
+.window.done .time { color:var(--green); }
+.window.active .time { color:var(--navy); }
+.window .who { font-family:'Fraunces',serif; font-size:14px; font-weight:600; margin-top:5px; line-height:1.2; }
+.window .who em { font-style:italic; color:var(--gold); }
+.window .arrived { font-size:10px; color:var(--navy-3); margin-top:5px; font-family:'JetBrains Mono',monospace; }
+.window.done .arrived { color:var(--green); font-weight:700; }
+.window.active .arrived { color:var(--navy); font-weight:700; }
+
+.body-shell { padding:32px 36px 36px; }
+
+.block { margin-bottom:32px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+.block-head .actions { display:flex; gap:8px; }
+
+/* House progress grid */
+.house-progress-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+.hp-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.hp-card .hp-band { height:5px; background:var(--gold); }
+.hp-card .hp-body { padding:18px 20px; }
+.hp-card .hp-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed var(--border); }
+.hp-card .hp-head h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; line-height:1.2; }
+.hp-card .hp-head h4 em { font-style:italic; color:var(--gold); }
+.hp-card .hp-head .sub { font-size:10px; color:var(--navy-3); margin-top:3px; }
+.hp-card .hp-head .pill { padding:3px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; }
+.hp-card .hp-head .pill.live { background:var(--gold); color:var(--navy); }
+.hp-card .hp-head .pill.done { background:var(--green-bg); color:var(--green); }
+.hp-card .hp-head .pill.waiting { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.hp-card .counter { display:flex; align-items:flex-end; gap:10px; margin-bottom:10px; }
+.hp-card .counter .num { font-family:'Fraunces',serif; font-size:34px; font-weight:600; letter-spacing:-0.02em; line-height:1; }
+.hp-card .counter .num em { font-style:italic; color:var(--gold); }
+.hp-card .counter .of { font-size:14px; color:var(--navy-3); font-weight:600; padding-bottom:4px; }
+.hp-card .bar { height:8px; background:var(--border); border-radius:100px; overflow:hidden; margin-bottom:12px; }
+.hp-card .bar .fill { height:100%; background:var(--green); }
+.hp-card .bar .fill.warn { background:var(--warn); }
+.hp-card .status-line { display:flex; justify-content:space-between; padding:6px 0; border-top:1px dashed var(--border); font-size:11px; }
+.hp-card .status-line:first-of-type { border-top:none; }
+.hp-card .status-line .l { color:var(--navy-3); }
+.hp-card .status-line .v { font-weight:700; color:var(--navy); }
+.hp-card .status-line .v.warn { color:var(--terra); }
+.hp-card .status-line .v.green { color:var(--green); }
+
+/* Checklist card */
+.checklist-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.cl-head { padding:14px 22px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.cl-head .info h5 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; }
+.cl-head .info h5 em { font-style:italic; color:var(--gold); }
+.cl-head .info .sub { font-size:10px; color:var(--navy-3); margin-top:2px; }
+.cl-head .pct { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.cl-head .pct em { font-style:italic; color:var(--gold); }
+.cl-table { display:grid; grid-template-columns:1fr; }
+.cl-row { display:grid; grid-template-columns:140px 1fr 90px 90px 80px; padding:11px 22px; gap:14px; border-bottom:1px solid var(--border); font-size:12px; align-items:center; }
+.cl-row:last-child { border-bottom:none; }
+.cl-row.header { background:var(--bg); padding:8px 22px; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.cl-row .student { display:flex; align-items:center; gap:8px; }
+.cl-row .student .av { width:28px; height:28px; border-radius:50%; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:10px; font-weight:700; }
+.cl-row .student .info .nm { font-weight:700; }
+.cl-row .student .info .sub { font-size:9px; color:var(--navy-3); }
+.cl-row .items { display:flex; gap:4px; flex-wrap:wrap; }
+.cl-pip { padding:2px 7px; border-radius:100px; font-size:9px; font-weight:600; letter-spacing:0.02em; }
+.cl-pip.ok { background:var(--green-bg); color:var(--green); }
+.cl-pip.missing { background:var(--terra-bg); color:var(--terra); }
+.cl-pip.partial { background:var(--warn-bg); color:var(--warn); }
+.cl-row .fee { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12px; }
+.cl-row .fee.owed { color:var(--terra); }
+.cl-row .fee.paid { color:var(--green); }
+.cl-row .bunk { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--navy-2); }
+.cl-row .action button { padding:5px 9px; font-size:10px; }
+
+/* Issues card */
+.issues-card { background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:12px; padding:18px 22px; }
+.issues-card .ic-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed var(--terra); }
+.issues-card .ic-head .info h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; }
+.issues-card .ic-head .info h4 em { font-style:italic; color:var(--terra); }
+.issues-card .ic-head .info .sub { font-size:11px; color:var(--navy-2); margin-top:3px; }
+.issues-card .ic-head .pill { background:var(--terra); color:var(--bg); padding:3px 10px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; }
+.issues-list { display:flex; flex-direction:column; gap:8px; }
+.issue { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; display:grid; grid-template-columns:80px 1fr 90px 100px; gap:14px; align-items:center; font-size:11px; }
+.issue .time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.issue .what { color:var(--navy-2); line-height:1.4; }
+.issue .what b { color:var(--navy); font-weight:700; }
+.issue .who { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.issue .action button { padding:4px 8px; font-size:9px; }
+
+/* Foot bar */
+.foot-bar { padding:20px 36px; background:var(--navy); color:var(--bg); display:grid; grid-template-columns:repeat(4, 1fr) auto; gap:24px; align-items:center; }
+.foot-stat .lab { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,212,184,0.6); font-weight:700; margin-bottom:3px; }
+.foot-stat .val { font-family:'Fraunces',serif; font-size:18px; font-weight:600; line-height:1; }
+.foot-stat .val em { font-style:italic; color:var(--gold); }
+.foot-stat .sub { font-size:10px; color:rgba(232,212,184,0.6); margin-top:3px; }
+
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Boarding batch · 03 of 07</div>
+  <span class="mvp-tag">SHS · Senior Housemaster + all HMs · live operations</span>
+  <span class="related-tag">The two chaos days of the school year · resumption &amp; vacation</span>
+  <h1 class="display">Resumption day <em>· 700 boarders, ten hours, one screen</em></h1>
+  <div class="gold-rule"></div>
+  <p>What happens twice a year, in nothing but chaos and paper at most SHSs: students arrive in waves, parents drop them, fees get checked, prospectus items get inspected, bunks get re-confirmed, and by 6 PM the school is full and the gate is closed. <b>This surface compresses that into one live view.</b> Live arrival counter, House-by-House progress, GES prospectus checklist per student, fee-owing flags, issues queue. <em>The Senior Housemaster watches; six Housemasters work the gate and the dorms.</em> The same surface flips on vacation day to run the inverse — sign-outs, room clear-outs, transport contact verification.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Resumption day · 3 May 2026 · live at 11:43 AM</div>
+    <div class="section-meta">Boarding → Operations → Resumption · Semester 2 2025/26</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / boarding / operations / resumption / 2026-05-03</div>
+        <div class="live-dot">LIVE · DAY IN PROGRESS</div>
+      </div>
+
+      <!-- Mode switch -->
+      <div class="mode-bar">
+        <div class="lab">DAY MODE</div>
+        <div class="mode-tabs">
+          <div class="mode-tab active">Resumption</div>
+          <div class="mode-tab">Vacation</div>
+        </div>
+        <div class="ctx"><b>Resumption</b> active until 6 PM today · same surface · same staff · vacation mode flips inverse</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Boarding &amp; residential life · Operations · Resumption day live</div>
+          <h2 class="display">Resumption · Semester 2 <em>· Sun 3 May 2026</em></h2>
+          <div class="lede">7 hours into the day · 423 of 712 boarders arrived (59%) · 71 fee-owing arrivals being processed · 8 prospectus shortfalls flagged · 2 transport delays reported · gate closes 6 PM, formal supper 6 PM, signing-in book closes at 6:30 PM</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Send arrival reminder SMS</button>
+          <button class="btn gold">Close gate at 6 PM</button>
+        </div>
+      </div>
+
+      <!-- Live counter -->
+      <div class="live-strip">
+        <div class="clock">
+          <div class="h">11:43</div>
+          <div class="l">AM · SUN</div>
+        </div>
+        <div class="center">
+          <div class="eb">DAY IN PROGRESS · 7 HOURS · 6 HOURS REMAINING</div>
+          <h3 class="display">Boarders arriving <em>· 423 of 712</em></h3>
+          <div class="sub"><b>59%</b> arrived · last arrival 11:38 AM (Slessor · Akua Boateng, F2) · current arrival rate <b>62 per hour</b> · projected gate-close arrival 95%</div>
+        </div>
+        <div class="right">
+          <div class="lab">Arrived this hour</div>
+          <div class="big display"><em>62</em></div>
+          <div class="sub"><b>Peak hour</b> 10—11 AM · 89 arrivals</div>
+        </div>
+      </div>
+
+      <!-- Arrival timeline by Form/window -->
+      <div class="timeline-card">
+        <div class="timeline-head">
+          <div>
+            <div class="eb">Scheduled arrival windows · staggered to spread the gate load</div>
+            <h3 class="display">Six windows <em>· 5 AM to 5 PM</em></h3>
+          </div>
+          <div class="meta">% ARRIVED · per window · live</div>
+        </div>
+        <div class="windows-row">
+          <div class="window done">
+            <div class="time">05:00 — 07:00</div>
+            <div class="who display">Form 3 <em>· all Houses</em></div>
+            <div class="arrived">238 / 240 · 99%</div>
+          </div>
+          <div class="window done">
+            <div class="time">07:00 — 09:00</div>
+            <div class="who display">Form 2 <em>· boys</em></div>
+            <div class="arrived">115 / 120 · 96%</div>
+          </div>
+          <div class="window active">
+            <div class="time">09:00 — 12:00</div>
+            <div class="who display">Form 2 <em>· girls</em></div>
+            <div class="arrived">70 / 120 · 58%</div>
+          </div>
+          <div class="window pending">
+            <div class="time">12:00 — 14:00</div>
+            <div class="who display">Form 1 <em>· boys</em></div>
+            <div class="arrived">0 / 116 · 0%</div>
+          </div>
+          <div class="window pending">
+            <div class="time">14:00 — 16:00</div>
+            <div class="who display">Form 1 <em>· girls</em></div>
+            <div class="arrived">0 / 116 · 0%</div>
+          </div>
+          <div class="window pending">
+            <div class="time">16:00 — 18:00</div>
+            <div class="who display">Late <em>· all forms</em></div>
+            <div class="arrived">— pending —</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- House progress grid -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">House-by-House arrival · each HM works their own dorm</div>
+              <h3 class="display">Six Houses <em>· each at its own pace</em></h3>
+            </div>
+            <div class="meta"><b>Form 3 Houses fill first</b> (5 — 7 AM) · Form 2 mid-morning · Form 1 afternoon · Late evening for stragglers</div>
+          </div>
+
+          <div class="house-progress-grid">
+
+            <div class="hp-card">
+              <div class="hp-band" style="background:#B43A2F;"></div>
+              <div class="hp-body">
+                <div class="hp-head">
+                  <div>
+                    <h4 class="display">Aggrey <em>House</em></h4>
+                    <div class="sub">Boys · Mr A. Mensah · 120 expected</div>
+                  </div>
+                  <div class="pill live">LIVE · 9—12</div>
+                </div>
+                <div class="counter">
+                  <div class="num display"><em>78</em></div>
+                  <div class="of">/ 120</div>
+                </div>
+                <div class="bar"><div class="fill" style="width:65%;"></div></div>
+                <div class="status-line"><span class="l">Form 3 complete</span><span class="v green">40 / 40</span></div>
+                <div class="status-line"><span class="l">Form 2 in progress</span><span class="v">38 / 40</span></div>
+                <div class="status-line"><span class="l">Form 1 pending</span><span class="v">0 / 40</span></div>
+                <div class="status-line"><span class="l">Fee shortfalls</span><span class="v warn">3 · being processed</span></div>
+              </div>
+            </div>
+
+            <div class="hp-card">
+              <div class="hp-band" style="background:#1A2B47;"></div>
+              <div class="hp-body">
+                <div class="hp-head">
+                  <div>
+                    <h4 class="display">Guggisberg <em>House</em></h4>
+                    <div class="sub">Boys · Mr E. Boakye · 120 expected</div>
+                  </div>
+                  <div class="pill live">LIVE · 9—12</div>
+                </div>
+                <div class="counter">
+                  <div class="num display"><em>77</em></div>
+                  <div class="of">/ 120</div>
+                </div>
+                <div class="bar"><div class="fill" style="width:64%;"></div></div>
+                <div class="status-line"><span class="l">Form 3 complete</span><span class="v green">39 / 40</span></div>
+                <div class="status-line"><span class="l">Form 2 in progress</span><span class="v">38 / 40</span></div>
+                <div class="status-line"><span class="l">Form 1 pending</span><span class="v">0 / 40</span></div>
+                <div class="status-line"><span class="l">Fee shortfalls</span><span class="v warn">2 · 1 home for collection</span></div>
+              </div>
+            </div>
+
+            <div class="hp-card">
+              <div class="hp-band" style="background:#2F6B47;"></div>
+              <div class="hp-body">
+                <div class="hp-head">
+                  <div>
+                    <h4 class="display">Fraser <em>House</em></h4>
+                    <div class="sub">Boys · Mr K. Owusu · 120 expected</div>
+                  </div>
+                  <div class="pill live">LIVE · 9—12</div>
+                </div>
+                <div class="counter">
+                  <div class="num display"><em>77</em></div>
+                  <div class="of">/ 120</div>
+                </div>
+                <div class="bar"><div class="fill" style="width:64%;"></div></div>
+                <div class="status-line"><span class="l">Form 3 complete</span><span class="v green">40 / 40</span></div>
+                <div class="status-line"><span class="l">Form 2 in progress</span><span class="v">37 / 40</span></div>
+                <div class="status-line"><span class="l">Form 1 pending</span><span class="v">0 / 40</span></div>
+                <div class="status-line"><span class="l">Fee shortfalls</span><span class="v">1 · processed 10:30</span></div>
+              </div>
+            </div>
+
+            <div class="hp-card">
+              <div class="hp-band" style="background:#FFFFFF; border-bottom:1px solid var(--border-2);"></div>
+              <div class="hp-body">
+                <div class="hp-head">
+                  <div>
+                    <h4 class="display">Slessor <em>House</em></h4>
+                    <div class="sub">Girls · Mrs G. Asante · 120 expected</div>
+                  </div>
+                  <div class="pill live">LIVE · 9—12</div>
+                </div>
+                <div class="counter">
+                  <div class="num display"><em>64</em></div>
+                  <div class="of">/ 120</div>
+                </div>
+                <div class="bar"><div class="fill warn" style="width:53%;"></div></div>
+                <div class="status-line"><span class="l">Form 3 complete</span><span class="v green">40 / 40</span></div>
+                <div class="status-line"><span class="l">Form 2 in progress</span><span class="v warn">24 / 40 · slower</span></div>
+                <div class="status-line"><span class="l">Form 1 pending</span><span class="v">0 / 40</span></div>
+                <div class="status-line"><span class="l">Fee shortfalls</span><span class="v warn">5 · highest in school</span></div>
+              </div>
+            </div>
+
+            <div class="hp-card">
+              <div class="hp-band" style="background:#E5C44A;"></div>
+              <div class="hp-body">
+                <div class="hp-head">
+                  <div>
+                    <h4 class="display">Kingsley <em>House</em></h4>
+                    <div class="sub">Girls · Mrs Y. Akoto · 120 expected</div>
+                  </div>
+                  <div class="pill live">LIVE · 9—12</div>
+                </div>
+                <div class="counter">
+                  <div class="num display"><em>65</em></div>
+                  <div class="of">/ 120</div>
+                </div>
+                <div class="bar"><div class="fill warn" style="width:54%;"></div></div>
+                <div class="status-line"><span class="l">Form 3 complete</span><span class="v green">40 / 40</span></div>
+                <div class="status-line"><span class="l">Form 2 in progress</span><span class="v">25 / 40</span></div>
+                <div class="status-line"><span class="l">Form 1 pending</span><span class="v">0 / 40</span></div>
+                <div class="status-line"><span class="l">Fee shortfalls</span><span class="v">2 · being processed</span></div>
+              </div>
+            </div>
+
+            <div class="hp-card">
+              <div class="hp-band" style="background:#9B6FAA;"></div>
+              <div class="hp-body">
+                <div class="hp-head">
+                  <div>
+                    <h4 class="display">Aryee <em>House</em></h4>
+                    <div class="sub">Girls · Mrs J. Ofori · 120 expected</div>
+                  </div>
+                  <div class="pill live">LIVE · 9—12</div>
+                </div>
+                <div class="counter">
+                  <div class="num display"><em>62</em></div>
+                  <div class="of">/ 120</div>
+                </div>
+                <div class="bar"><div class="fill warn" style="width:52%;"></div></div>
+                <div class="status-line"><span class="l">Form 3 complete</span><span class="v green">39 / 40</span></div>
+                <div class="status-line"><span class="l">Form 2 in progress</span><span class="v">23 / 40</span></div>
+                <div class="status-line"><span class="l">Form 1 pending</span><span class="v">0 / 40</span></div>
+                <div class="status-line"><span class="l">Fee shortfalls</span><span class="v warn">3 · 1 transport delay</span></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Live arrivals · checklist -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Last 8 arrivals · GES prospectus checklist + fee verification + bunk confirmation</div>
+              <h3 class="display">Live arrivals · <em>Aryee &amp; Aggrey gate</em></h3>
+            </div>
+            <div class="meta"><b>Each row</b> represents the gate-check completed in front of the HM · 6 items to verify · about 90 seconds per student</div>
+          </div>
+
+          <div class="checklist-card">
+            <div class="cl-head">
+              <div class="info">
+                <h5 class="display">GES Prospectus 2025/26 <em>· 6 inspection points + fees + bunk</em></h5>
+                <div class="sub">Chop box · Mattress · Mackintosh · Mosquito net · Bucket · Bible/Quran · plus fees clear + bunk confirmed</div>
+              </div>
+              <div class="pct display"><em>94%</em></div>
+            </div>
+            <div class="cl-table">
+              <div class="cl-row header">
+                <div>Student</div>
+                <div>Prospectus items</div>
+                <div>Fees</div>
+                <div>Bunk</div>
+                <div>—</div>
+              </div>
+
+              <div class="cl-row">
+                <div class="student">
+                  <div class="av">JM</div>
+                  <div class="info"><div class="nm">J. Manu</div><div class="sub">F2 GA A · Aggrey</div></div>
+                </div>
+                <div class="items">
+                  <div class="cl-pip ok">CHOP</div>
+                  <div class="cl-pip ok">MATTRESS</div>
+                  <div class="cl-pip ok">MAC</div>
+                  <div class="cl-pip ok">NET</div>
+                  <div class="cl-pip ok">BUCKET</div>
+                  <div class="cl-pip ok">BIBLE</div>
+                </div>
+                <div class="fee paid">CLEAR</div>
+                <div class="bunk">D-03</div>
+                <div class="action"><button class="btn">View</button></div>
+              </div>
+
+              <div class="cl-row">
+                <div class="student">
+                  <div class="av">PO</div>
+                  <div class="info"><div class="nm">Prince Otoo</div><div class="sub">F2 GA A · Aggrey</div></div>
+                </div>
+                <div class="items">
+                  <div class="cl-pip ok">CHOP</div>
+                  <div class="cl-pip ok">MATTRESS</div>
+                  <div class="cl-pip ok">MAC</div>
+                  <div class="cl-pip ok">NET</div>
+                  <div class="cl-pip ok">BUCKET</div>
+                  <div class="cl-pip ok">BIBLE</div>
+                </div>
+                <div class="fee paid">CLEAR</div>
+                <div class="bunk">D-10</div>
+                <div class="action"><button class="btn">View</button></div>
+              </div>
+
+              <div class="cl-row">
+                <div class="student">
+                  <div class="av">AK</div>
+                  <div class="info"><div class="nm">A. Kufuor</div><div class="sub">F3 BUS · Aggrey</div></div>
+                </div>
+                <div class="items">
+                  <div class="cl-pip ok">CHOP</div>
+                  <div class="cl-pip ok">MATTRESS</div>
+                  <div class="cl-pip missing">MAC</div>
+                  <div class="cl-pip ok">NET</div>
+                  <div class="cl-pip ok">BUCKET</div>
+                  <div class="cl-pip ok">BIBLE</div>
+                </div>
+                <div class="fee paid">CLEAR</div>
+                <div class="bunk">A-08</div>
+                <div class="action"><button class="btn">Note</button></div>
+              </div>
+
+              <div class="cl-row">
+                <div class="student">
+                  <div class="av">EA</div>
+                  <div class="info"><div class="nm">E. Asare</div><div class="sub">F2 GS · Aryee</div></div>
+                </div>
+                <div class="items">
+                  <div class="cl-pip ok">CHOP</div>
+                  <div class="cl-pip ok">MATTRESS</div>
+                  <div class="cl-pip ok">MAC</div>
+                  <div class="cl-pip ok">NET</div>
+                  <div class="cl-pip ok">BUCKET</div>
+                  <div class="cl-pip ok">BIBLE</div>
+                </div>
+                <div class="fee owed">GHS 340.00</div>
+                <div class="bunk">F-05</div>
+                <div class="action"><button class="btn">Process</button></div>
+              </div>
+
+              <div class="cl-row">
+                <div class="student">
+                  <div class="av">AG</div>
+                  <div class="info"><div class="nm">Akua Gyamfi</div><div class="sub">F2 GA A · Slessor</div></div>
+                </div>
+                <div class="items">
+                  <div class="cl-pip ok">CHOP</div>
+                  <div class="cl-pip ok">MATTRESS</div>
+                  <div class="cl-pip ok">MAC</div>
+                  <div class="cl-pip ok">NET</div>
+                  <div class="cl-pip ok">BUCKET</div>
+                  <div class="cl-pip ok">BIBLE</div>
+                </div>
+                <div class="fee paid">CLEAR</div>
+                <div class="bunk">B-04</div>
+                <div class="action"><button class="btn">View</button></div>
+              </div>
+
+              <div class="cl-row">
+                <div class="student">
+                  <div class="av">KB</div>
+                  <div class="info"><div class="nm">K. Boateng</div><div class="sub">F3 BUS · Aggrey · Sanitation</div></div>
+                </div>
+                <div class="items">
+                  <div class="cl-pip ok">CHOP</div>
+                  <div class="cl-pip ok">MATTRESS</div>
+                  <div class="cl-pip ok">MAC</div>
+                  <div class="cl-pip ok">NET</div>
+                  <div class="cl-pip ok">BUCKET</div>
+                  <div class="cl-pip ok">BIBLE</div>
+                </div>
+                <div class="fee paid">CLEAR</div>
+                <div class="bunk">C-01</div>
+                <div class="action"><button class="btn">View</button></div>
+              </div>
+
+              <div class="cl-row">
+                <div class="student">
+                  <div class="av">YA</div>
+                  <div class="info"><div class="nm">Y. Asante</div><div class="sub">F2 GA · Kingsley</div></div>
+                </div>
+                <div class="items">
+                  <div class="cl-pip ok">CHOP</div>
+                  <div class="cl-pip partial">MATTRESS</div>
+                  <div class="cl-pip ok">MAC</div>
+                  <div class="cl-pip missing">NET</div>
+                  <div class="cl-pip ok">BUCKET</div>
+                  <div class="cl-pip ok">BIBLE</div>
+                </div>
+                <div class="fee owed">GHS 215.00</div>
+                <div class="bunk">D-12</div>
+                <div class="action"><button class="btn">Process</button></div>
+              </div>
+
+              <div class="cl-row">
+                <div class="student">
+                  <div class="av">AB</div>
+                  <div class="info"><div class="nm">A. Boateng</div><div class="sub">F2 GS · Slessor</div></div>
+                </div>
+                <div class="items">
+                  <div class="cl-pip ok">CHOP</div>
+                  <div class="cl-pip ok">MATTRESS</div>
+                  <div class="cl-pip ok">MAC</div>
+                  <div class="cl-pip ok">NET</div>
+                  <div class="cl-pip ok">BUCKET</div>
+                  <div class="cl-pip ok">BIBLE</div>
+                </div>
+                <div class="fee paid">CLEAR</div>
+                <div class="bunk">A-07</div>
+                <div class="action"><button class="btn">View</button></div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Issues queue -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Issues queue · live · Senior HM resolves or escalates</div>
+              <h3 class="display">Things needing <em>Mrs Asare's attention</em></h3>
+            </div>
+            <div class="actions">
+              <button class="btn ghost">Filter by House</button>
+              <button class="btn">All issues (8)</button>
+            </div>
+          </div>
+
+          <div class="issues-card">
+            <div class="ic-head">
+              <div class="info">
+                <h4 class="display">8 open issues <em>· 2 transport, 5 prospectus shortfall, 1 unaccounted</em></h4>
+                <div class="sub">Surfaced by HM staff at the gate · routed to Senior HM for decision · resolved or escalated within the hour</div>
+              </div>
+              <div class="pill">SENIOR HM</div>
+            </div>
+            <div class="issues-list">
+
+              <div class="issue">
+                <div class="time">11:38</div>
+                <div class="what"><b>F. Tetteh</b> · F3 GS · Aggrey · transport delayed STC Kumasi—Asankrangwa · ETA 1 PM · parent phoned · <b>HM Mr Mensah aware</b></div>
+                <div class="who">MR MENSAH</div>
+                <div class="action"><button class="btn">Hold bunk</button></div>
+              </div>
+
+              <div class="issue">
+                <div class="time">11:24</div>
+                <div class="what"><b>L. Vroom</b> · F2 GA · Aryee · arrived without mosquito net · parent on phone agreeing to bring tonight · <b>permitted in</b> · note logged</div>
+                <div class="who">MRS OFORI</div>
+                <div class="action"><button class="btn">Accept note</button></div>
+              </div>
+
+              <div class="issue">
+                <div class="time">11:12</div>
+                <div class="what"><b>E. Asare</b> · F2 GS · Aryee · fee shortfall GHS 340.00 · mother present, will pay by mobile money before 6 PM · <b>conditional admission granted</b></div>
+                <div class="who">MRS OFORI</div>
+                <div class="action"><button class="btn">Track</button></div>
+              </div>
+
+              <div class="issue">
+                <div class="time">10:51</div>
+                <div class="what"><b>HH. Roberts</b> · F2 GA · Slessor · expected 9:30, unaccounted at 10:30, no parent contact · <b>Senior HM SMS sent</b> · F2 Form Master notified</div>
+                <div class="who">SENIOR HM</div>
+                <div class="action"><button class="btn terra">Escalate</button></div>
+              </div>
+
+              <div class="issue">
+                <div class="time">09:47</div>
+                <div class="what"><b>A. Quartey</b> · F3 GA · Slessor · arrived with documented social services follow-up note from Easter break · <b>Dean of Students alerted</b> · case file open</div>
+                <div class="who">DEAN</div>
+                <div class="action"><button class="btn">Open file</button></div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Foot bar -->
+      <div class="foot-bar">
+        <div class="foot-stat">
+          <div class="lab">Arrived so far</div>
+          <div class="val display"><em>423</em> / 712</div>
+          <div class="sub">59% · ahead of 2024 pace by 6%</div>
+        </div>
+        <div class="foot-stat">
+          <div class="lab">Fee-owing arrivals</div>
+          <div class="val display"><em>71</em></div>
+          <div class="sub">61 cleared · 10 in progress</div>
+        </div>
+        <div class="foot-stat">
+          <div class="lab">Prospectus shortfalls</div>
+          <div class="val display"><em>8</em> flagged</div>
+          <div class="sub">All conditional · followups logged</div>
+        </div>
+        <div class="foot-stat">
+          <div class="lab">Time to gate close</div>
+          <div class="val display"><em>6</em> hr 17 min</div>
+          <div class="sub">6 PM · supper at 6:30</div>
+        </div>
+        <div><button class="btn gold">End resumption · close gate</button></div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What this surface replaces</h4>
+      <ul>
+        <li><b>A clipboard.</b> Every previous resumption day at most SHSs is run on a printed roster with HM and parent both signing each entry. By 6 PM, the clipboard is illegible and the next morning the data is being keyed in manually.</li>
+        <li><b>A WhatsApp group.</b> The Senior HM coordinates HMs by phone calls and screenshots. Issues are tracked nowhere.</li>
+        <li><b>The fee desk queue.</b> Accountants &amp; HMs duplicate effort. This surface puts the fee status on the same row as the prospectus row.</li>
+      </ul>
+      <h4 style="margin-top:24px;">The 90-second gate check</h4>
+      <ul>
+        <li><b>HM scans student ID badge</b> · pulls up the row · GES prospectus 6 items + fee status + bunk all visible</li>
+        <li><b>Tap to mark each item</b> · ok / partial / missing</li>
+        <li><b>Fee status from billing</b> · pulled live · no manual cross-check</li>
+        <li><b>Bunk auto-confirmed</b> · student walks to their bunk · HM moves to next student</li>
+        <li><b>SMS to parent</b> · "[Student] safely arrived at [School]. Items checked. Welcome back."</li>
+      </ul>
+      <h4 style="margin-top:24px;">Vacation day · the same surface inverse</h4>
+      <ul>
+        <li><b>Mode flip:</b> "arriving" becomes "departing"</li>
+        <li><b>Different checklist:</b> bunk-cleared, locker emptied, chop box collected, transport contact verified, exeat-card returned</li>
+        <li><b>SMS:</b> "[Student] has departed [School] for vacation. Safe travels."</li>
+        <li><b>Final state:</b> all 712 students checked out · House cleaned · doors locked · keys to Senior HM</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why one day matters more than fifty</div>
+    <div class="section-meta">Editorial · the chaos day as design challenge</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The two-days-a-year surface</div>
+        <h3 class="display">A surface used <em>twice a year</em> · and worth designing harder than any other.</h3>
+        <p>Most surfaces in this codebase get used daily — attendance, prep, inspection, the VLC session. Boarding's exeat surface, monthly. Discipline, weekly. The dashboards, daily. But resumption-day operations is used precisely <em>two days per academic year</em>: once at start-of-term and once at the inverse, end-of-term vacation. <em>Why give a low-frequency surface this much design attention?</em></p>
+        <p>Because the consequences of getting those two days wrong are larger than any other twenty days combined. On a normal Tuesday, if attendance is mis-marked for one student, the system absorbs it — the next morning, someone notices, someone fixes it. <b>On resumption day, if a student isn't checked in correctly, the school doesn't know whether they're missing.</b> If a fee-owing student is admitted without follow-up, the school's revenue loss compounds. If a prospectus shortfall isn't logged, the student spends the term with the wrong bedding, mosquitoes get in, malaria follows. If transport delay isn't flagged with name attached, the parent isn't called, and the student's grandfather is sitting at the gate for three hours wondering where to ask.</p>
+        <p>The design pattern this surface uses is what we've called <em>compression of a chaotic day into a single screen</em>. Senior HM doesn't navigate between four tabs. The arrival counter, the per-House progress, the per-student checklist, and the issues queue are all on one page, and they auto-refresh. The HMs at the six gate stations all run their own version of the same surface scoped to their House, but they see the school-wide totals at the top. <b>One source of truth, six staff members operating against it simultaneously, no merge conflicts.</b></p>
+        <p>Two design decisions worth defending. <b>The arrival windows are configurable but defaulted.</b> Forms 3 first (5—7 AM), Forms 2 next, Forms 1 last. This is what most SHSs already do — staggered windows spread the gate load — and it's what the surface assumes unless edited. Schools that do single-window mass arrival can edit the windows to overlap, but they'll see the gate-load consequences in the next column. <em>The default encodes the better practice.</em></p>
+        <p><b>The same surface flips on vacation day, with mode toggling everything.</b> Not two separate surfaces. The same data model, the same staff, the same six gate stations, the same checklist (inverted: bunk cleared instead of bunk confirmed; transport contact verified instead of arrival logged). One surface to learn, two days to use it, every operational year of every Senior Housemaster's career. <em>Symmetry isn't laziness — it's mercy on the user.</em> A surface used twice a year would be re-learned every time if it had no continuity with the surfaces used daily. By matching the pattern of the daily life surface, resumption day feels less like a different planet.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The numbers that drove the design</h4>
+      <ul>
+        <li><b>712 boarders ÷ ~10 hours = 71 per hour throughput.</b> At 90 seconds per student per HM, six HMs working in parallel handle 240 per hour. Headroom built in.</li>
+        <li><b>Gate-close at 6 PM is hard.</b> Supper is at 6:30. The signing-in book closes at 6:30. Past 6:30, students are "absent for resumption" and parents are SMS'd by Senior HM.</li>
+        <li><b>The unaccounted-at-window bell rings 60 minutes after a window closes.</b> HH. Roberts arrived after 10:30; she was due 9:30; the SMS to parent fires automatically.</li>
+      </ul>
+      <h4 style="margin-top:24px;">Cross-batch cameo</h4>
+      <ul>
+        <li><b>J. Manu arrived at 8:14 AM</b> in the Form 2 boys window. Mother dropped him. Prospectus clean, fees clear, bunk D-03 confirmed. <em>His pastoral case is held; his boarding is held; the surfaces stay quiet because nothing about boarding has changed for him.</em></li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

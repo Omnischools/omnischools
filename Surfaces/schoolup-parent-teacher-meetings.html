@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Parent-teacher meetings</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:980px; }
+.brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar-footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar-footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar-footer .meta-name { font-weight:600; }
+.sidebar-footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:680px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.body { padding:28px 36px 60px; }
+
+/* Hero card with two flavours */
+.flavours-hero { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:24px; }
+.flavour-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.flavour-card.left { border-color:var(--gold); border-width:1.5px; }
+.flavour-card .head { padding:18px 22px; border-bottom:1px solid var(--border); }
+.flavour-card.left .head { background:var(--gold-bg); border-bottom-color:var(--gold-soft); }
+.flavour-card .head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; margin-bottom:4px; }
+.flavour-card.left .head .eb { color:var(--gold); }
+.flavour-card .head .eb { color:var(--navy-3); }
+.flavour-card .head h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; line-height:1.2; }
+.flavour-card .head h3 em { font-style:italic; color:var(--gold); }
+.flavour-card .body-card { padding:18px 22px; }
+.flavour-card .scenario { font-size:13px; color:var(--navy-2); line-height:1.6; margin-bottom:12px; }
+.flavour-card .scenario b { color:var(--navy); font-weight:600; }
+.flavour-card ul { list-style:none; margin-top:8px; }
+.flavour-card ul li { font-size:12px; color:var(--navy-2); padding:5px 0 5px 18px; position:relative; line-height:1.5; }
+.flavour-card ul li::before { content:"·"; position:absolute; left:6px; color:var(--gold); font-weight:700; font-size:18px; line-height:1; }
+.flavour-card ul li b { color:var(--navy); font-weight:600; }
+.flavour-card .footer-row { padding:12px 22px; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--navy-3); }
+.flavour-card .footer-row b { color:var(--navy-2); font-weight:600; }
+
+/* Region structure */
+.region { margin-bottom:36px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Configurator panel */
+.config-grid { display:grid; grid-template-columns:1fr 380px; gap:18px; }
+.config-form { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.form-section { padding:18px 22px; border-bottom:1px solid var(--border); }
+.form-section:last-child { border-bottom:none; }
+.form-section h4 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; margin-bottom:4px; letter-spacing:-0.005em; }
+.form-section .desc { font-size:11px; color:var(--navy-3); margin-bottom:14px; line-height:1.5; }
+.form-section .desc b { color:var(--navy-2); font-weight:600; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-row.three { grid-template-columns:1fr 1fr 1fr; }
+.form-field { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:9px 12px; }
+.form-field .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:4px; }
+.form-field .val { font-size:13px; color:var(--navy); font-weight:500; }
+.form-field .val em { font-style:italic; color:var(--gold); }
+.teacher-select { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.teacher-pill { padding:6px 11px; border-radius:100px; font-size:11px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy-2); display:inline-flex; align-items:center; gap:6px; }
+.teacher-pill.on { background:var(--gold); color:var(--navy); border-color:var(--gold); }
+.teacher-pill .av { width:18px; height:18px; border-radius:50%; background:rgba(255,255,255,0.5); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:9px; color:var(--navy); }
+.teacher-pill.on .av { background:rgba(26,43,71,0.15); }
+
+/* Preview panel */
+.preview-panel { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:12px; overflow:hidden; }
+.preview-panel .head { padding:14px 18px; border-bottom:1px solid var(--gold-soft); }
+.preview-panel .head .eb { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.preview-panel .head h4 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-top:3px; letter-spacing:-0.005em; }
+.preview-panel .head h4 em { font-style:italic; color:var(--gold); }
+.preview-panel .body-p { padding:16px 18px; }
+.preview-panel .stat-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+.preview-panel .pstat { background:var(--surface); border:1px solid var(--gold-soft); border-radius:8px; padding:11px 14px; }
+.preview-panel .pstat .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.preview-panel .pstat .val { font-family:'Fraunces',serif; font-size:22px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; margin-top:3px; }
+.preview-panel .pstat .val em { font-style:italic; color:var(--gold); }
+.preview-panel .pstat .sub { font-size:10px; color:var(--navy-3); margin-top:2px; }
+.preview-panel .narration { font-size:12px; color:var(--navy-2); line-height:1.6; padding:12px 14px; background:var(--surface); border-radius:8px; border:1px solid var(--gold-soft); }
+.preview-panel .narration b { color:var(--navy); font-weight:600; }
+.preview-panel .narration em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+
+.save-bar { background:var(--navy); color:var(--bg); padding:14px 22px; display:flex; justify-content:space-between; align-items:center; border-radius:0 0 12px 12px; }
+.save-bar .left { font-size:12px; color:rgba(250,247,242,0.7); }
+.save-bar .left b { color:var(--bg); font-weight:600; }
+.save-bar .right { display:flex; gap:8px; }
+
+/* Phone mockup */
+.phone-stage { background:linear-gradient(180deg, #2D3F5C 0%, #1A2B47 100%); border-radius:14px; padding:36px 24px; display:grid; grid-template-columns:1fr 380px 1fr; gap:18px; align-items:start; }
+.phone-frame { width:380px; background:var(--surface); border-radius:34px; padding:14px 8px; box-shadow:0 24px 60px -20px rgba(0,0,0,0.5); border:8px solid #1a1a1a; position:relative; }
+.phone-notch { position:absolute; top:14px; left:50%; transform:translateX(-50%); width:120px; height:18px; background:#1a1a1a; border-radius:0 0 14px 14px; }
+.phone-screen { background:var(--bg); border-radius:24px; overflow:hidden; min-height:680px; padding-top:34px; }
+.phone-status { display:flex; justify-content:space-between; padding:0 20px 6px; font-size:11px; font-weight:600; color:var(--navy); }
+.phone-content { padding:14px 18px 22px; }
+
+.sms-bubble { background:var(--surface); border-radius:14px; padding:14px 16px; margin-bottom:12px; max-width:88%; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.sms-bubble .meta { font-size:10px; color:var(--navy-3); margin-bottom:6px; font-weight:600; letter-spacing:0.04em; }
+.sms-bubble .meta b { color:var(--navy-2); }
+.sms-bubble .content { font-size:13px; color:var(--navy); line-height:1.55; }
+.sms-bubble .content b { font-weight:600; }
+.sms-bubble.outgoing { background:var(--gold-bg); border:1px solid var(--gold-soft); margin-left:auto; }
+.sms-bubble.outgoing .meta { color:var(--gold); }
+
+.phone-label { color:var(--gold-soft); font-size:11px; font-weight:600; letter-spacing:0.04em; padding-top:24px; }
+.phone-label h4 { font-family:'Fraunces',serif; font-style:italic; font-size:14px; color:var(--gold); font-weight:500; margin-bottom:6px; letter-spacing:-0.005em; }
+.phone-label p { color:rgba(250,247,242,0.65); line-height:1.55; font-size:11px; font-style:italic; }
+.phone-label p b { color:var(--bg); font-weight:600; font-style:normal; }
+
+/* Slot selector */
+.slot-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+.slot-btn { background:var(--surface); border:1px solid var(--border-2); border-radius:8px; padding:10px 12px; text-align:left; cursor:pointer; }
+.slot-btn.taken { background:var(--bg); color:var(--navy-3); border-style:dashed; }
+.slot-btn.selected { background:var(--gold); color:var(--navy); border-color:var(--gold); }
+.slot-btn .time { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; }
+.slot-btn .label { font-size:10px; margin-top:2px; opacity:0.75; }
+.slot-btn.taken .label { font-style:italic; }
+
+/* Teacher day view */
+.day-card { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; }
+.day-head { background:var(--navy); color:var(--bg); padding:18px 22px; display:flex; justify-content:space-between; align-items:center; }
+.day-head .left h3 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; letter-spacing:-0.01em; }
+.day-head .left h3 em { font-style:italic; color:var(--gold); }
+.day-head .left .meta { font-size:11px; color:rgba(250,247,242,0.65); margin-top:2px; }
+.day-head .left .meta b { color:var(--gold-soft); font-weight:600; }
+.day-head .stats { display:flex; gap:24px; }
+.day-head .stat { text-align:right; }
+.day-head .stat .val { font-family:'Fraunces',serif; font-size:22px; font-weight:500; line-height:1; }
+.day-head .stat .val em { font-style:italic; color:var(--gold); }
+.day-head .stat .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; margin-top:4px; }
+
+.timeline-row { display:grid; grid-template-columns:90px 1fr 140px; gap:16px; padding:14px 22px; border-bottom:1px solid var(--border); align-items:center; }
+.timeline-row:last-child { border-bottom:none; }
+.timeline-row.now { background:var(--gold-bg); border-left:3px solid var(--gold); padding-left:19px; }
+.timeline-row.no-show { background:var(--terra-bg); }
+.timeline-row.done { opacity:0.65; }
+.tl-time { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.tl-time .end { font-size:10px; color:var(--navy-3); font-weight:400; margin-top:2px; }
+.tl-parent { display:flex; gap:11px; align-items:center; }
+.tl-parent .av { width:34px; height:34px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; }
+.tl-parent .info .name { font-size:13px; font-weight:600; color:var(--navy); }
+.tl-parent .info .student { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.tl-parent .info .student b { color:var(--navy-2); font-weight:600; }
+.tl-parent .info .topic { font-size:11px; color:var(--gold); margin-top:3px; font-style:italic; }
+.tl-status { text-align:right; }
+.tl-status .badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.tl-status .badge.now { background:var(--gold); color:var(--navy); }
+.tl-status .badge.next { background:var(--surface); color:var(--navy-2); border:1px solid var(--border-2); }
+.tl-status .badge.done { background:var(--green-bg); color:var(--green); }
+.tl-status .badge.no-show { background:var(--terra-bg); color:var(--terra); }
+.tl-status .badge .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.tl-status .sub { font-size:10px; color:var(--navy-3); margin-top:4px; font-style:italic; }
+.tl-status .sub b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Walk-in card */
+.walkin-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:14px 18px; margin-top:14px; display:flex; align-items:center; gap:14px; }
+.walkin-card .ic { width:32px; height:32px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; flex-shrink:0; }
+.walkin-card .text { flex:1; font-size:12px; color:var(--navy-2); line-height:1.5; }
+.walkin-card .text b { color:var(--navy); font-weight:600; }
+.walkin-card .actions-row { display:flex; gap:6px; }
+
+/* Editorial card */
+.principle-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:20px; }
+.principle-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.principle-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.principle-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.principle-card p b { color:var(--navy); font-weight:600; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Forms/PTA batch · 06 of 06 · refactored in place</div>
+  <span class="mvp-tag">PT meetings · 1-on-1</span>
+  <span style="display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); margin-left:4px;">SHS multi-role · cross-linked to PTA</span>
+  <h1 class="display">Visiting day, <em>organised</em></h1>
+  <div class="gold-rule"></div>
+  <p>One parent. One teacher. One child. <b>That's a parent-teacher meeting.</b> Termly results discussion with the Form Master; an ad-hoc call about a recent test mark; Visiting Day slot allocation across 8 teachers and 47 parents. This surface handles all three flavours — and respects the SMS-first parent reality where the booking link itself is the SMS. <em>What it doesn't handle is group PTA governance</em> · for that, see the four-tier PTA module (Form / House / General / Emergency) shipped earlier in this batch.</p>
+</header>
+
+<div style="background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-radius:14px; padding:26px 32px; margin-bottom:56px; display:grid; grid-template-columns:1fr 1fr; gap:0;">
+  <div style="border-right:1px solid var(--gold-soft); padding-right:28px;">
+    <div style="display:inline-flex; align-items:center; gap:6px; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px;"><span style="width:7px; height:7px; border-radius:50%; background:var(--gold);"></span>You're on this surface · PT meetings</div>
+    <h3 class="display" style="font-size:22px; font-weight:600; margin-bottom:10px; line-height:1.2;">Individual <em style="font-style:italic; color:var(--gold); font-weight:500;">conversations</em></h3>
+    <p style="font-size:13px; color:var(--navy-2); line-height:1.65; margin-bottom:12px;"><b>One parent, one teacher, one child.</b> Termly results review, an ad-hoc concern, Visiting Day slot booking. The Form Master is auto-suggested because the system knows the child's class — but any teacher who's taught the child can be requested.</p>
+    <div style="font-size:11px; color:var(--navy-3); line-height:1.55;"><b style="color:var(--navy-2); font-weight:600;">Examples:</b> "Akosua's father wants to discuss her test scores" · "Visiting Day · 47 parents across 8 teachers" · "Mrs Owusu called about her son's behaviour change"</div>
+  </div>
+  <div style="padding-left:28px;">
+    <div style="display:inline-flex; align-items:center; gap:6px; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px;"><span style="width:7px; height:7px; border-radius:50%; background:var(--navy-3);"></span>Looking for the other thing? · PTA meetings</div>
+    <h3 class="display" style="font-size:22px; font-weight:600; margin-bottom:10px; line-height:1.2; color:var(--navy);">Group <em style="font-style:italic; color:var(--gold); font-weight:500;">governance</em></h3>
+    <p style="font-size:13px; color:var(--navy-2); line-height:1.65; margin-bottom:12px;"><b>Many parents, formal officers, agenda, minutes, sometimes dues.</b> Form PTA / House PTA / General PTA / Emergency PTA. Four tiers, four conversations. Lives in the PTA module — five separate surfaces, separate workflows, separate accountability.</p>
+    <div style="font-size:11px; color:var(--navy-3); line-height:1.55; margin-bottom:10px;"><b style="color:var(--navy-2); font-weight:600;">Examples:</b> "Form 2 GA A PTA quarterly meeting" · "General PTA AGM with officer elections" · "Emergency PTA · dormitory incident" · "House PTA · Visiting Day briefing"</div>
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--gold);"><span style="border-bottom:1px solid var(--gold); padding-bottom:1px;">Open PTA module →</span></div>
+  </div>
+</div>
+
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 24px; margin-bottom:56px; display:flex; align-items:center; gap:14px;">
+  <div style="width:36px; height:36px; border-radius:8px; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; flex-shrink:0;">↻</div>
+  <div style="flex:1; font-size:12px; color:var(--navy-2); line-height:1.55;"><b style="color:var(--navy); font-weight:700;">What changed in this refactor:</b> clearer separation from PTA governance (the banner above); multi-role staff awareness — for a Form 2 GA A parent meeting, the system auto-suggests <b>Mr Mensah as Form Master</b> rather than as "Maths teacher" because the Form Master is the primary class contact; "did you mean PTA?" disambiguation when an admin types phrases like "convene parents" or "class meeting"; SMS templates updated to use the new SMS-only school name (no "School" / "Basic School" / "SHS" suffix). <em style="font-style:italic; color:var(--gold);">The two-flavours model (Visiting Day + ad-hoc) is unchanged — that's still the right shape for individual conversations.</em></div>
+</div>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Two flavours · one calendar surface</div>
+    <div class="section-meta">Visiting day vs ad-hoc · capability split</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="flavours-hero">
+
+        <div class="flavour-card left">
+          <div class="head">
+            <div class="eb">Flavour 01 · the structured</div>
+            <h3 class="display">Visiting day · <em>slots, queue, parents en masse</em></h3>
+          </div>
+          <div class="body-card">
+            <div class="scenario">
+              <b>Christ the King JHS holds a visiting day on the last Saturday of every term.</b> 312 students, 47 parents typically attend, 8 teachers participating across two halls. Without structure: chaos in the corridor.
+            </div>
+            <ul>
+              <li>Admin sets up the event · <b>date, hall layout, slot length, participating teachers</b></li>
+              <li>System auto-generates slots and <b>SMS invites parents</b> with their pre-assigned slot or a booking link</li>
+              <li>Parents can <b>swap to another open slot</b> via SMS reply — no app needed</li>
+              <li>Teachers see their day-of timetable; queue manages itself</li>
+              <li>Walk-ins (parents without bookings) join a separate queue</li>
+            </ul>
+          </div>
+          <div class="footer-row">
+            <div>Used <b>3-4× per year</b> · termly cadence</div>
+            <div>SMS-first booking</div>
+          </div>
+        </div>
+
+        <div class="flavour-card">
+          <div class="head">
+            <div class="eb">Flavour 02 · the conversational</div>
+            <h3 class="display">Ad-hoc · <em>parent has a concern</em></h3>
+          </div>
+          <div class="body-card">
+            <div class="scenario">
+              <b>Akosua's mother wants to talk to her teacher about her recent test result.</b> She calls the school. Or she replies to a Omnischools SMS. Either way, the school needs a way to schedule a 20-minute slot with the right teacher without ad-hoc phone tag.
+            </div>
+            <ul>
+              <li>Parent <b>requests a meeting via SMS reply</b> (or admin logs the call)</li>
+              <li>Admin or teacher sees the request · <b>proposes 2-3 time options</b></li>
+              <li>Parent picks one via SMS · <b>confirmed</b></li>
+              <li>Reminder SMS day-before · meeting happens · notes captured in student record</li>
+            </ul>
+          </div>
+          <div class="footer-row">
+            <div>Used <b>weekly</b> · responsive cadence</div>
+            <div>SMS conversation pattern</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Why two flavours, not one</div>
+        <p>A single "calendar app" surface would force visiting-day chaos through an ad-hoc-shaped pipe (or vice versa). The reality is that <em>parent-teacher meetings have two distinct rhythms</em> in Ghanaian basic schools: the termly event and the as-needed conversation. <b>The same backend, two front-end shapes</b> — admin learns one configuration surface and one inbox; parents see one SMS pattern that adapts to either flavour.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>Visiting day cadence is <b>termly, predictable</b> — it earns a configured event with all the rails. Ad-hoc cadence is <b>weekly, responsive</b> — it earns a lightweight conversation pattern. Not the same shape, deliberately.</li>
+        <li>The flavours <b>share the underlying calendar</b> — if a teacher is locked into a 2pm ad-hoc meeting on the visiting day Saturday, the visiting-day generator routes around that slot. <em>One calendar, two entry points.</em></li>
+        <li>"Walk-ins" are a real pattern in Ghana — parents arrive on visiting day without booking. The system has to handle them, not pretend they don't exist. Section 04 covers that queue.</li>
+        <li>Both flavours funnel into the same <b>per-student meeting history</b>. When admin opens Akosua's record, every meeting (visiting-day or ad-hoc, with notes) is on the timeline.</li>
+        <li>SMS reply parsing is the same as the existing parent comms pattern (see schoolup-parent-conversations.html) — <em>the inbox already knows how to route this</em>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Admin sets up a visiting day</div>
+    <div class="section-meta">Florence configures · 8 teachers · 47 expected parents · ~3h event</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / meetings / visiting-day / configure</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Comms</div>
+          <div class="nav-item active"><div class="ic"></div>Meetings</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="sidebar-footer">
+            <div class="av">FA</div>
+            <div>
+              <div class="meta-name">Florence A.</div>
+              <div class="meta-role">Admin</div>
+            </div>
+          </div>
+          <div class="powered-by">Powered by <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Meetings</a> · <a href="#">Visiting days</a> · Configure</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">End of <em>term 2</em> visiting day</h1>
+                <div class="lede">Saturday 28 June 2025 · 9 AM – 12 PM · Hall A &amp; B · <b>8 teachers participating</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn">Save draft</button>
+                <button class="btn primary">Send invitations →</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+            <div class="config-grid">
+              <div class="config-form">
+
+                <div class="form-section">
+                  <h4 class="display">When &amp; where</h4>
+                  <div class="desc">The basics — date, time window, location. Slot length is per teacher (some need longer).</div>
+                  <div class="form-row three">
+                    <div class="form-field">
+                      <div class="lab">Date</div>
+                      <div class="val">28 June 2025 · <em>Saturday</em></div>
+                    </div>
+                    <div class="form-field">
+                      <div class="lab">Start</div>
+                      <div class="val">09:00</div>
+                    </div>
+                    <div class="form-field">
+                      <div class="lab">End</div>
+                      <div class="val">12:00</div>
+                    </div>
+                  </div>
+                  <div class="form-row" style="margin-top:8px;">
+                    <div class="form-field">
+                      <div class="lab">Location</div>
+                      <div class="val">Hall A · Hall B</div>
+                    </div>
+                    <div class="form-field">
+                      <div class="lab">Default slot length</div>
+                      <div class="val">15 minutes · <em>per teacher</em></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <h4 class="display">Participating teachers</h4>
+                  <div class="desc">Click to toggle. Each teacher gets <b>their own time slots</b> based on the date window. Slot length adjustable per teacher.</div>
+                  <div class="teacher-select">
+                    <span class="teacher-pill on"><span class="av">MA</span>Mrs Ama (JHS 1A)</span>
+                    <span class="teacher-pill on"><span class="av">EB</span>Mr Ebo (JHS 1B)</span>
+                    <span class="teacher-pill on"><span class="av">AK</span>Mrs Akua (JHS 2A)</span>
+                    <span class="teacher-pill on"><span class="av">YA</span>Mr Yaw (JHS 2B)</span>
+                    <span class="teacher-pill on"><span class="av">EF</span>Mrs Efua (JHS 3A)</span>
+                    <span class="teacher-pill on"><span class="av">KO</span>Mr Kofi (JHS 3B)</span>
+                    <span class="teacher-pill on"><span class="av">AB</span>Mrs Abena (Maths · 20m slots)</span>
+                    <span class="teacher-pill on"><span class="av">JO</span>Mr Joe (English · 20m slots)</span>
+                    <span class="teacher-pill"><span class="av">SE</span>Mr Selasi (PE) · not invited</span>
+                    <span class="teacher-pill"><span class="av">PR</span>Mr Prince (ICT) · not invited</span>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <h4 class="display">Booking method</h4>
+                  <div class="desc">How parents get their slots. <b>Pre-assigned</b> is fastest for the school; <b>self-book</b> respects parent agency. Hybrid works best for most.</div>
+                  <div class="form-row">
+                    <div class="form-field" style="background:var(--gold-bg); border-color:var(--gold-soft);">
+                      <div class="lab" style="color:var(--gold);">Selected</div>
+                      <div class="val display"><em>Hybrid</em></div>
+                      <div style="font-size:11px; color:var(--navy-3); margin-top:4px; line-height:1.4;">Each parent gets a default slot they can swap via SMS · keeps the schedule full while letting parents pick.</div>
+                    </div>
+                    <div class="form-field">
+                      <div class="lab">Cancellation deadline</div>
+                      <div class="val">24h before · <em>configurable</em></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <h4 class="display">Communication plan</h4>
+                  <div class="desc">When parents get their invites, reminders, and the day-of "your slot is in 30 minutes" ping.</div>
+                  <div class="form-row" style="margin-bottom:8px;">
+                    <div class="form-field">
+                      <div class="lab">Initial invite</div>
+                      <div class="val">7 days before · <em>21 June</em></div>
+                    </div>
+                    <div class="form-field">
+                      <div class="lab">Reminder</div>
+                      <div class="val">Day before · <em>27 June 6 PM</em></div>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-field">
+                      <div class="lab">Day-of ping</div>
+                      <div class="val">30m before slot · <em>WhatsApp + SMS</em></div>
+                    </div>
+                    <div class="form-field">
+                      <div class="lab">SMS sender</div>
+                      <div class="val">CTKJHS · <em>school short-name</em></div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="preview-panel">
+                <div class="head">
+                  <div class="eb">Live preview</div>
+                  <h4 class="display"><em>What will happen</em> when you send invitations</h4>
+                </div>
+                <div class="body-p">
+                  <div class="stat-row">
+                    <div class="pstat">
+                      <div class="lab">Parents invited</div>
+                      <div class="val display"><em>312</em></div>
+                      <div class="sub">all enrolled families</div>
+                    </div>
+                    <div class="pstat">
+                      <div class="lab">Slots created</div>
+                      <div class="val display"><em>96</em></div>
+                      <div class="sub">across 8 teachers · ~12 each</div>
+                    </div>
+                  </div>
+                  <div class="stat-row">
+                    <div class="pstat">
+                      <div class="lab">SMS messages</div>
+                      <div class="val display">312<em>·3</em></div>
+                      <div class="sub">invite · reminder · day-of</div>
+                    </div>
+                    <div class="pstat">
+                      <div class="lab">Estimated cost</div>
+                      <div class="val display"><em>GHS</em> 56.16</div>
+                      <div class="sub">at GHS 0.06 per SMS</div>
+                    </div>
+                  </div>
+                  <div class="narration">
+                    On <b>21 June at 9 AM</b>, all 312 families receive an SMS with their <b>pre-assigned slot</b> and a reply-code to swap. Reminders fire <em>27 June at 6 PM</em>. Day-of pings arrive <em>30 minutes before each slot</em>. Walk-ins handled at the door — see Section 04.
+                  </div>
+                </div>
+                <div class="save-bar">
+                  <div class="left">Cost: <b>GHS 56.16</b> · audit entry created</div>
+                  <div class="right">
+                    <button class="btn ghost" style="border-color:rgba(255,255,255,0.2); color:rgba(255,255,255,0.8);">Cancel</button>
+                    <button class="btn gold">Send 312 invitations →</button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>Slot length <b>per teacher</b> — Mrs Abena (Maths, 20m) and Mr Joe (English, 20m) get longer slots than form teachers (15m). Recognises that subject-teacher conversations differ from form-teacher conversations.</li>
+        <li>"Hybrid" booking is the recommended default — pre-assignment fills the schedule (no <em>"only the keen 30%"</em> bookings), parent swap respects family realities (school run, work shifts).</li>
+        <li>Live preview pillar — <b>312 invited, 96 slots created</b> — is the editorial hinge. Florence sees that not every parent will get a slot. The expectation is set: <em>not everyone meets every teacher</em>.</li>
+        <li>The cost preview is in <b>GHS</b> with two decimals (per the locked currency convention). Florence sees the SMS bill before clicking send.</li>
+        <li>"All 312 families" is the default; in practice Florence might filter (e.g., <b>only families with at least one absent in the term</b>). Filter UI exists but isn't shown — same segment-builder pattern as bulk reminders.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Akosua's mother books · the SMS-first journey</div>
+    <div class="section-meta">No app required · the booking link is the SMS</div>
+  </div>
+
+  <div class="layout">
+    <div class="phone-stage">
+      <div class="phone-label">
+        <h4 class="display">Saturday 21 June · 09:00 AM</h4>
+        <p>The invitation arrives. Akosua's mother (Mrs Asantewaa) reads it on her Itel basic phone. The slot is workable but she'd prefer 11 AM.</p>
+        <p style="margin-top:14px;"><b>The whole booking happens in 4 SMS exchanges.</b> No app, no link to click, no login. Just words.</p>
+      </div>
+
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="phone-status">
+            <span>9:02 AM</span>
+            <span>•••• ITEL</span>
+          </div>
+          <div class="phone-content">
+
+            <div style="text-align:center; font-family:'Fraunces',serif; font-size:13px; color:var(--gold); font-weight:600; margin-bottom:12px;">CTKJHS</div>
+
+            <div class="sms-bubble">
+              <div class="meta">CTKJHS · 09:00</div>
+              <div class="content">Dear Mrs Asantewaa, you are invited to <b>End of Term 2 Visiting Day</b> on Sat 28 June.<br><br>Your slot: <b>10:15 AM with Mrs Akua (Akosua's class teacher)</b>.<br><br>Reply <b>SWAP</b> to choose another time. Reply <b>CONFIRM</b> to keep this slot. — CTKJHS</div>
+            </div>
+
+            <div class="sms-bubble outgoing">
+              <div class="meta">YOU · 09:02</div>
+              <div class="content">SWAP</div>
+            </div>
+
+            <div class="sms-bubble">
+              <div class="meta">CTKJHS · 09:02</div>
+              <div class="content">Open slots with <b>Mrs Akua</b> on 28 June:<br><br>1. 09:30 AM<br>2. 11:00 AM<br>3. 11:30 AM<br><br>Reply <b>1</b>, <b>2</b>, or <b>3</b>. Or reply <b>OTHER</b> for a different teacher.</div>
+            </div>
+
+            <div class="sms-bubble outgoing">
+              <div class="meta">YOU · 09:03</div>
+              <div class="content">2</div>
+            </div>
+
+            <div class="sms-bubble" style="border-left:3px solid var(--green); padding-left:13px;">
+              <div class="meta" style="color:var(--green);">CTKJHS · 09:03 · CONFIRMED</div>
+              <div class="content"><b>Confirmed.</b> 28 June at <b>11:00 AM</b> with Mrs Akua, Hall A.<br><br>You'll get a reminder Friday evening and a 30-min ping on Saturday.<br><br>Reply <b>CANCEL</b> to release the slot (before 27 June 6 PM). — CTKJHS</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-label">
+        <h4 class="display">What just happened</h4>
+        <p><b>Three messages from school, two from Mrs Asantewaa.</b> No app to download. No link to fail-to-load on a 2G connection. The reply codes (<em>SWAP</em>, <em>CONFIRM</em>, <em>1</em>, <em>2</em>, <em>3</em>, <em>CANCEL</em>) work on every phone made since 1995.</p>
+        <p style="margin-top:14px;">Smartphone parents see the same flow with WhatsApp instead — <b>same words, richer formatting</b>. Omnischools routes per-parent (per the cross-module-delivery file).</p>
+      </div>
+    </div>
+
+    <div class="principle-card">
+      <div class="eb">Why this matters</div>
+      <p><b>The booking link is the SMS.</b> Most Ghanaian parents do not have smartphones; the ones who do are often on metered data; the ones who aren't are at the end of patchy networks. A web booking interface would <em>exclude the majority</em>. SMS booking includes everyone — and is faster anyway. <em>The medium is the design.</em></p>
+    </div>
+
+    <div class="layout" style="margin-top:24px;">
+      <div></div>
+      <div class="notes">
+        <h4>Calls worth flagging</h4>
+        <ul>
+          <li>Reply codes are <b>uppercase</b> in the prompts but <b>case-insensitive</b> at the inbox — admin's perspective is "SWAP looks more like a command", parent's perspective is "lowercase is one less thing to fight with".</li>
+          <li>The numbered options (<b>1, 2, 3</b>) are deliberately limited to three. More than three creates choice fatigue and increases parsing errors. <em>"OTHER"</em> escape hatch covers the long tail.</li>
+          <li>Omnischools <b>does not require parents to type the time</b> ("Reply with your preferred time") — that's an open text field that humans get wrong. Numbered options keep parsing reliable.</li>
+          <li>The "CANCEL before 27 June 6 PM" deadline is the <b>cancellation policy</b> set in Section 02. It appears in the confirmation SMS so parents always know the rule.</li>
+          <li>Ad-hoc requests (Flavour 02) follow the same pattern — admin sends 2-3 time options, parent picks a number. <b>One vocabulary, learned once.</b></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Saturday morning · Mrs Akua's view</div>
+    <div class="section-meta">Day-of · queue management · walk-ins handled</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="day-card">
+        <div class="day-head">
+          <div class="left">
+            <h3 class="display">Saturday 28 June · <em>Visiting day</em></h3>
+            <div class="meta">Mrs Akua · JHS 2A class teacher · Hall A · <b>9 AM – 12 PM</b></div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="val display"><em>11</em>/12</div>
+              <div class="lab">Slots booked</div>
+            </div>
+            <div class="stat">
+              <div class="val display">3</div>
+              <div class="lab">Done</div>
+            </div>
+            <div class="stat">
+              <div class="val display"><em>1</em></div>
+              <div class="lab">No-show</div>
+            </div>
+            <div class="stat">
+              <div class="val display">7</div>
+              <div class="lab">Remaining</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-row done">
+          <div class="tl-time">09:00<div class="end">→ 09:15</div></div>
+          <div class="tl-parent">
+            <div class="av">MS</div>
+            <div class="info">
+              <div class="name">Mrs Sarpong</div>
+              <div class="student">parent of <b>Kwame Sarpong</b> · JHS 2A</div>
+              <div class="topic">topic: term performance</div>
+            </div>
+          </div>
+          <div class="tl-status">
+            <span class="badge done"><span class="dot"></span>Done</span>
+            <div class="sub">notes saved · 2 follow-ups</div>
+          </div>
+        </div>
+
+        <div class="timeline-row done">
+          <div class="tl-time">09:15<div class="end">→ 09:30</div></div>
+          <div class="tl-parent">
+            <div class="av">MO</div>
+            <div class="info">
+              <div class="name">Mr Osei</div>
+              <div class="student">parent of <b>Adwoa Osei</b> · JHS 2A</div>
+              <div class="topic">topic: maths concerns</div>
+            </div>
+          </div>
+          <div class="tl-status">
+            <span class="badge done"><span class="dot"></span>Done</span>
+            <div class="sub">notes saved · referred to Mrs Abena</div>
+          </div>
+        </div>
+
+        <div class="timeline-row no-show">
+          <div class="tl-time">09:30<div class="end">→ 09:45</div></div>
+          <div class="tl-parent">
+            <div class="av">MA</div>
+            <div class="info">
+              <div class="name">Mrs Amoah</div>
+              <div class="student">parent of <b>Yaw Amoah</b> · JHS 2A</div>
+              <div class="topic">topic: not specified</div>
+            </div>
+          </div>
+          <div class="tl-status">
+            <span class="badge no-show"><span class="dot"></span>No-show</span>
+            <div class="sub">SMS follow-up <b>queued</b></div>
+          </div>
+        </div>
+
+        <div class="timeline-row done">
+          <div class="tl-time">09:45<div class="end">→ 10:00</div></div>
+          <div class="tl-parent">
+            <div class="av">MN</div>
+            <div class="info">
+              <div class="name">Mrs Nyarko</div>
+              <div class="student">parent of <b>Akua Nyarko</b> · JHS 2A</div>
+              <div class="topic">topic: behaviour</div>
+            </div>
+          </div>
+          <div class="tl-status">
+            <span class="badge done"><span class="dot"></span>Done</span>
+            <div class="sub">notes saved</div>
+          </div>
+        </div>
+
+        <div class="timeline-row now">
+          <div class="tl-time">10:00<div class="end">→ 10:15</div></div>
+          <div class="tl-parent">
+            <div class="av">MM</div>
+            <div class="info">
+              <div class="name">Mrs Mensah</div>
+              <div class="student">parent of <b>Esi Mensah</b> · JHS 2A</div>
+              <div class="topic">topic: term performance</div>
+            </div>
+          </div>
+          <div class="tl-status">
+            <span class="badge now"><span class="dot"></span>In progress</span>
+            <div class="sub">started <b>10:01</b> · 14m elapsed</div>
+          </div>
+        </div>
+
+        <div class="timeline-row">
+          <div class="tl-time">10:15<div class="end">→ 10:30</div></div>
+          <div class="tl-parent">
+            <div class="av">MA</div>
+            <div class="info">
+              <div class="name">Mrs Asantewaa</div>
+              <div class="student">parent of <b>Akosua Asantewaa</b> · JHS 2A</div>
+              <div class="topic">topic: term performance</div>
+            </div>
+          </div>
+          <div class="tl-status">
+            <span class="badge next"><span class="dot"></span>Up next</span>
+            <div class="sub">checked in at <b>10:08</b> · waiting</div>
+          </div>
+        </div>
+
+        <div class="timeline-row">
+          <div class="tl-time">11:00<div class="end">→ 11:15</div></div>
+          <div class="tl-parent">
+            <div class="av">MA</div>
+            <div class="info">
+              <div class="name">Mrs Asantewaa</div>
+              <div class="student">parent of <b>Akosua Asantewaa</b> · JHS 2A</div>
+              <div class="topic" style="color:var(--navy-3); font-style:normal;">— moved from this slot via SMS swap on 21 June</div>
+            </div>
+          </div>
+          <div class="tl-status">
+            <span class="badge next" style="opacity:0.5;"><span class="dot"></span>Reassigned</span>
+            <div class="sub">slot now open · walk-in available</div>
+          </div>
+        </div>
+
+        <div class="timeline-row">
+          <div class="tl-time">11:15<div class="end">→ 11:30</div></div>
+          <div class="tl-parent">
+            <div class="av">MA</div>
+            <div class="info">
+              <div class="name">Mr Antwi</div>
+              <div class="student">parent of <b>Kojo Antwi</b> · JHS 2A</div>
+              <div class="topic">topic: not specified</div>
+            </div>
+          </div>
+          <div class="tl-status">
+            <span class="badge next"><span class="dot"></span>Booked</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="walkin-card">
+        <div class="ic">+</div>
+        <div class="text">
+          <b>Walk-in queue · 2 parents</b> · Mr Boateng (parent of Yaa, JHS 2A) and Mrs Owusu (parent of Kweku, JHS 2A) arrived without a booking. Omnischools suggests <b>11:00 AM slot</b> (just opened — Mrs Asantewaa moved to 10:15) for Mr Boateng.
+        </div>
+        <div class="actions-row">
+          <button class="btn">View queue</button>
+          <button class="btn gold">Assign 11:00 →</button>
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Day-of philosophy</div>
+        <p>The teacher's day-of view does <em>three jobs at once</em>: (1) shows what's coming, so Mrs Akua can prepare for the next conversation; (2) shows what just happened, so she can save notes; (3) handles the chaos — <b>no-shows, swaps, walk-ins, parents waiting in the corridor</b> — without forcing her to leave the screen. The walk-in card is the most-used button on visiting day. <em>Plan for the chaos, design for the flow.</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The 11:00 row is interesting — that's where Mrs Asantewaa was originally scheduled before her SMS swap. Now it shows <b>"Reassigned · slot now open"</b>, and the walk-in card suggests filling it with Mr Boateng. <em>Wasted slots become walk-in opportunities.</em></li>
+        <li>The "topic" line under each parent (where set) is <b>captured at booking time</b> — parents can reply with a topic via SMS (<em>"performance"</em>, <em>"behaviour"</em>, <em>"fees"</em>) so the teacher walks in prepared. Free-text "not specified" is fine; topic is optional.</li>
+        <li>Notes are saved <b>against the student record</b>, not against the meeting record. When admin opens Akosua's profile, every parent-teacher conversation appears on the timeline alongside attendance, billing, and grades.</li>
+        <li>No-shows trigger <b>automatic SMS follow-up</b> (gold-tinted note: "SMS follow-up queued"). The follow-up offers the parent an ad-hoc rebooking — Flavour 02 takes over. <em>The two flavours hand off cleanly.</em></li>
+        <li>The "started 10:01 · 14m elapsed" sub-meta is gentle — Mrs Akua sees that her current meeting is running long without a flashing red <em>"OVERTIME"</em> warning. Trust the teacher to manage her own time.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

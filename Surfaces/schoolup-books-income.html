@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Income beyond fees</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { font-family: 'Manrope', system-ui, sans-serif; background: var(--bg); color: var(--navy); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin-bottom: 12px; }
+.page-header h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 56px; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 16px; font-variation-settings: "opsz" 144; }
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 680px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+.mvp-tag { display: inline-block; background: var(--gold); color: var(--navy); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; padding: 3px 10px; border-radius: 100px; margin-bottom: 14px; }
+
+.section { margin-bottom: 80px; }
+.section-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+.section-num { font-family: 'Fraunces', serif; font-style: italic; font-size: 32px; font-weight: 400; color: var(--gold); }
+.section-title { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 500; letter-spacing: -0.01em; }
+.section-meta { margin-left: auto; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-3); font-weight: 600; }
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 500; margin-bottom: 14px; }
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li { font-size: 13px; color: var(--navy-2); padding: 10px 0; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop { width: 100%; background: var(--surface); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background: var(--navy); padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url { background: rgba(255,255,255,0.08); color: var(--gold-soft); padding: 5px 12px; border-radius: 6px; font-size: 11px; font-family: 'Fraunces', monospace; margin-left: 12px; letter-spacing: 0.04em; }
+
+.app-shell { display: grid; grid-template-columns: 220px 1fr; background: var(--bg); }
+.sidebar { background: var(--navy); color: var(--bg); padding: 24px 0; display: flex; flex-direction: column; min-height: 1380px; }
+.sidebar .brand { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; }
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini { width: 38px; height: 38px; border-radius: 8px; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; flex-shrink: 0; }
+.school-name { font-family: 'Fraunces', serif; font-size: 13px; font-weight: 500; letter-spacing: -0.01em; }
+.school-meta { font-size: 10px; color: var(--gold-soft); margin-top: 2px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 24px; font-size: 13px; color: rgba(250,247,242,0.7); font-weight: 500; border-left: 2px solid transparent; }
+.nav-item.active { background: rgba(200,151,91,0.08); color: var(--bg); border-left-color: var(--gold); }
+.nav-item .ic { width: 16px; height: 16px; background: currentColor; opacity: 0.8; border-radius: 3px; }
+.nav-item.sub { padding-left: 44px; font-size: 12px; color: rgba(250,247,242,0.55); }
+.nav-item.sub.active { color: var(--bg); background: rgba(200,151,91,0.08); }
+.nav-item .new-tag { margin-left: auto; background: var(--gold); color: var(--navy); font-size: 8px; font-weight: 700; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 100px; }
+.sidebar .footer { margin-top: auto; padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.sidebar .footer .av { width: 32px; height: 32px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; color: var(--navy); font-family: 'Fraunces', serif; font-weight: 600; font-size: 12px; }
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by { padding: 10px 24px 16px; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(200,151,91,0.55); font-weight: 700; background: var(--navy); border-top: 1px solid rgba(255,255,255,0.05); }
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 0; background: var(--bg); }
+
+.page-head { background: var(--surface); border-bottom: 1px solid var(--border); padding: 24px 36px 22px; }
+.page-head .crumb { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-3); font-weight: 600; margin-bottom: 8px; }
+.page-head .crumb a { color: var(--gold); text-decoration: none; }
+.page-head .top-row { display: flex; justify-content: space-between; align-items: end; margin-bottom: 14px; }
+.page-head h1 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 500; letter-spacing: -0.018em; line-height: 1.1; }
+.page-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-head .lede { font-size: 13px; color: var(--navy-3); margin-top: 4px; max-width: 700px; }
+.page-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.actions { display: flex; gap: 8px; }
+.btn { padding: 9px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-2); background: var(--surface); color: var(--navy); font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); font-weight: 700; }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); font-weight: 700; }
+
+.body { padding: 28px 36px 60px; }
+
+/* Income breakdown overview */
+.income-overview { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-bottom: 24px; }
+
+.fees-pillar { background: var(--navy); color: var(--bg); border-radius: 12px; padding: 22px 26px; background-image: radial-gradient(circle at 90% 0%, rgba(200,151,91,0.16) 0%, transparent 55%); position: relative; overflow: hidden; }
+.fees-pillar .lbl { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-soft); font-weight: 700; margin-bottom: 4px; }
+.fees-pillar .val { font-family: 'Fraunces', serif; font-size: 38px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; color: var(--gold); }
+.fees-pillar .val em { font-style: italic; }
+.fees-pillar .val .currency { font-size: 18px; color: rgba(232,212,184,0.7); font-weight: 500; margin-right: 4px; }
+.fees-pillar .meta { margin-top: 10px; font-size: 12px; color: rgba(232,212,184,0.85); line-height: 1.5; }
+.fees-pillar .meta b { color: var(--bg); font-weight: 600; }
+.fees-pillar .auto-tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 100px; background: rgba(47,107,71,0.4); color: #8FCBA0; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; margin-top: 12px; }
+
+.other-summary { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; }
+.other-summary .lbl { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; margin-bottom: 4px; }
+.other-summary .val { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; letter-spacing: -0.018em; line-height: 1; color: var(--green); }
+.other-summary .val .currency { font-size: 13px; color: var(--navy-3); font-weight: 500; margin-right: 3px; }
+.other-summary .meta { margin-top: 6px; font-size: 11px; color: var(--navy-3); line-height: 1.5; }
+.other-summary .meta b { color: var(--navy-2); font-weight: 600; }
+.other-summary .breakdown { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 7px; }
+.other-summary .breakdown-row { display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center; font-size: 12px; }
+.other-summary .breakdown-row .swatch { width: 10px; height: 10px; border-radius: 3px; }
+.other-summary .breakdown-row .name { color: var(--navy-2); font-weight: 500; }
+.other-summary .breakdown-row .amount { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--navy); font-size: 11px; }
+
+/* Income type cards (the 4 non-fee categories) */
+.income-types { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 28px; }
+
+.income-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; }
+.income-card .top-line { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.income-card .ic { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.income-card .ic.subvention { background: var(--green-bg); color: var(--green); }
+.income-card .ic.donations { background: var(--gold-bg); color: var(--gold); }
+.income-card .ic.fundraising { background: var(--warn-bg); color: var(--warn); }
+.income-card .ic.misc { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+.income-card .name { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.income-card .name em { font-style: italic; color: var(--gold); }
+.income-card .public-tag { margin-left: auto; padding: 3px 9px; border-radius: 100px; background: var(--green-bg); color: var(--green); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; }
+.income-card .desc { font-size: 12px; color: var(--navy-3); line-height: 1.55; margin-bottom: 14px; }
+.income-card .desc b { color: var(--navy-2); font-weight: 600; }
+
+.income-card .total-row { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.income-card .total-row .total-amt { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; letter-spacing: -0.018em; line-height: 1; color: var(--navy); }
+.income-card .total-row .total-amt .currency { font-size: 12px; color: var(--navy-3); font-weight: 500; margin-right: 3px; }
+.income-card .total-row .total-meta { font-size: 11px; color: var(--navy-3); text-align: right; }
+.income-card .total-row .total-meta b { color: var(--navy-2); font-weight: 600; }
+
+.income-card .entries-list { padding-top: 12px; display: flex; flex-direction: column; gap: 7px; max-height: 180px; }
+.income-card .entry-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 4px 0; font-size: 11px; color: var(--navy-2); }
+.income-card .entry-row .who { font-weight: 600; color: var(--navy); }
+.income-card .entry-row .meta { font-size: 10px; color: var(--navy-3); margin-top: 1px; font-style: italic; }
+.income-card .entry-row .amt { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--navy); font-size: 12px; }
+
+.income-card .add-row { margin-top: 10px; padding: 9px 12px; background: var(--bg); border: 1px dashed var(--border-2); border-radius: 8px; font-size: 11px; color: var(--gold); font-weight: 700; letter-spacing: 0.04em; text-align: center; cursor: pointer; }
+.income-card .empty-state { padding: 20px 8px; text-align: center; font-size: 11px; color: var(--navy-3); font-style: italic; }
+.income-card .empty-state b { color: var(--navy-2); font-style: normal; font-weight: 600; }
+
+/* Recent income table */
+.recent-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.recent-head { padding: 14px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.recent-head .head-title { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; }
+.recent-head .head-title em { font-style: italic; color: var(--gold); }
+.recent-head .head-meta { font-size: 11px; color: var(--navy-3); }
+
+.recent-table { width: 100%; border-collapse: collapse; }
+.recent-table thead th { background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 18px; text-align: left; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; }
+.recent-table thead th.num { text-align: right; }
+.recent-table tbody td { padding: 12px 18px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.recent-table tbody tr:last-child td { border-bottom: none; }
+
+.r-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--navy); }
+.r-cat { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 100px; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
+.r-cat.fees { background: var(--bg); color: var(--navy-2); border: 1px solid var(--border); }
+.r-cat.subvention { background: var(--green-bg); color: var(--green); }
+.r-cat.donations { background: var(--gold-bg); color: var(--gold); }
+.r-cat.fundraising { background: var(--warn-bg); color: var(--warn); }
+.r-cat.misc { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+.r-source { font-size: 12px; color: var(--navy-2); font-weight: 600; }
+.r-source .sub { display: block; font-size: 10px; color: var(--navy-3); margin-top: 1px; font-style: italic; font-weight: 500; }
+.r-amount { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--green); font-size: 13px; text-align: right; }
+.r-tag-auto { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 100px; background: var(--green-bg); color: var(--green); font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
+.r-tag-manual { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 100px; background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .income-overview { grid-template-columns: 1fr; }
+  .income-types { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Books · Income beyond fees</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">When money comes from <em>elsewhere</em></h1>
+  <div class="gold-rule"></div>
+  <p>Fees auto-flow from the billing module — that's already handled. This surface captures every other kind of income that hits the school's books: government subventions for public schools, donations from individuals or institutions, fundraising events, rental income, miscellaneous receipts. Smaller surface than expense entry because non-fee income is sparser, but completeness here is critical for an honest P&amp;L.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Income beyond fees · Term 1 view</div>
+    <div class="section-meta">4 categories · 12 entries · GHS 7,840 non-fee income</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / books / income</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Books<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub">Dashboard</div>
+          <div class="nav-item sub">Expenses</div>
+          <div class="nav-item sub active">Income</div>
+          <div class="nav-item sub">Fixed assets</div>
+          <div class="nav-item sub">Reports</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">JO</div>
+            <div><div class="meta-name">Joyce Owusu-Ansah</div><div class="meta-role">Accountant</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Books</a> / Income</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Income <em>beyond fees</em></h1>
+                <div class="lede">Fees auto-flow from billing · this is where you record everything else: subventions, donations, fundraising, rental, misc. <b>Term 1 to date</b> · last entry <b>3 days ago</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn">Export →</button>
+                <button class="btn primary">+ Record income</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <!-- Overview row: fees pillar + other summary -->
+            <div class="income-overview">
+              <div class="fees-pillar">
+                <div class="lbl">School fees · auto from billing</div>
+                <div class="val"><span class="currency">GHS</span>246,400</div>
+                <div class="meta">96.9% of total income · <b>312 students</b> contributing · <b>67,980</b> still outstanding</div>
+                <div class="auto-tag">✓ Automatic · no entry needed</div>
+              </div>
+
+              <div class="other-summary">
+                <div class="lbl">All other income · Term 1</div>
+                <div class="val"><span class="currency">GHS</span>7,840</div>
+                <div class="meta"><b>12 entries</b> across 4 categories · 3.1% of total</div>
+                <div class="breakdown">
+                  <div class="breakdown-row">
+                    <div class="swatch" style="background:var(--green)"></div>
+                    <div class="name">BECE registration <span style="color:var(--navy-3);font-size:10px;font-style:italic;margin-left:4px">JHS 3 only</span></div>
+                    <div class="amount">GHS 4,200</div>
+                  </div>
+                  <div class="breakdown-row">
+                    <div class="swatch" style="background:var(--gold)"></div>
+                    <div class="name">PTA contributions</div>
+                    <div class="amount">GHS 2,400</div>
+                  </div>
+                  <div class="breakdown-row">
+                    <div class="swatch" style="background:var(--warn)"></div>
+                    <div class="name">Donations</div>
+                    <div class="amount">GHS 800</div>
+                  </div>
+                  <div class="breakdown-row">
+                    <div class="swatch" style="background:var(--border-2)"></div>
+                    <div class="name">Other</div>
+                    <div class="amount">GHS 440</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4 income type cards -->
+            <div class="income-types">
+
+              <!-- Government subvention -->
+              <div class="income-card">
+                <div class="top-line">
+                  <div class="ic subvention">G</div>
+                  <div class="name display">Government <em>subventions</em></div>
+                  <div class="public-tag">Public schools</div>
+                </div>
+                <div class="desc">Quarterly disbursements from the <b>District Education Office</b> for capitation grant, examination support, and special programmes. Public schools record receipts here; private schools see this card empty unless they receive specific government grants.</div>
+                <div class="total-row">
+                  <div class="total-amt"><span class="currency">GHS</span>—</div>
+                  <div class="total-meta">No entries this term · <b>private school</b></div>
+                </div>
+                <div class="empty-state">
+                  Christ the King is private · subventions don't normally apply.<br>
+                  <b>For public schools</b>, this is where capitation grant disbursements appear.
+                </div>
+              </div>
+
+              <!-- Donations -->
+              <div class="income-card">
+                <div class="top-line">
+                  <div class="ic donations">D</div>
+                  <div class="name display">Donations &amp; <em>contributions</em></div>
+                </div>
+                <div class="desc">Cash gifts from individuals, alumni, or institutions. Record the donor (or "<b>anonymous</b>") and any restrictions on use ("for library books only"). Tracked for transparency and acknowledgement.</div>
+                <div class="total-row">
+                  <div class="total-amt"><span class="currency">GHS</span>800.00</div>
+                  <div class="total-meta"><b>2 donors</b> this term · 1 anonymous</div>
+                </div>
+                <div class="entries-list">
+                  <div class="entry-row">
+                    <div>
+                      <div class="who">Mrs. Esi Mensah</div>
+                      <div class="meta">Alumna · class of 1998 · for library books</div>
+                    </div>
+                    <div class="amt">GHS 500.00</div>
+                  </div>
+                  <div class="entry-row">
+                    <div>
+                      <div class="who">Anonymous donor</div>
+                      <div class="meta">Cash drop at office · no restrictions noted</div>
+                    </div>
+                    <div class="amt">GHS 300.00</div>
+                  </div>
+                </div>
+                <div class="add-row">+ RECORD A DONATION</div>
+              </div>
+
+              <!-- Fundraising -->
+              <div class="income-card">
+                <div class="top-line">
+                  <div class="ic fundraising">F</div>
+                  <div class="name display">Fundraising <em>events</em></div>
+                </div>
+                <div class="desc">Net proceeds from school events: speech &amp; prize-giving day, sports day raffles, end-of-term concerts, alumni reunions. Record gross income, deduct event costs, log the net.</div>
+                <div class="total-row">
+                  <div class="total-amt"><span class="currency">GHS</span>2,400.00</div>
+                  <div class="total-meta"><b>1 event</b> this term · PTA-led</div>
+                </div>
+                <div class="entries-list">
+                  <div class="entry-row">
+                    <div>
+                      <div class="who">PTA term 1 levy</div>
+                      <div class="meta">Voluntary contributions · 178 of 312 families</div>
+                    </div>
+                    <div class="amt">GHS 2,400.00</div>
+                  </div>
+                </div>
+                <div class="add-row">+ RECORD A FUNDRAISING EVENT</div>
+              </div>
+
+              <!-- Misc / rental -->
+              <div class="income-card">
+                <div class="top-line">
+                  <div class="ic misc">M</div>
+                  <div class="name display">Rental &amp; <em>miscellaneous</em></div>
+                </div>
+                <div class="desc">Income from renting out facilities (hall for weddings, classrooms for after-hours tutorials), interest on bank balances, sale of old equipment, and other small one-off receipts.</div>
+                <div class="total-row">
+                  <div class="total-amt"><span class="currency">GHS</span>440.00</div>
+                  <div class="total-meta"><b>3 entries</b> this term</div>
+                </div>
+                <div class="entries-list">
+                  <div class="entry-row">
+                    <div>
+                      <div class="who">Hall rental · Saturday wedding</div>
+                      <div class="meta">5 Oct · paid in cash · receipt #218</div>
+                    </div>
+                    <div class="amt">GHS 200.00</div>
+                  </div>
+                  <div class="entry-row">
+                    <div>
+                      <div class="who">Bank interest · September</div>
+                      <div class="meta">GCB savings · auto from statement</div>
+                    </div>
+                    <div class="amt">GHS 64.00</div>
+                  </div>
+                  <div class="entry-row">
+                    <div>
+                      <div class="who">Sale of old chairs · 12 units</div>
+                      <div class="meta">14 Sep · to Mr. Boateng (alumnus)</div>
+                    </div>
+                    <div class="amt">GHS 176.00</div>
+                  </div>
+                </div>
+                <div class="add-row">+ RECORD MISC INCOME</div>
+              </div>
+
+            </div>
+
+            <!-- Recent income across all sources -->
+            <div class="recent-card">
+              <div class="recent-head">
+                <div class="head-title display">All <em>income</em> this term · sorted by date</div>
+                <div class="head-meta">Including school fees · 312 students contributing</div>
+              </div>
+              <table class="recent-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Source</th>
+                    <th>Provenance</th>
+                    <th class="num">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><div class="r-date">19 Oct</div></td>
+                    <td><span class="r-cat fees">Fees</span></td>
+                    <td><div class="r-source">Akosua Boateng · JHS 2A<span class="sub">part payment of Term 1 fee</span></div></td>
+                    <td><span class="r-tag-auto">✓ Auto · billing</span></td>
+                    <td class="r-amount">GHS 200.00</td>
+                  </tr>
+                  <tr>
+                    <td><div class="r-date">17 Oct</div></td>
+                    <td><span class="r-cat donations">Donations</span></td>
+                    <td><div class="r-source">Mrs. Esi Mensah<span class="sub">alumna · for library books</span></div></td>
+                    <td><span class="r-tag-manual">Manual · Joyce</span></td>
+                    <td class="r-amount">GHS 500.00</td>
+                  </tr>
+                  <tr>
+                    <td><div class="r-date">14 Oct</div></td>
+                    <td><span class="r-cat fundraising">PTA levy</span></td>
+                    <td><div class="r-source">PTA term 1 levy<span class="sub">178 of 312 families contributed</span></div></td>
+                    <td><span class="r-tag-manual">Manual · Joyce</span></td>
+                    <td class="r-amount">GHS 2,400.00</td>
+                  </tr>
+                  <tr>
+                    <td><div class="r-date">12 Oct</div></td>
+                    <td><span class="r-cat fees">Fees · BECE</span></td>
+                    <td><div class="r-source">JHS 3 cohort · 28 of 33 paid<span class="sub">BECE registration fee · external</span></div></td>
+                    <td><span class="r-tag-auto">✓ Auto · billing</span></td>
+                    <td class="r-amount">GHS 4,200.00</td>
+                  </tr>
+                  <tr>
+                    <td><div class="r-date">5 Oct</div></td>
+                    <td><span class="r-cat misc">Rental</span></td>
+                    <td><div class="r-source">Hall rental · Saturday wedding<span class="sub">cash · receipt #218</span></div></td>
+                    <td><span class="r-tag-manual">Manual · Joyce</span></td>
+                    <td class="r-amount">GHS 200.00</td>
+                  </tr>
+                  <tr>
+                    <td><div class="r-date">3 Oct</div></td>
+                    <td><span class="r-cat donations">Donations</span></td>
+                    <td><div class="r-source">Anonymous donor<span class="sub">cash drop at office · no restrictions</span></div></td>
+                    <td><span class="r-tag-manual">Manual · Joyce</span></td>
+                    <td class="r-amount">GHS 300.00</td>
+                  </tr>
+                  <tr>
+                    <td><div class="r-date">1 Oct</div></td>
+                    <td><span class="r-cat misc">Interest</span></td>
+                    <td><div class="r-source">GCB savings interest · September<span class="sub">auto from bank statement</span></div></td>
+                    <td><span class="r-tag-manual">Manual · Joyce</span></td>
+                    <td class="r-amount">GHS 64.00</td>
+                  </tr>
+                  <tr><td colspan="5" style="padding:14px 18px;background:var(--bg);text-align:center;font-size:11px;color:var(--navy-3);font-style:italic">5 more entries earlier this term · scroll to load</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Fees pillar in navy/gold dominates the overview row</b> showing GHS 246,400 with "Automatic · no entry needed" tag in green. <b>The biggest income source needs no manual work</b> because it auto-flows from billing; this surface is about everything else.</li>
+        <li><b>"All other income" summary card on the right</b> shows the GHS 7,840 broken down by 4 categories with mini swatches. Same colour vocabulary as the dashboard pie/stack. <b>Joyce sees that non-fee income is 3.1% of total</b> — meaningful context for how much effort to put into recording it.</li>
+        <li><b>Four income-type cards in 2×2 grid:</b> Government subventions / Donations / Fundraising / Rental &amp; misc. <b>One card per income type</b> rather than a single mixed list because each type has different operational rhythm and metadata (donors have names, fundraising has events, rental has counterparties).</li>
+        <li><b>Government subventions card has "Public schools" tag in green</b> and shows empty state for Christ the King (private). <b>The card always exists in the UI</b> regardless of school type so the data model is unified, but the empty state explains why it's blank for private schools.</li>
+        <li><b>Donations card shows real entries with donor names and restrictions:</b> "Mrs. Esi Mensah · alumna · class of 1998 · for library books / Anonymous donor · cash drop at office · no restrictions noted." <b>Donor identity and restrictions both matter operationally</b> — anonymous donations need different treatment, restricted gifts need to be spent on the right thing.</li>
+        <li><b>Fundraising card has gross/net handling implicit</b>: "PTA term 1 levy · Voluntary contributions · 178 of 312 families." <b>Real Ghanaian fundraising patterns</b> — PTA levy participation rates (178/312 = 57%) tell a story about parent engagement.</li>
+        <li><b>Rental &amp; misc card holds the most diverse entries:</b> hall rental for weddings, bank interest, sale of old furniture. <b>Realistic miscellaneous income</b> at a Ghanaian basic school — these add up over a year.</li>
+        <li><b>Each card has a dashed-bordered "+ RECORD ..." action</b> at the bottom for quick entry into that specific category. <b>Category-specific entry</b> rather than one generic "Add income" because the form fields differ by type (donations need donor name + restrictions; rental needs counterparty; subvention needs source agency).</li>
+        <li><b>Recent income table at the bottom</b> shows ALL income across sources sorted by date (fees + non-fee mixed). <b>Provenance column distinguishes auto-from-billing vs manually-entered</b>: green "✓ Auto · billing" pill or neutral "Manual · Joyce" pill. Joyce knows what came from the system and what she had to type.</li>
+        <li><b>Realistic Ghanaian source detail throughout:</b> "Akosua Boateng · JHS 2A · part payment of Term 1 fee" / "GCB savings interest · September" / "Hall rental · Saturday wedding · cash · receipt #218". <b>Real names, real banks (GCB), real receipt numbering conventions</b>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

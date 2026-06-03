@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — WASSCE cohort readiness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1280px; }
+.sidebar.tall { min-height:1660px; }
+.sidebar.taller { min-height:2000px; }
+.sidebar.tallest { min-height:2400px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces', serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; background:var(--navy); border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:760px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.body { padding:28px 36px 60px; }
+
+.live-banner { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); border-radius:12px; padding:16px 22px; margin-bottom:24px; display:grid; grid-template-columns:auto 1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.live-banner::before { content:""; position:absolute; top:-30px; right:-30px; width:140px; height:140px; border-radius:50%; background:rgba(200,151,91,0.07); }
+.live-banner .lb-dot { width:44px; height:44px; border-radius:12px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:18px; position:relative; }
+.live-banner .lb-dot .pulse { position:absolute; width:12px; height:12px; background:var(--terra); border-radius:50%; top:-3px; right:-3px; border:2px solid var(--navy); }
+.live-banner .lb-text { position:relative; }
+.live-banner .lb-title { font-family:'Fraunces', serif; font-size:17px; font-weight:500; margin-bottom:3px; letter-spacing:-0.01em; }
+.live-banner .lb-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.live-banner .lb-sub { font-size:11.5px; color:var(--gold-soft); line-height:1.55; }
+.live-banner .lb-sub b { color:var(--bg); font-weight:600; }
+.live-banner .lb-cta { position:relative; }
+.live-banner .lb-cta button { background:var(--gold); color:var(--navy); border:none; padding:7px 13px; border-radius:6px; font-size:11px; font-weight:700; font-family:inherit; cursor:pointer; }
+
+/* Summary strip */
+.summary-strip { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; margin-bottom:24px; }
+.s-tile { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.s-tile .st-lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.s-tile .st-val { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.02em; line-height:1; }
+.s-tile .st-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.s-tile .st-val .unit { font-size:12px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:5px; font-style:normal; }
+.s-tile .st-sub { font-size:10px; color:var(--navy-3); margin-top:6px; line-height:1.4; }
+.s-tile .st-sub b { color:var(--navy-2); font-weight:700; }
+.s-tile.flag { background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 100%); border-color:var(--warn); }
+.s-tile.flag .st-val { color:var(--warn); }
+.s-tile.ok { background:linear-gradient(135deg, var(--green-bg) 0%, var(--surface) 100%); border-color:var(--green); }
+.s-tile.ok .st-val { color:var(--green); }
+.s-tile.terra { background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 100%); border-color:var(--terra); }
+.s-tile.terra .st-val { color:var(--terra); }
+
+/* Card */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px; }
+.card-head { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:baseline; }
+.card-head .ch-title { font-family:'Fraunces', serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.card-head .ch-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.card-head .ch-meta { font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.06em; }
+.card-body { padding:18px 20px 20px; }
+.col-2 { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-bottom:18px; }
+.col-2.even { grid-template-columns:1fr 1fr; }
+
+/* Histogram */
+.histogram { display:flex; gap:6px; align-items:flex-end; height:200px; padding:8px 0 0; border-bottom:1px solid var(--border); margin-bottom:10px; }
+.h-bar { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.h-bar .h-count { font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; color:var(--navy); }
+.h-bar .h-rect { width:100%; border-radius:4px 4px 0 0; min-height:4px; }
+.h-bar .h-rect.t1 { background:var(--green); }
+.h-bar .h-rect.t2 { background:var(--gold); }
+.h-bar .h-rect.t3 { background:var(--warn); }
+.h-bar .h-rect.t4 { background:var(--terra); }
+.h-bar .h-rect.t5 { background:var(--navy-3); }
+.h-bar .h-label { font-family:'JetBrains Mono', monospace; font-size:9px; color:var(--navy-3); }
+.h-axis { display:flex; gap:6px; padding-top:6px; }
+.h-axis-cell { flex:1; text-align:center; font-family:'JetBrains Mono', monospace; font-size:9px; color:var(--navy-3); }
+.h-legend { display:flex; gap:18px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); flex-wrap:wrap; font-size:11px; }
+.h-legend .leg { display:flex; align-items:center; gap:6px; color:var(--navy-2); }
+.h-legend .leg .dot { width:10px; height:10px; border-radius:3px; }
+
+/* Programme breakdown */
+.prog-break { display:grid; grid-template-columns:80px 1fr; gap:18px; align-items:start; padding:11px 0; border-bottom:1px solid var(--border); }
+.prog-break:last-child { border-bottom:none; }
+.prog-break .pb-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.prog-break .pb-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.prog-break .pb-name .pb-count { display:block; font-size:10px; color:var(--navy-3); font-family:'Manrope', sans-serif; font-weight:500; margin-top:2px; }
+.prog-break .pb-bar { display:flex; height:24px; border-radius:6px; overflow:hidden; background:var(--bg); }
+.prog-break .pb-bar .pb-seg { height:100%; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono', monospace; font-size:9px; font-weight:700; color:var(--bg); }
+.prog-break .pb-bar .pb-seg.t1 { background:var(--green); }
+.prog-break .pb-bar .pb-seg.t2 { background:var(--gold); color:var(--navy); }
+.prog-break .pb-bar .pb-seg.t3 { background:var(--warn); }
+.prog-break .pb-bar .pb-seg.t4 { background:var(--terra); }
+.prog-break .pb-bar .pb-seg.t5 { background:var(--navy-3); }
+
+/* Subject heatmap */
+.heatmap { display:grid; grid-template-columns:130px repeat(9, 1fr); gap:3px; font-size:10px; }
+.heatmap .hm-cell { padding:8px 6px; text-align:center; font-family:'JetBrains Mono', monospace; font-weight:700; border-radius:3px; }
+.heatmap .hm-head { background:var(--bg); color:var(--navy-3); font-size:9px; letter-spacing:0.08em; text-transform:uppercase; }
+.heatmap .hm-row-lbl { background:var(--bg); color:var(--navy); font-family:'Fraunces', serif; font-size:11px; font-style:normal; text-align:left; padding-left:12px; font-weight:600; }
+.heatmap .hm-cell.g1 { background:#1F5A38; color:var(--bg); }
+.heatmap .hm-cell.g2 { background:var(--green); color:var(--bg); }
+.heatmap .hm-cell.g3 { background:#5E9272; color:var(--bg); }
+.heatmap .hm-cell.g4 { background:#D4B485; color:var(--navy); }
+.heatmap .hm-cell.g5 { background:var(--gold); color:var(--navy); }
+.heatmap .hm-cell.g6 { background:#B07A30; color:var(--bg); }
+.heatmap .hm-cell.g7 { background:var(--warn); color:var(--surface); }
+.heatmap .hm-cell.g8 { background:#A77525; color:var(--bg); }
+.heatmap .hm-cell.g9 { background:var(--terra); color:var(--bg); }
+.heatmap .hm-row-total { background:var(--navy); color:var(--gold); }
+
+/* Risk list */
+.risk-list { width:100%; border-collapse:collapse; }
+.risk-list th { background:var(--bg); padding:10px 12px; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.risk-list th.r { text-align:right; }
+.risk-list th.c { text-align:center; }
+.risk-list td { padding:10px 12px; font-size:11.5px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.risk-list td .st-cell { display:flex; gap:9px; align-items:center; }
+.risk-list td .st-av { width:30px; height:30px; border-radius:50%; background:var(--gold-soft); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.risk-list td .st-av.terra { background:var(--terra-bg); color:var(--terra); }
+.risk-list td .st-av.warn { background:var(--warn-bg); color:var(--warn); }
+.risk-list td .st-name { font-family:'Fraunces', serif; font-size:12px; font-weight:600; }
+.risk-list td .st-meta { font-size:9px; color:var(--navy-3); margin-top:1px; font-family:'JetBrains Mono', monospace; }
+.risk-list td .prog-pill { display:inline-block; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:3px 7px; border-radius:100px; }
+.risk-list td .prog-pill.sci { background:var(--terra-bg); color:var(--terra); }
+.risk-list td .prog-pill.bus { background:var(--gold-bg); color:var(--gold); }
+.risk-list td .prog-pill.ga { background:rgba(123,74,138,0.12); color:#7B4A8A; }
+.risk-list td .prog-pill.he { background:var(--green-bg); color:var(--green); }
+.risk-list td.r { text-align:right; }
+.risk-list td.c { text-align:center; }
+.risk-list td .agg-num { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; }
+.risk-list td .agg-num.tight { color:var(--terra); }
+.risk-list td .agg-num.warn { color:var(--warn); }
+.risk-list td .agg-num.ok { color:var(--green); }
+.risk-list td .agg-arrow { font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--navy-3); margin-left:6px; }
+.risk-list td .target { font-family:'Fraunces', serif; font-size:12px; font-weight:500; }
+.risk-list td .target .t-uni { font-size:10px; color:var(--navy-3); margin-top:1px; display:block; font-family:'Manrope', sans-serif; font-weight:500; }
+.risk-list td .gap-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:3px 8px; border-radius:100px; }
+.risk-list td .gap-pill.over { background:var(--terra-bg); color:var(--terra); }
+.risk-list td .gap-pill.tight { background:var(--warn-bg); color:var(--warn); }
+.risk-list td .gap-pill.ok { background:var(--green-bg); color:var(--green); }
+.risk-list td .action { font-size:10px; color:var(--navy-3); }
+.risk-list td .action b { color:var(--navy-2); font-weight:600; }
+.risk-list td .stat-pill { display:inline-block; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:3px 7px; border-radius:100px; }
+.risk-list td .stat-pill.scheduled { background:var(--gold-bg); color:var(--gold); }
+.risk-list td .stat-pill.done { background:var(--green-bg); color:var(--green); }
+.risk-list td .stat-pill.pending { background:var(--bg); color:var(--navy-3); border:1px solid var(--border-2); }
+.risk-list tr:hover td { background:rgba(245,235,220,0.18); }
+.risk-list tr.terra-row td:first-child { border-left:3px solid var(--terra); }
+.risk-list tr.terra-row { background:rgba(245,225,220,0.16); }
+.risk-list tr:last-child td { border-bottom:none; }
+
+/* House comparison */
+.house-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+.house-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.house-card.slessor { border-top:3px solid var(--terra); }
+.house-card.aggrey { border-top:3px solid var(--gold); }
+.house-card.kufuor { border-top:3px solid var(--green); }
+.house-card.busia { border-top:3px solid #7B4A8A; }
+.house-card .hc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:2px; }
+.house-card .hc-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.house-card .hc-cohort { font-size:10px; color:var(--navy-3); margin-bottom:10px; }
+.house-card .hc-row { display:flex; justify-content:space-between; padding:5px 0; border-top:1px solid var(--border); font-size:11px; color:var(--navy-2); }
+.house-card .hc-row:first-of-type { border-top:none; }
+.house-card .hc-row .hc-lbl { font-size:10px; color:var(--navy-3); }
+.house-card .hc-row .hc-val { font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--navy); }
+
+/* xmod */
+.xmod-strip { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:18px; }
+.xmod-card { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); border-radius:10px; padding:14px 16px; position:relative; overflow:hidden; }
+.xmod-card::before { content:""; position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; background:rgba(200,151,91,0.06); }
+.xmod-card .xm-lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; position:relative; }
+.xmod-card .xm-title { font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:5px; position:relative; line-height:1.3; }
+.xmod-card .xm-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.xmod-card .xm-body { font-size:11px; color:var(--gold-soft); line-height:1.5; position:relative; }
+.xmod-card .xm-body b { color:var(--bg); font-weight:600; }
+
+/* Save bar */
+.save-bar { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border:1.5px solid var(--gold); border-radius:12px; padding:18px 22px; display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; margin-top:16px; }
+.save-bar .sb-text .sb-t { font-family:'Fraunces', serif; font-size:16px; font-weight:500; letter-spacing:-0.005em; margin-bottom:4px; }
+.save-bar .sb-text .sb-t em { font-style:italic; color:var(--gold); font-weight:400; }
+.save-bar .sb-text .sb-d { font-size:12px; color:var(--navy-3); }
+.save-bar .sb-actions { display:flex; gap:8px; }
+
+/* Filter */
+.filter-strip { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+.filter-strip .fs-lbl { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-right:4px; }
+.filter-pill { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:6px 12px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.filter-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill .ct { background:rgba(200,151,91,0.18); color:var(--gold); padding:1px 6px; border-radius:100px; margin-left:5px; font-family:'JetBrains Mono', monospace; font-size:10px; }
+.filter-pill.active .ct { background:rgba(200,151,91,0.2); color:var(--gold-soft); }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .col-2, .col-2.even { grid-template-columns:1fr; }
+  .summary-strip { grid-template-columns:repeat(2, 1fr); }
+  .house-grid { grid-template-columns:repeat(2, 1fr); }
+  .xmod-strip { grid-template-columns:1fr; }
+  .live-banner { grid-template-columns:1fr; }
+  .heatmap { grid-template-columns:100px repeat(9, 1fr); font-size:9px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">MVP2 · WASSCE-readiness · surface 2 of 5</div>
+<h1>Cohort <em>readiness.</em></h1>
+<div class="gold-rule"></div>
+<p>Head of Academics view of the 240. The distribution at Mock 2, the at-risk list of students projected to miss their tagged universities, the subject heatmap that says which subjects need cohort-wide attention before each paper, and the house-by-house breakdown that prompts the conversation between Mrs Owusu-Ansah and each Housemaster. Live overlay shows where each student stands today on the WASSCE timetable.</p>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">The cohort at a glance · 240 candidates</div>
+<div class="section-meta">Head of Academics · all F3</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / wassce / cohort-readiness</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE</div>
+<div class="nav-item sub"><div class="ic"></div>Setup</div>
+<div class="nav-item sub active"><div class="ic"></div>Cohort readiness</div>
+<div class="nav-item sub"><div class="ic"></div>Student reports</div>
+<div class="nav-item sub"><div class="ic"></div>Subject view</div>
+<div class="nav-item sub"><div class="ic"></div>Live exam tracker</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">CO</div><div><div class="meta-name">C. Owusu-Ansah</div><div class="meta-role">Head of Academics</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">WASSCE</a> · Cohort readiness</div>
+<div class="top-row">
+<div>
+<h1>Cohort <em>readiness</em> · F3 2025/26.</h1>
+<div class="lede"><b>Mock 2 projection frozen.</b> Updates with live results in August. Today's overlay shows who's sitting, who's exempted, where the risk concentrates. <b>Mrs C. Owusu-Ansah · 14 May 2026 · 14:45 GMT</b></div>
+</div>
+<div class="actions">
+<button class="btn">Distribution chart</button>
+<button class="btn">Risk list</button>
+<button class="btn primary">Export · GES district</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="live-banner">
+<div class="lb-dot">W<div class="pulse"></div></div>
+<div class="lb-text">
+<div class="lb-title">WASSCE 2026 · <em>Day 2</em> · 239 of 240 in centre</div>
+<div class="lb-sub">English Language Paper 2 (Essay) wrapped <b>12:00</b> · Paper 1 (Objective) <b>14:00–15:00 underway</b>. <b>Y. Aidoo (Slessor SCI)</b> on medical exemption · SC-12 filed · awaiting hospital discharge. No other anomalies.</div>
+</div>
+<div class="lb-cta"><button>Open live tracker</button></div>
+</div>
+
+<div class="summary-strip">
+<div class="s-tile ok"><div class="st-lbl">Sitting today</div><div class="st-val">239<span class="unit">/ 240</span></div><div class="st-sub"><b>99.6%</b> · 1 medical exemption</div></div>
+<div class="s-tile"><div class="st-lbl">Mock 2 median agg.</div><div class="st-val"><em>18</em></div><div class="st-sub">Mean <b>18.7</b> · in Tier 2 band</div></div>
+<div class="s-tile ok"><div class="st-lbl">Credit-pass rate</div><div class="st-val">94<span class="unit">%</span></div><div class="st-sub"><b>225 of 240</b> have all-credit Mock 2</div></div>
+<div class="s-tile flag"><div class="st-lbl">At-risk · target</div><div class="st-val">28</div><div class="st-sub">Projected agg. above target cut-off</div></div>
+<div class="s-tile terra"><div class="st-lbl">No tertiary path</div><div class="st-val">4</div><div class="st-sub">Dean exit-planning conversations</div></div>
+</div>
+
+<div class="col-2">
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Projected <em>aggregate</em> distribution · Mock 2</div>
+<div class="ch-meta">240 candidates · binned by aggregate point</div>
+</div>
+<div class="card-body">
+<div class="histogram">
+<div class="h-bar"><div class="h-count">2</div><div class="h-rect t1" style="height:8%;"></div></div>
+<div class="h-bar"><div class="h-count">5</div><div class="h-rect t1" style="height:14%;"></div></div>
+<div class="h-bar"><div class="h-count">8</div><div class="h-rect t1" style="height:22%;"></div></div>
+<div class="h-bar"><div class="h-count">9</div><div class="h-rect t1" style="height:25%;"></div></div>
+<div class="h-bar"><div class="h-count">11</div><div class="h-rect t1" style="height:31%;"></div></div>
+<div class="h-bar"><div class="h-count">14</div><div class="h-rect t1" style="height:40%;"></div></div>
+<div class="h-bar"><div class="h-count">17</div><div class="h-rect t2" style="height:48%;"></div></div>
+<div class="h-bar"><div class="h-count">19</div><div class="h-rect t2" style="height:54%;"></div></div>
+<div class="h-bar"><div class="h-count">21</div><div class="h-rect t2" style="height:60%;"></div></div>
+<div class="h-bar"><div class="h-count">17</div><div class="h-rect t2" style="height:48%;"></div></div>
+<div class="h-bar"><div class="h-count">16</div><div class="h-rect t2" style="height:46%;"></div></div>
+<div class="h-bar"><div class="h-count">14</div><div class="h-rect t2" style="height:40%;"></div></div>
+<div class="h-bar"><div class="h-count">16</div><div class="h-rect t3" style="height:46%;"></div></div>
+<div class="h-bar"><div class="h-count">15</div><div class="h-rect t3" style="height:43%;"></div></div>
+<div class="h-bar"><div class="h-count">13</div><div class="h-rect t3" style="height:37%;"></div></div>
+<div class="h-bar"><div class="h-count">12</div><div class="h-rect t3" style="height:34%;"></div></div>
+<div class="h-bar"><div class="h-count">10</div><div class="h-rect t3" style="height:29%;"></div></div>
+<div class="h-bar"><div class="h-count">8</div><div class="h-rect t3" style="height:22%;"></div></div>
+<div class="h-bar"><div class="h-count">7</div><div class="h-rect t4" style="height:20%;"></div></div>
+<div class="h-bar"><div class="h-count">6</div><div class="h-rect t4" style="height:17%;"></div></div>
+</div>
+<div class="h-axis">
+<div class="h-axis-cell">7</div>
+<div class="h-axis-cell">8</div>
+<div class="h-axis-cell">9</div>
+<div class="h-axis-cell">10</div>
+<div class="h-axis-cell">11</div>
+<div class="h-axis-cell">12</div>
+<div class="h-axis-cell">13</div>
+<div class="h-axis-cell">14</div>
+<div class="h-axis-cell">15</div>
+<div class="h-axis-cell">16</div>
+<div class="h-axis-cell">17</div>
+<div class="h-axis-cell">18</div>
+<div class="h-axis-cell">19</div>
+<div class="h-axis-cell">20</div>
+<div class="h-axis-cell">21</div>
+<div class="h-axis-cell">22</div>
+<div class="h-axis-cell">23</div>
+<div class="h-axis-cell">24</div>
+<div class="h-axis-cell">25+</div>
+<div class="h-axis-cell">28+</div>
+</div>
+<div class="h-legend">
+<div class="leg"><div class="dot" style="background:var(--green);"></div><b>Tier 1 · 6–12</b> · 49 students</div>
+<div class="leg"><div class="dot" style="background:var(--gold);"></div><b>Tier 2 · 13–18</b> · 104 students</div>
+<div class="leg"><div class="dot" style="background:var(--warn);"></div><b>Tier 3 · 19–24</b> · 74 students</div>
+<div class="leg"><div class="dot" style="background:var(--terra);"></div><b>Tier 4 · 25+</b> · 13 students</div>
+</div>
+<div style="margin-top:14px; padding:11px 14px; background:var(--gold-bg); border-radius:8px; border-left:3px solid var(--gold); font-size:11px; color:var(--navy-2); line-height:1.55;">
+<b>Asankrangwa Mock 2 median (18)</b> sits below Western Region Mock 2 median (20) · slightly above national Mock 2 median (17). The school over-indexes on Tier 2 (43% vs Western 38%) and under-indexes on Tier 4 (5.4% vs Western 12%).
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">By <em>programme</em></div>
+<div class="ch-meta">Tier distribution per programme</div>
+</div>
+<div class="card-body">
+
+<div class="prog-break">
+<div class="pb-name">Science<span class="pb-count">60 students</span></div>
+<div class="pb-bar">
+<div class="pb-seg t1" style="width:30%;">18</div>
+<div class="pb-seg t2" style="width:45%;">27</div>
+<div class="pb-seg t3" style="width:20%;">12</div>
+<div class="pb-seg t4" style="width:5%;">3</div>
+</div>
+</div>
+
+<div class="prog-break">
+<div class="pb-name">Business<span class="pb-count">60 students</span></div>
+<div class="pb-bar">
+<div class="pb-seg t1" style="width:18%;">11</div>
+<div class="pb-seg t2" style="width:47%;">28</div>
+<div class="pb-seg t3" style="width:27%;">16</div>
+<div class="pb-seg t4" style="width:8%;">5</div>
+</div>
+</div>
+
+<div class="prog-break">
+<div class="pb-name">Gen. Arts<span class="pb-count">80 students</span></div>
+<div class="pb-bar">
+<div class="pb-seg t1" style="width:17%;">14</div>
+<div class="pb-seg t2" style="width:42%;">34</div>
+<div class="pb-seg t3" style="width:35%;">28</div>
+<div class="pb-seg t4" style="width:6%;">4</div>
+</div>
+</div>
+
+<div class="prog-break">
+<div class="pb-name">Home Ec.<span class="pb-count">40 students</span></div>
+<div class="pb-bar">
+<div class="pb-seg t1" style="width:15%;">6</div>
+<div class="pb-seg t2" style="width:38%;">15</div>
+<div class="pb-seg t3" style="width:45%;">18</div>
+<div class="pb-seg t4" style="width:2%;">1</div>
+</div>
+</div>
+
+<div style="margin-top:14px; padding:11px 14px; background:var(--bg); border-radius:8px; font-size:11px; color:var(--navy-2); line-height:1.55;">
+<b>Science is the strongest programme</b> by Mock 2 distribution (30% Tier 1 vs school 20%). <b>Home Ec is the weakest cohort</b> in tier mix but the programme prepares students for vocational pathways where aggregate is less determinative.
+</div>
+
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>Reading the cohort at a glance</h4>
+<ul>
+<li><b>The histogram is the headmaster's chart, not the academic head's.</b> Mrs Owusu-Ansah works with this view daily; she's the one filtering by programme, hovering over individual students, pulling the at-risk list. But when she meets the Headmaster every Monday morning, she shows this chart — the shape of the cohort. Dr Asare-Bediako reads it in 30 seconds.</li>
+<li><b>The 20-bin histogram (one bar per aggregate point from 7 to 28+) shows the cohort's structural reality, not a smoothed line.</b> The bumpiness reveals where Mock 2 marking landed — slightly heavy at agg. 15 and 19, slightly thin at 13 and 24. This is real noise from the marking process, not an artifact of the chart.</li>
+<li><b>Programme comparison is the conversation starter for Heads of Department.</b> Science HOD looks at this and sees his programme is doing well; Home Ec HOD looks at this and sees the conversation she needs to have with her teachers about pacing. Both legitimate readings; neither punitive.</li>
+<li><b>The regional/national comparison line at the bottom of the histogram is the only external benchmark.</b> Pulled from GES Western Region statistics (published in November) and WAEC national chief examiner reports (published in October). Out-of-date by 6–12 months, but the best external comparison available.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">Subject heatmap · where the cohort is weak</div>
+<div class="section-meta">Mock 2 · 240 candidates × subjects sat</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / wassce / cohort-readiness / subjects</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE</div>
+<div class="nav-item sub"><div class="ic"></div>Setup</div>
+<div class="nav-item sub active"><div class="ic"></div>Cohort readiness</div>
+<div class="nav-item sub"><div class="ic"></div>Student reports</div>
+<div class="nav-item sub"><div class="ic"></div>Subject view</div>
+<div class="nav-item sub"><div class="ic"></div>Live exam tracker</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">CO</div><div><div class="meta-name">C. Owusu-Ansah</div><div class="meta-role">Head of Academics</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">WASSCE</a> · <a href="#">Cohort readiness</a> · Subject heatmap</div>
+<div class="top-row">
+<div>
+<h1>Subject <em>heatmap.</em></h1>
+<div class="lede">Each row is a WASSCE subject. Each cell is the count of students who scored at that grade in Mock 2. <b>Green = credit pass concentrations (A1–C6); red = below-credit concentrations (D7–F9).</b> Highlights cohort-wide weaknesses before each paper arrives.</div>
+</div>
+<div class="actions">
+<button class="btn">By programme</button>
+<button class="btn">By teacher</button>
+<button class="btn primary">Export · staff brief</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Mock 2 · <em>grade × subject</em> distribution</div>
+<div class="ch-meta">Numbers = students at each grade</div>
+</div>
+<div class="card-body">
+
+<div class="heatmap">
+<div class="hm-cell hm-head"></div>
+<div class="hm-cell hm-head">A1</div>
+<div class="hm-cell hm-head">B2</div>
+<div class="hm-cell hm-head">B3</div>
+<div class="hm-cell hm-head">C4</div>
+<div class="hm-cell hm-head">C5</div>
+<div class="hm-cell hm-head">C6</div>
+<div class="hm-cell hm-head">D7</div>
+<div class="hm-cell hm-head">E8</div>
+<div class="hm-cell hm-head">F9</div>
+
+<div class="hm-cell hm-row-lbl">English Lang.</div>
+<div class="hm-cell g1">12</div>
+<div class="hm-cell g2">28</div>
+<div class="hm-cell g3">62</div>
+<div class="hm-cell g4">58</div>
+<div class="hm-cell g5">44</div>
+<div class="hm-cell g6">22</div>
+<div class="hm-cell g7">10</div>
+<div class="hm-cell g8">3</div>
+<div class="hm-cell g9">1</div>
+
+<div class="hm-cell hm-row-lbl">Math (Core)</div>
+<div class="hm-cell g1">8</div>
+<div class="hm-cell g2">18</div>
+<div class="hm-cell g3">34</div>
+<div class="hm-cell g4">48</div>
+<div class="hm-cell g5">50</div>
+<div class="hm-cell g6">38</div>
+<div class="hm-cell g7">28</div>
+<div class="hm-cell g8">12</div>
+<div class="hm-cell g9">4</div>
+
+<div class="hm-cell hm-row-lbl">Int. Science</div>
+<div class="hm-cell g1">14</div>
+<div class="hm-cell g2">32</div>
+<div class="hm-cell g3">58</div>
+<div class="hm-cell g4">52</div>
+<div class="hm-cell g5">42</div>
+<div class="hm-cell g6">28</div>
+<div class="hm-cell g7">10</div>
+<div class="hm-cell g8">3</div>
+<div class="hm-cell g9">1</div>
+
+<div class="hm-cell hm-row-lbl">Social Studies</div>
+<div class="hm-cell g1">18</div>
+<div class="hm-cell g2">34</div>
+<div class="hm-cell g3">68</div>
+<div class="hm-cell g4">62</div>
+<div class="hm-cell g5">38</div>
+<div class="hm-cell g6">14</div>
+<div class="hm-cell g7">5</div>
+<div class="hm-cell g8">1</div>
+<div class="hm-cell g9">0</div>
+
+<div class="hm-cell hm-row-lbl">Chemistry</div>
+<div class="hm-cell g1">4</div>
+<div class="hm-cell g2">8</div>
+<div class="hm-cell g3">9</div>
+<div class="hm-cell g4">12</div>
+<div class="hm-cell g5">10</div>
+<div class="hm-cell g6">8</div>
+<div class="hm-cell g7">5</div>
+<div class="hm-cell g8">3</div>
+<div class="hm-cell g9">1</div>
+
+<div class="hm-cell hm-row-lbl">Physics</div>
+<div class="hm-cell g1">3</div>
+<div class="hm-cell g2">6</div>
+<div class="hm-cell g3">9</div>
+<div class="hm-cell g4">11</div>
+<div class="hm-cell g5">12</div>
+<div class="hm-cell g6">10</div>
+<div class="hm-cell g7">6</div>
+<div class="hm-cell g8">2</div>
+<div class="hm-cell g9">1</div>
+
+<div class="hm-cell hm-row-lbl">Biology</div>
+<div class="hm-cell g1">5</div>
+<div class="hm-cell g2">10</div>
+<div class="hm-cell g3">12</div>
+<div class="hm-cell g4">13</div>
+<div class="hm-cell g5">10</div>
+<div class="hm-cell g6">7</div>
+<div class="hm-cell g7">2</div>
+<div class="hm-cell g8">1</div>
+<div class="hm-cell g9">0</div>
+
+<div class="hm-cell hm-row-lbl">Elective Math</div>
+<div class="hm-cell g1">2</div>
+<div class="hm-cell g2">4</div>
+<div class="hm-cell g3">8</div>
+<div class="hm-cell g4">11</div>
+<div class="hm-cell g5">14</div>
+<div class="hm-cell g6">12</div>
+<div class="hm-cell g7">18</div>
+<div class="hm-cell g8">12</div>
+<div class="hm-cell g9">5</div>
+
+<div class="hm-cell hm-row-lbl">F. Accounting</div>
+<div class="hm-cell g1">3</div>
+<div class="hm-cell g2">8</div>
+<div class="hm-cell g3">12</div>
+<div class="hm-cell g4">14</div>
+<div class="hm-cell g5">12</div>
+<div class="hm-cell g6">8</div>
+<div class="hm-cell g7">3</div>
+<div class="hm-cell g8">0</div>
+<div class="hm-cell g9">0</div>
+
+<div class="hm-cell hm-row-lbl">Business Mgt.</div>
+<div class="hm-cell g1">4</div>
+<div class="hm-cell g2">10</div>
+<div class="hm-cell g3">14</div>
+<div class="hm-cell g4">16</div>
+<div class="hm-cell g5">10</div>
+<div class="hm-cell g6">5</div>
+<div class="hm-cell g7">1</div>
+<div class="hm-cell g8">0</div>
+<div class="hm-cell g9">0</div>
+
+<div class="hm-cell hm-row-lbl">Economics</div>
+<div class="hm-cell g1">6</div>
+<div class="hm-cell g2">14</div>
+<div class="hm-cell g3">22</div>
+<div class="hm-cell g4">28</div>
+<div class="hm-cell g5">24</div>
+<div class="hm-cell g6">18</div>
+<div class="hm-cell g7">8</div>
+<div class="hm-cell g8">2</div>
+<div class="hm-cell g9">0</div>
+
+<div class="hm-cell hm-row-lbl">Literature</div>
+<div class="hm-cell g1">8</div>
+<div class="hm-cell g2">16</div>
+<div class="hm-cell g3">22</div>
+<div class="hm-cell g4">14</div>
+<div class="hm-cell g5">10</div>
+<div class="hm-cell g6">6</div>
+<div class="hm-cell g7">2</div>
+<div class="hm-cell g8">2</div>
+<div class="hm-cell g9">0</div>
+
+<div class="hm-cell hm-row-lbl">Geography</div>
+<div class="hm-cell g1">6</div>
+<div class="hm-cell g2">12</div>
+<div class="hm-cell g3">18</div>
+<div class="hm-cell g4">18</div>
+<div class="hm-cell g5">12</div>
+<div class="hm-cell g6">8</div>
+<div class="hm-cell g7">4</div>
+<div class="hm-cell g8">2</div>
+<div class="hm-cell g9">0</div>
+
+<div class="hm-cell hm-row-lbl">Government</div>
+<div class="hm-cell g1">10</div>
+<div class="hm-cell g2">14</div>
+<div class="hm-cell g3">20</div>
+<div class="hm-cell g4">16</div>
+<div class="hm-cell g5">10</div>
+<div class="hm-cell g6">8</div>
+<div class="hm-cell g7">2</div>
+<div class="hm-cell g8">0</div>
+<div class="hm-cell g9">0</div>
+
+<div class="hm-cell hm-row-lbl">French</div>
+<div class="hm-cell g1">1</div>
+<div class="hm-cell g2">2</div>
+<div class="hm-cell g3">3</div>
+<div class="hm-cell g4">4</div>
+<div class="hm-cell g5">6</div>
+<div class="hm-cell g6">5</div>
+<div class="hm-cell g7">8</div>
+<div class="hm-cell g8">5</div>
+<div class="hm-cell g9">2</div>
+</div>
+
+<div style="margin-top:18px; display:grid; grid-template-columns:repeat(3, 1fr); gap:12px;">
+<div style="padding:11px 14px; background:var(--terra-bg); border-radius:8px; border-left:3px solid var(--terra); font-size:11px; color:var(--navy-2); line-height:1.55;">
+<b>Concern subject 1 · Elective Math.</b> 35 students (33%) below credit · 5 F9s. Largest below-credit concentration of any single subject. Mr Bediako's elective math team needs intervention plan for the 35 affected before the Jun 3 paper.
+</div>
+<div style="padding:11px 14px; background:var(--terra-bg); border-radius:8px; border-left:3px solid var(--terra); font-size:11px; color:var(--navy-2); line-height:1.55;">
+<b>Concern subject 2 · French.</b> 15 of 36 French students (42%) below credit · 2 F9s. Asankrangwa has no L1 French teacher; current part-time staffing has been the gap for 2 years. HOD Languages co-signed.
+</div>
+<div style="padding:11px 14px; background:var(--warn-bg); border-radius:8px; border-left:3px solid var(--warn); font-size:11px; color:var(--navy-2); line-height:1.55;">
+<b>Watch subject · Math (Core).</b> 44 below credit (18%) · cohort-wide weakness familiar to every Ghanaian SHS. Six remedial slots running Wed/Sat afternoons through May. Paper is Jun 3 — there's time.
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>Why the heatmap matters</h4>
+<ul>
+<li><b>One row per subject, nine columns per grade.</b> The colour gradient encodes pass-band intuition without needing a legend. Green cells on the left are good; red cells on the right are bad; gold in the middle is borderline credit.</li>
+<li><b>Concern subjects are tagged in plain language.</b> Elective Math and French are the two below-credit concentrations the academic head escalates to the Headmaster. The tag-with-rationale pattern means the staff brief writes itself: "Elective Math, 33% below credit, intervention plan needed by Jun 3 paper".</li>
+<li><b>French is a structural staffing issue, not a teaching issue.</b> Most rural Western Region SHSs cannot recruit a full-time L1 French teacher; the academic head's heatmap surfaces this every year, the HOD signs off, and the problem persists. This is the kind of friction the data wraps around — visible, repeated, not yet solved.</li>
+<li><b>The watch tag is gentler than the concern tag.</b> Math (Core) has 18% below credit, which is bad in absolute terms but on the lower end of national benchmarks. The cell-paint and the tag-language are calibrated for the right managerial response — escalate the concerns, watch the watches.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">At-risk list · 28 students above target cut-off</div>
+<div class="section-meta">Dean Mensa-Ofori + Form Masters · individual interviews</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / wassce / cohort-readiness / risk-list</div>
+</div>
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE</div>
+<div class="nav-item sub"><div class="ic"></div>Setup</div>
+<div class="nav-item sub active"><div class="ic"></div>Cohort readiness</div>
+<div class="nav-item sub"><div class="ic"></div>Student reports</div>
+<div class="nav-item sub"><div class="ic"></div>Subject view</div>
+<div class="nav-item sub"><div class="ic"></div>Live exam tracker</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">CO</div><div><div class="meta-name">C. Owusu-Ansah</div><div class="meta-role">Head of Academics</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">WASSCE</a> · <a href="#">Cohort readiness</a> · At-risk</div>
+<div class="top-row">
+<div>
+<h1>The <em>28</em> at-risk students.</h1>
+<div class="lede"><b>Projected aggregate higher than their lowest tagged target's cut-off.</b> These are the candidates whose Mock 2 result says "your safety school isn't actually safe". The Dean and the Form Master have done at least one interview per student. Some progressed; some need a second conversation. Sorted by gap size.</div>
+</div>
+<div class="actions">
+<button class="btn">By Form Master</button>
+<button class="btn">Parent SMS log</button>
+<button class="btn primary">Dean's worklist</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="filter-strip">
+<span class="fs-lbl">Show</span>
+<button class="filter-pill active">At-risk · all <span class="ct">28</span></button>
+<button class="filter-pill">Tier 1 stretch <span class="ct">9</span></button>
+<button class="filter-pill">Tier 2 stretch <span class="ct">12</span></button>
+<button class="filter-pill">No target tagged <span class="ct">4</span></button>
+<button class="filter-pill">Followup pending <span class="ct">8</span></button>
+<span class="fs-lbl" style="margin-left:14px;">Sort</span>
+<button class="filter-pill active">Gap size · descending</button>
+<button class="filter-pill">Programme</button>
+<button class="filter-pill">Last interview</button>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Sorted by <em>gap</em> · projected aggregate vs lowest target cut-off</div>
+<div class="ch-meta">28 candidates · Mock 2 source</div>
+</div>
+<div class="card-body" style="padding:0;">
+
+<table class="risk-list">
+<thead><tr>
+<th>Candidate</th>
+<th>Programme</th>
+<th class="r">Mock 2</th>
+<th>Lowest target</th>
+<th class="c">Gap</th>
+<th>Last action</th>
+<th class="c">Next</th>
+</tr></thead>
+<tbody>
+
+<tr>
+<td><div class="st-cell"><div class="st-av terra">JA</div><div><div class="st-name">J. Anokye</div><div class="st-meta">F3 GA · 0184-0902</div></div></div></td>
+<td><span class="prog-pill ga">Gen. Arts</span></td>
+<td class="r"><span class="agg-num tight">31</span></td>
+<td><span class="target">No target tagged<span class="t-uni">considering deferment</span></span></td>
+<td class="c"><span class="gap-pill over">no path</span></td>
+<td><span class="action"><b>Dean call w/ parent</b> · 8 May · agreed exit-planning meeting</span></td>
+<td class="c"><span class="stat-pill scheduled">Wed 21 May</span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av terra">RB</div><div><div class="st-name">R. Boampong</div><div class="st-meta">F3 HE · 0184-0934</div></div></div></td>
+<td><span class="prog-pill he">Home Ec.</span></td>
+<td class="r"><span class="agg-num tight">28</span></td>
+<td><span class="target">B.Sc. Nutrition · UEW<span class="t-uni">cut-off 22</span></span></td>
+<td class="c"><span class="gap-pill over">+6 over</span></td>
+<td><span class="action">FM interview · 2 May · advised broader target set</span></td>
+<td class="c"><span class="stat-pill scheduled">Sat 17 May</span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av terra">EO</div><div><div class="st-name">E. Owusu</div><div class="st-meta">F3 BUS · 0184-0867</div></div></div></td>
+<td><span class="prog-pill bus">Business</span></td>
+<td class="r"><span class="agg-num tight">27</span></td>
+<td><span class="target">B.Sc. Banking · UEW<span class="t-uni">cut-off 21</span></span></td>
+<td class="c"><span class="gap-pill over">+6 over</span></td>
+<td><span class="action">FM interview · 28 Apr · added Takoradi Tech as safety</span></td>
+<td class="c"><span class="stat-pill done">Resolved</span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av warn">KA</div><div><div class="st-name">K. Antwi</div><div class="st-meta">F3 GA · 0184-0888</div></div></div></td>
+<td><span class="prog-pill ga">Gen. Arts</span></td>
+<td class="r"><span class="agg-num warn">24</span></td>
+<td><span class="target">B.A. Sociology · KNUST<span class="t-uni">cut-off 18</span></span></td>
+<td class="c"><span class="gap-pill over">+6 over</span></td>
+<td><span class="action"><b>Mother declined</b> Dean call · FM follow-up needed</span></td>
+<td class="c"><span class="stat-pill pending">Pending</span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av warn">AQ</div><div><div class="st-name">A. Quartey</div><div class="st-meta">F3 GA · 0184-0879</div></div></div></td>
+<td><span class="prog-pill ga">Gen. Arts</span></td>
+<td class="r"><span class="agg-num warn">22</span></td>
+<td><span class="target">B.A. Sociology · UCC<span class="t-uni">cut-off 17</span></span></td>
+<td class="c"><span class="gap-pill over">+5 over</span></td>
+<td><span class="action"><b>Pastoral case</b> · Dean co-monitoring · VLC flag active</span></td>
+<td class="c"><span class="stat-pill scheduled">Thu 22 May</span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av warn">PD</div><div><div class="st-name">P. Donkor</div><div class="st-meta">F3 HE · 0184-0918</div></div></div></td>
+<td><span class="prog-pill he">Home Ec.</span></td>
+<td class="r"><span class="agg-num warn">21</span></td>
+<td><span class="target">B.A. Family &amp; Consumer Sci · UEW<span class="t-uni">cut-off 17</span></span></td>
+<td class="c"><span class="gap-pill over">+4 over</span></td>
+<td><span class="action">FM interview · 5 May · target widened</span></td>
+<td class="c"><span class="stat-pill done">Resolved</span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av warn">SA</div><div><div class="st-name">S. Asante</div><div class="st-meta">F3 BUS · 0184-0852</div></div></div></td>
+<td><span class="prog-pill bus">Business</span></td>
+<td class="r"><span class="agg-num warn">19</span></td>
+<td><span class="target">B.Sc. Acc &amp; Finance · KNUST<span class="t-uni">cut-off 15</span></span></td>
+<td class="c"><span class="gap-pill over">+4 over</span></td>
+<td><span class="action">FM interview · 25 Apr · added UCC as match target</span></td>
+<td class="c"><span class="stat-pill done">Resolved</span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av warn">AM</div><div><div class="st-name">A. Mensah</div><div class="st-meta">F3 SCI · 0184-0810</div></div></div></td>
+<td><span class="prog-pill sci">Science</span></td>
+<td class="r"><span class="agg-num warn">18</span></td>
+<td><span class="target">B.Sc. Civil Eng · KNUST<span class="t-uni">cut-off 13</span></span></td>
+<td class="c"><span class="gap-pill over">+5 over</span></td>
+<td><span class="action">FM interview · 1 May · UCC eng as match</span></td>
+<td class="c"><span class="stat-pill done">Resolved</span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av warn">FB</div><div><div class="st-name">F. Boakye</div><div class="st-meta">F3 BUS · 0184-0841</div></div></div></td>
+<td><span class="prog-pill bus">Business</span></td>
+<td class="r"><span class="agg-num warn">16</span></td>
+<td><span class="target">B.A. Bus Admin · Legon<span class="t-uni">cut-off 14</span></span></td>
+<td class="c"><span class="gap-pill tight">+2 tight</span></td>
+<td><span class="action">FM interview · 30 Apr · UCC added as match</span></td>
+<td class="c"><span class="stat-pill done">Resolved</span></td>
+</tr>
+
+<tr class="terra-row">
+<td><div class="st-cell"><div class="st-av terra">YA</div><div><div class="st-name">Y. Aidoo</div><div class="st-meta">F3 SCI · 0184-0817</div></div></div></td>
+<td><span class="prog-pill sci">Science</span></td>
+<td class="r"><span class="agg-num ok">10</span></td>
+<td><span class="target">B.Sc. Biochemistry · KNUST<span class="t-uni">cut-off 11</span></span></td>
+<td class="c"><span class="gap-pill ok">−1 within</span></td>
+<td><span class="action"><b>Medical · inpatient</b> · WAEC SC-12 filed · papers missed</span></td>
+<td class="c"><span class="stat-pill scheduled">Make-up TBD</span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av warn">JT</div><div><div class="st-name">J. Tetteh</div><div class="st-meta">F3 SCI · 0184-0823</div></div></div></td>
+<td><span class="prog-pill sci">Science</span></td>
+<td class="r"><span class="agg-num warn">14</span></td>
+<td><span class="target">B.Sc. Comp Sci · KNUST<span class="t-uni">cut-off 12</span></span></td>
+<td class="c"><span class="gap-pill tight">+2 tight</span></td>
+<td><span class="action">FM interview · 6 May · alt target Legon CS as match</span></td>
+<td class="c"><span class="stat-pill done">Resolved</span></td>
+</tr>
+
+<tr>
+<td colspan="7" style="text-align:center; padding:14px; color:var(--navy-3); font-style:italic; font-size:11px;">+ 17 more rows · 8 pending Dean follow-up · 9 resolved last week</td>
+</tr>
+
+</tbody>
+</table>
+
+</div>
+</div>
+
+<div class="col-2 even">
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title"><em>Dean's</em> interview cadence</div>
+<div class="ch-meta">28 cases · target close-out before WASSCE end</div>
+</div>
+<div class="card-body">
+<div style="display:flex; flex-direction:column; gap:9px; font-size:12px; color:var(--navy-2); line-height:1.55;">
+<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span><b>9 resolved</b> · targets widened</span><span class="mono" style="font-weight:700;">since 22 Apr</span></div>
+<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span><b>11 scheduled</b> · interview booked</span><span class="mono" style="font-weight:700;">14–24 May</span></div>
+<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);"><span><b>4 no-target</b> · exit-planning conversations</span><span class="mono" style="font-weight:700; color:var(--terra);">deferment likely</span></div>
+<div style="display:flex; justify-content:space-between; padding:8px 0;"><span><b>4 followup</b> · parents declined</span><span class="mono" style="font-weight:700; color:var(--warn);">FM tertiary</span></div>
+</div>
+<div style="margin-top:12px; padding:11px 14px; background:var(--bg); border-radius:8px; font-size:11px; color:var(--navy-3); line-height:1.55;">
+<b>Target close-out</b>: Dean Mensa-Ofori aims to have every at-risk case resolved (target widened, alternative path agreed, or deferment discussed) <b>before 19 Jun</b>. Cases unresolved at WASSCE end roll into post-results admissions counselling in Aug.
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Why <em>"resolved"</em> doesn't mean "they passed"</div>
+<div class="ch-meta">Vocabulary discipline</div>
+</div>
+<div class="card-body">
+<div style="font-size:12px; color:var(--navy-2); line-height:1.6;">
+<p style="margin-bottom:10px;"><b>Resolved</b> means the school has done its part — the Dean or Form Master has had the conversation, the student understands their position, and a revised target set has been agreed. The student may still not get their first choice in August; the gap between their Mock 2 and their original target may persist.</p>
+<p style="margin-bottom:10px;">The status the academic head tracks isn't <b>"the gap closed"</b> — that depends on what each student does in the next 8 weeks of WASSCE. The status is <b>"the conversation happened"</b>.</p>
+<p style="font-style:italic; color:var(--navy-3); border-left:3px solid var(--gold); padding:6px 12px; background:var(--gold-bg);">"A school can't will a student into KNUST Medicine. We can be honest about what's likely, what's possible, and what other paths exist. The honesty is the deliverable; the result is theirs."</p>
+<p style="margin-top:10px; font-size:10px; color:var(--navy-3); font-style:italic;">— Mrs Owusu-Ansah, faculty briefing, 28 Apr 2026</p>
+</div>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>What the at-risk list does</h4>
+<ul>
+<li><b>Gap size is the primary sort.</b> A student with a +6 gap (six aggregate points above their lowest target) is in deeper trouble than a student with a +2 tight gap. The Dean's worklist puts +6s at the top because those need the hardest conversations and the most time.</li>
+<li><b>Y. Aidoo appears here despite being projected within target.</b> She's on the at-risk list not for academics but for <b>medical disruption</b> — she's missed two live papers (Oral English yesterday, English Language 1+2 today). The system widens "at-risk" to include external risk factors, not just Mock 2 projection.</li>
+<li><b>"Mother declined Dean call" is a real data point.</b> Some parents don't want the conversation. The system logs the decline, the Form Master picks up the case, and the school stays inside its bounds — never coercive, always present. K. Antwi's mother declined; the Form Master is the tertiary contact.</li>
+<li><b>"Resolved" is a documented decision, not a fixed outcome.</b> The vocabulary discipline matters because it prevents the worklist becoming a faux-victory ledger. The Dean counts the conversations, not the eventual admission decisions.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">House × programme breakdown</div>
+<div class="section-meta">Pastoral cross-cut · Housemasters + Form Masters</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / wassce / cohort-readiness / houses</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE</div>
+<div class="nav-item sub"><div class="ic"></div>Setup</div>
+<div class="nav-item sub active"><div class="ic"></div>Cohort readiness</div>
+<div class="nav-item sub"><div class="ic"></div>Student reports</div>
+<div class="nav-item sub"><div class="ic"></div>Subject view</div>
+<div class="nav-item sub"><div class="ic"></div>Live exam tracker</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">CO</div><div><div class="meta-name">C. Owusu-Ansah</div><div class="meta-role">Head of Academics</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">WASSCE</a> · <a href="#">Cohort readiness</a> · House breakdown</div>
+<div class="top-row">
+<div>
+<h1>By <em>house.</em></h1>
+<div class="lede">Each of Asankrangwa's four houses runs across all four programmes — boarding allocation is academic-blind, so each house's WASSCE readiness reflects the mix of students inside it, not any cohort selection effect. The HMs each receive a weekly digest with their house's stats.</div>
+</div>
+<div class="actions">
+<button class="btn">Boarding view</button>
+<button class="btn primary">HM digest</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="house-grid">
+
+<div class="house-card slessor">
+<div class="hc-name"><em>Slessor</em></div>
+<div class="hc-cohort">62 F3 students · HM Mr A. Boateng</div>
+<div class="hc-row"><span class="hc-lbl">Mock 2 median</span><span class="hc-val">17</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 1 (6–12)</span><span class="hc-val">15</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 2 (13–18)</span><span class="hc-val">26</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 3 (19–24)</span><span class="hc-val">17</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 4 (25+)</span><span class="hc-val">4</span></div>
+<div class="hc-row" style="border-top:1px solid var(--gold);"><span class="hc-lbl" style="color:var(--gold);">At-risk count</span><span class="hc-val" style="color:var(--terra);">8</span></div>
+<div class="hc-row"><span class="hc-lbl">Today · medical</span><span class="hc-val" style="color:var(--terra);">1 (Y. Aidoo)</span></div>
+</div>
+
+<div class="house-card aggrey">
+<div class="hc-name"><em>Aggrey</em></div>
+<div class="hc-cohort">58 F3 students · HM Mr D. Tetteh</div>
+<div class="hc-row"><span class="hc-lbl">Mock 2 median</span><span class="hc-val">18</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 1 (6–12)</span><span class="hc-val">13</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 2 (13–18)</span><span class="hc-val">27</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 3 (19–24)</span><span class="hc-val">15</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 4 (25+)</span><span class="hc-val">3</span></div>
+<div class="hc-row" style="border-top:1px solid var(--gold);"><span class="hc-lbl" style="color:var(--gold);">At-risk count</span><span class="hc-val" style="color:var(--terra);">6</span></div>
+<div class="hc-row"><span class="hc-lbl">Today · sitting</span><span class="hc-val" style="color:var(--green);">58 / 58</span></div>
+</div>
+
+<div class="house-card kufuor">
+<div class="hc-name"><em>Kufuor</em></div>
+<div class="hc-cohort">60 F3 students · HM Mr K. Mensah</div>
+<div class="hc-row"><span class="hc-lbl">Mock 2 median</span><span class="hc-val">19</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 1 (6–12)</span><span class="hc-val">11</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 2 (13–18)</span><span class="hc-val">25</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 3 (19–24)</span><span class="hc-val">21</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 4 (25+)</span><span class="hc-val">3</span></div>
+<div class="hc-row" style="border-top:1px solid var(--gold);"><span class="hc-lbl" style="color:var(--gold);">At-risk count</span><span class="hc-val" style="color:var(--terra);">8</span></div>
+<div class="hc-row"><span class="hc-lbl">Today · sitting</span><span class="hc-val" style="color:var(--green);">60 / 60</span></div>
+</div>
+
+<div class="house-card busia">
+<div class="hc-name"><em>Busia</em></div>
+<div class="hc-cohort">60 F3 students · HM Mrs A. Owusu</div>
+<div class="hc-row"><span class="hc-lbl">Mock 2 median</span><span class="hc-val">18</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 1 (6–12)</span><span class="hc-val">10</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 2 (13–18)</span><span class="hc-val">26</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 3 (19–24)</span><span class="hc-val">21</span></div>
+<div class="hc-row"><span class="hc-lbl">Tier 4 (25+)</span><span class="hc-val">3</span></div>
+<div class="hc-row" style="border-top:1px solid var(--gold);"><span class="hc-lbl" style="color:var(--gold);">At-risk count</span><span class="hc-val" style="color:var(--terra);">6</span></div>
+<div class="hc-row"><span class="hc-lbl">Today · sitting</span><span class="hc-val" style="color:var(--green);">60 / 60</span></div>
+</div>
+
+</div>
+
+<div style="margin-top:18px; padding:12px 14px; background:var(--bg); border-radius:8px; font-size:11px; color:var(--navy-2); line-height:1.55;">
+<b>House comparison is the gentlest of the cross-cuts.</b> Slessor is slightly stronger (median 17 vs school 18) but the spread is small. The four houses run within 2 aggregate points of each other; the variation is mostly noise around the cohort mean. Useful for the Headmaster's monthly HM meeting where each HM walks through their pastoral readings of their boys/girls; not useful for high-stakes academic comparison.
+</div>
+
+<div class="xmod-strip">
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Boarding</div>
+<div class="xm-title">HM <em>weekly digest</em> auto-sent</div>
+<div class="xm-body">Every Friday afternoon, each HM gets a one-page digest of their house's WASSCE readiness — tier counts, at-risk names, this week's interview log. Built into the boarding module's HM weekly comms cadence.</div>
+</div>
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · VLC</div>
+<div class="xm-title">A. Quartey <em>pastoral × academic</em></div>
+<div class="xm-body">She appears in the at-risk list with a +5 gap. The Dean's <b>academic</b> interview runs in parallel with the FM's <b>pastoral</b> support. Two threads, same student, both flagged, neither conflated.</div>
+</div>
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Sickbay</div>
+<div class="xm-title">Y. Aidoo <em>live link</em></div>
+<div class="xm-body">When the matron updates Y. Aidoo's referral status, this dashboard's "1 medical · Slessor" tile updates. Discharge will trigger the make-up paper scheduling workflow.</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>The house cut, briefly</h4>
+<ul>
+<li><b>House aggregation is the only academic cut where the variation is mostly noise.</b> The four houses run within 2 aggregate points of each other because boarding allocation is academic-blind — students are placed by gender + intake date, not by ability stream. We surface the comparison anyway because the HMs want it for their weekly meeting; we surface it last because it's the least diagnostic of the cuts.</li>
+<li><b>The HM weekly digest is the one place the WASSCE module talks to the boarding module on auto-cadence.</b> Friday afternoon, one page per HM. Tier counts. At-risk names. Last week's incidents that might affect academic outcomes. The HM doesn't need to log into the WASSCE module; the digest comes to her.</li>
+<li><b>"Slessor 1 medical · Y. Aidoo" is the kind of detail that matters.</b> Mr Boateng (Slessor HM) saw this at 11:15 today when the SC-12 filed; he visited the hospital at 14:00 during his break. The data flowed to him via the sickbay → boarding HM notification rule, the WASSCE module just reflects the state.</li>
+</ul>
+</div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

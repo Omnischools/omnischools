@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — VLC student journal</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+.btn.terra { background:var(--terra); color:var(--bg); border-color:var(--terra); font-weight:700; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.browser-bar .pii-warn { margin-left:auto; padding:3px 10px; background:rgba(184,74,57,0.2); color:var(--terra-bg); font-size:9px; font-weight:700; letter-spacing:0.1em; border-radius:100px; }
+
+/* Student hero */
+.student-hero { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); padding:32px 36px; display:grid; grid-template-columns:auto 1fr auto; gap:28px; align-items:center; }
+.student-hero .avatar { width:88px; height:88px; border-radius:18px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:34px; font-weight:600; flex-shrink:0; }
+.student-hero .info .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.student-hero .info h2 { font-family:'Fraunces',serif; font-size:30px; font-weight:500; margin-bottom:4px; line-height:1.15; }
+.student-hero .info h2 em { font-style:italic; color:var(--gold); }
+.student-hero .info .meta-row { display:flex; gap:18px; margin-top:8px; font-size:11px; color:rgba(232,212,184,0.7); }
+.student-hero .info .meta-row b { color:var(--bg); font-weight:600; }
+.student-hero .info .meta-row .pipe { color:var(--gold); }
+.student-hero .pastoral-tag { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+.student-hero .pastoral-tag .tag { background:var(--terra); color:var(--bg); padding:4px 11px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; }
+.student-hero .pastoral-tag .sub { font-size:10px; color:rgba(232,212,184,0.7); }
+.student-hero .pastoral-tag .sub b { color:var(--bg); }
+
+/* Year overview strip */
+.year-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.ys-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.ys-card.terra { background:var(--terra-bg); border-color:var(--terra); }
+.ys-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.ys-card .big { font-family:'Fraunces',serif; font-size:22px; font-weight:600; line-height:1; margin-bottom:4px; }
+.ys-card .big em { font-style:italic; color:var(--gold); }
+.ys-card.terra .big em { color:var(--terra); }
+.ys-card .sub { font-size:10px; color:var(--navy-3); line-height:1.4; }
+.ys-card .sub b { color:var(--navy-2); font-weight:600; }
+
+/* 22-session timeline */
+.timeline-card { padding:22px 36px 24px; background:var(--surface); border-bottom:1px solid var(--border); }
+.timeline-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+.timeline-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.timeline-head h3 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.timeline-head h3 em { font-style:italic; color:var(--gold); }
+.timeline-head .legend { display:flex; gap:14px; font-size:10px; color:var(--navy-3); }
+.timeline-head .legend span { display:flex; align-items:center; gap:5px; }
+.timeline-head .legend .sw { width:10px; height:10px; border-radius:3px; }
+.timeline-head .legend .sw.held { background:var(--green); }
+.timeline-head .legend .sw.absent { background:var(--terra); }
+.timeline-head .legend .sw.upcoming { background:var(--border); }
+.timeline-head .legend .sw.flag { background:var(--warn); }
+
+.sessions-row { display:grid; grid-template-columns:repeat(22, 1fr); gap:4px; }
+.s-cell { aspect-ratio:1; background:var(--bg); border:1px solid var(--border); border-radius:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; cursor:pointer; }
+.s-cell.held { background:var(--green-bg); border-color:var(--green); }
+.s-cell.absent { background:var(--terra-bg); border-color:var(--terra); }
+.s-cell.flag { background:var(--warn-bg); border-color:var(--warn); }
+.s-cell.upcoming { opacity:0.55; }
+.s-cell.today { border:2px solid var(--gold); background:var(--gold-bg); }
+.s-cell .ses-n { font-family:'Fraunces',serif; font-size:11px; font-weight:600; color:var(--navy); line-height:1; }
+.s-cell .v-n { font-size:8px; color:var(--navy-3); font-weight:600; margin-top:2px; letter-spacing:0.04em; }
+.s-cell.absent .ses-n { color:var(--terra); }
+.s-cell.flag .ses-n { color:var(--warn); }
+.s-cell.upcoming .ses-n, .s-cell.upcoming .v-n { color:var(--navy-3); }
+.s-cell.today .ses-n { color:var(--navy); }
+.s-cell .badge { position:absolute; top:-3px; right:-3px; width:10px; height:10px; border-radius:50%; background:var(--terra); border:1.5px solid var(--surface); }
+
+/* Pastoral context (FM+Dean only) */
+.pastoral-context { background:var(--terra-bg); border:1.5px solid var(--terra); padding:22px 36px; border-bottom:1px solid var(--border); }
+.pastoral-context .pc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--terra); }
+.pastoral-context .pc-head .info { flex:1; }
+.pastoral-context .pc-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--terra); font-weight:700; margin-bottom:4px; }
+.pastoral-context .pc-head h4 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; line-height:1.25; margin-bottom:4px; }
+.pastoral-context .pc-head h4 em { font-style:italic; color:var(--terra); }
+.pastoral-context .pc-head .sub { font-size:11px; color:var(--navy-2); }
+.pastoral-context .pc-head .visibility { background:var(--terra); color:var(--bg); padding:4px 11px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; }
+.pastoral-context .pc-body { font-size:12px; color:var(--navy-2); line-height:1.65; }
+.pastoral-context .pc-body b { color:var(--navy); font-weight:700; }
+.pastoral-context .pc-body em { color:var(--terra); font-family:'Fraunces',serif; font-style:italic; font-weight:500; }
+
+/* Body shell */
+.body-shell { padding:32px 36px 36px; }
+.block { margin-bottom:30px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+
+/* Journal entries */
+.journal-stream { display:flex; flex-direction:column; gap:14px; }
+.entry { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 22px; position:relative; }
+.entry.terra-edge { border-left:3px solid var(--terra); }
+.entry.gold-edge { border-left:3px solid var(--gold); }
+.entry.green-edge { border-left:3px solid var(--green); }
+.entry .e-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed var(--border); }
+.entry .e-meta { display:flex; gap:14px; align-items:center; }
+.entry .e-meta .num-pill { background:var(--bg); border:1px solid var(--border); padding:3px 9px; border-radius:6px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-2); font-weight:600; }
+.entry .e-meta .v-tag { display:flex; align-items:center; gap:6px; }
+.entry .e-meta .v-tag .v-n { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); font-weight:600; }
+.entry .e-meta .v-tag .v-name { font-size:11px; font-weight:600; color:var(--navy); }
+.entry .e-meta .v-tag .v-name em { font-style:italic; color:var(--navy-3); font-weight:500; }
+.entry .e-date { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.04em; }
+.entry .prompt { font-size:11px; color:var(--navy-3); font-style:italic; margin-bottom:10px; padding-left:10px; border-left:2px solid var(--gold-soft); }
+.entry .prompt b { color:var(--navy-2); font-style:normal; font-weight:600; }
+.entry .reflection-text { font-family:'Fraunces',serif; font-size:14px; line-height:1.65; color:var(--navy); font-weight:400; }
+.entry .reflection-text p { margin-bottom:8px; }
+.entry .reflection-text p:last-child { margin-bottom:0; }
+.entry .reflection-text .quote { font-style:italic; color:var(--navy-2); }
+.entry .e-foot { margin-top:12px; padding-top:10px; border-top:1px dashed var(--border); display:flex; gap:14px; align-items:center; font-size:10px; color:var(--navy-3); }
+.entry .e-foot .submitted { font-family:'JetBrains Mono',monospace; }
+.entry .e-foot .submitted b { color:var(--navy-2); }
+.entry .e-foot .append-tag { padding:2px 8px; background:var(--bg); border:1px solid var(--border); border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.06em; color:var(--navy-3); }
+.entry .e-foot .word-count { margin-left:auto; }
+
+.entry.absent-marker { background:var(--terra-bg); border:1px dashed var(--terra); padding:14px 22px; text-align:center; }
+.entry.absent-marker .a-text { font-size:11px; color:var(--terra); font-weight:600; letter-spacing:0.04em; }
+.entry.absent-marker .a-text b { font-weight:700; }
+
+/* FM Pastoral note */
+.fm-note { background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-left:3px solid var(--gold); border-radius:10px; padding:16px 22px; margin:8px 0; }
+.fm-note .fn-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed var(--gold-soft); }
+.fm-note .fn-head .info .eb { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.fm-note .fn-head .info h5 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; line-height:1.3; }
+.fm-note .fn-head .info h5 em { font-style:italic; color:var(--gold); }
+.fm-note .fn-head .vis { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.fm-note .fn-head .vis .tag { background:var(--gold); color:var(--navy); padding:3px 9px; border-radius:100px; font-size:8px; font-weight:700; letter-spacing:0.08em; }
+.fm-note .fn-head .vis .when { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.fm-note .fn-body { font-size:12px; color:var(--navy-2); line-height:1.65; }
+.fm-note .fn-body b { color:var(--navy); font-weight:700; }
+.fm-note .fn-body em { color:var(--gold); font-family:'Fraunces',serif; font-style:italic; font-weight:500; }
+
+/* PG observation */
+.pg-obs { background:var(--bg); border-left:3px solid var(--navy-3); border-radius:0 8px 8px 0; padding:14px 22px; margin:8px 0; }
+.pg-obs .pg-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.pg-obs .pg-head .info { display:flex; align-items:center; gap:8px; }
+.pg-obs .pg-head .av { width:24px; height:24px; border-radius:50%; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:9px; font-weight:700; }
+.pg-obs .pg-head .info .by { font-size:11px; font-weight:700; color:var(--navy); }
+.pg-obs .pg-head .info .role { font-size:9px; color:var(--navy-3); letter-spacing:0.04em; }
+.pg-obs .pg-head .when { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); }
+.pg-obs .pg-text { font-size:11px; color:var(--navy-2); line-height:1.6; font-style:italic; }
+.pg-obs .pg-text b { color:var(--navy); font-weight:600; font-style:normal; }
+
+/* Character paragraph card */
+.char-card { background:var(--navy); color:var(--bg); border-radius:14px; padding:28px 32px; }
+.char-card .cc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.1); }
+.char-card .cc-head .info .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.char-card .cc-head .info h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; line-height:1.25; }
+.char-card .cc-head .info h3 em { font-style:italic; color:var(--gold); }
+.char-card .cc-head .info .sub { font-size:11px; color:rgba(232,212,184,0.7); margin-top:5px; }
+.char-card .cc-head .info .sub b { color:var(--bg); font-weight:600; }
+.char-card .cc-head .status-pill { background:var(--warn); color:var(--navy); padding:4px 12px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; }
+.char-card .draft-text { background:rgba(255,255,255,0.04); border:1px solid rgba(232,212,184,0.15); border-radius:10px; padding:20px 24px; }
+.char-card .draft-text p { font-family:'Fraunces',serif; font-size:14px; line-height:1.75; color:rgba(250,247,242,0.92); margin-bottom:10px; }
+.char-card .draft-text p:last-child { margin-bottom:0; }
+.char-card .draft-text p b { color:var(--gold); font-weight:600; }
+.char-card .draft-text p em { font-style:italic; color:var(--gold); }
+.char-card .draft-foot { display:flex; gap:8px; margin-top:14px; align-items:center; }
+.char-card .draft-foot .note { font-size:10px; color:rgba(232,212,184,0.6); font-style:italic; flex:1; }
+
+/* Editorial */
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · VLC batch · 04 of 05</div>
+  <span class="mvp-tag">SHS · Form Master view (private)</span>
+  <span class="related-tag">Per-student values journal · year accumulation</span>
+  <h1 class="display">The journal <em>becomes the document</em></h1>
+  <div class="gold-rule"></div>
+  <p>One student's year of VLC reflections, attendance, Form Master pastoral notes, and Peer Guide observations. <b>Append-only</b> — entries can be added to but never edited or deleted, by anyone. Twenty-two sessions across nine months accumulate into a document the Form Master uses to write the character paragraph for the student's school-leaver report. <em>This is the surface where the slow work shows up.</em> The student writes; the FM reads weekly and adds private pastoral notes; the system holds the record.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">One student · 13 of 22 sessions so far · a pastoral picture</div>
+    <div class="section-meta">Pastoral &amp; values → VLC → Student journal → J. Manu</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / pastoral / vlc / journal / student-2024-0317</div>
+        <div class="pii-warn">PRIVATE · FM + DEAN</div>
+      </div>
+
+      <!-- Student hero -->
+      <div class="student-hero">
+        <div class="avatar">JM</div>
+        <div class="info">
+          <div class="eb">Form 2 General Arts A · 2025/26</div>
+          <h2 class="display">Joseph Manu <em>· age 15</em></h2>
+          <div class="meta-row">
+            <span><b>Form Master:</b> Mr A. Mensah</span>
+            <span class="pipe">·</span>
+            <span><b>House:</b> Aggrey</span>
+            <span class="pipe">·</span>
+            <span><b>Joined:</b> Sept 2024 (Form 1)</span>
+            <span class="pipe">·</span>
+            <span><b>VLC year:</b> 2 of 3</span>
+          </div>
+        </div>
+        <div class="pastoral-tag">
+          <div class="tag">PASTORAL · ACTIVE CASE</div>
+          <div class="sub"><b>Bereaved</b> · father d. Feb 2026 · 2 open FM notes</div>
+        </div>
+      </div>
+
+      <!-- Year overview -->
+      <div class="year-strip">
+        <div class="ys-card">
+          <div class="lab">Sessions attended</div>
+          <div class="big display"><em>11</em> / 13</div>
+          <div class="sub">85% · 2 absences (8 Feb · 15 Feb · bereavement-excused)</div>
+        </div>
+        <div class="ys-card">
+          <div class="lab">Reflections written</div>
+          <div class="big display"><em>11</em> / 11</div>
+          <div class="sub">100% submission · varies in length &amp; depth</div>
+        </div>
+        <div class="ys-card">
+          <div class="lab">Avg reflection length</div>
+          <div class="big display"><em>74</em> words</div>
+          <div class="sub">Range <b>12—186</b> · shorter Feb-Mar (bereavement)</div>
+        </div>
+        <div class="ys-card terra">
+          <div class="lab">FM pastoral notes</div>
+          <div class="big display"><em>2</em> open · 4 total</div>
+          <div class="sub">Last: today 3:08 PM · V7 Patriotism plenary</div>
+        </div>
+        <div class="ys-card">
+          <div class="lab">PG observations</div>
+          <div class="big display"><em>3</em> recorded</div>
+          <div class="sub">All from Semester 2 · Akua (girls' rep) most recent</div>
+        </div>
+      </div>
+
+      <!-- 22-session timeline -->
+      <div class="timeline-card">
+        <div class="timeline-head">
+          <div>
+            <div class="eb">Year-at-a-glance</div>
+            <h3 class="display">22 sessions <em>· 13 held · 9 ahead</em></h3>
+          </div>
+          <div class="legend">
+            <span><span class="sw held"></span>Attended</span>
+            <span><span class="sw absent"></span>Absent</span>
+            <span><span class="sw flag"></span>Pastoral flag</span>
+            <span><span class="sw upcoming"></span>Upcoming</span>
+          </div>
+        </div>
+
+        <div class="sessions-row">
+          <div class="s-cell held"><div class="ses-n">1A</div><div class="v-n">V1</div></div>
+          <div class="s-cell held"><div class="ses-n">1B</div><div class="v-n">V1</div></div>
+          <div class="s-cell held"><div class="ses-n">2A</div><div class="v-n">V2</div></div>
+          <div class="s-cell held"><div class="ses-n">2B</div><div class="v-n">V2</div></div>
+          <div class="s-cell held"><div class="ses-n">3A</div><div class="v-n">V3</div></div>
+          <div class="s-cell held"><div class="ses-n">3B</div><div class="v-n">V3</div></div>
+          <div class="s-cell held"><div class="ses-n">4A</div><div class="v-n">V4</div></div>
+          <div class="s-cell held"><div class="ses-n">4B</div><div class="v-n">V4</div></div>
+          <div class="s-cell absent"><div class="ses-n">5A</div><div class="v-n">V5</div></div>
+          <div class="s-cell absent"><div class="ses-n">5B</div><div class="v-n">V5</div></div>
+          <div class="s-cell flag"><div class="ses-n">6A</div><div class="v-n">V6</div><div class="badge"></div></div>
+          <div class="s-cell held"><div class="ses-n">6B</div><div class="v-n">V6</div></div>
+          <div class="s-cell held"><div class="ses-n">7A</div><div class="v-n">V7</div></div>
+          <div class="s-cell today"><div class="ses-n">7B</div><div class="v-n">V7</div><div class="badge"></div></div>
+          <div class="s-cell upcoming"><div class="ses-n">8A</div><div class="v-n">V8</div></div>
+          <div class="s-cell upcoming"><div class="ses-n">8B</div><div class="v-n">V8</div></div>
+          <div class="s-cell upcoming"><div class="ses-n">9A</div><div class="v-n">V9</div></div>
+          <div class="s-cell upcoming"><div class="ses-n">9B</div><div class="v-n">V9</div></div>
+          <div class="s-cell upcoming"><div class="ses-n">10A</div><div class="v-n">V10</div></div>
+          <div class="s-cell upcoming"><div class="ses-n">10B</div><div class="v-n">V10</div></div>
+          <div class="s-cell upcoming"><div class="ses-n">11A</div><div class="v-n">V11</div></div>
+          <div class="s-cell upcoming"><div class="ses-n">11B</div><div class="v-n">V11</div></div>
+        </div>
+
+        <div style="margin-top:14px; font-size:11px; color:var(--navy-3); line-height:1.5; padding:10px 14px; background:var(--bg); border-radius:8px; border-left:3px solid var(--gold);">
+          <b style="color:var(--navy);">Reading the year:</b> Semester 1 (V1—V4) full attendance, standard engagement. Two absences in early February coincide with father's funeral &amp; immediate aftermath (bereavement-excused). Returned to V6 Compassion session A with a flag raised — first reflection back was brief but present. Engagement has slowly returned across V6—V7. <em style="color:var(--gold); font-family:'Fraunces',serif;">Today's flag is the second.</em>
+        </div>
+      </div>
+
+      <!-- Pastoral context strip -->
+      <div class="pastoral-context">
+        <div class="pc-head">
+          <div class="info">
+            <div class="eb">Pastoral context · FM-maintained · visible to FM + Dean only</div>
+            <h4 class="display">Active case <em>· bereavement &amp; school re-engagement</em></h4>
+            <div class="sub">Opened 19 Feb 2026 · last updated today 3:08 PM · 4 entries total · 2 currently open</div>
+          </div>
+          <div class="visibility">FM + DEAN ONLY · NOT VISIBLE TO STUDENT, PARENT, OR PG</div>
+        </div>
+        <div class="pc-body">
+          <p><b>Summary (drafted by Mr Mensah, Form Master · last revised 14 May):</b> Joseph's father died unexpectedly 7 February 2026 (sudden cardiac event). Family of five — Joseph is the eldest, has one younger sister at the school's JHS and two younger siblings at home. Mother now sole provider. Returned to school 24 February after the funeral. <em>Academic performance steady</em> — no slip in Maths or English assessments. <em>Social engagement returning gradually</em> — quieter than before, fewer interactions in common room observed by prefects. <em>VLC engagement is the most sensitive surface</em> — values material (Compassion, Patriotism, Service) is closest to the bone for him right now. <b>Hold the journal lightly. Watch for triggers. He is doing the work.</b></p>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">The journal · 11 entries · append-only</div>
+              <h3 class="display">Joseph's <em>reflections</em> · September 2025 — today</h3>
+            </div>
+            <div class="meta">Newest first · entries cannot be edited or deleted · FM may add private notes alongside</div>
+          </div>
+
+          <div class="journal-stream">
+
+            <!-- Today's session: pending -->
+            <div class="entry gold-edge">
+              <div class="e-head">
+                <div class="e-meta">
+                  <div class="num-pill">SESSION 13</div>
+                  <div class="v-tag"><span class="v-n display">07</span><div class="v-name">Patriotism · <em>Ɔman dɔ</em> · session B</div></div>
+                </div>
+                <div class="e-date">WED · 14 MAY 2026</div>
+              </div>
+              <div class="prompt"><b>Prompt:</b> What would I want to remember about today's discussion?</div>
+              <div class="reflection-text">
+                <p style="color:var(--navy-3); font-style:italic;">Submission pending · reflection phase 4 begins in 12 minutes · this entry will appear after submission · today's session is currently in plenary phase 3</p>
+              </div>
+              <div class="e-foot">
+                <span class="append-tag">PENDING SUBMISSION</span>
+                <span class="word-count">— words</span>
+              </div>
+            </div>
+
+            <!-- FM pastoral note from today -->
+            <div class="fm-note">
+              <div class="fn-head">
+                <div class="info">
+                  <div class="eb">FM PASTORAL NOTE · 4 of 4 total</div>
+                  <h5 class="display">V7B plenary · <em>tearful, stepped out, returned</em></h5>
+                </div>
+                <div class="vis"><div class="tag">FM + DEAN</div><div class="when">14 MAY · 3:08 PM</div></div>
+              </div>
+              <div class="fn-body">
+                <p>Akua Gyamfi (PG, girls' rep) flagged at 3:08 PM during plenary share-back. Group B was sharing the JHS tutoring idea. Discussion turned to "what Ghana means to me" — a classmate mentioned a family member abroad sending money home. <b>Joseph became tearful, asked to step out.</b> Akua walked him out, sat with him for two minutes, returned to plenary. <em>This is the first time the financial-strain piece has surfaced in a values context.</em> Will hold him back at session close for 1-on-1 (Phase 5). Considering whether to bring this up at Friday Dean check-in. Not crisis level — concern level — but the second flag in three weeks.</p>
+              </div>
+            </div>
+
+            <!-- Entry 11 V7A -->
+            <div class="entry">
+              <div class="e-head">
+                <div class="e-meta">
+                  <div class="num-pill">SESSION 11</div>
+                  <div class="v-tag"><span class="v-n display">07</span><div class="v-name">Patriotism · <em>Ɔman dɔ</em> · session A</div></div>
+                </div>
+                <div class="e-date">WED · 07 MAY 2026</div>
+              </div>
+              <div class="prompt"><b>Prompt:</b> What does belonging beyond family look like for me?</div>
+              <div class="reflection-text">
+                <p>I've been thinking about this since Akua asked it in our group. Before this year I would have said belonging is just family and church. Now I'm not so sure. <span class="quote">When my father died the school sent flowers and three teachers came to the funeral. I didn't think a place could feel like family but the assembly hall the first week back felt like that. Not the same but close.</span></p>
+                <p>I think Ghana is too big to feel. I can feel my class. I can feel Aggrey House. The country I read about in the textbook is different from what I feel when we sing the anthem. I don't know if that's wrong but it's what I have.</p>
+              </div>
+              <div class="e-foot">
+                <span class="submitted">Submitted <b>3:24 PM</b></span>
+                <span class="append-tag">APPEND-ONLY · LOCKED</span>
+                <span class="word-count">142 words</span>
+              </div>
+            </div>
+
+            <!-- Entry V6B -->
+            <div class="entry green-edge">
+              <div class="e-head">
+                <div class="e-meta">
+                  <div class="num-pill">SESSION 10</div>
+                  <div class="v-tag"><span class="v-n display">06</span><div class="v-name">Compassion · <em>Mmɔborɔhunu</em> · session B</div></div>
+                </div>
+                <div class="e-date">WED · 23 APR 2026</div>
+              </div>
+              <div class="prompt"><b>Prompt:</b> Who showed you compassion this week, and how?</div>
+              <div class="reflection-text">
+                <p>Mr Mensah didn't say anything to me on Tuesday when I came in tired. He just gave me time to settle. That was compassion I think. The kind that doesn't ask you to perform being okay.</p>
+                <p>I want to be that kind of friend to someone. I don't know who yet. But not the asking kind. The quiet kind.</p>
+              </div>
+              <div class="e-foot">
+                <span class="submitted">Submitted <b>3:26 PM</b></span>
+                <span class="append-tag">APPEND-ONLY · LOCKED</span>
+                <span class="word-count">61 words</span>
+              </div>
+            </div>
+
+            <!-- FM note from V6A flag -->
+            <div class="fm-note">
+              <div class="fn-head">
+                <div class="info">
+                  <div class="eb">FM PASTORAL NOTE · 3 of 4 total</div>
+                  <h5 class="display">V6A return · <em>first session back from bereavement</em></h5>
+                </div>
+                <div class="vis"><div class="tag">FM + DEAN</div><div class="when">16 APR · 4:12 PM</div></div>
+              </div>
+              <div class="fn-body">
+                <p>Joseph attended V6A Compassion today — first session back after the two-session absence (V5A &amp; V5B Perseverance, missed during the funeral period). I considered whether Compassion was the right return-point or if I should have asked him to come back at V7. <b>Decided to let him decide.</b> He sat with Prince's group (his usual). He didn't speak much in small group — Prince checked in with him afterward, said he seemed "present but quiet." Reflection submitted, 28 words, but submitted. <em>That alone matters more than the words.</em> No flag this session. Watching.</p>
+              </div>
+            </div>
+
+            <!-- V6A entry (short, post-bereavement) -->
+            <div class="entry terra-edge">
+              <div class="e-head">
+                <div class="e-meta">
+                  <div class="num-pill">SESSION 9</div>
+                  <div class="v-tag"><span class="v-n display">06</span><div class="v-name">Compassion · <em>Mmɔborɔhunu</em> · session A</div></div>
+                </div>
+                <div class="e-date">WED · 16 APR 2026</div>
+              </div>
+              <div class="prompt"><b>Prompt:</b> When have you noticed someone you didn't expect to need help?</div>
+              <div class="reflection-text">
+                <p>I came back today. I'm trying.</p>
+                <p>People I didn't expect to need help — I'm the one who needed it this time. I'm the one I didn't expect.</p>
+              </div>
+              <div class="e-foot">
+                <span class="submitted">Submitted <b>3:27 PM</b></span>
+                <span class="append-tag">APPEND-ONLY · LOCKED</span>
+                <span class="word-count">28 words</span>
+              </div>
+            </div>
+
+            <!-- Absent markers V5A V5B -->
+            <div class="entry absent-marker">
+              <div class="a-text"><b>SESSION 8 · V5B Perseverance · 26 Feb</b> · absent · bereavement-excused by FM · no reflection</div>
+            </div>
+            <div class="entry absent-marker">
+              <div class="a-text"><b>SESSION 7 · V5A Perseverance · 19 Feb</b> · absent · bereavement-excused by FM · no reflection</div>
+            </div>
+
+            <!-- Original opening pastoral note -->
+            <div class="fm-note">
+              <div class="fn-head">
+                <div class="info">
+                  <div class="eb">FM PASTORAL NOTE · 1 of 4 total · case opener</div>
+                  <h5 class="display">Bereavement · <em>case opened</em></h5>
+                </div>
+                <div class="vis"><div class="tag">FM + DEAN</div><div class="when">19 FEB · 8:22 AM</div></div>
+              </div>
+              <div class="fn-body">
+                <p>Mother called yesterday evening. Joseph's father died Saturday 7 Feb. Funeral 14 Feb. Joseph will be absent at least two Wednesdays (this week &amp; next). I have spoken to Dean (Mr Kyei). <b>Excused absences logged.</b> Will pause VLC pastoral expectations until Joseph signals readiness. <em>The work waits for the student, not the other way around.</em> Have notified subject teachers (Maths, English, Geography, History, RME, Social Studies, French, ICT, GH Lang) of the bereavement so they hold their expectations gently. Family situation also flagged in finance — mother enquiring about boarding fees concessions for next semester.</p>
+              </div>
+            </div>
+
+            <!-- V4B -->
+            <div class="entry">
+              <div class="e-head">
+                <div class="e-meta">
+                  <div class="num-pill">SESSION 6</div>
+                  <div class="v-tag"><span class="v-n display">04</span><div class="v-name">Discipline · <em>Akwankyerɛ</em> · session B</div></div>
+                </div>
+                <div class="e-date">WED · 29 JAN 2026</div>
+              </div>
+              <div class="prompt"><b>Prompt:</b> What is one habit I'd like to be ten years from now? Not a goal — a habit.</div>
+              <div class="reflection-text">
+                <p>I want to be the kind of person who keeps his word. Even small words. Especially small words.</p>
+                <p>My father says (says) people forget the big promises but remember the small ones. If you say you'll bring something tomorrow and you don't, that stays. I want my small words to be the same as my big words. That's discipline I think. Not exercise. Word-keeping.</p>
+                <p>Prince said in our group he wants to read every day for ten minutes for ten years. I might try that too. But I'm not promising yet — see above.</p>
+              </div>
+              <div class="e-foot">
+                <span class="submitted">Submitted <b>3:25 PM</b></span>
+                <span class="append-tag">APPEND-ONLY · LOCKED</span>
+                <span class="word-count">112 words</span>
+              </div>
+            </div>
+
+            <!-- PG observation from Semester 1 -->
+            <div class="pg-obs">
+              <div class="pg-head">
+                <div class="info">
+                  <div class="av">PO</div>
+                  <div>
+                    <div class="by">Prince Otoo</div>
+                    <div class="role">Peer Guide · boys' rep · Group A</div>
+                  </div>
+                </div>
+                <div class="when">22 JAN · 3:34 PM</div>
+              </div>
+              <div class="pg-text">In small group today Joseph led the conversation about what discipline looks like outside school. He had thought about it. He brought up his father's mason work — <b>"finishing the row even when no one's watching."</b> Group went quiet, then several people built on it. He's stronger in small group than plenary.</div>
+            </div>
+
+            <!-- Sample early entries -->
+            <div class="entry">
+              <div class="e-head">
+                <div class="e-meta">
+                  <div class="num-pill">SESSION 1</div>
+                  <div class="v-tag"><span class="v-n display">01</span><div class="v-name">Respect · <em>Obu</em> · session A</div></div>
+                </div>
+                <div class="e-date">WED · 18 SEP 2025</div>
+              </div>
+              <div class="prompt"><b>Prompt:</b> What does respect look like in my home?</div>
+              <div class="reflection-text">
+                <p>In my home respect looks like greeting properly. You don't pass an elder without saying good morning even if you said it in the morning already. You don't sit before the adults sit. You don't eat first. These are small things but they are the things that make a home a home.</p>
+                <p>I think school respect is different. It's louder. Standing for the teacher. Saying sir and madam. But the home kind is quieter. I prefer the quiet kind I think.</p>
+              </div>
+              <div class="e-foot">
+                <span class="submitted">Submitted <b>3:26 PM</b></span>
+                <span class="append-tag">APPEND-ONLY · LOCKED</span>
+                <span class="word-count">93 words</span>
+              </div>
+            </div>
+
+            <div style="text-align:center; padding:14px; background:var(--bg); border:1px dashed var(--border); border-radius:8px; font-size:11px; color:var(--navy-3); font-style:italic;"><b style="color:var(--navy-2); font-style:normal; font-weight:600;">6 earlier entries hidden</b> · V1B Respect → V4A Discipline · click to expand the full year</div>
+
+          </div>
+        </div>
+
+        <!-- Year-end character paragraph draft -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Year-end output · school-leaver character paragraph</div>
+              <h3 class="display">Auto-drafted from journal <em>+ pastoral notes + PG observations</em></h3>
+            </div>
+            <div class="meta">FM finalises · this goes on the school-leaver reference letter, NOT the transcript</div>
+          </div>
+
+          <div class="char-card">
+            <div class="cc-head">
+              <div class="info">
+                <div class="eb">Draft · auto-generated · 14 May 2026</div>
+                <h3 class="display">Character paragraph <em>· Joseph Manu · Form 2 GA A</em></h3>
+                <div class="sub">Generated from <b>11 reflection entries</b> + <b>4 FM pastoral notes</b> + <b>3 PG observations</b> · FM may edit before publication · revised at year-end with 9 remaining sessions</div>
+              </div>
+              <div class="status-pill">DRAFT · 13 OF 22 SESSIONS</div>
+            </div>
+            <div class="draft-text">
+              <p>Joseph completed Form 2 having engaged thoughtfully with the year's values curriculum. His reflections demonstrate a habit of careful interior work — short or long, he writes <em>what he means</em> rather than what is expected. <b>His thinking on the smallness of word-keeping (discipline)</b> and <b>his distinction between loud school-respect and quiet home-respect</b> are early markers of the kind of moral attention that does not perform itself.</p>
+              <p>The middle of the year was difficult. The death of his father in February brought him to the work of compassion as a recipient rather than a giver, and his first reflection on returning — <em>"I'm the one I didn't expect"</em> — was twenty-eight words that said more than many longer pieces. His Peer Guide noted, in small group, his willingness to bring his father into the conversation as the example of a discipline lived rather than spoken. <b>He is not yet a leader in plenary. He is increasingly one in small group.</b></p>
+              <p>Joseph approaches the upcoming Service and Wisdom sessions of Semester 2 with the year's groundwork laid. His Form Master recommends he be considered for a service-project lead role in next year's Form 3 VLC programme, contingent on his readiness at that point.</p>
+            </div>
+            <div class="draft-foot">
+              <span class="note">Auto-draft regenerates after each session · FM owns the final text · paragraph appears on school-leaver reference letter, not transcript</span>
+              <button class="btn ghost" style="border-color:rgba(232,212,184,0.3); color:var(--bg);">Edit draft</button>
+              <button class="btn gold">Lock for year-end</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What this surface is</h4>
+      <ul>
+        <li><b>The journal accumulates over a year.</b> Each session's reflection joins the stream · entries are append-only · no editing, no deletion, no backdating.</li>
+        <li><b>FM pastoral notes sit alongside the journal</b> · separate visibility (FM + Dean only) · the student does not see them · they're FM's record for FM's work.</li>
+        <li><b>PG observations are time-stamped and signed.</b> They feed into the character paragraph but are visible to FM only (not to other PGs, not to other students, not to the student themselves).</li>
+        <li><b>Auto-draft of the character paragraph regenerates after each session.</b> Uses reflections + notes + observations · FM owns the final wording · paragraph goes on the school-leaver letter, not the academic transcript.</li>
+      </ul>
+      <h4 style="margin-top:24px;">Visibility matrix</h4>
+      <ul>
+        <li><b>Student:</b> their own reflections, read-only · cannot see FM notes, PG notes, character draft</li>
+        <li><b>Form Master:</b> everything · adds notes · finalises character paragraph</li>
+        <li><b>Dean of Students:</b> reads notes (case oversight) · cannot edit · cannot delete</li>
+        <li><b>Headmaster:</b> sees finalised character paragraph only · no journal access</li>
+        <li><b>Parent / guardian:</b> sees nothing on this surface · they receive the character paragraph at school-leaver</li>
+        <li><b>Peer Guides:</b> log their own observations · cannot read others'</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why append-only · why private · why nine months</div>
+    <div class="section-meta">Editorial · the architectural choices that make the surface work</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The shape of the journal</div>
+        <h3 class="display">A journal that <em>cannot be edited</em> is a journal that can be trusted.</h3>
+        <p>Three design choices on this surface are non-negotiable, and each is doing real work.</p>
+        <p><b>Append-only.</b> The student cannot edit a previous entry. Not even a typo. Not even a sentence they're embarrassed by next week. <em>This is the point.</em> A reflection edited in retrospect becomes a performance for a future reader — the student starts writing what they wish they had felt, instead of what they did feel. Append-only forces the entry to be a snapshot of that Wednesday afternoon, and only that Wednesday afternoon. Across twenty-two snapshots, you get something a polished essay could never produce: a record of how a person moved.</p>
+        <p><b>Private to student + Form Master only.</b> The student writes for an audience of two: themselves, and Mr Mensah. <em>Not the parent. Not the head of house. Not the headmaster. Not the future employer. Not other students.</em> This narrow audience is what makes truth-telling possible. A reflection a parent might read becomes a reflection a parent wants to read. A reflection a peer might see becomes a performance. Two readers — and one of them is the writer themselves — is a manageable audience for a fifteen-year-old. More than that is not.</p>
+        <p><b>Nine months.</b> Not one session, not one term — a full academic year. The journal's value is cumulative. A single entry tells you almost nothing about a person. <em>Twenty-two entries across nine months, with the absences and the short entries and the long entries and the FM notes between them, tell you something a CV cannot.</em> When the school-leaver letter is written and the character paragraph is needed, the FM is not improvising — they are summarising a document that wrote itself.</p>
+        <p>The pastoral note layer is the FM's working notebook. It sits beside the journal but is structurally separate — different visibility, different lifecycle, different purpose. <b>The journal is the student's record of becoming. The notes are the FM's record of attending.</b> Both are needed. Neither replaces the other.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What we deliberately don't do</h4>
+      <ul>
+        <li><b>No "engagement score" on reflections.</b> Length is not depth. A 28-word entry from a grieving student is not a worse reflection than a 200-word entry from a comfortable student.</li>
+        <li><b>No keyword detection or AI summarisation of journal contents.</b> The FM reads each entry weekly. A machine extracting themes would distort how the FM holds the student.</li>
+        <li><b>No analytics on what students wrote.</b> Trends across the school stay at the level of attendance and submission rate — never content.</li>
+        <li><b>No exports of journal text outside the system.</b> The FM can view, the FM cannot bulk-download. Reduces the surface area of accidental disclosure.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

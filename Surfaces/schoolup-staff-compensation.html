@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Staff compensation</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:700px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1480px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item .new-tag { margin-left:auto; background:var(--gold); color:var(--navy); font-size:8px; font-weight:700; letter-spacing:0.06em; padding:1px 5px; border-radius:100px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; margin-bottom:14px; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:700px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.body { padding:28px 36px 60px; }
+
+.hero-row { display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:14px; margin-bottom:22px; }
+.hero-main { background:var(--navy); color:var(--bg); border-radius:14px; padding:22px 26px; background-image:radial-gradient(circle at 90% 0%, rgba(200,151,91,0.16) 0%, transparent 55%); }
+.hero-main .lbl { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; margin-bottom:4px; }
+.hero-main .val { font-family:'Fraunces',serif; font-size:40px; font-weight:600; letter-spacing:-0.02em; line-height:1; color:var(--gold); }
+.hero-main .val em { font-style:italic; }
+.hero-main .val .currency { font-size:18px; color:rgba(232,212,184,0.7); margin-right:4px; }
+.hero-main .meta { margin-top:12px; font-size:12px; color:rgba(232,212,184,0.85); line-height:1.55; }
+.hero-main .meta b { color:var(--bg); font-weight:600; }
+.hero-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; }
+.hero-tile .lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.hero-tile .val { font-family:'Fraunces',serif; font-size:22px; font-weight:600; letter-spacing:-0.018em; line-height:1.05; margin-top:4px; }
+.hero-tile .val em { font-style:italic; color:var(--gold); }
+.hero-tile .sub { font-size:11px; color:var(--navy-3); margin-top:4px; }
+.hero-tile .sub b { color:var(--navy-2); font-weight:600; }
+
+.public-context { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:14px 18px; margin-bottom:22px; display:grid; grid-template-columns:28px 1fr; gap:14px; align-items:start; }
+.public-context .ic { width:26px; height:26px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; }
+.public-context .body-text { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.public-context .heading { font-family:'Fraunces',serif; font-weight:600; font-size:13px; color:var(--navy); margin-bottom:3px; }
+.public-context .heading em { font-style:italic; color:var(--gold); }
+.public-context b { color:var(--navy); font-weight:600; }
+
+.region { margin-bottom:32px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.005em; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+.filter-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+.filter-pill { padding:7px 13px; background:var(--surface); border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.filter-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill .count { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; opacity:0.6; }
+.filter-pill.active .count { opacity:0.85; }
+.filter-pill.special { border-color:var(--gold); background:var(--gold-bg); color:var(--gold); }
+
+.staff-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.staff-table { width:100%; border-collapse:collapse; }
+.staff-table thead th { background:var(--bg); border-bottom:1px solid var(--border); padding:10px 16px; text-align:left; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.staff-table tbody td { padding:14px 16px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.staff-table tbody tr:last-child td { border-bottom:none; }
+.staff-table tbody tr:hover { background:var(--bg); cursor:pointer; }
+
+.staff-name-cell { display:grid; grid-template-columns:38px 1fr; gap:10px; align-items:center; }
+.staff-av { width:36px; height:36px; border-radius:50%; background:var(--gold-bg); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.staff-name { font-weight:600; color:var(--navy); font-size:13px; }
+.staff-name .role { display:block; font-size:10px; color:var(--navy-3); font-weight:500; margin-top:1px; font-style:italic; }
+
+.qual-cell { font-size:11px; color:var(--navy-2); line-height:1.4; }
+.qual-cell b { color:var(--navy); font-weight:600; }
+.qual-tag { display:inline-flex; align-items:center; padding:2px 7px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; margin-right:4px; }
+.qual-tag.degree { background:var(--green-bg); color:var(--green); }
+.qual-tag.diploma { background:var(--gold-bg); color:var(--gold); }
+.qual-tag.cert { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+.qual-tag.missing { background:var(--warn-bg); color:var(--warn); border:1px solid rgba(197,138,46,0.3); }
+.qual-cell .field { display:block; font-size:10px; color:var(--navy-3); margin-top:3px; }
+
+.salary-cell .salary-amt { font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--navy); font-size:13px; }
+.salary-cell .salary-meta { font-size:10px; color:var(--navy-3); font-style:italic; margin-top:2px; }
+
+.status-tag { display:inline-flex; align-items:center; padding:3px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; }
+.status-tag.school { background:var(--gold-bg); color:var(--gold); }
+.status-tag.ges { background:var(--green-bg); color:var(--green); }
+.status-tag.allowance { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+
+.deductions-cell { font-size:10px; color:var(--navy-3); }
+.deductions-cell .ded-row { display:flex; justify-content:space-between; gap:6px; }
+.deductions-cell b { color:var(--navy-2); font-family:'JetBrains Mono',monospace; font-weight:600; }
+
+.tenure-cell { font-size:11px; color:var(--navy-2); }
+.tenure-cell .since { display:block; font-size:10px; color:var(--navy-3); font-style:italic; margin-top:1px; }
+
+.subtotal-row { background:var(--bg); }
+.subtotal-row td { padding:11px 16px !important; font-weight:700; }
+.subtotal-row .st-label { font-family:'Fraunces',serif; font-size:12px; font-style:italic; color:var(--navy-3); }
+.subtotal-row .st-amount { font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--navy); font-size:13px; text-align:right; }
+
+@media (max-width:1280px) { .layout { grid-template-columns:1fr; } .hero-row { grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Staff · Compensation &amp; qualifications</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">People &amp; <em>payroll</em></h1>
+  <div class="gold-rule"></div>
+  <p>Bundles staff qualifications (the partial column in the GES annual census) with compensation tracking (which feeds the salary line on the P&amp;L). Three salary statuses: school-paid (private), GES-paid (government-seconded teachers, public schools), or allowance-only (volunteer or part-time). The compensation total flows to the bookkeeping module's salaries category; GES-paid staff appear as a footnote, not on the school's books.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Staff register · with compensation &amp; qualifications</div>
+    <div class="section-meta">17 staff · GHS 24,800/month payroll · 14 of 17 quals captured</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / staff / compensation</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item active"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books<span class="new-tag">NEW</span></div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Staff</a> / Compensation &amp; qualifications</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Staff <em>compensation</em></h1>
+                <div class="lede">17 staff · qualifications &amp; salaries · feeds the GES annual census staff section AND the bookkeeping salaries category · last update <b>1 Oct 2025</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn">Run payroll →</button>
+                <button class="btn primary">+ Add staff</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <div class="hero-row">
+              <div class="hero-main">
+                <div class="lbl">Monthly payroll · school-paid only</div>
+                <div class="val"><span class="currency">GHS</span>24,800</div>
+                <div class="meta"><b>14 teaching</b> + 3 non-teaching · this is what flows to the <b>P&amp;L salaries line</b> · gross before deductions</div>
+              </div>
+              <div class="hero-tile">
+                <div class="lbl">School-paid</div>
+                <div class="val"><em>17</em> of 17</div>
+                <div class="sub">All on school books · <b>private school</b></div>
+              </div>
+              <div class="hero-tile">
+                <div class="lbl">Pupil-teacher ratio</div>
+                <div class="val"><em>22.3</em>:1</div>
+                <div class="sub">312 ÷ 14 · <b>within GES range</b></div>
+              </div>
+              <div class="hero-tile">
+                <div class="lbl">Quals captured</div>
+                <div class="val"><em>14</em> of 17</div>
+                <div class="sub"><b>3 missing</b> · review for census</div>
+              </div>
+            </div>
+
+            <div class="public-context">
+              <div class="ic">i</div>
+              <div class="body-text">
+                <div class="heading">If <em>Christ the King</em> were a public school...</div>
+                The hero would split into two figures: <b>school-paid</b> staff (PTA-funded teachers, support staff) and <b>GES-paid</b> staff (the government-seconded majority). Only school-paid hits the P&amp;L salaries line. GES-paid staff appear as a footnote: "<b>Effectively compensated by GES — not on school books</b>." The data model handles both; the visible UI adapts.
+              </div>
+            </div>
+
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">Staff <em>roster</em></h2>
+                <div class="meta">Click any row for full record · qualifications · compensation history</div>
+              </div>
+
+              <div class="filter-row">
+                <div class="filter-pill active">All<span class="count">17</span></div>
+                <div class="filter-pill">Teaching<span class="count">14</span></div>
+                <div class="filter-pill">Non-teaching<span class="count">3</span></div>
+                <div class="filter-pill">School-paid<span class="count">17</span></div>
+                <div class="filter-pill">GES-paid<span class="count">0</span></div>
+                <div class="filter-pill special">Missing data<span class="count">3</span></div>
+              </div>
+
+              <div class="staff-card">
+                <table class="staff-table">
+                  <thead>
+                    <tr>
+                      <th>Staff member</th>
+                      <th>Qualifications</th>
+                      <th>Status</th>
+                      <th>Monthly comp.</th>
+                      <th>Deductions</th>
+                      <th>Tenure</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">FA</div><div class="staff-name">Florence Addo<span class="role">Headmistress · administrator</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag degree">M.Ed.</span>Educational leadership · UCC 2014<span class="field">Field: Educational management</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 4,200</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−546</b></div><div class="ded-row"><span>PAYE</span><b>−210</b></div></div></td>
+                      <td><div class="tenure-cell">11 years<span class="since">since Sep 2014</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">JM</div><div class="staff-name">Joseph Mensah<span class="role">Asst. Headteacher · Math</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag degree">B.Sc.</span>Mathematics · KNUST 2008<span class="field">Field: Mathematics &amp; Statistics</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 3,200</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−416</b></div><div class="ded-row"><span>PAYE</span><b>−128</b></div></div></td>
+                      <td><div class="tenure-cell">8 years<span class="since">since Aug 2017</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">JO</div><div class="staff-name">Joyce Owusu-Ansah<span class="role">Accountant · non-teaching</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag degree">B.Com.</span>Accounting · UPSA 2018<span class="field">Field: Finance &amp; accounting</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 2,400</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−312</b></div><div class="ded-row"><span>PAYE</span><b>−72</b></div></div></td>
+                      <td><div class="tenure-cell">4 years<span class="since">since Mar 2021</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">GB</div><div class="staff-name">Grace Boateng<span class="role">English · JHS 1A homeroom</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag degree">B.Ed.</span>English Language · UEW 2012<span class="field">Field: English &amp; Linguistics</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,800</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−234</b></div><div class="ded-row"><span>PAYE</span><b>−36</b></div></div></td>
+                      <td><div class="tenure-cell">7 years<span class="since">since Sep 2018</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">DO</div><div class="staff-name">Daniel Owusu<span class="role">Math · JHS 2A homeroom</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag degree">B.Sc.</span>Mathematics · UCC 2015<span class="field">Field: Mathematics</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,800</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−234</b></div><div class="ded-row"><span>PAYE</span><b>−36</b></div></div></td>
+                      <td><div class="tenure-cell">5 years<span class="since">since Sep 2020</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">SA</div><div class="staff-name">Sarah Asante<span class="role">Science · JHS 1B homeroom</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag degree">B.Ed.</span>Integrated Science · UEW 2014<span class="field">Field: Science Education</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,800</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−234</b></div><div class="ded-row"><span>PAYE</span><b>−36</b></div></div></td>
+                      <td><div class="tenure-cell">4 years<span class="since">since Sep 2021</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">PK</div><div class="staff-name">Patrick Kwakye<span class="role">Social Studies · JHS 3A</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag diploma">Diploma</span>Education · OLA College 2010<span class="field">Field: Social Studies</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,600</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−208</b></div><div class="ded-row"><span>PAYE</span><b>−18</b></div></div></td>
+                      <td><div class="tenure-cell">9 years<span class="since">since Sep 2016</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">MA</div><div class="staff-name">Mary Adjei<span class="role">Religious &amp; Moral · JHS 2B</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag degree">B.A.</span>Religion &amp; Human Values · UCC 2011<span class="field">Field: Religious Studies</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,700</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−221</b></div><div class="ded-row"><span>PAYE</span><b>−24</b></div></div></td>
+                      <td><div class="tenure-cell">6 years<span class="since">since Sep 2019</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">SAt</div><div class="staff-name">Stephen Antwi<span class="role">French · JHS 1C homeroom</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag missing">Missing</span><b>Qualifications not yet captured</b><span class="field">Required for GES annual census</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,600</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−208</b></div><div class="ded-row"><span>PAYE</span><b>−18</b></div></div></td>
+                      <td><div class="tenure-cell">3 years<span class="since">since Sep 2022</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">VO</div><div class="staff-name">Veronica Ofori<span class="role">ICT · JHS 3B homeroom</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag diploma">HND</span>Computer Science · Accra Polytechnic 2017<span class="field">Field: Computing</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,700</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−221</b></div><div class="ded-row"><span>PAYE</span><b>−24</b></div></div></td>
+                      <td><div class="tenure-cell">5 years<span class="since">since Sep 2020</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">RN</div><div class="staff-name">Robert Nuamah<span class="role">Ghanaian Lang · JHS 3C</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag missing">Missing</span><b>Qualifications not yet captured</b><span class="field">Required for GES annual census</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,500</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−195</b></div><div class="ded-row"><span>PAYE</span><b>−12</b></div></div></td>
+                      <td><div class="tenure-cell">2 years<span class="since">since Sep 2023</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">PO</div><div class="staff-name">Patience Owusu-Ampofo<span class="role">Creative Arts · JHS 2C</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag degree">B.Ed.</span>Visual Arts · KNUST 2013<span class="field">Field: Creative &amp; Visual Arts</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,700</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−221</b></div><div class="ded-row"><span>PAYE</span><b>−24</b></div></div></td>
+                      <td><div class="tenure-cell">7 years<span class="since">since Sep 2018</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">CB</div><div class="staff-name">Charles Boateng<span class="role">P.E. &amp; Sports</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag missing">Missing</span><b>Qualifications not yet captured</b><span class="field">Required for GES annual census</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,400</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−182</b></div><div class="ded-row"><span>PAYE</span><b>—</b></div></div></td>
+                      <td><div class="tenure-cell">3 years<span class="since">since Sep 2022</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">AM</div><div class="staff-name">Akua Mensah<span class="role">Career Tech · JHS 3</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag degree">B.Ed.</span>Home Economics · UEW 2016<span class="field">Field: Home Economics</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,700</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−221</b></div><div class="ded-row"><span>PAYE</span><b>−24</b></div></div></td>
+                      <td><div class="tenure-cell">4 years<span class="since">since Sep 2021</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">EA</div><div class="staff-name">Ekow Antwi<span class="role">Math · JHS 2C support</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag cert">Cert.</span>Teaching Cert. A · 2008<span class="field">Field: Primary Education</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,500</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−195</b></div><div class="ded-row"><span>PAYE</span><b>−12</b></div></div></td>
+                      <td><div class="tenure-cell">14 years<span class="since">since Sep 2011</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">SM</div><div class="staff-name">Samuel Mensah<span class="role">Secretary · non-teaching</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag cert">Cert.</span>Office Administration · 2015<span class="field">Field: Administration</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 1,200</div><div class="salary-meta">Bank · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>−156</b></div><div class="ded-row"><span>PAYE</span><b>—</b></div></div></td>
+                      <td><div class="tenure-cell">3 years<span class="since">since May 2022</span></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="staff-name-cell"><div class="staff-av">KO</div><div class="staff-name">Kwame Otu<span class="role">Caretaker · non-teaching</span></div></div></td>
+                      <td><div class="qual-cell"><span class="qual-tag cert">SHS</span>Senior High · 2003<span class="field">Field: General studies</span></div></td>
+                      <td><span class="status-tag school">School-paid</span></td>
+                      <td><div class="salary-cell"><div class="salary-amt">GHS 900</div><div class="salary-meta">Cash · monthly</div></div></td>
+                      <td><div class="deductions-cell"><div class="ded-row"><span>SSNIT</span><b>—</b></div><div class="ded-row"><span>PAYE</span><b>—</b></div></div></td>
+                      <td><div class="tenure-cell">12 years<span class="since">since Aug 2013</span></div></td>
+                    </tr>
+
+                    <tr class="subtotal-row">
+                      <td colspan="3"><span class="st-label">17 staff · monthly payroll</span></td>
+                      <td colspan="2" class="st-amount">Gross GHS 31,700</td>
+                      <td class="st-amount">Net GHS 24,800</td>
+                    </tr>
+
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>"School-paid · 17 of 17"</b> tile shows that for Christ the King (private) every staff member is on the books. <b>The denominator preserves the dual-mode design</b>; a public school with 12 GES-seconded staff and 5 PTA-paid would show "5 of 17 · school-paid" with 12 GES-paid in a sibling tile.</li>
+        <li><b>Qualifications column with category-coded tags:</b> degree (green), diploma (gold), cert (neutral), missing (warn). <b>Three rows show "Missing" tags</b> — Stephen Antwi, Robert Nuamah, Charles Boateng. Same 3 staff that the GES annual census flagged as "qualifications not yet captured." <b>Single source of truth across modules</b>.</li>
+        <li><b>Real Ghanaian universities throughout:</b> UCC (Cape Coast), KNUST (Kumasi), UEW (Winneba), UPSA, OLA College, Accra Polytechnic. <b>Specific institution + graduation year</b> matches what GES expects on staff returns.</li>
+        <li><b>SSNIT and PAYE deductions in dedicated column.</b> SSNIT = Social Security and National Insurance Trust (Ghana's pension scheme, 13% employee contribution). PAYE = Pay As You Earn income tax. <b>Real Ghanaian payroll deductions</b>; the lowest-paid staff (Kwame Otu, GHS 900) show "—" for both because they fall below the SSNIT threshold and tax-free PAYE band.</li>
+        <li><b>Subtotal row at the bottom</b> shows gross GHS 31,700 and net GHS 24,800 — the GHS 24,800 net is what flows to the P&amp;L salaries line on the bookkeeping dashboard. <b>Cross-module integrity</b>: this number = Salaries category in the expense entry aggregate mode (GHS 24,800).</li>
+        <li><b>"Missing data" filter pill in gold-tinted state</b> with count "3". <b>The same 3 staff identified across census + dashboard + here</b>; admin can quickly filter to just the rows needing attention.</li>
+        <li><b>Public school context note in gold-tinted card</b> explains how the same UI adapts for public schools — split hero, GES-paid status tag, footnote treatment. <b>Honest about dual-mode design</b> even when showing private school view.</li>
+        <li><b>Tenure column carries operational meaning:</b> "11 years · since Sep 2014" — useful for retention analysis, end-of-year recognition, and the GES staff return that asks for years of service.</li>
+        <li><b>Three salary statuses (School / GES / Allowance) cover the full Ghanaian basic-school landscape.</b> "Allowance only" handles part-time religious instructors, occasional external coaches, NSP volunteers — paid sometimes in goods rather than cash.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

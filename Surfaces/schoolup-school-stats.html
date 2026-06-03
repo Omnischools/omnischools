@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — School stats report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --female: #B85B8A;
+  --female-bg: rgba(184,91,138,0.12);
+  --male: #4A7BA8;
+  --male-bg: rgba(74,123,168,0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head .crumb a { color: var(--gold); text-decoration: none; }
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+.main-head .lede {
+  font-size: 13px; color: var(--navy-3);
+  margin-top: 6px; max-width: 540px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+
+/* Snapshot date pill */
+.snapshot-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  padding: 5px 14px 5px 12px;
+  border-radius: 100px;
+  font-size: 11px;
+  color: var(--navy-2);
+  margin-bottom: 18px;
+}
+.snapshot-pill .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.snapshot-pill b { color: var(--navy); font-weight: 700; }
+
+/* ============ HEADCOUNT KPI STRIP ============ */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.kpi.featured {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.kpi .l {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-bottom: 6px;
+}
+.kpi.featured .l { color: var(--gold-soft); }
+.kpi .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 30px;
+  letter-spacing: -0.025em;
+  color: var(--navy);
+  line-height: 1;
+}
+.kpi.featured .v { color: var(--bg); }
+.kpi .change {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 8px;
+  display: flex; align-items: center; gap: 4px;
+}
+.kpi.featured .change { color: var(--gold-soft); }
+.kpi .change b { color: var(--navy); font-weight: 600; }
+.kpi.featured .change b { color: var(--bg); font-weight: 600; }
+.kpi .change .arrow {
+  display: inline-flex;
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  background: var(--green-bg);
+  color: var(--green);
+  font-weight: 700;
+  font-size: 11px;
+  align-items: center; justify-content: center;
+}
+.kpi .change .arrow.down {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.kpi.featured .change .arrow {
+  background: rgba(255,255,255,0.15);
+  color: var(--gold);
+}
+
+/* ============ CARD WRAPPER ============ */
+.report-card-big {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.rcb-head {
+  padding: 16px 22px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.rcb-head .label {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 3px;
+}
+.rcb-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.rcb-head .ctx {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.rcb-head .ctx b { color: var(--navy); font-weight: 600; }
+.rcb-body { padding: 20px 22px 22px; }
+
+/* Two-column layout */
+.report-body {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+/* ============ CLASS COMPOSITION ============ */
+.class-comp-table {
+  width: 100%;
+}
+.class-comp-head {
+  display: grid;
+  grid-template-columns: 100px 1fr 90px 80px 90px 80px;
+  gap: 14px;
+  padding: 12px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.class-comp-head .right { text-align: right; }
+.class-comp-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 90px 80px 90px 80px;
+  gap: 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+}
+.class-comp-row:last-child { border-bottom: none; }
+.class-comp-row:hover { background: var(--bg); }
+.class-comp-row .cls-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.class-comp-row .cls-name .teacher {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'Manrope', sans-serif;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.class-comp-row .capacity-wrap {
+  display: flex; align-items: center; gap: 10px;
+}
+.class-comp-row .cap-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  overflow: hidden;
+  position: relative;
+}
+.class-comp-row .cap-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 100px;
+  position: relative;
+}
+.class-comp-row .cap-fill.warn { background: var(--gold); }
+.class-comp-row .cap-fill.danger { background: var(--terra); }
+.class-comp-row .cap-fill.under { background: var(--navy-3); opacity: 0.5; }
+.class-comp-row .cap-target {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 12px;
+  background: var(--navy);
+  border-radius: 1px;
+}
+.class-comp-row .cap-pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--navy);
+  min-width: 36px;
+  text-align: right;
+}
+.class-comp-row .num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: right;
+}
+.class-comp-row .num.muted { color: var(--navy-3); font-weight: 500; }
+.class-comp-row .gender-mini {
+  display: flex; gap: 6px; align-items: center;
+}
+.class-comp-row .gender-mini .seg {
+  height: 8px;
+  border-radius: 100px;
+}
+.class-comp-row .gender-mini .seg.f { background: var(--female); }
+.class-comp-row .gender-mini .seg.m { background: var(--male); }
+.class-comp-row .gender-mini .ratio {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+/* Capacity flag */
+.flag-pill {
+  display: inline-flex;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.flag-pill.over { background: var(--terra-bg); color: var(--terra); }
+.flag-pill.full { background: var(--gold-bg); color: var(--gold); }
+.flag-pill.under { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+.flag-pill.ok { background: var(--green-bg); color: var(--green); }
+
+/* ============ GENDER BREAKDOWN DONUT ============ */
+.gender-block {
+  text-align: center;
+  padding: 6px 0 0;
+}
+.gender-donut {
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--female) 0deg 187deg,
+    var(--male) 187deg 360deg
+  );
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.gender-donut::after {
+  content: "";
+  position: absolute;
+  inset: 28px;
+  background: var(--surface);
+  border-radius: 50%;
+}
+.gender-donut .center {
+  position: relative;
+  z-index: 1;
+}
+.gender-donut .center .total {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 32px;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+.gender-donut .center .label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-top: 2px;
+}
+.gender-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.gender-legend .gl {
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.gender-legend .gl.female { background: var(--female-bg); border-color: rgba(184,91,138,0.2); }
+.gender-legend .gl.male { background: var(--male-bg); border-color: rgba(74,123,168,0.2); }
+.gender-legend .gl .gl-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 4px;
+}
+.gender-legend .gl .swatch {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+.gender-legend .gl.female .swatch { background: var(--female); }
+.gender-legend .gl.male .swatch { background: var(--male); }
+.gender-legend .gl .name {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--navy-3);
+}
+.gender-legend .gl .num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.015em;
+}
+.gender-legend .gl .pct {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+
+/* ============ ENROLLMENT FLOW ============ */
+.flow-block {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+.flow-row {
+  display: grid;
+  grid-template-columns: 30px 1fr auto 90px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.flow-row:last-child { border-bottom: none; padding-bottom: 4px; }
+.flow-row .dot-icon {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.flow-row .dot-icon.in { background: var(--green-bg); color: var(--green); }
+.flow-row .dot-icon.out { background: var(--terra-bg); color: var(--terra); }
+.flow-row .dot-icon.grad { background: var(--gold-bg); color: var(--gold); }
+.flow-row .body .what {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.flow-row .body .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.flow-row .num-large {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+}
+.flow-row .num-large.in { color: var(--green); }
+.flow-row .num-large.out { color: var(--terra); }
+.flow-row .num-large.grad { color: var(--gold); }
+.flow-row .ghost-btn {
+  font-size: 9px; letter-spacing: 0.04em;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  padding: 4px 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+  text-align: center;
+  width: 90px;
+}
+
+/* Net change footer */
+.net-change-row {
+  margin-top: 8px;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-radius: 8px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.net-change-row .lbl {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.net-change-row .val {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.015em;
+  color: var(--green);
+}
+
+/* ============ ACADEMIC PERFORMANCE ============ */
+.scale-explainer {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.scale-explainer .ic {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--bg);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.scale-explainer .body {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.scale-explainer .body b { color: var(--navy); font-weight: 600; }
+
+/* Grade scale legend */
+.grade-scale {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+.grade-scale .gs {
+  text-align: center;
+  padding: 6px 4px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.grade-scale .gs .num {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 1px;
+}
+.grade-scale .gs .lbl {
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.grade-scale .gs.g1 { background: var(--green); color: var(--bg); }
+.grade-scale .gs.g2 { background: var(--green); color: var(--bg); opacity: 0.85; }
+.grade-scale .gs.g3 { background: var(--green); color: var(--bg); opacity: 0.7; }
+.grade-scale .gs.g4 { background: var(--gold); color: var(--navy); }
+.grade-scale .gs.g5 { background: var(--gold); color: var(--navy); opacity: 0.85; }
+.grade-scale .gs.g6 { background: var(--gold); color: var(--navy); opacity: 0.7; }
+.grade-scale .gs.g7 { background: var(--terra); color: var(--bg); opacity: 0.7; }
+.grade-scale .gs.g8 { background: var(--terra); color: var(--bg); opacity: 0.85; }
+.grade-scale .gs.g9 { background: var(--terra); color: var(--bg); }
+
+/* Performance hero card */
+.perf-hero {
+  background: var(--navy);
+  color: var(--bg);
+  border-radius: 12px;
+  padding: 24px 26px;
+  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: center;
+}
+.perf-hero .left .l {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.perf-hero .left .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 56px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.perf-hero .left .v .interp {
+  font-size: 18px;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 400;
+  margin-left: 12px;
+  letter-spacing: -0.01em;
+  display: inline-block;
+  vertical-align: super;
+  font-size: 22px;
+}
+.perf-hero .left .ctx {
+  font-size: 12px;
+  color: var(--gold-soft);
+  margin-top: 14px;
+  line-height: 1.5;
+}
+.perf-hero .left .ctx b { color: var(--bg); font-weight: 600; }
+.perf-hero .right {
+  border-left: 1px solid rgba(255,255,255,0.1);
+  padding-left: 26px;
+}
+.perf-hero .right h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--bg);
+  margin-bottom: 10px;
+}
+.perf-hero .right .data-row {
+  display: flex; justify-content: space-between;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--gold-soft);
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.perf-hero .right .data-row:first-of-type { border-top: none; }
+.perf-hero .right .data-row b {
+  color: var(--bg);
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+}
+
+/* By-class performance table */
+.perf-class-head {
+  display: grid;
+  grid-template-columns: 100px 1fr 80px 100px 100px 90px;
+  gap: 14px;
+  padding: 12px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.perf-class-head .right { text-align: right; }
+.perf-class-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 80px 100px 100px 90px;
+  gap: 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+}
+.perf-class-row:last-child { border-bottom: none; }
+.perf-class-row:hover { background: var(--bg); }
+.perf-class-row .cls-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.perf-class-row .cls-name .teacher {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'Manrope', sans-serif;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.perf-class-row .grade-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.perf-class-row .grade-pill.excellent { background: var(--green-bg); color: var(--green); }
+.perf-class-row .grade-pill.good { background: rgba(47,107,71,0.06); color: var(--green); }
+.perf-class-row .grade-pill.fair { background: var(--gold-bg); color: var(--gold); }
+.perf-class-row .grade-pill.weak { background: var(--terra-bg); color: var(--terra); }
+.perf-class-row .interp-text {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+.perf-class-row .num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+.perf-class-row .trend {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px;
+}
+.perf-class-row .trend .arr {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  font-size: 11px;
+}
+.perf-class-row .trend.up .arr { background: var(--green-bg); color: var(--green); }
+.perf-class-row .trend.down .arr { background: var(--terra-bg); color: var(--terra); }
+.perf-class-row .trend.flat .arr { background: var(--bg); color: var(--navy-3); }
+.perf-class-row .trend b {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+}
+.perf-class-row .trend.up b { color: var(--green); }
+.perf-class-row .trend.down b { color: var(--terra); }
+.perf-class-row .ghost-btn {
+  font-size: 9px; letter-spacing: 0.04em;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  padding: 4px 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.perf-class-row .ghost-btn:hover { color: var(--gold); border-color: var(--gold-soft); }
+
+/* Subject heatmap */
+.subject-heat {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.subject-card {
+  border-radius: 10px;
+  padding: 14px 14px 12px;
+  border: 1px solid var(--border);
+}
+.subject-card.strong { background: var(--green-bg); border-color: rgba(47,107,71,0.2); }
+.subject-card.average { background: var(--gold-bg); border-color: var(--gold-soft); }
+.subject-card.weak { background: var(--terra-bg); border-color: rgba(184,74,57,0.2); }
+.subject-card .sname {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.subject-card .savg {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.subject-card.strong .savg { color: var(--green); }
+.subject-card.average .savg { color: var(--gold); }
+.subject-card.weak .savg { color: var(--terra); }
+.subject-card .sinterp {
+  font-size: 10px;
+  margin-top: 4px;
+  font-style: italic;
+}
+.subject-card.strong .sinterp { color: var(--green); }
+.subject-card.average .sinterp { color: var(--gold); }
+.subject-card.weak .sinterp { color: var(--terra); }
+
+/* Empty state for subjects without enough data */
+.partial-data-banner {
+  background: var(--bg);
+  border: 1px dashed var(--border-2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.partial-data-banner .ic {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--navy-3);
+  color: var(--bg);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.partial-data-banner .body {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.partial-data-banner .body b { color: var(--navy); font-weight: 600; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .kpi-strip { grid-template-columns: 1fr 1fr; }
+  .report-body { grid-template-columns: 1fr; }
+  .perf-hero { grid-template-columns: 1fr; }
+  .perf-hero .right { border-left: none; padding-left: 0; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 22px; }
+  .subject-heat { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Reports · School stats</div>
+  <h1 class="display">The school, <em>by the numbers</em></h1>
+  <div class="gold-rule"></div>
+  <p>The school's official snapshot: how many students, how they're distributed, how they're performing. Used for daily oversight, ministry returns, board reports, and the Omnischools pitch — district and region rollups depend on these numbers being collected at school level first.</p>
+</header>
+
+<!-- ============ 01 SCHOOL AT A GLANCE ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">School at a glance</div>
+    <div class="section-meta">Admin / accountant · Reports &gt; School stats</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / school-stats</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Reports</a> / School stats / At a glance</div>
+              <h2 class="display"><em>Christ the King</em> JHS</h2>
+              <div class="lede">Headcount, composition, and the term's enrolment flow. Updated live as student records change.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export CSV</button>
+              <button class="btn">GES return PDF</button>
+            </div>
+          </div>
+
+          <div class="snapshot-pill">
+            <div class="dot"></div>
+            Snapshot as of <b>Friday, 1 May 2026 · 10:24 AM</b> · academic year <b>2025/26</b> · Term <b>1</b>
+          </div>
+
+          <!-- Headcount KPIs -->
+          <div class="kpi-strip">
+            <div class="kpi featured">
+              <div class="l">Total students</div>
+              <div class="v">354</div>
+              <div class="change">
+                <span class="arrow">↑</span>
+                <b>+12</b> since the start of this term
+              </div>
+            </div>
+            <div class="kpi">
+              <div class="l">Teaching staff</div>
+              <div class="v">22</div>
+              <div class="change">student:teacher ratio <b>16:1</b></div>
+            </div>
+            <div class="kpi">
+              <div class="l">Active classes</div>
+              <div class="v">10</div>
+              <div class="change">JHS 1, 2, 3 · 2-3 sections per year</div>
+            </div>
+            <div class="kpi">
+              <div class="l">Avg class size</div>
+              <div class="v">35</div>
+              <div class="change">range <b>28 — 41</b></div>
+            </div>
+          </div>
+
+          <!-- Class composition + Gender breakdown -->
+          <div class="report-body">
+            <div class="report-card-big" style="margin-bottom:0">
+              <div class="rcb-head">
+                <div>
+                  <div class="label">Class composition</div>
+                  <h3>Students per class</h3>
+                </div>
+                <div class="ctx">Target capacity per class: <b>35</b> · vertical line marks the target</div>
+              </div>
+              <div class="class-comp-head">
+                <div>Class</div>
+                <div>Capacity</div>
+                <div class="right">Students</div>
+                <div></div>
+                <div>Gender</div>
+                <div></div>
+              </div>
+
+              <div class="class-comp-row">
+                <div class="cls-name">JHS 1A
+                  <div class="teacher">Ms. Adjei</div>
+                </div>
+                <div class="capacity-wrap">
+                  <div class="cap-bar">
+                    <div class="cap-fill" style="width:91%"></div>
+                    <div class="cap-target" style="left:97%"></div>
+                  </div>
+                  <div class="cap-pct">91%</div>
+                </div>
+                <div class="num">32</div>
+                <div><span class="flag-pill ok">Ok</span></div>
+                <div class="gender-mini">
+                  <div class="seg f" style="width:54%;flex:54"></div>
+                  <div class="seg m" style="width:46%;flex:46"></div>
+                </div>
+                <div class="num muted" style="font-size:11px;font-family:'JetBrains Mono',monospace">17F · 15M</div>
+              </div>
+
+              <div class="class-comp-row">
+                <div class="cls-name">JHS 1B
+                  <div class="teacher">Mr. Mensah</div>
+                </div>
+                <div class="capacity-wrap">
+                  <div class="cap-bar">
+                    <div class="cap-fill" style="width:80%"></div>
+                    <div class="cap-target" style="left:97%"></div>
+                  </div>
+                  <div class="cap-pct">80%</div>
+                </div>
+                <div class="num">28</div>
+                <div><span class="flag-pill under">Under</span></div>
+                <div class="gender-mini">
+                  <div class="seg f" style="flex:50"></div>
+                  <div class="seg m" style="flex:50"></div>
+                </div>
+                <div class="num muted" style="font-size:11px;font-family:'JetBrains Mono',monospace">14F · 14M</div>
+              </div>
+
+              <div class="class-comp-row">
+                <div class="cls-name">JHS 2A
+                  <div class="teacher">Ms. Owusu</div>
+                </div>
+                <div class="capacity-wrap">
+                  <div class="cap-bar">
+                    <div class="cap-fill warn" style="width:103%"></div>
+                    <div class="cap-target" style="left:97%"></div>
+                  </div>
+                  <div class="cap-pct">103%</div>
+                </div>
+                <div class="num">36</div>
+                <div><span class="flag-pill full">Full</span></div>
+                <div class="gender-mini">
+                  <div class="seg f" style="flex:47"></div>
+                  <div class="seg m" style="flex:53"></div>
+                </div>
+                <div class="num muted" style="font-size:11px;font-family:'JetBrains Mono',monospace">17F · 19M</div>
+              </div>
+
+              <div class="class-comp-row">
+                <div class="cls-name">JHS 2B
+                  <div class="teacher">Mr. Adusei</div>
+                </div>
+                <div class="capacity-wrap">
+                  <div class="cap-bar">
+                    <div class="cap-fill" style="width:97%"></div>
+                    <div class="cap-target" style="left:97%"></div>
+                  </div>
+                  <div class="cap-pct">97%</div>
+                </div>
+                <div class="num">34</div>
+                <div><span class="flag-pill ok">Ok</span></div>
+                <div class="gender-mini">
+                  <div class="seg f" style="flex:53"></div>
+                  <div class="seg m" style="flex:47"></div>
+                </div>
+                <div class="num muted" style="font-size:11px;font-family:'JetBrains Mono',monospace">18F · 16M</div>
+              </div>
+
+              <div class="class-comp-row">
+                <div class="cls-name">JHS 3A
+                  <div class="teacher">Mrs. Boateng</div>
+                </div>
+                <div class="capacity-wrap">
+                  <div class="cap-bar">
+                    <div class="cap-fill danger" style="width:117%"></div>
+                    <div class="cap-target" style="left:83%"></div>
+                  </div>
+                  <div class="cap-pct" style="color:var(--terra)">117%</div>
+                </div>
+                <div class="num" style="color:var(--terra)">41</div>
+                <div><span class="flag-pill over">Over</span></div>
+                <div class="gender-mini">
+                  <div class="seg f" style="flex:51"></div>
+                  <div class="seg m" style="flex:49"></div>
+                </div>
+                <div class="num muted" style="font-size:11px;font-family:'JetBrains Mono',monospace">21F · 20M</div>
+              </div>
+
+              <div class="class-comp-row">
+                <div class="cls-name">JHS 3B
+                  <div class="teacher">Mr. Quaye</div>
+                </div>
+                <div class="capacity-wrap">
+                  <div class="cap-bar">
+                    <div class="cap-fill" style="width:91%"></div>
+                    <div class="cap-target" style="left:97%"></div>
+                  </div>
+                  <div class="cap-pct">91%</div>
+                </div>
+                <div class="num">32</div>
+                <div><span class="flag-pill ok">Ok</span></div>
+                <div class="gender-mini">
+                  <div class="seg f" style="flex:44"></div>
+                  <div class="seg m" style="flex:56"></div>
+                </div>
+                <div class="num muted" style="font-size:11px;font-family:'JetBrains Mono',monospace">14F · 18M</div>
+              </div>
+
+            </div>
+
+            <div>
+              <!-- Gender breakdown -->
+              <div class="report-card-big" style="margin-bottom:14px">
+                <div class="rcb-head">
+                  <div>
+                    <div class="label">Gender breakdown</div>
+                    <h3>School-wide ratio</h3>
+                  </div>
+                </div>
+                <div class="rcb-body">
+                  <div class="gender-block">
+                    <div class="gender-donut">
+                      <div class="center">
+                        <div class="total">354</div>
+                        <div class="label">Total</div>
+                      </div>
+                    </div>
+                    <div class="gender-legend">
+                      <div class="gl female">
+                        <div class="gl-row">
+                          <div class="swatch"></div>
+                          <div class="name">Female</div>
+                        </div>
+                        <div class="num">184</div>
+                        <div class="pct">52% · slight majority</div>
+                      </div>
+                      <div class="gl male">
+                        <div class="gl-row">
+                          <div class="swatch"></div>
+                          <div class="name">Male</div>
+                        </div>
+                        <div class="num">170</div>
+                        <div class="pct">48%</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Enrolment flow -->
+          <div class="report-card-big">
+            <div class="rcb-head">
+              <div>
+                <div class="label">Enrolment flow · Term 1 · 2026</div>
+                <h3>Who joined, who left</h3>
+              </div>
+              <div class="ctx">Net change since the start of this term</div>
+            </div>
+            <div class="rcb-body">
+              <div class="flow-block">
+                <div class="flow-row">
+                  <div class="dot-icon in">+</div>
+                  <div class="body">
+                    <div class="what">New admissions</div>
+                    <div class="sub">Joined this term · 11 from JHS 1 admissions, 4 transfers in</div>
+                  </div>
+                  <div class="num-large in">+15</div>
+                  <div><button class="ghost-btn">View list</button></div>
+                </div>
+
+                <div class="flow-row">
+                  <div class="dot-icon out">−</div>
+                  <div class="body">
+                    <div class="what">Withdrew</div>
+                    <div class="sub">Parent-initiated departures — financial or relocation</div>
+                  </div>
+                  <div class="num-large out">−2</div>
+                  <div><button class="ghost-btn">View list</button></div>
+                </div>
+
+                <div class="flow-row">
+                  <div class="dot-icon out">→</div>
+                  <div class="body">
+                    <div class="what">Transferred out</div>
+                    <div class="sub">Moved to another school · transfer letter on file</div>
+                  </div>
+                  <div class="num-large out">−1</div>
+                  <div><button class="ghost-btn">View list</button></div>
+                </div>
+
+                <div class="flow-row">
+                  <div class="dot-icon grad">G</div>
+                  <div class="body">
+                    <div class="what">Graduated</div>
+                    <div class="sub">Completed JHS 3 · BECE 2025 cohort, now in SHS</div>
+                  </div>
+                  <div class="num-large grad">38</div>
+                  <div><button class="ghost-btn">View list</button></div>
+                </div>
+              </div>
+
+              <div class="net-change-row">
+                <div>
+                  <div class="lbl">Net change since start of term</div>
+                  <div style="font-size:11px;color:var(--navy-3);margin-top:2px">+15 in, −3 out · graduation reflected in last academic year</div>
+                </div>
+                <div class="val">+12 students</div>
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>"School at a glance" not "Statistics".</b> Same data, friendlier framing. The headmistress doesn't think of her school as statistics; she thinks of it as her school. The page title — "Christ the King JHS" — anchors the report to the institution rather than the genre.</li>
+        <li><b>Snapshot pill at the top</b> — "Snapshot as of Friday, 1 May 2026 · 10:24 AM · academic year 2025/26 · Term 1." Stats change daily as students join/leave; the pill makes the freshness explicit. Useful for any export or PDF — the GES return needs to know exactly when it was generated.</li>
+        <li><b>"GES return PDF" header button</b> — generates a pre-formatted PDF matching the Ghana Education Service return template. Schools file these termly; making it one click instead of an hour of copying is a real value prop. Same data, formatted to GES's expectations.</li>
+        <li><b>Featured KPI is total students</b> in navy. The first question every visitor asks. <b>+12 since term start</b> tells trajectory in one phrase.</li>
+        <li><b>Student:teacher ratio is the headcount KPI subtitle.</b> Ministry-grade metric — 16:1 reads as healthy (Ghana basic schools target 1:35 max, often 1:25-30 in urban private). Ratios over 25:1 would warrant flagging.</li>
+        <li><b>Class composition table is the load-bearing element.</b> Every class with capacity bar, target line, student count, gender split mini-bar. The visual progress bar lets the eye scan to crowded classes (JHS 3A at 117%) and underused ones (JHS 1B at 80%).</li>
+        <li><b>Capacity target as a vertical line on the bar,</b> not a separate column. The bar shows "where this class is" relative to "where it should be" in one glance. Color shifts from green (under target) to gold (at/near target) to terra (over).</li>
+        <li><b>JHS 3A flagged as "Over" in terracotta.</b> 41 students against a 35 target — actionable insight for the headmistress. Either re-balance assignments next term or formally raise the target with the board.</li>
+        <li><b>Gender mini-bars per class</b> using a quiet pink/blue palette deliberately distinct from the gold/terra of fee/discount data — different domain, different signal. Female:male ratio per class is something headmistresses watch (over-skewed classes can affect group dynamics).</li>
+        <li><b>Donut chart for school-wide gender</b> with a hollow center showing the total. The slight majority annotation ("52% · slight majority") interprets the visual rather than leaving it to be read.</li>
+        <li><b>Enrolment flow as a tally,</b> not a chart. Four event types (new admissions, withdrew, transferred out, graduated) with counts and View buttons. Each row is auditable — auditor clicks to see the actual student list.</li>
+        <li><b>Withdrew vs Transferred separately tracked.</b> Different reasons, different conversations. A school with high withdrawals has a financial or experience problem; a school with high transfers is in a high-mobility area. Lumping them as "exits" hides the distinction.</li>
+        <li><b>Graduated count stays separate</b> with its own gold dot icon. Graduates aren't losses — they're successes. The 38 who graduated last year went on to SHS; that's a school's job done, not a leak.</li>
+        <li><b>Net change footer</b> consolidates the math: +15 in, −3 out, = +12 net. The graduation count from the previous academic year is excluded from this term's net.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 ACADEMIC PERFORMANCE ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Academic performance overview</div>
+    <div class="section-meta">Admin · Reports &gt; School stats &gt; Performance</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / school-stats / performance</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Reports</a> / School stats / Performance</div>
+              <h2 class="display">Academic <em>performance</em></h2>
+              <div class="lede">Overall and per-class averages on the 1-9 BECE grading scale, drawn from the gradebook as teachers enter scores.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export CSV</button>
+              <button class="btn">Export PDF</button>
+            </div>
+          </div>
+
+          <!-- Scale explainer — non-negotiable for this report -->
+          <div class="scale-explainer">
+            <div class="ic">i</div>
+            <div class="body">
+              <b>Reading the 1-9 grading scale.</b> Ghana basic schools use BECE-style grading where <b>1 is the best score</b> and <b>9 is failure</b>. A class average of <b>3.2</b> is <b>very good</b>; an average of <b>6.8</b> would mean students are struggling. Lower numbers are better throughout this report.
+              <div class="grade-scale">
+                <div class="gs g1"><span class="num">1</span><span class="lbl">Excellent</span></div>
+                <div class="gs g2"><span class="num">2</span><span class="lbl">Very good</span></div>
+                <div class="gs g3"><span class="num">3</span><span class="lbl">Good</span></div>
+                <div class="gs g4"><span class="num">4</span><span class="lbl">High avg</span></div>
+                <div class="gs g5"><span class="num">5</span><span class="lbl">Average</span></div>
+                <div class="gs g6"><span class="num">6</span><span class="lbl">Low avg</span></div>
+                <div class="gs g7"><span class="num">7</span><span class="lbl">Pass</span></div>
+                <div class="gs g8"><span class="num">8</span><span class="lbl">Weak</span></div>
+                <div class="gs g9"><span class="num">9</span><span class="lbl">Fail</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Performance hero -->
+          <div class="perf-hero">
+            <div class="left">
+              <div class="l">Whole-school average · Term 1 · 2026</div>
+              <div class="v">3.4<span class="interp" style="font-style:italic;color:var(--gold);font-weight:400;margin-left:14px;font-size:24px">good</span></div>
+              <div class="ctx">Across <b>10 classes</b> and <b>8 subjects</b>, drawn from <b>3,287 grade entries</b> covering CA, mid-term, and term assessments. <b>71%</b> of students score in grades 1-4 (the "high average" band or better).</div>
+            </div>
+            <div class="right">
+              <h4>What's behind this number</h4>
+              <div class="data-row"><span>Best class</span><b>JHS 1A · 2.6</b></div>
+              <div class="data-row"><span>Lowest class</span><b>JHS 3A · 4.2</b></div>
+              <div class="data-row"><span>Strongest subject</span><b>English · 2.9</b></div>
+              <div class="data-row"><span>Most challenging</span><b>Maths · 4.1</b></div>
+              <div class="data-row"><span>Data completeness</span><b>87%</b></div>
+            </div>
+          </div>
+
+          <!-- Partial data banner — appears when data isn't complete -->
+          <div class="partial-data-banner">
+            <div class="ic">i</div>
+            <div class="body">
+              <b>Some classes still building data.</b> JHS 2B has only <b>1 of 8 subjects</b> with grades entered for this term — the average shown reflects what's been recorded so far. The picture sharpens as teachers enter more assessments.
+            </div>
+          </div>
+
+          <!-- By class table -->
+          <div class="report-card-big">
+            <div class="rcb-head">
+              <div>
+                <div class="label">By class</div>
+                <h3>Performance per class</h3>
+              </div>
+              <div class="ctx">Click a class to see <b>per-subject breakdown</b> and individual student standings</div>
+            </div>
+            <div class="perf-class-head">
+              <div>Class</div>
+              <div>Average</div>
+              <div class="right">Students</div>
+              <div class="right">Subjects scored</div>
+              <div>Trend</div>
+              <div></div>
+            </div>
+
+            <div class="perf-class-row">
+              <div class="cls-name">JHS 1A
+                <div class="teacher">Ms. Adjei</div>
+              </div>
+              <div>
+                <span class="grade-pill excellent">2.6</span>
+                <div class="interp-text" style="margin-top:4px">very good</div>
+              </div>
+              <div class="num" style="text-align:right">32</div>
+              <div class="num" style="text-align:right;color:var(--navy-3);font-weight:500">8 / 8</div>
+              <div class="trend up">
+                <div class="arr">↑</div>
+                <b>−0.3</b>
+                <span style="color:var(--navy-3)">vs last term</span>
+              </div>
+              <div style="text-align:right"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <div class="perf-class-row">
+              <div class="cls-name">JHS 1B
+                <div class="teacher">Mr. Mensah</div>
+              </div>
+              <div>
+                <span class="grade-pill good">3.1</span>
+                <div class="interp-text" style="margin-top:4px">good</div>
+              </div>
+              <div class="num" style="text-align:right">28</div>
+              <div class="num" style="text-align:right;color:var(--navy-3);font-weight:500">8 / 8</div>
+              <div class="trend up">
+                <div class="arr">↑</div>
+                <b>−0.2</b>
+                <span style="color:var(--navy-3)">vs last term</span>
+              </div>
+              <div style="text-align:right"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <div class="perf-class-row">
+              <div class="cls-name">JHS 2A
+                <div class="teacher">Ms. Owusu</div>
+              </div>
+              <div>
+                <span class="grade-pill good">3.3</span>
+                <div class="interp-text" style="margin-top:4px">good</div>
+              </div>
+              <div class="num" style="text-align:right">36</div>
+              <div class="num" style="text-align:right;color:var(--navy-3);font-weight:500">8 / 8</div>
+              <div class="trend flat">
+                <div class="arr">→</div>
+                <b>+0.0</b>
+                <span style="color:var(--navy-3)">vs last term</span>
+              </div>
+              <div style="text-align:right"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <div class="perf-class-row">
+              <div class="cls-name">JHS 2B
+                <div class="teacher">Mr. Adusei</div>
+              </div>
+              <div>
+                <span class="grade-pill fair">3.8</span>
+                <div class="interp-text" style="margin-top:4px">high avg</div>
+              </div>
+              <div class="num" style="text-align:right">34</div>
+              <div class="num" style="text-align:right;color:var(--terra);font-weight:600">1 / 8</div>
+              <div class="trend flat">
+                <div class="arr">→</div>
+                <b style="color:var(--navy-3)">—</b>
+                <span style="color:var(--navy-3)">partial data</span>
+              </div>
+              <div style="text-align:right"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <div class="perf-class-row">
+              <div class="cls-name">JHS 3A
+                <div class="teacher">Mrs. Boateng</div>
+              </div>
+              <div>
+                <span class="grade-pill fair">4.2</span>
+                <div class="interp-text" style="margin-top:4px">high avg</div>
+              </div>
+              <div class="num" style="text-align:right">41</div>
+              <div class="num" style="text-align:right;color:var(--navy-3);font-weight:500">7 / 8</div>
+              <div class="trend down">
+                <div class="arr">↓</div>
+                <b>+0.4</b>
+                <span style="color:var(--navy-3)">vs last term</span>
+              </div>
+              <div style="text-align:right"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <div class="perf-class-row">
+              <div class="cls-name">JHS 3B
+                <div class="teacher">Mr. Quaye</div>
+              </div>
+              <div>
+                <span class="grade-pill good">3.5</span>
+                <div class="interp-text" style="margin-top:4px">good</div>
+              </div>
+              <div class="num" style="text-align:right">32</div>
+              <div class="num" style="text-align:right;color:var(--navy-3);font-weight:500">8 / 8</div>
+              <div class="trend up">
+                <div class="arr">↑</div>
+                <b>−0.1</b>
+                <span style="color:var(--navy-3)">vs last term</span>
+              </div>
+              <div style="text-align:right"><button class="ghost-btn">View</button></div>
+            </div>
+
+          </div>
+
+          <!-- By subject -->
+          <div class="report-card-big">
+            <div class="rcb-head">
+              <div>
+                <div class="label">By subject · school-wide</div>
+                <h3>Hot and cold spots</h3>
+              </div>
+              <div class="ctx">Average across all classes per subject. Greens are strong, reds need attention.</div>
+            </div>
+            <div class="rcb-body">
+              <div class="subject-heat">
+                <div class="subject-card strong">
+                  <div class="sname">English</div>
+                  <div class="savg">2.9</div>
+                  <div class="sinterp">very good · school strength</div>
+                </div>
+                <div class="subject-card strong">
+                  <div class="sname">Religious &amp; Moral Ed.</div>
+                  <div class="savg">3.0</div>
+                  <div class="sinterp">good</div>
+                </div>
+                <div class="subject-card strong">
+                  <div class="sname">Social Studies</div>
+                  <div class="savg">3.2</div>
+                  <div class="sinterp">good</div>
+                </div>
+                <div class="subject-card average">
+                  <div class="sname">Twi</div>
+                  <div class="savg">3.4</div>
+                  <div class="sinterp">good</div>
+                </div>
+                <div class="subject-card average">
+                  <div class="sname">Integrated Science</div>
+                  <div class="savg">3.6</div>
+                  <div class="sinterp">good</div>
+                </div>
+                <div class="subject-card average">
+                  <div class="sname">ICT</div>
+                  <div class="savg">3.8</div>
+                  <div class="sinterp">high avg</div>
+                </div>
+                <div class="subject-card average">
+                  <div class="sname">Creative Arts</div>
+                  <div class="savg">3.9</div>
+                  <div class="sinterp">high avg</div>
+                </div>
+                <div class="subject-card weak">
+                  <div class="sname">Maths</div>
+                  <div class="savg">4.1</div>
+                  <div class="sinterp">high avg · needs focus</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Scale explainer is non-negotiable on this report.</b> The 1-9 BECE scale (1 = best, 9 = fail) is counter-intuitive for anyone not from Ghana. Without an explicit explainer at the top of the page, readers will misinterpret a "school average of 3.4" as bad. The grade scale strip with color-coded interpretation is the single most important piece of design hygiene on this page.</li>
+        <li><b>Color follows meaning, not magnitude.</b> Grades 1-3 = green (excellent/very good/good), 4-6 = gold (high avg / average / low avg), 7-9 = terracotta (pass / weak / fail). This means a "small number" reads as positive in the chart and a "big number" reads as negative — matching the scale, not standard convention.</li>
+        <li><b>Performance hero card in navy</b> with the headline "3.4" and italic gold "good" interpretation. The interpretation is as important as the number. Right column reads off the strongest/weakest dimensions so the headmistress sees the texture in three seconds.</li>
+        <li><b>"Data completeness 87%"</b> in the right column is honest. If the gradebook isn't fully populated, the headline number reflects partial truth. Telling the user this prevents over-confidence in the number.</li>
+        <li><b>Partial-data banner appears below the hero</b> when any class is significantly under-graded. JHS 2B at 1 of 8 subjects shows the partial signal both in the banner (general callout) and in the table row (the "1/8" in terracotta). Banner is general; row treatment is specific.</li>
+        <li><b>By-class table mirrors the finance reports' shape</b> deliberately. Same six-column structure as the term-collection by-class breakdown. Headmistress learns the layout once, applies it to multiple reports.</li>
+        <li><b>Trend column with directional arrows.</b> ↑ green for "improved" (lower number than last term), ↓ terra for "worsened", → grey for flat. The −0.3 / +0.4 numbers are signed; minus is good. Same scale-aware convention as elsewhere on the page.</li>
+        <li><b>JHS 2B trend shows "—" with "partial data" annotation.</b> Cannot compute term-on-term trend on a class with one subject's grades. Refusing to compute is more honest than computing on partial data and showing an unstable trend.</li>
+        <li><b>Subject hot/cold spots as a single grid of 8 cards</b> rather than a bar chart. Small enough to scan visually; the colour does the ranking. Maths at 4.1 with "needs focus" annotation is the actionable signal — the headmistress has a conversation with the maths department.</li>
+        <li><b>Subject ranking is school-wide, not by class.</b> Per-class subject performance is in the drill-through (click a class). The school-wide view tells the headmistress where to focus departmental attention; per-class is where she goes after that.</li>
+        <li><b>71% of students in grades 1-4</b> in the hero context — the "high average or better" band is meaningful in Ghanaian education because it's the cutoff for "passing well" by ministry standards. Aggregate distributional stats matter, not just the mean.</li>
+        <li><b>No teacher names beyond the class teacher.</b> The class is teacher-owned but the report stops short of "Mrs. Boateng's class scored 4.2." Avoids the trap of teacher-blaming a number that's mostly determined by cohort composition. Class identity is the unit; teaching attribution is a separate conversation.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

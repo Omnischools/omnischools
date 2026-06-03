@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Day-one empty states</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+.layout.mobile { grid-template-columns: 340px 340px 1fr; gap: 32px; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+/* ============ DESKTOP FRAME ============ */
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* ============ APP SHELL ============ */
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main {
+  padding: 32px 40px;
+  overflow: hidden;
+}
+.main-head {
+  margin-bottom: 32px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 30px; font-weight: 500; letter-spacing: -0.02em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+.main-head .lede {
+  font-size: 14px; color: var(--navy-3); margin-top: 6px;
+}
+
+/* ============ ADMIN: GUIDED CHECKLIST ============ */
+.admin-empty {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+}
+.checklist-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.checklist-head {
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.checklist-head .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 6px;
+}
+.checklist-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 500; letter-spacing: -0.015em;
+}
+.checklist-head h3 em { font-style: italic; color: var(--gold); }
+.checklist-head .progress-strip {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+}
+.checklist-head .progress-strip .seg {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+}
+.checklist-head .progress-strip .seg.done { background: var(--gold); }
+.checklist-head .progress-meta {
+  font-size: 11px; color: var(--navy-3);
+  margin-top: 8px;
+  font-weight: 600;
+}
+.checklist-head .progress-meta b { color: var(--gold); }
+
+.check-item {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 14px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.check-item:last-child { border-bottom: none; }
+.check-item.done { background: var(--bg); }
+.check-item.active {
+  background: var(--gold-bg);
+}
+.check-item .num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1.5px solid var(--border-2);
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 600;
+  color: var(--navy-3);
+  display: flex; align-items: center; justify-content: center;
+}
+.check-item.done .num {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+}
+.check-item.done .num::before { content: "✓"; }
+.check-item.done .num span { display: none; }
+.check-item.active .num {
+  background: var(--surface);
+  border-color: var(--gold);
+  color: var(--navy);
+}
+.check-item .body .t1 {
+  font-family: 'Fraunces', serif;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.check-item.done .body .t1 {
+  text-decoration: line-through;
+  color: var(--navy-3);
+}
+.check-item .body .t2 {
+  font-size: 11px; color: var(--navy-3);
+  margin-top: 2px;
+}
+.check-item .action-btn {
+  padding: 6px 12px;
+  background: var(--navy);
+  color: var(--bg);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.check-item.active .action-btn { background: var(--gold); color: var(--navy); }
+.check-item.done .action-btn {
+  background: transparent;
+  color: var(--navy-3);
+  border: 1px solid var(--border);
+}
+
+/* Side panel — what to expect */
+.side-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+}
+.side-panel .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 10px;
+}
+.side-panel h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 500; letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.side-panel .body-text {
+  font-size: 12px; color: var(--navy-2); line-height: 1.6;
+  margin-bottom: 18px;
+}
+.side-panel .body-text b { color: var(--navy); }
+
+.timeline {
+  display: flex; flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+.timeline-item {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  position: relative;
+}
+.timeline-item + .timeline-item::before {
+  content: "";
+  position: absolute;
+  left: 11px; top: -8px;
+  width: 2px; height: 18px;
+  background: var(--border);
+}
+.timeline-item .ti-dot {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: var(--navy-3);
+  font-weight: 700;
+}
+.timeline-item .ti-body .ti-t1 {
+  font-size: 12px; font-weight: 600; color: var(--navy);
+}
+.timeline-item .ti-body .ti-t2 {
+  font-size: 11px; color: var(--navy-3);
+  margin-top: 1px;
+}
+
+/* ============ TEACHER EMPTY ============ */
+.teacher-empty {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+}
+.welcome-card {
+  background: var(--navy);
+  color: var(--bg);
+  border-radius: 12px;
+  padding: 28px 28px 22px;
+  position: relative;
+  overflow: hidden;
+}
+.welcome-card::after {
+  content: "";
+  position: absolute;
+  right: -60px; bottom: -60px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(200,151,91,0.10);
+}
+.welcome-card .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 10px;
+  position: relative; z-index: 2;
+}
+.welcome-card h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 500; letter-spacing: -0.02em;
+  line-height: 1.1; margin-bottom: 12px;
+  position: relative; z-index: 2;
+  font-variation-settings: "opsz" 144;
+}
+.welcome-card h3 em { font-style: italic; color: var(--gold); }
+.welcome-card .body-text {
+  font-size: 13px; color: rgba(250,247,242,0.85); line-height: 1.55;
+  margin-bottom: 20px; max-width: 380px;
+  position: relative; z-index: 2;
+}
+.welcome-card .body-text b { color: var(--bg); font-weight: 600; }
+
+.assignment-list {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  position: relative; z-index: 2;
+}
+.assignment-list .a-label {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 10px;
+}
+.assignment-list .a-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.1);
+  color: rgba(250,247,242,0.85);
+}
+.assignment-list .a-row:last-child { border-bottom: none; }
+.assignment-list .a-row .cls { font-weight: 600; color: var(--bg); }
+.assignment-list .a-row .sub { color: var(--gold-soft); }
+
+.welcome-actions {
+  display: flex; gap: 8px;
+  position: relative; z-index: 2;
+}
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.outline-gold {
+  background: transparent; border: 1px solid var(--gold);
+  color: var(--gold);
+}
+.btn.outline-light {
+  background: transparent; border: 1px solid rgba(255,255,255,0.3);
+  color: var(--bg);
+}
+
+.suggestion-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+  margin-bottom: 12px;
+}
+.suggestion-tile .s-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 16px;
+  margin-bottom: 12px;
+}
+.suggestion-tile h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 14px; font-weight: 600; letter-spacing: -0.005em;
+  margin-bottom: 4px;
+}
+.suggestion-tile .s-body {
+  font-size: 12px; color: var(--navy-3); line-height: 1.55;
+  margin-bottom: 12px;
+}
+.suggestion-tile a {
+  font-size: 11px; color: var(--gold);
+  font-weight: 700; text-decoration: none;
+  letter-spacing: 0.04em;
+}
+
+/* ============ MOBILE PHONES ============ */
+.phone {
+  width: 340px;
+  height: 690px;
+  background: var(--navy);
+  border-radius: 36px;
+  padding: 8px;
+  box-shadow: 0 30px 70px -20px rgba(26,43,71,0.35), 0 0 0 1px rgba(26,43,71,0.06);
+  position: relative;
+}
+.phone::before {
+  content: "";
+  position: absolute;
+  top: 14px; left: 50%;
+  transform: translateX(-50%);
+  width: 100px; height: 22px;
+  background: var(--navy);
+  border-radius: 12px;
+  z-index: 10;
+}
+.phone-screen {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  border-radius: 28px;
+  overflow: hidden;
+  position: relative;
+  display: flex; flex-direction: column;
+}
+.phone-label {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.statusbar {
+  height: 38px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px 0 28px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.statusbar .icons { display: flex; gap: 5px; align-items: center; }
+.statusbar .icons span { width: 12px; height: 8px; background: var(--navy); border-radius: 1px; }
+.statusbar .icons span:nth-child(2) { width: 14px; height: 9px; }
+.statusbar .icons span:nth-child(3) { width: 18px; height: 9px; border-radius: 2px; }
+
+.m-topbar {
+  padding: 8px 20px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.m-greeting .label-mini {
+  font-size: 11px;
+  color: var(--navy-3);
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+.m-greeting .name {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.m-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  border: 2px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.m-content {
+  flex: 1;
+  padding: 0 20px 16px;
+  overflow-y: auto;
+}
+
+.m-tabbar {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 8px 4px 24px;
+}
+.m-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 9px; color: var(--navy-3); font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.m-tab .dot { width: 18px; height: 18px; border-radius: 4px; background: var(--border); }
+.m-tab.active { color: var(--navy); }
+.m-tab.active .dot { background: var(--navy); }
+
+/* Empty hero card on mobile */
+.m-hero-empty {
+  background: var(--navy);
+  color: var(--bg);
+  border-radius: 16px;
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.m-hero-empty::after {
+  content: "";
+  position: absolute;
+  right: -30px; top: -50px;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  background: rgba(200,151,91,0.10);
+}
+.m-hero-empty .label {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold-soft); font-weight: 700; margin-bottom: 10px;
+  position: relative; z-index: 2;
+}
+.m-hero-empty .row {
+  display: flex; align-items: center; gap: 12px;
+  position: relative; z-index: 2;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(200,151,91,0.18);
+  margin-bottom: 14px;
+}
+.m-hero-empty .ph {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+}
+.m-hero-empty .name {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 500;
+}
+.m-hero-empty .meta { font-size: 11px; color: var(--gold-soft); margin-top: 2px; }
+
+.m-hero-empty .empty-msg {
+  position: relative; z-index: 2;
+  font-size: 12px;
+  color: rgba(250,247,242,0.8);
+  line-height: 1.55;
+}
+.m-hero-empty .empty-msg b { color: var(--bg); font-weight: 600; }
+
+/* Empty section block on mobile */
+.m-empty-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 20px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.m-empty-block .e-icon {
+  width: 44px; height: 44px;
+  margin: 0 auto 14px;
+  border-radius: 12px;
+  background: var(--gold-bg);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 18px;
+}
+.m-empty-block h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 15px; font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-bottom: 6px;
+}
+.m-empty-block .e-body {
+  font-size: 12px;
+  color: var(--navy-3);
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+.m-empty-block .e-meta {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  background: var(--gold-bg);
+  padding: 4px 10px;
+  border-radius: 100px;
+}
+
+.m-section-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin: 18px 0 8px;
+}
+
+.m-tip-row {
+  display: flex; gap: 10px; align-items: start;
+  padding: 12px 14px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.m-tip-row .ic {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 12px;
+  flex-shrink: 0;
+}
+.m-tip-row .body {
+  font-size: 12px; color: var(--navy-2);
+  line-height: 1.5;
+}
+.m-tip-row .body b { color: var(--navy); font-weight: 600; }
+
+@media (max-width: 1100px) {
+  .layout, .layout.mobile { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .admin-empty, .teacher-empty { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Empty states</div>
+  <h1 class="display">The <em>day-one</em> moments</h1>
+  <div class="gold-rule"></div>
+  <p>What each role sees the first time they open Omnischools — before anyone has done much. Empty states aren't gaps to apologise for; they're the most important screens for orienting a new user. Four screens: admin, teacher, student, parent.</p>
+</header>
+
+<!-- ============ 01 ADMIN ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Admin · just finished setup</div>
+    <div class="section-meta">Desktop · admin dashboard</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / dashboard</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item active"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div class="crumb">Dashboard</div>
+            <h2 class="display">Welcome to <em>Omnischools</em>, Florence.</h2>
+            <div class="lede">Your school is set up. Three things left to do before students and parents can start using it.</div>
+          </div>
+
+          <div class="admin-empty">
+            <!-- Checklist -->
+            <div class="checklist-card">
+              <div class="checklist-head">
+                <div class="label">Get-started checklist</div>
+                <h3>You're <em>40%</em> of the way there</h3>
+                <div class="progress-strip">
+                  <div class="seg done"></div>
+                  <div class="seg done"></div>
+                  <div class="seg"></div>
+                  <div class="seg"></div>
+                  <div class="seg"></div>
+                </div>
+                <div class="progress-meta"><b>2 of 5 done</b> · about 20 minutes left</div>
+              </div>
+
+              <div class="check-item done">
+                <div class="num"><span>1</span></div>
+                <div class="body">
+                  <div class="t1">Set up your school</div>
+                  <div class="t2">Logo, terms, classes, fee structure</div>
+                </div>
+                <button class="action-btn">Edit</button>
+              </div>
+
+              <div class="check-item done">
+                <div class="num"><span>2</span></div>
+                <div class="body">
+                  <div class="t1">Invite your teachers</div>
+                  <div class="t2">3 invites sent · waiting on 1 to accept</div>
+                </div>
+                <button class="action-btn">View</button>
+              </div>
+
+              <div class="check-item active">
+                <div class="num">3</div>
+                <div class="body">
+                  <div class="t1">Add your students</div>
+                  <div class="t2">Upload a CSV or add students one by one — the most important step</div>
+                </div>
+                <button class="action-btn">Start →</button>
+              </div>
+
+              <div class="check-item">
+                <div class="num">4</div>
+                <div class="body">
+                  <div class="t1">Issue Term 1 invoices</div>
+                  <div class="t2">Once students are loaded, send the first round of fee invoices</div>
+                </div>
+                <button class="action-btn">Locked</button>
+              </div>
+
+              <div class="check-item">
+                <div class="num">5</div>
+                <div class="body">
+                  <div class="t1">Send the first announcement</div>
+                  <div class="t2">A welcome message goes out to all parents and students</div>
+                </div>
+                <button class="action-btn">Skip for now</button>
+              </div>
+            </div>
+
+            <!-- Side panel: what comes next -->
+            <div>
+              <div class="side-panel" style="margin-bottom:12px">
+                <div class="label">What to expect</div>
+                <h4>Your dashboard fills up <em>this week</em></h4>
+                <div class="body-text">As you add students and teachers post their first work, this page will surface daily activity, fee collections, and what needs your attention. <b>Right now it's quiet because nobody has done anything yet</b> — that's the way it should be.</div>
+
+                <div class="timeline">
+                  <div class="timeline-item">
+                    <div class="ti-dot">1</div>
+                    <div class="ti-body">
+                      <div class="ti-t1">Students get added</div>
+                      <div class="ti-t2">Today · then parents are invited</div>
+                    </div>
+                  </div>
+                  <div class="timeline-item">
+                    <div class="ti-dot">2</div>
+                    <div class="ti-body">
+                      <div class="ti-t1">Term 1 invoices issued</div>
+                      <div class="ti-t2">When you trigger them</div>
+                    </div>
+                  </div>
+                  <div class="timeline-item">
+                    <div class="ti-dot">3</div>
+                    <div class="ti-body">
+                      <div class="ti-t1">First payments &amp; grades arrive</div>
+                      <div class="ti-t2">Within the first week of class</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="side-panel">
+                <div class="label">Need help?</div>
+                <h4>We can call you</h4>
+                <div class="body-text">If anything feels stuck, tap the help button at the bottom right. Our team is in Accra and we'll pick up.</div>
+                <a href="#" style="color:var(--gold);font-size:12px;font-weight:700;text-decoration:none;letter-spacing:0.04em">REQUEST A CALLBACK →</a>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Checklist instead of "no data" message.</b> The headmistress just spent 15 minutes in onboarding — she expects to see results. The checklist tells her there's still work to do, and exactly what.</li>
+        <li><b>Progress bar is segmented,</b> not continuous. Each segment maps to one task — gives a clearer "I've done X of Y" signal than a sliding percentage.</li>
+        <li><b>Step 3 (add students) is the active one,</b> highlighted gold. The other 4 are either done (struck through, gold checkmark) or waiting. One unambiguous next action.</li>
+        <li><b>"Locked" state on step 4</b> is honest — issuing invoices requires students. Better to show the dependency than to let her click and see an error.</li>
+        <li><b>"Skip for now" on step 5</b> distinguishes truly optional from required. The first announcement is nice; running the school doesn't depend on it.</li>
+        <li><b>Side panel sets expectation about quietness.</b> A blank dashboard reads as broken; the timeline reframes it as the normal week-one state. "It's quiet because nobody has done anything yet — that's the way it should be" is the key line.</li>
+        <li><b>Callback offer for stuck users.</b> Many headmistresses won't ask for help in writing but will pick up a call. The promise of a real human in Accra (not chatbot) is concrete trust.</li>
+        <li><b>No fake KPIs.</b> Some products show "GHS 0.00 collected" with stylised charts on day one; we don't. A zero with a gradient still says "this is how the product looks normally" — confusing the user about what success looks like later.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 TEACHER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Teacher · just accepted invite</div>
+    <div class="section-meta">Desktop · teacher dashboard</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / dashboard</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item active"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>My Classes</div>
+          <div class="nav-item"><div class="ic"></div>Assignments</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Profile</div>
+          <div class="footer">
+            <div class="av">KM</div>
+            <div class="meta"><div class="n">Kwame Mensah</div><div class="r">Teacher</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div class="crumb">Dashboard</div>
+            <h2 class="display">Good morning, <em>Kwame</em>.</h2>
+            <div class="lede">Florence has assigned you 3 classes. Your students are on their way.</div>
+          </div>
+
+          <div class="teacher-empty">
+            <!-- Welcome card with class assignments -->
+            <div class="welcome-card">
+              <div class="label">Your assignments</div>
+              <h3>Three classes,<br>across <em>Mathematics</em><br>&amp; Integrated Science</h3>
+              <div class="body-text">You're set up at Christ the King JHS. Your classes are listed below — student rosters are being uploaded by the admin and will appear here within the next day or two.</div>
+
+              <div class="assignment-list">
+                <div class="a-row"><div class="cls">JHS 1A</div><div class="sub">Mathematics</div></div>
+                <div class="a-row"><div class="cls">JHS 2A</div><div class="sub">Mathematics · Form teacher</div></div>
+                <div class="a-row"><div class="cls">JHS 3B</div><div class="sub">Integrated Science</div></div>
+              </div>
+
+              <div class="welcome-actions">
+                <button class="btn outline-light">Take a quick tour</button>
+                <button class="btn outline-gold">View my classes →</button>
+              </div>
+            </div>
+
+            <!-- Suggestions: things to try -->
+            <div>
+              <div class="suggestion-tile">
+                <div class="s-icon">i</div>
+                <h4>Get oriented in 3 minutes</h4>
+                <div class="s-body">A short tour of how to take attendance, post assignments, and grade work. You can skip and explore on your own — nothing is locked.</div>
+                <a href="#">START THE TOUR →</a>
+              </div>
+
+              <div class="suggestion-tile">
+                <div class="s-icon">!</div>
+                <h4>While you wait for students</h4>
+                <div class="s-body">You can already prepare: write your first assignments as drafts, draft a welcome announcement, set up your gradebook columns. These will be ready to publish the moment students are added.</div>
+                <a href="#">DRAFT AN ASSIGNMENT →</a>
+              </div>
+
+              <div class="suggestion-tile">
+                <div class="s-icon">?</div>
+                <h4>Heard from a parent already?</h4>
+                <div class="s-body">Parents may message about a missing invite or app problems. Forward those to Florence — she handles parent invites at the school level.</div>
+                <a href="#">FLORENCE'S CONTACT →</a>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Welcome card uses navy + gold,</b> not white. The teacher's first dashboard moment is celebratory — she's joined the school's system. Dark hero treatment marks the occasion.</li>
+        <li><b>Class assignments shown immediately</b> — the most valuable thing the teacher can see is "what am I responsible for here?" Form teacher status flagged on JHS 2A because that role carries more responsibility.</li>
+        <li><b>"Take a quick tour" / "View my classes"</b> — two paths for two personalities. Tour for cautious teachers, jump-in-and-explore for confident ones.</li>
+        <li><b>"While you wait for students"</b> tile is the most important. Most teachers would assume they can do nothing until students arrive — actually they can draft assignments, prep gradebook columns, write announcements. Productive idle.</li>
+        <li><b>Reference to Florence by name</b> is intentional. Not "the admin" — a person. Reduces the corporate feeling and makes the school feel small and human.</li>
+        <li><b>The lede is reassuring,</b> not informational. "Your students are on their way" reframes the empty state as a process, not a problem.</li>
+        <li><b>No fake numbers.</b> The dashboard doesn't show "0 students" or "0 assignments" anywhere — empty cards are designed as cards, not as data displays returning zero.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03/04 STUDENT & PARENT MOBILE ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Student &amp; Parent · first login</div>
+    <div class="section-meta">Mobile · just-linked accounts</div>
+  </div>
+
+  <div class="layout mobile">
+    <!-- STUDENT -->
+    <div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="icons"><span></span><span></span><span></span></div>
+          </div>
+          <div class="m-topbar">
+            <div class="m-greeting">
+              <div class="label-mini">Welcome to Omnischools</div>
+              <div class="name">Akosua</div>
+            </div>
+            <div class="m-avatar" style="background:var(--navy);color:var(--gold);border-color:var(--navy)">AB</div>
+          </div>
+          <div class="m-content">
+
+            <div class="m-hero-empty">
+              <div class="label">YOUR ACCOUNT</div>
+              <div class="row">
+                <div class="ph">A</div>
+                <div>
+                  <div class="name">Akosua Boateng</div>
+                  <div class="meta">JHS 2A · Christ the King</div>
+                </div>
+              </div>
+              <div class="empty-msg">
+                <b>Term 1 just started.</b> Your grades, assignments, and announcements will start showing up here as your teachers post them.
+              </div>
+            </div>
+
+            <div class="m-tip-row">
+              <div class="ic">i</div>
+              <div class="body">
+                <b>Check back tomorrow.</b> Mr. Mensah usually posts the first Maths assignment in the second week of term.
+              </div>
+            </div>
+
+            <div class="m-section-label">Coming soon</div>
+
+            <div class="m-empty-block">
+              <div class="e-icon">A+</div>
+              <h4>Your grades</h4>
+              <div class="e-body">When teachers grade your work, you'll see your scores, class average, and how you're trending.</div>
+              <span class="e-meta">FROM TERM 1, WEEK 2</span>
+            </div>
+
+            <div class="m-empty-block">
+              <div class="e-icon">📓</div>
+              <h4>Your assignments</h4>
+              <div class="e-body">Homework, projects, and class tests will appear here with deadlines.</div>
+              <span class="e-meta">SOON</span>
+            </div>
+
+            <div class="m-empty-block">
+              <div class="e-icon">★</div>
+              <h4>Your achievements</h4>
+              <div class="e-body">Add your own — sports, competitions, prefect roles, anything you're proud of. Teachers and the school can post here too.</div>
+              <span class="e-meta" style="color:var(--green);background:var(--green-bg);cursor:pointer">+ ADD ONE NOW</span>
+            </div>
+
+          </div>
+          <div class="m-tabbar">
+            <div class="m-tab active"><div class="dot"></div>Home</div>
+            <div class="m-tab"><div class="dot"></div>Work</div>
+            <div class="m-tab"><div class="dot"></div>Grades</div>
+            <div class="m-tab"><div class="dot"></div>Notices</div>
+            <div class="m-tab"><div class="dot"></div>More</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Student · day one</div>
+    </div>
+
+    <!-- PARENT -->
+    <div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="icons"><span></span><span></span><span></span></div>
+          </div>
+          <div class="m-topbar">
+            <div class="m-greeting">
+              <div class="label-mini">Good morning</div>
+              <div class="name">Ama</div>
+            </div>
+            <div class="m-avatar">AB</div>
+          </div>
+          <div class="m-content">
+
+            <div class="m-hero-empty">
+              <div class="label">YOU'RE FOLLOWING</div>
+              <div class="row">
+                <div class="ph">A</div>
+                <div>
+                  <div class="name">Akosua Boateng</div>
+                  <div class="meta">JHS 2A · Christ the King</div>
+                </div>
+              </div>
+              <div class="empty-msg">
+                <b>Term 1 just started.</b> You'll see her grades and announcements appear here in the coming weeks. Fees for the term will arrive soon.
+              </div>
+            </div>
+
+            <div class="m-tip-row">
+              <div class="ic">i</div>
+              <div class="body">
+                Term 1 fees haven't been issued yet. <b>You'll get an SMS</b> when the first invoice is ready — usually within the first week.
+              </div>
+            </div>
+
+            <div class="m-section-label">What you'll see here</div>
+
+            <div class="m-empty-block">
+              <div class="e-icon">GHS</div>
+              <h4>School fees</h4>
+              <div class="e-body">When invoices are issued, you can pay directly from this app via MTN MoMo or other mobile money.</div>
+              <span class="e-meta">PENDING</span>
+            </div>
+
+            <div class="m-empty-block">
+              <div class="e-icon">A+</div>
+              <h4>Akosua's grades</h4>
+              <div class="e-body">Her test scores, class average, and term ranking will show here as teachers grade her work.</div>
+              <span class="e-meta">FROM WEEK 2</span>
+            </div>
+
+            <div class="m-empty-block">
+              <div class="e-icon">📢</div>
+              <h4>School announcements</h4>
+              <div class="e-body">PTA meetings, schedule changes, and term reminders from the school and Akosua's teachers.</div>
+              <span class="e-meta">SOON</span>
+            </div>
+
+          </div>
+          <div class="m-tabbar">
+            <div class="m-tab active"><div class="dot"></div>Home</div>
+            <div class="m-tab"><div class="dot"></div>Grades</div>
+            <div class="m-tab"><div class="dot"></div>Fees</div>
+            <div class="m-tab"><div class="dot"></div>Notices</div>
+            <div class="m-tab"><div class="dot"></div>More</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Parent · day one</div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Same shape, same hero card</b> on both screens. Student and parent see "your account / you're following" with the child's name in navy. Visual consistency reinforces that they're seeing two views of one shared truth.</li>
+        <li><b>Hero copy reframes empty as "early."</b> "Term 1 just started" is honest and forward-looking. Avoids the pitfall of "Nothing here yet!" with a sad face.</li>
+        <li><b>Time-anchored expectations.</b> "From Term 1, Week 2" or "Within the first week" tells the user when content will appear, not just that it will. Specificity buys patience.</li>
+        <li><b>Coming-soon cards are styled like real cards,</b> not skeletons or placeholders. Sets the visual rhythm of what filled cards will look like — when grades arrive, the user already knows where they'll be.</li>
+        <li><b>The achievements card is the only one with an active CTA</b> ("+ Add one now" in green). Achievements are user-generated and don't need teachers — student can post immediately. Gives a small but real win on day one.</li>
+        <li><b>Parent's tip row is about fees,</b> student's is about Mr. Mensah. Each role gets the most-relevant hint.</li>
+        <li><b>Tab bars unchanged.</b> Empty doesn't mean reduced navigation — the user should still see the full app and be able to explore.</li>
+        <li><b>No "skip for now" or "dismiss" on these cards.</b> They auto-disappear when content arrives; not interactive clutter to dismiss.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

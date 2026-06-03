@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — PLC programme setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.settings-head { padding:28px 36px 20px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; }
+.settings-head .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.settings-head h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.settings-head h2 em { font-style:italic; color:var(--gold); }
+.settings-head .lede { font-size:13px; color:var(--navy-3); max-width:560px; line-height:1.5; }
+.settings-head .save-state { font-size:11px; color:var(--green); font-weight:600; display:flex; align-items:center; gap:5px; }
+.settings-head .save-state .dot { width:6px; height:6px; border-radius:50%; background:var(--green); }
+
+/* Top stats strip */
+.stats-strip { padding:20px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.stat-tile { display:flex; flex-direction:column; }
+.stat-tile .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.stat-tile .val { font-family:'Fraunces',serif; font-size:24px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:4px; }
+.stat-tile .val em { font-style:italic; color:var(--gold); }
+.stat-tile .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.stat-tile .sub b { color:var(--navy-2); font-weight:600; }
+
+.settings-body { padding:32px 36px 40px; }
+
+/* Cadence config card */
+.cadence-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:12px; padding:22px 26px; margin-bottom:28px; }
+.cadence-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.cadence-card h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; margin-bottom:6px; }
+.cadence-card h3 em { font-style:italic; color:var(--gold); }
+.cadence-card p { font-size:13px; color:var(--navy-2); line-height:1.6; margin-bottom:16px; }
+.cadence-card p b { color:var(--navy); font-weight:600; }
+.cadence-fields { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:14px; }
+.cadence-field .fl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.cadence-field input, .cadence-field select { width:100%; padding:9px 12px; border:1px solid var(--border); background:var(--surface); border-radius:7px; font-family:inherit; font-size:13px; color:var(--navy); }
+.cadence-field .hint { font-size:10px; color:var(--navy-3); margin-top:4px; font-style:italic; }
+
+/* PLC cards */
+.plcs-list { display:flex; flex-direction:column; gap:14px; }
+.plc-card { background:var(--surface); border:1.5px solid var(--border); border-radius:14px; overflow:hidden; }
+.plc-card.subject { border-left:4px solid var(--navy); }
+.plc-card.cross-cutting { border-left:4px solid var(--gold); }
+.plc-card.new-teacher { border-left:4px solid var(--green); }
+
+.plc-head { padding:18px 24px; display:grid; grid-template-columns:auto 1fr auto auto; gap:18px; align-items:center; background:var(--bg); border-bottom:1px solid var(--border); }
+.plc-head .icon-shape { width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:16px; }
+.plc-card.subject .icon-shape { background:var(--navy); color:var(--bg); }
+.plc-card.cross-cutting .icon-shape { background:var(--gold); color:var(--navy); }
+.plc-card.new-teacher .icon-shape { background:var(--green); color:var(--bg); }
+.plc-head .meta .type-lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.plc-card.subject .plc-head .meta .type-lab { color:var(--navy); }
+.plc-card.cross-cutting .plc-head .meta .type-lab { color:var(--gold); }
+.plc-card.new-teacher .plc-head .meta .type-lab { color:var(--green); }
+.plc-head .meta h4 { font-family:'Fraunces',serif; font-size:19px; font-weight:600; letter-spacing:-0.005em; margin-bottom:3px; line-height:1.2; }
+.plc-head .meta h4 em { font-style:italic; color:var(--gold); font-weight:500; }
+.plc-head .meta .desc { font-size:12px; color:var(--navy-3); line-height:1.45; }
+.plc-head .meta .desc b { color:var(--navy-2); font-weight:600; }
+.plc-head .facilitator-pill { display:flex; align-items:center; gap:8px; padding:7px 12px; background:var(--surface); border:1px solid var(--border); border-radius:100px; }
+.plc-head .facilitator-pill .av-f { width:26px; height:26px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:10px; }
+.plc-head .facilitator-pill .info { font-size:11px; }
+.plc-head .facilitator-pill .info .lab { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.plc-head .facilitator-pill .info .nm { font-weight:600; color:var(--navy); }
+.plc-head .member-count { text-align:right; }
+.plc-head .member-count .num { font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
+.plc-head .member-count .num em { font-style:italic; color:var(--gold); }
+.plc-head .member-count .lab { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+
+.plc-body { padding:18px 24px; display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+.plc-focus .eb { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.plc-focus .focus-text { font-size:12px; color:var(--navy-2); line-height:1.6; font-style:italic; padding:10px 14px; background:var(--bg); border-left:3px solid var(--gold); border-radius:0 6px 6px 0; }
+.plc-focus .focus-text b { color:var(--navy); font-weight:600; font-style:normal; }
+.plc-members-preview .eb { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.plc-members-preview .members-row { display:flex; align-items:center; gap:-4px; }
+.plc-members-preview .av-stack { display:flex; }
+.plc-members-preview .av-stack .av-mini { width:28px; height:28px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:10px; border:2px solid var(--surface); margin-left:-6px; }
+.plc-members-preview .av-stack .av-mini:first-child { margin-left:0; }
+.plc-members-preview .av-stack .av-mini.more { background:var(--navy); color:var(--gold); }
+.plc-members-preview .members-summary { margin-left:10px; font-size:11px; color:var(--navy-3); }
+.plc-members-preview .members-summary b { color:var(--navy-2); font-weight:600; }
+
+.plc-foot { padding:12px 24px; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--navy-3); }
+.plc-foot .session-info b { color:var(--navy-2); font-weight:600; }
+.plc-foot .session-info em { color:var(--gold); font-style:italic; font-weight:500; }
+.plc-foot .actions-row { display:flex; gap:6px; }
+.plc-foot .actions-row button { background:transparent; border:1px solid var(--border); padding:5px 11px; border-radius:6px; font-size:10px; font-weight:600; color:var(--navy-2); cursor:pointer; letter-spacing:0.04em; text-transform:uppercase; }
+
+/* Add PLC card */
+.add-plc { background:var(--gold-bg); border:1.5px dashed var(--gold-soft); border-radius:14px; padding:24px; text-align:center; cursor:pointer; }
+.add-plc .ic { width:36px; height:36px; border-radius:50%; background:var(--surface); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:18px; margin:0 auto 8px; }
+.add-plc h5 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-bottom:4px; }
+.add-plc p { font-size:11px; color:var(--navy-3); }
+
+/* CPD points contract card */
+.contract-card { background:var(--navy); color:var(--bg); border-radius:14px; padding:26px 30px; margin-top:32px; }
+.contract-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.contract-card h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; letter-spacing:-0.015em; margin-bottom:18px; }
+.contract-card h3 em { font-style:italic; color:var(--gold); }
+.contract-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; }
+.contract-tile { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:14px 16px; }
+.contract-tile .pts { font-family:'Fraunces',serif; font-size:32px; font-weight:500; color:var(--gold); letter-spacing:-0.02em; line-height:1; margin-bottom:6px; }
+.contract-tile .pts em { font-style:italic; }
+.contract-tile .lab { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(250,247,242,0.7); font-weight:700; margin-bottom:3px; }
+.contract-tile .lab b { color:var(--bg); }
+.contract-tile .detail { font-size:11px; color:rgba(250,247,242,0.55); line-height:1.45; margin-top:5px; }
+
+/* Editorial · why three types */
+.types-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; }
+.type-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 24px; }
+.type-card.subject { border-top:4px solid var(--navy); }
+.type-card.cross-cutting { border-top:4px solid var(--gold); }
+.type-card.new-teacher { border-top:4px solid var(--green); }
+.type-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; margin-bottom:8px; }
+.type-card.subject .eb { color:var(--navy); }
+.type-card.cross-cutting .eb { color:var(--gold); }
+.type-card.new-teacher .eb { color:var(--green); }
+.type-card h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:8px; }
+.type-card h4 em { font-style:italic; color:var(--gold); }
+.type-card .scenario { font-size:13px; color:var(--navy-2); line-height:1.6; margin-bottom:14px; }
+.type-card .scenario b { color:var(--navy); font-weight:600; }
+.type-card .meta-bottom { padding-top:12px; border-top:1px solid var(--border); display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:11px; }
+.type-card .meta-bottom .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.type-card .meta-bottom .val { font-weight:600; color:var(--navy-2); }
+
+.foot-bar { padding:16px 36px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--bg); }
+.foot-bar .ftext { font-size:11px; color:var(--navy-3); font-style:italic; }
+.foot-bar .ftext b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.foot-bar .factions { display:flex; gap:10px; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · PLC/CPD batch · 01 of 06</div>
+  <span class="mvp-tag">SHS · teacher professional learning</span>
+  <span class="related-tag">Foundational · drives weekly sessions + CPD ledger</span>
+  <h1 class="display">Six PLCs, <em>one Friday afternoon</em></h1>
+  <div class="gold-rule"></div>
+  <p>The NTC mandates 20 CPD points per teacher per year for licence renewal — <b>and 8 of those must come from school-based Professional Learning Communities</b>. PLCs are the weekly hour where the Maths teachers sit together to look at a sample of pupils' work, where the new teachers compare notes on classroom management, where the ICT integration group plans how to use the new lab. This surface is where the admin tells Omnischools what the school's PLC architecture looks like: how many PLCs, what type (subject / cross-cutting / new-teacher), who facilitates each, who's a member, and what they're working on this semester. <em>Configure once. The weekly session register and CPD ledger inherit from here.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The configuration surface · school-wide PLC architecture</div>
+    <div class="section-meta">Settings → Teacher development → PLCs</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / plc-programme</div>
+      </div>
+
+      <div class="settings-head">
+        <div>
+          <div class="crumb">Settings · Teacher development · PLC programme</div>
+          <h2 class="display">PLC <em>programme</em></h2>
+          <div class="lede">The school's Professional Learning Community architecture · 6 PLCs running this semester · facilitators, members, focus, weekly cadence · feeds the CPD ledger and the NTC sync.</div>
+        </div>
+        <div class="save-state"><span class="dot"></span>All changes saved · 4 mins ago</div>
+      </div>
+
+      <div class="stats-strip">
+        <div class="stat-tile">
+          <div class="lab">Active PLCs</div>
+          <div class="val display"><em>6</em></div>
+          <div class="sub">4 subject · 1 cross-cutting · <b>1 new-teacher</b></div>
+        </div>
+        <div class="stat-tile">
+          <div class="lab">Staff in ≥ 1 PLC</div>
+          <div class="val display"><em>42</em> / 47</div>
+          <div class="sub"><b>5 staff unassigned</b> · drill to fix</div>
+        </div>
+        <div class="stat-tile">
+          <div class="lab">Sessions this semester</div>
+          <div class="val display"><em>72</em></div>
+          <div class="sub">6 PLCs × 12 weeks · <b>57 held, 15 scheduled</b></div>
+        </div>
+        <div class="stat-tile">
+          <div class="lab">Avg attendance</div>
+          <div class="val display"><em>78%</em></div>
+          <div class="sub">Target ≥ 75% for CPD eligibility</div>
+        </div>
+        <div class="stat-tile">
+          <div class="lab">NTC sync status</div>
+          <div class="val display" style="color:var(--green); font-size:18px;"><em>● Synced</em></div>
+          <div class="sub">Last batch <b>12 May 2026</b></div>
+        </div>
+      </div>
+
+      <div class="settings-body">
+
+        <!-- Weekly cadence -->
+        <div class="cadence-card">
+          <div class="eb">School-wide PLC cadence</div>
+          <h3 class="display">Every <em>Friday afternoon</em> · 3:30 PM to 4:30 PM</h3>
+          <p>All PLCs at this school meet at the same hour. <b>Single cadence makes it possible to protect the time</b> — no classes, no admin meetings, no parent calls during PLC hour. Individual PLCs can override if their facilitator coordinates differently, but the default is school-wide alignment.</p>
+          <div class="cadence-fields">
+            <div class="cadence-field">
+              <div class="fl">Day of week</div>
+              <select>
+                <option>Friday (default)</option>
+                <option>Wednesday</option>
+                <option>Monday</option>
+                <option>Variable per PLC</option>
+              </select>
+            </div>
+            <div class="cadence-field">
+              <div class="fl">Start time</div>
+              <input type="text" value="3:30 PM">
+              <div class="hint">After last teaching period</div>
+            </div>
+            <div class="cadence-field">
+              <div class="fl">Session length</div>
+              <select>
+                <option>60 minutes (default)</option>
+                <option>75 minutes</option>
+                <option>90 minutes</option>
+              </select>
+            </div>
+            <div class="cadence-field">
+              <div class="fl">Weeks per semester</div>
+              <input type="text" value="12">
+              <div class="hint">Semester 2 of 2025/26 academic year</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PLCs list -->
+        <div class="plcs-list">
+
+          <!-- Subject-based PLCs -->
+          <div class="plc-card subject">
+            <div class="plc-head">
+              <div class="icon-shape">M</div>
+              <div class="meta">
+                <div class="type-lab">Subject-based · Department</div>
+                <h4 class="display">Mathematics <em>PLC</em></h4>
+                <div class="desc">Core Maths and Elective Maths teachers · cross-Form planning, item analysis, lesson observation rotation</div>
+              </div>
+              <div class="facilitator-pill">
+                <div class="av-f">EA</div>
+                <div class="info">
+                  <div class="lab">Facilitator</div>
+                  <div class="nm">Mr E. Adusei · HoD</div>
+                </div>
+              </div>
+              <div class="member-count">
+                <div class="num display"><em>9</em></div>
+                <div class="lab">Teachers</div>
+              </div>
+            </div>
+            <div class="plc-body">
+              <div class="plc-focus">
+                <div class="eb">Semester 2 focus</div>
+                <div class="focus-text">"<b>Item analysis of WASSCE mock results</b> · identify systematic misconceptions in algebra and trigonometry · cross-Form planning of reteach lessons. Final session: peer-observed lesson on circle theorems."</div>
+              </div>
+              <div class="plc-members-preview">
+                <div class="eb">Members · Maths teachers in this PLC</div>
+                <div class="members-row">
+                  <div class="av-stack">
+                    <div class="av-mini">EA</div>
+                    <div class="av-mini">AM</div>
+                    <div class="av-mini">SK</div>
+                    <div class="av-mini">DT</div>
+                    <div class="av-mini">PB</div>
+                    <div class="av-mini more">+4</div>
+                  </div>
+                  <div class="members-summary"><b>9 of 9</b> Maths teachers assigned · no gaps</div>
+                </div>
+              </div>
+            </div>
+            <div class="plc-foot">
+              <div class="session-info">Next session · <b>Friday 16 May 2026, 3:30 PM</b> · Room B12 · session 9 of 12 <em>· auto-scheduled</em></div>
+              <div class="actions-row">
+                <button>VIEW SESSIONS</button>
+                <button>EDIT MEMBERS</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="plc-card subject">
+            <div class="plc-head">
+              <div class="icon-shape">E</div>
+              <div class="meta">
+                <div class="type-lab">Subject-based · Department</div>
+                <h4 class="display">English Language <em>PLC</em></h4>
+                <div class="desc">English Language and Literature-in-English teachers · co-planning, sample script moderation, writing pedagogy</div>
+              </div>
+              <div class="facilitator-pill">
+                <div class="av-f">GA</div>
+                <div class="info">
+                  <div class="lab">Facilitator</div>
+                  <div class="nm">Mrs G. Asante · HoD</div>
+                </div>
+              </div>
+              <div class="member-count">
+                <div class="num display"><em>8</em></div>
+                <div class="lab">Teachers</div>
+              </div>
+            </div>
+            <div class="plc-body">
+              <div class="plc-focus">
+                <div class="eb">Semester 2 focus</div>
+                <div class="focus-text">"<b>Moderating sample Form 2 essays</b> across all teachers · agreeing scoring criteria · writing exemplar feedback comments. Aims to bring variance in marking under control before mocks."</div>
+              </div>
+              <div class="plc-members-preview">
+                <div class="eb">Members · English teachers in this PLC</div>
+                <div class="members-row">
+                  <div class="av-stack">
+                    <div class="av-mini">GA</div>
+                    <div class="av-mini">PT</div>
+                    <div class="av-mini">RO</div>
+                    <div class="av-mini">FB</div>
+                    <div class="av-mini">MK</div>
+                    <div class="av-mini more">+3</div>
+                  </div>
+                  <div class="members-summary"><b>8 of 8</b> English teachers assigned · no gaps</div>
+                </div>
+              </div>
+            </div>
+            <div class="plc-foot">
+              <div class="session-info">Next session · <b>Friday 16 May 2026, 3:30 PM</b> · Room A4 · session 9 of 12 <em>· auto-scheduled</em></div>
+              <div class="actions-row">
+                <button>VIEW SESSIONS</button>
+                <button>EDIT MEMBERS</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="plc-card subject">
+            <div class="plc-head">
+              <div class="icon-shape">S</div>
+              <div class="meta">
+                <div class="type-lab">Subject-based · Cluster</div>
+                <h4 class="display">Sciences <em>PLC</em> · Bio · Chem · Physics</h4>
+                <div class="desc">All three sciences clustered · shared practical equipment planning, cross-subject reinforcement, WASSCE practical preparation</div>
+              </div>
+              <div class="facilitator-pill">
+                <div class="av-f">ET</div>
+                <div class="info">
+                  <div class="lab">Facilitator</div>
+                  <div class="nm">Dr E. Tetteh · HoD Science</div>
+                </div>
+              </div>
+              <div class="member-count">
+                <div class="num display"><em>11</em></div>
+                <div class="lab">Teachers</div>
+              </div>
+            </div>
+            <div class="plc-body">
+              <div class="plc-focus">
+                <div class="eb">Semester 2 focus</div>
+                <div class="focus-text">"<b>Practical session safety audit</b> · co-developing assessment rubric for Form 3 WASSCE practical · scheduling rotation for shared lab equipment. Cross-subject project on environmental pollution."</div>
+              </div>
+              <div class="plc-members-preview">
+                <div class="eb">Members · Science teachers in this PLC</div>
+                <div class="members-row">
+                  <div class="av-stack">
+                    <div class="av-mini">ET</div>
+                    <div class="av-mini">KO</div>
+                    <div class="av-mini">JN</div>
+                    <div class="av-mini">CA</div>
+                    <div class="av-mini">BM</div>
+                    <div class="av-mini more">+6</div>
+                  </div>
+                  <div class="members-summary"><b>11 of 12</b> Science teachers assigned · <span style="color:var(--warn);"><b>1 gap: new Physics teacher</b></span></div>
+                </div>
+              </div>
+            </div>
+            <div class="plc-foot">
+              <div class="session-info">Next session · <b>Friday 16 May 2026, 3:30 PM</b> · Lab 2 · session 8 of 12 <em>· last session cancelled (HoD conference)</em></div>
+              <div class="actions-row">
+                <button>VIEW SESSIONS</button>
+                <button>EDIT MEMBERS</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="plc-card subject">
+            <div class="plc-head">
+              <div class="icon-shape">SS</div>
+              <div class="meta">
+                <div class="type-lab">Subject-based · Department</div>
+                <h4 class="display">Social Studies &amp; Humanities <em>PLC</em></h4>
+                <div class="desc">Social Studies, History, Geography, Economics, RME · curriculum integration, current affairs in lessons</div>
+              </div>
+              <div class="facilitator-pill">
+                <div class="av-f">YS</div>
+                <div class="info">
+                  <div class="lab">Facilitator</div>
+                  <div class="nm">Mrs Y. Sarpong · HoD</div>
+                </div>
+              </div>
+              <div class="member-count">
+                <div class="num display"><em>8</em></div>
+                <div class="lab">Teachers</div>
+              </div>
+            </div>
+            <div class="plc-body">
+              <div class="plc-focus">
+                <div class="eb">Semester 2 focus</div>
+                <div class="focus-text">"<b>Integrating current affairs into lesson openings</b> · co-curating a shared source library · field trip planning for Form 2 Cape Coast Castle visit (Geography/History overlap)."</div>
+              </div>
+              <div class="plc-members-preview">
+                <div class="eb">Members · Humanities teachers in this PLC</div>
+                <div class="members-row">
+                  <div class="av-stack">
+                    <div class="av-mini">YS</div>
+                    <div class="av-mini">KB</div>
+                    <div class="av-mini">EM</div>
+                    <div class="av-mini">FO</div>
+                    <div class="av-mini">AN</div>
+                    <div class="av-mini more">+3</div>
+                  </div>
+                  <div class="members-summary"><b>8 of 8</b> Humanities teachers assigned · no gaps</div>
+                </div>
+              </div>
+            </div>
+            <div class="plc-foot">
+              <div class="session-info">Next session · <b>Friday 16 May 2026, 3:30 PM</b> · Room C7 · session 9 of 12</div>
+              <div class="actions-row">
+                <button>VIEW SESSIONS</button>
+                <button>EDIT MEMBERS</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cross-cutting PLC -->
+          <div class="plc-card cross-cutting">
+            <div class="plc-head">
+              <div class="icon-shape">IT</div>
+              <div class="meta">
+                <div class="type-lab">Cross-cutting · Multi-department</div>
+                <h4 class="display">ICT-in-Pedagogy <em>PLC</em></h4>
+                <div class="desc">Voluntary cross-subject group · one rep per department · pedagogy of using the new computer lab and shared devices</div>
+              </div>
+              <div class="facilitator-pill">
+                <div class="av-f">PA</div>
+                <div class="info">
+                  <div class="lab">Facilitator</div>
+                  <div class="nm">Mr P. Akoto · ICT teacher</div>
+                </div>
+              </div>
+              <div class="member-count">
+                <div class="num display"><em>6</em></div>
+                <div class="lab">Teachers</div>
+              </div>
+            </div>
+            <div class="plc-body">
+              <div class="plc-focus">
+                <div class="eb">Semester 2 focus</div>
+                <div class="focus-text">"<b>Audit of digital resources by subject</b> · piloting Phet simulations in Sciences · sharing tested Google Forms quizzes · setting integration goals for Semester 1 of 2026/27."</div>
+              </div>
+              <div class="plc-members-preview">
+                <div class="eb">Members · one rep per subject area</div>
+                <div class="members-row">
+                  <div class="av-stack">
+                    <div class="av-mini">PA</div>
+                    <div class="av-mini">AM</div>
+                    <div class="av-mini">PT</div>
+                    <div class="av-mini">JN</div>
+                    <div class="av-mini">KB</div>
+                    <div class="av-mini">RA</div>
+                  </div>
+                  <div class="members-summary"><b>6 of 6</b> cross-department reps · voluntary attendance</div>
+                </div>
+              </div>
+            </div>
+            <div class="plc-foot">
+              <div class="session-info">Next session · <b>Friday 16 May 2026, 3:30 PM</b> · ICT Lab · session 6 of 12 <em>· biweekly, not weekly</em></div>
+              <div class="actions-row">
+                <button>VIEW SESSIONS</button>
+                <button>EDIT MEMBERS</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- New teacher PLC -->
+          <div class="plc-card new-teacher">
+            <div class="plc-head">
+              <div class="icon-shape">NT</div>
+              <div class="meta">
+                <div class="type-lab">New-teacher support · Mandatory first 2 years</div>
+                <h4 class="display">New Teacher <em>PLC</em></h4>
+                <div class="desc">Teachers in their first or second year at the school · NTC induction support · classroom management, lesson planning, assessment</div>
+              </div>
+              <div class="facilitator-pill">
+                <div class="av-f">FM</div>
+                <div class="info">
+                  <div class="lab">Facilitator</div>
+                  <div class="nm">Mrs F. Mireku · Deputy Head Academics</div>
+                </div>
+              </div>
+              <div class="member-count">
+                <div class="num display"><em>5</em></div>
+                <div class="lab">New teachers</div>
+              </div>
+            </div>
+            <div class="plc-body">
+              <div class="plc-focus">
+                <div class="eb">Semester 2 focus</div>
+                <div class="focus-text">"<b>Routines for managing first 10 minutes of every lesson</b> · observation walks (each new teacher observes one experienced teacher) · debrief and reflection · NTC induction milestones tracker."</div>
+              </div>
+              <div class="plc-members-preview">
+                <div class="eb">Members · new teachers (year 1 or 2)</div>
+                <div class="members-row">
+                  <div class="av-stack">
+                    <div class="av-mini">DM</div>
+                    <div class="av-mini">LO</div>
+                    <div class="av-mini">SK</div>
+                    <div class="av-mini">JN</div>
+                    <div class="av-mini">CA</div>
+                  </div>
+                  <div class="members-summary"><b>5 of 5</b> new teachers · <em>all in their first year except S. Kpodo (year 2)</em></div>
+                </div>
+              </div>
+            </div>
+            <div class="plc-foot">
+              <div class="session-info">Next session · <b>Friday 16 May 2026, 3:30 PM</b> · Staff room · session 9 of 12 <em>· additional pts toward NTC induction</em></div>
+              <div class="actions-row">
+                <button>VIEW SESSIONS</button>
+                <button>EDIT MEMBERS</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add new PLC -->
+          <div class="add-plc">
+            <div class="ic">+</div>
+            <h5 class="display">Add another PLC</h5>
+            <p>Subject-based, cross-cutting, or new-teacher · facilitator and members configurable</p>
+          </div>
+
+        </div>
+
+        <!-- CPD points contract -->
+        <div class="contract-card">
+          <div class="eb">The CPD points contract · automatic from this configuration</div>
+          <h3 class="display">What teachers <em>earn</em> for full PLC participation</h3>
+          <div class="contract-grid">
+            <div class="contract-tile">
+              <div class="pts display"><em>0.5</em></div>
+              <div class="lab">Pts per <b>attended session</b></div>
+              <div class="detail">Present or Late · counts the same · Absent = no points</div>
+            </div>
+            <div class="contract-tile">
+              <div class="pts display"><em>+0.5</em></div>
+              <div class="lab">Pts for <b>session reflection</b></div>
+              <div class="detail">Submitted within 48 hours · facilitator-confirmed</div>
+            </div>
+            <div class="contract-tile">
+              <div class="pts display"><em>1.0</em></div>
+              <div class="lab">Max pts <b>per session</b></div>
+              <div class="detail">Attended + reflected = 1 point · 16 sessions for full 8 pts</div>
+            </div>
+            <div class="contract-tile">
+              <div class="pts display"><em>8</em> / 20</div>
+              <div class="lab">Annual <b>PLC contribution</b></div>
+              <div class="detail">Of NTC's 20-point annual target · other 12 from workshops, courses, mentoring</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="foot-bar">
+        <div class="ftext">PLC programme last edited · 14 May 2026 by <b>Mrs Mireku (Deputy Head Academics)</b> · 3 changes pending NTC sync</div>
+        <div class="factions">
+          <button class="btn ghost">View change log</button>
+          <button class="btn primary">Generate next week's sessions</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Design notes</h4>
+      <ul>
+        <li><b>Three types of PLC.</b> Subject-based (the bulk), cross-cutting (voluntary, multi-department interest groups), new-teacher (mandatory for first-2-year teachers, supports NTC induction). Border colour distinguishes.</li>
+        <li><b>School-wide cadence is the default.</b> Same Friday 3:30 PM for all PLCs makes the time protectable. Individual PLCs can override (ICT-in-Pedagogy meets biweekly) but the default forces alignment.</li>
+        <li><b>Facilitator pill on every card.</b> Almost always the HoD for subject PLCs. For cross-cutting and new-teacher PLCs, a designated facilitator with the right experience.</li>
+        <li><b>Member gaps surface here.</b> Sciences PLC has 11 of 12 — the new Physics teacher hasn't been added. Surfaces as warning on the card, not just a global counter.</li>
+        <li><b>Term focus is free-text.</b> No template. Each PLC writes what they're working on this semester. Becomes the headline of the session register surface.</li>
+        <li><b>The CPD points contract is the bottom of this page on purpose.</b> Reading order: configure the PLC architecture first, then see what teachers earn from it. The 0.5 attended + 0.5 reflection = 1 point model is the school's contract with the teacher — change it here, change it everywhere.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Schema this drives</h4>
+      <ul>
+        <li><b>plcs</b> · one row per PLC instance · school_id, type (subject/cross-cutting/new-teacher), name, facilitator_staff_id, cadence_override</li>
+        <li><b>plc_memberships</b> · staff in PLC · plc_id, staff_id, role (member/facilitator), joined_at, left_at (nullable)</li>
+        <li><b>plc_term_focus</b> · per-term narrative · plc_id, term, focus_text, set_by_staff_id</li>
+        <li><b>cpd_points_rules</b> · school-level configurable · rule_type, points_value, condition_json</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Three types · why we don't just have "PLCs"</div>
+    <div class="section-meta">Editorial · the type distinction</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="types-grid">
+
+        <div class="type-card subject">
+          <div class="eb">Type 1 · Subject-based</div>
+          <h4 class="display">"My <em>department</em>, every Friday"</h4>
+          <div class="scenario">The Maths department sits down to look at the Form 2 mock paper. Item 14 — the one about quadratic graphs — was missed by 60% of students across all four classes. <b>The conversation is: why? And what do we do about it next week?</b> Subject PLCs run on shared curriculum, shared assessments, shared subject knowledge.</div>
+          <div class="meta-bottom">
+            <div>
+              <div class="lab">Facilitator</div>
+              <div class="val">HoD by default</div>
+            </div>
+            <div>
+              <div class="lab">Attendance</div>
+              <div class="val">Mandatory</div>
+            </div>
+            <div>
+              <div class="lab">Cadence</div>
+              <div class="val">Weekly</div>
+            </div>
+            <div>
+              <div class="lab">CPD weight</div>
+              <div class="val">Full 1 pt per session</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="type-card cross-cutting">
+          <div class="eb">Type 2 · Cross-cutting</div>
+          <h4 class="display">"<em>Interests</em> across subjects"</h4>
+          <div class="scenario">The ICT-in-Pedagogy PLC has the English HoD, two Science teachers, one Maths teacher, the History teacher, and the ICT teacher. <b>They share an interest, not a subject.</b> How do we make the new computer lab actually used? What digital tools help any classroom? Volunteer-driven, biweekly typically, smaller groups.</div>
+          <div class="meta-bottom">
+            <div>
+              <div class="lab">Facilitator</div>
+              <div class="val">Subject expert</div>
+            </div>
+            <div>
+              <div class="lab">Attendance</div>
+              <div class="val">Voluntary</div>
+            </div>
+            <div>
+              <div class="lab">Cadence</div>
+              <div class="val">Weekly or biweekly</div>
+            </div>
+            <div>
+              <div class="lab">CPD weight</div>
+              <div class="val">Full 1 pt per session</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="type-card new-teacher">
+          <div class="eb">Type 3 · New-teacher</div>
+          <h4 class="display">"My <em>first two years</em>"</h4>
+          <div class="scenario">A teacher in year 1 has a subject PLC too — but they also need the New Teacher PLC. <b>Different conversation entirely:</b> how do you settle a class in 60 seconds? What do you do when a parent calls? How do you mark a stack of 35 essays without losing your weekend? Run by a senior Deputy Head, mandatory, supports the NTC's mandatory induction programme.</div>
+          <div class="meta-bottom">
+            <div>
+              <div class="lab">Facilitator</div>
+              <div class="val">Senior leader</div>
+            </div>
+            <div>
+              <div class="lab">Attendance</div>
+              <div class="val">Mandatory · 2 yrs</div>
+            </div>
+            <div>
+              <div class="lab">Cadence</div>
+              <div class="val">Weekly</div>
+            </div>
+            <div>
+              <div class="lab">CPD weight</div>
+              <div class="val">1 pt + NTC induction milestone credit</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Why three types matter</h4>
+      <ul>
+        <li><b>Different rooms have different conversations.</b> A new teacher asking how to handle a defiant Form 1 student in their subject PLC slows down the curriculum work everyone else needs. The new-teacher PLC is the right room.</li>
+        <li><b>NTC distinguishes induction PLCs.</b> First-2-year teachers earn induction credit from new-teacher PLC participation — a separate track on the NTC portal from regular CPD. The schema needs to capture which type a session was.</li>
+        <li><b>Cross-cutting PLCs are voluntary.</b> Anyone can opt in. Departments can't force their staff to attend ICT-in-Pedagogy. The membership flag matters for absence rules.</li>
+        <li><b>This isn't novel — it's GES guidance.</b> The 2019 NTC PLC handbook recommends this three-type split. Omnischools's data model adopts it.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

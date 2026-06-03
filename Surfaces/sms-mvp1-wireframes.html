@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — MVP1 Wireframes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+
+/* ============ PAGE ============ */
+.page {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 56px 32px 96px;
+}
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 56px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 400;
+}
+.page-header p {
+  font-size: 16px;
+  color: var(--navy-3);
+  max-width: 640px;
+}
+.gold-rule {
+  width: 64px;
+  height: 2px;
+  background: var(--gold);
+  margin: 24px 0;
+}
+
+/* ============ DESIGN SYSTEM STRIP ============ */
+.system {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 28px 32px;
+  margin-bottom: 64px;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 48px;
+}
+.system h3 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  margin-bottom: 18px;
+}
+.swatches { display: flex; gap: 14px; flex-wrap: wrap; }
+.swatch { display: flex; flex-direction: column; gap: 6px; }
+.swatch .chip {
+  width: 64px; height: 64px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.swatch .lbl { font-size: 11px; color: var(--navy-3); font-weight: 500; }
+.swatch .hex { font-size: 10px; color: var(--navy-3); font-family: 'Fraunces', monospace; letter-spacing: 0.04em; }
+.type-sample .h-sample {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.type-sample .h-sample em { font-style: italic; color: var(--gold); }
+.type-sample .b-sample {
+  font-size: 14px;
+  color: var(--navy-2);
+  margin-top: 12px;
+  max-width: 320px;
+}
+.type-meta { font-size: 11px; color: var(--navy-3); margin-top: 8px; letter-spacing: 0.04em; }
+
+/* ============ SECTIONS ============ */
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', Georgia, serif;
+  font-style: italic;
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+
+.layout-mobile {
+  display: grid;
+  grid-template-columns: repeat(2, max-content) 1fr;
+  gap: 48px;
+  align-items: start;
+}
+.layout-desktop {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 48px;
+  align-items: start;
+}
+
+/* ============ NOTES ============ */
+.notes h4 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px;
+  color: var(--navy-2);
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before {
+  content: "→";
+  color: var(--gold);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ============ PHONE FRAME ============ */
+.phone {
+  width: 340px;
+  height: 690px;
+  background: var(--navy);
+  border-radius: 36px;
+  padding: 8px;
+  box-shadow: 0 30px 70px -20px rgba(26,43,71,0.35), 0 0 0 1px rgba(26,43,71,0.06);
+  position: relative;
+}
+.phone::before {
+  content: "";
+  position: absolute;
+  top: 14px; left: 50%;
+  transform: translateX(-50%);
+  width: 100px; height: 22px;
+  background: var(--navy);
+  border-radius: 12px;
+  z-index: 10;
+}
+.phone-screen {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  border-radius: 28px;
+  overflow: hidden;
+  position: relative;
+  display: flex; flex-direction: column;
+}
+.phone-label {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+
+/* ============ MOBILE UI ============ */
+.statusbar {
+  height: 38px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px 0 28px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.statusbar .icons { display: flex; gap: 5px; align-items: center; }
+.statusbar .icons span { width: 12px; height: 8px; background: var(--navy); border-radius: 1px; }
+.statusbar .icons span:nth-child(2) { width: 14px; height: 9px; }
+.statusbar .icons span:nth-child(3) { width: 18px; height: 9px; border-radius: 2px; }
+
+.m-topbar {
+  padding: 8px 20px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.m-greeting .label {
+  font-size: 11px;
+  color: var(--navy-3);
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+.m-greeting .name {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.m-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  border: 2px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.m-content {
+  flex: 1;
+  padding: 0 20px 16px;
+  overflow-y: auto;
+}
+
+.m-card {
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.m-card.dark {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.m-card.dark .label { color: var(--gold-soft); }
+.m-card.dark .value { color: var(--bg); }
+
+.m-section-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin: 18px 0 8px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.m-section-label a { color: var(--gold); text-decoration: none; font-weight: 600; font-size: 10px; }
+
+.m-child-card {
+  background: var(--navy);
+  color: var(--bg);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.m-child-card::after {
+  content: "";
+  position: absolute;
+  right: -40px; top: -40px;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: rgba(200,151,91,0.12);
+}
+.m-child-card .row { display: flex; align-items: center; gap: 12px; position: relative; z-index: 2; }
+.m-child-card .ph {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--navy);
+}
+.m-child-card .name { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 500; }
+.m-child-card .meta { font-size: 11px; color: var(--gold-soft); margin-top: 2px; }
+.m-child-card .switcher {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--gold-soft);
+  letter-spacing: 0.08em;
+  display: flex; align-items: center; gap: 4px;
+}
+
+.m-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.m-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: left;
+}
+.m-stat .label {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.m-stat .value {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.m-stat .value.green { color: var(--green); }
+.m-stat .value.terra { color: var(--terra); }
+.m-stat .value.gold { color: var(--gold); }
+
+.m-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.m-row:last-child { border-bottom: none; }
+.m-row .icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--gold-bg);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 14px;
+}
+.m-row .icon.green { background: var(--green-bg); color: var(--green); }
+.m-row .icon.terra { background: var(--terra-bg); color: var(--terra); }
+.m-row .body { flex: 1; min-width: 0; }
+.m-row .body .t1 { font-size: 13px; font-weight: 600; color: var(--navy); }
+.m-row .body .t2 { font-size: 11px; color: var(--navy-3); margin-top: 2px; }
+.m-row .right { font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; }
+.m-row .right.green { color: var(--green); }
+.m-row .right.terra { color: var(--terra); }
+
+.m-pay-cta {
+  background: var(--gold);
+  color: var(--navy);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.m-pay-cta .amt { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; }
+.m-pay-cta .arrow { font-size: 18px; }
+
+.m-announce {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.m-announce .src { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-bottom: 4px; }
+.m-announce .ttl { font-size: 13px; font-weight: 600; line-height: 1.35; }
+.m-announce .time { font-size: 11px; color: var(--navy-3); margin-top: 6px; }
+
+.m-tabbar {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 8px 4px 24px;
+}
+.m-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 9px; color: var(--navy-3); font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.m-tab .dot { width: 18px; height: 18px; border-radius: 4px; background: var(--border); }
+.m-tab.active { color: var(--navy); }
+.m-tab.active .dot { background: var(--navy); }
+
+.m-assignment {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.m-assignment .top { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
+.m-assignment .subj { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.m-assignment .due { font-size: 10px; color: var(--terra); font-weight: 600; }
+.m-assignment .ttl { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 500; line-height: 1.3; margin-bottom: 8px; }
+.m-assignment .progress {
+  height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+}
+.m-assignment .progress span { display: block; height: 100%; background: var(--gold); }
+
+.m-achievement {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px;
+  background: linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--gold-soft);
+}
+.m-achievement .badge {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.m-achievement .body { flex: 1; }
+.m-achievement .body .t1 { font-size: 12px; font-weight: 600; }
+.m-achievement .body .t2 { font-size: 10px; color: var(--navy-3); }
+
+/* ============ DESKTOP FRAME ============ */
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 660px;
+  background: var(--bg);
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-upload {
+  width: 44px; height: 44px;
+  border: 1.5px dashed rgba(200,151,91,0.5);
+  border-radius: 8px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--gold);
+  flex-shrink: 0;
+  cursor: pointer;
+  background: rgba(200,151,91,0.04);
+  transition: all 0.2s;
+}
+.logo-upload:hover { border-color: var(--gold); background: rgba(200,151,91,0.10); }
+.logo-upload svg { width: 16px; height: 16px; }
+.logo-upload .lbl { font-size: 7px; letter-spacing: 0.08em; margin-top: 2px; font-weight: 700; text-transform: uppercase; }
+.school-block { min-width: 0; flex: 1; }
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--bg);
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px;
+  color: var(--gold-soft);
+  margin-top: 3px;
+  letter-spacing: 0.06em;
+}
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+
+.main { padding: 28px 36px; overflow: hidden; }
+
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-3); font-weight: 600; margin-bottom: 6px; }
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.main-head .actions { display: flex; gap: 8px; }
+.btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+}
+.kpi .label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-3); font-weight: 600; margin-bottom: 10px; }
+.kpi .v {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.kpi .v.green { color: var(--green); }
+.kpi .v.terra { color: var(--terra); }
+.kpi .v.gold { color: var(--gold); }
+.kpi .delta { font-size: 11px; color: var(--navy-3); margin-top: 4px; }
+.kpi .delta.up { color: var(--green); }
+
+/* gradebook table */
+.gradebook {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.gradebook .toolbar {
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.gradebook .toolbar .pills { display: flex; gap: 8px; }
+.pill {
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: var(--bg);
+  color: var(--navy-3);
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+.pill.active { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.gb-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.gb-table th, .gb-table td {
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.gb-table th {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  background: var(--bg);
+}
+.gb-table td.score { font-family: 'Fraunces', serif; font-weight: 600; text-align: center; font-size: 13px; }
+.gb-table td.score.empty { color: var(--border-2); font-weight: 400; }
+.gb-table td.total { font-family: 'Fraunces', serif; font-weight: 600; font-size: 14px; background: var(--bg); }
+.gb-table td.grade { text-align: center; }
+.gb-table td.grade .badge {
+  display: inline-block;
+  width: 26px; height: 26px;
+  line-height: 26px;
+  border-radius: 50%;
+  background: var(--green-bg);
+  color: var(--green);
+  font-weight: 700;
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+}
+.gb-table td.grade .badge.b { background: var(--gold-bg); color: var(--gold); }
+.gb-table td.grade .badge.f { background: var(--terra-bg); color: var(--terra); }
+.gb-table tr.avg-row {
+  background: var(--gold-bg);
+}
+.gb-table tr.avg-row td {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  border-bottom: none;
+}
+.gb-table .student { display: flex; align-items: center; gap: 10px; }
+.gb-table .student .av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.gb-table .student .name { font-weight: 600; }
+.gb-table .student .id { font-size: 10px; color: var(--navy-3); }
+
+/* admin billing */
+.bill-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+.bill-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.bill-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.bill-table th, .bill-table td { padding: 11px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+.bill-table th { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; background: var(--bg); }
+.bill-table tr:hover td { background: rgba(200,151,91,0.04); }
+.bill-table tr.selected td { background: var(--gold-bg); }
+.cell-billed { text-align: right; padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.cell-billed .amt { display: block; font-family: 'Fraunces', serif; font-weight: 600; }
+.cell-billed .amt.strike { text-decoration: line-through; color: var(--navy-3); font-weight: 400; font-size: 11px; }
+.disc-tag {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  padding: 2px 6px;
+  background: var(--gold-bg);
+  border-radius: 3px;
+}
+.disc-tag.exempt { color: var(--green); background: var(--green-bg); }
+.bill-table .amt { font-family: 'Fraunces', serif; font-weight: 600; }
+.status {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.status.paid { background: var(--green-bg); color: var(--green); }
+.status.partial { background: var(--gold-bg); color: var(--gold); }
+.status.overdue { background: var(--terra-bg); color: var(--terra); }
+.status.unpaid { background: var(--bg); color: var(--navy-3); }
+
+.invoice-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px;
+  position: sticky; top: 20px;
+}
+.invoice-panel .ip-head { padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.invoice-panel .ip-head .num { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.invoice-panel .ip-head h3 { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 500; margin-top: 4px; letter-spacing: -0.01em; }
+.invoice-panel .ip-head .sub { font-size: 11px; color: var(--navy-3); margin-top: 2px; }
+.invoice-line { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; }
+.invoice-line .lbl { color: var(--navy-3); }
+.invoice-line .val { font-family: 'Fraunces', serif; font-weight: 500; }
+.invoice-total { display: flex; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--border); margin-top: 8px; }
+.invoice-total .lbl { font-weight: 600; font-size: 13px; }
+.invoice-total .val { font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px; letter-spacing: -0.01em; }
+.invoice-total .val.green { color: var(--green); }
+.invoice-total .val.terra { color: var(--terra); }
+.momo {
+  margin-top: 16px;
+  padding: 14px;
+  background: linear-gradient(135deg, #FFE600 0%, #FFD500 100%);
+  border-radius: 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.momo .logo { width: 30px; height: 30px; border-radius: 6px; background: var(--navy); color: #FFE600; font-weight: 800; font-size: 9px; display: flex; align-items: center; justify-content: center; letter-spacing: -0.04em; }
+.momo .body .t1 { font-size: 11px; font-weight: 700; color: var(--navy); }
+.momo .body .t2 { font-size: 10px; color: var(--navy-2); }
+.invoice-actions { display: flex; gap: 8px; margin-top: 16px; }
+.invoice-actions .btn { flex: 1; }
+
+.history-line {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+.history-line:first-of-type { margin-top: 16px; }
+.history-line .t { color: var(--navy-3); width: 70px; flex-shrink: 0; }
+.history-line .body { flex: 1; }
+.history-line .body .a { font-weight: 600; color: var(--navy); }
+.history-line .body .b { color: var(--navy-3); }
+
+.hero-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(200,151,91,0.18);
+}
+.hero-stats-row .stat .v {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  color: var(--gold);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.hero-stats-row .stat .v .of {
+  color: rgba(232,212,184,0.45);
+  font-weight: 400;
+  font-size: 16px;
+}
+.hero-stats-row .stat .l {
+  font-size: 9px;
+  color: var(--gold-soft);
+  letter-spacing: 0.12em;
+  margin-top: 6px;
+  font-weight: 700;
+}
+.hero-stats-row .divider {
+  width: 1px;
+  height: 36px;
+  background: rgba(200,151,91,0.22);
+}
+
+/* Combined score+rank hero pair */
+.hero-pair {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.hero-pair .hero-vrule {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(200,151,91,0.18);
+}
+.hero-metric .big {
+  font-family: 'Fraunces', serif;
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--bg);
+}
+.hero-metric .big .unit {
+  font-size: 20px;
+  color: var(--gold);
+  margin-left: 1px;
+}
+.hero-metric .big .ord {
+  font-size: 14px;
+  color: var(--gold-soft);
+  font-weight: 400;
+  vertical-align: super;
+  margin-left: 2px;
+  letter-spacing: 0;
+}
+.hero-metric .trend {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--gold);
+  font-weight: 500;
+  margin-top: 8px;
+  line-height: 1;
+}
+.hero-metric .trend .t-meta {
+  font-style: normal;
+  font-size: 9px;
+  color: var(--gold-soft);
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-left: 3px;
+}
+.hero-metric .meta {
+  font-size: 10px;
+  color: rgba(232,212,184,0.6);
+  margin-top: 8px;
+  letter-spacing: 0.04em;
+}
+
+/* Compact pair for parent's child card */
+.child-hero-pair {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(200,151,91,0.18);
+  position: relative;
+  z-index: 2;
+}
+.child-hero-pair .vrule {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(200,151,91,0.22);
+}
+.child-metric .v {
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--bg);
+  letter-spacing: -0.015em;
+}
+.child-metric .v .unit { font-size: 13px; color: var(--gold); margin-left: 1px; }
+.child-metric .v .ord { font-size: 11px; color: var(--gold-soft); font-weight: 400; vertical-align: super; margin-left: 2px; }
+.child-metric .v .of { font-size: 11px; color: rgba(232,212,184,0.5); font-weight: 400; margin-left: 4px; }
+.child-metric .delta {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 500;
+  margin-top: 5px;
+}
+.child-metric .lbl {
+  font-size: 9px;
+  color: var(--gold-soft);
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+/* legacy media queries below */
+@media (max-width: 1100px) {
+  .layout-mobile { grid-template-columns: 1fr; }
+  .layout-desktop { grid-template-columns: 1fr; }
+  .bill-layout { grid-template-columns: 1fr; }
+  .system { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- HEADER -->
+<header class="page-header">
+  <div class="eyebrow">Omnischools · MVP1</div>
+  <h1 class="display">Wireframes <em>&amp; visual direction</em></h1>
+  <div class="gold-rule"></div>
+  <p>Mid-fidelity layouts for the four highest-traffic screens. Real palette, real type. Built to react to before pushing toward production UI.</p>
+</header>
+
+<!-- DESIGN SYSTEM -->
+<section class="system">
+  <div>
+    <h3>Palette</h3>
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background:#1A2B47"></div><div class="lbl">Navy</div><div class="hex">#1A2B47</div></div>
+      <div class="swatch"><div class="chip" style="background:#C8975B"></div><div class="lbl">Brass gold</div><div class="hex">#C8975B</div></div>
+      <div class="swatch"><div class="chip" style="background:#FAF7F2"></div><div class="lbl">Off-white</div><div class="hex">#FAF7F2</div></div>
+      <div class="swatch"><div class="chip" style="background:#2F6B47"></div><div class="lbl">Forest</div><div class="hex">#2F6B47</div></div>
+      <div class="swatch"><div class="chip" style="background:#B84A39"></div><div class="lbl">Terracotta</div><div class="hex">#B84A39</div></div>
+    </div>
+  </div>
+  <div class="type-sample">
+    <h3>Type</h3>
+    <div class="h-sample display">Fraunces <em>display</em></div>
+    <div class="b-sample">Manrope body. Geometric, friendly, reads cleanly at 12px on cheap Android — important for parents on entry-level phones.</div>
+    <div class="type-meta">Display: Fraunces · Body: Manrope</div>
+  </div>
+</section>
+
+<!-- ============ MOBILE SCREENS ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Mobile — quick &amp; daily</div>
+    <div class="section-meta">Parent · Student</div>
+  </div>
+
+  <div class="layout-mobile">
+
+    <!-- PARENT HOME -->
+    <div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="icons"><span></span><span></span><span></span></div>
+          </div>
+          <div class="m-topbar">
+            <div class="m-greeting">
+              <div class="label">Good morning</div>
+              <div class="name">Ama Boateng</div>
+            </div>
+            <div class="m-avatar">AB</div>
+          </div>
+          <div class="m-content">
+            <!-- Child card with switcher and academic snapshot -->
+            <div class="m-child-card">
+              <div class="row">
+                <div class="ph">A</div>
+                <div>
+                  <div class="name">Akosua Boateng</div>
+                  <div class="meta">JHS 2A · Christ the King</div>
+                </div>
+                <div class="switcher">SWITCH ▾</div>
+              </div>
+              <div class="child-hero-pair">
+                <div class="child-metric">
+                  <div class="v">82<span class="unit">%</span></div>
+                  <div class="delta">↑ +6 pts</div>
+                  <div class="lbl">Term Average</div>
+                </div>
+                <div class="vrule"></div>
+                <div class="child-metric">
+                  <div class="v">4<sup class="ord">th</sup><span class="of">of 38</span></div>
+                  <div class="delta">↑ 2 places</div>
+                  <div class="lbl">Class Rank</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pay CTA -->
+            <div class="m-pay-cta">
+              <div>
+                <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;opacity:0.7">Term 1 fees due</div>
+                <div class="amt">GHS 340.00</div>
+              </div>
+              <div class="arrow">PAY →</div>
+            </div>
+
+            <!-- Recent grades -->
+            <div class="m-section-label">Recent grades <a>See all</a></div>
+            <div class="m-card" style="padding:4px 14px">
+              <div class="m-row">
+                <div class="icon green">M</div>
+                <div class="body"><div class="t1">Mathematics</div><div class="t2">Quiz 3 · Mr. Mensah</div></div>
+                <div class="right green">85</div>
+              </div>
+              <div class="m-row">
+                <div class="icon">E</div>
+                <div class="body"><div class="t1">English</div><div class="t2">Composition · Mrs. Owusu</div></div>
+                <div class="right">78</div>
+              </div>
+              <div class="m-row">
+                <div class="icon terra">S</div>
+                <div class="body"><div class="t1">Science</div><div class="t2">Class test · Mr. Asante</div></div>
+                <div class="right terra">52</div>
+              </div>
+            </div>
+
+            <!-- Announcement -->
+            <div class="m-section-label">From the school</div>
+            <div class="m-announce">
+              <div class="src">Headmistress · 2h ago</div>
+              <div class="ttl">PTA meeting moved to Saturday 9am — kindly confirm attendance.</div>
+            </div>
+
+            <!-- Achievement -->
+            <div class="m-section-label">Akosua's achievements</div>
+            <div class="m-achievement">
+              <div class="badge">★</div>
+              <div class="body">
+                <div class="t1">2nd · Inter-school debate</div>
+                <div class="t2">Posted by Mrs. Owusu · last week</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab bar -->
+          <div class="m-tabbar">
+            <div class="m-tab active"><div class="dot"></div>Home</div>
+            <div class="m-tab"><div class="dot"></div>Grades</div>
+            <div class="m-tab"><div class="dot"></div>Fees</div>
+            <div class="m-tab"><div class="dot"></div>Notices</div>
+            <div class="m-tab"><div class="dot"></div>More</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Parent home</div>
+    </div>
+
+    <!-- STUDENT HOME -->
+    <div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="icons"><span></span><span></span><span></span></div>
+          </div>
+          <div class="m-topbar">
+            <div class="m-greeting">
+              <div class="label">Hi there</div>
+              <div class="name">Akosua</div>
+            </div>
+            <div class="m-avatar" style="background:var(--navy);color:var(--gold);border-color:var(--navy)">AB</div>
+          </div>
+          <div class="m-content">
+            <!-- Hero stat -->
+            <div class="m-card dark">
+              <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-soft);font-weight:600;margin-bottom:14px">Your term so far</div>
+              <div class="hero-pair">
+                <div class="hero-metric">
+                  <div class="big">82<span class="unit">%</span></div>
+                  <div class="trend">↑ +6 <span class="t-meta">vs last term</span></div>
+                  <div class="meta">Class avg · 74%</div>
+                </div>
+                <div class="hero-vrule"></div>
+                <div class="hero-metric">
+                  <div class="big">4<sup class="ord">th</sup></div>
+                  <div class="trend">↑ 2 <span class="t-meta">places gained</span></div>
+                  <div class="meta">of 38 in JHS 2A</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Assignments due -->
+            <div class="m-section-label">Due this week <a>3 assignments</a></div>
+            <div class="m-assignment">
+              <div class="top">
+                <div class="subj">Mathematics</div>
+                <div class="due">Due tomorrow</div>
+              </div>
+              <div class="ttl">Quadratic equations — exercises 4.1 to 4.3</div>
+              <div class="progress"><span style="width:40%"></span></div>
+            </div>
+            <div class="m-assignment">
+              <div class="top">
+                <div class="subj" style="color:var(--green)">English</div>
+                <div class="due" style="color:var(--navy-3)">Due Friday</div>
+              </div>
+              <div class="ttl">Read chapter 7 · Things Fall Apart</div>
+              <div class="progress"><span style="width:0"></span></div>
+            </div>
+
+            <!-- Latest grade -->
+            <div class="m-section-label">Latest grade</div>
+            <div class="m-card">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:44px;height:44px;border-radius:10px;background:var(--green-bg);color:var(--green);font-family:'Fraunces',serif;font-weight:600;font-size:18px;display:flex;align-items:center;justify-content:center">85</div>
+                <div style="flex:1">
+                  <div style="font-weight:600;font-size:13px">Maths Quiz 3</div>
+                  <div style="font-size:11px;color:var(--navy-3);margin-top:2px">"Excellent work on word problems."</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Achievement -->
+            <div class="m-section-label">Achievements <a>+ Add</a></div>
+            <div class="m-achievement">
+              <div class="badge">★</div>
+              <div class="body">
+                <div class="t1">2nd · Inter-school debate</div>
+                <div class="t2">Added by Mrs. Owusu</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="m-tabbar">
+            <div class="m-tab active"><div class="dot"></div>Home</div>
+            <div class="m-tab"><div class="dot"></div>Work</div>
+            <div class="m-tab"><div class="dot"></div>Grades</div>
+            <div class="m-tab"><div class="dot"></div>Notices</div>
+            <div class="m-tab"><div class="dot"></div>More</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Student home</div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="notes">
+      <h4>Why these layouts</h4>
+      <ul>
+        <li><b>Parent above the fold:</b> child name, average, rank, fees owed, pay button. The five things they open the app to check.</li>
+        <li><b>Child switcher</b> is permanent, not buried in settings — many parents have multiple kids in school.</li>
+        <li><b>Pay CTA is gold,</b> not navy. Single most important parent action; deserves the brand's most visible color.</li>
+        <li><b>Each metric carries its own delta:</b> 82% with "↑ +6 pts", 4th with "↑ 2 places". Pairs the absolute value with personal progress in one read — encouraging for low-ranked students who are still climbing, motivating for top students who can still improve.</li>
+        <li><b>Parent and student see the same numbers</b> in the same shape. Reinforces shared accountability — no surprises at parent-teacher meetings.</li>
+        <li><b>Assignments show progress bars,</b> not just deadlines. Visible completion state encourages start.</li>
+        <li><b>Achievements have a gold gradient</b> tile — the only screen element that gets celebratory treatment. Earned, not default.</li>
+        <li><b>5-tab bottom nav</b> on both. Consistent so a parent who is also a teacher (common) doesn't get confused.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TEACHER GRADEBOOK ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Desktop — teacher gradebook</div>
+    <div class="section-meta">Daily workhorse screen</div>
+  </div>
+
+  <div class="layout-desktop">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / classes / jhs-2a / mathematics / gradebook</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-upload" title="Upload school logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19V8a2 2 0 0 0-2-2h-3.17l-1.84-2H10l-1.84 2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+              </div>
+              <div class="school-block">
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item active"><div class="ic"></div>My Classes</div>
+          <div class="nav-item"><div class="ic"></div>Assignments</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Profile</div>
+          <div class="footer">
+            <div class="av">KM</div>
+            <div class="meta"><div class="n">Kwame Mensah</div><div class="r">Teacher</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">My Classes / JHS 2A / Mathematics</div>
+              <h2 class="display">Term 1 <em>gradebook</em></h2>
+            </div>
+            <div class="actions">
+              <button class="btn">Export</button>
+              <button class="btn">+ Add column</button>
+              <button class="btn primary">Save</button>
+            </div>
+          </div>
+
+          <div class="gradebook">
+            <div class="toolbar">
+              <div class="pills">
+                <div class="pill active">Continuous Assessment</div>
+                <div class="pill">Term Exam</div>
+                <div class="pill">Final Grade</div>
+              </div>
+              <div style="font-size:11px;color:var(--navy-3)">38 students · last saved 2 min ago</div>
+            </div>
+            <table class="gb-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th style="text-align:center">Quiz 1<br><span style="font-weight:400;color:var(--navy-3)">/20</span></th>
+                  <th style="text-align:center">Quiz 2<br><span style="font-weight:400;color:var(--navy-3)">/20</span></th>
+                  <th style="text-align:center">Asgmt 1<br><span style="font-weight:400;color:var(--navy-3)">/15</span></th>
+                  <th style="text-align:center">Asgmt 2<br><span style="font-weight:400;color:var(--navy-3)">/15</span></th>
+                  <th style="text-align:center">Term Exam<br><span style="font-weight:400;color:var(--navy-3)">/30</span></th>
+                  <th style="text-align:center">Total<br><span style="font-weight:400;color:var(--navy-3)">/100</span></th>
+                  <th style="text-align:center">Grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="student"><div class="av">AB</div><div><div class="name">Akosua Boateng</div><div class="id">CTK-2024-018</div></div></div></td>
+                  <td class="score">17</td><td class="score">18</td><td class="score">14</td><td class="score">10</td><td class="score">26</td>
+                  <td class="total">85</td>
+                  <td class="grade"><span class="badge">A</span></td>
+                </tr>
+                <tr>
+                  <td><div class="student"><div class="av">KO</div><div><div class="name">Kofi Owusu</div><div class="id">CTK-2024-019</div></div></div></td>
+                  <td class="score">14</td><td class="score">15</td><td class="score">12</td><td class="score">11</td><td class="score">22</td>
+                  <td class="total">74</td>
+                  <td class="grade"><span class="badge b">B</span></td>
+                </tr>
+                <tr>
+                  <td><div class="student"><div class="av">AM</div><div><div class="name">Ama Mensah</div><div class="id">CTK-2024-020</div></div></div></td>
+                  <td class="score">19</td><td class="score">17</td><td class="score">13</td><td class="score">12</td><td class="score">28</td>
+                  <td class="total">89</td>
+                  <td class="grade"><span class="badge">A</span></td>
+                </tr>
+                <tr>
+                  <td><div class="student"><div class="av">YA</div><div><div class="name">Yaw Asante</div><div class="id">CTK-2024-021</div></div></div></td>
+                  <td class="score">8</td><td class="score">10</td><td class="score">7</td><td class="score empty">—</td><td class="score">14</td>
+                  <td class="total">39</td>
+                  <td class="grade"><span class="badge f">F</span></td>
+                </tr>
+                <tr>
+                  <td><div class="student"><div class="av">EO</div><div><div class="name">Esi Odoom</div><div class="id">CTK-2024-022</div></div></div></td>
+                  <td class="score">15</td><td class="score">16</td><td class="score">11</td><td class="score">13</td><td class="score">24</td>
+                  <td class="total">79</td>
+                  <td class="grade"><span class="badge b">B</span></td>
+                </tr>
+                <tr>
+                  <td><div class="student"><div class="av">KA</div><div><div class="name">Kwesi Adjei</div><div class="id">CTK-2024-023</div></div></div></td>
+                  <td class="score">12</td><td class="score">13</td><td class="score">9</td><td class="score">8</td><td class="score">18</td>
+                  <td class="total">60</td>
+                  <td class="grade"><span class="badge b">C</span></td>
+                </tr>
+                <tr class="avg-row">
+                  <td>Class average</td>
+                  <td style="text-align:center">14.2</td><td style="text-align:center">14.8</td><td style="text-align:center">11.0</td><td style="text-align:center">10.8</td><td style="text-align:center">22.0</td>
+                  <td style="text-align:center">72.8</td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this works</h4>
+      <ul>
+        <li><b>Spreadsheet model is non-negotiable</b> — teachers know it. Inline cell editing, click to enter score, tab to next.</li>
+        <li><b>Three CA pills</b> separate Continuous Assessment from Term Exam from Final Grade. Ghanaian basic-school grading uses both; collapsing them confuses.</li>
+        <li><b>Empty cells show a dash,</b> not zero. A missing assignment ≠ a 0 — that's a workflow choice that matters for fairness.</li>
+        <li><b>Grade column auto-computes</b> from total. Teachers don't manually assign letter grades; the system does it from school's grade boundaries.</li>
+        <li><b>Class average row</b> at the bottom is constant. Tells the teacher whether a question was too hard at a glance.</li>
+        <li><b>Save lives top-right.</b> Auto-save indicator handles anxiety; manual save handles control.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ADMIN BILLING ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Desktop — admin billing</div>
+    <div class="section-meta">School authority</div>
+  </div>
+
+  <div class="layout-desktop">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing / term-1-2026</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-upload" title="Upload school logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 19V8a2 2 0 0 0-2-2h-3.17l-1.84-2H10l-1.84 2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+              </div>
+              <div class="school-block">
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item active"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Billing / Term 1 · 2026</div>
+              <h2 class="display">Fees <em>collection</em></h2>
+            </div>
+            <div class="actions">
+              <button class="btn">Send reminders</button>
+              <button class="btn">Export</button>
+              <button class="btn gold">+ Record payment</button>
+            </div>
+          </div>
+
+          <div class="kpis">
+            <div class="kpi">
+              <div class="label">Total billed</div>
+              <div class="v">GHS 152,400.00</div>
+              <div class="delta">381 invoices</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Collected</div>
+              <div class="v green">GHS 94,830.00</div>
+              <div class="delta up">62% · ↑ 8% vs term 3</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Outstanding</div>
+              <div class="v terra">GHS 57,570.00</div>
+              <div class="delta">142 students</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Overdue &gt; 30d</div>
+              <div class="v gold">GHS 18,200.00</div>
+              <div class="delta">29 students</div>
+            </div>
+          </div>
+
+          <div class="bill-layout">
+            <div class="bill-table-wrap">
+              <div style="padding:14px 20px;display:flex;gap:8px;border-bottom:1px solid var(--border);align-items:center">
+                <div class="pill active">All classes</div>
+                <div class="pill">Unpaid</div>
+                <div class="pill">Partial</div>
+                <div class="pill">Overdue</div>
+                <div style="margin-left:auto;font-size:11px;color:var(--navy-3)">Showing 6 of 142</div>
+              </div>
+              <table class="bill-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Class</th>
+                    <th>Invoice</th>
+                    <th style="text-align:right">Billed</th>
+                    <th style="text-align:right">Paid</th>
+                    <th style="text-align:right">Balance</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><b>Akosua Boateng</b></td><td>JHS 2A</td><td>INV-2026-0184</td>
+                    <td class="cell-billed"><span class="amt">GHS 400.00</span></td>
+                    <td style="text-align:right" class="amt">GHS 60.00</td>
+                    <td style="text-align:right;color:var(--terra)" class="amt">GHS 340.00</td>
+                    <td><span class="status partial">Partial</span></td>
+                  </tr>
+                  <tr>
+                    <td><b>Kofi Owusu</b></td><td>JHS 2A</td><td>INV-2026-0185</td>
+                    <td class="cell-billed">
+                      <span class="amt">GHS 200.00</span>
+                      <span class="disc-tag">−50%</span>
+                    </td>
+                    <td style="text-align:right" class="amt">GHS 200.00</td>
+                    <td style="text-align:right" class="amt">—</td>
+                    <td><span class="status paid">Paid</span></td>
+                  </tr>
+                  <tr>
+                    <td><b>Yaw Asante</b></td><td>JHS 2A</td><td>INV-2026-0186</td>
+                    <td class="cell-billed"><span class="amt">GHS 400.00</span></td>
+                    <td style="text-align:right" class="amt">—</td>
+                    <td style="text-align:right;color:var(--terra)" class="amt">GHS 400.00</td>
+                    <td><span class="status overdue">Overdue 32d</span></td>
+                  </tr>
+                  <tr>
+                    <td><b>Ama Mensah</b></td><td>JHS 2A</td><td>INV-2026-0187</td>
+                    <td class="cell-billed">
+                      <span class="amt">GHS 0.00</span>
+                      <span class="disc-tag exempt">Exempt 100%</span>
+                    </td>
+                    <td style="text-align:right" class="amt">—</td>
+                    <td style="text-align:right" class="amt">—</td>
+                    <td><span class="status paid">Exempted</span></td>
+                  </tr>
+                  <tr class="selected">
+                    <td><b>Esi Odoom</b></td><td>JHS 2A</td><td>INV-2026-0188</td>
+                    <td class="cell-billed">
+                      <span class="amt">GHS 200.00</span>
+                      <span class="disc-tag">−50%</span>
+                    </td>
+                    <td style="text-align:right" class="amt">GHS 100.00</td>
+                    <td style="text-align:right;color:var(--terra)" class="amt">GHS 100.00</td>
+                    <td><span class="status partial">Partial</span></td>
+                  </tr>
+                  <tr>
+                    <td><b>Kwesi Adjei</b></td><td>JHS 2A</td><td>INV-2026-0189</td>
+                    <td class="cell-billed"><span class="amt">GHS 400.00</span></td>
+                    <td style="text-align:right" class="amt">—</td>
+                    <td style="text-align:right;color:var(--navy-3)" class="amt">GHS 400.00</td>
+                    <td><span class="status unpaid">Unpaid</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <aside class="invoice-panel">
+              <div class="ip-head">
+                <div class="num">INV-2026-0188</div>
+                <h3>Esi Odoom</h3>
+                <div class="sub">JHS 2A · Term 1, 2026</div>
+              </div>
+              <div class="invoice-line"><div class="lbl">Tuition</div><div class="val">GHS 280.00</div></div>
+              <div class="invoice-line"><div class="lbl">Transport</div><div class="val">GHS 80.00</div></div>
+              <div class="invoice-line"><div class="lbl">Books &amp; supplies</div><div class="val">GHS 40.00</div></div>
+              <div class="invoice-line" style="padding-top:10px;border-top:1px dashed var(--border-2)"><div class="lbl">Subtotal</div><div class="val">GHS 400.00</div></div>
+              <div class="invoice-line" style="color:var(--gold)"><div class="lbl" style="color:var(--gold);font-weight:600">Scholarship discount <span style="font-size:9px;letter-spacing:0.06em;background:var(--gold-bg);padding:1px 5px;border-radius:3px;margin-left:4px">−50%</span></div><div class="val" style="color:var(--gold)">−GHS 200.00</div></div>
+              <div class="invoice-total"><div class="lbl">Total billed</div><div class="val">GHS 200.00</div></div>
+              <div class="invoice-line" style="padding-top:8px"><div class="lbl">Paid to date</div><div class="val" style="color:var(--green)">GHS 100.00</div></div>
+              <div class="invoice-total" style="border-top:1px dashed var(--border-2)"><div class="lbl">Balance</div><div class="val terra">GHS 100.00</div></div>
+
+              <div class="momo">
+                <div class="logo">MTN</div>
+                <div class="body">
+                  <div class="t1">MoMo · 020 ••• 8392</div>
+                  <div class="t2">Last paid 8 days ago</div>
+                </div>
+              </div>
+
+              <div class="invoice-actions">
+                <button class="btn">PDF</button>
+                <button class="btn primary">+ Record payment</button>
+              </div>
+
+              <div style="margin-top:18px;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy-3);font-weight:700">History</div>
+              <div class="history-line"><div class="t">Apr 16</div><div class="body"><div class="a">Partial — GHS 100.00</div><div class="b">MoMo · ref TXN78215</div></div></div>
+              <div class="history-line"><div class="t">Apr 02</div><div class="body"><div class="a">Invoice issued</div><div class="b">Term 1 · 2026 · 50% scholarship applied</div></div></div>
+              <div class="history-line"><div class="t">Apr 01</div><div class="body"><div class="a">SMS reminder sent</div><div class="b">Auto · to guardian</div></div></div>
+              <div class="history-line"><div class="t">Mar 28</div><div class="body"><div class="a">Discount approved</div><div class="b">By F. Addo · 50% need-based</div></div></div>
+            </aside>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this works</h4>
+      <ul>
+        <li><b>4 KPIs across the top</b> — billed, collected, outstanding, overdue. Headmistress's morning glance.</li>
+        <li><b>Discounts cascade through the panel,</b> not the table. Table shows net billed with a small <span style="color:var(--gold);font-weight:700">−50%</span> or <span style="color:var(--green);font-weight:700">Exempt</span> badge so admin can scan; the panel breakdown shows the math (subtotal → discount → net) for transparency and audit.</li>
+        <li><b>100% exempt students</b> still get an invoice (GHS 0.00) so attendance, audit, and ministry reporting all see consistent records — no special-casing them out of the system.</li>
+        <li><b>Logo upload is a dashed gold placeholder</b> in the sidebar — the first thing a new admin sees on day one. Single click to upload; appears for teachers and students once set.</li>
+        <li><b>Status pills are filters,</b> not just labels. One click to see "show me only overdue".</li>
+        <li><b>Right-rail invoice panel</b> updates on row select. No modals, no page nav. Drastically reduces clicks for the 50+ payments recorded weekly.</li>
+        <li><b>MoMo lockup</b> (yellow MTN tile) is intentional — admin needs to confirm a number quickly when a parent calls. Live integration comes in MVP2; v1 is manual confirm.</li>
+        <li><b>History audit trail</b> answers the question "did we send a reminder?" and "who approved this discount?" — meets the audit-log requirement in your spec.</li>
+        <li><b>+ Record payment</b> is the one gold button on screen. Opens a drawer to log amount, method, MoMo TXN ref, and triggers receipt + SMS confirmation.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

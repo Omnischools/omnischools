@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Collection trend report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  background: var(--bg);
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+  min-height: 1740px;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main {
+  padding: 0;
+  background: var(--bg);
+}
+
+/* Report head */
+.report-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 36px 22px;
+}
+.report-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 8px;
+}
+.report-head .crumb a { color: var(--gold); text-decoration: none; }
+.report-head .top-row {
+  display: flex; justify-content: space-between; align-items: end;
+}
+.report-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin-bottom: 6px;
+}
+.report-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.report-head .lede {
+  font-size: 13px;
+  color: var(--navy-3);
+}
+.report-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.actions {
+  display: flex; gap: 8px;
+}
+.btn {
+  padding: 9px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+
+/* Term selector */
+.term-pills {
+  display: flex; gap: 6px;
+  margin-top: 14px;
+}
+.term-pill {
+  padding: 6px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+}
+.term-pill.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--bg);
+}
+.term-pill em { font-style: italic; color: var(--gold); }
+.term-pill .state {
+  font-family: 'Manrope', sans-serif;
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-left: 5px;
+  font-weight: 700;
+}
+.term-pill.active .state { color: rgba(232,212,184,0.7); }
+
+/* Body */
+.report-body {
+  padding: 28px 36px 60px;
+  background: var(--bg);
+}
+
+.region {
+  margin-bottom: 36px;
+}
+.region-head {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 14px;
+}
+.region-head .num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.region-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.region-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.region-head .meta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.region-head .meta b { color: var(--navy-2); }
+
+/* ============ REGION 1 — HEADLINE ============ */
+.headline-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 1fr;
+  gap: 12px;
+}
+.headline-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 22px;
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+.headline-tile.hero {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(200,151,91,0.12) 0%, transparent 50%);
+}
+.headline-tile .lbl {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.headline-tile.hero .lbl { color: rgba(232,212,184,0.7); }
+.headline-tile .val {
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin-top: 2px;
+}
+.headline-tile.hero .val { color: var(--gold); font-size: 36px; }
+.headline-tile .val.green { color: var(--green); }
+.headline-tile .val.terra { color: var(--terra); }
+.headline-tile .val.warn { color: var(--warn); }
+.headline-tile .val .currency {
+  font-size: 14px;
+  color: var(--navy-3);
+  font-weight: 500;
+  letter-spacing: 0;
+  margin-right: 4px;
+}
+.headline-tile.hero .val .currency { color: rgba(232,212,184,0.6); }
+.headline-tile .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+.headline-tile.hero .sub { color: rgba(232,212,184,0.75); }
+.headline-tile .sub b { color: var(--navy-2); font-weight: 600; }
+.headline-tile.hero .sub b { color: var(--bg); }
+.headline-tile .delta {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.headline-tile .delta.up { color: var(--green); }
+.headline-tile .delta.down { color: var(--terra); }
+
+/* Velocity tile (the velocity is the headline insight, gold-tinted) */
+.headline-tile.velocity {
+  background: var(--gold-bg);
+  border-color: var(--gold-soft);
+}
+.headline-tile.velocity .val {
+  color: var(--terra);
+  font-style: italic;
+}
+.headline-tile.velocity .val em {
+  font-style: normal;
+}
+.headline-tile.velocity.ahead .val {
+  color: var(--green);
+}
+.headline-tile.velocity .badge {
+  display: inline-block;
+  background: var(--terra);
+  color: white;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-bottom: 4px;
+  align-self: flex-start;
+}
+.headline-tile.velocity.ahead .badge {
+  background: var(--green);
+}
+
+/* Hero tile pace bar */
+.hero-pace {
+  margin-top: 6px;
+}
+.hero-pace .pace-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 10px;
+  color: rgba(232,212,184,0.7);
+  margin-bottom: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+.hero-pace .pace-row b { color: var(--bg); font-weight: 600; }
+.hero-pace .pace-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 100px;
+  position: relative;
+  overflow: visible;
+}
+.hero-pace .pace-bar .fill-current {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 100px;
+}
+.hero-pace .pace-bar .marker-expected {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 10px;
+  background: rgba(255,255,255,0.7);
+  z-index: 1;
+}
+.hero-pace .pace-bar .marker-expected::after {
+  content: "expected pace";
+  position: absolute;
+  top: -16px;
+  right: 0;
+  font-family: 'Manrope', sans-serif;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(232,212,184,0.7);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ============ REGION 2 — TERM OVERLAY CHART ============ */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 26px 18px;
+}
+.chart-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 18px;
+}
+.chart-head .left .label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.chart-head .left .head-title {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.chart-head .left .head-title em { font-style: italic; color: var(--gold); }
+.chart-head .right {
+  display: flex; gap: 16px;
+  align-items: center;
+}
+.legend-line {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px;
+  color: var(--navy-2);
+}
+.legend-line .swatch {
+  width: 22px; height: 3px;
+  border-radius: 2px;
+}
+.legend-line .swatch.current { background: var(--gold); }
+.legend-line .swatch.prior { background: var(--navy-3); }
+.legend-line .swatch.expected {
+  background: transparent;
+  border-top: 2px dashed var(--navy-3);
+  height: 0;
+}
+.legend-line b { color: var(--navy); font-weight: 600; }
+
+.chart-wrap {
+  position: relative;
+  height: 280px;
+}
+.chart-axis-y {
+  position: absolute;
+  left: 0; top: 0; bottom: 28px;
+  width: 56px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-3);
+  font-weight: 600;
+  text-align: right;
+  padding-right: 10px;
+}
+.chart-svg-wrap {
+  position: absolute;
+  left: 56px; right: 0; top: 0; bottom: 28px;
+}
+.chart-svg-wrap svg {
+  width: 100%; height: 100%;
+}
+.chart-axis-x {
+  position: absolute;
+  left: 56px; right: 0;
+  bottom: 0;
+  height: 24px;
+  display: flex; justify-content: space-between;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-3);
+  font-weight: 600;
+  padding-top: 6px;
+}
+
+.chart-foot {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.chart-foot-item .lbl {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.chart-foot-item .val {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.chart-foot-item .val .currency {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-right: 3px;
+}
+.chart-foot-item .val.green { color: var(--green); }
+.chart-foot-item .val.terra { color: var(--terra); }
+.chart-foot-item .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+
+/* ============ REGION 3 — WEEKLY BREAKDOWN ============ */
+.weekly-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.week-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  position: relative;
+}
+.week-tile.current {
+  border-color: var(--gold);
+  background: linear-gradient(180deg, var(--gold-bg) 0%, var(--surface) 50%);
+}
+.week-tile.future {
+  border-style: dashed;
+  background: var(--bg);
+  opacity: 0.6;
+}
+.week-tile .week-num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0;
+  color: var(--navy);
+  margin-bottom: 1px;
+}
+.week-tile .week-num em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+}
+.week-tile .week-dates {
+  font-size: 9px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.week-tile .week-amount {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1;
+}
+.week-tile .week-amount .currency {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-right: 3px;
+}
+.week-tile .week-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.week-tile .week-meta b { color: var(--navy-2); font-weight: 600; }
+
+.week-tile .week-comparison {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 10px;
+}
+.week-tile .week-comparison .prior-amount {
+  color: var(--navy-3);
+}
+.week-tile .week-comparison .delta {
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.week-tile .week-comparison .delta.up { color: var(--green); }
+.week-tile .week-comparison .delta.down { color: var(--terra); }
+.week-tile .week-comparison .delta.flat { color: var(--navy-3); }
+
+.week-tile.future .week-amount,
+.week-tile.future .week-meta {
+  color: var(--navy-3);
+}
+
+/* Mini-bar inside the week tile */
+.week-mini-bar {
+  display: flex;
+  height: 3px;
+  background: var(--bg);
+  border-radius: 100px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.week-mini-bar .fill {
+  background: var(--gold);
+  border-radius: 100px;
+}
+
+/* ============ REGION 4 — BY-CLASS COLLECTION ============ */
+.by-class-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.by-class-head {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.by-class-head .left {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+.by-class-head .legend {
+  display: flex; gap: 14px;
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.by-class-head .legend-item {
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.by-class-head .legend-swatch {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+}
+.by-class-head .legend-swatch.collected { background: var(--green); }
+.by-class-head .legend-swatch.expected { background: var(--gold-bg); border: 1px solid var(--gold-soft); }
+.by-class-head .legend-swatch.outstanding { background: var(--terra-bg); border: 1px solid rgba(184,74,57,0.3); }
+
+.class-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 90px 90px 60px;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.class-row:last-child { border-bottom: none; }
+.class-row.total {
+  background: var(--bg);
+  border-top: 1.5px solid var(--navy);
+  font-weight: 600;
+}
+.class-row .class-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.class-row .class-label em { font-style: italic; color: var(--gold); }
+.class-row .class-label .student-count {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  margin-top: 2px;
+  display: block;
+}
+
+.class-bar-wrap {
+  position: relative;
+  height: 24px;
+}
+.class-bar-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--terra-bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.class-bar-fill {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  background: var(--green);
+  border-radius: 4px;
+  display: flex; align-items: center; padding-right: 8px;
+  justify-content: flex-end;
+}
+.class-bar-fill .pct-inside {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.02em;
+}
+.class-bar-marker {
+  position: absolute;
+  top: -2px; bottom: -2px;
+  width: 2px;
+  background: var(--gold);
+}
+.class-bar-marker::after {
+  content: "expected";
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.class-row .num-col {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  text-align: right;
+}
+.class-row .num-col.outstanding {
+  color: var(--terra);
+}
+.class-row .pct-col {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  text-align: right;
+}
+.class-row .pct-col.high { color: var(--green); }
+.class-row .pct-col.mid { color: var(--gold); }
+.class-row .pct-col.low { color: var(--terra); }
+.class-row.total .pct-col { color: var(--navy); }
+
+/* ============ REGION 5 — AGING ============ */
+.aging-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 26px 20px;
+}
+.aging-headline {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: end;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.aging-headline .left .label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.aging-headline .left .val {
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--terra);
+}
+.aging-headline .left .val .currency {
+  font-size: 14px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-right: 3px;
+}
+.aging-headline .left .meta {
+  font-size: 12px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.aging-headline .left .meta b { color: var(--navy-2); font-weight: 600; }
+.aging-headline .right {
+  text-align: right;
+}
+.aging-headline .right .label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.aging-headline .right .val {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--navy);
+}
+
+.aging-bars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.aging-bucket {
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.aging-bucket .bar-shell {
+  height: 100px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  position: relative;
+  display: flex; align-items: flex-end;
+}
+.aging-bucket .bar-fill {
+  width: 100%;
+  border-radius: 0 0 5px 5px;
+  position: relative;
+  display: flex; align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+}
+.aging-bucket .bar-fill.bucket-1 { background: var(--green); }
+.aging-bucket .bar-fill.bucket-2 { background: var(--gold); }
+.aging-bucket .bar-fill.bucket-3 { background: var(--warn); }
+.aging-bucket .bar-fill.bucket-4 { background: var(--terra); }
+.aging-bucket .bar-fill .amount-inside {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 11px;
+  color: white;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.aging-bucket .bar-fill.bucket-2 .amount-inside { color: var(--navy); text-shadow: none; }
+
+.aging-bucket .bucket-info {
+  text-align: center;
+}
+.aging-bucket .bucket-range {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  margin-bottom: 1px;
+}
+.aging-bucket .bucket-range em { font-style: italic; color: var(--gold); }
+.aging-bucket .bucket-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.aging-bucket .bucket-meta b { color: var(--navy-2); font-weight: 600; }
+.aging-bucket .bucket-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-top: 4px;
+}
+
+/* Aging callout */
+.aging-callout {
+  background: var(--gold-bg);
+  border-left: 2px solid var(--gold);
+  padding: 12px 16px;
+  border-radius: 0 8px 8px 0;
+  margin-top: 22px;
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.aging-callout b {
+  color: var(--navy);
+  font-weight: 600;
+}
+.aging-callout .head {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+  letter-spacing: -0.005em;
+}
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .headline-row { grid-template-columns: 1fr 1fr; }
+  .weekly-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .aging-bars { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Reports · Finance</div>
+  <h1 class="display">Collection <em>trend</em></h1>
+  <div class="gold-rule"></div>
+  <p>The outstanding balances report tells you who owes what. The collection trend tells you whether collection is happening at the right pace — versus the same point last term, versus where the school typically is by week 6, versus the maths of when fees should be in. Five regions: headline, term overlay, weekly breakdown, by-class status, and aging of outstanding.</p>
+</header>
+
+<!-- ============ COLLECTION TREND REPORT ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Collection trend · Term 1 2025/26</div>
+    <div class="section-meta">Joyce Owusu-Ansah · accountant · week 6 of 15</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / finance / collection-trend</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">JO</div>
+            <div><div class="meta-name">Joyce Owusu-Ansah</div><div class="meta-role">Accountant</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+
+          <!-- Report head -->
+          <div class="report-head">
+            <div class="crumb"><a href="#">Reports</a> / Finance / Collection trend</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Collection <em>trend</em></h1>
+                <div class="lede">Term 1 2025/26 · week <b>6 of 15</b> · <b>Wed 22 Oct</b> · vs Term 3 2024/25 at the same point</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Export PDF</button>
+                <button class="btn">Export CSV</button>
+                <button class="btn primary">Open balances report →</button>
+              </div>
+            </div>
+            <div class="term-pills">
+              <div class="term-pill">Term 3 <em>2024/25</em><span class="state">prior</span></div>
+              <div class="term-pill active">Term 1 <em>2025/26</em><span class="state">current</span></div>
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div class="report-body">
+
+            <!-- ============ REGION 1 — HEADLINE ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">Where we <em>are</em></h2>
+                <div class="meta">As of <b>Wed 22 Oct · 4:00 PM</b> · 312 invoiced</div>
+              </div>
+
+              <div class="headline-row">
+                <!-- Hero: total collected vs expected this point -->
+                <div class="headline-tile hero">
+                  <div class="lbl">Collected · Term 1 to date</div>
+                  <div class="val"><span class="currency">GHS</span>178,420.00</div>
+                  <div class="sub"><b>72.4%</b> of GHS 246,400.00 invoiced</div>
+                  <div class="hero-pace">
+                    <div class="pace-row">
+                      <span>0%</span>
+                      <span><b>now: 72.4%</b></span>
+                      <span>100%</span>
+                    </div>
+                    <div class="pace-bar">
+                      <div class="fill-current" style="width:72.4%"></div>
+                      <div class="marker-expected" style="left:80%"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Velocity -->
+                <div class="headline-tile velocity">
+                  <div class="badge">8% behind</div>
+                  <div class="lbl">vs Term 3 at week 6</div>
+                  <div class="val">−<em>GHS 19,712</em></div>
+                  <div class="sub">Last term we'd collected <b>80.4%</b> by this point</div>
+                </div>
+
+                <!-- Avg weekly intake -->
+                <div class="headline-tile">
+                  <div class="lbl">Avg weekly · last 3 wks</div>
+                  <div class="val"><span class="currency">GHS</span>11,840</div>
+                  <div class="sub">down from <b>GHS 14,200</b> in wks 1-3</div>
+                </div>
+
+                <!-- Outstanding -->
+                <div class="headline-tile">
+                  <div class="lbl">Still outstanding</div>
+                  <div class="val terra"><span class="currency">GHS</span>67,980</div>
+                  <div class="sub"><b>87 invoices</b> from 64 households</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 2 — TERM OVERLAY CHART ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display">Cumulative <em>collection</em> · this term vs last</h2>
+                <div class="meta">Weekly cumulative · GHS thousands</div>
+              </div>
+
+              <div class="chart-card">
+                <div class="chart-head">
+                  <div class="left">
+                    <div class="label">Term 1 2025/26 vs Term 3 2024/25</div>
+                    <div class="head-title display">The <em>shape</em> matches, but the curve is flatter</div>
+                  </div>
+                  <div class="right">
+                    <div class="legend-line"><div class="swatch current"></div><b>This term</b></div>
+                    <div class="legend-line"><div class="swatch prior"></div>Last term</div>
+                    <div class="legend-line"><div class="swatch expected"></div>Expected pace</div>
+                  </div>
+                </div>
+
+                <div class="chart-wrap">
+                  <div class="chart-axis-y">
+                    <div>250k</div>
+                    <div>200k</div>
+                    <div>150k</div>
+                    <div>100k</div>
+                    <div>50k</div>
+                    <div>0</div>
+                  </div>
+                  <div class="chart-svg-wrap">
+                    <svg viewBox="0 0 1000 280" preserveAspectRatio="none">
+                      <!-- Grid lines (horizontal, 5 lines) -->
+                      <line x1="0" y1="0" x2="1000" y2="0" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+                      <line x1="0" y1="56" x2="1000" y2="56" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+                      <line x1="0" y1="112" x2="1000" y2="112" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+                      <line x1="0" y1="168" x2="1000" y2="168" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+                      <line x1="0" y1="224" x2="1000" y2="224" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+
+                      <!-- Vertical "now" marker at week 6 (x=400 of 1000 = 40%) -->
+                      <line x1="400" y1="0" x2="400" y2="280" stroke="#C8975B" stroke-width="0.5" stroke-dasharray="3 3" opacity="0.5"/>
+                      <text x="404" y="14" font-family="Manrope" font-size="9" font-weight="700" fill="#C8975B" letter-spacing="0.06em">NOW · WK 6</text>
+
+                      <!-- PRIOR TERM line (Term 3 2024/25) - completed all 15 weeks, navy -->
+                      <!-- Pattern: front-load wks 1-2, steady drip 3-6, slow 7-10, plateau 11-15 -->
+                      <defs>
+                        <linearGradient id="priorGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stop-color="#5C6675" stop-opacity="0.08"/>
+                          <stop offset="100%" stop-color="#5C6675" stop-opacity="0"/>
+                        </linearGradient>
+                        <linearGradient id="currentGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stop-color="#C8975B" stop-opacity="0.18"/>
+                          <stop offset="100%" stop-color="#C8975B" stop-opacity="0"/>
+                        </linearGradient>
+                      </defs>
+
+                      <!-- Expected pace line (dashed, navy-3) - linear-ish ramp to ~85% by wk 6 -->
+                      <polyline
+                        points="0,260 67,200 134,150 200,118 267,92 334,72 400,56"
+                        fill="none"
+                        stroke="#5C6675"
+                        stroke-width="1.5"
+                        stroke-dasharray="5 4"
+                        stroke-linejoin="round"
+                        opacity="0.6"
+                      />
+
+                      <!-- PRIOR term: full 15 weeks of data, navy line -->
+                      <path d="M 0,260 L 67,180 L 134,128 L 200,98 L 267,76 L 334,62 L 400,52 L 467,40 L 534,32 L 600,26 L 667,22 L 734,18 L 800,14 L 867,12 L 934,10 L 1000,8 L 1000,280 L 0,280 Z" fill="url(#priorGrad)"/>
+                      <polyline
+                        points="0,260 67,180 134,128 200,98 267,76 334,62 400,52 467,40 534,32 600,26 667,22 734,18 800,14 867,12 934,10 1000,8"
+                        fill="none"
+                        stroke="#5C6675"
+                        stroke-width="2"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+
+                      <!-- CURRENT term: 6 weeks of data, gold line, then stops -->
+                      <path d="M 0,260 L 67,196 L 134,150 L 200,124 L 267,108 L 334,92 L 400,78 L 400,280 L 0,280 Z" fill="url(#currentGrad)"/>
+                      <polyline
+                        points="0,260 67,196 134,150 200,124 267,108 334,92 400,78"
+                        fill="none"
+                        stroke="#C8975B"
+                        stroke-width="2.5"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+
+                      <!-- Current point (week 6) - gold dot -->
+                      <circle cx="400" cy="78" r="5" fill="#C8975B" stroke="#FAF7F2" stroke-width="2"/>
+                      <text x="412" y="76" font-family="JetBrains Mono" font-size="11" font-weight="700" fill="#1A2B47">GHS 178k</text>
+                      <text x="412" y="89" font-family="Fraunces" font-style="italic" font-size="10" fill="#C8975B">today · 72.4%</text>
+
+                      <!-- Prior point at same week 6 -->
+                      <circle cx="400" cy="52" r="3" fill="#5C6675" stroke="#FAF7F2" stroke-width="1.5"/>
+                      <text x="362" y="42" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#5C6675" text-anchor="end">198k</text>
+                      <text x="362" y="54" font-family="Fraunces" font-style="italic" font-size="9" fill="#5C6675" text-anchor="end">last term wk 6</text>
+                    </svg>
+                  </div>
+                  <div class="chart-axis-x">
+                    <div>Wk 1</div>
+                    <div>Wk 2</div>
+                    <div>Wk 3</div>
+                    <div>Wk 4</div>
+                    <div>Wk 5</div>
+                    <div>Wk 6</div>
+                    <div>Wk 7</div>
+                    <div>Wk 8</div>
+                    <div>Wk 9</div>
+                    <div>Wk 10</div>
+                    <div>Wk 11</div>
+                    <div>Wk 12</div>
+                    <div>Wk 13</div>
+                    <div>Wk 14</div>
+                    <div>Wk 15</div>
+                  </div>
+                </div>
+
+                <div class="chart-foot">
+                  <div class="chart-foot-item">
+                    <div class="lbl">Term 1 final · last yr</div>
+                    <div class="val"><span class="currency">GHS</span>241,800</div>
+                    <div class="meta">98.1% of invoiced</div>
+                  </div>
+                  <div class="chart-foot-item">
+                    <div class="lbl">At wk 6 · this term</div>
+                    <div class="val"><span class="currency">GHS</span>178,420</div>
+                    <div class="meta">72.4% of invoiced</div>
+                  </div>
+                  <div class="chart-foot-item">
+                    <div class="lbl">At wk 6 · last term</div>
+                    <div class="val green"><span class="currency">GHS</span>198,132</div>
+                    <div class="meta">80.4% of invoiced</div>
+                  </div>
+                  <div class="chart-foot-item">
+                    <div class="lbl">Gap to last term</div>
+                    <div class="val terra">−<span class="currency">GHS</span>19,712</div>
+                    <div class="meta">−8.0 percentage points</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 3 — WEEKLY BREAKDOWN ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">03</div>
+                <h2 class="display">Week by <em>week</em></h2>
+                <div class="meta">Each week's collection vs same week last term</div>
+              </div>
+
+              <div class="weekly-grid">
+
+                <!-- Wk 1 — front-loaded -->
+                <div class="week-tile">
+                  <div class="week-num display">Week <em>1</em></div>
+                  <div class="week-dates">15-19 Sep</div>
+                  <div class="week-amount display"><span class="currency">GHS</span>62,440</div>
+                  <div class="week-meta"><b>78 payments</b> · 64 students</div>
+                  <div class="week-mini-bar"><div class="fill" style="width:88%;height:100%"></div></div>
+                  <div class="week-comparison">
+                    <div class="prior-amount">Last yr · GHS 71k</div>
+                    <div class="delta down">↓ 12%</div>
+                  </div>
+                </div>
+
+                <!-- Wk 2 — surge continues -->
+                <div class="week-tile">
+                  <div class="week-num display">Week <em>2</em></div>
+                  <div class="week-dates">22-26 Sep</div>
+                  <div class="week-amount display"><span class="currency">GHS</span>44,180</div>
+                  <div class="week-meta"><b>52 payments</b> · 47 students</div>
+                  <div class="week-mini-bar"><div class="fill" style="width:62%;height:100%"></div></div>
+                  <div class="week-comparison">
+                    <div class="prior-amount">Last yr · GHS 48k</div>
+                    <div class="delta down">↓ 8%</div>
+                  </div>
+                </div>
+
+                <!-- Wk 3 -->
+                <div class="week-tile">
+                  <div class="week-num display">Week <em>3</em></div>
+                  <div class="week-dates">29 Sep-3 Oct</div>
+                  <div class="week-amount display"><span class="currency">GHS</span>21,840</div>
+                  <div class="week-meta"><b>34 payments</b> · 32 students</div>
+                  <div class="week-mini-bar"><div class="fill" style="width:30%;height:100%"></div></div>
+                  <div class="week-comparison">
+                    <div class="prior-amount">Last yr · GHS 22k</div>
+                    <div class="delta flat">— flat</div>
+                  </div>
+                </div>
+
+                <!-- Wk 4 -->
+                <div class="week-tile">
+                  <div class="week-num display">Week <em>4</em></div>
+                  <div class="week-dates">6-10 Oct</div>
+                  <div class="week-amount display"><span class="currency">GHS</span>16,420</div>
+                  <div class="week-meta"><b>27 payments</b> · 25 students</div>
+                  <div class="week-mini-bar"><div class="fill" style="width:23%;height:100%"></div></div>
+                  <div class="week-comparison">
+                    <div class="prior-amount">Last yr · GHS 18k</div>
+                    <div class="delta down">↓ 9%</div>
+                  </div>
+                </div>
+
+                <!-- Wk 5 -->
+                <div class="week-tile">
+                  <div class="week-num display">Week <em>5</em></div>
+                  <div class="week-dates">13-17 Oct</div>
+                  <div class="week-amount display"><span class="currency">GHS</span>11,720</div>
+                  <div class="week-meta"><b>21 payments</b> · 19 students</div>
+                  <div class="week-mini-bar"><div class="fill" style="width:16%;height:100%"></div></div>
+                  <div class="week-comparison">
+                    <div class="prior-amount">Last yr · GHS 16k</div>
+                    <div class="delta down">↓ 27%</div>
+                  </div>
+                </div>
+
+                <!-- Wk 6 (current, partial) -->
+                <div class="week-tile current">
+                  <div class="week-num display">Week <em>6</em> · this wk</div>
+                  <div class="week-dates">20-22 Oct · 3 of 5 days</div>
+                  <div class="week-amount display"><span class="currency">GHS</span>21,820</div>
+                  <div class="week-meta"><b>32 payments</b> · 29 students · partial</div>
+                  <div class="week-mini-bar"><div class="fill" style="width:31%;height:100%"></div></div>
+                  <div class="week-comparison">
+                    <div class="prior-amount">Last yr wk 6 · GHS 22k</div>
+                    <div class="delta flat">~ on pace</div>
+                  </div>
+                </div>
+
+                <!-- Wks 7-15 — future, dimmed -->
+                <div class="week-tile future">
+                  <div class="week-num display">Week <em>7</em></div>
+                  <div class="week-dates">27-31 Oct</div>
+                  <div class="week-amount display" style="color:var(--navy-3)">—</div>
+                  <div class="week-meta">Last yr · GHS 14k</div>
+                </div>
+                <div class="week-tile future">
+                  <div class="week-num display">Week <em>8</em></div>
+                  <div class="week-dates">3-7 Nov</div>
+                  <div class="week-amount display" style="color:var(--navy-3)">—</div>
+                  <div class="week-meta">mid-term break</div>
+                </div>
+                <div class="week-tile future">
+                  <div class="week-num display">Week <em>9</em></div>
+                  <div class="week-dates">10-14 Nov</div>
+                  <div class="week-amount display" style="color:var(--navy-3)">—</div>
+                  <div class="week-meta">Last yr · GHS 9k</div>
+                </div>
+                <div class="week-tile future">
+                  <div class="week-num display">Week <em>10</em></div>
+                  <div class="week-dates">17-21 Nov</div>
+                  <div class="week-amount display" style="color:var(--navy-3)">—</div>
+                  <div class="week-meta">Last yr · GHS 6k</div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- ============ REGION 4 — BY-CLASS ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">04</div>
+                <h2 class="display">By <em>class</em></h2>
+                <div class="meta">Which year groups are leading or lagging</div>
+              </div>
+
+              <div class="by-class-card">
+                <div class="by-class-head">
+                  <div class="left">9 classes · 312 invoiced students · sorted by collection rate (lowest first)</div>
+                  <div class="legend">
+                    <div class="legend-item"><div class="legend-swatch collected"></div>Collected</div>
+                    <div class="legend-item"><div class="legend-swatch outstanding"></div>Outstanding</div>
+                    <div class="legend-item" style="display:inline-flex;align-items:center;gap:5px"><div style="width:2px;height:10px;background:var(--gold)"></div>Expected pace</div>
+                  </div>
+                </div>
+
+                <!-- JHS 3C - lagging worst -->
+                <div class="class-row">
+                  <div class="class-label display">
+                    JHS <em>3C</em>
+                    <span class="student-count">33 students</span>
+                  </div>
+                  <div class="class-bar-wrap">
+                    <div class="class-bar-bg"></div>
+                    <div class="class-bar-fill" style="width:54%">
+                      <div class="pct-inside">54%</div>
+                    </div>
+                    <div class="class-bar-marker" style="left:80%"></div>
+                  </div>
+                  <div class="num-col">GHS 15,420</div>
+                  <div class="num-col outstanding">GHS 13,140</div>
+                  <div class="pct-col low">54%</div>
+                </div>
+
+                <!-- JHS 3A -->
+                <div class="class-row">
+                  <div class="class-label display">
+                    JHS <em>3A</em>
+                    <span class="student-count">34 students</span>
+                  </div>
+                  <div class="class-bar-wrap">
+                    <div class="class-bar-bg"></div>
+                    <div class="class-bar-fill" style="width:62%">
+                      <div class="pct-inside">62%</div>
+                    </div>
+                    <div class="class-bar-marker" style="left:80%"></div>
+                  </div>
+                  <div class="num-col">GHS 18,240</div>
+                  <div class="num-col outstanding">GHS 11,120</div>
+                  <div class="pct-col low">62%</div>
+                </div>
+
+                <!-- JHS 3B -->
+                <div class="class-row">
+                  <div class="class-label display">
+                    JHS <em>3B</em>
+                    <span class="student-count">35 students</span>
+                  </div>
+                  <div class="class-bar-wrap">
+                    <div class="class-bar-bg"></div>
+                    <div class="class-bar-fill" style="width:68%">
+                      <div class="pct-inside">68%</div>
+                    </div>
+                    <div class="class-bar-marker" style="left:80%"></div>
+                  </div>
+                  <div class="num-col">GHS 20,580</div>
+                  <div class="num-col outstanding">GHS 9,680</div>
+                  <div class="pct-col low">68%</div>
+                </div>
+
+                <!-- JHS 2C -->
+                <div class="class-row">
+                  <div class="class-label display">
+                    JHS <em>2C</em>
+                    <span class="student-count">34 students</span>
+                  </div>
+                  <div class="class-bar-wrap">
+                    <div class="class-bar-bg"></div>
+                    <div class="class-bar-fill" style="width:74%">
+                      <div class="pct-inside">74%</div>
+                    </div>
+                    <div class="class-bar-marker" style="left:80%"></div>
+                  </div>
+                  <div class="num-col">GHS 19,840</div>
+                  <div class="num-col outstanding">GHS 6,960</div>
+                  <div class="pct-col mid">74%</div>
+                </div>
+
+                <!-- JHS 2A -->
+                <div class="class-row">
+                  <div class="class-label display">
+                    JHS <em>2A</em>
+                    <span class="student-count">36 students</span>
+                  </div>
+                  <div class="class-bar-wrap">
+                    <div class="class-bar-bg"></div>
+                    <div class="class-bar-fill" style="width:76%">
+                      <div class="pct-inside">76%</div>
+                    </div>
+                    <div class="class-bar-marker" style="left:80%"></div>
+                  </div>
+                  <div class="num-col">GHS 21,460</div>
+                  <div class="num-col outstanding">GHS 6,780</div>
+                  <div class="pct-col mid">76%</div>
+                </div>
+
+                <!-- JHS 2B -->
+                <div class="class-row">
+                  <div class="class-label display">
+                    JHS <em>2B</em>
+                    <span class="student-count">34 students</span>
+                  </div>
+                  <div class="class-bar-wrap">
+                    <div class="class-bar-bg"></div>
+                    <div class="class-bar-fill" style="width:78%">
+                      <div class="pct-inside">78%</div>
+                    </div>
+                    <div class="class-bar-marker" style="left:80%"></div>
+                  </div>
+                  <div class="num-col">GHS 20,920</div>
+                  <div class="num-col outstanding">GHS 5,900</div>
+                  <div class="pct-col mid">78%</div>
+                </div>
+
+                <!-- JHS 1C -->
+                <div class="class-row">
+                  <div class="class-label display">
+                    JHS <em>1C</em>
+                    <span class="student-count">35 students</span>
+                  </div>
+                  <div class="class-bar-wrap">
+                    <div class="class-bar-bg"></div>
+                    <div class="class-bar-fill" style="width:81%">
+                      <div class="pct-inside">81%</div>
+                    </div>
+                    <div class="class-bar-marker" style="left:80%"></div>
+                  </div>
+                  <div class="num-col">GHS 21,100</div>
+                  <div class="num-col outstanding">GHS 4,940</div>
+                  <div class="pct-col mid">81%</div>
+                </div>
+
+                <!-- JHS 1B -->
+                <div class="class-row">
+                  <div class="class-label display">
+                    JHS <em>1B</em>
+                    <span class="student-count">36 students</span>
+                  </div>
+                  <div class="class-bar-wrap">
+                    <div class="class-bar-bg"></div>
+                    <div class="class-bar-fill" style="width:83%">
+                      <div class="pct-inside">83%</div>
+                    </div>
+                    <div class="class-bar-marker" style="left:80%"></div>
+                  </div>
+                  <div class="num-col">GHS 22,540</div>
+                  <div class="num-col outstanding">GHS 4,620</div>
+                  <div class="pct-col high">83%</div>
+                </div>
+
+                <!-- JHS 1A -->
+                <div class="class-row">
+                  <div class="class-label display">
+                    JHS <em>1A</em>
+                    <span class="student-count">35 students</span>
+                  </div>
+                  <div class="class-bar-wrap">
+                    <div class="class-bar-bg"></div>
+                    <div class="class-bar-fill" style="width:84%">
+                      <div class="pct-inside">84%</div>
+                    </div>
+                    <div class="class-bar-marker" style="left:80%"></div>
+                  </div>
+                  <div class="num-col">GHS 18,320</div>
+                  <div class="num-col outstanding">GHS 4,840</div>
+                  <div class="pct-col high">84%</div>
+                </div>
+
+                <div class="class-row total">
+                  <div class="class-label display">All classes</div>
+                  <div class="class-bar-wrap">
+                    <div class="class-bar-bg"></div>
+                    <div class="class-bar-fill" style="width:72.4%;background:var(--navy)">
+                      <div class="pct-inside">72.4%</div>
+                    </div>
+                    <div class="class-bar-marker" style="left:80%"></div>
+                  </div>
+                  <div class="num-col">GHS 178,420</div>
+                  <div class="num-col outstanding">GHS 67,980</div>
+                  <div class="pct-col">72.4%</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 5 — AGING ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">05</div>
+                <h2 class="display">Age of <em>outstanding</em> balances</h2>
+                <div class="meta">How old is the unpaid amount</div>
+              </div>
+
+              <div class="aging-card">
+                <div class="aging-headline">
+                  <div class="left">
+                    <div class="label">Total outstanding · 64 households</div>
+                    <div class="val"><span class="currency">GHS</span>67,980.00</div>
+                    <div class="meta">87 invoices · oldest invoice issued <b>15 Sep 2025</b> · 37 days ago</div>
+                  </div>
+                  <div class="right">
+                    <div class="label">Avg age</div>
+                    <div class="val">22 days</div>
+                  </div>
+                </div>
+
+                <div class="aging-bars">
+                  <!-- 1-30 days -->
+                  <div class="aging-bucket">
+                    <div class="bar-shell">
+                      <div class="bar-fill bucket-1" style="height:42%">
+                        <div class="amount-inside">28,420</div>
+                      </div>
+                    </div>
+                    <div class="bucket-info">
+                      <div class="bucket-range display">1—<em>30</em> days</div>
+                      <div class="bucket-meta"><b>52 invoices</b> · 41 households</div>
+                      <div class="bucket-pct">41.8% of outstanding</div>
+                    </div>
+                  </div>
+
+                  <!-- 31-60 days -->
+                  <div class="aging-bucket">
+                    <div class="bar-shell">
+                      <div class="bar-fill bucket-2" style="height:54%">
+                        <div class="amount-inside">36,560</div>
+                      </div>
+                    </div>
+                    <div class="bucket-info">
+                      <div class="bucket-range display">31—<em>60</em> days</div>
+                      <div class="bucket-meta"><b>33 invoices</b> · 22 households</div>
+                      <div class="bucket-pct">53.8% of outstanding</div>
+                    </div>
+                  </div>
+
+                  <!-- 61-90 days -->
+                  <div class="aging-bucket">
+                    <div class="bar-shell">
+                      <div class="bar-fill bucket-3" style="height:6%">
+                        <div class="amount-inside">3,000</div>
+                      </div>
+                    </div>
+                    <div class="bucket-info">
+                      <div class="bucket-range display">61—<em>90</em> days</div>
+                      <div class="bucket-meta"><b>2 invoices</b> · 2 households</div>
+                      <div class="bucket-pct">4.4% of outstanding</div>
+                    </div>
+                  </div>
+
+                  <!-- 90+ days -->
+                  <div class="aging-bucket">
+                    <div class="bar-shell">
+                      <div class="bar-fill bucket-4" style="height:0%">
+                        <div class="amount-inside" style="color:var(--navy-3);text-shadow:none">0</div>
+                      </div>
+                    </div>
+                    <div class="bucket-info">
+                      <div class="bucket-range display">90+ <em>days</em></div>
+                      <div class="bucket-meta">none yet · term started 37d ago</div>
+                      <div class="bucket-pct">—</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="aging-callout">
+                  <div class="head display">What this shape says</div>
+                  <b>Most outstanding sits in the 31-60 day bucket</b> (54%) — these are families who didn't pay in the front-loaded weeks 1-2 surge and haven't caught up since. The 1-30 day bucket is normal — every term carries a tail of recent invoices being paid down. <b>The 61-90 day bucket has only 2 invoices</b>, which is healthy at this point in term. Watch the 31-60 day bucket carefully: if it migrates to 61-90 without payment, those families may need direct outreach.
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>The headline insight isn't "how much have you collected" — it's "how fast is collection happening, vs expected pace."</b> The dashboard already shows totals; the trend report shows velocity. Region 1's hero tile in navy gives the absolute (GHS 178,420) but the prominent gold-tinted velocity tile next to it shows the real story: <b>"8% behind · −GHS 19,712"</b>. Velocity is the metric this report exists for.</li>
+        <li><b>Hero tile uses navy + gold treatment</b> matching the GES return cover and admin attendance dashboard. <b>Pace bar inside the hero</b> shows current 72.4% with a vertical "expected pace" marker at 80% — the gap between bar end and marker is the visual story. Same pattern as the planned vs actual progress bars elsewhere.</li>
+        <li><b>"Expected pace" is school-specific, not generic.</b> The expected pace at week 6 (80%) is computed from the school's last 3-4 terms of historical data — what does <i>this</i> school's collection curve typically look like at week 6? Comparing to a generic 80% would be wrong; comparing to <i>your school's</i> 80% is meaningful.</li>
+        <li><b>Velocity tile is gold-tinted with a terra "8% behind" badge</b> — visually distinct from the four other tiles. The badge changes colour and word: green "ahead" if positive, terra "behind" if negative, no badge if flat. <b>The badge IS the report's executive summary</b>; if the headmistress reads only one thing, this is what she gets.</li>
+        <li><b>Avg-weekly-intake tile shows the trend within the trend.</b> "GHS 11,840 down from GHS 14,200 in wks 1-3" — collection isn't just behind cumulatively, the weekly velocity has slowed. Two related but distinct facts. <b>The dropping weekly average is a stronger leading indicator</b> than the cumulative total because it shows what's happening NOW, not historically.</li>
+        <li><b>Region 2 — Term overlay chart is the centerpiece.</b> Two lines: gold (current term, 6 weeks of data) and navy (last term, all 15 weeks). The current line stops at week 6 because that's all the data we have; the prior line extends through the full term to show "where we ended up last time." <b>The vertical "NOW · WK 6" marker</b> in dashed gold separates "what's happened" from "what's still to come."</li>
+        <li><b>"The shape matches, but the curve is flatter" headline</b> on the chart card is the editorial framing in display Fraunces. <b>The system telling the story</b> rather than just showing data. Honest assessment of the shape (similar S-curve but with reduced amplitude) without alarmism.</li>
+        <li><b>Three lines on the chart: current (gold), prior (navy), expected pace (dashed grey).</b> The dashed line is a "where you should be by now" baseline computed from prior terms. <b>Three reference frames: where you are, where you were, where you should be.</b> Each answers a different question.</li>
+        <li><b>Both endpoints labelled inline with the chart.</b> "GHS 178k · today · 72.4%" on the gold dot, "198k · last term wk 6" on the navy dot at the same x-axis position. <b>Same-week comparison is the most informative</b>; reading horizontally at week 6 shows the gap directly.</li>
+        <li><b>Chart footer in 4 cells</b>: last term final (GHS 241,800 · 98.1%) / this term at wk 6 / last term at wk 6 / gap. <b>"Last term final" gives admin a target</b>; "98.1% by end of term" is what they reached before, and the report's implicit question is "will we get there again?"</li>
+        <li><b>Region 3 — Weekly breakdown as 10-tile grid (5 columns × 2 rows shown).</b> Each tile is one week. Past weeks have data; current week (Wk 6) has gold border + tinted bg + "this wk" tag; future weeks are dashed-border placeholders with last-year's data as a hint of what to expect.</li>
+        <li><b>Each weekly tile shows: amount, payment count, mini-fill bar, comparison to last year.</b> The mini-bar visualises the week's intake relative to the term's biggest intake (Wk 1 with GHS 62k = 88% of bar length). <b>Week-to-week proportional comparison</b> at a glance; shows the front-load + decay shape literally.</li>
+        <li><b>"vs last year" comparison on every weekly tile</b> in green/terra/grey. "↓ 12%" / "↓ 8%" / "— flat" / "↓ 27%" — the per-week deltas tell you which weeks are dragging. <b>Wk 5 is the worst week (−27%)</b>; that's the week where the gap opened most. Without per-week comparison, the cumulative gap doesn't reveal where it came from.</li>
+        <li><b>Wk 6 (current) shows partial data:</b> "20-22 Oct · 3 of 5 days · partial" + "~ on pace" rather than a definitive comparison. <b>Honest about the partial week</b> — admin doesn't get tricked by a low-looking number that's just "Tuesday + Wednesday + Thursday" so far.</li>
+        <li><b>Future weeks show last year's number as guidance.</b> "Wk 7 · Last yr GHS 14k" / "Wk 8 · mid-term break" / "Wk 9 · Last yr GHS 9k." <b>Telling admin what to expect</b> without claiming it's a forecast. Mid-term break gets called out so admin doesn't expect collection that week.</li>
+        <li><b>Region 4 — By-class collection rate sorted lowest-first.</b> The classes that need attention float to the top of the list; the high performers settle at the bottom. <b>JHS 3C at 54% is the visual outlier</b> — short green bar against a long terra background. Pattern is clear: JHS 3 classes (54%, 62%, 68%) trail the others significantly.</li>
+        <li><b>Class bar shows collected (green) vs outstanding (terra-bg).</b> Same colour vocabulary as everywhere else. <b>"Expected pace" gold marker at 80%</b> — the same school-historical baseline. JHS 1A at 84% has crossed the marker; JHS 3C at 54% is far short. Visual distance from the marker = how worried to be.</li>
+        <li><b>Three numeric columns: collected GHS / outstanding GHS / collection %.</b> Three different framings of the same data. <b>Some readers want absolute numbers (GHS 13,140 outstanding for JHS 3C is a lot of money)</b>; some want percentages (54% is below threshold); some want both. The grid serves all three.</li>
+        <li><b>"JHS 3 classes lag" pattern shows itself without commentary.</b> The system doesn't say "JHS 3 has a problem" — it just sorts by rate. The pattern emerges from the data. <b>Implicit narrative</b> rather than explicit hand-holding. Admin notices and asks "why?"</li>
+        <li><b>Total row at the bottom in navy</b> — same row structure but with the school-wide aggregate. The 72.4% navy bar with the gold expected-pace marker at 80% replicates the hero tile's pace bar at the class-table level.</li>
+        <li><b>Region 5 — Aging of outstanding</b> uses 4 vertical bars in a row, growing taller for larger amounts. <b>Bucket colours match the urgency vocabulary</b>: green (1-30 = recent, normal), gold (31-60 = should be paid by now), warn (61-90 = significantly overdue), terra (90+ = collection problem).</li>
+        <li><b>Amount inside each bar in mono with a shadow</b> for legibility against the saturated colour. <b>The 31-60 bucket is the tallest</b> at GHS 36,560 — visually clear that the bulk of outstanding sits there, even before reading the numbers.</li>
+        <li><b>"none yet · term started 37d ago"</b> on the 90+ bucket explains why that bar is empty. <b>Honest reasoning</b> rather than just zero — at week 6 of term, no invoice can be 90 days old yet. The bucket exists for completeness; it'll fill up later.</li>
+        <li><b>Aging callout in gold-bordered italic</b> reads the data interpretively: "Most outstanding sits in the 31-60 day bucket (54%) — these are families who didn't pay in the front-loaded weeks 1-2 surge and haven't caught up since." <b>The system explains what the shape means</b>, then advises: "Watch the 31-60 day bucket carefully: if it migrates to 61-90 without payment, those families may need direct outreach."</li>
+        <li><b>The callout suggests action, not panic.</b> "May need direct outreach" — soft, conditional, agency-respecting. The system surfaces a pattern; the headmistress decides what to do about it.</li>
+        <li><b>"Open balances report" CTA in the header</b> connects the trend report to its operational sibling. The trend tells you the shape; the balances report tells you who specifically to call. Two reports, one workflow: read the trend, drill to balances, send reminders.</li>
+        <li><b>What's not here:</b> No predictive model ("at this rate, you'll end the term at GHS 218k"). No comparisons to other schools. No teacher-attribution ("classes with Mr. X collect faster"). No fee-structure changes recommended. <b>The report describes; the headmistress decides.</b></li>
+        <li><b>What's also not here:</b> No charts beyond the one on Region 2. No granular by-day breakdown. No payment-method splits (MoMo vs Cash vs Bank). The report focuses on temporal trend; payment-method analytics belong in a separate finance report if needed.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

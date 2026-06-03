@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — PTA structure setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+/* Desktop frame */
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.settings-head { padding:28px 36px 20px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; }
+.settings-head .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.settings-head h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.settings-head h2 em { font-style:italic; color:var(--gold); }
+.settings-head .lede { font-size:13px; color:var(--navy-3); max-width:560px; line-height:1.5; }
+.settings-head .save-state { font-size:11px; color:var(--green); font-weight:600; display:flex; align-items:center; gap:5px; }
+.settings-head .save-state .dot { width:6px; height:6px; border-radius:50%; background:var(--green); }
+
+.settings-body { padding:32px 36px 40px; }
+
+/* Top intro · the four tiers */
+.tiers-intro { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:12px; padding:24px 28px; margin-bottom:32px; }
+.tiers-intro .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.tiers-intro h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; letter-spacing:-0.01em; margin-bottom:8px; }
+.tiers-intro h3 em { font-style:italic; color:var(--gold); }
+.tiers-intro p { font-size:13px; color:var(--navy-2); line-height:1.65; }
+.tiers-intro p b { color:var(--navy); font-weight:600; }
+
+/* Tier configuration cards */
+.tier-stack { display:flex; flex-direction:column; gap:18px; }
+.tier-card { background:var(--surface); border:1.5px solid var(--border); border-radius:14px; overflow:hidden; }
+.tier-card.active { border-color:var(--gold-soft); }
+.tier-card.off { opacity:0.7; }
+
+.tier-head { padding:20px 26px; display:grid; grid-template-columns:60px 1fr auto; gap:20px; align-items:center; background:var(--bg); border-bottom:1px solid var(--border); }
+.tier-card.off .tier-head { background:var(--surface); }
+.tier-head .icon-shape { width:60px; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:24px; }
+.tier-head .icon-shape.form { background:var(--navy); color:var(--bg); }
+.tier-head .icon-shape.house { background:var(--gold); color:var(--navy); }
+.tier-head .icon-shape.general { background:var(--green); color:var(--bg); }
+.tier-head .icon-shape.emergency { background:var(--terra); color:var(--bg); }
+.tier-head .meta .label { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.tier-head .meta h4 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; letter-spacing:-0.005em; margin-bottom:4px; }
+.tier-head .meta h4 em { font-style:italic; color:var(--gold); font-weight:500; }
+.tier-head .meta .desc { font-size:12px; color:var(--navy-3); line-height:1.5; }
+.tier-head .meta .desc b { color:var(--navy-2); font-weight:600; }
+
+/* Toggle */
+.toggle { display:flex; align-items:center; gap:10px; }
+.toggle .switch { width:42px; height:24px; background:var(--border-2); border-radius:100px; position:relative; cursor:pointer; transition:background 0.15s; }
+.toggle .switch.on { background:var(--green); }
+.toggle .switch::after { content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:var(--surface); transition:left 0.15s; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+.toggle .switch.on::after { left:21px; }
+.toggle .switch-label { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.toggle .switch-label.on { color:var(--green); }
+.toggle .switch-label.off { color:var(--navy-3); }
+
+.tier-body { padding:24px 26px; }
+.tier-card.off .tier-body { display:none; }
+.config-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px 28px; }
+.config-field { }
+.config-field .fl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.config-field .fl .badge-opt { font-size:9px; font-weight:700; padding:1px 7px; border-radius:100px; background:var(--gold-bg); color:var(--gold); text-transform:none; letter-spacing:0.04em; }
+.config-field input, .config-field select { width:100%; padding:10px 12px; border:1px solid var(--border); background:var(--surface); border-radius:7px; font-family:inherit; font-size:13px; color:var(--navy); }
+.config-field input:focus, .config-field select:focus { outline:none; border-color:var(--gold); }
+.config-field .hint { font-size:11px; color:var(--navy-3); margin-top:5px; line-height:1.4; font-style:italic; }
+.config-field .hint b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Dues subsection */
+.dues-block { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 22px; margin-top:18px; }
+.dues-block.disabled { background:var(--surface); }
+.dues-head-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.dues-head-row .lab { font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.dues-head-row .lab b { color:var(--navy); }
+.dues-fields { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.dues-block.disabled .dues-fields { opacity:0.4; pointer-events:none; }
+.dues-empty { font-size:12px; color:var(--navy-3); font-style:italic; padding:4px 0; }
+.dues-empty em { font-style:italic; color:var(--navy-2); }
+
+/* Auto-generation preview */
+.gen-preview { background:var(--navy); color:var(--bg); border-radius:14px; padding:24px 28px; margin-top:18px; }
+.gen-preview .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.gen-preview h4 { font-family:'Fraunces',serif; font-size:20px; font-weight:500; letter-spacing:-0.005em; margin-bottom:14px; }
+.gen-preview h4 em { font-style:italic; color:var(--gold); }
+.gen-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.gen-tile { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:14px 16px; }
+.gen-tile .num { font-family:'Fraunces',serif; font-size:32px; font-weight:500; color:var(--gold); letter-spacing:-0.02em; line-height:1; margin-bottom:6px; }
+.gen-tile .num em { font-style:italic; }
+.gen-tile .num.zero { color:rgba(232,212,184,0.5); }
+.gen-tile .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(250,247,242,0.7); font-weight:700; margin-bottom:3px; }
+.gen-tile .lab b { color:var(--bg); }
+.gen-tile .detail { font-size:11px; color:rgba(250,247,242,0.5); line-height:1.45; margin-top:6px; }
+
+/* Edit posture card */
+.posture-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:22px; }
+.posture-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.posture-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.posture-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.posture-card p b { color:var(--navy); font-weight:600; }
+
+/* Editorial · the four conversations */
+.conv-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; }
+.conv-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 26px; }
+.conv-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; margin-bottom:8px; }
+.conv-card.form .eb { color:var(--navy); }
+.conv-card.house .eb { color:var(--gold); }
+.conv-card.general .eb { color:var(--green); }
+.conv-card.emergency .eb { color:var(--terra); }
+.conv-card h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; letter-spacing:-0.005em; margin-bottom:10px; line-height:1.25; }
+.conv-card h4 em { font-style:italic; }
+.conv-card .scenario { font-size:13px; color:var(--navy-2); line-height:1.6; margin-bottom:14px; }
+.conv-card .scenario b { color:var(--navy); font-weight:600; }
+.conv-card .who-when { padding-top:12px; border-top:1px solid var(--border); display:grid; grid-template-columns:1fr 1fr; gap:14px; font-size:12px; }
+.conv-card .who-when .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.conv-card .who-when .val { font-weight:600; color:var(--navy-2); }
+
+/* Mobile preview */
+.mobile-cluster { display:grid; grid-template-columns:repeat(2,1fr); gap:28px; }
+.phone { background:var(--navy); padding:14px; border-radius:36px; max-width:360px; margin:0 auto; }
+.phone-inner { background:var(--bg); border-radius:24px; overflow:hidden; }
+.phone-bar { padding:10px 18px; display:flex; justify-content:space-between; font-size:11px; font-weight:600; }
+.phone-app-head { padding:14px 18px; background:var(--surface); border-bottom:1px solid var(--border); }
+.phone-app-head .crumb { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:4px; }
+.phone-app-head h5 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; letter-spacing:-0.005em; }
+.phone-app-head h5 em { font-style:italic; color:var(--gold); }
+.phone-body { padding:16px 18px; }
+.phone-tile { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+.phone-tile .row1 { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+.phone-tile .tier-icon { width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:12px; }
+.phone-tile .tier-icon.form { background:var(--navy); color:var(--bg); }
+.phone-tile .tier-icon.house { background:var(--gold); color:var(--navy); }
+.phone-tile .tier-icon.general { background:var(--green); color:var(--bg); }
+.phone-tile .tier-icon.emergency { background:var(--terra); color:var(--bg); }
+.phone-tile .badge-mini { font-size:9px; font-weight:700; padding:2px 7px; border-radius:100px; letter-spacing:0.04em; }
+.phone-tile .badge-mini.on { background:var(--green-bg); color:var(--green); }
+.phone-tile .badge-mini.off { background:var(--bg); color:var(--navy-3); }
+.phone-tile h6 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; margin-bottom:3px; }
+.phone-tile .meta { font-size:10px; color:var(--navy-3); line-height:1.4; }
+
+.foot-bar { padding:16px 36px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--bg); }
+.foot-bar .ftext { font-size:11px; color:var(--navy-3); font-style:italic; }
+.foot-bar .ftext b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.foot-bar .factions { display:flex; gap:10px; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Forms/PTA batch · 01 of 06</div>
+  <span class="mvp-tag">SHS · PTA governance</span>
+  <span class="related-tag">Foundational · everything else builds on this</span>
+  <h1 class="display">Four tiers, <em>four conversations</em></h1>
+  <div class="gold-rule"></div>
+  <p>A PTA in a Ghanaian SHS isn't one body — it's four. The <b>Form PTA</b> handles class-level concerns. The <b>House PTA</b> handles boarding and pastoral matters. The <b>General PTA</b> is the school-wide governance body. The <b>Emergency PTA</b> is the body convened when something can't wait. Each tier has its own attendance register, its own officers, sometimes its own dues. This surface is where the admin tells Omnischools which tiers are active at this school, what they look like, and how they're funded — if at all. <em>Dues are optional everywhere. Set once, change anytime.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The configuration surface · per tier, on or off</div>
+    <div class="section-meta">Settings → PTA structure · admin only</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / pta-structure</div>
+      </div>
+
+      <div class="settings-head">
+        <div>
+          <div class="crumb">Settings · Governance · PTA structure</div>
+          <h2 class="display">PTA <em>structure</em></h2>
+          <div class="lede">Which PTAs your school runs, how often they meet, who their officers are, and whether they collect dues. Configure once when SHS opens; revisit anytime.</div>
+        </div>
+        <div class="save-state"><span class="dot"></span>All changes saved · 2 mins ago</div>
+      </div>
+
+      <div class="settings-body">
+
+        <div class="tiers-intro">
+          <div class="eb">Before you configure</div>
+          <h3 class="display">A PTA in Ghana isn't <em>one body</em>, it's four.</h3>
+          <p>Most SHSs run <b>all four tiers</b> in some form. Day schools may skip the House PTA if Houses are nominal. New schools often start with only the General PTA and add the Form tier in year two. <b>Whatever combination works for your school, configure it here.</b> You can switch tiers on or off later — existing records are preserved.</p>
+        </div>
+
+        <div class="tier-stack">
+
+          <!-- Form PTA tier -->
+          <div class="tier-card active">
+            <div class="tier-head">
+              <div class="icon-shape form">FP</div>
+              <div class="meta">
+                <div class="label">Tier 1</div>
+                <h4 class="display">Form PTA <em>· per class</em></h4>
+                <div class="desc">One PTA per class. <b>20 Form PTAs auto-generated</b> from your current class list. Form Master is the default secretary. Meets once per term typically.</div>
+              </div>
+              <div class="toggle">
+                <div class="switch on"></div>
+                <span class="switch-label on">Active</span>
+              </div>
+            </div>
+            <div class="tier-body">
+              <div class="config-grid">
+                <div class="config-field">
+                  <div class="fl">Meeting frequency · norm</div>
+                  <select>
+                    <option>Once per term (3× per academic year)</option>
+                    <option>Twice per term</option>
+                    <option>Monthly</option>
+                    <option>Ad-hoc — Form Master decides</option>
+                  </select>
+                  <div class="hint">Default cadence · individual Form PTAs can override</div>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Default officer roles</div>
+                  <input type="text" value="Chair · Vice · Secretary · Treasurer">
+                  <div class="hint">4 standard roles · Form Master serves ex-officio as Secretary</div>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Membership basis</div>
+                  <select>
+                    <option>One parent/guardian per student (default)</option>
+                    <option>Both parents (where available)</option>
+                  </select>
+                  <div class="hint">Affects expected-attendees count on registers</div>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Quorum for binding decisions</div>
+                  <input type="text" value="50% of parents present + Form Master">
+                  <div class="hint">Free-text · displayed on meeting register</div>
+                </div>
+              </div>
+
+              <div class="dues-block">
+                <div class="dues-head-row">
+                  <div class="lab">Form PTA <b>dues</b> · optional, school-set, changeable anytime</div>
+                  <div class="toggle">
+                    <div class="switch on"></div>
+                    <span class="switch-label on">Collecting</span>
+                  </div>
+                </div>
+                <div class="dues-fields">
+                  <div class="config-field">
+                    <div class="fl">Amount per cadence</div>
+                    <input type="text" value="GHS 50.00">
+                  </div>
+                  <div class="config-field">
+                    <div class="fl">Charged</div>
+                    <select>
+                      <option>Per student (default for Form tier)</option>
+                      <option>Per family (one fee covers all siblings)</option>
+                    </select>
+                  </div>
+                  <div class="config-field">
+                    <div class="fl">Cadence</div>
+                    <select>
+                      <option>Per term</option>
+                      <option>Per academic year</option>
+                      <option>One-off (admission only)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- House PTA tier -->
+          <div class="tier-card active">
+            <div class="tier-head">
+              <div class="icon-shape house">HP</div>
+              <div class="meta">
+                <div class="label">Tier 2</div>
+                <h4 class="display">House PTA <em>· per House</em></h4>
+                <div class="desc">One PTA per House. <b>6 House PTAs auto-generated.</b> Housemaster is the default Secretary. Focus: boarding, welfare, pastoral matters, House finances.</div>
+              </div>
+              <div class="toggle">
+                <div class="switch on"></div>
+                <span class="switch-label on">Active</span>
+              </div>
+            </div>
+            <div class="tier-body">
+              <div class="config-grid">
+                <div class="config-field">
+                  <div class="fl">Meeting frequency · norm</div>
+                  <select>
+                    <option>Once per term</option>
+                    <option>Twice per academic year (visiting day + speech day)</option>
+                    <option>As called by Housemaster</option>
+                  </select>
+                  <div class="hint">Houses often align with Visiting Day cadence</div>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Default officer roles</div>
+                  <input type="text" value="Chair · Vice · Secretary · Treasurer">
+                </div>
+                <div class="config-field">
+                  <div class="fl">Membership scope</div>
+                  <select>
+                    <option>Parents of students assigned to this House (boarding & day)</option>
+                    <option>Parents of boarders only</option>
+                  </select>
+                  <div class="hint">Default: all House-affiliated, day or boarding</div>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Quorum</div>
+                  <input type="text" value="40% of House parents + Housemaster">
+                </div>
+              </div>
+
+              <div class="dues-block disabled">
+                <div class="dues-head-row">
+                  <div class="lab">House PTA <b>dues</b> · optional, school-set, changeable anytime</div>
+                  <div class="toggle">
+                    <div class="switch"></div>
+                    <span class="switch-label off">No dues</span>
+                  </div>
+                </div>
+                <div class="dues-empty"><em>Many SHSs run House PTAs without dues</em> — House projects are funded ad-hoc from speech-day collections. Flip the switch to enable.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- General PTA tier -->
+          <div class="tier-card active">
+            <div class="tier-head">
+              <div class="icon-shape general">GP</div>
+              <div class="meta">
+                <div class="label">Tier 3</div>
+                <h4 class="display">General PTA <em>· school-wide</em></h4>
+                <div class="desc">One per school. <b>This is "the PTA"</b> in casual reference. Elected executive, school-wide policy, the body the Headmaster reports to. Always active in any school that runs a PTA at all.</div>
+              </div>
+              <div class="toggle">
+                <div class="switch on"></div>
+                <span class="switch-label on">Active</span>
+              </div>
+            </div>
+            <div class="tier-body">
+              <div class="config-grid">
+                <div class="config-field">
+                  <div class="fl">Meeting frequency · norm</div>
+                  <select>
+                    <option>Once per term + AGM annually (default)</option>
+                    <option>Twice per term</option>
+                    <option>AGM only · all else by Emergency tier</option>
+                  </select>
+                  <div class="hint">AGM auto-flagged for officer elections</div>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Executive roles</div>
+                  <input type="text" value="Chair · Vice · Secretary · Asst Secretary · Treasurer · Financial Secretary · Organising Secretary">
+                  <div class="hint">7 roles standard for General PTA executive</div>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Headmaster role</div>
+                  <select>
+                    <option>Ex-officio (non-voting member)</option>
+                    <option>Voting member</option>
+                    <option>Observer only</option>
+                  </select>
+                  <div class="hint">Headmaster typically attends but doesn't vote on PTA resolutions</div>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Officer term length</div>
+                  <select>
+                    <option>2 academic years (default)</option>
+                    <option>1 academic year</option>
+                    <option>3 academic years</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="dues-block">
+                <div class="dues-head-row">
+                  <div class="lab">General PTA <b>dues</b> · optional, school-set, changeable anytime</div>
+                  <div class="toggle">
+                    <div class="switch on"></div>
+                    <span class="switch-label on">Collecting</span>
+                  </div>
+                </div>
+                <div class="dues-fields">
+                  <div class="config-field">
+                    <div class="fl">Amount per cadence</div>
+                    <input type="text" value="GHS 200.00">
+                  </div>
+                  <div class="config-field">
+                    <div class="fl">Charged</div>
+                    <select>
+                      <option>Per family (default for General tier)</option>
+                      <option>Per student</option>
+                    </select>
+                  </div>
+                  <div class="config-field">
+                    <div class="fl">Cadence</div>
+                    <select>
+                      <option>Per academic year</option>
+                      <option>Per term</option>
+                      <option>One-off (admission only)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Emergency PTA tier -->
+          <div class="tier-card active">
+            <div class="tier-head">
+              <div class="icon-shape emergency">EP</div>
+              <div class="meta">
+                <div class="label">Tier 4</div>
+                <h4 class="display">Emergency PTA <em>· on-demand</em></h4>
+                <div class="desc">Not pre-scheduled. <b>Convened when something can't wait</b> — a serious incident, an urgent policy decision, an unbudgeted expenditure. Convened by Headmaster or General PTA Chair only. Standing dues don't apply; ad-hoc levies allowed.</div>
+              </div>
+              <div class="toggle">
+                <div class="switch on"></div>
+                <span class="switch-label on">Available</span>
+              </div>
+            </div>
+            <div class="tier-body">
+              <div class="config-grid">
+                <div class="config-field">
+                  <div class="fl">Who can convene</div>
+                  <select>
+                    <option>Headmaster OR General PTA Chair (default)</option>
+                    <option>Headmaster only</option>
+                    <option>General PTA Chair only</option>
+                  </select>
+                  <div class="hint">Audit-logged when triggered · attaches reason</div>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Minimum notice required</div>
+                  <select>
+                    <option>48 hours (default)</option>
+                    <option>24 hours</option>
+                    <option>72 hours</option>
+                    <option>No minimum (true emergency)</option>
+                  </select>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Attendance scope</div>
+                  <select>
+                    <option>All General PTA members (default)</option>
+                    <option>Executive only</option>
+                    <option>Specified subset (e.g. one tier · one Form · one House)</option>
+                  </select>
+                </div>
+                <div class="config-field">
+                  <div class="fl">Ad-hoc levy allowed</div>
+                  <select>
+                    <option>Yes · with resolution passed</option>
+                    <option>No · standing dues only</option>
+                  </select>
+                  <div class="hint">If yes, levy goes through the dues fee category with audit trail</div>
+                </div>
+              </div>
+
+              <div class="dues-block disabled">
+                <div class="dues-head-row">
+                  <div class="lab">Emergency PTA <b>standing dues</b> · not typical for this tier</div>
+                  <div class="toggle">
+                    <div class="switch"></div>
+                    <span class="switch-label off">No standing dues</span>
+                  </div>
+                </div>
+                <div class="dues-empty"><em>Emergency PTAs raise funds by resolution</em>, not standing dues. Keep this off unless your school has a specific recurring emergency-tier fee structure.</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Auto-generation preview -->
+        <div class="gen-preview">
+          <div class="eb">What this configuration produces</div>
+          <h4 class="display">Omnischools will <em>auto-generate</em> these PTA instances tomorrow morning</h4>
+          <div class="gen-grid">
+            <div class="gen-tile">
+              <div class="num display"><em>20</em></div>
+              <div class="lab">Form <b>PTAs</b></div>
+              <div class="detail">One per class · derived from your current class list · dues GHS 50/term/student</div>
+            </div>
+            <div class="gen-tile">
+              <div class="num display"><em>6</em></div>
+              <div class="lab">House <b>PTAs</b></div>
+              <div class="detail">One per House · no dues collected · Housemaster as Secretary</div>
+            </div>
+            <div class="gen-tile">
+              <div class="num display"><em>1</em></div>
+              <div class="lab">General <b>PTA</b></div>
+              <div class="detail">School-wide executive · 7 elected roles · GHS 200/year/family</div>
+            </div>
+            <div class="gen-tile">
+              <div class="num display zero">—</div>
+              <div class="lab">Emergency <b>PTAs</b></div>
+              <div class="detail">On-demand only · no standing instances · auto-created when convened</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="posture-card">
+          <div class="eb">Dues posture · the Omnischools rule</div>
+          <p><em>Dues are forward-only.</em> If you change Form PTA dues from GHS 50 to GHS 75 mid-term, students already invoiced at GHS 50 keep their existing invoice unchanged. The new amount applies to all new invoices from the effective date onward. <b>Same pattern as discounts and fee structures across Omnischools.</b> Past records stay accurate; future records reflect the change. Every dues change is audit-logged with timestamp, admin, and reason.</p>
+        </div>
+
+      </div>
+
+      <div class="foot-bar">
+        <div class="ftext">PTA structure last edited · 14 May 2026 by <b>Mrs Boateng (Admin)</b></div>
+        <div class="factions">
+          <button class="btn ghost">View change log</button>
+          <button class="btn primary">Generate PTAs now</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Design notes</h4>
+      <ul>
+        <li><b>Four cards, four toggles.</b> Each tier is independently switchable. Most schools run all four, but the model allows the awkward cases — day-school with nominal Houses, new school starting only with General.</li>
+        <li><b>Dues are optional everywhere.</b> Each tier has its own dues toggle. Default state matches operational reality: Form tier collects, House tier usually doesn't, General tier collects, Emergency tier raises ad-hoc.</li>
+        <li><b>Forward-only changes.</b> Amount edits don't retroactively re-invoice. Past records stay; future records reflect new amount. Same audit pattern as the discount management surface.</li>
+        <li><b>Per-family vs per-student.</b> School chooses per tier at setup. Default: Form tier per-student, General tier per-family. Matches Ghanaian operational practice.</li>
+        <li><b>Auto-generation preview.</b> The four-tile preview at the bottom is the contract: "here's what we'll create when you save." No surprise instances.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Schema this drives</h4>
+      <ul>
+        <li><b>pta_tiers_config</b> · one row per school per tier · active flag, frequency norm, officer roles JSON, dues_enabled, dues_amount, dues_basis, dues_cadence</li>
+        <li><b>ptas</b> · the generated instances · tier_type, scope_ref (class_id, house_id, or NULL for General)</li>
+        <li><b>pta_dues_config_history</b> · append-only · every dues change with effective_from date · drives forward-only behaviour</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">The four conversations · what each tier actually does</div>
+    <div class="section-meta">Editorial · why four and not one</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="conv-grid">
+
+        <div class="conv-card form">
+          <div class="eb">Tier 1 · Form PTA</div>
+          <h4 class="display">"My child's <em>class</em> · what's going on?"</h4>
+          <div class="scenario">A Form 2 General Arts A parent wants to discuss the WAEC mock results, the upcoming class trip to Cape Coast, and whether the class would contribute to a leaving gift for the outgoing Class Prefect. <b>This isn't a Headmaster-level conversation.</b> It belongs at the Form PTA — Form Master in the room, the 32 parents who care, two hours one Saturday a term.</div>
+          <div class="who-when">
+            <div>
+              <div class="lab">Who</div>
+              <div class="val">32 parents · Form Master · subject teachers if invited</div>
+            </div>
+            <div>
+              <div class="lab">When</div>
+              <div class="val">Once per term · Form Master convenes</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="conv-card house">
+          <div class="eb">Tier 2 · House PTA</div>
+          <h4 class="display">"My child's <em>House</em> · welfare, boarding, sport"</h4>
+          <div class="scenario">An Aryee House parent wants to raise concerns about the dining hall menu, the inter-House athletics fund, and the proposed renovation of the House dormitory. <b>This isn't a Form-level concern</b> and the Form Master can't action it. It's a Housemaster + House parents conversation. Often aligns with Visiting Day so out-of-town parents can attend.</div>
+          <div class="who-when">
+            <div>
+              <div class="lab">Who</div>
+              <div class="val">Parents of House students · Housemaster · House matron</div>
+            </div>
+            <div>
+              <div class="lab">When</div>
+              <div class="val">Once or twice per year · often Visiting Day-aligned</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="conv-card general">
+          <div class="eb">Tier 3 · General PTA</div>
+          <h4 class="display">"The <em>school</em> · policy, fees, leadership"</h4>
+          <div class="scenario">The school-wide PTA. Elected executive (Chair, Secretary, Treasurer, etc.). Discusses tuition fee increases, the BOG's proposed new classroom block, the choice of WASSCE prep materials, the Speech Day budget. <b>The Headmaster reports here.</b> Resolutions passed at General PTA are binding governance decisions. AGM annually with officer elections.</div>
+          <div class="who-when">
+            <div>
+              <div class="lab">Who</div>
+              <div class="val">All parents · Headmaster (ex-officio) · executive officers</div>
+            </div>
+            <div>
+              <div class="lab">When</div>
+              <div class="val">Once per term + AGM · executive convenes</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="conv-card emergency">
+          <div class="eb">Tier 4 · Emergency PTA</div>
+          <h4 class="display">"<em>Something happened</em> · we need to meet"</h4>
+          <div class="scenario">A serious dormitory incident. A funding crisis. A government policy change that needs parental discussion before next term. <b>The Emergency tier is the convene-button</b> when the next scheduled General PTA is too far away. Headmaster or PTA Chair can call it. 48-hour notice typical. SMS-blast to all parents. Resolution passed → school can act on it.</div>
+          <div class="who-when">
+            <div>
+              <div class="lab">Who</div>
+              <div class="val">Default: General PTA scope · or specified subset</div>
+            </div>
+            <div>
+              <div class="lab">When</div>
+              <div class="val">On-demand · convener-triggered · audit-logged</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Why four tiers</h4>
+      <ul>
+        <li><b>Different conversations belong at different levels.</b> A class trip isn't a school-wide concern; a tuition increase isn't a Form-level concern. The four-tier structure routes the conversation to the right room.</li>
+        <li><b>Different officers, different mandates.</b> A Form PTA Chair has different authority than the General PTA Chair. The matrix surface (next file) handles who holds which role at which tier.</li>
+        <li><b>Different dues, different uses.</b> Form dues fund class activities. General dues fund school-wide projects. House dues (rare) fund House welfare. Emergency levies fund the emergency.</li>
+        <li><b>This shape was the operational reality before Omnischools.</b> The four-tier model isn't introduced by the platform — it's how Ghanaian SHSs already work, made legible.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Mobile · admin on the move</div>
+    <div class="section-meta">Tablet & phone variants</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="mobile-cluster">
+
+        <div>
+          <div class="phone">
+            <div class="phone-inner">
+              <div class="phone-bar"><span>9:14</span><span>● ● ●</span></div>
+              <div class="phone-app-head">
+                <div class="crumb">Settings · PTA structure</div>
+                <h5 class="display">Four <em>tiers</em></h5>
+              </div>
+              <div class="phone-body">
+
+                <div class="phone-tile">
+                  <div class="row1">
+                    <div class="tier-icon form">FP</div>
+                    <div class="badge-mini on">● Active · dues on</div>
+                  </div>
+                  <h6 class="display">Form PTA</h6>
+                  <div class="meta">20 PTAs · GHS 50/term/student · Form Master convenes</div>
+                </div>
+
+                <div class="phone-tile">
+                  <div class="row1">
+                    <div class="tier-icon house">HP</div>
+                    <div class="badge-mini on">● Active · no dues</div>
+                  </div>
+                  <h6 class="display">House PTA</h6>
+                  <div class="meta">6 PTAs · no standing dues · Housemaster convenes</div>
+                </div>
+
+                <div class="phone-tile">
+                  <div class="row1">
+                    <div class="tier-icon general">GP</div>
+                    <div class="badge-mini on">● Active · dues on</div>
+                  </div>
+                  <h6 class="display">General PTA</h6>
+                  <div class="meta">1 PTA · GHS 200/year/family · Executive convenes</div>
+                </div>
+
+                <div class="phone-tile">
+                  <div class="row1">
+                    <div class="tier-icon emergency">EP</div>
+                    <div class="badge-mini on">● Available · on-demand</div>
+                  </div>
+                  <h6 class="display">Emergency PTA</h6>
+                  <div class="meta">Headmaster or Chair · 48hr notice · ad-hoc levy</div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="phone">
+            <div class="phone-inner">
+              <div class="phone-bar"><span>9:16</span><span>● ● ●</span></div>
+              <div class="phone-app-head">
+                <div class="crumb">Form PTA · configuration</div>
+                <h5 class="display">Form <em>PTA</em></h5>
+              </div>
+              <div class="phone-body">
+                <div style="padding:12px 14px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:9px; margin-bottom:12px;">
+                  <div style="font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px;">Editing dues</div>
+                  <div style="font-family:'Fraunces',serif; font-size:14px; font-weight:600; margin-bottom:5px;">GHS 50.00 → <em style="color:var(--gold);">GHS 75.00</em></div>
+                  <div style="font-size:11px; color:var(--navy-2); line-height:1.5;">Per student · per term · effective from Term 3 invoicing. <b>Existing invoices at GHS 50 stay unchanged.</b></div>
+                </div>
+
+                <div style="background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:12px 14px; margin-bottom:10px;">
+                  <div style="font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px;">Effective from</div>
+                  <div style="font-size:13px; font-weight:600;">15 May 2026 · Term 3 invoicing run</div>
+                </div>
+
+                <div style="background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:12px 14px; margin-bottom:10px;">
+                  <div style="font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px;">Reason (for audit)</div>
+                  <div style="font-size:13px; font-style:italic; color:var(--navy-2);">"Approved at General PTA AGM, 12 May 2026, minute 7.4"</div>
+                </div>
+
+                <button style="width:100%; background:var(--navy); color:var(--bg); padding:13px; border-radius:8px; font-size:12px; font-weight:700; border:none; cursor:pointer;">Confirm dues change</button>
+                <div style="font-size:10px; color:var(--navy-3); text-align:center; margin-top:8px; font-style:italic;">Audit-logged · forward-only · no retroactive effect</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Mobile considerations</h4>
+      <ul>
+        <li><b>Tier list is the entry point.</b> Mobile admin sees the four tiers at a glance, taps in to configure each.</li>
+        <li><b>Dues edit flow is the high-frequency mobile use case.</b> Admin getting a call from PTA Chair: "we agreed at last night's meeting to raise dues to 75." Admin pulls up phone, edits, captures the reason in audit, done in 30 seconds.</li>
+        <li><b>The reason field is mandatory.</b> Especially for forward-only changes that affect parent bills — audit needs to know why the change happened, not just that it did.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

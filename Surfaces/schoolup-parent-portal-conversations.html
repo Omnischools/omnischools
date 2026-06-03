@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Parent's view of conversation history</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; --wa-green:#25A859; --wa-bg:#E7F8EE; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.deferred-tag { display:inline-block; background:var(--terra); color:white; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+/* Phone frame */
+.phone-stage { background:linear-gradient(180deg,#E8E1D2 0%,#DDD5C2 100%); padding:36px; display:flex; justify-content:center; align-items:start; gap:24px; flex-wrap:wrap; border-radius:14px; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.phone { width:380px; background:#0F1B30; border-radius:36px; padding:8px; box-shadow:0 24px 56px -16px rgba(26,43,71,0.45); flex-shrink:0; }
+.phone-screen { background:var(--bg); border-radius:30px; overflow:hidden; min-height:780px; position:relative; }
+.phone-status { padding:14px 22px 8px; display:flex; justify-content:space-between; align-items:center; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.phone-status .dots-status { display:flex; gap:5px; align-items:center; }
+.phone-status .dot-bat { width:22px; height:11px; border:1.5px solid var(--navy); border-radius:3px; position:relative; }
+.phone-status .dot-bat::after { content:""; position:absolute; right:-3px; top:2.5px; width:2px; height:4px; background:var(--navy); border-radius:0 1px 1px 0; }
+.phone-status .dot-bat::before { content:""; position:absolute; top:1.5px; left:1.5px; width:14px; height:5px; background:var(--green); border-radius:1px; }
+
+.phone-app-head { background:var(--surface); padding:14px 20px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.phone-app-head .left-trio { display:flex; align-items:center; gap:10px; }
+.phone-app-head .menu-icon { width:24px; height:24px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
+.phone-app-head .menu-icon span { display:block; width:18px; height:2px; background:var(--navy-2); border-radius:1px; }
+.phone-app-head .school-id { display:flex; align-items:center; gap:8px; }
+.phone-app-head .crest { width:32px; height:32px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.phone-app-head .school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:600; line-height:1.1; }
+.phone-app-head .role { font-size:9px; color:var(--navy-3); margin-top:1px; letter-spacing:0.04em; }
+.phone-app-head .right-icon { width:24px; height:24px; border-radius:50%; background:var(--gold-bg); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:11px; }
+
+/* Bottom tab nav (mobile) */
+.phone-tab-nav { position:absolute; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); padding:8px 12px 16px; display:grid; grid-template-columns:repeat(5,1fr); gap:4px; }
+.phone-tab { padding:6px 4px; text-align:center; }
+.phone-tab .tab-ic { width:22px; height:22px; margin:0 auto 3px; border-radius:5px; background:var(--bg); border:1px solid var(--border); }
+.phone-tab.active .tab-ic { background:var(--navy); border-color:var(--navy); }
+.phone-tab .tab-lbl { font-size:9px; font-weight:600; color:var(--navy-3); letter-spacing:0.02em; }
+.phone-tab.active .tab-lbl { color:var(--navy); }
+
+.phone-content { padding:18px 20px 100px; }
+
+/* Page header for parent's messages screen */
+.parent-greeting { margin-bottom:18px; }
+.parent-greeting .eb { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.parent-greeting h2 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; }
+.parent-greeting h2 em { font-style:italic; color:var(--gold); font-weight:400; }
+.parent-greeting .lede { font-size:13px; color:var(--navy-3); margin-top:6px; line-height:1.5; }
+.parent-greeting .lede b { color:var(--navy-2); font-weight:600; }
+
+/* Tone summary card (parent-facing version - calmer) */
+.tone-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; margin-bottom:16px; }
+.tone-card .tone-eyebrow { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.tone-card .tone-summary { font-family:'Fraunces',serif; font-size:15px; font-weight:500; letter-spacing:-0.012em; line-height:1.4; }
+.tone-card .tone-summary em { font-style:italic; color:var(--gold); font-weight:500; }
+.tone-card .tone-summary b { font-weight:600; }
+.tone-card .last-contact { padding-top:10px; margin-top:10px; border-top:1px dashed var(--border); font-size:11px; color:var(--navy-3); }
+.tone-card .last-contact b { color:var(--navy); font-weight:600; }
+.tone-card .last-contact em { font-style:italic; color:var(--gold); }
+
+/* Filter pills - parent style is simpler */
+.filter-row-mobile { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.filter-pill-m { padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:600; color:var(--navy-2); white-space:nowrap; flex-shrink:0; cursor:pointer; }
+.filter-pill-m.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill-m em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+.filter-pill-m .count { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; opacity:0.6; margin-left:3px; }
+
+/* Day headers (mobile) */
+.day-header-m { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin:18px 0 8px; padding-left:2px; }
+.day-header-m em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); text-transform:none; letter-spacing:0; font-size:13px; font-weight:500; }
+
+/* Message cards (parent view) */
+.msg-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:8px; }
+.msg-card.school { border-left:3px solid var(--gold); }
+.msg-card.parent { background:var(--gold-bg); border-color:var(--gold-soft); }
+
+.msg-card .msg-head { display:flex; justify-content:space-between; align-items:start; margin-bottom:6px; gap:10px; }
+.msg-card .msg-head .from { display:flex; align-items:center; gap:6px; }
+.msg-card .msg-head .ch-pill { display:inline-flex; align-items:center; gap:4px; padding:1px 7px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; }
+.msg-card .msg-head .ch-pill.wa { background:var(--wa-bg); color:var(--wa-green); }
+.msg-card .msg-head .ch-pill.sms { background:var(--gold-bg); color:var(--gold); }
+.msg-card .msg-head .ch-pill.email { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+.msg-card .msg-head .from-name { font-size:11px; font-weight:600; color:var(--navy); }
+.msg-card .msg-head .from-name .role { color:var(--navy-3); font-weight:500; font-style:italic; }
+.msg-card .msg-head .ts { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+
+.msg-card .msg-body { font-size:13px; color:var(--navy-2); line-height:1.5; }
+.msg-card .msg-body b { color:var(--navy); font-weight:600; }
+
+.msg-card .msg-foot { padding-top:8px; margin-top:8px; border-top:1px dashed var(--border); display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--navy-3); }
+.msg-card.parent .msg-foot { border-top-color:var(--gold-soft); }
+.msg-card .msg-foot .delivery-tag { display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:100px; font-size:9px; font-weight:700; }
+.msg-card .msg-foot .delivery-tag.delivered { background:var(--green-bg); color:var(--green); }
+.msg-card .msg-foot .delivery-tag.read { background:var(--green); color:white; }
+.msg-card .msg-foot .reply-link { font-weight:600; color:var(--gold); }
+
+/* Privacy footer */
+.privacy-foot { background:var(--bg); border:1px dashed var(--border-2); border-radius:10px; padding:12px 14px; margin-top:18px; font-size:11px; color:var(--navy-3); line-height:1.55; }
+.privacy-foot b { color:var(--navy-2); font-weight:600; }
+.privacy-foot em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+/* SECTION 02: Filter diagram */
+.filter-diagram { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px 28px; }
+.filter-diagram .head { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.012em; margin-bottom:6px; }
+.filter-diagram .head em { font-style:italic; color:var(--gold); }
+.filter-diagram .lede { font-size:12px; color:var(--navy-3); margin-bottom:18px; line-height:1.5; }
+
+.filter-grid { display:grid; grid-template-columns:1fr auto 1fr; gap:18px; align-items:center; margin-top:14px; }
+.filter-col { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.filter-col.admin { border-color:var(--navy); }
+.filter-col.parent { border-color:var(--gold); background:var(--gold-bg); }
+.filter-col .col-head { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:4px; }
+.filter-col .col-name { font-family:'Fraunces',serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; }
+.filter-col .col-name em { font-style:italic; color:var(--gold); }
+.filter-col .col-count { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); margin-top:2px; font-weight:600; }
+.filter-col .col-count b { color:var(--navy); }
+
+.filter-col .item-row { display:grid; grid-template-columns:14px 1fr auto; gap:8px; padding:8px 0; border-bottom:1px dashed var(--border); align-items:center; font-size:11px; }
+.filter-col .item-row:last-child { border-bottom:none; }
+.filter-col .item-row .ic-mini { width:10px; height:10px; border-radius:3px; }
+.filter-col .item-row .ic-mini.outbound { background:var(--gold); }
+.filter-col .item-row .ic-mini.inbound { background:var(--green); }
+.filter-col .item-row .ic-mini.system { background:var(--navy-3); }
+.filter-col .item-row .ic-mini.note { background:var(--terra); border:1px dashed var(--terra-bg); }
+.filter-col .item-row .ic-mini.failed { background:var(--terra); }
+.filter-col .item-row .item-name { color:var(--navy-2); font-weight:500; }
+.filter-col .item-row .item-num { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; color:var(--navy); }
+.filter-col .item-row .vis-tag { font-size:8px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:1px 6px; border-radius:100px; }
+.filter-col .item-row .vis-tag.show { background:var(--green-bg); color:var(--green); }
+.filter-col .item-row .vis-tag.hide { background:var(--terra-bg); color:var(--terra); }
+
+.filter-arrow { font-family:'Fraunces',serif; font-size:24px; color:var(--gold); font-style:italic; font-weight:500; }
+.filter-arrow .arrow-label { display:block; font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-style:normal; font-family:'Manrope',sans-serif; font-weight:700; margin-top:4px; text-align:center; }
+
+.what-not-shown { margin-top:20px; padding:16px 18px; background:var(--bg); border-left:3px solid var(--terra); border-radius:8px; font-size:12px; color:var(--navy-2); line-height:1.6; }
+.what-not-shown b { color:var(--navy); font-weight:600; }
+.what-not-shown em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .filter-grid { grid-template-columns:1fr; }
+  .filter-arrow { transform:rotate(90deg); margin:8px 0; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 3 deferred · Parent portal · conversation history</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <span class="deferred-tag">Deferred decision · resolved</span>
+  <h1 class="display">What <em>Patricia sees</em> on her end</h1>
+  <div class="gold-rule"></div>
+  <p>Parents see their own conversation history — but as a deliberate <b>subset</b> of the admin view. Internal admin notes ("Patricia is reliable — last term she paid in 2 instalments") cannot leak; system auto-route events ("Auto-routed to Joyce · billing topic detected") expose internal mechanics that confuse rather than inform; cost data and segment metadata are operational and not relational. The parent view shows what was sent to them, what they replied, and whether messages got through — and nothing else.</p>
+</header>
+
+<!-- ============ STATE A: PATRICIA'S PARENT-PORTAL VIEW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Patricia's parent portal · Messages tab</div>
+    <div class="section-meta">Mobile · same data source as admin view, deliberately filtered</div>
+  </div>
+
+  <div class="layout">
+    <div class="phone-stage">
+
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-status">
+            <span>9:42</span>
+            <div class="dots-status">
+              <span style="font-size:11px">•••</span>
+              <span style="font-size:11px;letter-spacing:-0.05em">📶</span>
+              <div class="dot-bat"></div>
+            </div>
+          </div>
+
+          <div class="phone-app-head">
+            <div class="left-trio">
+              <div class="menu-icon"><span></span><span></span><span></span></div>
+              <div class="school-id">
+                <div class="crest">CK</div>
+                <div>
+                  <div class="school-name">Christ the King JHS</div>
+                  <div class="role">Parent · Patricia Boateng</div>
+                </div>
+              </div>
+            </div>
+            <div class="right-icon">PB</div>
+          </div>
+
+          <div class="phone-content">
+
+            <div class="parent-greeting">
+              <div class="eb">Messages from Christ the King</div>
+              <h2 class="display">Your <em>conversation</em><br>with the school</h2>
+              <div class="lede">Everything the school has sent you about <b>Akosua</b> · and what you've replied · this term</div>
+            </div>
+
+            <div class="tone-card">
+              <div class="tone-eyebrow">This term</div>
+              <div class="tone-summary display">You and the school have exchanged <em>14 messages</em>. You replied to <b>5 of them</b>.</div>
+              <div class="last-contact">Last message: <em>2 hours ago</em> · from <b>Joyce Owusu-Ansah</b></div>
+            </div>
+
+            <div class="filter-row-mobile">
+              <div class="filter-pill-m active">All<span class="count">14</span></div>
+              <div class="filter-pill-m">From school<span class="count">9</span></div>
+              <div class="filter-pill-m">Your replies<span class="count">5</span></div>
+              <div class="filter-pill-m"><em>WhatsApp</em><span class="count">10</span></div>
+              <div class="filter-pill-m">SMS<span class="count">3</span></div>
+              <div class="filter-pill-m">Email<span class="count">1</span></div>
+            </div>
+
+            <!-- Today -->
+            <div class="day-header-m">Today · <em>Wed 22 Oct</em></div>
+
+            <div class="msg-card parent">
+              <div class="msg-head">
+                <div class="from">
+                  <span class="ch-pill wa">WA</span>
+                  <span class="from-name">You · <span class="role">your reply</span></span>
+                </div>
+                <div class="ts">12:08 PM</div>
+              </div>
+              <div class="msg-body">When can I come to clear the balance? I have GHS 200 ready · my husband sends the rest Friday</div>
+            </div>
+
+            <div class="msg-card school">
+              <div class="msg-head">
+                <div class="from">
+                  <span class="ch-pill wa">WA</span>
+                  <span class="from-name">Joyce Owusu-Ansah <span class="role">· Accountant</span></span>
+                </div>
+                <div class="ts">9:52 AM</div>
+              </div>
+              <div class="msg-body">You can pay via MoMo on <b>0244 555 0140</b> (school's number) or come to the office between 8 AM and 3 PM.</div>
+              <div class="msg-foot">
+                <span class="delivery-tag read">✓✓ Read</span>
+                <span class="reply-link">Reply →</span>
+              </div>
+            </div>
+
+            <div class="msg-card school">
+              <div class="msg-head">
+                <div class="from">
+                  <span class="ch-pill wa">WA</span>
+                  <span class="from-name">Joyce Owusu-Ansah <span class="role">· Accountant</span></span>
+                </div>
+                <div class="ts">9:51 AM</div>
+              </div>
+              <div class="msg-body">Good morning Patricia. Yes, that arrangement is fine. The current balance is GHS 340. If you pay GHS 200 today, the remaining GHS 140 should clear by Friday end of day.</div>
+              <div class="msg-foot">
+                <span class="delivery-tag read">✓✓ Read</span>
+                <span class="reply-link">Reply →</span>
+              </div>
+            </div>
+
+            <div class="msg-card parent">
+              <div class="msg-head">
+                <div class="from">
+                  <span class="ch-pill wa">WA</span>
+                  <span class="from-name">You · <span class="role">started thread</span></span>
+                </div>
+                <div class="ts">9:42 AM</div>
+              </div>
+              <div class="msg-body">Good morning. I want to discuss Akosua's outstanding balance. Can I pay 200 today and the rest on Friday?</div>
+            </div>
+
+            <!-- Last week -->
+            <div class="day-header-m">Last week · <em>Fri 17 Oct</em></div>
+
+            <div class="msg-card school">
+              <div class="msg-head">
+                <div class="from">
+                  <span class="ch-pill sms">SMS</span>
+                  <span class="from-name">Christ the King JHS <span class="role">· fee reminder</span></span>
+                </div>
+                <div class="ts">9:00 AM</div>
+              </div>
+              <div class="msg-body">CHRIST KING: Reminder · Term 1 fee balance for Akosua: GHS 340. Due 15 Oct. Pay via MoMo 0244 555 0140 or at office. Reply for help.</div>
+              <div class="msg-foot">
+                <span class="delivery-tag delivered">✓ Delivered</span>
+                <span class="reply-link">Reply →</span>
+              </div>
+            </div>
+
+            <!-- Earlier this term -->
+            <div class="day-header-m"><em>Earlier this term · 8 messages</em></div>
+
+            <div class="msg-card school">
+              <div class="msg-head">
+                <div class="from">
+                  <span class="ch-pill wa">WA</span>
+                  <span class="from-name">Christ the King JHS <span class="role">· announcement</span></span>
+                </div>
+                <div class="ts">13 Oct · 2:30 PM</div>
+              </div>
+              <div class="msg-body">Mid-term holiday from Wed 22 Oct to Sun 26 Oct. School resumes Mon 27 Oct. Have a restful break! · Florence Addo, Headmistress</div>
+              <div class="msg-foot">
+                <span class="delivery-tag read">✓✓ Read</span>
+                <span class="reply-link">Reply →</span>
+              </div>
+            </div>
+
+            <div class="msg-card school">
+              <div class="msg-head">
+                <div class="from">
+                  <span class="ch-pill sms">SMS</span>
+                  <span class="from-name">Christ the King JHS <span class="role">· receipt</span></span>
+                </div>
+                <div class="ts">8 Oct · 11:18 AM</div>
+              </div>
+              <div class="msg-body">CHRIST KING: Received GHS 410 from you · Akosua's Term 1 fee partially paid · balance now GHS 340 · receipt #2218 emailed.</div>
+              <div class="msg-foot">
+                <span class="delivery-tag delivered">✓ Delivered</span>
+                <span class="reply-link">Reply →</span>
+              </div>
+            </div>
+
+            <div style="text-align:center;padding:14px;font-size:11px;color:var(--navy-3);font-style:italic">6 more messages · scroll to load</div>
+
+            <!-- Privacy footer -->
+            <div class="privacy-foot">
+              <b>What you see here:</b> messages the school sent you, your replies, and whether your messages were delivered. <b>What you don't see:</b> internal staff notes about your account, system routing details, and other operational data — <em>those are private to the school</em>. If you have a question about your record, contact the school office.
+            </div>
+
+          </div>
+
+          <!-- Bottom tab nav -->
+          <div class="phone-tab-nav">
+            <div class="phone-tab"><div class="tab-ic"></div><div class="tab-lbl">Home</div></div>
+            <div class="phone-tab"><div class="tab-ic"></div><div class="tab-lbl">Akosua</div></div>
+            <div class="phone-tab"><div class="tab-ic"></div><div class="tab-lbl">Billing</div></div>
+            <div class="phone-tab active"><div class="tab-ic"></div><div class="tab-lbl">Messages</div></div>
+            <div class="phone-tab"><div class="tab-ic"></div><div class="tab-lbl">Help</div></div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <div class="notes">
+      <h4>Parent's view</h4>
+      <ul>
+        <li><b>Phone frame on a calm gradient stage</b> shows the parent portal's mobile mockup. <b>Different device from the admin view</b> — admins use desktop, parents use phones. The aesthetic shifts: less data density, more breathing room, calmer typography.</li>
+        <li><b>5-tab bottom nav:</b> Home / Akosua / Billing / Messages / Help. <b>Messages is one of five primary tabs</b> in the parent app — same hierarchy parents have for billing, child progress, etc. Conversation history isn't buried.</li>
+        <li><b>Parent greeting in editorial Fraunces</b>: "Your <em>conversation</em> with the school." <b>Frames the page as relational, not transactional</b>; this isn't an inbox, it's a record of communication with people Patricia knows by name.</li>
+        <li><b>Tone summary is calmer than the admin version:</b> "You and the school have exchanged <em>14 messages</em>. You replied to <b>5 of them</b>." <b>14 not 18</b> — system events (2) and internal notes (2) are filtered out before the count is computed. The arithmetic itself reflects the privacy boundary.</li>
+        <li><b>Filter pills with parent-friendly labels:</b> All / From school / Your replies / WhatsApp / SMS / Email. <b>"From school" / "Your replies"</b> instead of "outbound / inbound" — parents don't think in admin terminology. The channel pills carry the same locked vocabulary as the admin view (WA gold, SMS gold-bg, email neutral).</li>
+        <li><b>Two visual treatments for messages:</b> school messages get gold left-border + white background; parent's own replies get gold-tinted background. <b>Mirrors WhatsApp's "their messages on left, your messages on right"</b> convention parents already know.</li>
+        <li><b>Each school message names the sender by role:</b> "Joyce Owusu-Ansah · Accountant" or "Christ the King JHS · fee reminder" for system-templated sends. <b>Real people get named when there's an actual person behind the message</b>; system-generated reminders get the school's identity. Parent knows who to thank, who to follow up with, who not to expect a reply from.</li>
+        <li><b>Delivery state visible only on school-to-parent messages:</b> "✓ Delivered" or "✓✓ Read." <b>Patricia can verify she received what she was supposed to</b> — useful when she later says "I never got that reminder" and the school replies "yes you did, see your record."</li>
+        <li><b>Reply → link on every school message</b> in gold. <b>Parent can respond inline</b> within the portal even if the original message came via WhatsApp or SMS; Omnischools routes it back through the appropriate channel.</li>
+        <li><b>"Earlier this term · 8 messages" day header</b> uses Fraunces italic gold for the chunking. <b>Parents think in terms, not in days</b> for older messages; collapsing earlier weeks reduces visual noise.</li>
+        <li><b>Privacy footer at the bottom of the messages list</b> states the policy plainly: "What you see here: messages the school sent you, your replies, and whether your messages were delivered. What you don't see: internal staff notes about your account, system routing details — those are <em>private to the school</em>." <b>Transparent about what's filtered</b>; doesn't pretend the parent is seeing everything.</li>
+        <li><b>"If you have a question about your record, contact the school office"</b> closes the privacy footer. <b>Sets the right expectation</b>: the parent portal isn't a self-service complaint mechanism for what the school records about them; that's a person-to-person conversation.</li>
+        <li><b>Phone status bar at top:</b> 9:42 / signal indicators / battery. <b>Just enough device chrome to ground the mockup</b> as a real mobile experience, not so much it distracts.</li>
+        <li><b>What this view deliberately doesn't show:</b> no "frequency check" bar, no cost-per-message data, no segment-membership metadata, no system event entries. <b>Parents don't need or want to see the operational layer</b>; admins do. Two views, one source of truth.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE B: WHAT'S FILTERED OUT ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">What's filtered between the two views</div>
+    <div class="section-meta">Same underlying data · two filtered presentations</div>
+  </div>
+
+  <div class="layout">
+    <div class="filter-diagram">
+      <div class="head display">Same data, <em>different filters</em></div>
+      <div class="lede">Patricia and Florence are looking at the same underlying conversation record. The system applies <b>different filters</b> depending on who's reading — Patricia sees what was actually communicated to her; Florence sees the operational layer too.</div>
+
+      <div class="filter-grid">
+
+        <!-- Admin column -->
+        <div class="filter-col admin">
+          <div class="col-head">Admin view · Florence</div>
+          <div class="col-name display">Full record</div>
+          <div class="col-count"><b>18 events</b> across 4 types</div>
+
+          <div style="margin-top:14px">
+            <div class="item-row">
+              <div class="ic-mini outbound"></div>
+              <div class="item-name">School-to-parent messages</div>
+              <div class="item-num">11</div>
+            </div>
+            <div class="item-row">
+              <div class="ic-mini inbound"></div>
+              <div class="item-name">Parent-to-school messages</div>
+              <div class="item-num">5</div>
+            </div>
+            <div class="item-row">
+              <div class="ic-mini system"></div>
+              <div class="item-name">System auto-route events</div>
+              <div class="item-num">2</div>
+            </div>
+            <div class="item-row">
+              <div class="ic-mini note"></div>
+              <div class="item-name">Internal admin notes</div>
+              <div class="item-num">2</div>
+            </div>
+            <div class="item-row">
+              <div class="ic-mini failed"></div>
+              <div class="item-name">Cost &amp; segment metadata</div>
+              <div class="item-num">all</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter arrow -->
+        <div class="filter-arrow">
+          →
+          <div class="arrow-label">Filtered for parent</div>
+        </div>
+
+        <!-- Parent column -->
+        <div class="filter-col parent">
+          <div class="col-head">Parent view · Patricia</div>
+          <div class="col-name display">Filtered <em>subset</em></div>
+          <div class="col-count"><b>14 events</b> across 2 types</div>
+
+          <div style="margin-top:14px">
+            <div class="item-row">
+              <div class="ic-mini outbound"></div>
+              <div class="item-name">School-to-parent messages</div>
+              <div class="item-num">9</div>
+              <div class="vis-tag show">Shown</div>
+            </div>
+            <div class="item-row">
+              <div class="ic-mini inbound"></div>
+              <div class="item-name">Patricia's own replies</div>
+              <div class="item-num">5</div>
+              <div class="vis-tag show">Shown</div>
+            </div>
+            <div class="item-row">
+              <div class="ic-mini system"></div>
+              <div class="item-name">System auto-route events</div>
+              <div class="item-num">—</div>
+              <div class="vis-tag hide">Hidden</div>
+            </div>
+            <div class="item-row">
+              <div class="ic-mini note"></div>
+              <div class="item-name">Internal admin notes</div>
+              <div class="item-num">—</div>
+              <div class="vis-tag hide">Hidden</div>
+            </div>
+            <div class="item-row">
+              <div class="ic-mini failed"></div>
+              <div class="item-name">Cost &amp; segment metadata</div>
+              <div class="item-num">—</div>
+              <div class="vis-tag hide">Hidden</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="what-not-shown">
+        <b>Why these specifically?</b> Internal admin notes contain candid working-language about parents ("Patricia is reliable — last term she paid in 2 instalments") that's appropriate for staff coordination but inappropriate to surface back. <em>System auto-route events</em> ("Auto-routed to Joyce · billing topic detected") expose internal mechanics — parents don't need to know the system uses keyword routing. <b>Cost data</b> (GHS 0.15 per SMS) is operational, not relational. <em>Sender names within messages</em> are visible to parents because the messages were already addressed to them with sender attribution; parents already saw who messaged them — the portal just preserves the record.
+      </div>
+
+      <div style="margin-top:14px;padding:12px 16px;background:var(--gold-bg);border:1px solid var(--gold-soft);border-radius:8px;font-size:11px;color:var(--navy-2);line-height:1.6">
+        <b style="color:var(--navy);font-weight:600">Edge case · failed deliveries.</b> The admin view shows when an SMS bounced or a WhatsApp message failed; the parent view does <em style="font-family:'Fraunces',serif;font-style:italic;color:var(--gold);font-weight:500">not</em> show messages the parent never received. Patricia sees only what was actually delivered to her — the "ghost" of an undelivered reminder that she has no way to verify would only confuse her. Admin retains full visibility for operational follow-up.
+      </div>
+
+    </div>
+
+    <div class="notes">
+      <h4>Filter rules</h4>
+      <ul>
+        <li><b>Two columns showing 18 events admin sees → 14 events parent sees.</b> <b>Visual encoding of the filter</b> as a transformation rather than a redaction — the parent's record is structurally complete from her perspective, just smaller.</li>
+        <li><b>"Shown" / "Hidden" badges</b> on each row of the parent column make explicit which event types are filtered. <b>System auto-route events / internal notes / cost &amp; segment metadata</b> all marked Hidden in terra; school messages and own replies marked Shown in green.</li>
+        <li><b>Editorial explanation of why each type is filtered</b>: internal notes contain candid working-language; system events expose mechanics; cost data is operational. <b>Each rule has a defensible rationale</b>; nothing is hidden arbitrarily.</li>
+        <li><b>Edge case callout for failed deliveries:</b> the parent view doesn't show messages the parent never received. <b>"Ghost" of an undelivered reminder would confuse her</b> with no way to verify; admin retains full visibility for operational follow-up. <b>Different fitness for purpose</b> on each side.</li>
+        <li><b>"Sender names within messages" addressed explicitly</b>: parents see staff names ("Joyce Owusu-Ansah · Accountant") because they were already in the original messages. <b>The portal preserves what was already public</b>; it doesn't introduce new exposure.</li>
+        <li><b>Diagram is part of the documentation</b>, not part of the runtime UI. Bank reviewers, regulators, or curious parents who ask "what does my parent portal actually contain?" can be shown this filter table as the policy. <b>Visible policy is enforceable policy</b>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

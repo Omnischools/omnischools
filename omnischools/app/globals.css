@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background font-body text-foreground antialiased;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  /* Gold italic display accent — a brand signature (Fraunces italic). */
+  .accent-italic {
+    @apply font-display italic text-gold;
+  }
+}

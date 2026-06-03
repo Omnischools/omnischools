@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools Oversight — District director dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Omnischools Oversight — Academic performance analysis</title>
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:800px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Oversight uses a deeper navy app chrome to distinguish it from the operational app */
+.app-shell { display:grid; grid-template-columns:230px 1fr; background:var(--bg); }
+.sidebar { background:#13203A; color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1240px; }
+.sidebar.tall { min-height:1620px; }
+.sidebar.taller { min-height:1880px; }
+.sidebar .gov-mark { padding:0 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:8px; }
+.sidebar .gov-mark .crest { display:flex; gap:11px; align-items:center; }
+.sidebar .gov-mark .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; line-height:1; text-align:center; }
+.sidebar .gov-mark .crest-text .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.sidebar .gov-mark .crest-text .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.sidebar .scope-chip { margin:14px 20px 8px; padding:10px 12px; background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:8px; }
+.sidebar .scope-chip .sc-label { font-size:8.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.sidebar .scope-chip .sc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.sidebar .scope-chip .sc-meta { font-size:10px; color:var(--gold-soft); margin-top:1px; }
+.nav-group { padding:16px 24px 6px; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(200,151,91,0.6); font-weight:700; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.1); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; }
+.sidebar .footer .av { width:34px; height:34px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; flex-shrink:0; }
+.sidebar .footer .meta-name { font-weight:600; font-size:12px; }
+.sidebar .footer .meta-role { font-size:9.5px; color:var(--gold-soft); margin-top:1px; }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.5); font-weight:700; }
+.powered-by em { color:var(--gold); font-style:normal; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:820px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Data-period banner */
+.period-banner { display:flex; align-items:center; gap:14px; padding:12px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; margin-bottom:24px; }
+.period-banner .pb-icon { width:34px; height:34px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:15px; flex-shrink:0; }
+.period-banner .pb-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.period-banner .pb-text b { color:var(--navy); font-weight:700; }
+.period-banner .pb-aside { margin-left:auto; font-size:10px; letter-spacing:0.06em; color:var(--navy-3); font-weight:600; text-align:right; }
+
+/* KPI strip */
+.kpi-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.kpi-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.kpi-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.kpi-card .k-lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.kpi-card .k-val { font-family:'Fraunces', serif; font-size:33px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.kpi-card .k-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.kpi-card .k-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.kpi-card .k-sub { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.kpi-card .k-sub b { color:var(--navy-2); font-weight:700; }
+.kpi-card .k-delta { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; margin-top:8px; position:relative; }
+.kpi-card .k-delta.up { background:var(--green-bg); color:var(--green); }
+.kpi-card .k-delta.down { background:var(--terra-bg); color:var(--terra); }
+.kpi-card .k-delta.flat { background:var(--bg); color:var(--navy-3); }
+
+/* Panel */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.panel-head { padding:16px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; justify-content:space-between; }
+.panel-head .ph-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.panel-head .ph-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.panel-head .ph-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.panel-head .ph-link { font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; }
+.panel-body { padding:20px 22px; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* Bar rows for enrolment-by-sex etc */
+.bar-row { margin-bottom:14px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-row .br-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.bar-row .br-label { font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-label .br-sub { color:var(--navy-3); font-weight:500; font-size:10.5px; margin-left:6px; }
+.bar-row .br-value { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-track { height:9px; background:var(--bg); border-radius:100px; overflow:hidden; display:flex; }
+.bar-row .br-fill { height:100%; }
+.bar-row .br-fill.navy { background:var(--navy); }
+.bar-row .br-fill.gold { background:var(--gold); }
+.bar-row .br-fill.green { background:var(--green); }
+.bar-row .br-fill.terra { background:var(--terra); }
+.bar-row .br-fill.warn { background:var(--warn); }
+.split-legend { display:flex; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.split-legend .sl-item { display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--navy-2); font-weight:600; }
+.split-legend .sl-dot { width:9px; height:9px; border-radius:2px; }
+.bar-row.parent .br-label { display:flex; align-items:center; gap:7px; }
+.bar-row.parent .drill-chip { font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; color:var(--gold); background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:100px; padding:2px 7px; cursor:pointer; }
+.bar-row.child { margin-left:18px; padding-left:12px; border-left:2px solid var(--border); }
+.bar-row.child .br-label { font-weight:500; color:var(--navy-2); font-size:11.5px; }
+.bar-row.child .br-value { font-size:11px; color:var(--navy-2); }
+.bar-row.child .br-track { height:7px; }
+.subtotal-note { font-size:10px; color:var(--navy-3); font-weight:600; margin:3px 0 10px 30px; font-style:italic; }
+.fee-row { margin-bottom:14px; }
+.fee-row:last-child { margin-bottom:0; }
+.fee-row .fr-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.fee-row .fr-level { font-size:12px; font-weight:700; color:var(--navy); }
+.fee-row .fr-total { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.fee-row .fr-bar { height:16px; border-radius:4px; overflow:hidden; display:flex; }
+.fee-row .fr-seg { height:100%; }
+.fee-legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.fee-legend .fl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.fee-legend .fl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* Mini stat list */
+.stat-list { display:flex; flex-direction:column; }
+.stat-list .st-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.stat-list .st-row:last-child { border-bottom:none; }
+.stat-list .st-label { font-size:12px; color:var(--navy-2); font-weight:500; }
+.stat-list .st-label b { color:var(--navy); font-weight:700; }
+.stat-list .st-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stat-list .st-val .st-unit { font-size:10px; color:var(--navy-3); font-weight:500; }
+.stat-list .st-val.flag { color:var(--terra); }
+.stat-list .st-val.good { color:var(--green); }
+
+/* Performance band chart */
+.band-chart { display:flex; flex-direction:column; gap:10px; }
+.band-row { display:grid; grid-template-columns:78px 1fr 48px; gap:10px; align-items:center; }
+.band-row .bd-label { font-size:11px; font-weight:600; color:var(--navy-2); }
+.band-row .bd-track { height:20px; background:var(--bg); border-radius:5px; overflow:hidden; display:flex; }
+.band-row .bd-seg { height:100%; }
+.band-row .bd-pct { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.band-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.band-legend .bl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.band-legend .bl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* School list table */
+.school-table { width:100%; border-collapse:collapse; }
+.school-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.school-table th.c { text-align:center; }
+.school-table th.r { text-align:right; }
+.school-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.school-table tr:last-child td { border-bottom:none; }
+.school-table tr.drill { cursor:pointer; }
+.school-table tr.drill:hover td { background:var(--gold-bg); }
+.school-table td .sc-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.school-table td .sc-name .sc-badge { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.school-table td .sc-name .sc-badge.anchor { background:var(--gold); color:var(--navy); }
+.school-table td .sc-meta { font-size:9.5px; color:var(--navy-3); margin-top:1px; font-weight:500; }
+.school-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.school-table td .num.r { text-align:right; }
+.school-table td .ratio { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; }
+.school-table td .ratio.good { color:var(--green); }
+.school-table td .ratio.warn { color:var(--warn); }
+.school-table td .ratio.flag { color:var(--terra); }
+.school-table td .perf-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; }
+.school-table td .perf-pill.good { background:var(--green-bg); color:var(--green); }
+.school-table td .perf-pill.mid { background:var(--warn-bg); color:var(--warn); }
+.school-table td .perf-pill.low { background:var(--terra-bg); color:var(--terra); }
+.school-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.table-toolbar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.table-toolbar .tt-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.chip { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:5px 11px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.chip.compare { background:var(--gold-bg); border-color:var(--gold); color:var(--navy); margin-left:auto; }
+.chip.compare::before { content:"⊕ "; color:var(--gold); }
+
+/* Anomaly callouts */
+.flag-list { display:flex; flex-direction:column; gap:10px; }
+.flag-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.flag-item.warn { border-color:var(--warn); background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 60%); }
+.flag-item.terra { border-color:var(--terra); background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 60%); }
+.flag-item .fi-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.flag-item.warn .fi-icon { background:var(--warn); color:var(--bg); }
+.flag-item.terra .fi-icon { background:var(--terra); color:var(--bg); }
+.flag-item .fi-body .fi-title { font-size:12px; font-weight:700; color:var(--navy); }
+.flag-item .fi-body .fi-detail { font-size:10.5px; color:var(--navy-2); margin-top:2px; line-height:1.45; }
+.flag-item .fi-body .fi-detail b { color:var(--navy); font-weight:700; }
+.flag-item .fi-action { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:700; color:var(--navy); cursor:pointer; }
+
+/* Comparison teaser */
+.compare-strip { background:linear-gradient(135deg, #13203A 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:22px 26px; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.compare-strip::before { content:""; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.compare-strip .cs-body { position:relative; }
+.compare-strip .cs-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.compare-strip .cs-title { font-family:'Fraunces', serif; font-size:21px; font-weight:500; line-height:1.2; margin-bottom:6px; }
+.compare-strip .cs-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.compare-strip .cs-text { font-size:12px; color:var(--gold-soft); line-height:1.5; max-width:560px; }
+.compare-strip .cs-text b { color:var(--bg); font-weight:600; }
+.compare-strip .cs-action { position:relative; }
+
+/* Data provenance footer */
+.provenance { display:flex; gap:18px; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-top:18px; flex-wrap:wrap; }
+.provenance .pv-item { font-size:10.5px; color:var(--navy-3); font-weight:500; }
+.provenance .pv-item b { color:var(--navy-2); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .dash-grid { grid-template-columns:1fr; }
+  .compare-strip { grid-template-columns:1fr; }
+}
+
+/* ===== Academic performance specific ===== */
+.exam-toggle { display:flex; gap:6px; padding:14px 22px; border-bottom:1px solid var(--border); align-items:center; flex-wrap:wrap; }
+.exam-toggle .et-lbl { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+
+/* headline qualification figure */
+.qual-hero { display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:center; background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 70%); border:1px solid var(--gold-soft); border-radius:14px; padding:24px 28px; margin-bottom:18px; }
+.qual-hero .qh-figure { text-align:center; padding-right:22px; border-right:1px solid var(--gold-soft); }
+.qual-hero .qh-figure .qhf-v { font-family:'Fraunces', serif; font-size:46px; font-weight:600; color:var(--navy); line-height:1; }
+.qual-hero .qh-figure .qhf-v em { font-style:italic; color:var(--gold); }
+.qual-hero .qh-figure .qhf-l { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-top:5px; }
+.qual-hero .qh-body .qhb-title { font-family:'Fraunces', serif; font-size:18px; font-weight:600; margin-bottom:5px; }
+.qual-hero .qh-body .qhb-text { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.qual-hero .qh-body .qhb-text b { color:var(--navy); font-weight:700; }
+
+/* subject grid */
+.subj-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+.subj-card { border:1px solid var(--border); border-radius:11px; padding:14px 16px; }
+.subj-card .sc-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:9px; }
+.subj-card .sc-name { font-size:12.5px; font-weight:700; color:var(--navy); }
+.subj-card .sc-rate { font-family:'JetBrains Mono', monospace; font-size:14px; font-weight:700; }
+.subj-card .sc-rate.green { color:var(--green); }
+.subj-card .sc-rate.warn { color:var(--warn); }
+.subj-card .sc-rate.terra { color:var(--terra); }
+.subj-card .sc-bar { height:8px; background:var(--bg); border-radius:100px; overflow:hidden; }
+.subj-card .sc-fill { height:100%; }
+.subj-card .sc-fill.green { background:var(--green); }
+.subj-card .sc-fill.warn { background:var(--warn); }
+.subj-card .sc-fill.terra { background:var(--terra); }
+.subj-card .sc-foot { display:flex; justify-content:space-between; margin-top:8px; font-size:9.5px; color:var(--navy-3); font-weight:600; }
+
+/* sex split comparison rows */
+.sex-row { display:grid; grid-template-columns:120px 1fr 1fr; gap:14px; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.sex-row:last-child { border-bottom:none; }
+.sex-row.head { border-bottom:1px solid var(--border-2); padding-bottom:8px; }
+.sex-row.head .sx-h { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.sex-row .sx-label { font-size:12px; font-weight:600; color:var(--navy); }
+.sex-row .sx-cell { display:flex; align-items:center; gap:9px; }
+.sex-row .sx-track { flex:1; height:9px; background:var(--bg); border-radius:100px; overflow:hidden; }
+.sex-row .sx-fill { height:100%; }
+.sex-row .sx-fill.boys { background:var(--navy); }
+.sex-row .sx-fill.girls { background:var(--gold); }
+.sex-row .sx-val { font-family:'JetBrains Mono', monospace; font-size:11.5px; font-weight:700; color:var(--navy); min-width:40px; text-align:right; }
+.sex-legend { display:flex; gap:16px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); }
+.sex-legend .sxl { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.sex-legend .sxl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* cohort trend bars */
+.cohort-chart { display:flex; align-items:flex-end; gap:18px; height:170px; padding:14px 8px 0; }
+.cohort-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end; }
+.cohort-col .cc-bar-wrap { width:100%; display:flex; flex-direction:column; justify-content:flex-end; height:130px; }
+.cohort-col .cc-bar { width:100%; border-radius:5px 5px 0 0; background:var(--gold-soft); position:relative; }
+.cohort-col .cc-bar.now { background:var(--gold); }
+.cohort-col .cc-bar .cc-val { position:absolute; top:-19px; left:50%; transform:translateX(-50%); font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; color:var(--navy); }
+.cohort-col .cc-yr { font-size:10px; font-weight:700; color:var(--navy-3); }
+.cohort-baseline { display:flex; align-items:center; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:10px; color:var(--navy-3); font-weight:600; }
+
+/* performance school table */
+.perf-table { width:100%; border-collapse:collapse; }
+.perf-table th { background:var(--bg); padding:10px 12px; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.perf-table th.c { text-align:center; }
+.perf-table td { padding:12px; font-size:12px; border-bottom:1px solid var(--border); color:var(--navy-2); }
+.perf-table tr:last-child td { border-bottom:none; }
+.perf-table tr.drill { cursor:pointer; }
+.perf-table tr.drill:hover td { background:var(--gold-bg); }
+.perf-table td .sname { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.perf-table td .sname .sb { width:24px; height:24px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:9px; flex-shrink:0; }
+.perf-table td .sname .sb.anchor { background:var(--gold); color:var(--navy); }
+.perf-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.perf-table td .qpill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; padding:3px 9px; border-radius:100px; }
+.perf-table td .qpill.green { background:var(--green-bg); color:var(--green); }
+.perf-table td .qpill.warn { background:var(--warn-bg); color:var(--warn); }
+.perf-table td .qpill.terra { background:var(--terra-bg); color:var(--terra); }
+.perf-table td .trend-mini { font-size:11px; font-weight:700; }
+.perf-table td .trend-mini.up { color:var(--green); }
+.perf-table td .trend-mini.down { color:var(--terra); }
+.perf-table td .trend-mini.flat { color:var(--navy-3); }
+
+/* ===== Section 4 · internal performance ===== */
+.src-caveat { display:grid; grid-template-columns:auto 1fr; gap:12px; background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 70%); border:1px solid var(--warn); border-radius:12px; padding:16px 18px; margin-bottom:18px; }
+.src-caveat .scv-icon { width:34px; height:34px; border-radius:8px; background:var(--warn); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:15px; }
+.src-caveat .scv-body .scv-title { font-size:12.5px; font-weight:700; color:var(--navy); margin-bottom:3px; }
+.src-caveat .scv-body .scv-text { font-size:11px; color:var(--navy-2); line-height:1.55; }
+.src-caveat .scv-body .scv-text b { color:var(--navy); font-weight:700; }
+/* two-level selector */
+.period-sel { display:flex; gap:6px; padding:14px 22px; border-bottom:1px solid var(--border); align-items:center; flex-wrap:wrap; }
+.period-sel .ps-lbl { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.period-sel .ps-div { width:1px; height:20px; background:var(--border-2); margin:0 6px; }
+.chip.exam { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+/* termly trend line */
+.term-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.term-card { border:1px solid var(--border); border-radius:11px; padding:14px 16px; }
+.term-card .tc-form { font-size:12.5px; font-weight:700; color:var(--navy); margin-bottom:10px; display:flex; justify-content:space-between; align-items:baseline; }
+.term-card .tc-form .tc-avg { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; }
+.term-card .tc-form .tc-avg.green { color:var(--green); }
+.term-card .tc-form .tc-avg.warn { color:var(--warn); }
+.term-card .tc-form .tc-avg.terra { color:var(--terra); }
+.term-card .tc-terms { display:flex; align-items:flex-end; gap:6px; height:62px; }
+.term-card .tc-tbar-wrap { flex:1; display:flex; flex-direction:column; justify-content:flex-end; height:100%; gap:4px; }
+.term-card .tc-tbar { width:100%; border-radius:3px 3px 0 0; background:var(--gold-soft); }
+.term-card .tc-tbar.now { background:var(--gold); }
+.term-card .tc-tlabel { font-size:8.5px; color:var(--navy-3); font-weight:700; text-align:center; }
+/* mock-vs-actual predictor */
+.predictor { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.predictor .pr-row { display:grid; grid-template-columns:1.3fr 1fr 1fr auto; gap:14px; padding:13px 18px; border-bottom:1px solid var(--border); align-items:center; }
+.predictor .pr-row:last-child { border-bottom:none; }
+.predictor .pr-row.head { background:var(--bg); }
+.predictor .pr-row.head .pr-h { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.predictor .pr-school { font-family:'Fraunces', serif; font-size:12.5px; font-weight:600; color:var(--navy); }
+.predictor .pr-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:var(--navy); }
+.predictor .pr-val .pr-tag { display:block; font-family:'Manrope',sans-serif; font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-top:1px; }
+.predictor .pr-delta { font-family:'JetBrains Mono', monospace; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:100px; text-align:center; }
+.predictor .pr-delta.over { background:var(--terra-bg); color:var(--terra); }
+.predictor .pr-delta.under { background:var(--green-bg); color:var(--green); }
+.predictor .pr-delta.close { background:var(--bg); color:var(--navy-3); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Omnischools Oversight · Batch 2 · surface 2 of 5</div>
+<div class="eyebrow">Omnischools Oversight · examination outcomes</div>
+<h1>How the district <em>performs.</em></h1>
+<div class="gold-rule"></div>
+<p>Performance is the metric GES leans on most heavily for school evaluation and intervention targeting, so it sits beside enrolment as a primary Oversight theme. This surface covers <b>two kinds of performance data</b>, kept deliberately distinct. Sections 1–3 handle <b>external examination outcomes</b> — the terminal, WAEC-graded BECE and WASSCE results — by school, Form, subject, sex, and trend. Section 4 handles <b>internal and continuous performance</b> — the schools' own termly and annual assessment results across every class, and mock examination results for candidate cohorts. The two are not merged: external exams are authoritative and arrive once a year; internal data is live but carries coverage and moderation caveats. The headline metric for external exams is the qualification rate — the share of candidates graded credit or above (BECE grades 1–6, WASSCE A1–C6) — never a raw pass rate. A two-level period selector at the top of each section switches exam type and period. The demo jurisdiction is Wassa Amenfi West.</p>
+</div>
+
+<!-- ============================================ SECTION 1 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">District performance · the headline &amp; by subject</div>
+<div class="section-meta">2025 BECE &amp; WASSCE</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/academic-performance</div></div>
+
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item active"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Academic performance</div>
+<div class="top-row">
+<div>
+<h1>Academic <em>performance.</em></h1>
+<div class="lede">2025 examination outcomes across the district — the qualification rate, and where it comes from subject by subject.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">WASSCE 2025 ▾</button>
+<button class="btn">Export analysis</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="panel" style="margin-bottom:18px;">
+<div class="period-sel">
+<span class="ps-lbl">Type</span>
+<button class="chip exam">WASSCE</button>
+<button class="chip">BECE</button>
+<button class="chip">Mock</button>
+<button class="chip">Internal · termly</button>
+<button class="chip">Internal · annual</button>
+<div class="ps-div"></div>
+<span class="ps-lbl">Period</span>
+<button class="chip active">2025</button>
+<button class="chip">2024</button>
+<button class="chip">2023</button>
+<span class="ps-lbl" style="margin-left:10px;">Candidates</span>
+<button class="chip active">All</button>
+<button class="chip">Boys</button>
+<button class="chip">Girls</button>
+</div>
+<div style="padding:20px 22px;">
+
+<div class="qual-hero">
+<div class="qh-figure">
+<div class="qhf-v"><em>63%</em></div>
+<div class="qhf-l">WASSCE qualification rate</div>
+</div>
+<div class="qh-body">
+<div class="qhb-title">63% of the district's 2025 WASSCE candidates qualified for tertiary entry.</div>
+<div class="qhb-text">Graded credit or above (A1–C6) across their aggregate. <b>1,228 of 1,949</b> candidates from the district's 3 senior high schools. The figure is up 2 points on 2024 but sits below the Western Region average of 66% — the gap is mostly Core Mathematics, shown below.</div>
+</div>
+</div>
+
+<div class="panel" style="border:1px solid var(--border); margin-bottom:0;">
+<div class="panel-head">
+<div class="ph-title">By <em>subject</em></div>
+<div class="ph-meta">WASSCE 2025 · qualification rate</div>
+</div>
+<div class="panel-body">
+<div class="subj-grid">
+<div class="subj-card">
+<div class="sc-top"><div class="sc-name">Core English</div><div class="sc-rate warn">68%</div></div>
+<div class="sc-bar"><div class="sc-fill warn" style="width:68%;"></div></div>
+<div class="sc-foot"><span>1,949 candidates</span><span>▲ 3 pts vs 2024</span></div>
+</div>
+<div class="subj-card">
+<div class="sc-top"><div class="sc-name">Core Mathematics</div><div class="sc-rate terra">54%</div></div>
+<div class="sc-bar"><div class="sc-fill terra" style="width:54%;"></div></div>
+<div class="sc-foot"><span>1,949 candidates</span><span>▼ 1 pt vs 2024</span></div>
+</div>
+<div class="subj-card">
+<div class="sc-top"><div class="sc-name">Integrated Science</div><div class="sc-rate warn">66%</div></div>
+<div class="sc-bar"><div class="sc-fill warn" style="width:66%;"></div></div>
+<div class="sc-foot"><span>1,949 candidates</span><span>▲ 2 pts vs 2024</span></div>
+</div>
+<div class="subj-card">
+<div class="sc-top"><div class="sc-name">Social Studies</div><div class="sc-rate green">74%</div></div>
+<div class="sc-bar"><div class="sc-fill green" style="width:74%;"></div></div>
+<div class="sc-foot"><span>1,949 candidates</span><span>▲ 1 pt vs 2024</span></div>
+</div>
+</div>
+<div style="font-size:10.5px; color:var(--navy-3); margin-top:14px; line-height:1.55;">Four core subjects shown — the live surface also lists elective subjects by programme. <b>Core Mathematics is the district's weakest core at 54%</b> and the only one trending down; it is the single largest drag on the overall qualification rate and the clearest target for a district-wide intervention.</div>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The headline, and what sits under it</h4>
+<ul>
+<li><b>The qualification rate leads — explicitly defined.</b> 63% is the share of WASSCE candidates graded credit or above (A1–C6), the tertiary-entry threshold. The hero card states the definition in words and shows the count behind it (1,228 of 1,949), so the figure can never be mistaken for a raw pass rate.</li>
+<li><b>The subject grid explains the headline.</b> A single 63% tells a director nothing actionable; the four-subject breakdown does. Core Mathematics at 54% — weakest and the only core falling — is named as the largest drag and the obvious intervention target. Performance analysis is only useful when it points somewhere.</li>
+<li><b>A two-level period selector frames the whole surface.</b> The top selector has two rows: <em>type</em> — WASSCE, BECE, Mock, Internal termly, Internal annual — and <em>period</em>, the year (and term, for internal data). Plus an All/Boys/Girls candidate cut. Sections 1–3 respond to the external exam types; the Mock and Internal options open section 4. From the first screen a director sees that performance here is more than the terminal exams.</li>
+<li><b>Regional context is given without leaving the surface.</b> "Below the Western Region average of 66%" — a director sees their district against the tier above immediately. The full peer comparison is the comparison workspace; the headline still carries one anchoring number.</li>
+<li><b>WAEC sourcing is stated.</b> Per Decision 7, examination results are a loaded reference extract — there is no public school-level WAEC dataset. The surface draws on the official WAEC extract and the exam-year toggle makes the cohort explicit.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 2 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">By sex, and over time · two cuts that matter</div>
+<div class="section-meta">Equity &amp; trend</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/academic-performance</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item active"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Academic performance</div>
+<div class="top-row">
+<div>
+<h1>By sex, <em>and over time.</em></h1>
+<div class="lede">Whether boys and girls qualify at different rates, and whether the district is improving cohort on cohort.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">WASSCE 2025 ▾</button>
+<button class="btn">Export analysis</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="dash-grid">
+
+<div class="panel">
+<div class="panel-head">
+<div class="ph-title">Qualification <em>by sex</em></div>
+<div class="ph-meta">WASSCE 2025 · by subject</div>
+</div>
+<div class="panel-body">
+<div class="sex-row head">
+<div class="sx-h">Subject</div>
+<div class="sx-h">Boys</div>
+<div class="sx-h">Girls</div>
+</div>
+<div class="sex-row">
+<div class="sx-label">Overall</div>
+<div class="sx-cell"><div class="sx-track"><div class="sx-fill boys" style="width:61%;"></div></div><div class="sx-val">61%</div></div>
+<div class="sx-cell"><div class="sx-track"><div class="sx-fill girls" style="width:65%;"></div></div><div class="sx-val">65%</div></div>
+</div>
+<div class="sex-row">
+<div class="sx-label">Core English</div>
+<div class="sx-cell"><div class="sx-track"><div class="sx-fill boys" style="width:64%;"></div></div><div class="sx-val">64%</div></div>
+<div class="sx-cell"><div class="sx-track"><div class="sx-fill girls" style="width:72%;"></div></div><div class="sx-val">72%</div></div>
+</div>
+<div class="sex-row">
+<div class="sx-label">Core Maths</div>
+<div class="sx-cell"><div class="sx-track"><div class="sx-fill boys" style="width:57%;"></div></div><div class="sx-val">57%</div></div>
+<div class="sx-cell"><div class="sx-track"><div class="sx-fill girls" style="width:51%;"></div></div><div class="sx-val">51%</div></div>
+</div>
+<div class="sex-row">
+<div class="sx-label">Int. Science</div>
+<div class="sx-cell"><div class="sx-track"><div class="sx-fill boys" style="width:67%;"></div></div><div class="sx-val">67%</div></div>
+<div class="sx-cell"><div class="sx-track"><div class="sx-fill girls" style="width:65%;"></div></div><div class="sx-val">65%</div></div>
+</div>
+<div class="sex-row">
+<div class="sx-label">Social Studies</div>
+<div class="sx-cell"><div class="sx-track"><div class="sx-fill boys" style="width:73%;"></div></div><div class="sx-val">73%</div></div>
+<div class="sx-cell"><div class="sx-track"><div class="sx-fill girls" style="width:75%;"></div></div><div class="sx-val">75%</div></div>
+</div>
+<div class="sex-legend">
+<div class="sxl"><span class="sxl-dot" style="background:var(--navy);"></span>Boys · 1,034 candidates</div>
+<div class="sxl"><span class="sxl-dot" style="background:var(--gold);"></span>Girls · 915 candidates</div>
+</div>
+<div style="font-size:10.5px; color:var(--navy-3); margin-top:10px; line-height:1.55;">Girls qualify slightly higher overall (65% vs 61%) and notably outperform in English — but <b>underperform in Core Maths by 6 points</b>. A district equity intervention in Mathematics should be sex-aware: the gap is specific, not general.</div>
+</div>
+</div>
+
+<div class="panel">
+<div class="panel-head">
+<div class="ph-title">Qualification <em>trend</em></div>
+<div class="ph-meta">WASSCE · 4 cohorts</div>
+</div>
+<div class="panel-body">
+<div class="cohort-chart">
+<div class="cohort-col">
+<div class="cc-bar-wrap"><div class="cc-bar" style="height:80%;"><span class="cc-val">54%</span></div></div>
+<div class="cc-yr">2022</div>
+</div>
+<div class="cohort-col">
+<div class="cc-bar-wrap"><div class="cc-bar" style="height:87%;"><span class="cc-val">59%</span></div></div>
+<div class="cc-yr">2023</div>
+</div>
+<div class="cohort-col">
+<div class="cc-bar-wrap"><div class="cc-bar" style="height:90%;"><span class="cc-val">61%</span></div></div>
+<div class="cc-yr">2024</div>
+</div>
+<div class="cohort-col">
+<div class="cc-bar-wrap"><div class="cc-bar now" style="height:93%;"><span class="cc-val">63%</span></div></div>
+<div class="cc-yr">2025</div>
+</div>
+</div>
+<div class="cohort-baseline">
+<span style="display:inline-block; width:14px; height:9px; background:var(--gold); border-radius:2px;"></span>
+2025 cohort · most recent · <b style="color:var(--navy-2);">+9 points over four years</b>
+</div>
+<div class="stat-list" style="margin-top:14px;">
+<div class="st-row"><div class="st-label">Four-year change</div><div class="st-val good">▲ 9 pts</div></div>
+<div class="st-row"><div class="st-label">Year-on-year · 2024 → 2025</div><div class="st-val good">▲ 2 pts</div></div>
+<div class="st-row"><div class="st-label">vs Western Region 2025</div><div class="st-val flag">▼ 3 pts behind</div></div>
+<div class="st-row"><div class="st-label">2026 cohort · Form 3 now</div><div class="st-val">1,284 candidates</div></div>
+</div>
+<div style="font-size:10.5px; color:var(--navy-3); margin-top:12px; line-height:1.55;">A steady four-cohort climb — the district is improving, just not yet at the regional average. The trend matters more than any single year: it tells a director whether current strategy is working.</div>
+</div>
+</div>
+
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Source</b> · official WAEC extract · 2022–2025 WASSCE</div>
+<div class="pv-item"><b>Sex cut</b> · qualification rate computed separately for boys and girls</div>
+<div class="pv-item"><b>Trend</b> · same-examination cohorts · WASSCE only, not mixed with BECE</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Two cuts a director cannot do without</h4>
+<ul>
+<li><b>The sex cut turns "performance" into an equity question.</b> A 63% headline hides that girls lead overall but trail by 6 points in Core Maths. GES equity work needs that specificity — a Mathematics intervention here should be sex-aware, because the gap is in one subject, not across the board.</li>
+<li><b>The trend is the cut that judges strategy.</b> Any single year is noise; four cohorts climbing 54→63 is signal. The chart shows a district genuinely improving — and still 3 points short of its region. A director reads the trend to know whether what they are already doing is working.</li>
+<li><b>Trend stays within one examination.</b> WASSCE cohorts are compared only to WASSCE — never averaged with BECE, which tests different pupils at a different stage. The provenance row states this; mixing them would produce a meaningless line.</li>
+<li><b>The 2026 cohort is previewed.</b> Form 3 enrolment (1,284) is next year's WASSCE candidate count — the trend chart implicitly extends one year forward, so a director sees the cohort whose result they can still influence.</li>
+<li><b>Both panels carry the regional anchor.</b> "3 points behind the region" appears in the sex panel's framing and the trend's stat list. The district is never shown in isolation — improvement is real, but measured against the tier above.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 3 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">School by school · who lifts the average, who pulls it</div>
+<div class="section-meta">Drill-down &amp; comparison</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/academic-performance</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item active"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Academic performance</div>
+<div class="top-row">
+<div>
+<h1>School by <em>school.</em></h1>
+<div class="lede">The district average is made of individual schools. Tap any school for its full performance profile.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">WASSCE 2025 ▾</button>
+<button class="btn">Export ranking</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="panel" style="margin-bottom:18px;">
+<div class="exam-toggle">
+<span class="et-lbl">Examination</span>
+<button class="chip active">WASSCE · 3 SHS</button>
+<button class="chip">BECE · 31 basic</button>
+<span class="et-lbl" style="margin-left:10px;">Sort</span>
+<button class="chip active">Qualification rate</button>
+<button class="chip">Trend</button>
+<button class="chip">Candidates</button>
+</div>
+<table class="perf-table">
+<thead><tr>
+<th>School</th>
+<th class="c">Candidates</th>
+<th class="c">Qual. rate</th>
+<th class="c">Core Maths</th>
+<th class="c">vs district</th>
+<th class="c">4-yr trend</th>
+<th class="c">Detail</th>
+</tr></thead>
+<tbody>
+<tr class="drill">
+<td><div class="sname"><div class="sb anchor">AS</div>Asankrangwa SHS</div></td>
+<td><div class="num">401</div></td>
+<td><div class="num"><span class="qpill green">71%</span></div></td>
+<td><div class="num">57%</div></td>
+<td><div class="num">▲ 8 pts</div></td>
+<td><div class="num"><span class="trend-mini up">▲ rising</span></div></td>
+<td><div class="num" style="color:var(--gold); font-weight:700;">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="sname"><div class="sb">AM</div>Amenfiman SHS</div></td>
+<td><div class="num">874</div></td>
+<td><div class="num"><span class="qpill warn">60%</span></div></td>
+<td><div class="num">49%</div></td>
+<td><div class="num">▼ 3 pts</div></td>
+<td><div class="num"><span class="trend-mini flat">— flat</span></div></td>
+<td><div class="num" style="color:var(--gold); font-weight:700;">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="sname"><div class="sb">WA</div>Wassa Akropong SHS</div></td>
+<td><div class="num">674</div></td>
+<td><div class="num"><span class="qpill warn">62%</span></div></td>
+<td><div class="num">53%</div></td>
+<td><div class="num">▼ 1 pt</div></td>
+<td><div class="num"><span class="trend-mini up">▲ rising</span></div></td>
+<td><div class="num" style="color:var(--gold); font-weight:700;">→</div></td>
+</tr>
+<tr class="total-row" style="background:var(--gold-bg); font-weight:700;">
+<td style="font-weight:700;">District · WASSCE 2025</td>
+<td><div class="num">1,949</div></td>
+<td><div class="num"><span class="qpill warn">63%</span></div></td>
+<td><div class="num">54%</div></td>
+<td><div class="num">—</div></td>
+<td><div class="num"><span class="trend-mini up">▲ +9 / 4yr</span></div></td>
+<td><div class="num"></div></td>
+</tr>
+</tbody>
+</table>
+<div style="font-size:10.5px; color:var(--navy-3); padding:12px 22px; line-height:1.55;">WASSCE shown · 3 SHS. <b>Amenfiman SHS at 60%</b> is the district's lowest and largest WASSCE cohort — it pulls the district average down most, and its Core Maths at 49% is the weakest in the district. Asankrangwa SHS, the strongest at 71% and rising, shows what is achievable locally. Toggle to BECE for the 31 basic schools.</div>
+</div>
+
+<div class="compare-strip">
+<div class="cs-body">
+<div class="cs-eyebrow">Comparison workspace</div>
+<div class="cs-title">Set performance against <em>peers.</em></div>
+<div class="cs-text">Open the comparison workspace to put these schools side by side, or set Wassa Amenfi West's qualification rate against <b>neighbouring districts</b> and the <b>Western Region</b> average. Compare on overall rate, any single subject, or trend — scoped to your jurisdiction ceiling.</div>
+</div>
+<div class="cs-action"><button class="btn gold lg">Open comparison workspace →</button></div>
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Per-school</b> · official WAEC extract · school-level results</div>
+<div class="pv-item"><b>Tap a row</b> · opens that school's performance detail</div>
+<div class="pv-item"><b>Aggregate only</b> · no named candidate records on this surface</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The average has authors</h4>
+<ul>
+<li><b>The district figure decomposes to schools.</b> 63% district-wide is the weighted result of three very different schools — Asankrangwa at 71%, Amenfiman at 58%. A director acts on schools, not on an average; the table names which school to visit.</li>
+<li><b>The table identifies the largest drag, not just the lowest score.</b> Amenfiman SHS is lowest at 60% — and it is also the biggest cohort, so it pulls the district average down most. Lowest-rate and largest-drag are different questions; the surface answers the one that targets intervention.</li>
+<li><b>A local benchmark is shown alongside the problem.</b> Asankrangwa SHS at 71% and rising sits in the same table as Amenfiman — "what is achievable here" is visible next to "where the gap is." That makes the case for intervention concrete rather than abstract.</li>
+<li><b>Core Maths is carried as its own column.</b> Section 1 named it the district's weak core; the school table keeps a Core Maths column so a director sees which schools drive that weakness — Amenfiman at 49% is the worst, consistent with its overall position.</li>
+<li><b>Every row drills into a school performance detail.</b> The table is the junction into the per-school view — the same drill-down pattern as the dashboard's school list. And it stays aggregate: no named candidate records here, consistent with the access boundary.</li>
+<li><b>Sections 1–3 cover the external examinations in full.</b> District headline and subjects, the sex and trend cuts, school-by-school with comparison — the WAEC-graded BECE and WASSCE picture. Section 4 turns to the internal and continuous performance data that GES also monitors between those terminal exams.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 4 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">Internal &amp; continuous performance · termly, annual, mock</div>
+<div class="section-meta">Between the terminal exams</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/academic-performance</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item active"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Academic performance</div>
+<div class="top-row">
+<div>
+<h1>Internal &amp; <em>continuous.</em></h1>
+<div class="lede">Termly and annual results across every class, and mock outcomes for candidate cohorts — the performance GES watches between the terminal exams.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Internal · termly ▾</button>
+<button class="btn">Export</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="src-caveat">
+<div class="scv-icon">!</div>
+<div class="scv-body">
+<div class="scv-title">Read internal data differently from WAEC results</div>
+<div class="scv-text">Termly, annual and mock figures come from <b>schools' own Omnischools gradebooks</b> — not from WAEC. Two caveats follow. <b>Coverage</b>: internal data exists only for schools that use the gradebook — <b>28 of the 34 reporting schools</b> currently do, so this section speaks for 28 schools, not the full district. <b>Moderation</b>: this is each school's own marking, not externally moderated — it is reliable for tracking a school <em>against itself</em> over terms, but only loosely comparable <em>between</em> schools. Use it for trend and early warning, not for ranking.</div>
+</div>
+</div>
+
+<div class="panel" style="margin-bottom:18px;">
+<div class="period-sel">
+<span class="ps-lbl">Type</span>
+<button class="chip">WASSCE</button>
+<button class="chip">BECE</button>
+<button class="chip">Mock</button>
+<button class="chip exam">Internal · termly</button>
+<button class="chip">Internal · annual</button>
+<div class="ps-div"></div>
+<span class="ps-lbl">Period</span>
+<button class="chip active">2025/26 T2</button>
+<button class="chip">2025/26 T1</button>
+<button class="chip">2024/25 T3</button>
+<span class="ps-lbl" style="margin-left:10px;">Cut</span>
+<button class="chip active">By class/Form</button>
+<button class="chip">By subject</button>
+<button class="chip">By gender</button>
+</div>
+<div style="padding:20px 22px;">
+
+<div class="panel" style="border:1px solid var(--border); margin-bottom:18px;">
+<div class="panel-head">
+<div class="ph-title">Termly average <em>by class/Form</em></div>
+<div class="ph-meta">28 schools · 2025/26 Term 2 · % at credit or above</div>
+</div>
+<div class="panel-body">
+<div class="term-grid">
+<div class="term-card">
+<div class="tc-form">Basic · lower primary <span class="tc-avg green">74%</span></div>
+<div class="tc-terms">
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:64%;"></div><div class="tc-tlabel">T1</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar now" style="height:74%;"></div><div class="tc-tlabel">T2</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:0%;"></div><div class="tc-tlabel">T3</div></div>
+</div>
+</div>
+<div class="term-card">
+<div class="tc-form">Basic · upper primary <span class="tc-avg warn">66%</span></div>
+<div class="tc-terms">
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:62%;"></div><div class="tc-tlabel">T1</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar now" style="height:66%;"></div><div class="tc-tlabel">T2</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:0%;"></div><div class="tc-tlabel">T3</div></div>
+</div>
+</div>
+<div class="term-card">
+<div class="tc-form">Basic · JHS <span class="tc-avg warn">61%</span></div>
+<div class="tc-terms">
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:66%;"></div><div class="tc-tlabel">T1</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar now" style="height:61%;"></div><div class="tc-tlabel">T2</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:0%;"></div><div class="tc-tlabel">T3</div></div>
+</div>
+</div>
+<div class="term-card">
+<div class="tc-form">SHS · Form 1 <span class="tc-avg warn">64%</span></div>
+<div class="tc-terms">
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:60%;"></div><div class="tc-tlabel">T1</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar now" style="height:64%;"></div><div class="tc-tlabel">T2</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:0%;"></div><div class="tc-tlabel">T3</div></div>
+</div>
+</div>
+<div class="term-card">
+<div class="tc-form">SHS · Form 2 <span class="tc-avg warn">62%</span></div>
+<div class="tc-terms">
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:63%;"></div><div class="tc-tlabel">T1</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar now" style="height:62%;"></div><div class="tc-tlabel">T2</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:0%;"></div><div class="tc-tlabel">T3</div></div>
+</div>
+</div>
+<div class="term-card">
+<div class="tc-form">SHS · Form 3 <span class="tc-avg terra">58%</span></div>
+<div class="tc-terms">
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:61%;"></div><div class="tc-tlabel">T1</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar now" style="height:58%;"></div><div class="tc-tlabel">T2</div></div>
+<div class="tc-tbar-wrap"><div class="tc-tbar" style="height:0%;"></div><div class="tc-tlabel">T3</div></div>
+</div>
+</div>
+</div>
+<div style="font-size:10.5px; color:var(--navy-3); margin-top:14px; line-height:1.55;">Term 3 is empty — the term is in progress. The cut shown is <b>by class/Form</b>; toggle to subject or gender above. <b>SHS Form 3 has slipped Term 1 to Term 2</b> (61% to 58%) — the candidate cohort weakening just before WASSCE is exactly the early-warning signal a director wants, and it connects to the mock results below.</div>
+</div>
+</div>
+
+<div class="panel" style="border:1px solid var(--border); margin-bottom:0;">
+<div class="panel-head">
+<div class="ph-title">Mock exams <em>as a predictor</em></div>
+<div class="ph-meta">2026 WASSCE candidates · mock vs prior actual</div>
+</div>
+<div class="panel-body">
+<div class="predictor">
+<div class="pr-row head">
+<div class="pr-h">School · 2026 WASSCE cohort</div>
+<div class="pr-h">2026 mock</div>
+<div class="pr-h">2025 actual WASSCE</div>
+<div class="pr-h">Mock vs actual</div>
+</div>
+<div class="pr-row">
+<div class="pr-school">Asankrangwa SHS</div>
+<div class="pr-val">68%<span class="pr-tag">mock qual.</span></div>
+<div class="pr-val">71%<span class="pr-tag">last actual</span></div>
+<div class="pr-delta close">≈ in line</div>
+</div>
+<div class="pr-row">
+<div class="pr-school">Amenfiman SHS</div>
+<div class="pr-val">49%<span class="pr-tag">mock qual.</span></div>
+<div class="pr-val">60%<span class="pr-tag">last actual</span></div>
+<div class="pr-delta under">▼ 11 pts low</div>
+</div>
+<div class="pr-row">
+<div class="pr-school">Wassa Akropong SHS</div>
+<div class="pr-val">63%<span class="pr-tag">mock qual.</span></div>
+<div class="pr-val">62%<span class="pr-tag">last actual</span></div>
+<div class="pr-delta close">≈ in line</div>
+</div>
+</div>
+<div style="font-size:10.5px; color:var(--navy-3); margin-top:12px; line-height:1.55;">Mock results are the clearest early signal GES has. <b>Amenfiman's 2026 mock at 49% sits 11 points below its 2025 actual</b> — a cohort tracking well behind where last year's left off, and corroborated by the Form 3 termly slip above. There is still a term and a half to act. A mock far <em>above</em> prior actual would prompt the opposite question — whether the school's mock is marked too leniently.</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Source</b> · schools' own Omnischools gradebooks · not WAEC</div>
+<div class="pv-item"><b>Coverage</b> · 28 of 34 reporting schools use the gradebook</div>
+<div class="pv-item"><b>Use</b> · trend &amp; early warning · not between-school ranking</div>
+<div class="pv-item"><b>Mock</b> · school-set or district-set papers · marking not externally moderated</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Internal performance — the data between the exams</h4>
+<ul>
+<li><b>This section answers GES's other performance question.</b> BECE and WASSCE are terminal and annual; they say nothing about a Primary 4 class, or about a candidate cohort halfway through its final year. Termly and annual internal results cover <em>every</em> class, every term — the continuous picture a director needs between the headline exams.</li>
+<li><b>The source caveat is the first thing in the section, not a footnote.</b> Internal data is the schools' own gradebook marking. Two honest limits stated up front: coverage (28 of 34 schools — not every reporting school uses the gradebook) and moderation (unmoderated, so reliable for a school against itself but only loosely comparable between schools). This mirrors the enrolment surface's discipline — the surface states where its data is partial.</li>
+<li><b>The two-level selector is where your dropdown suggestion lands.</b> Exam type — WASSCE, BECE, Mock, Internal termly, Internal annual — crossed with period, plus a class/subject/gender cut. The same selector pattern runs across all four sections; internal and mock simply take their place in it as first-class options.</li>
+<li><b>Termly results are cut by class/Form, subject, or gender.</b> A district director asks "which year-groups are slipping," a curriculum officer asks "which subjects," an equity review asks "which gender" — one toggle, three questions. The class/Form cut shown surfaces the SHS Form 3 slip, the cohort that matters most.</li>
+<li><b>Mock exams are treated as a predictor, not just another score.</b> Shown beside the same cohort's prior actual WASSCE, the mock becomes a leading indicator: Amenfiman's cohort tracking 11 points low, with a term and a half left to intervene. The surface also names the reverse signal — a mock far above prior actual suggests lenient marking, not a triumph.</li>
+<li><b>Internal and external stay distinct but cross-corroborate.</b> The Form 3 termly slip and the Amenfiman mock shortfall point at the same cohorts the external sections flagged. Kept in separate sections with separate caveats, but a director reading both sees one consistent story — which is what makes the early warning credible.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

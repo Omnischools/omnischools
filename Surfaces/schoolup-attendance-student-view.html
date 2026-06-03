@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Attendance · per-student view</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+  min-height: 1640px;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--terra);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 100px;
+  min-width: 20px;
+  text-align: center;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main {
+  padding: 0;
+  background: var(--bg);
+}
+
+/* Profile head section */
+.profile-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 36px 0;
+}
+.profile-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 10px;
+}
+.profile-head .crumb a { color: var(--gold); text-decoration: none; }
+.profile-card {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 20px;
+  align-items: center;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+.profile-card .av-big {
+  width: 76px; height: 76px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+.profile-card .info .name {
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin-bottom: 6px;
+}
+.profile-card .info .name em { font-style: italic; color: var(--gold); font-weight: 400; }
+.profile-card .info .meta-line {
+  font-size: 13px;
+  color: var(--navy-3);
+  margin-bottom: 8px;
+}
+.profile-card .info .meta-line b { color: var(--navy-2); font-weight: 600; }
+
+.id-tags {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.id-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 100px;
+  color: var(--navy-2);
+}
+.id-tag .ic {
+  font-size: 9px;
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+}
+.id-tag b { color: var(--navy); font-weight: 600; }
+
+.profile-card .actions {
+  display: flex; flex-direction: column; gap: 6px;
+  align-items: flex-end;
+}
+.btn {
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+
+/* Profile tabs */
+.profile-tabs {
+  display: flex;
+  padding: 0 36px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  gap: 0;
+}
+.profile-tab {
+  padding: 14px 16px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+}
+.profile-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--gold);
+}
+.profile-tab .badge-mini {
+  background: var(--terra);
+  color: white;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+
+/* Main content */
+.attendance-content {
+  padding: 28px 36px 60px;
+}
+
+.region {
+  margin-bottom: 32px;
+}
+.region-head {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 14px;
+}
+.region-head .num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.region-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.region-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.region-head .meta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.region-head .meta b { color: var(--navy-2); }
+.region-head .term-toggle {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 2px;
+  margin-left: 12px;
+}
+.region-head .term-toggle button {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 100px;
+}
+.region-head .term-toggle button.active {
+  background: var(--navy);
+  color: var(--bg);
+}
+
+/* ============ REGION 1 — HEADLINE ============ */
+.headline-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 28px;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 1fr;
+  gap: 28px;
+  align-items: center;
+}
+.headline-card.terra-tinted {
+  background: linear-gradient(180deg, var(--terra-bg-soft) 0%, var(--surface) 100%);
+  border-color: rgba(184,74,57,0.2);
+}
+.headline-card .stat .lbl {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.headline-card .stat .val-row {
+  display: flex; align-items: baseline; gap: 8px;
+}
+.headline-card .stat .val {
+  font-family: 'Fraunces', serif;
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+.headline-card .stat.headline .val {
+  font-size: 48px;
+  color: var(--terra);
+}
+.headline-card .stat .val.green { color: var(--green); }
+.headline-card .stat .val.warn { color: var(--warn); }
+.headline-card .stat .val.terra { color: var(--terra); }
+.headline-card .stat .val-suffix {
+  font-size: 13px;
+  color: var(--navy-3);
+  font-weight: 500;
+}
+.headline-card .stat .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.headline-card .stat .sub b { color: var(--navy-2); font-weight: 600; }
+.headline-card .stat.headline .sub-state {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  background: var(--terra);
+  color: white;
+  border-radius: 100px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ============ REGION 2 — TERM REGISTER ============ */
+.term-register-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.term-register-head {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.term-register-head .legend {
+  display: flex; gap: 12px;
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.term-register-head .legend-item {
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.term-register-head .legend-swatch {
+  width: 12px; height: 12px;
+  border-radius: 2px;
+}
+.term-register-head .legend-swatch.present { background: var(--green); }
+.term-register-head .legend-swatch.late { background: var(--gold); }
+.term-register-head .legend-swatch.excused { background: var(--warn); }
+.term-register-head .legend-swatch.absent { background: var(--terra); }
+.term-register-head .legend-swatch.weekend { background: var(--bg); border: 1px solid var(--border-2); }
+.term-register-head .legend-swatch.holiday {
+  background-image: repeating-linear-gradient(45deg, var(--bg), var(--bg) 2px, var(--border-2) 2px, var(--border-2) 3px);
+  border: 1px solid var(--border-2);
+}
+
+.term-strip-wrap {
+  padding: 18px 20px 20px;
+  overflow-x: auto;
+}
+.term-strip {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 14px;
+}
+.term-strip .week-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--navy-2);
+  letter-spacing: -0.005em;
+  border-right: 1px solid var(--border);
+  padding-right: 14px;
+  display: flex; flex-direction: column;
+  justify-content: center;
+}
+.term-strip .week-label .week-num {
+  font-size: 13px;
+  color: var(--navy);
+  font-weight: 600;
+}
+.term-strip .week-label .week-dates {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-3);
+  margin-top: 2px;
+  font-weight: 600;
+}
+.term-strip .week-summary {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-top: 4px;
+}
+.term-strip .week-summary b { color: var(--navy-2); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+.week-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.day-tile {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 6px 6px;
+  text-align: center;
+  position: relative;
+  cursor: pointer;
+}
+.day-tile.weekend {
+  background: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(212,204,186,0.3) 3px, rgba(212,204,186,0.3) 4px);
+  cursor: default;
+}
+.day-tile.holiday {
+  background: repeating-linear-gradient(45deg, var(--bg), var(--bg) 3px, var(--border-2) 3px, var(--border-2) 4px);
+  cursor: default;
+}
+.day-tile.future {
+  background: var(--surface);
+  border-style: dashed;
+  cursor: default;
+}
+.day-tile.present {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+}
+.day-tile.late {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+}
+.day-tile.excused {
+  background: var(--warn);
+  border-color: var(--warn);
+  color: white;
+}
+.day-tile.absent {
+  background: var(--terra);
+  border-color: var(--terra);
+  color: white;
+}
+.day-tile.today {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.day-tile .day-num {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+.day-tile .day-name {
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 2px;
+  opacity: 0.8;
+}
+.day-tile .day-status {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-top: 3px;
+  opacity: 0.92;
+}
+.day-tile.weekend .day-num,
+.day-tile.weekend .day-name,
+.day-tile.holiday .day-num,
+.day-tile.holiday .day-name {
+  color: var(--navy-3);
+  opacity: 0.6;
+}
+.day-tile.future .day-num,
+.day-tile.future .day-name {
+  color: var(--border-2);
+}
+
+/* Day detail popover */
+.day-popover {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--navy);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 10;
+  text-align: left;
+  min-width: 180px;
+  box-shadow: 0 12px 28px -8px rgba(26,43,71,0.4);
+  display: none;
+}
+.day-tile:hover .day-popover { display: block; }
+.day-popover .pop-status {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.day-popover .pop-status.terra { color: #FF8B7A; }
+.day-popover .pop-status.warn { color: #F5C56B; }
+.day-popover .pop-status.green { color: #6BD494; }
+.day-popover .pop-status.gold { color: var(--gold); }
+.day-popover .pop-detail {
+  font-size: 10px;
+  color: rgba(255,255,255,0.75);
+  font-style: italic;
+  white-space: normal;
+}
+.day-popover .pop-meta {
+  font-size: 9px;
+  color: rgba(255,255,255,0.55);
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+}
+
+.term-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.term-summary-strip .ts {
+  text-align: center;
+}
+.term-summary-strip .ts .num {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1;
+}
+.term-summary-strip .ts .num.green { color: var(--green); }
+.term-summary-strip .ts .num.gold { color: var(--gold); }
+.term-summary-strip .ts .num.warn { color: var(--warn); }
+.term-summary-strip .ts .num.terra { color: var(--terra); }
+.term-summary-strip .ts .lbl {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* ============ REGION 3 — PATTERN ANALYSIS ============ */
+.pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.pattern-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.pattern-card.terra-tint {
+  background: linear-gradient(180deg, var(--terra-bg-soft) 0%, var(--surface) 100%);
+  border-color: rgba(184,74,57,0.2);
+}
+.pattern-card .pc-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.pattern-card h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.25;
+  margin-bottom: 10px;
+}
+.pattern-card h3 em { font-style: italic; color: var(--gold); }
+.pattern-card .pc-detail {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.pattern-card .pc-detail b { color: var(--navy); font-weight: 600; }
+
+/* Friday-pattern mini chart */
+.dow-chart {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  align-items: end;
+  height: 70px;
+  margin-bottom: 8px;
+}
+.dow-bar {
+  display: flex; flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.dow-bar .bar {
+  width: 100%;
+  background: var(--green);
+  border-radius: 3px 3px 0 0;
+  min-height: 4px;
+}
+.dow-bar.fri .bar {
+  background: var(--terra);
+}
+.dow-bar .bar-label {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.dow-bar.fri .bar-label {
+  color: var(--terra);
+}
+.dow-bar .day-letter {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--navy-2);
+}
+.dow-bar.fri .day-letter {
+  color: var(--terra);
+}
+
+/* Decline mini chart */
+.decline-chart {
+  height: 60px;
+  margin-bottom: 8px;
+  position: relative;
+}
+.decline-chart svg {
+  width: 100%;
+  height: 100%;
+}
+
+.streaks-list {
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+.streak-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: 6px;
+  align-items: center;
+}
+.streak-row .streak-tag {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.streak-row .streak-tag.terra { background: var(--terra-bg); color: var(--terra); }
+.streak-row .streak-tag.warn { background: var(--warn-bg); color: var(--warn); }
+.streak-row .streak-detail {
+  font-size: 11px;
+  color: var(--navy-2);
+}
+.streak-row .streak-detail b { color: var(--navy); font-weight: 600; }
+.streak-row .streak-detail .when {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+/* ============ REGION 4 — FLAGS ============ */
+.flags-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.flags-tabs {
+  padding: 12px 20px 0;
+  display: flex; gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.flags-tab {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: inherit;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.flags-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--gold);
+}
+.flags-tab .count {
+  background: var(--bg);
+  color: var(--navy-3);
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+.flags-tab.active.terra .count { background: var(--terra); color: white; }
+.flags-tab.active .count { background: var(--gold); color: var(--navy); }
+
+.flag-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  cursor: pointer;
+}
+.flag-row:hover { background: var(--bg); }
+.flag-row:last-child { border-bottom: none; }
+.flag-row.active-flag {
+  background: var(--terra-bg-soft);
+  border-left: 3px solid var(--terra);
+  padding-left: 17px;
+}
+.flag-row .flag-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.flag-row .flag-icon.terra { background: var(--terra); color: white; }
+.flag-row .flag-icon.warn { background: var(--warn); color: white; }
+.flag-row .flag-icon.green { background: var(--green); color: white; }
+
+.flag-row .flag-body { min-width: 0; }
+.flag-row .flag-top {
+  display: flex; gap: 8px; align-items: baseline;
+  margin-bottom: 3px;
+}
+.flag-row .flag-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.flag-row .severity-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.flag-row .severity-pill.critical { background: var(--terra-bg); color: var(--terra); }
+.flag-row .severity-pill.watching { background: var(--warn-bg); color: var(--warn); }
+.flag-row .severity-pill.resolved { background: var(--green-bg); color: var(--green); }
+.flag-row .flag-detail {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.45;
+}
+.flag-row .flag-detail b { color: var(--navy); font-weight: 600; }
+.flag-row .flag-stats {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+.flag-row .flag-stats b { color: var(--navy-2); }
+
+.flag-row .open-arrow {
+  color: var(--navy-3);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* ============ REGION 5 — COMMUNICATION LOG ============ */
+.comm-log-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.comm-log-head {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.comm-log-head .filter-pills {
+  display: flex; gap: 4px;
+}
+.comm-pill {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-radius: 100px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  font-family: inherit;
+}
+.comm-pill.active {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--navy);
+}
+
+.comm-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  align-items: start;
+}
+.comm-row:last-child { border-bottom: none; }
+.comm-row .comm-icon {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  margin-top: 1px;
+}
+.comm-row .comm-icon.sms-out { background: var(--gold); color: var(--navy); }
+.comm-row .comm-icon.wa-out { background: var(--wa-green); color: white; }
+.comm-row .comm-icon.wa-in { background: var(--surface); color: var(--wa-green); border: 1.5px solid var(--wa-green); }
+.comm-row .comm-icon.phone { background: var(--navy); color: var(--gold); }
+.comm-row .comm-icon.note { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+
+.comm-row .comm-body { min-width: 0; }
+.comm-row .comm-top {
+  display: flex; gap: 8px; align-items: baseline;
+  margin-bottom: 4px;
+}
+.comm-row .comm-type {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.comm-row .comm-direction {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 100px;
+}
+.comm-row .comm-direction.out { background: var(--bg); color: var(--navy-3); }
+.comm-row .comm-direction.in { background: var(--green-bg); color: var(--green); }
+.comm-row .comm-message {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  background: var(--bg);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 2px solid var(--gold);
+  font-style: italic;
+}
+.comm-row .comm-message b { color: var(--navy); font-weight: 600; font-style: normal; }
+.comm-row .comm-message.parent {
+  border-left-color: var(--wa-green);
+  background: rgba(37,168,89,0.05);
+}
+.comm-row .comm-message.note-style {
+  font-style: normal;
+  border-left-color: var(--navy-3);
+}
+.comm-row .comm-attribution {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.comm-row .comm-attribution b { color: var(--navy-2); font-weight: 600; }
+.comm-row .comm-time {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: right;
+}
+.comm-row .comm-time .relative {
+  display: block;
+  font-family: 'Manrope', sans-serif;
+  color: var(--navy-3);
+  margin-top: 1px;
+  font-style: italic;
+  letter-spacing: 0;
+}
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .pattern-grid { grid-template-columns: 1fr; }
+  .headline-card { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Attendance · Per-student</div>
+  <h1 class="display">The <em>file</em>, ready for the meeting</h1>
+  <div class="gold-rule"></div>
+  <p>The headmistress has a parent-teacher meeting tomorrow with Mary Mensah. She opens James's attendance tab tonight to read the file: when did this start, what did we try, what's been said. Five regions tell the story without her having to remember any of it. The screen ends with the full conversation log between school and home.</p>
+</header>
+
+<!-- ============ PER-STUDENT ATTENDANCE VIEW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Student profile · Attendance tab</div>
+    <div class="section-meta">Headmistress reading James Mensah's record · meeting prep</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / students / ctk-2024-042 · attendance</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item active"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance<span class="badge">3</span></div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+
+          <!-- Profile head -->
+          <div class="profile-head">
+            <div class="crumb"><a href="#">Students</a> / JHS 2A / James Mensah</div>
+            <div class="profile-card">
+              <div class="av-big">JM</div>
+              <div class="info">
+                <div class="name display">James <em>Mensah</em></div>
+                <div class="meta-line">JHS 2A · class teacher <b>Mr. Mensah</b> · Term 1 2025/26</div>
+                <div class="id-tags">
+                  <div class="id-tag"><span class="ic">ID</span><b>CTK-2024-042</b></div>
+                  <div class="id-tag"><span class="ic">G</span>Guardian <b>Mary Mensah</b></div>
+                  <div class="id-tag"><span class="ic">DOB</span>14 Mar 2012 · age 14</div>
+                  <div class="id-tag"><span class="ic">!</span><b style="color:var(--terra)">1 active flag</b></div>
+                </div>
+              </div>
+              <div class="actions">
+                <button class="btn primary">Open follow-up →</button>
+                <button class="btn">Print attendance</button>
+              </div>
+            </div>
+            <div class="profile-tabs">
+              <div class="profile-tab">Overview</div>
+              <div class="profile-tab active">Attendance <span class="badge-mini">!</span></div>
+              <div class="profile-tab">Grades</div>
+              <div class="profile-tab">Billing</div>
+              <div class="profile-tab">Achievements</div>
+              <div class="profile-tab">Documents</div>
+              <div class="profile-tab">Communication</div>
+            </div>
+          </div>
+
+          <!-- Attendance content -->
+          <div class="attendance-content">
+
+            <!-- ============ REGION 1 — HEADLINE ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">At a <em>glance</em></h2>
+                <div class="term-toggle">
+                  <button class="active">Term 1 · current</button>
+                  <button>Term 3 · 2024/25</button>
+                  <button>Term 2 · 2024/25</button>
+                </div>
+              </div>
+
+              <div class="headline-card terra-tinted">
+                <div class="stat headline">
+                  <div class="lbl">Term attendance</div>
+                  <div class="val-row">
+                    <div class="val">61%</div>
+                    <div class="val-suffix">29 of 47 days</div>
+                  </div>
+                  <div class="sub-state">! Below 70% threshold</div>
+                </div>
+                <div class="stat">
+                  <div class="lbl">Currently</div>
+                  <div class="val-row">
+                    <div class="val terra">5</div>
+                    <div class="val-suffix">consecutive absent</div>
+                  </div>
+                  <div class="sub">last attended <b>Mon 28 Apr</b></div>
+                </div>
+                <div class="stat">
+                  <div class="lbl">vs last term</div>
+                  <div class="val-row">
+                    <div class="val terra">−18%</div>
+                  </div>
+                  <div class="sub">Term 3 ended at <b>79%</b></div>
+                </div>
+                <div class="stat">
+                  <div class="lbl">Class rank</div>
+                  <div class="val-row">
+                    <div class="val terra">36 / 36</div>
+                  </div>
+                  <div class="sub">JHS 2A average <b>94%</b></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 2 — TERM REGISTER ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display">Term <em>register</em></h2>
+                <div class="meta">10 weeks · <b>15 Sep 2025 — 19 Dec 2025</b></div>
+              </div>
+
+              <div class="term-register-card">
+                <div class="term-register-head">
+                  <div style="font-size:11px;color:var(--navy-3);font-style:italic">Hover any day to see what was marked</div>
+                  <div class="legend">
+                    <div class="legend-item"><div class="legend-swatch present"></div>Present</div>
+                    <div class="legend-item"><div class="legend-swatch late"></div>Late</div>
+                    <div class="legend-item"><div class="legend-swatch excused"></div>Excused</div>
+                    <div class="legend-item"><div class="legend-swatch absent"></div>Absent</div>
+                    <div class="legend-item"><div class="legend-swatch holiday"></div>Holiday</div>
+                  </div>
+                </div>
+
+                <div class="term-strip-wrap">
+
+                  <!-- Week 7 (current week, partial) -->
+                  <div class="term-strip">
+                    <div class="week-label">
+                      <div class="week-num">Wk 7</div>
+                      <div class="week-dates">28 Apr – 2 May</div>
+                      <div class="week-summary">P <b>1</b> · A <b>4</b></div>
+                    </div>
+                    <div class="week-days">
+                      <div class="day-tile present">
+                        <div class="day-num">28</div>
+                        <div class="day-name">Mon</div>
+                        <div class="day-status">Present</div>
+                        <div class="day-popover">
+                          <div class="pop-status green">Present</div>
+                          <div class="pop-detail">Marked at 8:08 AM by Mr. Mensah</div>
+                        </div>
+                      </div>
+                      <div class="day-tile absent">
+                        <div class="day-num">29</div>
+                        <div class="day-name">Tue</div>
+                        <div class="day-status">Absent</div>
+                        <div class="day-popover">
+                          <div class="pop-status terra">Absent</div>
+                          <div class="pop-detail">No contact from home</div>
+                          <div class="pop-meta">Marked 8:11 AM · Mr. Mensah</div>
+                        </div>
+                      </div>
+                      <div class="day-tile absent">
+                        <div class="day-num">30</div>
+                        <div class="day-name">Wed</div>
+                        <div class="day-status">Absent</div>
+                        <div class="day-popover">
+                          <div class="pop-status terra">Absent</div>
+                          <div class="pop-detail">No contact · flag opened</div>
+                          <div class="pop-meta">Marked 8:11 AM · Mr. Mensah</div>
+                        </div>
+                      </div>
+                      <div class="day-tile absent">
+                        <div class="day-num">1</div>
+                        <div class="day-name">Thu</div>
+                        <div class="day-status">Absent</div>
+                        <div class="day-popover">
+                          <div class="pop-status terra">Absent</div>
+                          <div class="pop-detail">No contact · 3rd consecutive</div>
+                          <div class="pop-meta">Marked 8:08 AM · Mr. Mensah</div>
+                        </div>
+                      </div>
+                      <div class="day-tile absent today">
+                        <div class="day-num">2</div>
+                        <div class="day-name">Fri</div>
+                        <div class="day-status">Absent</div>
+                        <div class="day-popover">
+                          <div class="pop-status terra">Absent · today</div>
+                          <div class="pop-detail">5th consecutive · escalated to critical</div>
+                          <div class="pop-meta">Marked 8:05 AM · Mr. Mensah</div>
+                        </div>
+                      </div>
+                      <div class="day-tile weekend">
+                        <div class="day-num">3</div>
+                        <div class="day-name">Sat</div>
+                      </div>
+                      <div class="day-tile weekend">
+                        <div class="day-num">4</div>
+                        <div class="day-name">Sun</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Week 6 -->
+                  <div class="term-strip">
+                    <div class="week-label">
+                      <div class="week-num">Wk 6</div>
+                      <div class="week-dates">21 Apr – 25 Apr</div>
+                      <div class="week-summary">P <b>2</b> · A <b>3</b></div>
+                    </div>
+                    <div class="week-days">
+                      <div class="day-tile present">
+                        <div class="day-num">21</div>
+                        <div class="day-name">Mon</div>
+                        <div class="day-status">Present</div>
+                      </div>
+                      <div class="day-tile absent">
+                        <div class="day-num">22</div>
+                        <div class="day-name">Tue</div>
+                        <div class="day-status">Absent</div>
+                        <div class="day-popover">
+                          <div class="pop-status terra">Absent</div>
+                          <div class="pop-detail">No contact</div>
+                        </div>
+                      </div>
+                      <div class="day-tile absent">
+                        <div class="day-num">23</div>
+                        <div class="day-name">Wed</div>
+                        <div class="day-status">Absent</div>
+                      </div>
+                      <div class="day-tile absent">
+                        <div class="day-num">24</div>
+                        <div class="day-name">Thu</div>
+                        <div class="day-status">Absent</div>
+                      </div>
+                      <div class="day-tile present">
+                        <div class="day-num">25</div>
+                        <div class="day-name">Fri</div>
+                        <div class="day-status">Present</div>
+                      </div>
+                      <div class="day-tile weekend">
+                        <div class="day-num">26</div>
+                        <div class="day-name">Sat</div>
+                      </div>
+                      <div class="day-tile weekend">
+                        <div class="day-num">27</div>
+                        <div class="day-name">Sun</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Week 5 -->
+                  <div class="term-strip">
+                    <div class="week-label">
+                      <div class="week-num">Wk 5</div>
+                      <div class="week-dates">14 Apr – 18 Apr</div>
+                      <div class="week-summary">P <b>3</b> · L <b>1</b> · A <b>1</b></div>
+                    </div>
+                    <div class="week-days">
+                      <div class="day-tile present">
+                        <div class="day-num">14</div>
+                        <div class="day-name">Mon</div>
+                        <div class="day-status">Present</div>
+                      </div>
+                      <div class="day-tile present">
+                        <div class="day-num">15</div>
+                        <div class="day-name">Tue</div>
+                        <div class="day-status">Present</div>
+                      </div>
+                      <div class="day-tile late">
+                        <div class="day-num">16</div>
+                        <div class="day-name">Wed</div>
+                        <div class="day-status">Late</div>
+                        <div class="day-popover">
+                          <div class="pop-status gold">Late</div>
+                          <div class="pop-detail">Arrived 8:34 AM</div>
+                        </div>
+                      </div>
+                      <div class="day-tile present">
+                        <div class="day-num">17</div>
+                        <div class="day-name">Thu</div>
+                        <div class="day-status">Present</div>
+                      </div>
+                      <div class="day-tile absent">
+                        <div class="day-num">18</div>
+                        <div class="day-name">Fri</div>
+                        <div class="day-status">Absent</div>
+                      </div>
+                      <div class="day-tile weekend">
+                        <div class="day-num">19</div>
+                        <div class="day-name">Sat</div>
+                      </div>
+                      <div class="day-tile weekend">
+                        <div class="day-num">20</div>
+                        <div class="day-name">Sun</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Week 4 — holiday -->
+                  <div class="term-strip">
+                    <div class="week-label">
+                      <div class="week-num">Wk 4</div>
+                      <div class="week-dates">7 Apr – 11 Apr</div>
+                      <div class="week-summary">Eid · holiday</div>
+                    </div>
+                    <div class="week-days">
+                      <div class="day-tile holiday">
+                        <div class="day-num">7</div>
+                        <div class="day-name">Mon</div>
+                      </div>
+                      <div class="day-tile holiday">
+                        <div class="day-num">8</div>
+                        <div class="day-name">Tue</div>
+                      </div>
+                      <div class="day-tile holiday">
+                        <div class="day-num">9</div>
+                        <div class="day-name">Wed</div>
+                      </div>
+                      <div class="day-tile holiday">
+                        <div class="day-num">10</div>
+                        <div class="day-name">Thu</div>
+                      </div>
+                      <div class="day-tile holiday">
+                        <div class="day-num">11</div>
+                        <div class="day-name">Fri</div>
+                      </div>
+                      <div class="day-tile weekend">
+                        <div class="day-num">12</div>
+                        <div class="day-name">Sat</div>
+                      </div>
+                      <div class="day-tile weekend">
+                        <div class="day-num">13</div>
+                        <div class="day-name">Sun</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Week 3 -->
+                  <div class="term-strip">
+                    <div class="week-label">
+                      <div class="week-num">Wk 3</div>
+                      <div class="week-dates">31 Mar – 4 Apr</div>
+                      <div class="week-summary">P <b>4</b> · A <b>1</b></div>
+                    </div>
+                    <div class="week-days">
+                      <div class="day-tile present">
+                        <div class="day-num">31</div>
+                        <div class="day-name">Mon</div>
+                        <div class="day-status">Present</div>
+                      </div>
+                      <div class="day-tile present">
+                        <div class="day-num">1</div>
+                        <div class="day-name">Tue</div>
+                        <div class="day-status">Present</div>
+                      </div>
+                      <div class="day-tile present">
+                        <div class="day-num">2</div>
+                        <div class="day-name">Wed</div>
+                        <div class="day-status">Present</div>
+                      </div>
+                      <div class="day-tile present">
+                        <div class="day-num">3</div>
+                        <div class="day-name">Thu</div>
+                        <div class="day-status">Present</div>
+                      </div>
+                      <div class="day-tile absent">
+                        <div class="day-num">4</div>
+                        <div class="day-name">Fri</div>
+                        <div class="day-status">Absent</div>
+                      </div>
+                      <div class="day-tile weekend">
+                        <div class="day-num">5</div>
+                        <div class="day-name">Sat</div>
+                      </div>
+                      <div class="day-tile weekend">
+                        <div class="day-num">6</div>
+                        <div class="day-name">Sun</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Earlier weeks summary placeholder -->
+                  <div style="text-align:center;font-size:11px;color:var(--navy-3);font-style:italic;padding:10px 0;border-top:1px dashed var(--border);margin-top:6px">5 earlier weeks · scroll to load · Wks 1–2: <b style="color:var(--navy-2);font-style:normal;font-weight:600">10 of 10 days present</b></div>
+
+                </div>
+
+                <div class="term-summary-strip">
+                  <div class="ts">
+                    <div class="num green">29</div>
+                    <div class="lbl">Present</div>
+                  </div>
+                  <div class="ts">
+                    <div class="num gold">1</div>
+                    <div class="lbl">Late</div>
+                  </div>
+                  <div class="ts">
+                    <div class="num warn">0</div>
+                    <div class="lbl">Excused</div>
+                  </div>
+                  <div class="ts">
+                    <div class="num terra">17</div>
+                    <div class="lbl">Absent</div>
+                  </div>
+                  <div class="ts">
+                    <div class="num">47</div>
+                    <div class="lbl">Total days</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 3 — PATTERN ANALYSIS ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">03</div>
+                <h2 class="display">What the system <em>noticed</em></h2>
+                <div class="meta">3 patterns · auto-detected over the term</div>
+              </div>
+
+              <div class="pattern-grid">
+
+                <!-- Day-of-week pattern -->
+                <div class="pattern-card terra-tint">
+                  <div class="pc-label">Day of week</div>
+                  <h3>Tuesdays and Fridays show <em>highest absence</em></h3>
+                  <div class="pc-detail">James has been absent on <b>5 of 7 Tuesdays</b> and <b>4 of 7 Fridays</b> this term, against <b>1 of 7 Wednesdays</b>. The pattern starts from week 3.</div>
+                  <div class="dow-chart">
+                    <div class="dow-bar">
+                      <div class="bar" style="height:30%"></div>
+                      <div class="bar-label">2/7</div>
+                      <div class="day-letter">M</div>
+                    </div>
+                    <div class="dow-bar fri">
+                      <div class="bar" style="height:75%"></div>
+                      <div class="bar-label">5/7</div>
+                      <div class="day-letter">T</div>
+                    </div>
+                    <div class="dow-bar">
+                      <div class="bar" style="height:15%"></div>
+                      <div class="bar-label">1/7</div>
+                      <div class="day-letter">W</div>
+                    </div>
+                    <div class="dow-bar">
+                      <div class="bar" style="height:30%"></div>
+                      <div class="bar-label">2/7</div>
+                      <div class="day-letter">T</div>
+                    </div>
+                    <div class="dow-bar fri">
+                      <div class="bar" style="height:60%"></div>
+                      <div class="bar-label">4/7</div>
+                      <div class="day-letter">F</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Decline trend -->
+                <div class="pattern-card terra-tint">
+                  <div class="pc-label">Term decline</div>
+                  <h3>Sharp drop after <em>mid-term break</em></h3>
+                  <div class="pc-detail">Attendance was <b>91%</b> in weeks 1-3. After the Eid holiday in week 4, it fell to <b>43%</b> across weeks 5-7. The break appears to coincide with the change.</div>
+                  <div class="decline-chart">
+                    <svg viewBox="0 0 240 60" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="declineGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stop-color="#B84A39" stop-opacity="0.18"/>
+                          <stop offset="100%" stop-color="#B84A39" stop-opacity="0"/>
+                        </linearGradient>
+                      </defs>
+                      <line x1="0" y1="12" x2="240" y2="12" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 3"/>
+                      <line x1="0" y1="36" x2="240" y2="36" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 3"/>
+                      <line x1="100" y1="0" x2="100" y2="60" stroke="#C8975B" stroke-width="0.5" stroke-dasharray="3 2" opacity="0.5"/>
+                      <text x="106" y="10" font-family="Manrope" font-size="7" font-weight="700" fill="#C8975B" letter-spacing="0.06em">EID</text>
+                      <path d="M 0,10 L 40,8 L 80,18 L 120,32 L 160,46 L 200,42 L 240,52 L 240,60 L 0,60 Z" fill="url(#declineGrad)"/>
+                      <polyline points="0,10 40,8 80,18 120,32 160,46 200,42 240,52" fill="none" stroke="#B84A39" stroke-width="2" stroke-linejoin="round"/>
+                      <circle cx="0" cy="10" r="3" fill="#2F6B47"/>
+                      <circle cx="240" cy="52" r="3" fill="#B84A39"/>
+                    </svg>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--navy-3);font-weight:600;font-family:'JetBrains Mono',monospace">
+                    <span>Wk 1: <b style="color:var(--green)">100%</b></span>
+                    <span>Wk 7: <b style="color:var(--terra)">20%</b></span>
+                  </div>
+                </div>
+
+                <!-- Streaks -->
+                <div class="pattern-card">
+                  <div class="pc-label">Notable streaks</div>
+                  <h3>Three <em>multi-day</em> absences</h3>
+                  <div class="pc-detail">Each streak is 3+ consecutive days. The current 5-day streak triggered the critical flag this morning.</div>
+                  <div class="streaks-list">
+                    <div class="streak-row">
+                      <div class="streak-tag terra">Active · 5d</div>
+                      <div class="streak-detail">
+                        <b>Tue 29 Apr — Fri 2 May</b>
+                        <div class="when">no contact from home</div>
+                      </div>
+                    </div>
+                    <div class="streak-row">
+                      <div class="streak-tag warn">Past · 3d</div>
+                      <div class="streak-detail">
+                        <b>Tue 22 Apr — Thu 24 Apr</b>
+                        <div class="when">no contact · returned Friday</div>
+                      </div>
+                    </div>
+                    <div class="streak-row">
+                      <div class="streak-tag warn">Past · 3d</div>
+                      <div class="streak-detail">
+                        <b>Wed 9 Apr — Fri 11 Apr</b>
+                        <div class="when">overlapped with Eid · partial holiday</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- ============ REGION 4 — FLAGS ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">04</div>
+                <h2 class="display">Flags &amp; <em>follow-ups</em></h2>
+                <div class="meta">1 active · 2 historical</div>
+              </div>
+
+              <div class="flags-card">
+                <div class="flags-tabs">
+                  <button class="flags-tab active terra">Active <span class="count">1</span></button>
+                  <button class="flags-tab">Resolved <span class="count">2</span></button>
+                  <button class="flags-tab">All <span class="count">3</span></button>
+                </div>
+
+                <div class="flag-row active-flag">
+                  <div class="flag-icon terra">!</div>
+                  <div class="flag-body">
+                    <div class="flag-top">
+                      <div class="flag-name">Long absence · 5 consecutive days</div>
+                      <div class="severity-pill critical">Critical</div>
+                    </div>
+                    <div class="flag-detail">Opened <b>Wed 30 Apr</b> at 3-day threshold. Escalated to critical this morning at 5-day threshold. <b>2 follow-ups logged</b> · still no contact from Mary.</div>
+                    <div class="flag-stats">last action <b>Thu 1 May · 2:30 PM</b> · WhatsApp delivered, not yet read</div>
+                  </div>
+                  <div class="open-arrow">›</div>
+                </div>
+
+                <div class="flag-row">
+                  <div class="flag-icon green">✓</div>
+                  <div class="flag-body">
+                    <div class="flag-top">
+                      <div class="flag-name">Long absence · 3 consecutive days</div>
+                      <div class="severity-pill resolved">Resolved</div>
+                    </div>
+                    <div class="flag-detail">Opened <b>Thu 24 Apr</b>. Mary contacted via SMS Friday morning · James returned Mon 28 Apr. <b>1 follow-up logged.</b></div>
+                    <div class="flag-stats">closed <b>Mon 28 Apr · 8:14 AM</b> · auto-closed on return</div>
+                  </div>
+                  <div class="open-arrow">›</div>
+                </div>
+
+                <div class="flag-row">
+                  <div class="flag-icon warn">!</div>
+                  <div class="flag-body">
+                    <div class="flag-top">
+                      <div class="flag-name">Below 70% threshold</div>
+                      <div class="severity-pill resolved">Resolved</div>
+                    </div>
+                    <div class="flag-detail">Opened <b>Wed 30 Apr</b>. Marked as 'watching' alongside the active streak; consolidated into the long-absence flag for unified follow-up.</div>
+                    <div class="flag-stats">consolidated <b>Wed 30 Apr · 4:08 PM</b></div>
+                  </div>
+                  <div class="open-arrow">›</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 5 — COMMUNICATION LOG ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">05</div>
+                <h2 class="display">Communication <em>log</em></h2>
+                <div class="meta">Everything school and home have said about James's attendance</div>
+              </div>
+
+              <div class="comm-log-card">
+                <div class="comm-log-head">
+                  <div class="filter-pills">
+                    <button class="comm-pill active">All <span style="color:var(--gold);font-weight:700">9</span></button>
+                    <button class="comm-pill">SMS</button>
+                    <button class="comm-pill">WhatsApp</button>
+                    <button class="comm-pill">Phone</button>
+                    <button class="comm-pill">Notes</button>
+                  </div>
+                  <div style="font-size:11px;color:var(--navy-3);font-style:italic">Term 1 · auto-collected</div>
+                </div>
+
+                <!-- 1. Today: WhatsApp delivered but unread -->
+                <div class="comm-row">
+                  <div class="comm-icon wa-out">W</div>
+                  <div class="comm-body">
+                    <div class="comm-top">
+                      <div class="comm-type">WhatsApp · school to parent</div>
+                      <div class="comm-direction out">Outbound</div>
+                    </div>
+                    <div class="comm-message">"Hello Mary, James has been absent 2 days now. Hope all is well — please give us a call when you can. — <b>Christ the King</b>"</div>
+                    <div class="comm-attribution">— sent by <b>Florence Addo</b> · delivered, not yet read</div>
+                  </div>
+                  <div class="comm-time">Thu 1 May<div class="relative">2:30 PM</div></div>
+                </div>
+
+                <!-- 2. Today: Phone call attempt -->
+                <div class="comm-row">
+                  <div class="comm-icon phone">📞</div>
+                  <div class="comm-body">
+                    <div class="comm-top">
+                      <div class="comm-type">Phone call · school to parent</div>
+                      <div class="comm-direction out">Outbound</div>
+                    </div>
+                    <div class="comm-message note-style">Number rang out twice. Will try again later in the day.</div>
+                    <div class="comm-attribution">— logged by <b>Florence Addo</b> · no answer</div>
+                  </div>
+                  <div class="comm-time">Thu 1 May<div class="relative">9:14 AM</div></div>
+                </div>
+
+                <!-- 3. Wed: SMS auto-sent for absence -->
+                <div class="comm-row">
+                  <div class="comm-icon sms-out">SMS</div>
+                  <div class="comm-body">
+                    <div class="comm-top">
+                      <div class="comm-type">SMS · automated absence notice</div>
+                      <div class="comm-direction out">Outbound</div>
+                    </div>
+                    <div class="comm-message">"James was absent today (Wed 30 Apr). Please contact Christ the King JHS if there is a reason. — School office"</div>
+                    <div class="comm-attribution">— auto-sent at 3:00 PM · delivered</div>
+                  </div>
+                  <div class="comm-time">Wed 30 Apr<div class="relative">3:00 PM</div></div>
+                </div>
+
+                <!-- 4. Tue: SMS auto-sent for absence -->
+                <div class="comm-row">
+                  <div class="comm-icon sms-out">SMS</div>
+                  <div class="comm-body">
+                    <div class="comm-top">
+                      <div class="comm-type">SMS · automated absence notice</div>
+                      <div class="comm-direction out">Outbound</div>
+                    </div>
+                    <div class="comm-message">"James was absent today (Tue 29 Apr). Please contact Christ the King JHS if there is a reason. — School office"</div>
+                    <div class="comm-attribution">— auto-sent at 3:00 PM · delivered</div>
+                  </div>
+                  <div class="comm-time">Tue 29 Apr<div class="relative">3:00 PM</div></div>
+                </div>
+
+                <!-- 5. Mon 28 Apr: Mary's reply WhatsApp -->
+                <div class="comm-row">
+                  <div class="comm-icon wa-in">W</div>
+                  <div class="comm-body">
+                    <div class="comm-top">
+                      <div class="comm-type">WhatsApp · parent to school</div>
+                      <div class="comm-direction in">Inbound</div>
+                    </div>
+                    <div class="comm-message parent">"Thank you madam. He came back today, all sorted now. God bless."</div>
+                    <div class="comm-attribution">— from <b>Mary Mensah</b> · in reply to fee_reminder template</div>
+                  </div>
+                  <div class="comm-time">Mon 28 Apr<div class="relative">11:42 AM</div></div>
+                </div>
+
+                <!-- 6. Fri 25 Apr: SMS sent by Florence directly -->
+                <div class="comm-row">
+                  <div class="comm-icon sms-out">SMS</div>
+                  <div class="comm-body">
+                    <div class="comm-top">
+                      <div class="comm-type">SMS · admin to parent</div>
+                      <div class="comm-direction out">Outbound</div>
+                    </div>
+                    <div class="comm-message">"Mary, James has missed 3 days. Please let us know if there's a problem we can help with. — Christ the King"</div>
+                    <div class="comm-attribution">— sent by <b>Florence Addo</b> · delivered</div>
+                  </div>
+                  <div class="comm-time">Fri 25 Apr<div class="relative">9:18 AM</div></div>
+                </div>
+
+                <!-- 7. Thu 24 Apr: SMS auto-sent absence -->
+                <div class="comm-row">
+                  <div class="comm-icon sms-out">SMS</div>
+                  <div class="comm-body">
+                    <div class="comm-top">
+                      <div class="comm-type">SMS · automated absence notice</div>
+                      <div class="comm-direction out">Outbound</div>
+                    </div>
+                    <div class="comm-message">"James was absent today (Thu 24 Apr). Please contact Christ the King JHS if there is a reason. — School office"</div>
+                    <div class="comm-attribution">— auto-sent at 3:00 PM · delivered</div>
+                  </div>
+                  <div class="comm-time">Thu 24 Apr<div class="relative">3:00 PM</div></div>
+                </div>
+
+                <!-- 8. Wed 23 Apr: SMS auto-sent absence -->
+                <div class="comm-row">
+                  <div class="comm-icon sms-out">SMS</div>
+                  <div class="comm-body">
+                    <div class="comm-top">
+                      <div class="comm-type">SMS · automated absence notice</div>
+                      <div class="comm-direction out">Outbound</div>
+                    </div>
+                    <div class="comm-message">"James was absent today (Wed 23 Apr). Please contact Christ the King JHS if there is a reason. — School office"</div>
+                    <div class="comm-attribution">— auto-sent at 3:00 PM · delivered</div>
+                  </div>
+                  <div class="comm-time">Wed 23 Apr<div class="relative">3:00 PM</div></div>
+                </div>
+
+                <!-- 9. Internal note -->
+                <div class="comm-row">
+                  <div class="comm-icon note">N</div>
+                  <div class="comm-body">
+                    <div class="comm-top">
+                      <div class="comm-type">Internal note · class teacher</div>
+                      <div class="comm-direction out">Internal</div>
+                    </div>
+                    <div class="comm-message note-style">James seemed quiet on Friday. Said his stomach hurt during break but didn't go home. Will keep an eye on him.</div>
+                    <div class="comm-attribution">— logged by <b>Mr. Mensah</b> · class teacher</div>
+                  </div>
+                  <div class="comm-time">Fri 18 Apr<div class="relative">2:42 PM</div></div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>This is a tab on the student profile, not a separate page.</b> Profile head with avatar, name in big italic Fraunces, ID tags, and the tab strip below — Overview / <strong>Attendance</strong> / Grades / Billing / Achievements / Documents / Communication. Attendance tab has the badge-mini "!" dot to flag the active issue.</li>
+        <li><b>"Open follow-up →" button in the profile head</b> is a primary action because admin opening this page during meeting prep often wants to refresh the follow-up drawer with new info. The drawer is one click away from anywhere on this page.</li>
+        <li><b>Five regions, top to bottom, each numbered.</b> 01 At a glance · 02 Term register · 03 What the system noticed · 04 Flags &amp; follow-ups · 05 Communication log. <b>Reading order matches meeting prep:</b> headline → details → patterns → history → conversations.</li>
+        <li><b>Region 1 — Headline card with terra-tinted background</b> because this student is currently a problem case. The hero stat "61%" in extra-large terra Fraunces. Three supporting stats: streak count, vs last term, class rank. <b>"Class rank 36 / 36" is brutal but accurate</b> — James is the lowest-attendance student in his class. The headmistress will need to know this when she meets Mary.</li>
+        <li><b>"Below 70% threshold" pill under the headline number</b> ties the percentage to the flag system. Same colour, same vocabulary as the dashboard. The reader instantly knows this is an automatic flag, not a subjective assessment.</li>
+        <li><b>Term toggle ("Term 1 · current / Term 3 / Term 2")</b> top-right of the region head. Headmistress can pivot to see how James was in earlier terms. Last term was 79% — context for "is this a new problem or chronic." (It's new.)</li>
+        <li><b>Region 2 — Term register as week strips, not the desktop's grid.</b> Each week is one row: week label on the left (Wk 7 · 28 Apr – 2 May · P 1 · A 4), seven day tiles to the right (Mon Tue Wed Thu Fri + faded Sat Sun). Larger tiles than the teacher's grid because we have one student to show, lots of canvas.</li>
+        <li><b>Day tiles are saturated colour blocks with day-num in big Fraunces</b> + day-name + status word. <b>James's current week is a wall of terra blocks</b> with one green Monday at the start. Visually striking. The today indicator (gold ring) is on Friday's terra block.</li>
+        <li><b>Hover popover on each day</b> shows what was marked, why, who marked it. "Marked at 8:08 AM by Mr. Mensah." Auditable detail without crowding the visible surface.</li>
+        <li><b>Holiday weeks rendered as full row of hatched tiles</b> (week 4, Eid). Visually distinct from absence — "school was closed" vs "James didn't come." This matters because the term decline pattern in Region 3 references the holiday as a contextual landmark.</li>
+        <li><b>"5 earlier weeks · scroll to load · Wks 1–2: 10 of 10 days present"</b> truncation note. The page doesn't render all 10 weeks because the recent ones are what matter for meeting prep. The 100% start of term is summarised in one line. <b>Compression where compression is OK</b>; the recent weeks remain detailed.</li>
+        <li><b>Term summary strip below the register</b> in 5-cell layout: 29 present / 1 late / 0 excused / 17 absent / 47 total. <b>"0 excused"</b> in warn 0 is significant — none of James's absences have been formally excused with a reason. They're all "no contact" absences.</li>
+        <li><b>Region 3 — Pattern analysis as 3 cards</b>: Day-of-week / Term decline / Notable streaks. Each card has a label, headline, detail paragraph, and visual element.</li>
+        <li><b>Day-of-week card with vertical bar chart</b> showing absences by day of week. Tuesday and Friday tower over the others (75%, 60%) in terra; Wednesday is tiny (15%) in green. The visual makes "James misses Tuesdays and Fridays" undeniable. <b>Specific finding: "Tuesdays and Fridays show highest absence"</b> with concrete fractions.</li>
+        <li><b>Term decline card with line chart</b> — green start (Wk 1: 100%), gold dashed line at the Eid week, terra line declining through the post-holiday weeks. The mid-term break is annotated as the inflection point. <b>"Sharp drop after mid-term break"</b> as the headline tells the story before the chart confirms it.</li>
+        <li><b>Streaks card lists all 3+ day absences chronologically.</b> Active 5-day streak in terra, two past 3-day streaks in warn. Each row shows date range and reason. <b>The historical streaks contextualise the current one</b> — James has done this before, but never for this long.</li>
+        <li><b>"Past · 3d · overlapped with Eid · partial holiday"</b> shows the system understands context. The April 9-11 absence wasn't a real 3-day streak; it overlapped with the Eid break. Surfacing this prevents the headmistress from over-counting the pattern.</li>
+        <li><b>Region 4 — Flags card with three rows.</b> Active flag (terra, with critical pill, currently the focus) takes the active-flag styling — terra-tinted bg, terra left border, indented 3px. Two resolved flags below in the standard row treatment.</li>
+        <li><b>Each flag row shows: type, severity, opened/resolved dates, follow-up count, last action.</b> Auditor scanning the column knows which flags fired when, what was done, what closed them. The arrow at the right indicates these are clickable into the follow-up drawer.</li>
+        <li><b>Resolved flag attribution: "auto-closed on return"</b> is the system being honest — the flag closed automatically when James came back, not because Florence explicitly resolved it. <b>Different from "Resolved by Florence Addo"</b>; both valid, both audit-trailed.</li>
+        <li><b>"Consolidated into the long-absence flag for unified follow-up"</b> on the Below 70% flag explains why two separate triggers became one workflow. Two flags fired simultaneously; admin handled them as one. The system tracks the consolidation.</li>
+        <li><b>Region 5 — Communication log is the thickest section.</b> Nine entries spanning the term. Auto-sent SMS (3 PM absence notices), admin-sent SMS (Florence to Mary), inbound WhatsApp from Mary, phone call attempt logs, internal notes from class teachers. <b>Every conversation about James's attendance, in one place</b>.</li>
+        <li><b>Filter pills: All / SMS / WhatsApp / Phone / Notes.</b> Default All shows everything chronologically. Filtering helps when admin wants to review just the WhatsApp thread or just the phone attempts.</li>
+        <li><b>Each communication has icon + type + direction + message + attribution + time.</b> Icons distinguish channel (gold SMS box, WA-green W for outbound WhatsApp, white-with-green-border W for inbound, navy phone, neutral note). <b>Direction pill (Outbound / Inbound / Internal)</b> in tiny caps.</li>
+        <li><b>Inbound message from Mary (Mon 28 Apr) styled differently</b> — WA-green left border, light green bg. Visual distinction between "what we said" and "what they said." The most recent inbound is two weeks ago — a long silence that the headmistress will want to ask about in the meeting.</li>
+        <li><b>Internal note from class teacher (Fri 18 Apr · "James seemed quiet on Friday")</b> is the early signal. Mr. Mensah noticed something off two weeks before the system flagged anything. <b>The communication log preserves human observations alongside automated activity</b>; this is the kind of context that turns a meeting from "James has missed days" into "James has been struggling since mid-April."</li>
+        <li><b>Time stamps in mono with relative day below.</b> "Thu 1 May · 2:30 PM" gives the explicit calendar reference; "2:30 PM" relative gives the human anchor. Audit precision and human readability both served.</li>
+        <li><b>Auto-sent SMS attribution explicit: "auto-sent at 3:00 PM · delivered"</b> distinguishes system messages from human messages. The headmistress meeting Mary won't claim "I texted you 5 times" when actually the system did 4 of those — the log shows what's automated and what's personal.</li>
+        <li><b>"In reply to fee_reminder template"</b> on Mary's WhatsApp message ties it to its trigger. She wasn't proactively reaching out about James's attendance — she was responding to a fees reminder, and mentioned attendance as an aside. Context that matters: Mary doesn't initiate contact about attendance issues.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools Oversight — District director dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Omnischools Oversight — National dashboard</title>
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:800px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Oversight uses a deeper navy app chrome to distinguish it from the operational app */
+.app-shell { display:grid; grid-template-columns:230px 1fr; background:var(--bg); }
+.sidebar { background:#13203A; color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1240px; }
+.sidebar.tall { min-height:1620px; }
+.sidebar.taller { min-height:1880px; }
+.sidebar .gov-mark { padding:0 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:8px; }
+.sidebar .gov-mark .crest { display:flex; gap:11px; align-items:center; }
+.sidebar .gov-mark .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; line-height:1; text-align:center; }
+.sidebar .gov-mark .crest-text .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.sidebar .gov-mark .crest-text .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.sidebar .scope-chip { margin:14px 20px 8px; padding:10px 12px; background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:8px; }
+.sidebar .scope-chip .sc-label { font-size:8.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.sidebar .scope-chip .sc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.sidebar .scope-chip .sc-meta { font-size:10px; color:var(--gold-soft); margin-top:1px; }
+.nav-group { padding:16px 24px 6px; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(200,151,91,0.6); font-weight:700; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.1); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; }
+.sidebar .footer .av { width:34px; height:34px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; flex-shrink:0; }
+.sidebar .footer .meta-name { font-weight:600; font-size:12px; }
+.sidebar .footer .meta-role { font-size:9.5px; color:var(--gold-soft); margin-top:1px; }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.5); font-weight:700; }
+.powered-by em { color:var(--gold); font-style:normal; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:820px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Data-period banner */
+.period-banner { display:flex; align-items:center; gap:14px; padding:12px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; margin-bottom:24px; }
+.period-banner .pb-icon { width:34px; height:34px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:15px; flex-shrink:0; }
+.period-banner .pb-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.period-banner .pb-text b { color:var(--navy); font-weight:700; }
+.period-banner .pb-aside { margin-left:auto; font-size:10px; letter-spacing:0.06em; color:var(--navy-3); font-weight:600; text-align:right; }
+
+/* KPI strip */
+.kpi-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.kpi-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.kpi-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.kpi-card .k-lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.kpi-card .k-val { font-family:'Fraunces', serif; font-size:33px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.kpi-card .k-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.kpi-card .k-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.kpi-card .k-sub { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.kpi-card .k-sub b { color:var(--navy-2); font-weight:700; }
+.kpi-card .k-delta { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; margin-top:8px; position:relative; }
+.kpi-card .k-delta.up { background:var(--green-bg); color:var(--green); }
+.kpi-card .k-delta.down { background:var(--terra-bg); color:var(--terra); }
+.kpi-card .k-delta.flat { background:var(--bg); color:var(--navy-3); }
+
+/* Panel */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.panel-head { padding:16px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; justify-content:space-between; }
+.panel-head .ph-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.panel-head .ph-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.panel-head .ph-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.panel-head .ph-link { font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; }
+.panel-body { padding:20px 22px; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* Bar rows for enrolment-by-sex etc */
+.bar-row { margin-bottom:14px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-row .br-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.bar-row .br-label { font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-label .br-sub { color:var(--navy-3); font-weight:500; font-size:10.5px; margin-left:6px; }
+.bar-row .br-value { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-track { height:9px; background:var(--bg); border-radius:100px; overflow:hidden; display:flex; }
+.bar-row .br-fill { height:100%; }
+.bar-row .br-fill.navy { background:var(--navy); }
+.bar-row .br-fill.gold { background:var(--gold); }
+.bar-row .br-fill.green { background:var(--green); }
+.bar-row .br-fill.terra { background:var(--terra); }
+.bar-row .br-fill.warn { background:var(--warn); }
+.split-legend { display:flex; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.split-legend .sl-item { display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--navy-2); font-weight:600; }
+.split-legend .sl-dot { width:9px; height:9px; border-radius:2px; }
+.bar-row.parent .br-label { display:flex; align-items:center; gap:7px; }
+.bar-row.parent .drill-chip { font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; color:var(--gold); background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:100px; padding:2px 7px; cursor:pointer; }
+.bar-row.child { margin-left:18px; padding-left:12px; border-left:2px solid var(--border); }
+.bar-row.child .br-label { font-weight:500; color:var(--navy-2); font-size:11.5px; }
+.bar-row.child .br-value { font-size:11px; color:var(--navy-2); }
+.bar-row.child .br-track { height:7px; }
+.subtotal-note { font-size:10px; color:var(--navy-3); font-weight:600; margin:3px 0 10px 30px; font-style:italic; }
+.fee-row { margin-bottom:14px; }
+.fee-row:last-child { margin-bottom:0; }
+.fee-row .fr-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.fee-row .fr-level { font-size:12px; font-weight:700; color:var(--navy); }
+.fee-row .fr-total { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.fee-row .fr-bar { height:16px; border-radius:4px; overflow:hidden; display:flex; }
+.fee-row .fr-seg { height:100%; }
+.fee-legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.fee-legend .fl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.fee-legend .fl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* Mini stat list */
+.stat-list { display:flex; flex-direction:column; }
+.stat-list .st-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.stat-list .st-row:last-child { border-bottom:none; }
+.stat-list .st-label { font-size:12px; color:var(--navy-2); font-weight:500; }
+.stat-list .st-label b { color:var(--navy); font-weight:700; }
+.stat-list .st-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stat-list .st-val .st-unit { font-size:10px; color:var(--navy-3); font-weight:500; }
+.stat-list .st-val.flag { color:var(--terra); }
+.stat-list .st-val.good { color:var(--green); }
+
+/* Performance band chart */
+.band-chart { display:flex; flex-direction:column; gap:10px; }
+.band-row { display:grid; grid-template-columns:78px 1fr 48px; gap:10px; align-items:center; }
+.band-row .bd-label { font-size:11px; font-weight:600; color:var(--navy-2); }
+.band-row .bd-track { height:20px; background:var(--bg); border-radius:5px; overflow:hidden; display:flex; }
+.band-row .bd-seg { height:100%; }
+.band-row .bd-pct { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.band-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.band-legend .bl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.band-legend .bl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* School list table */
+.school-table { width:100%; border-collapse:collapse; }
+.school-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.school-table th.c { text-align:center; }
+.school-table th.r { text-align:right; }
+.school-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.school-table tr:last-child td { border-bottom:none; }
+.school-table tr.drill { cursor:pointer; }
+.school-table tr.drill:hover td { background:var(--gold-bg); }
+.school-table td .sc-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.school-table td .sc-name .sc-badge { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.school-table td .sc-name .sc-badge.anchor { background:var(--gold); color:var(--navy); }
+.school-table td .sc-meta { font-size:9.5px; color:var(--navy-3); margin-top:1px; font-weight:500; }
+.school-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.school-table td .num.r { text-align:right; }
+.school-table td .ratio { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; }
+.school-table td .ratio.good { color:var(--green); }
+.school-table td .ratio.warn { color:var(--warn); }
+.school-table td .ratio.flag { color:var(--terra); }
+.school-table td .perf-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; }
+.school-table td .perf-pill.good { background:var(--green-bg); color:var(--green); }
+.school-table td .perf-pill.mid { background:var(--warn-bg); color:var(--warn); }
+.school-table td .perf-pill.low { background:var(--terra-bg); color:var(--terra); }
+.school-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.table-toolbar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.table-toolbar .tt-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.chip { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:5px 11px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.chip.compare { background:var(--gold-bg); border-color:var(--gold); color:var(--navy); margin-left:auto; }
+.chip.compare::before { content:"⊕ "; color:var(--gold); }
+
+/* Anomaly callouts */
+.flag-list { display:flex; flex-direction:column; gap:10px; }
+.flag-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.flag-item.warn { border-color:var(--warn); background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 60%); }
+.flag-item.terra { border-color:var(--terra); background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 60%); }
+.flag-item .fi-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.flag-item.warn .fi-icon { background:var(--warn); color:var(--bg); }
+.flag-item.terra .fi-icon { background:var(--terra); color:var(--bg); }
+.flag-item .fi-body .fi-title { font-size:12px; font-weight:700; color:var(--navy); }
+.flag-item .fi-body .fi-detail { font-size:10.5px; color:var(--navy-2); margin-top:2px; line-height:1.45; }
+.flag-item .fi-body .fi-detail b { color:var(--navy); font-weight:700; }
+.flag-item .fi-action { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:700; color:var(--navy); cursor:pointer; }
+
+/* Comparison teaser */
+.compare-strip { background:linear-gradient(135deg, #13203A 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:22px 26px; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.compare-strip::before { content:""; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.compare-strip .cs-body { position:relative; }
+.compare-strip .cs-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.compare-strip .cs-title { font-family:'Fraunces', serif; font-size:21px; font-weight:500; line-height:1.2; margin-bottom:6px; }
+.compare-strip .cs-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.compare-strip .cs-text { font-size:12px; color:var(--gold-soft); line-height:1.5; max-width:560px; }
+.compare-strip .cs-text b { color:var(--bg); font-weight:600; }
+.compare-strip .cs-action { position:relative; }
+
+/* Data provenance footer */
+.provenance { display:flex; gap:18px; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-top:18px; flex-wrap:wrap; }
+.provenance .pv-item { font-size:10.5px; color:var(--navy-3); font-weight:500; }
+.provenance .pv-item b { color:var(--navy-2); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .dash-grid { grid-template-columns:1fr; }
+  .compare-strip { grid-template-columns:1fr; }
+}
+
+/* ===== National dashboard specific ===== */
+.region-table { width:100%; border-collapse:collapse; }
+.region-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.region-table th.c { text-align:center; }
+.region-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); color:var(--navy-2); vertical-align:middle; }
+.region-table tr:last-child td { border-bottom:none; }
+.region-table tr.drill { cursor:pointer; }
+.region-table tr.drill:hover td { background:var(--gold-bg); }
+.region-table td .rname { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.region-table td .rname .rb { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:8.5px; flex-shrink:0; }
+.region-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.region-table td .cov-mini { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; }
+.region-table td .cov-mini.good { color:var(--green); }
+.region-table td .cov-mini.warn { color:var(--warn); }
+.region-table td .cov-mini.low { color:var(--terra); }
+.region-table td .qpill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; padding:3px 9px; border-radius:100px; }
+.region-table td .qpill.green { background:var(--green-bg); color:var(--green); }
+.region-table td .qpill.warn { background:var(--warn-bg); color:var(--warn); }
+.region-table td .qpill.terra { background:var(--terra-bg); color:var(--terra); }
+.region-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.region-table tr.nation-row td { background:var(--gold-bg); font-weight:700; }
+/* policy indicator panel */
+.policy-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+.policy-card { border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.policy-card .pc-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
+.policy-card .pc-name { font-size:12px; font-weight:700; color:var(--navy); }
+.policy-card .pc-target { font-size:9.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.policy-card .pc-val { font-family:'Fraunces', serif; font-size:32px; font-weight:600; letter-spacing:-0.02em; line-height:1.1; margin:6px 0; }
+.policy-card .pc-val.green { color:var(--green); }
+.policy-card .pc-val.warn { color:var(--warn); }
+.policy-card .pc-val.terra { color:var(--terra); }
+.policy-card .pc-gauge { height:8px; background:var(--bg); border-radius:100px; overflow:hidden; position:relative; }
+.policy-card .pc-gauge-fill { height:100%; border-radius:100px; }
+.policy-card .pc-gauge-target { position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--navy); }
+.policy-card .pc-foot { font-size:10px; color:var(--navy-3); font-weight:500; margin-top:8px; line-height:1.45; }
+.policy-card .pc-foot b { color:var(--navy-2); font-weight:700; }
+/* spread / disparity bar */
+.spread-row { display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--border); }
+.spread-row:last-child { border-bottom:none; }
+.spread-row .sp-label { font-size:11.5px; font-weight:600; color:var(--navy); width:140px; }
+.spread-row .sp-track { flex:1; height:26px; background:var(--bg); border-radius:6px; position:relative; }
+.spread-row .sp-range { position:absolute; top:5px; bottom:5px; background:var(--gold-soft); border-radius:4px; }
+.spread-row .sp-mean { position:absolute; top:0; bottom:0; width:2px; background:var(--navy); }
+.spread-row .sp-dot { position:absolute; top:50%; transform:translate(-50%,-50%); width:11px; height:11px; border-radius:50%; border:2px solid var(--surface); }
+.spread-row .sp-dot.low { background:var(--terra); }
+.spread-row .sp-dot.high { background:var(--green); }
+.spread-row .sp-vals { width:120px; font-size:10px; color:var(--navy-3); font-weight:600; text-align:right; line-height:1.4; }
+.spread-row .sp-vals b { color:var(--navy); font-weight:700; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Omnischools Oversight · Batch 2 · surface 5 of 5</div>
+<div class="eyebrow">Omnischools Oversight · the national tier</div>
+<h1>The whole system, <em>one screen.</em></h1>
+<div class="gold-rule"></div>
+<p>The national dashboard is the top of the hierarchy — the Ministry of Education's view of all sixteen regions. It is the same pattern as the district and regional dashboards, lifted one final tier: regions are the unit, every region drills down into its districts and from there into schools. But the national tier carries two things the lower tiers cannot. It has no jurisdiction ceiling — national staff see every region, every district, every school. And it is the only tier where policy-level indicators belong: Free SHS participation, the national pupil-teacher ratio against GES target, gender parity, transition rates — the numbers that answer to Parliament rather than to a school. This surface completes Oversight Batch 2.</p>
+</div>
+
+<!-- ============================================ SECTION 1 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">The nation at a glance · sixteen regions rolled up</div>
+<div class="section-meta">Ghana · 2025/26</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / national</div></div>
+
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ministry of Education</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">National</div>
+<div class="sc-meta">Ministry of Education · 16 regions</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item active"><div class="ic"></div>National dashboard</div>
+<div class="nav-item"><div class="ic"></div>Regions</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Policy indicators</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">EM</div><div><div class="meta-name">E. Mahama</div><div class="meta-role">MoE · National Oversight</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · National dashboard</div>
+<div class="top-row">
+<div>
+<h1>Ghana · <em>national dashboard.</em></h1>
+<div class="lede">Rolled up from <b>16 regions</b> · <b>6,940 of 9,180 schools</b> reporting into Omnischools · <b>2.41 million pupils</b>. Figures are as of the most recent nightly sync.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">2025/26 ▾</button>
+<button class="btn">Export view</button>
+<button class="btn primary">Open comparison →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="period-banner">
+<div class="pb-icon">i</div>
+<div class="pb-text">Data reflects the <b>2025/26 academic year, Term 2</b>. Enrolment, attendance and fee figures synced from schools' operational records <b>today at 02:00 GMT</b>. Performance figures are the <b>2025 BECE</b> and <b>2025 WASSCE</b> results from the official <b>WAEC</b> extract. Every national figure is the sum or mean of 16 regions.</div>
+<div class="pb-aside">Next sync<br>tomorrow 02:00 GMT</div>
+</div>
+
+<div class="kpi-strip">
+<div class="kpi-card lead">
+<div class="k-lbl">Total enrolment</div>
+<div class="k-val"><em>2.41M</em><span class="unit">pupils</span></div>
+<div class="k-sub">Across 6,940 reporting schools</div>
+<div class="k-delta up">▲ 2.4% vs 2024/25</div>
+</div>
+<div class="kpi-card">
+<div class="k-lbl">School coverage</div>
+<div class="k-val">75.6<span class="unit">%</span></div>
+<div class="k-sub"><b>6,940 of 9,180</b> in the EMIS register</div>
+<div class="k-delta up">▲ 612 schools onboarded this year</div>
+</div>
+<div class="kpi-card">
+<div class="k-lbl">WASSCE qualification</div>
+<div class="k-val">64<span class="unit">%</span></div>
+<div class="k-sub">National · 2025 · credit or above</div>
+<div class="k-delta up">▲ 1 pt vs 2024</div>
+</div>
+<div class="kpi-card">
+<div class="k-lbl">Pupil-teacher ratio</div>
+<div class="k-val">26.9<span class="unit">: 1</span></div>
+<div class="k-sub">National average · GES target 25:1</div>
+<div class="k-delta down">▼ above target</div>
+</div>
+</div>
+
+<div class="provenance">
+<div class="pv-item"><b>Source</b> · Omnischools analytics DB · 16 region rollups</div>
+<div class="pv-item"><b>Coverage</b> · 6,940 of 9,180 schools · 2,240 not yet on Omnischools</div>
+<div class="pv-item"><b>Mode</b> · aggregate · no named records on this surface</div>
+<div class="pv-item"><b>Scope</b> · national · no jurisdiction ceiling — all regions visible</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The top of the hierarchy</h4>
+<ul>
+<li><b>The same pattern, one final tier up.</b> Identical KPI strip, period banner and provenance row as the district and regional dashboards — the unit is now the region, the rollup is of 16. National staff who have seen any lower dashboard read this immediately. Consistency across all three tiers was the design goal from the district dashboard onward.</li>
+<li><b>The national tier has no jurisdiction ceiling.</b> The provenance row says it plainly: all regions visible. Where a district director could not see sibling districts' internals and a regional director could not see other regions, national staff see everything — every region, district and school. The hierarchy's top is the one tier without a sideways limit.</li>
+<li><b>Coverage at 75.6% is the honest national headline.</b> A quarter of Ghana's schools are not yet on Omnischools — and the dashboard says so as a KPI, not a footnote. The same coverage discipline as every Oversight surface, at the largest scale: national figures are real but partial, and the surface never pretends otherwise.</li>
+<li><b>The crest reads "Ministry of Education."</b> The lower tiers carried "Ghana Education Service"; at national Oversight the accountable body is the Ministry. The demo national user E. Mahama sits at the top of the Decision 5 provisioning chain — the GES Oversight super-admin tier.</li>
+<li><b>Every national figure is a 16-region rollup.</b> The period banner states it. The national PTR of 26.9:1 is a region-weighted mean, not a separate national measurement — national staff presenting to Parliament need to know the figure's construction.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 2 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">The sixteen regions · drill-down &amp; the national spread</div>
+<div class="section-meta">16 regions · sortable</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / national/regions</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ministry of Education</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">National</div>
+<div class="sc-meta">Ministry of Education · 16 regions</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>National dashboard</div>
+<div class="nav-item active"><div class="ic"></div>Regions</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Policy indicators</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">EM</div><div><div class="meta-name">E. Mahama</div><div class="meta-role">MoE · National Oversight</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · National · Regions</div>
+<div class="top-row">
+<div>
+<h1>The sixteen <em>regions.</em></h1>
+<div class="lede">Every region in Ghana. Tap a row to open its regional dashboard, then drill to any district or school.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">All regions ▾</button>
+<button class="btn">Export list</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="panel" style="margin-bottom:18px;">
+<div class="table-toolbar">
+<span class="tt-label">Sort</span>
+<button class="chip active">WASSCE qualification</button>
+<button class="chip">Enrolment</button>
+<button class="chip">Coverage</button>
+<button class="chip">PTR</button>
+<button class="chip compare">Compare selected · 0</button>
+</div>
+<table class="region-table">
+<thead><tr>
+<th>Region</th>
+<th class="c">Schools (on / total)</th>
+<th class="c">Coverage</th>
+<th class="c">Enrolment</th>
+<th class="c">WASSCE qual.</th>
+<th class="c">PTR</th>
+<th class="c">Detail</th>
+</tr></thead>
+<tbody>
+<tr class="drill">
+<td><div class="rname"><div class="rb">GA</div>Greater Accra</div></td>
+<td><div class="num">1,140 / 1,290</div></td>
+<td><div class="num"><span class="cov-mini good">88.4%</span></div></td>
+<td><div class="num">412,600</div></td>
+<td><div class="num"><span class="qpill green">72%</span></div></td>
+<td><div class="num">24.8:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="rname"><div class="rb">AS</div>Ashanti</div></td>
+<td><div class="num">1,308 / 1,610</div></td>
+<td><div class="num"><span class="cov-mini good">81.2%</span></div></td>
+<td><div class="num">438,900</div></td>
+<td><div class="num"><span class="qpill green">69%</span></div></td>
+<td><div class="num">26.1:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="rname"><div class="rb">WE</div>Western</div></td>
+<td><div class="num">431 / 508</div></td>
+<td><div class="num"><span class="cov-mini warn">84.8%</span></div></td>
+<td><div class="num">198,400</div></td>
+<td><div class="num"><span class="qpill warn">66%</span></div></td>
+<td><div class="num">25.6:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="rname"><div class="rb">CE</div>Central</div></td>
+<td><div class="num">486 / 642</div></td>
+<td><div class="num"><span class="cov-mini warn">75.7%</span></div></td>
+<td><div class="num">187,200</div></td>
+<td><div class="num"><span class="qpill warn">63%</span></div></td>
+<td><div class="num">27.4:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="rname"><div class="rb">NE</div>Northern</div></td>
+<td><div class="num">402 / 689</div></td>
+<td><div class="num"><span class="cov-mini low">58.3%</span></div></td>
+<td><div class="num">164,800</div></td>
+<td><div class="num"><span class="qpill terra">54%</span></div></td>
+<td><div class="num">31.2:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="rname"><div class="rb">UW</div>Upper West</div></td>
+<td><div class="num">214 / 388</div></td>
+<td><div class="num"><span class="cov-mini low">55.2%</span></div></td>
+<td><div class="num">98,300</div></td>
+<td><div class="num"><span class="qpill terra">56%</span></div></td>
+<td><div class="num">29.7:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="nation-row">
+<td>Ghana · all 16 regions</td>
+<td><div class="num">6,940 / 9,180</div></td>
+<td><div class="num">75.6%</div></td>
+<td><div class="num">2,410,000</div></td>
+<td><div class="num"><span class="qpill warn">64%</span></div></td>
+<td><div class="num">26.9:1</div></td>
+<td><div class="num"></div></td>
+</tr>
+</tbody>
+</table>
+<div style="text-align:center; padding:14px; font-size:11px; color:var(--navy-3); font-style:italic; border-top:1px solid var(--border);">Showing 6 of 16 regions · sorted by WASSCE qualification · <b>tap any region to drill into its districts and schools</b></div>
+</div>
+
+<div class="panel">
+<div class="panel-head">
+<div class="ph-title">The national <em>spread</em></div>
+<div class="ph-meta">Best to worst region · 2025/26</div>
+</div>
+<div class="panel-body">
+<div class="spread-row">
+<div class="sp-label">WASSCE qualification</div>
+<div class="sp-track">
+<div class="sp-range" style="left:54%; right:28%;"></div>
+<div class="sp-mean" style="left:64%;"></div>
+<div class="sp-dot low" style="left:54%;"></div>
+<div class="sp-dot high" style="left:72%;"></div>
+</div>
+<div class="sp-vals"><b>54% – 72%</b><br>mean 64%</div>
+</div>
+<div class="spread-row">
+<div class="sp-label">School coverage</div>
+<div class="sp-track">
+<div class="sp-range" style="left:55%; right:12%;"></div>
+<div class="sp-mean" style="left:75.6%;"></div>
+<div class="sp-dot low" style="left:55%;"></div>
+<div class="sp-dot high" style="left:88%;"></div>
+</div>
+<div class="sp-vals"><b>55% – 88%</b><br>mean 75.6%</div>
+</div>
+<div class="spread-row">
+<div class="sp-label">Pupil-teacher ratio</div>
+<div class="sp-track">
+<div class="sp-range" style="left:24%; right:5%;"></div>
+<div class="sp-mean" style="left:69%;"></div>
+<div class="sp-dot high" style="left:24%;"></div>
+<div class="sp-dot low" style="left:95%;"></div>
+</div>
+<div class="sp-vals"><b>23.1 – 31.2</b><br>mean 26.9</div>
+</div>
+<div style="font-size:10.5px; color:var(--navy-3); margin-top:12px; line-height:1.55;">The spread is the national tier's most important read — not the mean, but the <b>distance between the best and worst region</b>. An 18-point WASSCE gap and a 33-point coverage gap are the disparities national policy exists to close. The northern regions sit at the low end of all three; equity, not the average, is the national question.</div>
+</div>
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Tap a row</b> · opens that region's regional dashboard</div>
+<div class="pv-item"><b>Select + Compare</b> · opens chosen regions in the comparison workspace</div>
+<div class="pv-item"><b>The spread</b> · best-to-worst range · the disparity national policy targets</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Sixteen regions, and the gap between them</h4>
+<ul>
+<li><b>Every row drills the full hierarchy.</b> National staff tapping Western Region land on the regional dashboard A. Owusu uses, then into Wassa Amenfi West's district dashboard, then a school detail view. Three tiers of drill-down from one national row — the whole product is one connected hierarchy.</li>
+<li><b>The Western Region row ties the demo together.</b> 431 of 508 schools, 198,400 pupils, 66% WASSCE — the exact figures the regional dashboard opened with. The demo thread runs unbroken: school → district → region → nation, every tier consistent with the last.</li>
+<li><b>The spread panel is the national tier's signature read.</b> Lower tiers care about their own average; the national tier's real concern is disparity — the 18-point WASSCE gap, the 33-point coverage gap between best and worst region. The spread bars show range and mean together, because national policy exists to close gaps, not to admire averages.</li>
+<li><b>The equity story is stated, not just plotted.</b> The northern regions sit at the low end of performance, coverage and PTR together — a pattern the spread makes visible and the note names outright. This is the read a national director takes into a policy discussion.</li>
+<li><b>Coverage colour and the read-with-coverage discipline carry through.</b> Northern Region's 54% WASSCE sits beside 58% coverage — the lowest-covered region's performance figure is the least settled, exactly as the regional and district tiers flagged. The honesty rule holds at national scale.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 3 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">Policy indicators · the numbers that answer to Parliament</div>
+<div class="section-meta">National tier only</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / national/policy-indicators</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ministry of Education</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">National</div>
+<div class="sc-meta">Ministry of Education · 16 regions</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>National dashboard</div>
+<div class="nav-item"><div class="ic"></div>Regions</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item active"><div class="ic"></div>Policy indicators</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">EM</div><div><div class="meta-name">E. Mahama</div><div class="meta-role">MoE · National Oversight</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · National · Policy indicators</div>
+<div class="top-row">
+<div>
+<h1>Policy <em>indicators.</em></h1>
+<div class="lede">The national-level measures GES and the Ministry report against — each shown with its target.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">2025/26 ▾</button>
+<button class="btn">Export brief</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="panel" style="margin-bottom:18px;">
+<div class="panel-head">
+<div class="ph-title">National <em>policy measures</em></div>
+<div class="ph-meta">2025/26 · against target</div>
+</div>
+<div class="panel-body">
+<div class="policy-grid">
+
+<div class="policy-card">
+<div class="pc-top"><div class="pc-name">Free SHS participation</div><div class="pc-target">Target 100%</div></div>
+<div class="pc-val green">94%</div>
+<div class="pc-gauge"><div class="pc-gauge-fill" style="width:94%; background:var(--green);"></div><div class="pc-gauge-target" style="left:100%;"></div></div>
+<div class="pc-foot">Share of eligible SHS students enrolled under Free SHS. <b>The 6% gap is mostly the unmeasured non-Omnischools schools</b> — read with coverage.</div>
+</div>
+
+<div class="policy-card">
+<div class="pc-top"><div class="pc-name">National pupil-teacher ratio</div><div class="pc-target">GES target 25:1</div></div>
+<div class="pc-val warn">26.9 : 1</div>
+<div class="pc-gauge"><div class="pc-gauge-fill" style="width:74%; background:var(--warn);"></div><div class="pc-gauge-target" style="left:67%;"></div></div>
+<div class="pc-foot">Above the 25:1 target. The marker shows target; the bar shows current. <b>Driven by the northern regions</b> above 29:1.</div>
+</div>
+
+<div class="policy-card">
+<div class="pc-top"><div class="pc-name">Gender parity index</div><div class="pc-target">Parity = 1.00</div></div>
+<div class="pc-val green">0.98</div>
+<div class="pc-gauge"><div class="pc-gauge-fill" style="width:98%; background:var(--green);"></div><div class="pc-gauge-target" style="left:100%;"></div></div>
+<div class="pc-foot">Girls' enrolment as a ratio of boys', all stages. Near parity nationally — but lower in northern regions and at SHS.</div>
+</div>
+
+<div class="policy-card">
+<div class="pc-top"><div class="pc-name">JHS-to-SHS transition</div><div class="pc-target">Target 95%</div></div>
+<div class="pc-val warn">78%</div>
+<div class="pc-gauge"><div class="pc-gauge-fill" style="width:78%; background:var(--warn);"></div><div class="pc-gauge-target" style="left:95%;"></div></div>
+<div class="pc-foot">Share of BECE completers progressing to SHS. <b>The widest gap to target</b> — and a national equity priority.</div>
+</div>
+
+</div>
+<div style="font-size:10.5px; color:var(--navy-3); margin-top:14px; line-height:1.55;">Policy indicators exist only at the national tier — these are the numbers that answer to Parliament and the national education plan, not to a school. Each is shown with its target marker. <b>Every indicator is still subject to the 75.6% coverage caveat</b>: these are the best national estimates from reporting schools, not a complete census.</div>
+</div>
+</div>
+
+<div class="panel">
+<div class="panel-head">
+<div class="ph-title">Flagged at <em>national level</em></div>
+<a href="#" class="ph-link">Full anomaly queue · 64 →</a>
+</div>
+<div class="panel-body">
+<div class="flag-list">
+
+<div class="flag-item terra">
+<div class="fi-icon">!</div>
+<div class="fi-body">
+<div class="fi-title">Northern belt · coverage, performance and PTR all trailing</div>
+<div class="fi-detail">Northern, Upper West, Upper East, North East and Savannah regions sit at the bottom of <b>all three</b> core measures. A structural regional disparity — the central equity question for the national education plan.</div>
+</div>
+<button class="fi-action">View analysis →</button>
+</div>
+
+<div class="flag-item warn">
+<div class="fi-icon">↓</div>
+<div class="fi-body">
+<div class="fi-title">JHS-to-SHS transition at 78% · 17 points below target</div>
+<div class="fi-detail">Nearly a quarter of BECE completers do not progress to SHS. The single widest gap between a policy indicator and its target — and concentrated in the same northern regions.</div>
+</div>
+<button class="fi-action">View analysis →</button>
+</div>
+
+<div class="flag-item warn">
+<div class="fi-icon">⊕</div>
+<div class="fi-body">
+<div class="fi-title">2,240 schools nationally not yet on Omnischools</div>
+<div class="fi-detail">Coverage is 75.6%. The gap is heaviest in the five northern regions — the same belt that trails on every measure, so the national blind spot and the equity problem overlap. A national onboarding programme is the precondition for measuring either properly.</div>
+</div>
+<button class="fi-action">View plan →</button>
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Policy indicators</b> · national tier only · not shown at region or district</div>
+<div class="pv-item"><b>Targets</b> · GES strategic plan &amp; national education sector goals</div>
+<div class="pv-item"><b>Coverage caveat</b> · all indicators are estimates from 75.6% of schools</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The tier where policy lives</h4>
+<ul>
+<li><b>Policy indicators belong only at the national tier.</b> Free SHS participation, national PTR against target, gender parity, JHS-to-SHS transition — these answer to Parliament and the national education plan, not to a headteacher or a district director. The lower dashboards correctly never showed them; the national dashboard is where they finally appear.</li>
+<li><b>Every indicator is shown against its target.</b> A policy number without its target is just a number — the gauge marker shows where the figure should be, so transition at 78% against a 95% target reads instantly as the widest gap. National staff brief Parliament on distance-to-target, not on raw values.</li>
+<li><b>The coverage caveat governs even the policy tier.</b> Every indicator carries the reminder that it is an estimate from 75.6% of schools. The Free SHS card makes it explicit — the 6% shortfall is mostly unmeasured schools, not confirmed non-participation. Oversight's central honesty rule holds all the way to the top.</li>
+<li><b>The anomalies are structural, not incidental.</b> At national scale the flags are not single schools — they are the northern belt trailing on every measure, a 17-point transition gap, a 2,240-school coverage hole. The surface names that these overlap: the blind spot and the equity problem are the same five regions. That convergence is the national policy story.</li>
+<li><b>This completes Oversight Batch 2.</b> The enrolment-vs-population analysis, the academic performance analysis, the comparison workspace, the regional dashboard and now the national dashboard — five surfaces. Together with Batch 1's three, Oversight now runs unbroken from a newly provisioned district director's first sign-in to the Ministry's national policy view, every tier consistent and every figure honest about coverage.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

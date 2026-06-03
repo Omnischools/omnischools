@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — SHS student admission</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+/* Desktop frame */
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.admission-shell { background:var(--bg); padding:32px 36px 40px; }
+
+/* Step indicator at top */
+.admit-steps { display:flex; gap:0; margin-bottom:28px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:6px; }
+.admit-step { flex:1; padding:11px 14px; font-size:12px; font-weight:600; color:var(--navy-3); display:flex; align-items:center; gap:8px; border-radius:6px; }
+.admit-step.done { color:var(--green); }
+.admit-step.active { background:var(--navy); color:var(--bg); }
+.admit-step .num { width:20px; height:20px; border-radius:50%; background:rgba(0,0,0,0.08); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:10px; }
+.admit-step.done .num { background:var(--green); color:var(--bg); }
+.admit-step.active .num { background:var(--gold); color:var(--navy); }
+.admit-step .div { width:1px; height:18px; background:var(--border); }
+
+.admit-grid { display:grid; grid-template-columns:1fr 340px; gap:22px; }
+
+/* Main form area */
+.admit-form { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.admit-form .head { padding:22px 28px 18px; border-bottom:1px solid var(--border); }
+.admit-form .head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.admit-form .head h3 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; }
+.admit-form .head h3 em { font-style:italic; color:var(--gold); }
+.admit-form .head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; line-height:1.55; }
+.admit-form .head .lede b { color:var(--navy-2); font-weight:600; }
+
+.field-group { padding:22px 28px; border-bottom:1px solid var(--border); }
+.field-group:last-child { border-bottom:none; }
+.field-group .group-title { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.field-group .group-title .step { background:var(--gold); color:var(--navy); width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:10px; }
+.field-group .group-title .req { color:var(--terra); margin-left:auto; font-size:10px; letter-spacing:0.08em; font-style:italic; }
+
+.field-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:12px; }
+.field-row:last-child { margin-bottom:0; }
+.field { }
+.field.full { grid-column:1/-1; }
+.field .lab { font-size:11px; color:var(--navy-2); font-weight:600; margin-bottom:5px; display:flex; align-items:center; gap:6px; }
+.field .lab .star { color:var(--terra); font-weight:700; }
+.field .input { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-size:13px; color:var(--navy); font-weight:500; }
+.field .input.placeholder { color:var(--navy-3); font-style:italic; }
+.field .input.with-tag { display:flex; align-items:center; gap:8px; }
+.field .input.with-tag .verify-tag { margin-left:auto; padding:2px 8px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; background:var(--green-bg); color:var(--green); }
+.field .helper { font-size:10px; color:var(--navy-3); margin-top:4px; line-height:1.4; font-style:italic; }
+.field .helper b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Programme picker */
+.prog-picker { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; }
+.prog-pick { background:var(--bg); border:1.5px solid var(--border); border-radius:9px; padding:13px 15px; cursor:pointer; display:flex; align-items:center; gap:12px; }
+.prog-pick.selected { border-color:var(--gold); background:var(--gold-bg); }
+.prog-pick .radio-sm { width:18px; height:18px; border-radius:50%; border:2px solid var(--border-2); background:var(--surface); flex-shrink:0; }
+.prog-pick.selected .radio-sm { border-color:var(--gold); background:var(--gold); position:relative; }
+.prog-pick.selected .radio-sm::after { content:""; position:absolute; top:3px; left:3px; width:6px; height:6px; border-radius:50%; background:var(--surface); }
+.prog-pick .info { flex:1; }
+.prog-pick .info h5 { font-family:'Fraunces',serif; font-size:13px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; margin-bottom:2px; }
+.prog-pick .info h5 em { font-style:italic; color:var(--gold); }
+.prog-pick .info .meta-x { font-size:10px; color:var(--navy-3); line-height:1.4; font-style:italic; }
+.prog-pick .info .meta-x b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.prog-pick .capacity { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); padding:2px 7px; border-radius:100px; background:var(--surface); border:1px solid var(--border); font-weight:600; }
+.prog-pick.selected .capacity { background:var(--surface); border-color:var(--gold-soft); color:var(--navy-2); }
+.prog-pick.full { opacity:0.5; cursor:not-allowed; }
+.prog-pick.full .capacity { background:var(--terra-bg); border-color:#E5C4BC; color:var(--terra); }
+
+/* Section picker, smaller */
+.section-pick-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.section-pick { padding:7px 14px; border-radius:6px; background:var(--bg); border:1.5px solid var(--border); font-size:12px; font-weight:600; color:var(--navy-2); cursor:pointer; display:flex; align-items:center; gap:7px; }
+.section-pick.selected { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.section-pick .cap-mini { font-family:'JetBrains Mono',monospace; font-size:10px; opacity:0.7; }
+
+/* House picker */
+.house-picker { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+.house-pick { background:var(--bg); border:1.5px solid var(--border); border-radius:9px; padding:12px 14px; cursor:pointer; display:flex; align-items:center; gap:12px; }
+.house-pick.selected { border-color:var(--gold); background:var(--gold-bg); }
+.house-pick .color-dot { width:24px; height:24px; border-radius:50%; border:2px solid var(--surface); box-shadow:0 0 0 1.5px var(--border-2); flex-shrink:0; }
+.house-pick .color-dot.pink { background:#D87794; }
+.house-pick .color-dot.green { background:#5A8F6E; }
+.house-pick .color-dot.blue { background:#5A7A9F; }
+.house-pick .color-dot.gold-c { background:var(--gold); }
+.house-pick .color-dot.terra-c { background:var(--terra); }
+.house-pick .color-dot.navy-c { background:var(--navy); }
+.house-pick .info { flex:1; }
+.house-pick .info h5 { font-family:'Fraunces',serif; font-size:13px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; }
+.house-pick .info .meta-x { font-size:10px; color:var(--navy-3); margin-top:1px; }
+.house-pick .info .meta-x b { color:var(--navy-2); font-weight:600; }
+.house-pick.greyed { opacity:0.35; cursor:not-allowed; }
+
+/* Residency toggle */
+.toggle-row { display:flex; gap:8px; }
+.toggle-btn { padding:11px 18px; border-radius:7px; font-size:12px; font-weight:600; border:1.5px solid var(--border); background:var(--bg); color:var(--navy-2); cursor:pointer; flex:1; text-align:center; }
+.toggle-btn.selected { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.toggle-btn .sub { display:block; font-size:10px; font-weight:400; margin-top:2px; opacity:0.7; }
+
+/* Right rail · summary */
+.admit-summary { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:14px; padding:0; position:sticky; top:24px; overflow:hidden; }
+.admit-summary .head-c { padding:18px 22px; border-bottom:1px solid var(--gold-soft); }
+.admit-summary .head-c .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.admit-summary .head-c h4 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; letter-spacing:-0.005em; }
+.admit-summary .head-c h4 em { font-style:italic; color:var(--gold); }
+.admit-summary .body-c { padding:16px 22px; }
+.sum-row { padding:11px 0; border-bottom:1px solid var(--gold-soft); }
+.sum-row:last-child { border-bottom:none; padding-bottom:0; }
+.sum-row .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.sum-row .val { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; }
+.sum-row .val em { font-style:italic; color:var(--gold); }
+.sum-row .val .gentle { display:block; font-family:'Manrope',sans-serif; font-size:11px; color:var(--navy-3); font-weight:400; margin-top:2px; }
+.sum-row .val .pending { color:var(--navy-3); font-weight:400; font-style:italic; }
+.sum-divider { height:1px; background:var(--gold-soft); margin:4px 0; }
+.admit-summary .foot-c { padding:16px 22px; background:var(--surface); border-top:1px solid var(--gold-soft); }
+.admit-summary .foot-c .next-meta { font-size:11px; color:var(--navy-3); font-style:italic; margin-bottom:8px; line-height:1.5; }
+.admit-summary .foot-c .next-meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.admit-summary .foot-c .admit-btn { background:var(--navy); color:var(--bg); padding:11px; border-radius:7px; font-size:12px; font-weight:700; text-align:center; cursor:pointer; }
+.admit-summary .foot-c .admit-btn.disabled { background:var(--border-2); color:var(--navy-3); cursor:not-allowed; }
+
+/* Editorial card */
+.principle-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:20px; }
+.principle-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.principle-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.principle-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.principle-card p b { color:var(--navy); font-weight:600; }
+
+/* Comparison card · before/after */
+.compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.compare-col { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.compare-col .head-cc { padding:14px 18px; border-bottom:1px solid var(--border); }
+.compare-col.basic .head-cc { background:var(--bg); }
+.compare-col.shs .head-cc { background:var(--gold-bg); border-bottom-color:var(--gold-soft); }
+.compare-col .head-cc .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; margin-bottom:3px; }
+.compare-col.basic .head-cc .eb { color:var(--navy-3); }
+.compare-col.shs .head-cc .eb { color:var(--gold); }
+.compare-col .head-cc h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.compare-col .head-cc h4 em { font-style:italic; color:var(--gold); }
+.compare-col .body-cc { padding:16px 18px; }
+.compare-field { padding:7px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.compare-field:last-child { border-bottom:none; }
+.compare-field .lab { color:var(--navy-3); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; margin-bottom:2px; }
+.compare-field .val { color:var(--navy-2); font-weight:500; }
+.compare-field .val.added { color:var(--gold); font-weight:600; }
+.compare-field .val.added em { font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+.compare-field .val .new-tag { display:inline-block; padding:1px 7px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; background:var(--gold); color:var(--navy); margin-left:5px; vertical-align:middle; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · SHS · Admissions · the ad-hoc path</div>
+  <span class="mvp-tag">SHS · enrolment · individual</span>
+  <span class="related-tag">Secondary to bulk intake</span>
+  <h1 class="display">Add an <em>individual student</em>.</h1>
+  <div class="gold-rule"></div>
+  <p>This is the per-student admission flow — used for <b>self-placement students</b> who arrived through <span class="mono">sp.cssps.gov.gh</span> rather than the auto-placement, <b>walk-in transfers</b> from other SHS, <b>late arrivals</b> after the bulk window, and <b>returning students</b> re-entering after withdrawal. The default path for SHS Form 1 intake is the <b>bulk admission surface</b>, which ingests the CSSPS placement list of 240+ students in one transaction. This single-screen form remains for the genuine cases of one-at-a-time admission. <em>One screen, twelve fields, the foundation of everything downstream — for the one student in front of you.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">00</div>
+    <div class="section-title display">Where this fits · the admissions module map</div>
+    <div class="section-meta">Bulk default · ad-hoc secondary</div>
+  </div>
+
+  <div class="layout">
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px 28px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px;">
+        <div style="padding:16px 18px; background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-radius:10px; position:relative;">
+          <div style="font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px;">Default · CSSPS intake</div>
+          <div style="font-family:'Fraunces', serif; font-size:18px; font-weight:600; margin-bottom:4px;">Bulk admission</div>
+          <div style="font-size:12px; color:var(--navy-2); line-height:1.5;">240+ placed students ingested in one transaction · paste-from-portal / CSV / PDF input · review &amp; match · programme + House + residency assignment · atomic commit. <b>Used once per academic year</b>, immediately after CSSPS releases placements in mid-September.</div>
+          <a href="#" style="display:inline-block; margin-top:10px; font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; border-bottom:1px dotted var(--gold);">Open bulk intake surface →</a>
+        </div>
+        <div style="padding:16px 18px; background:var(--bg); border:2px solid var(--navy); border-radius:10px; position:relative;">
+          <div style="position:absolute; top:-10px; right:14px; background:var(--navy); color:var(--bg); font-size:9px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 9px; border-radius:100px;">You are here</div>
+          <div style="font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px;">Ad-hoc · individual</div>
+          <div style="font-family:'Fraunces', serif; font-size:18px; font-weight:600; margin-bottom:4px;">Add individual student</div>
+          <div style="font-size:12px; color:var(--navy-2); line-height:1.5;">Single-screen form for <b>self-placement</b>, <b>transfers in</b>, <b>late arrivals</b>, and <b>returning students</b>. CSSPS verification still applies — BECE index entry auto-pre-fills name, DOB, aggregate, programme. Used <b>throughout the year</b>, not just September.</div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:var(--navy-3); line-height:1.55; padding-top:14px; border-top:1px solid var(--border);"><b>2026 intake state · St. Theresa's SHS · as of Wed 8 Oct.</b> Bulk intake committed Wed 24 Sep (240 students). Reconciliation as of today: <b>228 enrolled from bulk</b>, <b>12 placed no-shows in review</b>, <b>14 added via this surface</b> (11 self-placement · 3 transfers). Net Form 1 cohort: <b>242 students</b>.</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The admission surface · single screen, grouped fields</div>
+    <div class="section-meta">Students → Add individual · the SHS variant</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">sttheresas.omnischools.gh / admissions / add-individual</div>
+      </div>
+      <div class="admission-shell">
+
+        <div class="admit-steps">
+          <div class="admit-step done"><span class="num">✓</span>Pick programme</div>
+          <div class="admit-step done"><span class="num">✓</span>Assign class</div>
+          <div class="admit-step active"><span class="num">3</span>Allocate House</div>
+          <div class="admit-step"><span class="num">4</span>Residential status</div>
+          <div class="admit-step"><span class="num">5</span>Family &amp; contact</div>
+          <div class="admit-step"><span class="num">6</span>Review &amp; admit</div>
+        </div>
+
+        <div class="admit-grid">
+          <div>
+            <div class="admit-form">
+              <div class="head">
+                <div class="eb">Admit new SHS student</div>
+                <h3 class="display">Kofi Mensah <em>Asante</em></h3>
+                <div class="lede">CSSPS placement number <b>252418-0072</b> · BECE 2025 cohort · placed at Christ the King SHS as <b>1st choice</b> · single screen below covers programme, class, House, residency, family contact. <em>Required fields marked with red star.</em></div>
+              </div>
+
+              <div class="field-group">
+                <div class="group-title">
+                  <span class="step">1</span>Personal · identity
+                  <span class="req">all required</span>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <div class="lab">Full name <span class="star">*</span></div>
+                    <div class="input">Kofi Mensah Asante</div>
+                  </div>
+                  <div class="field">
+                    <div class="lab">Date of birth <span class="star">*</span></div>
+                    <div class="input">14 March 2010 · <em style="font-style:italic; color:var(--gold);">15 years old</em></div>
+                  </div>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <div class="lab">Gender <span class="star">*</span></div>
+                    <div class="input">Male</div>
+                  </div>
+                  <div class="field">
+                    <div class="lab">BECE index / CSSPS no. <span class="star">*</span></div>
+                    <div class="input with-tag">252418-0072 <span class="verify-tag">VERIFIED</span></div>
+                    <div class="helper">Omnischools <b>verifies the placement</b> against CSSPS records · auto-pre-fills name and DOB.</div>
+                  </div>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <div class="lab">JHS attended</div>
+                    <div class="input">Christ the King Junior High</div>
+                  </div>
+                  <div class="field">
+                    <div class="lab">BECE aggregate</div>
+                    <div class="input">12 (Excellent)</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <div class="group-title">
+                  <span class="step">2</span>Programme &amp; class · academic
+                  <span class="req">all required</span>
+                </div>
+
+                <div class="field full">
+                  <div class="lab">Programme <span class="star">*</span></div>
+                  <div class="prog-picker">
+                    <div class="prog-pick selected">
+                      <div class="radio-sm"></div>
+                      <div class="info">
+                        <h5 class="display">General <em>Science</em></h5>
+                        <div class="meta-x"><b>CSSPS selected programme</b> · 1st choice on Kofi's application</div>
+                      </div>
+                      <div class="capacity">68/80</div>
+                    </div>
+                    <div class="prog-pick">
+                      <div class="radio-sm"></div>
+                      <div class="info">
+                        <h5 class="display">General <em>Arts</em></h5>
+                        <div class="meta-x">3 sections available</div>
+                      </div>
+                      <div class="capacity">96/120</div>
+                    </div>
+                    <div class="prog-pick">
+                      <div class="radio-sm"></div>
+                      <div class="info">
+                        <h5 class="display"><em>Business</em></h5>
+                        <div class="meta-x">2 sections available</div>
+                      </div>
+                      <div class="capacity">62/80</div>
+                    </div>
+                    <div class="prog-pick full">
+                      <div class="radio-sm"></div>
+                      <div class="info">
+                        <h5 class="display">General <em>Agriculture</em></h5>
+                        <div class="meta-x">not offered this year</div>
+                      </div>
+                      <div class="capacity">N/A</div>
+                    </div>
+                  </div>
+                  <div class="helper" style="margin-top:8px;">Kofi's CSSPS placement is for General Science — <b>defaulted but changeable</b>. Capacity numbers reflect <em>after this admission</em>. Programmes that aren't currently offered at this school are dimmed.</div>
+                </div>
+
+                <div class="field full" style="margin-top:14px;">
+                  <div class="lab">Section <span class="star">*</span></div>
+                  <div class="section-pick-row">
+                    <div class="section-pick selected">Section A <span class="cap-mini">34/40</span></div>
+                    <div class="section-pick">Section B <span class="cap-mini">34/40</span></div>
+                  </div>
+                  <div class="helper">Omnischools <b>auto-distributes</b> between sections for balance — defaults to lowest-headcount. Admin can override.</div>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <div class="group-title">
+                  <span class="step">3</span>House · pastoral
+                  <span class="req">required</span>
+                </div>
+                <div class="field full">
+                  <div class="lab">Allocate House <span class="star">*</span></div>
+                  <div class="house-picker">
+                    <div class="house-pick">
+                      <div class="color-dot blue"></div>
+                      <div class="info">
+                        <h5 class="display">Aryee</h5>
+                        <div class="meta-x"><b>148</b> boys · slot open</div>
+                      </div>
+                    </div>
+                    <div class="house-pick selected">
+                      <div class="color-dot navy-c"></div>
+                      <div class="info">
+                        <h5 class="display">Knight</h5>
+                        <div class="meta-x"><b>132</b> boys · <em style="font-style:italic; color:var(--gold);">balancing</em></div>
+                      </div>
+                    </div>
+                    <div class="house-pick">
+                      <div class="color-dot green"></div>
+                      <div class="info">
+                        <h5 class="display">Quaque</h5>
+                        <div class="meta-x"><b>156</b> boys · slot tight</div>
+                      </div>
+                    </div>
+                    <div class="house-pick greyed">
+                      <div class="color-dot pink"></div>
+                      <div class="info">
+                        <h5 class="display">Pink 1</h5>
+                        <div class="meta-x">girls only</div>
+                      </div>
+                    </div>
+                    <div class="house-pick greyed">
+                      <div class="color-dot pink"></div>
+                      <div class="info">
+                        <h5 class="display">Pink 2</h5>
+                        <div class="meta-x">girls only</div>
+                      </div>
+                    </div>
+                    <div class="house-pick greyed">
+                      <div class="color-dot gold-c"></div>
+                      <div class="info">
+                        <h5 class="display">Gibson</h5>
+                        <div class="meta-x">girls only</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="helper" style="margin-top:8px;">Every SHS student is assigned a House — <b>day students included</b>. House determines pastoral care, House PTA membership, inter-house competition team, weekend assembly group. <em>Omnischools suggests Knight</em> because Kofi's headcount balances the boys-Houses most evenly.</div>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <div class="group-title">
+                  <span class="step">4</span>Residential status · boarding or day
+                  <span class="req">required</span>
+                </div>
+                <div class="field full">
+                  <div class="lab">Boarding or day <span class="star">*</span></div>
+                  <div class="toggle-row">
+                    <div class="toggle-btn selected">Boarding<span class="sub">lives on campus · dorm assignment follows</span></div>
+                    <div class="toggle-btn">Day<span class="sub">commutes daily from home</span></div>
+                  </div>
+                  <div class="helper" style="margin-top:8px;">If Boarding, Omnischools will prompt for dorm assignment in a follow-up step (configured per House). <b>Day students still keep their House</b> — affiliation is the same regardless of residence.</div>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <div class="group-title">
+                  <span class="step">5</span>Family &amp; contact · parent linkage
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <div class="lab">Primary parent / guardian <span class="star">*</span></div>
+                    <div class="input">Mr Yaw Asante (father)</div>
+                  </div>
+                  <div class="field">
+                    <div class="lab">Phone <span class="star">*</span></div>
+                    <div class="input with-tag">024-XXX-3018 <span class="verify-tag">MoMo OK</span></div>
+                  </div>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <div class="lab">Secondary parent / guardian</div>
+                    <div class="input">Mrs Akua Asante (mother)</div>
+                  </div>
+                  <div class="field">
+                    <div class="lab">Phone</div>
+                    <div class="input">055-XXX-4421</div>
+                  </div>
+                </div>
+                <div class="field-row">
+                  <div class="field full">
+                    <div class="lab">Address</div>
+                    <div class="input">House 14, Adabraka, Accra · <em style="font-style:italic; color:var(--gold);">9km from school</em></div>
+                    <div class="helper">Address determines <b>day-eligibility analysis</b> for future returns and informs the boarding capacity team.</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div>
+            <div class="admit-summary">
+              <div class="head-c">
+                <div class="eb">Admission summary</div>
+                <h4 class="display">Kofi <em>Asante</em></h4>
+              </div>
+              <div class="body-c">
+
+                <div class="sum-row">
+                  <div class="lab">Programme</div>
+                  <div class="val display">General <em>Science</em><span class="gentle">CSSPS 1st choice</span></div>
+                </div>
+
+                <div class="sum-row">
+                  <div class="lab">Class assignment</div>
+                  <div class="val display">Form 1 Sci <em>A</em><span class="gentle">35/40 after this admission</span></div>
+                </div>
+
+                <div class="sum-divider"></div>
+
+                <div class="sum-row">
+                  <div class="lab">House</div>
+                  <div class="val display"><em>Knight</em><span class="gentle">balancing pick · 133/200 after</span></div>
+                </div>
+
+                <div class="sum-row">
+                  <div class="lab">Residential status</div>
+                  <div class="val display"><em>Boarding</em><span class="gentle">dorm assignment in next step</span></div>
+                </div>
+
+                <div class="sum-divider"></div>
+
+                <div class="sum-row">
+                  <div class="lab">Parent linkage</div>
+                  <div class="val display">Mr <em>Asante</em><span class="gentle">phone verified · MoMo ready</span></div>
+                </div>
+
+                <div class="sum-row">
+                  <div class="lab">Fees structure</div>
+                  <div class="val display"><em>Free SHS</em><span class="gentle">tuition + boarding · absorbed</span></div>
+                </div>
+
+                <div class="sum-row">
+                  <div class="lab">Generated ID</div>
+                  <div class="val display"><span class="pending">on admit · CTKS-26-0072</span></div>
+                </div>
+
+              </div>
+              <div class="foot-c">
+                <div class="next-meta">
+                  Clicking <b>Admit student</b> will: create record · link parent · send welcome SMS · queue for House induction · audit-log the admission.
+                </div>
+                <div class="admit-btn">Admit Kofi to Form 1 Science A →</div>
+              </div>
+            </div>
+
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-top:14px; font-size:11px; color:var(--navy-3); line-height:1.55;">
+              <div style="font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px;">Auto-flows on admit</div>
+              SMS to <b>Mr Asante</b> with welcome message and parent-app invite link · push to <b>House master Knight</b> for induction list · entry on <b>Form 1 Sci A roster</b> · entry on <b>Knight House register</b> · Free SHS placement claim filed with GES · audit log entry.
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <div class="principle-card">
+      <div class="eb">Why one screen, not a wizard</div>
+      <p>Admission happens 280 times in early September — the admin doing this 280 times needs <b>a single fast surface</b>, not a click-click-click wizard. The grouped sections create cognitive structure (personal · academic · house · residency · family) without requiring page transitions. <em>The right-hand summary panel</em> updates in real-time as fields are filled, so the admin sees what they're committing to before they click <b>Admit</b>. <em>Speed where it's earned, density where it's needed.</em></p>
+    </div>
+
+    <div class="layout" style="margin-top:24px;">
+      <div></div>
+      <div class="notes">
+        <h4>Calls worth flagging</h4>
+        <ul>
+          <li><b>CSSPS verification is the killer feature</b> for SHS admins — the placement number auto-fills name, DOB, gender, BECE aggregate, and the system flags if anyone tries to admit a student to the wrong school. Removes data-entry burden and prevents fraud.</li>
+          <li>The <b>programme defaults to CSSPS first choice</b> but can be changed — a student might have placed for Science but the school wants to move them to Arts (with parent consent). Don't force the CSSPS choice; surface it as the default.</li>
+          <li><b>Auto-balancing for sections and Houses</b> is the right default. Manual override is one click away. Admins who want to assign by sibling-grouping or pastoral need can override; admins who just want to admit 280 students fast trust the algorithm.</li>
+          <li>Greyed-out Houses ("girls only" for a boy) prevent the most common error — accidentally putting a boy in a girls' House. Show them, but disable them. <em>Don't hide options; explain why they're not available.</em></li>
+          <li>The <b>"MoMo OK"</b> verify tag is a holdover from MVP1 — same logic; checks the parent's phone is a valid MoMo wallet for future fee collection (or in Kofi's case, fee waivers under Free SHS).</li>
+          <li>"Free SHS" is auto-detected from school ownership (public school) and student status (placed via CSSPS). Private SHS schools see normal fee structure. <b>The right thing happens by default.</b></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">What's different from the basic-school admission</div>
+    <div class="section-meta">Side-by-side · the additive nature of the SHS variant</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="compare-grid">
+
+        <div class="compare-col basic">
+          <div class="head-cc">
+            <div class="eb">Basic school admission</div>
+            <h4 class="display">Admit to <em>JHS 1 / Primary 4</em></h4>
+          </div>
+          <div class="body-cc">
+            <div class="compare-field">
+              <div class="lab">Personal · identity</div>
+              <div class="val">Name · DOB · gender</div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">Class assignment</div>
+              <div class="val">Year + optional section (JHS 1A)</div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">Programme</div>
+              <div class="val" style="color:var(--navy-3); font-style:italic;">— not applicable —</div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">House</div>
+              <div class="val" style="color:var(--navy-3); font-style:italic;">— not applicable —</div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">Residential status</div>
+              <div class="val" style="color:var(--navy-3); font-style:italic;">— rarely applicable —</div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">Family · parent linkage</div>
+              <div class="val">Primary + secondary parent · phone · address</div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">Fees</div>
+              <div class="val">Per-class fee structure</div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">External ID</div>
+              <div class="val" style="color:var(--navy-3); font-style:italic;">none required</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="compare-col shs">
+          <div class="head-cc">
+            <div class="eb">SHS admission · extends</div>
+            <h4 class="display">Admit to <em>Form 1</em></h4>
+          </div>
+          <div class="body-cc">
+            <div class="compare-field">
+              <div class="lab">Personal · identity</div>
+              <div class="val">Name · DOB · gender · <b>+ BECE aggregate, JHS attended</b></div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">Class assignment</div>
+              <div class="val">Form + Programme + Section <span class="new-tag">3-DIM</span></div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">Programme</div>
+              <div class="val added"><em>General Arts / Sci / Bus / Agric / Home Ec / Visual / TVET</em> <span class="new-tag">NEW</span></div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">House</div>
+              <div class="val added"><em>Required</em> · gender-respecting · auto-balanced <span class="new-tag">NEW</span></div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">Residential status</div>
+              <div class="val added"><em>Boarding or day</em> · always asked <span class="new-tag">NEW</span></div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">Family · parent linkage</div>
+              <div class="val">Primary + secondary parent · phone · address <span style="font-size:10px; color:var(--navy-3); font-style:italic;">(same as basic)</span></div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">Fees</div>
+              <div class="val">Free SHS toggle (public) · Boarding vs Day fee split (private) <span class="new-tag">EXT</span></div>
+            </div>
+            <div class="compare-field">
+              <div class="lab">External ID</div>
+              <div class="val added"><em>CSSPS placement number</em> · auto-verified <span class="new-tag">NEW</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Additive, not divergent</div>
+        <p>The SHS admission flow is the basic-school admission flow <b>plus four new fields</b> (programme, House, residency, CSSPS) and <b>one expanded field</b> (class becomes 3-dimensional). Everything else is identical. <em>Same form library, same component vocabulary, same validation patterns.</em> The user who has admitted basic students will recognise the surface immediately and just learn where the new fields live. <b>No re-learning, just extension.</b></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The <b>"3-DIM" tag on class assignment</b> captures that SHS classes are a tuple of (Form, Programme, Section) — three dimensions. Basic schools collapse to just (Year, Section) or even just (Year). The surface absorbs this without making the basic-school admin care.</li>
+        <li>"BECE aggregate" appears on SHS only because <b>SHS schools care about academic level at admission</b> (drives placement decisions, tracks against WASSCE prediction). Basic schools don't have this concept — KG admissions don't have BECE.</li>
+        <li>The <b>"EXT" tag on Fees</b> (rather than "NEW") signals that this is the existing fee field, extended with SHS-specific options. Same column in the database; different UI dropdown choices.</li>
+        <li>The compare layout is also a design-doc artefact — at the engineering handoff, this is the <b>diff to implement</b>. Four new fields, one expanded field, eight shared fields. Scoped work.</li>
+        <li>For Multi-tier schools, <b>both forms exist</b> — admin choosing "Admit student" gets a tier picker first (Basic side or SHS side), then sees the appropriate form. No conditional rendering inside one form. <em>Cleaner separation by tier.</em></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

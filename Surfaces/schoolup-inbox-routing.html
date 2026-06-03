@@ -1,0 +1,2296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Inbox routing &amp; assignment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+  --wa-bg: #E7F8EE;
+  --wa-msg-bg: #DCF8C6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 680px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.mvp-tag {
+  display: inline-block;
+  background: var(--gold);
+  color: var(--navy);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+}
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+  position: relative;
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  background: var(--bg);
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+  min-height: 1080px;
+}
+.sidebar.tall { min-height: 1280px; }
+.sidebar.taller { min-height: 1480px; }
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--terra);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 100px;
+  min-width: 20px;
+  text-align: center;
+}
+.nav-item .badge.gold {
+  background: var(--gold);
+  color: var(--navy);
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main {
+  padding: 0;
+  background: var(--bg);
+}
+
+/* ============ INBOX HEADER ============ */
+.inbox-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 18px 28px 14px;
+}
+.inbox-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.inbox-head .top-row {
+  display: flex; justify-content: space-between; align-items: end;
+}
+.inbox-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.inbox-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.inbox-head .lede {
+  font-size: 12px;
+  color: var(--navy-3);
+  margin-top: 3px;
+}
+.inbox-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.inbox-tabs {
+  display: flex; gap: 6px;
+  margin-top: 14px;
+}
+.inbox-tab {
+  padding: 7px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.inbox-tab.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.inbox-tab.active em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+  margin-right: 2px;
+}
+.inbox-tab .badge-mini {
+  background: var(--gold);
+  color: var(--navy);
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-weight: 700;
+  margin-left: 2px;
+}
+.inbox-tab.active .badge-mini { background: var(--gold); }
+.inbox-tab:not(.active) .badge-mini {
+  background: var(--bg);
+  color: var(--navy-3);
+  border: 1px solid var(--border);
+}
+.inbox-tab.warn-state .badge-mini {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid rgba(197,138,46,0.3);
+}
+
+.actions {
+  display: flex; gap: 8px;
+}
+.btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); font-weight: 700; }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); font-weight: 700; }
+
+/* ============ INBOX BODY ============ */
+.inbox-body {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  background: var(--surface);
+  height: 950px;
+}
+
+.thread-list {
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.thread-search {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  gap: 8px;
+  background: var(--bg);
+}
+.thread-search-input {
+  flex: 1;
+  display: flex; align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 100px;
+  padding: 5px 12px;
+}
+.thread-search-input .ic { font-size: 11px; color: var(--navy-3); margin-right: 6px; }
+.thread-search-input input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: 12px;
+  flex: 1;
+}
+
+.thread-rows {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.thread-row {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  position: relative;
+}
+.thread-row:hover { background: var(--bg); }
+.thread-row.selected { background: var(--gold-bg); border-left: 3px solid var(--gold); padding-left: 15px; }
+
+.thread-row .av {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+  position: relative;
+}
+.thread-row .av .wa-badge {
+  position: absolute;
+  bottom: -2px; right: -2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--wa-green);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 8px;
+  border: 2px solid var(--surface);
+}
+
+.thread-row .info { min-width: 0; }
+.thread-row .info .top-line {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.thread-row .info .name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.thread-row .info .time {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.thread-row .info .preview {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.thread-row.unread .info .name { font-weight: 700; }
+.thread-row.unread .info .preview { color: var(--navy); }
+.thread-row.unread::after {
+  content: "";
+  position: absolute;
+  top: 18px; right: 16px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--wa-green);
+}
+
+/* Assignee chip on thread row */
+.assignee-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 6px;
+  padding: 2px 7px;
+  border-radius: 100px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.assignee-chip.mine {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.assignee-chip.colleague {
+  background: var(--bg);
+  color: var(--navy-2);
+  border: 1px solid var(--border);
+}
+.assignee-chip.unassigned {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.assignee-chip .av-mini {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.assignee-chip.mine .av-mini { background: var(--green); color: white; }
+.assignee-chip.unassigned .av-mini {
+  background: var(--terra);
+  color: white;
+  font-size: 9px;
+}
+
+.thread-row .topic-tag {
+  display: inline-block;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 100px;
+  margin-top: 4px;
+  margin-right: 4px;
+}
+.topic-tag.billing { background: var(--gold-bg); color: var(--gold); }
+.topic-tag.attendance { background: var(--bg); color: var(--navy-2); border: 1px solid var(--border); }
+.topic-tag.academic { background: var(--green-bg); color: var(--green); }
+.topic-tag.urgent { background: var(--terra); color: white; }
+
+/* Section divider in thread list */
+.thread-section-header {
+  padding: 8px 18px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.thread-section-header .count {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-2);
+}
+
+/* ============ CONVERSATION PANEL ============ */
+.conversation-panel {
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.conv-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 22px 12px;
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.conv-head .av-large {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+.conv-head .info .name {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.1;
+}
+.conv-head .info .name em { font-style: italic; color: var(--gold); font-weight: 400; }
+.conv-head .info .meta-line {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+.conv-head .info .meta-line b { color: var(--navy-2); font-weight: 600; }
+.conv-head .actions { display: flex; gap: 6px; }
+
+/* Assignment metadata bar */
+.assignment-bar {
+  background: var(--gold-bg);
+  border-bottom: 1px solid var(--gold-soft);
+  padding: 10px 22px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+.assignment-bar .ab-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.assignment-bar .assignee-block {
+  display: flex; align-items: center; gap: 8px;
+}
+.assignment-bar .av-assignee {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.assignment-bar .assignee-info .a-name {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--navy);
+}
+.assignment-bar .assignee-info .a-rule {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-style: italic;
+  margin-top: 1px;
+}
+.assignment-bar .assignee-info .a-rule b { color: var(--navy-2); font-style: normal; font-weight: 600; }
+.reassign-btn {
+  padding: 5px 11px;
+  background: var(--surface);
+  border: 1px solid var(--gold);
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* WhatsApp message area */
+.conv-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 25% 25%, rgba(200,151,91,0.04) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(47,107,71,0.03) 0%, transparent 50%);
+}
+
+.day-divider {
+  text-align: center;
+  margin: 14px 0;
+  position: relative;
+}
+.day-divider::before,
+.day-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 60px);
+  height: 1px;
+  background: var(--border);
+}
+.day-divider::before { left: 0; }
+.day-divider::after { right: 0; }
+.day-divider span {
+  background: var(--bg);
+  padding: 0 12px;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Internal note (not sent to parent) */
+.internal-note {
+  background: var(--gold-bg);
+  border: 1px dashed var(--gold);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.internal-note .ic {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.internal-note .body {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.internal-note .body .label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.internal-note .body b { color: var(--navy); font-weight: 600; }
+.internal-note .body .author {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+/* Reassignment event in stream */
+.reassign-event {
+  text-align: center;
+  margin: 14px 0;
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--navy-2);
+  border: 1px solid var(--border);
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+.reassign-event-wrap {
+  text-align: center;
+  margin: 14px 0;
+}
+.reassign-event-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 11px;
+  color: var(--navy-2);
+}
+.reassign-event-inline .ic-arrow {
+  color: var(--gold);
+  font-weight: 700;
+}
+.reassign-event-inline b { color: var(--navy); font-weight: 600; }
+.reassign-event-inline .time-mark {
+  font-size: 9px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+/* WA-style messages */
+.message {
+  max-width: 70%;
+  padding: 8px 12px 6px;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  position: relative;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.message.from-parent {
+  background: var(--surface);
+  border-top-left-radius: 4px;
+  margin-right: auto;
+  color: var(--navy-2);
+}
+.message.from-school {
+  background: var(--wa-msg-bg);
+  border-top-right-radius: 4px;
+  margin-left: auto;
+  color: var(--navy);
+}
+.message .timestamp {
+  font-size: 9px;
+  color: var(--navy-3);
+  text-align: right;
+  margin-top: 3px;
+  display: flex; justify-content: flex-end; align-items: center; gap: 4px;
+}
+.message .timestamp .read-receipt { color: var(--wa-green); font-weight: 700; }
+.message .author-tag {
+  font-size: 9px;
+  color: var(--navy-3);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+  display: block;
+}
+.message.from-school .author-tag { color: var(--green); }
+
+/* Composer */
+.conv-composer {
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  padding: 12px 18px;
+}
+.composer-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.composer-tab {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--navy-3);
+  font-family: inherit;
+}
+.composer-tab.active {
+  background: var(--surface);
+  border-color: var(--border);
+  border-bottom-color: var(--surface);
+  color: var(--navy);
+}
+.composer-tab.note.active {
+  background: var(--gold-bg);
+  border-color: var(--gold-soft);
+  border-bottom-color: var(--gold-bg);
+  color: var(--gold);
+}
+
+.composer-input-area {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0 8px 8px 8px;
+  padding: 10px 14px;
+}
+.composer-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  width: 100%;
+  color: var(--navy-3);
+  font-style: italic;
+  min-height: 36px;
+  resize: none;
+  padding: 0;
+}
+.composer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.composer-bottom .left {
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.composer-bottom .left b { color: var(--navy-2); font-weight: 600; }
+.composer-bottom .left .mention-hint {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-weight: 600;
+  color: var(--navy-2);
+}
+
+/* ============ STATE B: REASSIGN DRAWER ============ */
+.drawer-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(26,43,71,0.4);
+  z-index: 10;
+}
+.reassign-drawer {
+  position: absolute;
+  top: 0; bottom: 0; right: 0;
+  width: 440px;
+  background: var(--surface);
+  z-index: 20;
+  display: flex; flex-direction: column;
+  box-shadow: -16px 0 40px -8px rgba(26,43,71,0.25);
+  overflow: hidden;
+}
+.drawer-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-head .top-line {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.drawer-head .eyebrow-tag {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.drawer-head .close-btn {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+.drawer-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+  margin-bottom: 4px;
+}
+.drawer-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.drawer-head .lede {
+  font-size: 12px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+.drawer-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.drawer-section {
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.section-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+/* Current vs new */
+.from-to-row {
+  display: grid;
+  grid-template-columns: 1fr 28px 1fr;
+  gap: 10px;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.from-to-row .arrow-mid {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--gold);
+  text-align: center;
+}
+.fromto-cell .lbl {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.fromto-cell .person {
+  display: flex; align-items: center; gap: 8px;
+}
+.fromto-cell .av-cell {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.fromto-cell.new .av-cell {
+  background: var(--green);
+  color: white;
+}
+.fromto-cell .person-info .p-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+  line-height: 1.1;
+}
+.fromto-cell .person-info .p-role {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+
+/* Colleague picker */
+.colleague-list {
+  display: flex; flex-direction: column;
+  gap: 4px;
+}
+.colleague-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.colleague-row.suggested {
+  background: var(--green-bg);
+  border-color: rgba(47,107,71,0.3);
+}
+.colleague-row.selected {
+  background: var(--gold-bg);
+  border-color: var(--gold);
+}
+.colleague-row.selected .av-cell {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+.colleague-row .av-cell {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.colleague-row .info .name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--navy);
+}
+.colleague-row .info .role {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.colleague-row .info .role b { color: var(--navy-2); font-weight: 600; }
+.colleague-row .info .reason-tag {
+  display: inline-block;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 100px;
+  background: var(--green);
+  color: white;
+  margin-left: 6px;
+}
+.colleague-row .availability {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--navy-3);
+}
+.colleague-row .availability .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+.colleague-row .availability.online .dot { background: var(--green); }
+.colleague-row .availability.away .dot { background: var(--warn); }
+.colleague-row .availability.offline .dot { background: var(--border-2); }
+.colleague-row .availability.online { color: var(--green); }
+.colleague-row .availability.away { color: var(--warn); }
+
+/* Note input */
+.note-textarea {
+  width: 100%;
+  min-height: 70px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--navy);
+  line-height: 1.5;
+  resize: none;
+}
+.note-textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+.notify-toggle-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+}
+.notify-toggle-row .info .label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.notify-toggle-row .info .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.toggle-pill {
+  width: 36px; height: 20px;
+  background: var(--border-2);
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+}
+.toggle-pill.on { background: var(--green); }
+.toggle-pill::after {
+  content: "";
+  position: absolute;
+  top: 2.5px; left: 2.5px;
+  width: 15px; height: 15px;
+  background: var(--surface);
+  border-radius: 50%;
+}
+.toggle-pill.on::after { left: 18.5px; }
+
+.drawer-footer {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 14px 22px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+/* ============ STATE C: ROUTING RULES ============ */
+.rules-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 36px 22px;
+}
+.rules-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 8px;
+}
+.rules-head .crumb a { color: var(--gold); text-decoration: none; }
+.rules-head .head-row {
+  display: flex; justify-content: space-between; align-items: end;
+}
+.rules-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.1;
+}
+.rules-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.rules-head .lede {
+  font-size: 12px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.rules-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.rules-body { padding: 28px 36px 60px; }
+
+/* Order indicator + add */
+.rules-list-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.rules-list-head .left {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+.rules-list-head .left b {
+  font-family: 'Fraunces', serif;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 12px;
+  letter-spacing: -0.005em;
+}
+
+/* Rule card */
+.rule-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+.rule-card.fallback {
+  background: var(--bg);
+  border-style: dashed;
+}
+.rule-card .order-num {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+.rule-card.fallback .order-num {
+  background: var(--bg);
+  border: 1px dashed var(--border-2);
+  color: var(--navy-3);
+}
+
+.rule-card .rule-content { min-width: 0; }
+.rule-card .rule-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  margin-bottom: 6px;
+}
+.rule-card .rule-name em {
+  font-style: italic;
+  color: var(--gold);
+}
+
+.rule-statement {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.6;
+}
+.rule-conn {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--navy-3);
+  font-weight: 500;
+  font-size: 12px;
+}
+.rule-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.rule-pill.condition {
+  background: var(--gold-bg);
+  border-color: var(--gold-soft);
+  color: var(--gold);
+}
+.rule-pill.destination {
+  background: var(--green-bg);
+  border-color: rgba(47,107,71,0.3);
+  color: var(--green);
+}
+.rule-pill .av-tiny {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 8px;
+}
+
+.rule-meta-row {
+  margin-top: 8px;
+  display: flex; gap: 16px;
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.rule-meta-row b { color: var(--navy-2); font-weight: 600; }
+
+.rule-card .rule-actions {
+  display: flex; gap: 4px;
+  align-items: center;
+}
+.rule-handle {
+  width: 22px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy-3);
+  font-size: 16px;
+  cursor: grab;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+.rule-action-btn {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.toggle-on-card {
+  display: flex; align-items: center; gap: 8px;
+}
+.toggle-on-card .label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--navy-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.toggle-on-card.on .label { color: var(--green); }
+
+/* Rule activity stat */
+.rule-activity-stat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.rule-activity-stat .stat-cell .stat-lbl {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.rule-activity-stat .stat-cell .stat-val {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-top: 2px;
+  line-height: 1.05;
+}
+.rule-activity-stat .stat-cell .stat-val em {
+  font-style: italic;
+  color: var(--gold);
+}
+.rule-activity-stat .stat-cell .stat-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .inbox-body { grid-template-columns: 1fr; }
+  .reassign-drawer { width: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Inbox · Routing &amp; assignment</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">When the inbox <em>has owners</em></h1>
+  <div class="gold-rule"></div>
+  <p>The MVP1 inbox treated parent threads as a single shared list — whoever opened it first replied. That works at small scale; at a school with multiple staff handling parent communications, threads need explicit ownership. Three states: the inbox view with assignment indicators visible, the reassign drawer for handing off a specific conversation, and the routing rules settings page where admin defines which threads go to whom by default.</p>
+</header>
+
+<!-- ============ STATE A: INBOX WITH ASSIGNMENT VIEW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Inbox · with thread ownership</div>
+    <div class="section-meta">Joyce viewing · my threads · team threads · unassigned</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / inbox / assigned-to-me</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item active"><div class="ic"></div>Inbox<span class="badge">7</span></div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">JO</div>
+            <div><div class="meta-name">Joyce Owusu-Ansah</div><div class="meta-role">Accountant</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+
+          <!-- Inbox head -->
+          <div class="inbox-head">
+            <div class="crumb">Inbox</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Parent <em>conversations</em></h1>
+                <div class="lede">WhatsApp threads · <b>7 assigned to you</b> · 12 across the team · 3 unassigned · sorted by latest activity</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Routing rules →</button>
+                <button class="btn primary">New conversation</button>
+              </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="inbox-tabs">
+              <button class="inbox-tab active">
+                <em>Mine</em>
+                <span class="badge-mini">7</span>
+              </button>
+              <button class="inbox-tab">
+                Team
+                <span class="badge-mini">12</span>
+              </button>
+              <button class="inbox-tab warn-state">
+                Unassigned
+                <span class="badge-mini">3</span>
+              </button>
+              <button class="inbox-tab">
+                @Mentioned me
+                <span class="badge-mini">1</span>
+              </button>
+              <button class="inbox-tab">
+                Closed
+                <span class="badge-mini">42</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Body: thread list + conversation -->
+          <div class="inbox-body">
+
+            <!-- Thread list -->
+            <div class="thread-list">
+
+              <div class="thread-search">
+                <div class="thread-search-input">
+                  <span class="ic">⌕</span>
+                  <input placeholder="Search by parent, student, topic..." />
+                </div>
+              </div>
+
+              <div class="thread-rows">
+
+                <!-- Section: Active -->
+                <div class="thread-section-header">
+                  <span>Active · today</span>
+                  <span class="count">5</span>
+                </div>
+
+                <!-- Selected thread -->
+                <div class="thread-row selected unread">
+                  <div class="av">
+                    PB
+                    <div class="wa-badge">W</div>
+                  </div>
+                  <div class="info">
+                    <div class="top-line">
+                      <div class="name">Patricia Boateng</div>
+                      <div class="time">12 min</div>
+                    </div>
+                    <div class="preview">When can I come to clear the balance? I have GHS 200 ready · my husband sends the rest Friday</div>
+                    <div>
+                      <span class="topic-tag billing">BILLING</span>
+                      <span class="assignee-chip mine">
+                        <span class="av-mini">JO</span>
+                        Mine
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="thread-row unread">
+                  <div class="av">
+                    KA
+                    <div class="wa-badge">W</div>
+                  </div>
+                  <div class="info">
+                    <div class="top-line">
+                      <div class="name">Kofi Asante</div>
+                      <div class="time">42 min</div>
+                    </div>
+                    <div class="preview">Mary won't be at school tomorrow · she has a doctor's appointment at 9am</div>
+                    <div>
+                      <span class="topic-tag attendance">ATTENDANCE</span>
+                      <span class="assignee-chip colleague">
+                        <span class="av-mini">DO</span>
+                        Daniel Owusu
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="thread-row">
+                  <div class="av">
+                    YO
+                    <div class="wa-badge">W</div>
+                  </div>
+                  <div class="info">
+                    <div class="top-line">
+                      <div class="name">Yaw Owusu</div>
+                      <div class="time">1h 14m</div>
+                    </div>
+                    <div class="preview">Thanks for the receipt 🙏 received it</div>
+                    <div>
+                      <span class="topic-tag billing">BILLING</span>
+                      <span class="assignee-chip mine">
+                        <span class="av-mini">JO</span>
+                        Mine
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="thread-row unread">
+                  <div class="av">
+                    EM
+                    <div class="wa-badge">W</div>
+                  </div>
+                  <div class="info">
+                    <div class="top-line">
+                      <div class="name">Emmanuel Mensah</div>
+                      <div class="time">2h</div>
+                    </div>
+                    <div class="preview">Florence's last test result was very good · please congratulate her teacher</div>
+                    <div>
+                      <span class="topic-tag academic">ACADEMIC</span>
+                      <span class="assignee-chip colleague">
+                        <span class="av-mini">FA</span>
+                        Florence Addo
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="thread-row unread">
+                  <div class="av">
+                    SA
+                    <div class="wa-badge">W</div>
+                  </div>
+                  <div class="info">
+                    <div class="top-line">
+                      <div class="name">Sarah Amponsah</div>
+                      <div class="time">2h 48m</div>
+                    </div>
+                    <div class="preview">Hello. Yaa was pushed at break time today. She has a small cut. Can someone explain what happened?</div>
+                    <div>
+                      <span class="topic-tag urgent">URGENT</span>
+                      <span class="assignee-chip unassigned">
+                        <span class="av-mini">?</span>
+                        Unassigned
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Section: Earlier -->
+                <div class="thread-section-header">
+                  <span>Earlier this week</span>
+                  <span class="count">12</span>
+                </div>
+
+                <div class="thread-row">
+                  <div class="av">
+                    RA
+                    <div class="wa-badge">W</div>
+                  </div>
+                  <div class="info">
+                    <div class="top-line">
+                      <div class="name">Robert Asante</div>
+                      <div class="time">Tue</div>
+                    </div>
+                    <div class="preview">Confirming the BECE registration fee · 410 cedis is correct?</div>
+                    <div>
+                      <span class="topic-tag billing">BILLING</span>
+                      <span class="assignee-chip mine">
+                        <span class="av-mini">JO</span>
+                        Mine
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="thread-row">
+                  <div class="av">
+                    PT
+                    <div class="wa-badge">W</div>
+                  </div>
+                  <div class="info">
+                    <div class="top-line">
+                      <div class="name">Patrick Tetteh</div>
+                      <div class="time">Tue</div>
+                    </div>
+                    <div class="preview">When does Term 1 end? I want to book travel</div>
+                    <div>
+                      <span class="topic-tag attendance">SCHEDULE</span>
+                      <span class="assignee-chip colleague">
+                        <span class="av-mini">FA</span>
+                        Florence Addo
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="thread-row">
+                  <div class="av">
+                    VK
+                    <div class="wa-badge">W</div>
+                  </div>
+                  <div class="info">
+                    <div class="top-line">
+                      <div class="name">Veronica Kuffour</div>
+                      <div class="time">Mon</div>
+                    </div>
+                    <div class="preview">Adjoa needs a new exercise book for science. Where do I buy it?</div>
+                    <div>
+                      <span class="topic-tag academic">ACADEMIC</span>
+                      <span class="assignee-chip colleague">
+                        <span class="av-mini">SA</span>
+                        Sarah Asante
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Conversation panel -->
+            <div class="conversation-panel">
+
+              <div class="conv-head">
+                <div class="av-large">PB</div>
+                <div class="info">
+                  <div class="name display">Patricia <em>Boateng</em></div>
+                  <div class="meta-line">Guardian of <b>Akosua Boateng</b> · JHS 2A · WhatsApp <b>+233 24 555 0421</b></div>
+                </div>
+                <div class="actions">
+                  <button class="btn">View student</button>
+                  <button class="btn">Close thread</button>
+                </div>
+              </div>
+
+              <!-- Assignment metadata bar -->
+              <div class="assignment-bar">
+                <div class="ab-label">Assigned to</div>
+                <div class="assignee-block">
+                  <div class="av-assignee">JO</div>
+                  <div class="assignee-info">
+                    <div class="a-name">Joyce Owusu-Ansah · you</div>
+                    <div class="a-rule">Auto-routed by rule <b>"Billing topics → Joyce"</b> · 2h 14m ago</div>
+                  </div>
+                </div>
+                <button class="reassign-btn">Reassign →</button>
+              </div>
+
+              <!-- Messages -->
+              <div class="conv-messages">
+
+                <div class="day-divider"><span>Today · Wed 22 Oct</span></div>
+
+                <div class="message from-parent">
+                  Good morning. I want to discuss Akosua's outstanding balance. Can I pay 200 today and the rest on Friday?
+                  <div class="timestamp">9:42 AM</div>
+                </div>
+
+                <!-- Reassignment event in stream -->
+                <div class="reassign-event-wrap">
+                  <div class="reassign-event-inline">
+                    <span class="ic-arrow">→</span>
+                    Auto-routed to <b>Joyce Owusu-Ansah</b> · billing topic detected
+                    <span class="time-mark">9:43 AM</span>
+                  </div>
+                </div>
+
+                <div class="message from-school">
+                  <span class="author-tag">Joyce · accountant</span>
+                  Good morning Patricia. Yes, that arrangement is fine. The current balance is GHS 340. If you pay GHS 200 today, the remaining GHS 140 should clear by Friday end of day.
+                  <div class="timestamp">9:51 AM <span class="read-receipt">✓✓</span></div>
+                </div>
+
+                <div class="message from-school">
+                  <span class="author-tag">Joyce · accountant</span>
+                  You can pay via MoMo on <b>0244 555 0140</b> (school's number) or come to the office between 8 AM and 3 PM.
+                  <div class="timestamp">9:52 AM <span class="read-receipt">✓✓</span></div>
+                </div>
+
+                <!-- Internal note (visible only to staff) -->
+                <div class="internal-note">
+                  <div class="ic">N</div>
+                  <div class="body">
+                    <div class="label">Internal note · only visible to staff</div>
+                    <b>Florence Addo</b> mentioned: Patricia is reliable — last term she also paid in 2 instalments, both on time. No follow-up needed unless Friday passes without payment.
+                    <div class="author">@Florence · 10:03 AM · in this thread</div>
+                  </div>
+                </div>
+
+                <div class="message from-parent">
+                  Thank you Joyce. I will pay the 200 now via MoMo. My husband sends the rest Friday before 5 PM.
+                  <div class="timestamp">12:08 PM</div>
+                </div>
+
+                <div class="message from-parent">
+                  When can I come to clear the balance? I have GHS 200 ready · my husband sends the rest Friday
+                  <div class="timestamp">12:08 PM</div>
+                </div>
+
+              </div>
+
+              <!-- Composer -->
+              <div class="conv-composer">
+                <div class="composer-tabs">
+                  <button class="composer-tab active">Reply to Patricia</button>
+                  <button class="composer-tab note">Internal note</button>
+                </div>
+                <div class="composer-input-area">
+                  <textarea class="composer-input" placeholder="Type your reply · @ mention a colleague to pull them in"></textarea>
+                  <div class="composer-bottom">
+                    <div class="left">
+                      Type <span class="mention-hint">@</span> to mention a colleague · they'll be notified but the parent won't see the mention
+                    </div>
+                    <button class="btn primary">Send →</button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>5-tab inbox header replaces the MVP1 single-list view.</b> "Mine" (italic gold-emphasised) / Team / Unassigned (warn-tinted with attention) / @Mentioned me / Closed. <b>Joyce defaults to "Mine"</b> because that's her work; the other tabs are visible but secondary.</li>
+        <li><b>"Mine" tab uses italic gold "Mine" wording</b> in the active pill. Same Fraunces italic + gold convention that signifies user-relevant values throughout the system. <b>The italic communicates "this is yours specifically"</b> — different from a flat "Mine" label.</li>
+        <li><b>Unassigned tab in warn state with bordered count</b> draws attention without being a notification badge. <b>Unassigned threads are an operational risk</b> — they belong to no one and could fall through the cracks. The warn state nudges admin to triage them.</li>
+        <li><b>Lede line summarises the inbox state precisely:</b> "<b>7 assigned to you</b> · 12 across the team · 3 unassigned · sorted by latest activity." <b>Three numbers in one sentence</b>; admin reads this and knows where things stand without scanning the tabs.</li>
+        <li><b>"Routing rules →" CTA in the page header</b> opens the rules settings (state C). <b>Routing rules are accessible from the inbox</b> because that's where admin notices a rule needs adjusting ("threads keep going to Mary who's on leave"); putting them in deep settings would create distance.</li>
+        <li><b>Thread rows show assignee chip below the preview text.</b> Three states: <b>Mine</b> (green-tinted with mini avatar), <b>Colleague</b> (neutral with their initials), <b>Unassigned</b> (terra-tinted with "?" avatar). Joyce can scan the list and see at a glance which threads are hers, which belong to teammates, which need ownership.</li>
+        <li><b>Sarah Amponsah's "URGENT" thread is unassigned</b> — a parent reporting a playground injury. <b>The pairing is operationally meaningful</b>: high-stakes topic + no owner = highest triage priority. The terra urgent tag plus terra unassigned chip stack visually.</li>
+        <li><b>Topic tags colour-coded:</b> billing gold-bg, attendance/schedule neutral, academic green-bg, urgent saturated terra. <b>Topic detection drives routing</b> (state C) so the same colour vocabulary appears at every level — message preview, rule destination pill, rule condition pill.</li>
+        <li><b>Each thread row has the WhatsApp green W badge</b> over the bottom-right corner of the avatar. Same convention as MVP1 inbox; signals the channel without taking dedicated column space.</li>
+        <li><b>Section dividers between "Active · today" and "Earlier this week"</b> with right-aligned counts. <b>Time-based grouping</b> rather than just chronological scroll — admin's mental model is "what's hot today vs what's older."</li>
+        <li><b>Conversation header shows parent + child + WhatsApp number.</b> Same as MVP1 inbox. The new addition is the <b>assignment metadata bar</b> below the header in gold-tinted background.</li>
+        <li><b>Assignment bar carries provenance:</b> "Joyce Owusu-Ansah · you" + "Auto-routed by rule 'Billing topics → Joyce' · 2h 14m ago". <b>Joyce sees why she got this thread</b>, not just that she has it. If the rule is wrong (this isn't really a billing topic), she knows where to push back.</li>
+        <li><b>"Reassign →" CTA in the assignment bar</b> opens the reassign drawer (state B). The button has a gold border on white background — distinctive but not loud. <b>Reassignment is common</b>; the affordance has to be visible without dominating.</li>
+        <li><b>Reassignment events appear inline in the message stream.</b> "Auto-routed to Joyce Owusu-Ansah · billing topic detected · 9:43 AM" rendered as a centred capsule between messages. <b>System events are part of the conversation history</b>, not hidden in a separate audit log. If an auditor asks "when did Joyce take over?", the answer is right there in context.</li>
+        <li><b>Internal note in gold-tinted dashed-bordered card.</b> Florence left a note for Joyce: "Patricia is reliable — last term she also paid in 2 instalments, both on time." <b>Notes are staff-only knowledge attached to the conversation</b>. Same dashed gold visual as other "staff-private" content elsewhere in the system.</li>
+        <li><b>Internal note has author + timestamp + "in this thread" attribution.</b> "@Florence · 10:03 AM · in this thread" — tells Joyce who wrote it, when, and confirms it's scoped to this conversation. The @ prefix matches the @-mention convention from the composer.</li>
+        <li><b>Composer has two tabs: "Reply to Patricia" and "Internal note".</b> Active tab in surface-white; note tab when active flips to gold-tinted background. <b>The composer changes shape based on what you're writing</b> — replying to parent vs writing a staff-only note. Visual switch prevents the costly mistake of accidentally sending an internal note to the parent.</li>
+        <li><b>"@" mention hint in the composer footer.</b> "Type @ to mention a colleague · they'll be notified but the parent won't see the mention." <b>Mentions pull colleagues in without transferring ownership</b> — different from reassignment. The hint normalises the @ syntax from messaging apps.</li>
+        <li><b>What's not in this state:</b> No SLA timers ("respond within 4 hours"), no priority levels (urgency comes from topic tag, not a separate field), no "snooze thread" ability (deferred messages are inbox-zero anti-pattern), no thread-to-thread merging. <b>Keeping the inbox simple</b> while adding ownership.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE B: REASSIGN DRAWER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Reassign drawer</div>
+    <div class="section-meta">From Joyce to a colleague · with handoff note</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / inbox / patricia-boateng / reassign</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar tall">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item active"><div class="ic"></div>Inbox<span class="badge">7</span></div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">JO</div>
+            <div><div class="meta-name">Joyce Owusu-Ansah</div><div class="meta-role">Accountant</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main" style="position:relative">
+
+          <!-- Background page (dimmed) -->
+          <div class="inbox-head" style="opacity:0.4">
+            <div class="crumb">Inbox</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Parent <em>conversations</em></h1>
+              </div>
+            </div>
+          </div>
+
+          <div class="inbox-body" style="opacity:0.4;height:920px">
+            <div class="thread-list"></div>
+            <div class="conversation-panel"></div>
+          </div>
+
+          <div class="drawer-overlay"></div>
+
+          <!-- Reassign drawer -->
+          <div class="reassign-drawer">
+            <div class="drawer-head">
+              <div class="top-line">
+                <div class="eyebrow-tag">Reassign thread</div>
+                <button class="close-btn">×</button>
+              </div>
+              <h2 class="display">Hand off to a <em>colleague</em></h2>
+              <div class="lede">Patricia Boateng · Guardian of Akosua Boateng · <b>JHS 2A</b> · the new assignee will be notified and Patricia will see the next reply from them.</div>
+            </div>
+
+            <div class="drawer-body">
+
+              <!-- From → to preview -->
+              <div class="drawer-section">
+                <div class="section-eyebrow">Transferring</div>
+                <div class="from-to-row">
+                  <div class="fromto-cell">
+                    <div class="lbl">From</div>
+                    <div class="person">
+                      <div class="av-cell">JO</div>
+                      <div class="person-info">
+                        <div class="p-name display">Joyce Owusu-Ansah</div>
+                        <div class="p-role">Accountant · you</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="arrow-mid">→</div>
+                  <div class="fromto-cell new">
+                    <div class="lbl">To</div>
+                    <div class="person">
+                      <div class="av-cell">FA</div>
+                      <div class="person-info">
+                        <div class="p-name display">Florence Addo</div>
+                        <div class="p-role">Headmistress</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Colleague picker -->
+              <div class="drawer-section">
+                <div class="section-eyebrow">Choose colleague</div>
+
+                <div class="colleague-list">
+
+                  <!-- Suggested -->
+                  <div class="colleague-row suggested selected">
+                    <div class="av-cell">FA</div>
+                    <div class="info">
+                      <div>
+                        <span class="name">Florence Addo</span>
+                        <span class="reason-tag">Suggested</span>
+                      </div>
+                      <div class="role">Headmistress · <b>fee waivers &amp; exemptions</b></div>
+                    </div>
+                    <div class="availability online">
+                      <div class="dot"></div>
+                      Online
+                    </div>
+                  </div>
+
+                  <div class="colleague-row">
+                    <div class="av-cell">DO</div>
+                    <div class="info">
+                      <div class="name">Daniel Owusu</div>
+                      <div class="role">Asst. headteacher · <b>JHS 2A homeroom</b></div>
+                    </div>
+                    <div class="availability online">
+                      <div class="dot"></div>
+                      Online
+                    </div>
+                  </div>
+
+                  <div class="colleague-row">
+                    <div class="av-cell">SA</div>
+                    <div class="info">
+                      <div class="name">Sarah Asante</div>
+                      <div class="role">Science teacher · JHS 1B homeroom</div>
+                    </div>
+                    <div class="availability away">
+                      <div class="dot"></div>
+                      Away · 23 min
+                    </div>
+                  </div>
+
+                  <div class="colleague-row">
+                    <div class="av-cell">JM</div>
+                    <div class="info">
+                      <div class="name">Joseph Mensah</div>
+                      <div class="role">Asst. headteacher · math</div>
+                    </div>
+                    <div class="availability offline">
+                      <div class="dot"></div>
+                      Offline
+                    </div>
+                  </div>
+
+                  <div class="colleague-row">
+                    <div class="av-cell">PK</div>
+                    <div class="info">
+                      <div class="name">Patrick Kwakye</div>
+                      <div class="role">Social studies · JHS 3A</div>
+                    </div>
+                    <div class="availability offline">
+                      <div class="dot"></div>
+                      Offline
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Handoff note -->
+              <div class="drawer-section">
+                <div class="section-eyebrow">Handoff note · optional</div>
+                <textarea class="note-textarea" placeholder="Brief context for Florence — what's happened so far, what needs to happen next">Patricia is asking about a partial payment arrangement (GHS 200 now + GHS 140 Friday). I confirmed it's fine, but she's now asking about a fee exemption for next term — that's a headmistress decision, not mine. Florence, can you take it from here?</textarea>
+
+                <div class="notify-toggle-row">
+                  <div class="info">
+                    <div class="label">Notify Florence by WhatsApp</div>
+                    <div class="meta">Sends a brief alert to her phone now · she can reply from anywhere</div>
+                  </div>
+                  <div class="toggle-pill on"></div>
+                </div>
+                <div class="notify-toggle-row">
+                  <div class="info">
+                    <div class="label">Add reassignment to thread audit log</div>
+                    <div class="meta">Always on · cannot be disabled · part of the conversation record</div>
+                  </div>
+                  <div class="toggle-pill on" style="opacity:0.5;cursor:not-allowed"></div>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn">Cancel</button>
+              <div style="display:flex;gap:6px">
+                <button class="btn">Reassign without note</button>
+                <button class="btn gold">Reassign with note →</button>
+              </div>
+            </div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Drawer slides in from the right with dimmed background.</b> Same drawer pattern as edit-request approval, follow-up, send-reminders. <b>Visual continuity</b> across all assignment-style transactions in the system.</li>
+        <li><b>Drawer head: "Hand off to a <em>colleague</em>" headline</b> with parent + student + class context in the lede. The lede also tells Joyce what will happen: "the new assignee will be notified and Patricia will see the next reply from them." <b>Honest preview of consequence</b> before action.</li>
+        <li><b>From → to preview at the top of the drawer body.</b> Two avatar+name+role cards with a gold arrow between them. <b>Joyce sees the transaction visually</b> before scrolling to choose. The "you" tag on her own card disambiguates which side of the transfer she's on.</li>
+        <li><b>The "to" card updates as Joyce picks a colleague.</b> Currently shows Florence Addo because she's selected (suggested). If Joyce clicks Daniel Owusu, the "to" card flips to him. <b>Live preview of the choice</b> at the top of the drawer; doesn't require scrolling back up to confirm.</li>
+        <li><b>Colleague list with availability indicators.</b> Online (green dot) / Away (warn dot · "23 min") / Offline (grey dot). <b>Helps Joyce avoid handing off to someone who can't pick it up</b> — passing a thread to an offline colleague means the parent waits longer.</li>
+        <li><b>"Suggested" reason tag in green saturated pill</b> on Florence's row. The system suggests her because the conversation has shifted to fee exemption (a headmistress decision). <b>Suggestion based on what the message is now about</b>, not just role. Lighter-touch routing than rules; the suggestion can be ignored.</li>
+        <li><b>Each colleague's role line shows specialty:</b> "Headmistress · fee waivers &amp; exemptions" / "Asst. headteacher · JHS 2A homeroom" / "Science teacher · JHS 1B homeroom" / "Asst. headteacher · math" / "Social studies · JHS 3A". <b>Bold-emphasised specialty</b> tells Joyce why each colleague might or might not be a good fit at a glance.</li>
+        <li><b>Selected row has gold-tinted bg + outlined avatar.</b> Visual signal of "this is who you're transferring to." Combined with the from→to preview at the top, Joyce has two reinforcing signals of her choice.</li>
+        <li><b>Handoff note section optional but pre-filled with realistic context.</b> "Patricia is asking about a partial payment arrangement... she's now asking about a fee exemption for next term — that's a headmistress decision, not mine. Florence, can you take it from here?" <b>The pre-fill demonstrates the kind of note that makes handoffs work</b>; not just "transferring to you" but "here's the situation and what they need."</li>
+        <li><b>"Notify Florence by WhatsApp" toggle</b> defaults on. Florence will get a brief WhatsApp from Omnischools's number alerting her to the new assignment + the handoff note. <b>Real-time notification means Florence can respond from anywhere</b>, not just when she's at her desk. Particularly useful in Ghanaian schools where headteachers spend much of their day around campus, not at a computer.</li>
+        <li><b>"Add reassignment to thread audit log" toggle is forced-on (greyed)</b> with explanatory text "always on · cannot be disabled · part of the conversation record." <b>Audit cannot be disabled</b> because thread ownership history matters when complaints or disputes arise. Honest about the lock.</li>
+        <li><b>Two action buttons in footer: "Reassign without note" + "Reassign with note →".</b> The note is genuinely optional; admin can transfer without one if context is obvious. The gold-primary CTA is the with-note version because that's the recommended path. <b>Two buttons, two paths, neither hidden behind a menu.</b></li>
+        <li><b>What's not in the drawer:</b> No "transfer ownership for X days" temporary assignment, no "request acceptance" workflow (would be too formal for school context), no "transfer to multiple people" (one owner per thread is the constraint), no "transfer history" displayed inside the drawer (it's in the conversation stream and audit log).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE C: ROUTING RULES SETTINGS ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Routing rules · who gets what</div>
+    <div class="section-meta">Settings · Inbox · Routing · 4 active rules + fallback</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / inbox / routing</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar taller">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+
+          <!-- Rules head -->
+          <div class="rules-head">
+            <div class="crumb"><a href="#">Settings</a> / Inbox / Routing rules</div>
+            <div class="head-row">
+              <div>
+                <h1 class="display">Routing <em>rules</em></h1>
+                <div class="lede">When a parent sends a message, these rules decide who it goes to · evaluated <b>top to bottom</b> · the first matching rule wins · the fallback catches everything else</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Test a message ↗</button>
+                <button class="btn primary">+ New rule</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="rules-body">
+
+            <!-- Rule activity stat -->
+            <div class="rule-activity-stat">
+              <div class="stat-cell">
+                <div class="stat-lbl">Routed last 7 days</div>
+                <div class="stat-val display"><em>184</em> threads</div>
+                <div class="stat-meta">96% by rule · 4% manually</div>
+              </div>
+              <div class="stat-cell">
+                <div class="stat-lbl">Most-used rule</div>
+                <div class="stat-val display">Billing topics</div>
+                <div class="stat-meta">62 threads · → Joyce</div>
+              </div>
+              <div class="stat-cell">
+                <div class="stat-lbl">Reassignments after auto-route</div>
+                <div class="stat-val display">8 / 184</div>
+                <div class="stat-meta">4.3% · rules are 95.7% accurate</div>
+              </div>
+              <div class="stat-cell">
+                <div class="stat-lbl">Hit fallback</div>
+                <div class="stat-val display">7 threads</div>
+                <div class="stat-meta">3.8% · within healthy range</div>
+              </div>
+            </div>
+
+            <div class="rules-list-head">
+              <div class="left">Rules evaluate <b>top to bottom</b> · drag to reorder · disabled rules are skipped</div>
+            </div>
+
+            <!-- Rule 1 -->
+            <div class="rule-card">
+              <div class="order-num">1</div>
+              <div class="rule-content">
+                <div class="rule-name display">Billing <em>topics</em></div>
+                <div class="rule-statement">
+                  <span class="rule-conn">When the message is about</span>
+                  <span class="rule-pill condition">Billing or payments</span>
+                  <span class="rule-conn">route to</span>
+                  <span class="rule-pill destination">
+                    <span class="av-tiny">JO</span>
+                    Joyce Owusu-Ansah
+                  </span>
+                </div>
+                <div class="rule-meta-row">
+                  <div>Triggered <b>62 times</b> · 7d</div>
+                  <div>Last fired <b>12 min ago</b> · Patricia Boateng</div>
+                  <div>Reassigned after route: <b>2 / 62</b> · 3.2%</div>
+                </div>
+              </div>
+              <div class="rule-actions">
+                <div class="rule-handle">⋮⋮</div>
+                <button class="rule-action-btn">✎</button>
+                <div class="toggle-pill on"></div>
+              </div>
+            </div>
+
+            <!-- Rule 2 -->
+            <div class="rule-card">
+              <div class="order-num">2</div>
+              <div class="rule-content">
+                <div class="rule-name display">JHS 2A <em>homeroom</em></div>
+                <div class="rule-statement">
+                  <span class="rule-conn">When the parent's child is in</span>
+                  <span class="rule-pill condition">JHS 2A</span>
+                  <span class="rule-conn">and topic is</span>
+                  <span class="rule-pill condition">Attendance or academic</span>
+                  <span class="rule-conn">route to</span>
+                  <span class="rule-pill destination">
+                    <span class="av-tiny">DO</span>
+                    Daniel Owusu
+                  </span>
+                </div>
+                <div class="rule-meta-row">
+                  <div>Triggered <b>34 times</b> · 7d</div>
+                  <div>Last fired <b>42 min ago</b> · Kofi Asante</div>
+                  <div>Reassigned after route: <b>1 / 34</b> · 2.9%</div>
+                </div>
+              </div>
+              <div class="rule-actions">
+                <div class="rule-handle">⋮⋮</div>
+                <button class="rule-action-btn">✎</button>
+                <div class="toggle-pill on"></div>
+              </div>
+            </div>
+
+            <!-- Rule 3 -->
+            <div class="rule-card">
+              <div class="order-num">3</div>
+              <div class="rule-content">
+                <div class="rule-name display">JHS 3 <em>BECE matters</em></div>
+                <div class="rule-statement">
+                  <span class="rule-conn">When the parent's child is in</span>
+                  <span class="rule-pill condition">JHS 3 (any class)</span>
+                  <span class="rule-conn">and topic is</span>
+                  <span class="rule-pill condition">BECE registration or exams</span>
+                  <span class="rule-conn">route to</span>
+                  <span class="rule-pill destination">
+                    <span class="av-tiny">FA</span>
+                    Florence Addo
+                  </span>
+                </div>
+                <div class="rule-meta-row">
+                  <div>Triggered <b>18 times</b> · 7d</div>
+                  <div>Last fired <b>Tue</b> · Robert Asante</div>
+                  <div>Reassigned after route: <b>0 / 18</b> · 0%</div>
+                </div>
+              </div>
+              <div class="rule-actions">
+                <div class="rule-handle">⋮⋮</div>
+                <button class="rule-action-btn">✎</button>
+                <div class="toggle-pill on"></div>
+              </div>
+            </div>
+
+            <!-- Rule 4 -->
+            <div class="rule-card">
+              <div class="order-num">4</div>
+              <div class="rule-content">
+                <div class="rule-name display">Urgent <em>or safety</em></div>
+                <div class="rule-statement">
+                  <span class="rule-conn">When the message is flagged</span>
+                  <span class="rule-pill condition">Urgent</span>
+                  <span class="rule-conn">or contains words about safety/injury</span>
+                  <span class="rule-conn">route to</span>
+                  <span class="rule-pill destination">
+                    <span class="av-tiny">FA</span>
+                    Florence Addo
+                  </span>
+                  <span class="rule-conn">+ notify all admins</span>
+                </div>
+                <div class="rule-meta-row">
+                  <div>Triggered <b>3 times</b> · 7d</div>
+                  <div>Last fired <b>2h 48m ago</b> · Sarah Amponsah</div>
+                  <div>Reassigned after route: <b>0 / 3</b> · 0%</div>
+                </div>
+              </div>
+              <div class="rule-actions">
+                <div class="rule-handle">⋮⋮</div>
+                <button class="rule-action-btn">✎</button>
+                <div class="toggle-pill on"></div>
+              </div>
+            </div>
+
+            <!-- Fallback rule -->
+            <div class="rule-card fallback">
+              <div class="order-num">∞</div>
+              <div class="rule-content">
+                <div class="rule-name display">Fallback · <em>unmatched threads</em></div>
+                <div class="rule-statement">
+                  <span class="rule-conn">If no rule above matches</span>
+                  <span class="rule-pill destination">Leave unassigned</span>
+                  <span class="rule-conn">and notify</span>
+                  <span class="rule-pill destination">
+                    <span class="av-tiny">FA</span>
+                    Florence Addo
+                  </span>
+                </div>
+                <div class="rule-meta-row">
+                  <div>Triggered <b>7 times</b> · 7d</div>
+                  <div>3.8% of all threads · within healthy range</div>
+                  <div>The fallback always runs · cannot be deleted, only edited</div>
+                </div>
+              </div>
+              <div class="rule-actions">
+                <button class="rule-action-btn">✎</button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Crumb + "Routing <em>rules</em>" + lede</b> explaining the evaluation model: "evaluated top to bottom · the first matching rule wins · the fallback catches everything else." <b>The model is stated up front</b>; admin reads two sentences and understands how rules work.</li>
+        <li><b>4-tile activity stat strip at the top.</b> "184 threads routed in 7 days · 96% by rule · 4% manually" / Most-used rule (Billing → Joyce) / Reassignments after auto-route (8/184 = 4.3%) / Hit fallback (7 threads = 3.8%). <b>Stats answer "are my rules working?"</b> Admin sees the system's behaviour at a glance.</li>
+        <li><b>"Rules are 95.7% accurate" derived from the reassignments-after-route count.</b> If 8 threads got reassigned after auto-routing, those 8 went to the wrong person initially. <b>Honest accuracy metric</b> the admin can act on — if the number climbs, rules need tuning.</li>
+        <li><b>"3.8% within healthy range" on the fallback stat.</b> A small percentage of unmatched threads is expected; if the fallback rate climbed to 30%, rules would need expanding. <b>Setting expectations</b> for what a healthy rule system looks like.</li>
+        <li><b>Rules listed top-to-bottom with order numbers in gold-tinted tiles.</b> Order matters — the first rule that matches wins. <b>Drag handles on the right</b> let admin reorder. Ordering is part of the rule semantics, not just visual.</li>
+        <li><b>Rule statement in natural English with inline pills.</b> "When the message is about [Billing or payments] route to [Joyce Owusu-Ansah]." The "When ... route to ..." sentence reads naturally; the pills are the user-tunable parameters. <b>Reads like a sentence, edits like a form</b>.</li>
+        <li><b>Pill colour-coding: condition pills gold-bg, destination pills green-bg.</b> Same vocabulary as everywhere else — gold for "this is the trigger" / green for "this is the outcome." Visual consistency across the system.</li>
+        <li><b>Destination pills include avatar + name</b>, not just the staff member's name. The mini avatar in green saturated circle echoes the assignee chips elsewhere. <b>Visual identity for the colleague</b> tied to their role across the system.</li>
+        <li><b>Compound conditions: rule 2 has two condition pills</b> ("JHS 2A" + "Attendance or academic"). The natural-English connectors ("and topic is", "and") make compound rules readable without using AND/OR boolean syntax. <b>Linguistic, not algebraic</b>.</li>
+        <li><b>Rule 4 has a non-obvious destination structure:</b> route to Florence + "notify all admins". The "+ notify all admins" is a secondary effect of the rule beyond simple assignment. <b>Urgent/safety rules need extra distribution</b> because no one person should bear sole responsibility for a child injury thread.</li>
+        <li><b>Each rule shows three meta-data points:</b> "Triggered N times · 7d" / "Last fired X ago · who" / "Reassigned after route: M/N · pct." <b>Per-rule effectiveness data</b>. If rule 1 has 62 firings and only 2 reassignments, it's working well. If a rule had 50 firings and 30 reassignments, something's wrong with the rule's logic.</li>
+        <li><b>Per-rule toggle on the right</b> lets admin disable a rule without deleting it. Useful for "Mr. Owusu is on leave for 2 weeks · disable his rule until he's back" without losing the rule definition. <b>Disable ≠ delete</b>; reversible state for temporary changes.</li>
+        <li><b>Fallback rule rendered in dashed-border, bg-tinted card</b> with "∞" order number (no real position). <b>Visual signal that the fallback is special</b> — always last, always runs, can't be deleted. The dashed border distinguishes it from active reorderable rules.</li>
+        <li><b>Fallback configured as "Leave unassigned + notify Florence Addo".</b> Smart default — unmatched threads stay visible to admin (in the Unassigned tab) AND admin gets a heads-up to triage them. <b>Both visibility (in inbox) and urgency signal (notification) at the fallback level</b>.</li>
+        <li><b>"+ New rule" CTA in the page header</b> opens a rule creation flow (out of scope for this design). <b>Rules are admin-creatable</b> — schools can adapt routing to their org structure. The 4 rules shown are reasonable defaults the system might suggest at onboarding.</li>
+        <li><b>"Test a message ↗" CTA</b> lets admin paste a hypothetical parent message and see which rule would match. <b>Debugging tool</b>; useful when a rule isn't behaving as expected. The ↗ suggests it opens a side surface (probably a small dialog with input + matched-rule preview).</li>
+        <li><b>What's not on this page:</b> No A/B testing of rules, no machine learning rule suggestions, no automatic rule generation from past assignment patterns. <b>Manual rules with visible behaviour</b>; the admin authors and adjusts.</li>
+        <li><b>What's also not here:</b> No time-based rules ("route to X during business hours, Y after"), no parent-language rules ("Twi speakers go to..."). Both could be future enhancements. The 4 default rules cover the most common Ghanaian school scenarios.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

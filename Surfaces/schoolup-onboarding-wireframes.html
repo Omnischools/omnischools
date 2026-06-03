@@ -1,0 +1,1971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Onboarding wireframes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+
+.page {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 56px 32px 96px;
+}
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 56px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 400;
+}
+.page-header p {
+  font-size: 16px;
+  color: var(--navy-3);
+  max-width: 640px;
+}
+.gold-rule {
+  width: 64px;
+  height: 2px;
+  background: var(--gold);
+  margin: 24px 0;
+}
+
+/* Section header */
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', Georgia, serif;
+  font-style: italic;
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+.layout.mobile-frame { grid-template-columns: 340px 1fr 280px; gap: 48px; }
+
+/* Notes */
+.notes h4 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px;
+  color: var(--navy-2);
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before {
+  content: "→";
+  color: var(--gold);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.notes li b { color: var(--navy); }
+
+/* Browser/desktop frame */
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* ============ SIGN UP ============ */
+.signup-shell {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  min-height: 720px;
+}
+.signup-left {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 48px 44px;
+  position: relative;
+  overflow: hidden;
+}
+.signup-left::after {
+  content: "";
+  position: absolute;
+  right: -120px; bottom: -120px;
+  width: 320px; height: 320px;
+  border-radius: 50%;
+  background: rgba(200,151,91,0.10);
+}
+.signup-left::before {
+  content: "";
+  position: absolute;
+  right: -60px; bottom: -60px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(200,151,91,0.06);
+}
+.brand {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-bottom: 60px;
+  position: relative; z-index: 2;
+}
+.brand em { color: var(--gold); font-style: italic; }
+.signup-left h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 38px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 18px;
+  position: relative; z-index: 2;
+  font-variation-settings: "opsz" 144;
+}
+.signup-left h2 em { font-style: italic; color: var(--gold); }
+.signup-left p.tag {
+  font-size: 14px;
+  color: var(--gold-soft);
+  max-width: 320px;
+  position: relative; z-index: 2;
+}
+.value-list {
+  margin-top: 48px;
+  position: relative; z-index: 2;
+  list-style: none;
+}
+.value-list li {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 13px;
+  color: rgba(250,247,242,0.85);
+  align-items: flex-start;
+}
+.value-list li::before {
+  content: "✓";
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.signup-right {
+  padding: 44px 52px;
+  overflow-y: auto;
+  max-height: 720px;
+}
+.signup-right h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.signup-right .sub {
+  font-size: 13px;
+  color: var(--navy-3);
+  margin-bottom: 24px;
+}
+
+.section-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin: 22px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-label::before {
+  content: "";
+  width: 18px; height: 1px;
+  background: var(--gold);
+}
+
+.field { margin-bottom: 14px; }
+.field label {
+  display: block;
+  font-size: 11px;
+  color: var(--navy-2);
+  font-weight: 600;
+  margin-bottom: 5px;
+  letter-spacing: 0.02em;
+}
+.field label .req { color: var(--terra); margin-left: 2px; }
+.field label .hint { color: var(--navy-3); font-weight: 400; margin-left: 4px; font-size: 10px; }
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--navy);
+}
+.input.has-value { color: var(--navy); }
+.input.placeholder { color: var(--navy-3); font-style: italic; }
+.input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+.select-wrap { position: relative; }
+.select-wrap::after {
+  content: "▾";
+  position: absolute;
+  right: 12px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--navy-3);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+/* Geolocation button */
+.geo-row { display: flex; gap: 8px; align-items: stretch; }
+.geo-row .input { flex: 1; }
+.geo-btn {
+  padding: 0 14px;
+  background: var(--surface);
+  border: 1px solid var(--gold);
+  color: var(--navy);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.geo-btn:hover { background: var(--gold-bg); }
+.geo-btn .pin {
+  width: 14px; height: 14px;
+  display: inline-flex;
+}
+.geo-captured {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--green-bg);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--green);
+  font-weight: 600;
+}
+.geo-captured .check {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--green);
+  color: var(--bg);
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.geo-captured .coords {
+  font-family: 'Fraunces', serif;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+.geo-captured .meta {
+  margin-left: auto;
+  color: var(--navy-3);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Ministry opt-in card */
+.ministry {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+}
+.ministry .checkbox {
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.ministry .body .t1 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  letter-spacing: -0.005em;
+  margin-bottom: 4px;
+}
+.ministry .body .t1 em { color: var(--gold); font-style: italic; }
+.ministry .body .t2 {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.ministry .body .t3 {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 6px;
+}
+
+.terms-row {
+  display: flex; gap: 10px;
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 18px;
+}
+.terms-row .checkbox {
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--border-2);
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.large { padding: 14px 28px; font-size: 14px; }
+.btn.full { width: 100%; justify-content: center; }
+
+.actions-row { display: flex; gap: 8px; margin-top: 24px; }
+
+/* Multi-select chip field */
+.multi-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.multi-input:focus-within { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+.multi-input.disabled {
+  background: var(--bg);
+  border-style: dashed;
+  border-color: var(--border-2);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.chip .x {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+}
+.chip-add {
+  font-size: 12px;
+  color: var(--navy-3);
+  font-style: italic;
+  padding: 4px 8px;
+  cursor: text;
+}
+.multi-input.disabled .chip-add {
+  color: rgba(92,102,117,0.55);
+}
+.field-hint {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 5px;
+  font-style: italic;
+}
+.field-hint.locked {
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* Segmented toggle */
+.seg-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
+}
+.seg-option {
+  padding: 9px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.seg-option.active {
+  background: var(--surface);
+  color: var(--navy);
+  box-shadow: 0 1px 3px rgba(26,43,71,0.1);
+}
+
+/* Google button */
+.google-btn {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.google-btn:hover { background: var(--bg); border-color: var(--navy); }
+.google-btn .glogo {
+  width: 18px; height: 18px;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.divider-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.divider-or::before,
+.divider-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ============ WIZARD ============ */
+.wizard-shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 680px;
+}
+.wizard-rail {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 32px 24px;
+}
+.wizard-rail .brand-mini {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.wizard-rail .brand-mini em { color: var(--gold); font-style: italic; }
+.wizard-rail .rail-school {
+  font-size: 11px;
+  color: var(--gold-soft);
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.wizard-rail .rail-title {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.steps { list-style: none; }
+.step {
+  display: flex;
+  gap: 12px;
+  padding: 11px 0;
+  position: relative;
+  font-size: 12px;
+}
+.step + .step::before {
+  content: "";
+  position: absolute;
+  left: 11px; top: -8px;
+  width: 1px; height: 18px;
+  background: rgba(200,151,91,0.25);
+}
+.step .num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  color: rgba(250,247,242,0.6);
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.step.done .num { background: var(--gold); color: var(--navy); }
+.step.done .num::before { content: "✓"; }
+.step.done .num span { display: none; }
+.step.active .num { background: var(--bg); color: var(--navy); border: 2px solid var(--gold); }
+.step .lbl {
+  color: rgba(250,247,242,0.6);
+  font-weight: 500;
+  padding-top: 3px;
+}
+.step.active .lbl { color: var(--bg); font-weight: 600; }
+.step.done .lbl { color: rgba(250,247,242,0.8); }
+
+.wizard-main {
+  padding: 40px 48px;
+  background: var(--bg);
+  overflow-y: auto;
+  max-height: 680px;
+}
+.wizard-main .wcrumb {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.wizard-main h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.wizard-main h2 em { font-style: italic; color: var(--gold); }
+.wizard-main .lede {
+  font-size: 14px;
+  color: var(--navy-3);
+  max-width: 520px;
+  margin-bottom: 28px;
+}
+
+.wcard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.wcard h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.wcard .sub {
+  font-size: 12px;
+  color: var(--navy-3);
+  margin-bottom: 18px;
+}
+
+/* Term schedule */
+.term-list {
+  display: grid;
+  gap: 10px;
+}
+.term-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 30px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.term-row .tname {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+}
+.term-row .input {
+  background: var(--surface);
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+/* Grade boundaries */
+.grade-table {
+  display: grid;
+  gap: 6px;
+}
+.grade-row {
+  display: grid;
+  grid-template-columns: 50px 1fr 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.grade-row .gbadge {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+.grade-row .gbadge.a { background: var(--green-bg); color: var(--green); }
+.grade-row .gbadge.b { background: var(--gold-bg); color: var(--gold); }
+.grade-row .gbadge.c { background: var(--gold-bg); color: var(--gold); opacity: 0.85; }
+.grade-row .gbadge.d { background: var(--terra-bg); color: var(--terra); opacity: 0.7; }
+.grade-row .gbadge.f { background: var(--terra-bg); color: var(--terra); }
+.grade-row .input { font-size: 12px; padding: 7px 10px; }
+.grade-row .label-text {
+  font-size: 12px;
+  color: var(--navy-3);
+}
+
+.wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.wizard-footer .saved {
+  font-size: 11px;
+  color: var(--navy-3);
+  display: flex; align-items: center; gap: 6px;
+}
+.wizard-footer .saved .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+/* ============ CSV IMPORT ============ */
+.csv-shell { padding: 36px 48px; min-height: 680px; background: var(--bg); }
+.csv-shell .csv-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+.csv-shell .csv-head .crumb { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; margin-bottom: 6px; }
+.csv-shell h2 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 500; letter-spacing: -0.015em; }
+.csv-shell h2 em { font-style: italic; color: var(--gold); }
+
+.csv-status-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.cstat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.cstat .label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; margin-bottom: 6px; }
+.cstat .v { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 500; letter-spacing: -0.02em; }
+.cstat .v.terra { color: var(--terra); }
+.cstat .v.gold { color: var(--gold); }
+.cstat .v.green { color: var(--green); }
+.cstat .meta { font-size: 11px; color: var(--navy-3); margin-top: 2px; }
+
+.csv-toolbar {
+  display: flex; gap: 8px; align-items: center;
+  margin-bottom: 12px;
+}
+.csv-pill {
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  color: var(--navy-3);
+  font-weight: 600;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.csv-pill.active { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.csv-pill .count { margin-left: 4px; font-size: 10px; opacity: 0.7; }
+.csv-pill.warn { color: var(--terra); border-color: var(--terra-bg); background: var(--terra-bg); }
+.csv-pill.warn.active { background: var(--terra); color: var(--bg); border-color: var(--terra); }
+
+.csv-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.csv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.csv-table th, .csv-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.csv-table th {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  background: var(--bg);
+}
+.csv-table .row-num {
+  font-family: 'Fraunces', serif;
+  color: var(--navy-3);
+  font-size: 11px;
+  width: 36px;
+  text-align: center;
+}
+.csv-table tr.has-error td { background: rgba(184,74,57,0.04); }
+.csv-table tr.has-warn td { background: rgba(200,151,91,0.04); }
+.csv-cell-ok { color: var(--navy); }
+.csv-cell-error {
+  color: var(--terra);
+  font-weight: 600;
+  position: relative;
+}
+.csv-cell-error::after {
+  content: "";
+  display: block;
+  height: 1px;
+  background: var(--terra);
+  width: 100%;
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+}
+.csv-cell-warn { color: var(--gold); font-weight: 600; }
+.csv-cell-empty { color: var(--terra); font-style: italic; }
+.csv-error-detail {
+  display: block;
+  font-size: 10px;
+  color: var(--terra);
+  font-weight: 500;
+  font-style: italic;
+  margin-top: 2px;
+}
+.csv-warn-detail {
+  display: block;
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 500;
+  font-style: italic;
+  margin-top: 2px;
+}
+.csv-fix {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--navy);
+  border: 1px solid var(--border-2);
+  cursor: pointer;
+}
+
+.csv-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding: 18px 0;
+  border-top: 1px solid var(--border);
+}
+.csv-footer .help {
+  font-size: 12px;
+  color: var(--navy-3);
+}
+.csv-footer .help b { color: var(--navy); }
+
+/* ============ TEACHER INVITE ============ */
+.invite-shell {
+  min-height: 680px;
+  background: var(--bg);
+  padding: 60px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.invite-shell::before {
+  content: "";
+  position: absolute;
+  top: -100px; left: -100px;
+  width: 360px; height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(200,151,91,0.08), transparent 70%);
+}
+.invite-shell::after {
+  content: "";
+  position: absolute;
+  bottom: -150px; right: -100px;
+  width: 400px; height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(26,43,71,0.04), transparent 70%);
+}
+.invite-card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 36px 36px 32px;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.18);
+  position: relative;
+  z-index: 2;
+}
+.invite-card .small-brand {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.invite-card .small-brand .b-name {
+  font-family: 'Fraunces', serif;
+  letter-spacing: -0.01em;
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--navy);
+  text-transform: none;
+}
+.invite-card .school-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 22px;
+}
+.invite-card .school-block .logo {
+  width: 48px; height: 48px;
+  border-radius: 8px;
+  background: var(--navy);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.invite-card .school-block .meta .name {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.invite-card .school-block .meta .loc {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.invite-card h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  margin-bottom: 12px;
+}
+.invite-card h2 em { font-style: italic; color: var(--gold); }
+.invite-card .copy {
+  font-size: 13px;
+  color: var(--navy-2);
+  margin-bottom: 22px;
+  line-height: 1.6;
+}
+.invite-card .copy b { color: var(--navy); }
+
+.assignments {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 22px;
+  border: 1px solid var(--border);
+}
+.assignments .a-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.assignments .a-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.assignments .a-row:last-child { border-bottom: none; }
+.assignments .a-row .cls { font-weight: 600; }
+.assignments .a-row .sub { color: var(--navy-3); }
+
+.invite-form .field { margin-bottom: 12px; }
+.invite-form .field label { font-size: 10px; }
+
+.invite-foot {
+  margin-top: 20px;
+  font-size: 11px;
+  color: var(--navy-3);
+  text-align: center;
+}
+.invite-foot a { color: var(--gold); text-decoration: none; font-weight: 600; }
+
+/* ============ PHONE FRAME ============ */
+.phone {
+  width: 340px;
+  height: 690px;
+  background: var(--navy);
+  border-radius: 36px;
+  padding: 8px;
+  box-shadow: 0 30px 70px -20px rgba(26,43,71,0.35), 0 0 0 1px rgba(26,43,71,0.06);
+  position: relative;
+}
+.phone::before {
+  content: "";
+  position: absolute;
+  top: 14px; left: 50%;
+  transform: translateX(-50%);
+  width: 100px; height: 22px;
+  background: var(--navy);
+  border-radius: 12px;
+  z-index: 10;
+}
+.phone-screen {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  border-radius: 28px;
+  overflow: hidden;
+  position: relative;
+  display: flex; flex-direction: column;
+}
+.phone-label {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.statusbar {
+  height: 38px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px 0 28px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.statusbar .icons { display: flex; gap: 5px; align-items: center; }
+.statusbar .icons span { width: 12px; height: 8px; background: var(--navy); border-radius: 1px; }
+.statusbar .icons span:nth-child(2) { width: 14px; height: 9px; }
+.statusbar .icons span:nth-child(3) { width: 18px; height: 9px; border-radius: 2px; }
+
+/* Parent invite mobile */
+.p-invite-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 22px 24px;
+  overflow-y: auto;
+}
+.p-mark {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  font-weight: 700;
+  margin-top: 14px;
+  margin-bottom: 22px;
+}
+.p-mark em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--navy);
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+  margin-left: 4px;
+}
+.p-hello {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+.p-hello em { font-style: italic; color: var(--gold); }
+.p-sub {
+  font-size: 13px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+.p-sub b { color: var(--navy); }
+
+.p-child-card {
+  background: var(--navy);
+  color: var(--bg);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.p-child-card::after {
+  content: "";
+  position: absolute;
+  right: -40px; top: -40px;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: rgba(200,151,91,0.12);
+}
+.p-child-card .label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  font-weight: 700;
+  margin-bottom: 12px;
+  position: relative; z-index: 2;
+}
+.p-child-card .row {
+  display: flex; align-items: center; gap: 12px;
+  position: relative; z-index: 2;
+}
+.p-child-card .ph {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--navy);
+}
+.p-child-card .name { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 500; }
+.p-child-card .meta { font-size: 11px; color: var(--gold-soft); margin-top: 2px; }
+
+.p-section-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.p-form .field { margin-bottom: 12px; }
+.p-form .field label { font-size: 10px; }
+.p-form .input { font-size: 13px; padding: 11px 12px; }
+
+.p-cta {
+  margin-top: auto;
+  padding-top: 16px;
+}
+.p-cta .btn {
+  width: 100%;
+  justify-content: center;
+  padding: 14px;
+  font-size: 14px;
+}
+.p-cta .skip {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.p-cta .skip a { color: var(--gold); text-decoration: none; font-weight: 600; }
+
+/* responsive */
+@media (max-width: 1100px) {
+  .layout, .layout.mobile-frame { grid-template-columns: 1fr; }
+  .signup-shell, .wizard-shell { grid-template-columns: 1fr; }
+  .row-2, .row-3 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Onboarding</div>
+  <h1 class="display">Getting schools <em>through the door</em></h1>
+  <div class="gold-rule"></div>
+  <p>Five screens covering the journey from "I just heard about Omnischools" to "my school is using it on Monday." The unglamorous wireframes that decide whether a pilot ever reaches first use.</p>
+</header>
+
+<!-- ============ 01 SIGN UP ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">School sign-up</div>
+    <div class="section-meta">Public · web</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">omnischools.gh / sign-up</div>
+      </div>
+      <div class="signup-shell">
+        <!-- LEFT: brand + value -->
+        <div class="signup-left">
+          <div class="brand">Omnischools<em>.</em></div>
+          <h2>The everyday <em>operating system</em> for your school.</h2>
+          <p class="tag">From admissions to assignments to fees — one place, accessible to teachers, parents, and students.</p>
+          <ul class="value-list">
+            <li>Free to set up · pay per active student per term</li>
+            <li>Works on any phone, even with patchy internet</li>
+            <li>SMS notifications for parents without smartphones</li>
+            <li>MTN MoMo &amp; bank payments built in</li>
+            <li>Set up your school in under 15 minutes</li>
+          </ul>
+        </div>
+
+        <!-- RIGHT: form -->
+        <div class="signup-right">
+          <h3>Register your school</h3>
+          <div class="sub">Takes about 5 minutes. You can finish setting up later.</div>
+
+          <div class="section-label">School details</div>
+
+          <div class="field">
+            <label>School name <span class="req">*</span></label>
+            <input class="input has-value" value="Christ the King Junior High School" />
+          </div>
+
+          <div class="row-2">
+            <div class="field">
+              <label>Education level <span class="req">*</span> <span class="hint">— select all that apply</span></label>
+              <div class="multi-input">
+                <span class="chip">Basic Education <span class="x">×</span></span>
+                <span class="chip-add">+ Add level</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>School type <span class="req">*</span> <span class="hint">— from your selected levels</span></label>
+              <div class="multi-input">
+                <span class="chip">Junior High <span class="x">×</span></span>
+                <span class="chip-add">+ Add type</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Approx. students <span class="hint">— rough is fine</span></label>
+            <div class="select-wrap">
+              <select class="input has-value">
+                <option>Under 100</option>
+                <option>100 – 200</option>
+                <option selected>200 – 500</option>
+                <option>500 – 1,000</option>
+                <option>1,000 – 2,000</option>
+                <option>2,000+</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section-label">Where you are</div>
+
+          <div class="row-2">
+            <div class="field">
+              <label>Region <span class="req">*</span></label>
+              <div class="select-wrap">
+                <select class="input has-value"><option>Greater Accra</option></select>
+              </div>
+            </div>
+            <div class="field">
+              <label>District <span class="req">*</span></label>
+              <div class="select-wrap">
+                <select class="input has-value"><option>Accra Metropolitan</option></select>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Address <span class="hint">— area, landmark, anything that helps locate you</span></label>
+            <div class="geo-row">
+              <input class="input has-value" value="Behind Asafo Market, opposite the post office" />
+              <button class="geo-btn">
+                <svg class="pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Use my location
+              </button>
+            </div>
+            <div class="geo-captured">
+              <div class="check">✓</div>
+              <div>Location captured · <span class="coords">5.5560° N, 0.1969° W</span></div>
+              <div class="meta">Accra Metro</div>
+            </div>
+          </div>
+
+          <div class="section-label">Your details</div>
+
+          <div class="row-2">
+            <div class="field">
+              <label>Your name <span class="req">*</span></label>
+              <input class="input has-value" value="Florence Addo" />
+            </div>
+            <div class="field">
+              <label>Your role <span class="req">*</span></label>
+              <div class="select-wrap">
+                <select class="input has-value"><option>Headmistress</option><option>Headmaster</option><option>Proprietor</option><option>IT lead</option><option>Other</option></select>
+              </div>
+            </div>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label>Email <span class="req">*</span></label>
+              <input class="input has-value" value="florence@christtheking.edu.gh" />
+            </div>
+            <div class="field">
+              <label>Phone <span class="req">*</span></label>
+              <input class="input has-value" value="+233 24 555 1820" />
+            </div>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label>Set a password <span class="req">*</span></label>
+              <input class="input placeholder" type="password" value="••••••••••" />
+            </div>
+            <div class="field">
+              <label>Confirm password <span class="req">*</span></label>
+              <input class="input placeholder" type="password" value="••••••••••" />
+            </div>
+          </div>
+
+          <!-- Ministry opt-in -->
+          <div class="ministry">
+            <div class="checkbox" style="background:var(--surface);border:1.5px solid var(--gold);color:transparent">·</div>
+            <div class="body">
+              <div class="t1">Share anonymised performance data with the <em>Ministry of Education</em></div>
+              <div class="t2">Help build a national picture of basic-school performance. Only district-level aggregates are shared — no student names, ID numbers, or individual results ever leave your school.</div>
+              <div class="t3">You can change this anytime in school settings.</div>
+            </div>
+          </div>
+
+          <div class="terms-row">
+            <div class="checkbox"></div>
+            <div>I agree to the <a href="#" style="color:var(--gold);font-weight:600;text-decoration:none">Terms</a> and <a href="#" style="color:var(--gold);font-weight:600;text-decoration:none">Privacy Policy</a>.</div>
+          </div>
+
+          <div class="actions-row">
+            <button class="btn primary large">Create school account →</button>
+            <button class="btn large">Save &amp; finish later</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Two-pane:</b> brand and value on left, form on right. Headmistress sees what she's signing up for, not just a wall of fields.</li>
+        <li><b>Three sections,</b> not three steps. A wizard hides what's coming and feels longer; one scroll feels honest and quick.</li>
+        <li><b>Education level + School type as cascading multi-selects.</b> Captures the structural complexity of Ghanaian schools (many run multiple levels) without overwhelming the form. School type options dynamically filter to the selected levels — pick Basic and you see Creche/KG/Primary/JHS; add Secondary and SHS appears too.</li>
+        <li><b>"Approx. students" sorted ascending</b> from "Under 100" up. Most basic and JHS schools cluster in 100–500 range; ascending order matches scanning intuition. <b>Range tiers shift if Tertiary is selected</b> — they jump to 500–2,000 / 2,000–10,000 / 10,000–30,000 / 30,000–70,000 / 70,000+ to match the realistic tertiary distribution.</li>
+        <li><b>Region + district as cascading dropdowns.</b> Static data, no API, ministry-grade tagging from day one.</li>
+        <li><b>"Use my location" is gold-bordered,</b> not gold-filled. Important enough to spot, optional enough that skipping it doesn't feel wrong.</li>
+        <li><b>Captured GPS shows a green confirmation chip</b> with rounded coordinates and inferred area — gives the user proof their tap did something without scaring them with raw decimals.</li>
+        <li><b>Confirm password</b> on a desktop field is cheap insurance — admin accounts are long-lived and rarely re-authenticated; a typo here means a frustrating recovery flow on day two.</li>
+        <li><b>Ministry opt-in is unchecked by default,</b> with full transparency about what's actually shared. Active consent is the right default for any data-sharing decision, and ministry adoption built on coercion is brittle.</li>
+        <li><b>Terms checkbox unchecked too.</b> Same principle — active consent.</li>
+        <li><b>"Save &amp; finish later" sits next to Create.</b> Some headmistresses will hand the rest to an IT-savvy teacher; honor that workflow.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 ADMIN SETUP WIZARD ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">First-login setup wizard</div>
+    <div class="section-meta">Admin · web</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / setup / academic-structure</div>
+      </div>
+      <div class="wizard-shell">
+        <aside class="wizard-rail">
+          <div class="brand-mini">Omnischools<em>.</em></div>
+          <div class="rail-school">Christ the King JHS</div>
+          <div class="rail-title">Setup · 3 of 6</div>
+          <ul class="steps">
+            <li class="step done"><div class="num"><span>1</span></div><div class="lbl">Welcome</div></li>
+            <li class="step done"><div class="num"><span>2</span></div><div class="lbl">School logo &amp; brand</div></li>
+            <li class="step active"><div class="num">3</div><div class="lbl">Academic structure</div></li>
+            <li class="step"><div class="num">4</div><div class="lbl">Classes &amp; subjects</div></li>
+            <li class="step"><div class="num">5</div><div class="lbl">Fee structure</div></li>
+            <li class="step"><div class="num">6</div><div class="lbl">Invite teachers</div></li>
+          </ul>
+          <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:rgba(232,212,184,0.7);line-height:1.5">
+            We auto-save as you go. Step away anytime — pick up exactly where you left off.
+          </div>
+        </aside>
+
+        <div class="wizard-main">
+          <div class="wcrumb">Step 3 of 6</div>
+          <h2>Set up your <em>academic year</em></h2>
+          <p class="lede">Tell us when your school year runs and how you grade. You can refine this later, but getting it right now means everything else falls into place.</p>
+
+          <div class="wcard">
+            <h4>School year &amp; terms</h4>
+            <div class="sub">Most basic and JHS schools in Ghana run three terms a year.</div>
+            <div class="row-2" style="margin-bottom:16px">
+              <div class="field">
+                <label>Academic year</label>
+                <input class="input has-value" value="2026 / 2027" />
+              </div>
+              <div class="field">
+                <label>Number of terms</label>
+                <div class="select-wrap"><select class="input has-value"><option>3 terms</option><option>2 semesters</option><option>4 quarters</option></select></div>
+              </div>
+            </div>
+            <div class="term-list">
+              <div class="term-row">
+                <div class="tname">Term 1</div>
+                <input class="input has-value" value="Sep 8, 2026" />
+                <input class="input has-value" value="Dec 19, 2026" />
+                <div></div>
+              </div>
+              <div class="term-row">
+                <div class="tname">Term 2</div>
+                <input class="input has-value" value="Jan 12, 2027" />
+                <input class="input has-value" value="Apr 9, 2027" />
+                <div></div>
+              </div>
+              <div class="term-row">
+                <div class="tname">Term 3</div>
+                <input class="input has-value" value="May 4, 2027" />
+                <input class="input has-value" value="Aug 6, 2027" />
+                <div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="wcard">
+            <h4>Grade scale</h4>
+            <div class="sub">How letter grades map to scores. Used everywhere — gradebook, report cards, parent app.</div>
+            <div class="grade-table">
+              <div class="grade-row">
+                <div class="gbadge a">A</div>
+                <div><input class="input has-value" value="Excellent" /></div>
+                <div class="label-text" style="text-align:center">from</div>
+                <div><input class="input has-value" value="80" /></div>
+              </div>
+              <div class="grade-row">
+                <div class="gbadge b">B</div>
+                <div><input class="input has-value" value="Very good" /></div>
+                <div class="label-text" style="text-align:center">from</div>
+                <div><input class="input has-value" value="70" /></div>
+              </div>
+              <div class="grade-row">
+                <div class="gbadge c">C</div>
+                <div><input class="input has-value" value="Good" /></div>
+                <div class="label-text" style="text-align:center">from</div>
+                <div><input class="input has-value" value="60" /></div>
+              </div>
+              <div class="grade-row">
+                <div class="gbadge d">D</div>
+                <div><input class="input has-value" value="Pass" /></div>
+                <div class="label-text" style="text-align:center">from</div>
+                <div><input class="input has-value" value="50" /></div>
+              </div>
+              <div class="grade-row">
+                <div class="gbadge f">F</div>
+                <div><input class="input has-value" value="Fail" /></div>
+                <div class="label-text" style="text-align:center">below</div>
+                <div><input class="input has-value" value="50" /></div>
+              </div>
+            </div>
+            <div style="margin-top:14px;font-size:11px;color:var(--navy-3)">Need a different scale (e.g. WASSCE 1–9 or A1–F9)? <a href="#" style="color:var(--gold);font-weight:600;text-decoration:none">Use a preset</a>.</div>
+          </div>
+
+          <div class="wizard-footer">
+            <div class="saved"><div class="dot"></div>Saved · 4 seconds ago</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">← Back</button>
+              <button class="btn primary">Continue to classes →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Six steps, visible up front.</b> No surprises. The headmistress can see how much is left at any moment, which lowers abandonment.</li>
+        <li><b>Auto-save with a quiet receipt</b> ("Saved 4 seconds ago"). Critical for users worried about losing work on a slow connection.</li>
+        <li><b>Term dates pre-filled</b> with sensible Ghanaian basic-school defaults — easier to adjust than to construct from scratch.</li>
+        <li><b>Grade scale uses letter+description+threshold,</b> not just numbers. A teacher reading "from 80" knows that means A; the colored badge does the visual work.</li>
+        <li><b>Preset link for WASSCE-style scale.</b> Many schools want to mimic BECE/WASSCE grading; offering the preset means they don't have to relearn it.</li>
+        <li><b>"Save &amp; come back" implied,</b> not a button. The auto-save plus the rail navigation means leaving and returning is the same gesture as clicking continue.</li>
+        <li><b>Logo upload was step 2,</b> ahead of structure. Visible reward early — the headmistress sees her school's identity reflected before doing the heavier setup work.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 CSV IMPORT ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Bulk student import</div>
+    <div class="section-meta">Admin · web · validation step</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / students / import</div>
+      </div>
+      <div class="csv-shell">
+        <div class="csv-head">
+          <div>
+            <div class="crumb">Students / Import / Review</div>
+            <h2 class="display">Review your <em>student list</em></h2>
+            <div style="font-size:13px;color:var(--navy-3);margin-top:4px">From <b style="color:var(--navy)">students-jhs2-term1.csv</b> · 142 rows detected</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn">Cancel</button>
+            <button class="btn">Re-upload file</button>
+            <button class="btn gold large">Import 134 valid rows</button>
+          </div>
+        </div>
+
+        <div class="csv-status-bar">
+          <div class="cstat">
+            <div class="label">Total rows</div>
+            <div class="v">142</div>
+            <div class="meta">Including header</div>
+          </div>
+          <div class="cstat">
+            <div class="label">Ready to import</div>
+            <div class="v green">134</div>
+            <div class="meta">No issues found</div>
+          </div>
+          <div class="cstat">
+            <div class="label">Need attention</div>
+            <div class="v terra">5</div>
+            <div class="meta">Will be skipped</div>
+          </div>
+          <div class="cstat">
+            <div class="label">Warnings</div>
+            <div class="v gold">3</div>
+            <div class="meta">Will import as-is</div>
+          </div>
+        </div>
+
+        <div class="csv-toolbar">
+          <div class="csv-pill">All <span class="count">142</span></div>
+          <div class="csv-pill warn active">Errors <span class="count">5</span></div>
+          <div class="csv-pill">Warnings <span class="count">3</span></div>
+          <div class="csv-pill">Ready <span class="count">134</span></div>
+          <div style="margin-left:auto;font-size:11px;color:var(--navy-3)">Showing rows that need attention before import</div>
+        </div>
+
+        <div class="csv-table-wrap">
+          <table class="csv-table">
+            <thead>
+              <tr>
+                <th class="row-num">#</th>
+                <th>First name</th>
+                <th>Last name</th>
+                <th>Date of birth</th>
+                <th>Class</th>
+                <th>Guardian name</th>
+                <th>Guardian phone</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="has-error">
+                <td class="row-num">7</td>
+                <td class="csv-cell-ok">Akua</td>
+                <td class="csv-cell-ok">Mensah</td>
+                <td class="csv-cell-error">15-13-2014<span class="csv-error-detail">Invalid month — should be 1–12</span></td>
+                <td class="csv-cell-ok">Basic 5B</td>
+                <td class="csv-cell-ok">Grace Mensah</td>
+                <td class="csv-cell-ok">+233 20 446 8821</td>
+                <td><button class="csv-fix">Fix inline</button></td>
+              </tr>
+              <tr class="has-error">
+                <td class="row-num">23</td>
+                <td class="csv-cell-ok">Kojo</td>
+                <td class="csv-cell-ok">Boateng</td>
+                <td class="csv-cell-ok">2013-04-22</td>
+                <td class="csv-cell-error">JHS 5<span class="csv-error-detail">Class doesn't exist — JHS only goes to 3</span></td>
+                <td class="csv-cell-ok">Samuel Boateng</td>
+                <td class="csv-cell-ok">+233 24 992 0014</td>
+                <td><button class="csv-fix">Fix inline</button></td>
+              </tr>
+              <tr class="has-error">
+                <td class="row-num">41</td>
+                <td class="csv-cell-ok">Adwoa</td>
+                <td class="csv-cell-ok">Tetteh</td>
+                <td class="csv-cell-ok">2014-08-10</td>
+                <td class="csv-cell-ok">Basic 6A</td>
+                <td class="csv-cell-empty">— missing —</td>
+                <td class="csv-cell-error">02144618<span class="csv-error-detail">Phone too short · expected 10 digits or +233 format</span></td>
+                <td><button class="csv-fix">Fix inline</button></td>
+              </tr>
+              <tr class="has-error">
+                <td class="row-num">68</td>
+                <td class="csv-cell-empty">— missing —</td>
+                <td class="csv-cell-ok">Asante</td>
+                <td class="csv-cell-ok">2012-11-30</td>
+                <td class="csv-cell-ok">JHS 1A</td>
+                <td class="csv-cell-ok">Mary Asante</td>
+                <td class="csv-cell-ok">+233 55 281 9023</td>
+                <td><button class="csv-fix">Fix inline</button></td>
+              </tr>
+              <tr class="has-warn">
+                <td class="row-num">88</td>
+                <td class="csv-cell-ok">Yaw</td>
+                <td class="csv-cell-ok">Owusu</td>
+                <td class="csv-cell-ok">2013-06-15</td>
+                <td class="csv-cell-ok">JHS 2B</td>
+                <td class="csv-cell-warn">— missing —<span class="csv-warn-detail">No guardian — student will see fees but parent won't be invited</span></td>
+                <td class="csv-cell-warn">— missing —</td>
+                <td><button class="csv-fix">Add later</button></td>
+              </tr>
+              <tr class="has-error">
+                <td class="row-num">115</td>
+                <td class="csv-cell-ok">Kwame</td>
+                <td class="csv-cell-ok">Darko</td>
+                <td class="csv-cell-error">— missing —<span class="csv-error-detail">Date of birth required</span></td>
+                <td class="csv-cell-ok">Basic 4A</td>
+                <td class="csv-cell-ok">Ruth Darko</td>
+                <td class="csv-cell-ok">+233 24 110 5582</td>
+                <td><button class="csv-fix">Fix inline</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="csv-footer">
+          <div class="help">Need help? <b>Download template again</b> or read the <a href="#" style="color:var(--gold);font-weight:600;text-decoration:none">CSV format guide</a>.</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn">Skip rows with errors &amp; import</button>
+            <button class="btn primary">Fix &amp; import all</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>This screen alone decides whether the pilot succeeds.</b> If a school has to debug a CSV by line number in a text editor, they quit. Validation has to be a UI, not an error message.</li>
+        <li><b>Default view shows errors first,</b> not "all 142 rows". The admin came here to fix problems; lead with them.</li>
+        <li><b>Errors block, warnings don't.</b> Missing DOB blocks (school records require it). Missing guardian warns (the student record can exist; the parent-invite step just gets skipped). The distinction matters in real Ghanaian schools where guardian info is sometimes incomplete.</li>
+        <li><b>Each error explains itself</b> in plain language ("Invalid month — should be 1–12") rather than "ERR_001 row 7 col 4". Headmistress can read this; she can't read a stack trace.</li>
+        <li><b>"Fix inline"</b> opens a tiny edit modal on that row — no need to re-export the CSV from Excel and re-upload.</li>
+        <li><b>Two CTAs at the foot:</b> "Skip errors &amp; import" for the pragmatist, "Fix &amp; import all" for the perfectionist. Don't force a workflow.</li>
+        <li><b>Phone validation accepts both</b> "+233 24..." and "024..." formats. Either is normal in Ghana; rejecting one creates needless friction.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 TEACHER INVITE ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Teacher invite acceptance</div>
+    <div class="section-meta">Teacher · web</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / accept / inv-9k2j4hQ</div>
+      </div>
+      <div class="invite-shell">
+        <div class="invite-card">
+          <div class="small-brand">
+            <span style="color:var(--gold);letter-spacing:0.18em">YOU'RE INVITED ON</span>
+            <span class="b-name">Omnischools</span>
+          </div>
+
+          <div class="school-block">
+            <div class="logo">CK</div>
+            <div class="meta">
+              <div class="name">Christ the King JHS</div>
+              <div class="loc">Accra Metro · Greater Accra</div>
+            </div>
+          </div>
+
+          <h2>Welcome, <em>Mr. Mensah</em>.</h2>
+          <p class="copy">Florence Addo (<b>Headmistress</b>) has added you as a <b>teacher</b>. You'll have access to the classes and subjects below — set a password to get started.</p>
+
+          <div class="assignments">
+            <div class="a-label">Your assignments</div>
+            <div class="a-row"><div class="cls">JHS 1A</div><div class="sub">Mathematics</div></div>
+            <div class="a-row"><div class="cls">JHS 2A</div><div class="sub">Mathematics · Form teacher</div></div>
+            <div class="a-row"><div class="cls">JHS 3B</div><div class="sub">Integrated Science</div></div>
+          </div>
+
+          <div class="invite-form">
+            <div class="field">
+              <label>Email <span class="hint">— locked</span></label>
+              <input class="input has-value" value="kwame.mensah@christtheking.edu.gh" disabled style="background:var(--bg);color:var(--navy-3)" />
+            </div>
+            <div class="field">
+              <label>Set your password <span class="req">*</span></label>
+              <input class="input placeholder" type="password" value="••••••••••" />
+            </div>
+            <div class="field">
+              <label>Confirm password <span class="req">*</span></label>
+              <input class="input placeholder" type="password" value="••••••••••" />
+            </div>
+          </div>
+
+          <button class="btn primary full large" style="margin-top:8px">Accept &amp; continue →</button>
+
+          <div class="invite-foot">
+            Not Mr. Mensah? <a href="#">Let us know</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>One card, one action.</b> No top nav, no sidebar — the teacher hasn't joined yet, so the app shell would be premature and confusing.</li>
+        <li><b>School block above the welcome line.</b> Teacher confirms "yes, this is my school" before reading anything else — protects against phishing-style misdirection.</li>
+        <li><b>The Headmistress's name appears in the invite copy.</b> Social proof: this isn't a system email, it's a person at a school you know inviting you.</li>
+        <li><b>Class/subject assignments shown up front,</b> before the password fields. Teacher knows what they're saying yes to before committing.</li>
+        <li><b>Email locked, not editable.</b> Prevents an invite link being repurposed for a different person — the email is part of the invite identity.</li>
+        <li><b>"Not Mr. Mensah?"</b> escape hatch matters when the school's IT lead emailed the invite to themselves to forward and clicked it themselves by accident.</li>
+        <li><b>SMS-version of this same flow</b> uses a 6-digit code instead of a tokenised URL — for teachers without easy email access. Same destination, same data.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 PARENT INVITE ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">05</div>
+    <div class="section-title display">Parent invite &amp; child linking</div>
+    <div class="section-meta">Parent · mobile</div>
+  </div>
+
+  <div class="layout mobile-frame" style="grid-template-columns: 340px 340px 1fr; gap: 32px;">
+    <div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="icons"><span></span><span></span><span></span></div>
+          </div>
+
+          <div class="p-invite-content">
+            <div class="p-mark">FROM <em>Omnischools</em></div>
+
+            <div class="p-hello">Welcome, <em>Ama</em>.</div>
+            <div class="p-sub">Christ the King JHS has invited you to follow <b>Akosua's</b> progress on Omnischools.</div>
+
+            <div class="p-child-card">
+              <div class="label">YOU'LL BE ADDED AS GUARDIAN OF</div>
+              <div class="row">
+                <div class="ph">A</div>
+                <div>
+                  <div class="name">Akosua Boateng</div>
+                  <div class="meta">JHS 2A · Christ the King</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-section-label">Sign in with</div>
+            <div class="seg-toggle">
+              <div class="seg-option active">Phone</div>
+              <div class="seg-option">Email</div>
+            </div>
+
+            <div class="p-form">
+              <div class="field">
+                <label>Phone <span class="hint">— from invite SMS</span></label>
+                <input class="input has-value" value="+233 24 555 8392" disabled style="background:var(--surface);color:var(--navy-3);font-size:12px" />
+              </div>
+              <div class="field">
+                <label>Create a password</label>
+                <input class="input placeholder" type="password" value="••••••••" />
+              </div>
+              <div class="field">
+                <label>Confirm password</label>
+                <input class="input placeholder" type="password" value="••••••••" />
+              </div>
+            </div>
+
+            <div class="p-cta">
+              <button class="btn primary full">Confirm &amp; continue →</button>
+              <div class="skip">Not Akosua's parent? <a href="#">Tell us</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Default · Phone sign-up</div>
+    </div>
+
+    <!-- Second phone: email path -->
+    <div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="icons"><span></span><span></span><span></span></div>
+          </div>
+
+          <div class="p-invite-content">
+            <div class="p-mark">FROM <em>Omnischools</em></div>
+
+            <div class="p-hello">Welcome, <em>Ama</em>.</div>
+            <div class="p-sub">Christ the King JHS has invited you to follow <b>Akosua's</b> progress on Omnischools.</div>
+
+            <div class="p-child-card">
+              <div class="label">YOU'LL BE ADDED AS GUARDIAN OF</div>
+              <div class="row">
+                <div class="ph">A</div>
+                <div>
+                  <div class="name">Akosua Boateng</div>
+                  <div class="meta">JHS 2A · Christ the King</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-section-label">Sign in with</div>
+            <div class="seg-toggle">
+              <div class="seg-option">Phone</div>
+              <div class="seg-option active">Email</div>
+            </div>
+
+            <button class="google-btn">
+              <svg class="glogo" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Continue with Google
+            </button>
+
+            <div class="divider-or">OR USE EMAIL</div>
+
+            <div class="p-form">
+              <div class="field">
+                <label>Email</label>
+                <input class="input placeholder" type="email" placeholder="ama.boateng@gmail.com" style="font-size:13px" />
+              </div>
+              <div class="field">
+                <label>Create a password</label>
+                <input class="input placeholder" type="password" placeholder="••••••••" />
+              </div>
+              <div class="field">
+                <label>Confirm password</label>
+                <input class="input placeholder" type="password" placeholder="••••••••" />
+              </div>
+            </div>
+
+            <div class="p-cta">
+              <button class="btn primary full">Confirm &amp; continue →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Toggled · Email sign-up</div>
+    </div>
+
+    <!-- SMS preview + fallback -->
+    <div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px">
+        <div style="font-size:10px;letter-spacing:0.14em;color:var(--gold);font-weight:700;margin-bottom:14px">THE SMS THAT STARTED IT</div>
+        <div style="background:#E5F1FB;border-radius:14px;padding:14px 16px;font-size:13px;color:var(--navy);line-height:1.45;font-family:system-ui,sans-serif">
+          Akosua's school has added you as her guardian on Omnischools. Tap to confirm and see her grades, fees &amp; school updates: <span style="color:#1a6db4;text-decoration:underline">omnischools.gh/i/9k2jhQ</span><br>
+          — Christ the King JHS
+        </div>
+        <div style="font-size:10px;color:var(--navy-3);margin-top:10px;letter-spacing:0.04em">Sent · just now · from +233 30 280 0000</div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px">
+        <div style="font-size:10px;letter-spacing:0.14em;color:var(--gold);font-weight:700;margin-bottom:14px">FALLBACK · NO SMS RECEIVED</div>
+        <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:500;letter-spacing:-0.01em;margin-bottom:6px">Use the student code</div>
+        <div style="font-size:12px;color:var(--navy-3);line-height:1.5">If a parent's phone changed or they didn't get the SMS, the school gives them a printed letter with their child's <b style="color:var(--navy)">student code</b> (e.g. <span style="font-family:'Fraunces',serif;font-weight:600;color:var(--gold);background:var(--gold-bg);padding:2px 6px;border-radius:3px">CTK-2024-018</span>). Enter the code on the parent app's "Link a child" screen — the system asks 2 verification questions (date of birth, class) before linking.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout" style="margin-top:32px">
+    <div></div>
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Phone is the default,</b> visible first. Most Ghanaian parents will use it; making it the path of least resistance reduces drop-off.</li>
+        <li><b>Email toggle exists for the educated/urban subset</b> who prefer email. Common with parents working in offices, NGOs, or abroad.</li>
+        <li><b>Google sign-in sits above manual email,</b> not below. Tapping a button is faster than typing on a phone keyboard; the parent who can use Google saves 30 seconds.</li>
+        <li><b>"OR USE EMAIL"</b> divider is intentionally not "or sign up manually" — the choice between Google and manual is mechanically the same outcome (an email-based account), so the divider treats them as equals.</li>
+        <li><b>Confirm password on both paths.</b> Cheap insurance against a typo on a phone keyboard, and parents are creating long-lived accounts they'll rarely re-authenticate.</li>
+        <li><b>Phone is locked from the SMS,</b> email is editable. Different sources of truth — SMS pre-verifies the phone number, email path requires verification email after.</li>
+        <li><b>Child name is the hero</b> on both paths. Ama opened this because of Akosua, regardless of which sign-in method she picks.</li>
+        <li><b>Switching the toggle preserves entered passwords,</b> just changes the identifier field. Parent shouldn't have to retype everything if they hesitated and switched.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

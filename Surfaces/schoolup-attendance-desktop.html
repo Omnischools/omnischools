@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Attendance · desktop teacher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 680px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 320px 1fr;
+  min-height: 800px;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--terra);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 100px;
+  min-width: 20px;
+  text-align: center;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+/* ============ REGISTER LIST PANE (LEFT) ============ */
+.register-list {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  min-height: 0;
+}
+.register-list-head {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.register-list-head .top-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px;
+}
+.register-list-head .eyebrow-tag {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.register-list-head .date-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.register-list-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.register-list-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+
+.progress-strip {
+  padding: 12px 18px;
+  background: var(--gold-bg);
+  border-bottom: 1px solid var(--gold-soft);
+}
+.progress-strip .pct-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 6px;
+}
+.progress-strip .pct-num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.005em;
+  color: var(--navy);
+}
+.progress-strip .pct-num em { font-style: italic; color: var(--gold); font-weight: 500; }
+.progress-strip .pct-label {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.progress-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.progress-bar .fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 100px;
+}
+
+.filter-row {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 4px;
+  font-size: 11px;
+}
+.filter-pill {
+  padding: 5px 11px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+}
+.filter-pill.active {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--navy);
+}
+.filter-pill .count {
+  background: var(--bg);
+  color: var(--navy-3);
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+.filter-pill.active .count {
+  background: var(--gold);
+  color: var(--navy);
+}
+
+.register-rows {
+  flex: 1;
+  overflow-y: auto;
+}
+.register-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  position: relative;
+}
+.register-row:hover { background: var(--bg); }
+.register-row.active {
+  background: var(--gold-bg);
+  border-left: 3px solid var(--gold);
+  padding-left: 15px;
+}
+.register-row .body { min-width: 0; }
+.register-row .top-line {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 4px;
+}
+.register-row .class-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.register-row .class-name em { font-style: italic; color: var(--gold); }
+.register-row .student-count {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+.register-row .meta-line {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.register-row .meta-line b { color: var(--navy-2); font-weight: 600; }
+
+.register-row .status-bar {
+  display: flex;
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--bg);
+}
+.register-row .status-bar .seg.present { background: var(--green); }
+.register-row .status-bar .seg.late { background: var(--gold); }
+.register-row .status-bar .seg.excused { background: var(--warn); }
+.register-row .status-bar .seg.absent { background: var(--terra); }
+.register-row .status-bar .seg.unmarked { background: var(--border-2); }
+
+.register-row .status-pill {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 100px;
+  white-space: nowrap;
+  align-self: center;
+}
+.register-row .status-pill.complete {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.register-row .status-pill.pending {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.register-row .status-pill.partial {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.register-row .status-pill.locked {
+  background: var(--bg);
+  color: var(--navy-3);
+  border: 1px solid var(--border);
+}
+
+/* ============ ACTIVE REGISTER PANE (RIGHT) ============ */
+.active-register {
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  min-height: 0;
+}
+.active-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 32px 18px;
+}
+.active-head .crumb-row {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.active-head .crumb-row a { color: var(--gold); text-decoration: none; }
+.active-head .head-row {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 16px;
+}
+.active-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+.active-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.active-head .lede {
+  font-size: 13px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.active-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.btn-group {
+  display: flex; gap: 8px;
+  align-items: center;
+}
+.btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.btn.subtle {
+  background: transparent;
+  border-color: transparent;
+  color: var(--navy-3);
+}
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--navy-2);
+}
+
+/* Stat strip */
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+.stat-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.stat-tile.present { border-left: 3px solid var(--green); }
+.stat-tile.late { border-left: 3px solid var(--gold); }
+.stat-tile.excused { border-left: 3px solid var(--warn); }
+.stat-tile.absent { border-left: 3px solid var(--terra); }
+.stat-tile.unmarked { border-left: 3px solid var(--border-2); }
+.stat-tile .num {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1;
+}
+.stat-tile.present .num { color: var(--green); }
+.stat-tile.late .num { color: var(--gold); }
+.stat-tile.excused .num { color: var(--warn); }
+.stat-tile.absent .num { color: var(--terra); }
+.stat-tile.unmarked .num { color: var(--navy-3); }
+.stat-tile .lbl {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.stat-tile .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+.stat-tile .sub b { color: var(--navy-2); font-weight: 600; }
+
+/* Action bar */
+.action-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 32px;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px;
+}
+.action-bar .left-actions {
+  display: flex; gap: 8px; align-items: center;
+}
+.action-bar .right-actions {
+  display: flex; gap: 16px; align-items: center;
+}
+
+.kbd-shortcuts {
+  display: flex; gap: 14px;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.kbd-shortcut {
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.kbd-shortcut .lbl {
+  letter-spacing: 0.04em;
+}
+
+/* Roster table */
+.roster-table-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 0 32px 24px;
+  background: var(--bg);
+}
+.roster-table {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 16px;
+  overflow: hidden;
+}
+.roster-table thead {
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.roster-table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+}
+.roster-table th.center { text-align: center; }
+.roster-table tr {
+  border-bottom: 1px solid var(--border);
+}
+.roster-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.roster-table tbody tr:last-child td { border-bottom: none; }
+.roster-table tbody tr.focused {
+  background: var(--gold-bg);
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+.roster-table tbody tr.is-late { background: rgba(200,151,91,0.04); }
+.roster-table tbody tr.is-excused { background: rgba(197,138,46,0.04); }
+.roster-table tbody tr.is-absent { background: rgba(184,74,57,0.04); }
+.roster-table tbody tr:hover { background: var(--bg); }
+.roster-table tbody tr.is-late:hover { background: rgba(200,151,91,0.08); }
+.roster-table tbody tr.is-excused:hover { background: rgba(197,138,46,0.08); }
+.roster-table tbody tr.is-absent:hover { background: rgba(184,74,57,0.08); }
+
+.row-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 600;
+  width: 32px;
+}
+.student-cell {
+  display: flex; gap: 10px; align-items: center;
+}
+.student-cell .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.student-cell .name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--navy);
+}
+.student-cell .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.student-cell .meta b { color: var(--navy-2); font-weight: 600; }
+
+.attendance-cell {
+  display: flex; align-items: baseline; gap: 8px;
+}
+.attendance-cell .pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.attendance-cell .pct.high { color: var(--green); }
+.attendance-cell .pct.mid { color: var(--gold); }
+.attendance-cell .pct.low { color: var(--terra); }
+.attendance-cell .pct-label {
+  font-size: 10px;
+  color: var(--navy-3);
+}
+
+.tag {
+  display: inline-flex;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 100px;
+  margin-left: 4px;
+}
+.tag.warn { background: var(--warn-bg); color: var(--warn); }
+.tag.terra { background: var(--terra-bg); color: var(--terra); }
+
+/* Status segmented control — desktop version */
+.status-seg-desk {
+  display: inline-flex;
+  gap: 0;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid var(--border);
+}
+.status-tile-desk {
+  width: 36px; height: 30px;
+  border-radius: 5px;
+  background: transparent;
+  border: none;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--navy-3);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s ease;
+}
+.status-tile-desk:hover { background: var(--surface); color: var(--navy); }
+.status-tile-desk.selected.present { background: var(--green); color: white; }
+.status-tile-desk.selected.late { background: var(--gold); color: var(--navy); }
+.status-tile-desk.selected.excused { background: var(--warn); color: white; }
+.status-tile-desk.selected.absent { background: var(--terra); color: white; }
+
+.reason-cell {
+  font-size: 12px;
+  color: var(--navy-2);
+  font-style: italic;
+  line-height: 1.4;
+}
+.reason-cell b { color: var(--navy); font-weight: 600; font-style: normal; }
+.reason-cell .reason-empty {
+  color: var(--navy-3);
+  font-style: italic;
+  opacity: 0.5;
+  font-size: 11px;
+}
+.reason-cell .add-link {
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* Submit footer */
+.submit-footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.submit-footer .left-info {
+  display: flex; flex-direction: column;
+  gap: 2px;
+}
+.submit-footer .progress-num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+}
+.submit-footer .progress-meta {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.submit-footer .progress-meta b { color: var(--navy-2); font-weight: 600; }
+.submit-footer .right-actions {
+  display: flex; gap: 10px; align-items: center;
+}
+.submit-footer .submit-btn {
+  padding: 11px 22px;
+  background: var(--navy);
+  color: var(--bg);
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.submit-footer .submit-btn .kbd {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.9);
+  border-bottom-color: rgba(255,255,255,0.3);
+}
+
+/* ============ SECTION 02 — TERM GRID ============ */
+.term-grid-container {
+  flex: 1;
+  background: var(--bg);
+  padding: 0 32px 24px;
+  overflow: auto;
+}
+.term-grid-controls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  margin-bottom: 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px;
+}
+.term-grid-controls .month-nav {
+  display: flex; align-items: center; gap: 12px;
+}
+.term-grid-controls .month-nav .nav-btn {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy-2);
+  cursor: pointer;
+  font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+}
+.term-grid-controls .month-nav .month-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.005em;
+  min-width: 140px;
+  text-align: center;
+}
+.term-grid-controls .month-nav .month-label em { font-style: italic; color: var(--gold); }
+
+.term-grid-controls .legend {
+  display: flex; gap: 12px;
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.legend-item {
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.legend-swatch {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.legend-swatch.present { background: var(--green); border-color: var(--green); }
+.legend-swatch.late { background: var(--gold); border-color: var(--gold); }
+.legend-swatch.excused { background: var(--warn); border-color: var(--warn); }
+.legend-swatch.absent { background: var(--terra); border-color: var(--terra); }
+.legend-swatch.holiday {
+  background: var(--bg);
+  background-image: repeating-linear-gradient(45deg, var(--bg), var(--bg) 3px, var(--border-2) 3px, var(--border-2) 4px);
+}
+.legend-swatch.weekend {
+  background: var(--bg);
+  border-color: var(--border-2);
+}
+.legend-swatch.future {
+  background: var(--surface);
+  border-style: dashed;
+}
+
+.term-grid {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: auto;
+}
+.term-grid table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+.term-grid th, .term-grid td {
+  padding: 0;
+  border: none;
+  text-align: center;
+  vertical-align: middle;
+}
+.term-grid thead th {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--navy);
+  height: 36px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.term-grid thead th.day-num {
+  width: 30px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 11px;
+}
+.term-grid thead th.day-of-week {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  padding: 2px 0 0;
+  border-bottom: none;
+  height: 18px;
+}
+.term-grid thead th.weekend, .term-grid thead th.holiday {
+  background: var(--bg);
+  color: var(--navy-3);
+}
+.term-grid thead th.holiday {
+  background-image: repeating-linear-gradient(45deg, var(--bg), var(--bg) 3px, var(--border-2) 3px, var(--border-2) 4px);
+}
+.term-grid thead th.today {
+  background: var(--gold-bg);
+  color: var(--gold);
+  border-bottom: 2px solid var(--gold);
+}
+
+.term-grid thead th.student-col {
+  position: sticky;
+  left: 0;
+  background: var(--bg);
+  border-right: 1.5px solid var(--navy-3);
+  text-align: left;
+  padding: 0 16px;
+  width: 220px;
+  min-width: 220px;
+  z-index: 3;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.term-grid thead th.summary-col {
+  position: sticky;
+  right: 0;
+  background: var(--bg);
+  border-left: 1.5px solid var(--navy-3);
+  width: 100px;
+  min-width: 100px;
+  z-index: 3;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+
+.term-grid tbody td.student-name {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  border-right: 1.5px solid var(--navy-3);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  text-align: left;
+  width: 220px;
+  z-index: 1;
+  display: flex; gap: 10px; align-items: center;
+}
+.term-grid tbody tr:hover td.student-name { background: var(--bg); }
+.term-grid tbody td.student-name .av {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.term-grid tbody td.student-name .info { min-width: 0; }
+.term-grid tbody td.student-name .name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.term-grid tbody td.student-name .pct {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  margin-top: 1px;
+}
+.pct-high { color: var(--green); }
+.pct-mid { color: var(--gold); }
+.pct-low { color: var(--terra); }
+
+.term-grid tbody td.day-cell {
+  width: 30px;
+  height: 32px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  position: relative;
+}
+.term-grid tbody td.day-cell.present {
+  background: var(--green);
+  color: white;
+}
+.term-grid tbody td.day-cell.late {
+  background: var(--gold);
+  color: var(--navy);
+}
+.term-grid tbody td.day-cell.excused {
+  background: var(--warn);
+  color: white;
+}
+.term-grid tbody td.day-cell.absent {
+  background: var(--terra);
+  color: white;
+}
+.term-grid tbody td.day-cell.weekend,
+.term-grid tbody td.day-cell.holiday {
+  background: var(--bg);
+  color: transparent;
+  cursor: default;
+}
+.term-grid tbody td.day-cell.holiday {
+  background-image: repeating-linear-gradient(45deg, var(--bg), var(--bg) 3px, var(--border-2) 3px, var(--border-2) 4px);
+}
+.term-grid tbody td.day-cell.future {
+  background: var(--surface);
+  color: var(--border-2);
+  cursor: default;
+}
+.term-grid tbody td.day-cell.today {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.term-grid tbody td.summary-cell {
+  position: sticky;
+  right: 0;
+  background: var(--bg);
+  border-left: 1.5px solid var(--navy-3);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  width: 100px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  z-index: 1;
+}
+.term-grid tbody tr:hover td.summary-cell { background: var(--gold-bg); }
+.term-grid tbody td.summary-cell .breakdown {
+  display: flex; gap: 6px; justify-content: center;
+}
+.term-grid tbody td.summary-cell .breakdown span {
+  font-size: 10px;
+  font-weight: 700;
+}
+.term-grid tbody td.summary-cell .breakdown .p { color: var(--green); }
+.term-grid tbody td.summary-cell .breakdown .l { color: var(--gold); }
+.term-grid tbody td.summary-cell .breakdown .e { color: var(--warn); }
+.term-grid tbody td.summary-cell .breakdown .a { color: var(--terra); }
+
+.term-grid tfoot td {
+  border-top: 1.5px solid var(--navy);
+  background: var(--bg);
+  padding: 6px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--navy);
+  height: 32px;
+}
+.term-grid tfoot td.student-name {
+  text-align: left;
+  padding: 6px 16px;
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--navy);
+}
+.term-grid tfoot td.summary-cell {
+  background: var(--navy);
+  color: white;
+}
+
+/* Cell tooltip on hover */
+.day-cell-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: var(--navy);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  letter-spacing: 0.02em;
+}
+.day-cell:hover .day-cell-tooltip { opacity: 1; }
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 200px 280px 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Attendance</div>
+  <h1 class="display">The register, on the <em>desktop</em></h1>
+  <div class="gold-rule"></div>
+  <p>Same data, a different surface. Teacher in the staff room at 3:30 PM with a paper register and a coffee, transcribing the day. Or the headmistress covering for an absent class teacher from her office computer. Keyboard-driven, multi-class, and built for the moment when there's time to be precise.</p>
+</header>
+
+<!-- ============ 01 PRIMARY DESKTOP MARKING ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Primary marking · staff room flow</div>
+    <div class="section-meta">Teacher · 3:42 PM · transcribing the day</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / attendance / today / jhs-2a</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>My classes</div>
+          <div class="nav-item active"><div class="ic"></div>Attendance<span class="badge">2</span></div>
+          <div class="nav-item"><div class="ic"></div>Gradebook</div>
+          <div class="nav-item"><div class="ic"></div>Materials</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="footer">
+            <div class="av">SM</div>
+            <div><div class="meta-name">Samuel Mensah</div><div class="meta-role">Teacher · JHS 2A class teacher</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <!-- REGISTER LIST PANE -->
+        <aside class="register-list">
+          <div class="register-list-head">
+            <div class="top-row">
+              <div class="eyebrow-tag">Today's registers</div>
+              <div class="date-tag">Fri 2 May</div>
+            </div>
+            <h2 class="display">My <em>classes</em> today</h2>
+          </div>
+
+          <div class="progress-strip">
+            <div class="pct-row">
+              <div class="pct-num display">3 of <em>5</em> done</div>
+              <div class="pct-label">2 left to mark</div>
+            </div>
+            <div class="progress-bar">
+              <div class="fill" style="width:60%"></div>
+            </div>
+          </div>
+
+          <div class="filter-row">
+            <button class="filter-pill active">All <span class="count">5</span></button>
+            <button class="filter-pill">Pending <span class="count">2</span></button>
+            <button class="filter-pill">Done <span class="count">3</span></button>
+          </div>
+
+          <div class="register-rows">
+
+            <!-- Active register -->
+            <div class="register-row active">
+              <div class="body">
+                <div class="top-line">
+                  <div class="class-name">JHS <em>2A</em> register</div>
+                  <div class="student-count">36</div>
+                </div>
+                <div class="meta-line">Class teacher · <b>Period 1 · Maths</b></div>
+                <div class="status-bar">
+                  <div class="seg unmarked" style="flex:36"></div>
+                </div>
+              </div>
+              <div class="status-pill pending">Pending</div>
+            </div>
+
+            <!-- Other pending -->
+            <div class="register-row">
+              <div class="body">
+                <div class="top-line">
+                  <div class="class-name">JHS <em>3B</em> register</div>
+                  <div class="student-count">35</div>
+                </div>
+                <div class="meta-line">Subject teacher · <b>Period 4 · Maths</b></div>
+                <div class="status-bar">
+                  <div class="seg unmarked" style="flex:35"></div>
+                </div>
+              </div>
+              <div class="status-pill pending">Pending</div>
+            </div>
+
+            <!-- Completed earlier registers -->
+            <div class="register-row">
+              <div class="body">
+                <div class="top-line">
+                  <div class="class-name">JHS <em>1A</em> register</div>
+                  <div class="student-count">35</div>
+                </div>
+                <div class="meta-line">Subject teacher · marked <b>9:30 AM</b></div>
+                <div class="status-bar">
+                  <div class="seg present" style="flex:32"></div>
+                  <div class="seg late" style="flex:1"></div>
+                  <div class="seg absent" style="flex:2"></div>
+                </div>
+              </div>
+              <div class="status-pill complete">Done</div>
+            </div>
+
+            <div class="register-row">
+              <div class="body">
+                <div class="top-line">
+                  <div class="class-name">JHS <em>2C</em> register</div>
+                  <div class="student-count">34</div>
+                </div>
+                <div class="meta-line">Subject teacher · marked <b>11:14 AM</b></div>
+                <div class="status-bar">
+                  <div class="seg present" style="flex:30"></div>
+                  <div class="seg excused" style="flex:2"></div>
+                  <div class="seg absent" style="flex:2"></div>
+                </div>
+              </div>
+              <div class="status-pill complete">Done</div>
+            </div>
+
+            <div class="register-row">
+              <div class="body">
+                <div class="top-line">
+                  <div class="class-name">JHS <em>3A</em> register</div>
+                  <div class="student-count">34</div>
+                </div>
+                <div class="meta-line">Subject teacher · marked <b>1:48 PM</b></div>
+                <div class="status-bar">
+                  <div class="seg present" style="flex:33"></div>
+                  <div class="seg absent" style="flex:1"></div>
+                </div>
+              </div>
+              <div class="status-pill complete">Done</div>
+            </div>
+
+            <!-- Yesterday's locked register -->
+            <div style="padding:14px 18px 6px;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700;border-top:6px solid var(--bg);background:var(--bg)">Earlier this week</div>
+
+            <div class="register-row">
+              <div class="body">
+                <div class="top-line">
+                  <div class="class-name">JHS <em>2A</em> register</div>
+                  <div class="student-count">36</div>
+                </div>
+                <div class="meta-line">Thu 1 May · marked <b>8:08 AM</b></div>
+                <div class="status-bar">
+                  <div class="seg present" style="flex:34"></div>
+                  <div class="seg excused" style="flex:1"></div>
+                  <div class="seg absent" style="flex:1"></div>
+                </div>
+              </div>
+              <div class="status-pill locked">Locked</div>
+            </div>
+
+            <div class="register-row">
+              <div class="body">
+                <div class="top-line">
+                  <div class="class-name">JHS <em>2A</em> register</div>
+                  <div class="student-count">36</div>
+                </div>
+                <div class="meta-line">Wed 30 Apr · marked <b>8:11 AM</b></div>
+                <div class="status-bar">
+                  <div class="seg present" style="flex:34"></div>
+                  <div class="seg late" style="flex:1"></div>
+                  <div class="seg absent" style="flex:1"></div>
+                </div>
+              </div>
+              <div class="status-pill locked">Locked</div>
+            </div>
+
+          </div>
+        </aside>
+
+        <!-- ACTIVE REGISTER PANE -->
+        <main class="active-register">
+
+          <div class="active-head">
+            <div class="head-row">
+              <div>
+                <div class="crumb-row"><a href="#">Attendance</a> / Today / JHS 2A</div>
+                <h1 class="display">JHS <em>2A</em> · Friday 2 May</h1>
+                <div class="lede">36 students · class teacher <b>Samuel Mensah</b> · Term 1 · Day 47</div>
+              </div>
+              <div class="btn-group">
+                <button class="btn subtle">Copy from yesterday</button>
+                <button class="btn">View term grid</button>
+              </div>
+            </div>
+
+            <!-- Stat strip -->
+            <div class="stat-strip">
+              <div class="stat-tile present">
+                <div class="num display">33</div>
+                <div>
+                  <div class="lbl">Present</div>
+                  <div class="sub"><b>91.7%</b> of class</div>
+                </div>
+              </div>
+              <div class="stat-tile late">
+                <div class="num display">1</div>
+                <div>
+                  <div class="lbl">Late</div>
+                  <div class="sub">Kwame Adu · 8:23 AM</div>
+                </div>
+              </div>
+              <div class="stat-tile excused">
+                <div class="num display">1</div>
+                <div>
+                  <div class="lbl">Excused</div>
+                  <div class="sub">Esi Asante · medical</div>
+                </div>
+              </div>
+              <div class="stat-tile absent">
+                <div class="num display">1</div>
+                <div>
+                  <div class="lbl">Absent</div>
+                  <div class="sub">James Mensah · 3rd day</div>
+                </div>
+              </div>
+              <div class="stat-tile unmarked">
+                <div class="num display">0</div>
+                <div>
+                  <div class="lbl">Unmarked</div>
+                  <div class="sub">All accounted for</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action bar -->
+          <div class="action-bar">
+            <div class="left-actions">
+              <button class="btn primary">All present</button>
+              <button class="btn">Excursion</button>
+              <button class="btn subtle">Reset</button>
+            </div>
+            <div class="right-actions">
+              <div class="kbd-shortcuts">
+                <div class="kbd-shortcut"><span class="kbd">P</span><span class="kbd">L</span><span class="kbd">E</span><span class="kbd">A</span><span class="lbl">mark status</span></div>
+                <div class="kbd-shortcut"><span class="kbd">↑</span><span class="kbd">↓</span><span class="lbl">navigate</span></div>
+                <div class="kbd-shortcut"><span class="kbd">⏎</span><span class="lbl">add reason</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Roster table -->
+          <div class="roster-table-wrap">
+            <table class="roster-table">
+              <thead>
+                <tr>
+                  <th class="row-num">#</th>
+                  <th>Student</th>
+                  <th>Term attendance</th>
+                  <th class="center">Status</th>
+                  <th>Reason / note</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="row-num">01</td>
+                  <td>
+                    <div class="student-cell">
+                      <div class="av">AB</div>
+                      <div>
+                        <div class="name">Akosua Boateng</div>
+                        <div class="meta">CTK-2024-018</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="attendance-cell">
+                      <div class="pct high">96%</div>
+                      <div class="pct-label">45/47 days</div>
+                    </div>
+                  </td>
+                  <td class="center">
+                    <div class="status-seg-desk">
+                      <button class="status-tile-desk selected present">P</button>
+                      <button class="status-tile-desk">L</button>
+                      <button class="status-tile-desk">E</button>
+                      <button class="status-tile-desk">A</button>
+                    </div>
+                  </td>
+                  <td><div class="reason-cell"><span class="reason-empty">—</span></div></td>
+                </tr>
+                <tr>
+                  <td class="row-num">02</td>
+                  <td>
+                    <div class="student-cell">
+                      <div class="av">DA</div>
+                      <div>
+                        <div class="name">Daniel Adjei</div>
+                        <div class="meta">CTK-2024-027</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="attendance-cell">
+                      <div class="pct high">89%</div>
+                      <div class="pct-label">42/47 days</div>
+                    </div>
+                  </td>
+                  <td class="center">
+                    <div class="status-seg-desk">
+                      <button class="status-tile-desk selected present">P</button>
+                      <button class="status-tile-desk">L</button>
+                      <button class="status-tile-desk">E</button>
+                      <button class="status-tile-desk">A</button>
+                    </div>
+                  </td>
+                  <td><div class="reason-cell"><span class="reason-empty">—</span></div></td>
+                </tr>
+                <tr class="is-excused">
+                  <td class="row-num">03</td>
+                  <td>
+                    <div class="student-cell">
+                      <div class="av">EA</div>
+                      <div>
+                        <div class="name">Esi Asante</div>
+                        <div class="meta">CTK-2024-031</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="attendance-cell">
+                      <div class="pct mid">72%</div>
+                      <div class="pct-label">34/47 days</div>
+                      <span class="tag warn">Pattern · Fri</span>
+                    </div>
+                  </td>
+                  <td class="center">
+                    <div class="status-seg-desk">
+                      <button class="status-tile-desk">P</button>
+                      <button class="status-tile-desk">L</button>
+                      <button class="status-tile-desk selected excused">E</button>
+                      <button class="status-tile-desk">A</button>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="reason-cell">
+                      <b>Medical appointment</b> · mother called at 7:40 AM, dental
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="row-num">04</td>
+                  <td>
+                    <div class="student-cell">
+                      <div class="av">FO</div>
+                      <div>
+                        <div class="name">Florence Owusu</div>
+                        <div class="meta">CTK-2024-035</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="attendance-cell">
+                      <div class="pct high">98%</div>
+                      <div class="pct-label">46/47 days</div>
+                    </div>
+                  </td>
+                  <td class="center">
+                    <div class="status-seg-desk">
+                      <button class="status-tile-desk selected present">P</button>
+                      <button class="status-tile-desk">L</button>
+                      <button class="status-tile-desk">E</button>
+                      <button class="status-tile-desk">A</button>
+                    </div>
+                  </td>
+                  <td><div class="reason-cell"><span class="reason-empty">—</span></div></td>
+                </tr>
+                <tr class="focused is-absent">
+                  <td class="row-num">05</td>
+                  <td>
+                    <div class="student-cell">
+                      <div class="av">JM</div>
+                      <div>
+                        <div class="name">James Mensah</div>
+                        <div class="meta">CTK-2024-042</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="attendance-cell">
+                      <div class="pct low">61%</div>
+                      <div class="pct-label">29/47 days</div>
+                      <span class="tag terra">Below 70%</span>
+                    </div>
+                  </td>
+                  <td class="center">
+                    <div class="status-seg-desk">
+                      <button class="status-tile-desk">P</button>
+                      <button class="status-tile-desk">L</button>
+                      <button class="status-tile-desk">E</button>
+                      <button class="status-tile-desk selected absent">A</button>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="reason-cell">
+                      <b>No contact</b> · 3rd consecutive day · admin alert sent
+                    </div>
+                  </td>
+                </tr>
+                <tr class="is-late">
+                  <td class="row-num">06</td>
+                  <td>
+                    <div class="student-cell">
+                      <div class="av">KA</div>
+                      <div>
+                        <div class="name">Kwame Adu</div>
+                        <div class="meta">CTK-2024-049</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="attendance-cell">
+                      <div class="pct high">94%</div>
+                      <div class="pct-label">44/47 days</div>
+                    </div>
+                  </td>
+                  <td class="center">
+                    <div class="status-seg-desk">
+                      <button class="status-tile-desk">P</button>
+                      <button class="status-tile-desk selected late">L</button>
+                      <button class="status-tile-desk">E</button>
+                      <button class="status-tile-desk">A</button>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="reason-cell">
+                      <b>Late · 8:23 AM</b> · 23 min after start
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="row-num">07</td>
+                  <td>
+                    <div class="student-cell">
+                      <div class="av">MA</div>
+                      <div>
+                        <div class="name">Mary Asante</div>
+                        <div class="meta">CTK-2024-053</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="attendance-cell">
+                      <div class="pct high">93%</div>
+                      <div class="pct-label">44/47 days</div>
+                    </div>
+                  </td>
+                  <td class="center">
+                    <div class="status-seg-desk">
+                      <button class="status-tile-desk selected present">P</button>
+                      <button class="status-tile-desk">L</button>
+                      <button class="status-tile-desk">E</button>
+                      <button class="status-tile-desk">A</button>
+                    </div>
+                  </td>
+                  <td><div class="reason-cell"><span class="reason-empty">—</span></div></td>
+                </tr>
+                <tr>
+                  <td class="row-num">08</td>
+                  <td>
+                    <div class="student-cell">
+                      <div class="av">NB</div>
+                      <div>
+                        <div class="name">Nathaniel Boateng</div>
+                        <div class="meta">CTK-2024-061</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="attendance-cell">
+                      <div class="pct high">87%</div>
+                      <div class="pct-label">41/47 days</div>
+                    </div>
+                  </td>
+                  <td class="center">
+                    <div class="status-seg-desk">
+                      <button class="status-tile-desk selected present">P</button>
+                      <button class="status-tile-desk">L</button>
+                      <button class="status-tile-desk">E</button>
+                      <button class="status-tile-desk">A</button>
+                    </div>
+                  </td>
+                  <td><div class="reason-cell"><span class="reason-empty">—</span></div></td>
+                </tr>
+                <tr>
+                  <td class="row-num">09</td>
+                  <td>
+                    <div class="student-cell">
+                      <div class="av">OA</div>
+                      <div>
+                        <div class="name">Owusu Akoto</div>
+                        <div class="meta">CTK-2024-067</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="attendance-cell">
+                      <div class="pct high">91%</div>
+                      <div class="pct-label">43/47 days</div>
+                    </div>
+                  </td>
+                  <td class="center">
+                    <div class="status-seg-desk">
+                      <button class="status-tile-desk selected present">P</button>
+                      <button class="status-tile-desk">L</button>
+                      <button class="status-tile-desk">E</button>
+                      <button class="status-tile-desk">A</button>
+                    </div>
+                  </td>
+                  <td><div class="reason-cell"><span class="reason-empty">—</span></div></td>
+                </tr>
+                <tr>
+                  <td class="row-num">10</td>
+                  <td>
+                    <div class="student-cell">
+                      <div class="av">YB</div>
+                      <div>
+                        <div class="name">Yaa Boakye</div>
+                        <div class="meta">CTK-2024-074</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="attendance-cell">
+                      <div class="pct high">91%</div>
+                      <div class="pct-label">43/47 days</div>
+                    </div>
+                  </td>
+                  <td class="center">
+                    <div class="status-seg-desk">
+                      <button class="status-tile-desk selected present">P</button>
+                      <button class="status-tile-desk">L</button>
+                      <button class="status-tile-desk">E</button>
+                      <button class="status-tile-desk">A</button>
+                    </div>
+                  </td>
+                  <td><div class="reason-cell"><span class="reason-empty">—</span></div></td>
+                </tr>
+                <tr>
+                  <td colspan="5" style="padding:14px;text-align:center;font-size:11px;color:var(--navy-3);font-style:italic;background:var(--bg);border-top:1px solid var(--border)">26 more students · scroll to mark</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Submit footer -->
+          <div class="submit-footer">
+            <div class="left-info">
+              <div class="progress-num display">36 of 36 marked</div>
+              <div class="progress-meta">2 absence SMS will go out at <b>3:00 PM</b> today · last edit window closes <b>tomorrow 3:42 PM</b></div>
+            </div>
+            <div class="right-actions">
+              <button class="btn">Save draft</button>
+              <button class="submit-btn">Submit register <span class="kbd">⌘ ⏎</span></button>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Three-pane shell: app sidebar / register list / active register.</b> The middle pane is the desktop addition — a teacher who teaches multiple classes sees all of today's registers without leaving the page. The mobile flow assumed one class at a time; desktop uses the room.</li>
+        <li><b>Register list shows progress at the top:</b> "3 of 5 done" in Fraunces with gold rule. The bar visualises the same fact. A teacher with 5 classes always knows where they are without doing arithmetic.</li>
+        <li><b>Filter pills (All / Pending / Done)</b> let teacher cut the list. Most useful right after lunch — "show me what's pending so I can knock them out before going home."</li>
+        <li><b>Each register row has a status sparkline</b> — coloured proportions of present/late/excused/absent for completed registers, solid grey for pending. <b>The colour bar tells the story of the class day at a glance</b> — a register that's mostly green looks normal, one with a chunk of terra catches the eye.</li>
+        <li><b>"Earlier this week" section header</b> separates today's pending+done from past locked registers. Yesterday and Wednesday show with "Locked" status pills — teacher can click through to view but not edit. <b>Continuous scroll surfaces the recent history</b>; admin/teacher rarely needs to dig further than 2-3 days back.</li>
+        <li><b>Active register header carries class identity in big Fraunces</b> — "JHS <em>2A</em> · Friday 2 May" — same brand language as everywhere else. The lede line gives all context (student count, class teacher, term, day count).</li>
+        <li><b>Two header buttons: "Copy from yesterday" and "View term grid".</b> Copy-from-yesterday is the desktop-specific bulk operation: when a class has the same exceptions multi-day (excursion week, exam week with consistent absentees), starting from yesterday's marks saves work. View-term-grid pivots to Section 02's view.</li>
+        <li><b>Five-stat tile strip</b> instead of mobile's four-chip. Desktop adds an "Unmarked" stat — useful when teacher is mid-marking and wants to see how many rows still need attention. Each tile shows the count + a sub-line with specifics (which student is late, why excused, how many consecutive days absent).</li>
+        <li><b>Sub-lines on stat tiles are personalised:</b> "Kwame Adu · 8:23 AM" on the Late tile rather than a generic counter. <b>Stats become specific stories</b> when there are only one or two of each. With 12 absentees, the sub-line would say "12 students · view list."</li>
+        <li><b>Action bar with bulk operations on the left, keyboard shortcuts on the right.</b> Three bulk buttons: All present (primary), Excursion, Reset. Three shortcut groups visible: P/L/E/A for status, ↑↓ for navigate, ⏎ for reason. <b>The shortcuts panel is the desktop's superpower</b> — teacher doesn't have to discover; they're shown.</li>
+        <li><b>Roster as a real table</b> with columns: # / Student / Term attendance / Status / Reason. Five columns, each with purpose. The desktop has the room mobile didn't; we use it for the reason column that mobile hid in a bottom sheet.</li>
+        <li><b>Row numbering (01, 02, 03...)</b> in mono — matches paper-register convention. Older teachers grew up with numbered registers; the system shouldn't abandon the convention just because the medium changed.</li>
+        <li><b>Term attendance column shows percentage AND days fraction</b> — "96% · 45/47 days." Both forms because different teachers think in different terms. The percentage is fast scan; the fraction is concrete and auditable.</li>
+        <li><b>Status segmented control is wider on desktop</b> (36px tiles vs 30px on mobile) and uses the same gold/navy/terra fills. <b>Hover state lifts the tile</b> so keyboard focus is visible. Selected tiles are filled solid; unselected sit on the bg.</li>
+        <li><b>Reason column shows the auto-populated detail inline</b> — "Medical appointment · mother called at 7:40 AM, dental" / "No contact · 3rd consecutive day · admin alert sent" / "Late · 8:23 AM · 23 min after start." On mobile this required tapping into the bottom sheet; desktop puts it in the row.</li>
+        <li><b>Em-dash for empty reason</b> (rather than blank) so the column is visually anchored even when most rows have nothing in them. Matches our em-dash convention from the rest of the system.</li>
+        <li><b>Focused row has gold outline + gold-bg tint.</b> Keyboard navigation moves the focus; teacher pressing ↑↓ sees the gold ring move through the table. The status keys (P/L/E/A) act on the focused row. <b>This is the keyboard-driven workflow</b> — mouse is optional.</li>
+        <li><b>Submit footer is sticky.</b> Progress count ("36 of 36 marked") in Fraunces; meta line tells teacher exactly what the system will do next. <b>"2 absence SMS will go out at 3:00 PM today · last edit window closes tomorrow 3:42 PM"</b> — both consequences spelled out so teacher commits with informed eyes.</li>
+        <li><b>Submit button shows ⌘⏎ shortcut.</b> The shortcut panel above explains the workflow, the button reinforces the commit shortcut. Teacher who's been keyboard-driven all the way through can finish without ever touching the mouse.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 TERM GRID VIEW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Term grid · the paper register, alive</div>
+    <div class="section-meta">Class teacher view · entire term in one canvas</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / attendance / jhs-2a / term-grid</div>
+      </div>
+      <div class="app-shell" style="grid-template-columns: 220px 1fr">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>My classes</div>
+          <div class="nav-item active"><div class="ic"></div>Attendance<span class="badge">2</span></div>
+          <div class="nav-item"><div class="ic"></div>Gradebook</div>
+          <div class="nav-item"><div class="ic"></div>Materials</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="footer">
+            <div class="av">SM</div>
+            <div><div class="meta-name">Samuel Mensah</div><div class="meta-role">Teacher · JHS 2A class teacher</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="active-register">
+
+          <div class="active-head">
+            <div class="head-row">
+              <div>
+                <div class="crumb-row"><a href="#">Attendance</a> / JHS 2A / Term grid</div>
+                <h1 class="display">JHS <em>2A</em> · Term 1 register</h1>
+                <div class="lede">36 students · class teacher <b>Samuel Mensah</b> · 47 school days marked of <b>62 in term</b></div>
+              </div>
+              <div class="btn-group">
+                <button class="btn">Export PDF</button>
+                <button class="btn">Today's register →</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="term-grid-container">
+
+            <!-- Controls -->
+            <div class="term-grid-controls">
+              <div class="month-nav">
+                <button class="nav-btn">‹</button>
+                <div class="month-label display">Apr - May <em>2026</em></div>
+                <button class="nav-btn">›</button>
+              </div>
+              <div class="legend">
+                <div class="legend-item"><div class="legend-swatch present"></div>Present</div>
+                <div class="legend-item"><div class="legend-swatch late"></div>Late</div>
+                <div class="legend-item"><div class="legend-swatch excused"></div>Excused</div>
+                <div class="legend-item"><div class="legend-swatch absent"></div>Absent</div>
+                <div class="legend-item"><div class="legend-swatch holiday"></div>Holiday</div>
+                <div class="legend-item"><div class="legend-swatch weekend"></div>Weekend</div>
+                <div class="legend-item"><div class="legend-swatch future"></div>Future</div>
+              </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="term-grid">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="student-col" rowspan="2">Student · 36 in roster</th>
+                    <!-- Days 21-30 April + 1-2 May = around 12 days visible -->
+                    <th class="day-of-week">M</th>
+                    <th class="day-of-week">T</th>
+                    <th class="day-of-week">W</th>
+                    <th class="day-of-week">T</th>
+                    <th class="day-of-week">F</th>
+                    <th class="day-of-week weekend">S</th>
+                    <th class="day-of-week weekend">S</th>
+                    <th class="day-of-week">M</th>
+                    <th class="day-of-week">T</th>
+                    <th class="day-of-week">W</th>
+                    <th class="day-of-week">T</th>
+                    <th class="day-of-week today">F</th>
+                    <th class="day-of-week weekend">S</th>
+                    <th class="day-of-week weekend">S</th>
+                    <th class="day-of-week">M</th>
+                    <th class="day-of-week">T</th>
+                    <th class="day-of-week">W</th>
+                    <th class="day-of-week">T</th>
+                    <th class="day-of-week">F</th>
+                    <th class="summary-col" rowspan="2">Summary</th>
+                  </tr>
+                  <tr>
+                    <th class="day-num">21</th>
+                    <th class="day-num">22</th>
+                    <th class="day-num">23</th>
+                    <th class="day-num">24</th>
+                    <th class="day-num">25</th>
+                    <th class="day-num weekend">26</th>
+                    <th class="day-num weekend">27</th>
+                    <th class="day-num">28</th>
+                    <th class="day-num">29</th>
+                    <th class="day-num">30</th>
+                    <th class="day-num">1</th>
+                    <th class="day-num today">2</th>
+                    <th class="day-num weekend">3</th>
+                    <th class="day-num weekend">4</th>
+                    <th class="day-num">5</th>
+                    <th class="day-num">6</th>
+                    <th class="day-num">7</th>
+                    <th class="day-num">8</th>
+                    <th class="day-num">9</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="student-name">
+                      <div class="av">AB</div>
+                      <div class="info">
+                        <div class="name">Akosua Boateng</div>
+                        <div class="pct pct-high">96% · 45/47</div>
+                      </div>
+                    </td>
+                    <td class="day-cell present">P<div class="day-cell-tooltip">Mon 21 Apr · Present</div></td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present today">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="summary-cell">
+                      <div class="breakdown"><span class="p">P 45</span> <span class="a">A 2</span></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="student-name">
+                      <div class="av">DA</div>
+                      <div class="info">
+                        <div class="name">Daniel Adjei</div>
+                        <div class="pct pct-high">89% · 42/47</div>
+                      </div>
+                    </td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell late">L</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present today">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="summary-cell">
+                      <div class="breakdown"><span class="p">P 42</span> <span class="l">L 2</span> <span class="a">A 3</span></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="student-name">
+                      <div class="av">EA</div>
+                      <div class="info">
+                        <div class="name">Esi Asante</div>
+                        <div class="pct pct-mid">72% · 34/47</div>
+                      </div>
+                    </td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell excused">E</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell excused today">E</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="summary-cell">
+                      <div class="breakdown"><span class="p">P 34</span> <span class="e">E 8</span> <span class="a">A 5</span></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="student-name">
+                      <div class="av">FO</div>
+                      <div class="info">
+                        <div class="name">Florence Owusu</div>
+                        <div class="pct pct-high">98% · 46/47</div>
+                      </div>
+                    </td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell present today">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="summary-cell">
+                      <div class="breakdown"><span class="p">P 46</span> <span class="a">A 1</span></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="student-name">
+                      <div class="av">JM</div>
+                      <div class="info">
+                        <div class="name">James Mensah</div>
+                        <div class="pct pct-low">61% · 29/47</div>
+                      </div>
+                    </td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell absent today">A</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="summary-cell">
+                      <div class="breakdown"><span class="p">P 29</span> <span class="a">A 18</span></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="student-name">
+                      <div class="av">KA</div>
+                      <div class="info">
+                        <div class="name">Kwame Adu</div>
+                        <div class="pct pct-high">94% · 44/47</div>
+                      </div>
+                    </td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell late">L</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell late today">L</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="summary-cell">
+                      <div class="breakdown"><span class="p">P 44</span> <span class="l">L 3</span></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="student-name">
+                      <div class="av">MA</div>
+                      <div class="info">
+                        <div class="name">Mary Asante</div>
+                        <div class="pct pct-high">93% · 44/47</div>
+                      </div>
+                    </td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present today">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="summary-cell">
+                      <div class="breakdown"><span class="p">P 44</span> <span class="a">A 3</span></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="student-name">
+                      <div class="av">NB</div>
+                      <div class="info">
+                        <div class="name">Nathaniel Boateng</div>
+                        <div class="pct pct-high">87% · 41/47</div>
+                      </div>
+                    </td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell late">L</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present today">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="summary-cell">
+                      <div class="breakdown"><span class="p">P 41</span> <span class="l">L 1</span> <span class="a">A 5</span></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="student-name">
+                      <div class="av">OA</div>
+                      <div class="info">
+                        <div class="name">Owusu Akoto</div>
+                        <div class="pct pct-high">91% · 43/47</div>
+                      </div>
+                    </td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present today">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="summary-cell">
+                      <div class="breakdown"><span class="p">P 43</span> <span class="a">A 4</span></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="student-name">
+                      <div class="av">YB</div>
+                      <div class="info">
+                        <div class="name">Yaa Boakye</div>
+                        <div class="pct pct-high">91% · 43/47</div>
+                      </div>
+                    </td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell present">P</td>
+                    <td class="day-cell absent">A</td>
+                    <td class="day-cell present today">P</td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell weekend"></td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="day-cell future">·</td>
+                    <td class="summary-cell">
+                      <div class="breakdown"><span class="p">P 43</span> <span class="a">A 4</span></div>
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td class="student-name">Class total</td>
+                    <td>36/36</td>
+                    <td>35/36</td>
+                    <td>34/36</td>
+                    <td>34/36</td>
+                    <td>34/36</td>
+                    <td></td>
+                    <td></td>
+                    <td>33/36</td>
+                    <td>33/36</td>
+                    <td>33/36</td>
+                    <td>33/36</td>
+                    <td>33/36</td>
+                    <td></td>
+                    <td></td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td class="summary-cell">93.8% avg</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div style="font-size:11px;color:var(--navy-3);margin-top:12px;font-style:italic;line-height:1.55">Showing 10 of 36 students · scroll the table or change the date range to see more · click any cell to view or edit (within edit window)</div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>This is the screen that wins skeptical older teachers.</b> The paper class register has had this exact layout for a hundred years — students down the left, days across the top, P/L/E/A in each cell. Putting the same layout on screen makes the system feel familiar, not alien.</li>
+        <li><b>The grid is a reading view first, an editing view second.</b> Teacher mostly opens this to <i>see</i> the term — who's been absent, when patterns started, how the class is trending. Editing happens by clicking a cell, but the overwhelming use case is reading.</li>
+        <li><b>Sticky student column on the left, sticky summary column on the right.</b> Both have a 1.5px navy border to distinguish them from the day cells. As teacher scrolls horizontally through the term, names and totals stay anchored. Without sticky columns, this view would be useless beyond two weeks of dates.</li>
+        <li><b>Two-row header: day-of-week letter on top, day number below.</b> M T W T F gives the rhythm at a glance; 21 22 23 24 25 anchors the calendar. Weekend columns are subtly tinted; today's column is gold-tinted with a gold underline.</li>
+        <li><b>Holidays use diagonal-line hatching</b> matching the GES return manual-fill pattern. Same visual = same meaning ("nothing happens here"). Future days are dashed-border empty cells. <b>The grid distinguishes "no school" from "not yet" from "didn't mark"</b> — three different absences that look the same on a paper register but matter differently here.</li>
+        <li><b>Cells are saturated colour blocks with letter inside.</b> Green P, gold L, warn E, terra A. <b>Pattern detection comes free</b> — James's row is mostly red, Esi's row has a Friday-coloured warn pattern, Akosua's row is a clean green stripe. The teacher sees stories, not data.</li>
+        <li><b>Today's column gets gold ring outline</b> on the active cell. Teacher's eye lands on today first; from there they can scan back and ahead.</li>
+        <li><b>Summary column shows the breakdown in colour-coded mono</b> — "P 45 · A 2" or "P 29 · A 18" or "P 34 · E 8 · A 5." The same dense format paper registers use. <b>Mono not Fraunces because these are counts, not headlines</b>; auditor can compare two students' totals at a glance.</li>
+        <li><b>Per-student attendance percentage in the left column</b> in colour-coded mono — green for 90+%, gold for 70-89%, terra for under 70%. Days fraction below ("45/47") for transparency. <b>Same colour mapping as the row tags in Section 01</b>; consistent semantics.</li>
+        <li><b>Footer row with class totals per day.</b> "33/36" means 33 of 36 students were marked anything-other-than-absent. The bottom-right cell shows term average ("93.8% avg"). Class teacher who wants to know how the class is trending across days has it in one row.</li>
+        <li><b>Cells are clickable</b> — opens the same exception drawer mobile uses. Editing inside the edit window is one click. Editing past the edit window prompts the request-edit flow. The grid isn't read-only; it's editable as far as policy allows.</li>
+        <li><b>Tooltip on hover</b> reveals the day name and status ("Mon 21 Apr · Present"). Teacher who isn't sure what date a column represents gets the answer without leaving the screen. The tooltip is also where excused-absence reasons would surface ("Wed 30 Apr · Excused · medical appointment").</li>
+        <li><b>"Export PDF" button in the header</b> generates a printable version of this exact view — the term register as a PDF for filing or for the headmistress to review on paper. <b>Same data, three surfaces</b> (mobile mark, desktop edit, paper file).</li>
+        <li><b>Legend strip in the controls bar</b> covers all seven cell types. The legend appears once, prominently, so teacher learning the system has a key. Removed once familiar; for now it's a tutorial that doesn't feel like a tutorial.</li>
+        <li><b>Month nav at the top of the controls</b> with Apr - May 2026 in Fraunces. Teacher can scroll through the term in 2-week windows, or pick the whole term from a dropdown. <b>Why two weeks at a time</b>: 14 days × 30px column width = 420px, fits comfortably on a 1440px screen with sidebar + sticky columns.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

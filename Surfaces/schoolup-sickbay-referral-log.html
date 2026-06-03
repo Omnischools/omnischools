@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Referral & parent notification log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:720px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1280px; }
+.sidebar.tall { min-height:1640px; }
+.sidebar.taller { min-height:1900px; }
+.sidebar.tallest { min-height:2200px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces', serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; background:var(--navy); border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:720px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.terra { background:var(--terra); color:var(--bg); border-color:var(--terra); font-weight:700; }
+.body { padding:28px 36px 60px; }
+
+/* Stats strip */
+.stats-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:24px; }
+.stat { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.stat .s-lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.stat .s-val { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.02em; line-height:1; }
+.stat .s-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.stat .s-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:5px; font-style:normal; }
+.stat .s-trend { font-size:10px; color:var(--navy-3); margin-top:5px; font-weight:500; }
+.stat .s-trend b { color:var(--navy-2); font-weight:700; }
+.stat.active { background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 100%); border-color:var(--terra); }
+.stat.active .s-val { color:var(--terra); }
+
+/* Active referral cards */
+.referral-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:22px; }
+.ref-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
+.ref-card.inpatient { border:1.5px solid var(--terra); }
+.ref-card.returning { border:1.5px solid var(--warn); }
+.ref-head { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); padding:16px 20px; display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center; position:relative; overflow:hidden; }
+.ref-head::before { content:""; position:absolute; top:-25px; right:-25px; width:90px; height:90px; border-radius:50%; background:rgba(200,151,91,0.07); }
+.ref-head .r-av { width:48px; height:48px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:16px; position:relative; }
+.ref-head .r-meta { position:relative; }
+.ref-head .r-meta .r-name { font-family:'Fraunces', serif; font-size:18px; font-weight:500; letter-spacing:-0.01em; margin-bottom:2px; }
+.ref-head .r-meta .r-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.ref-head .r-meta .r-class { font-size:11px; color:var(--gold-soft); }
+.ref-head .r-meta .r-class b { color:var(--bg); font-weight:600; }
+.ref-head .r-status { position:relative; display:flex; flex-direction:column; gap:4px; align-items:flex-end; }
+.ref-status-pill { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:4px 10px; border-radius:100px; }
+.ref-status-pill.inpatient { background:var(--terra); color:var(--bg); }
+.ref-status-pill.returning { background:var(--warn); color:var(--surface); }
+.ref-day-pill { font-size:9px; letter-spacing:0.08em; font-weight:600; color:var(--gold-soft); font-family:'JetBrains Mono', monospace; }
+.ref-body { padding:18px 20px; flex:1; }
+.ref-line { display:grid; grid-template-columns:120px 1fr; gap:14px; padding:8px 0; border-bottom:1px solid var(--border); align-items:start; }
+.ref-line:last-child { border-bottom:none; }
+.ref-line .r-lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; padding-top:2px; }
+.ref-line .r-val { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.ref-line .r-val b { color:var(--navy); font-weight:600; }
+.ref-line .r-val .sub { display:block; font-size:11px; color:var(--navy-3); margin-top:2px; font-style:italic; }
+.ref-line .r-val .mono { font-family:'JetBrains Mono', monospace; font-size:11px; }
+.ref-line .r-val .pill-mini { display:inline-block; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:2px 7px; border-radius:100px; margin-right:5px; }
+.ref-line .r-val .pill-mini.nhis { background:var(--green-bg); color:var(--green); }
+.ref-line .r-val .pill-mini.transport { background:var(--gold-bg); color:var(--gold); }
+.ref-line .r-val .pill-mini.severity { background:var(--terra-bg); color:var(--terra); }
+.ref-foot { background:var(--bg); padding:12px 20px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:center; }
+.ref-foot .ff-lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.ref-foot .ff-btn { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:600; color:var(--navy); cursor:pointer; }
+.ref-foot .ff-btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+
+/* Patient header (deep-dive section) */
+.patient-header { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:24px 28px; margin-bottom:24px; display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; position:relative; overflow:hidden; }
+.patient-header::before { content:""; position:absolute; top:-40px; right:-40px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.patient-av { width:68px; height:68px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:22px; position:relative; flex-shrink:0; }
+.patient-meta { position:relative; }
+.patient-meta .p-name { font-family:'Fraunces', serif; font-size:24px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; margin-bottom:4px; }
+.patient-meta .p-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.patient-meta .p-detail { font-size:12px; color:var(--gold-soft); display:flex; gap:16px; flex-wrap:wrap; }
+.patient-meta .p-detail b { color:var(--bg); font-weight:600; }
+.patient-meta .p-detail .dot { color:var(--gold); }
+.patient-flags { position:relative; display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+.dx-flag { background:var(--terra); color:var(--bg); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; padding:5px 11px; border-radius:100px; }
+.nhis-flag { background:var(--green-bg); color:var(--green); font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:4px 10px; border-radius:100px; }
+.id-flag { font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--gold-soft); font-weight:500; }
+
+/* Card */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:16px; }
+.card-head { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:baseline; }
+.card-head .ch-title { font-family:'Fraunces', serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.card-head .ch-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.card-head .ch-meta { font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.06em; }
+.card-body { padding:16px 20px 20px; }
+.col-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+/* Handoff block */
+.handoff-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.handoff-col h5 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+.handoff-col .h-row { padding:6px 0; display:grid; grid-template-columns:90px 1fr; gap:10px; font-size:11px; color:var(--navy-2); align-items:baseline; }
+.handoff-col .h-row .h-lbl { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.handoff-col .h-row .h-val b { color:var(--navy); font-weight:600; }
+.handoff-col .h-row .h-val .vital-num { font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--navy); font-weight:600; }
+.handoff-col .h-row .h-val .vital-num.alert { color:var(--terra); }
+
+/* Comms thread */
+.comms-thread { padding:0; }
+.comms-row { display:grid; grid-template-columns:90px auto 1fr; gap:14px; padding:14px 0; border-top:1px solid var(--border); align-items:start; }
+.comms-row:first-child { border-top:none; padding-top:4px; }
+.comms-row .ct-time { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-2); font-weight:600; padding-top:5px; }
+.comms-row .ct-time .day { display:block; font-size:9px; color:var(--navy-3); font-weight:500; margin-top:2px; font-family:'Manrope', sans-serif; }
+.comms-row .ct-chan { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:11px; flex-shrink:0; }
+.comms-row .ct-chan.call-out { background:var(--gold); color:var(--navy); }
+.comms-row .ct-chan.call-in { background:var(--green-bg); color:var(--green); border:1.5px solid var(--green); }
+.comms-row .ct-chan.sms-out { background:var(--gold-bg); color:var(--gold); border:1.5px solid var(--gold); }
+.comms-row .ct-chan.call-fail { background:var(--bg); color:var(--navy-3); border:1.5px dashed var(--border-2); }
+.comms-row .ct-chan.sms-in { background:rgba(45,107,71,0.08); color:var(--green); border:1.5px dashed var(--green); }
+.comms-row .ct-body { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.comms-row .ct-body .ct-hdr { font-weight:600; color:var(--navy); margin-bottom:3px; display:flex; gap:10px; align-items:baseline; }
+.comms-row .ct-body .ct-hdr .ct-tag { font-size:8px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; padding:2px 7px; border-radius:100px; color:var(--navy-3); background:var(--bg); border:1px solid var(--border); }
+.comms-row .ct-body .ct-hdr .ct-tag.outbound { color:var(--gold); background:var(--gold-bg); border-color:var(--gold-soft); }
+.comms-row .ct-body .ct-hdr .ct-tag.inbound { color:var(--green); background:var(--green-bg); border-color:var(--green); }
+.comms-row .ct-body .ct-hdr .ct-tag.failed { color:var(--navy-3); background:var(--bg); border-style:dashed; }
+.comms-row .ct-body .ct-hdr .ct-dur { font-size:10px; color:var(--navy-3); font-weight:500; font-family:'JetBrains Mono', monospace; }
+.comms-row .ct-body .ct-msg { font-style:italic; color:var(--navy-2); padding:8px 12px; background:var(--bg); border-radius:8px; border-left:2px solid var(--gold-soft); margin-top:4px; }
+.comms-row .ct-body .ct-msg.fail { border-left-color:var(--border-2); color:var(--navy-3); }
+.comms-row .ct-body .ct-note { font-size:11px; color:var(--navy-3); margin-top:4px; }
+.comms-row .ct-body .ct-note b { color:var(--navy-2); font-weight:600; }
+
+/* NHIS block */
+.nhis-block { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0; overflow:hidden; }
+.nhis-head { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:baseline; }
+.nhis-head .nh-title { font-family:'Fraunces', serif; font-size:15px; font-weight:600; }
+.nhis-head .nh-card { font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--navy-3); font-weight:500; }
+.nhis-table { width:100%; border-collapse:collapse; }
+.nhis-table th { background:var(--bg); padding:9px 14px; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.nhis-table th.r { text-align:right; }
+.nhis-table td { padding:10px 14px; font-size:11px; border-bottom:1px solid var(--border); color:var(--navy-2); }
+.nhis-table td.r { text-align:right; font-family:'JetBrains Mono', monospace; font-weight:600; color:var(--navy); }
+.nhis-table td b { color:var(--navy); font-weight:600; }
+.nhis-table td .cov-pill { display:inline-block; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:2px 7px; border-radius:100px; }
+.nhis-table td .cov-pill.covered { background:var(--green-bg); color:var(--green); }
+.nhis-table td .cov-pill.partial { background:var(--warn-bg); color:var(--warn); }
+.nhis-table td .cov-pill.oop { background:var(--terra-bg); color:var(--terra); }
+.nhis-table tfoot td { background:var(--bg); font-weight:700; border-top:2px solid var(--navy); }
+.nhis-table tfoot td.r { font-size:13px; color:var(--navy); }
+.nhis-table tfoot td.r em { font-style:italic; color:var(--gold); font-weight:600; }
+
+/* Today's notification timeline */
+.notify-timeline { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.notify-row { padding:14px 20px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:90px 36px 1fr auto; gap:14px; align-items:center; }
+.notify-row:last-child { border-bottom:none; }
+.notify-row.future { background:linear-gradient(90deg, var(--bg) 0%, var(--surface) 100%); opacity:0.7; }
+.notify-row .nt-time { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-2); font-weight:600; }
+.notify-row .nt-time .ago { display:block; font-size:9px; color:var(--navy-3); font-weight:500; margin-top:1px; font-family:'Manrope', sans-serif; }
+.notify-row .nt-time .ago.urgent { color:var(--terra); font-weight:600; }
+.notify-row .nt-time .ago.future { color:var(--gold); font-weight:600; font-style:italic; }
+.notify-row .nt-icon { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; }
+.notify-row .nt-icon.tier-1 { background:var(--gold-bg); color:var(--gold); }
+.notify-row .nt-icon.tier-2 { background:var(--warn-bg); color:var(--warn); border:1.5px solid var(--warn); }
+.notify-row .nt-icon.tier-3 { background:var(--terra-bg); color:var(--terra); border:1.5px solid var(--terra); }
+.notify-row .nt-body .nt-line { font-size:12px; color:var(--navy-2); }
+.notify-row .nt-body .nt-line b { color:var(--navy); font-weight:600; }
+.notify-row .nt-body .nt-line em { color:var(--gold); font-style:normal; font-weight:600; }
+.notify-row .nt-body .nt-meta { font-size:10px; color:var(--navy-3); margin-top:3px; font-weight:500; }
+.notify-row .nt-body .nt-meta .channel { padding:1px 6px; background:var(--bg); border-radius:100px; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; margin-right:4px; border:1px solid var(--border); }
+.notify-row .nt-tier { font-size:8px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:100px; }
+.notify-row .nt-tier.t1 { color:var(--gold); background:var(--gold-bg); }
+.notify-row .nt-tier.t2 { color:var(--warn); background:var(--warn-bg); }
+.notify-row .nt-tier.t3 { color:var(--terra); background:var(--terra-bg); }
+
+/* History table */
+.filter-strip { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
+.filter-strip .fs-lbl { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-right:4px; }
+.filter-pill { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:6px 12px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.filter-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill .ct { background:rgba(200,151,91,0.18); color:var(--gold); padding:1px 6px; border-radius:100px; margin-left:5px; font-family:'JetBrains Mono', monospace; font-size:10px; }
+.filter-pill.active .ct { background:rgba(200,151,91,0.2); color:var(--gold-soft); }
+
+.history-table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.history-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.history-table th.c { text-align:center; }
+.history-table th.r { text-align:right; }
+.history-table td { padding:13px 12px; font-size:11.5px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.history-table tr:last-child td { border-bottom:none; }
+.history-table tr.tier-3 td:first-child { border-left:3px solid var(--terra); }
+.history-table tr.tier-2 td:first-child { border-left:3px solid var(--warn); }
+.history-table tr.tier-1 td:first-child { border-left:3px solid var(--gold-soft); }
+.history-table tr.active-row { background:linear-gradient(90deg, var(--terra-bg) 0%, rgba(245,225,220,0.2) 100%); }
+.history-table td .h-date { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy); font-weight:600; }
+.history-table td .h-date .h-time { display:block; font-size:9px; color:var(--navy-3); font-weight:500; margin-top:1px; font-family:'Manrope', sans-serif; }
+.history-table td .h-student { display:flex; gap:9px; align-items:center; }
+.history-table td .h-student .h-av { width:28px; height:28px; border-radius:50%; background:var(--gold-soft); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.history-table td .h-student .h-av.terra { background:var(--terra-bg); color:var(--terra); }
+.history-table td .h-student .h-av.warn { background:var(--warn-bg); color:var(--warn); }
+.history-table td .h-student .h-av.green { background:var(--green-bg); color:var(--green); }
+.history-table td .h-student .h-av.navy { background:rgba(45,63,92,0.12); color:var(--navy-2); }
+.history-table td .h-student .h-meta .h-name { font-family:'Fraunces', serif; font-size:12px; font-weight:600; }
+.history-table td .h-student .h-meta .h-class { font-size:9px; color:var(--navy-3); margin-top:1px; }
+.history-table td .h-cond b { color:var(--navy); font-weight:600; }
+.history-table td .h-cond .sub { display:block; font-size:9px; color:var(--navy-3); margin-top:1px; }
+.history-table td .h-hosp { font-size:11px; color:var(--navy-2); }
+.history-table td .h-hosp b { color:var(--navy); font-weight:600; }
+.history-table td .h-hosp .km { display:block; font-size:9px; color:var(--navy-3); margin-top:1px; font-family:'JetBrains Mono', monospace; }
+.history-table td .h-stat { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:100px; display:inline-block; }
+.history-table td .h-stat.returned { background:var(--green-bg); color:var(--green); }
+.history-table td .h-stat.inpatient { background:var(--terra-bg); color:var(--terra); }
+.history-table td .h-stat.returning { background:var(--warn-bg); color:var(--warn); }
+.history-table td .h-stat.outpatient { background:var(--gold-bg); color:var(--gold); }
+.history-table td .h-cost { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.history-table td .h-cost .h-status { display:block; font-size:8px; color:var(--green); margin-top:1px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; font-family:'Manrope', sans-serif; }
+.history-table td .h-cost .h-status.due { color:var(--terra); }
+.history-table td .h-cost .h-status.partial { color:var(--warn); }
+.history-table td .h-nhis { text-align:center; font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.history-table td .h-nhis.yes { color:var(--green); }
+.history-table td .h-nhis.no { color:var(--terra); }
+.history-table td .h-nhis.exp { color:var(--warn); }
+
+/* Reconciliation summary */
+.recon-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:18px; }
+.recon-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.recon-card.outstanding { background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 100%); border-color:var(--terra); }
+.recon-card .rc-lbl { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; }
+.recon-card .rc-val { font-family:'Fraunces', serif; font-size:32px; font-weight:500; letter-spacing:-0.02em; line-height:1; }
+.recon-card .rc-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.recon-card.outstanding .rc-val { color:var(--terra); }
+.recon-card .rc-val .currency { font-size:14px; color:var(--navy-3); font-weight:500; margin-right:4px; font-family:'Manrope', sans-serif; }
+.recon-card .rc-trend { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.4; }
+.recon-card .rc-trend b { color:var(--navy-2); font-weight:700; }
+
+.outstanding-list { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.outstanding-row { padding:14px 20px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:auto 1fr auto auto; gap:18px; align-items:center; }
+.outstanding-row:last-child { border-bottom:none; }
+.outstanding-row .ol-av { width:36px; height:36px; border-radius:50%; background:var(--gold-soft); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:11px; }
+.outstanding-row .ol-av.terra { background:var(--terra-bg); color:var(--terra); }
+.outstanding-row .ol-av.warn { background:var(--warn-bg); color:var(--warn); }
+.outstanding-row .ol-body .ol-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.outstanding-row .ol-body .ol-line { font-size:11px; color:var(--navy-3); margin-top:3px; }
+.outstanding-row .ol-body .ol-line b { color:var(--navy-2); font-weight:600; }
+.outstanding-row .ol-amt { font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:700; color:var(--navy); text-align:right; }
+.outstanding-row .ol-amt .ol-since { display:block; font-size:9px; color:var(--terra); font-family:'Manrope', sans-serif; margin-top:2px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; }
+.outstanding-row .ol-action { background:var(--surface); border:1px solid var(--border-2); padding:7px 12px; border-radius:6px; font-size:10px; font-weight:600; color:var(--navy); cursor:pointer; }
+.outstanding-row .ol-action.primary { background:var(--gold); color:var(--navy); border-color:var(--gold); }
+
+/* Cross-module xmod */
+.xmod-strip { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:20px; }
+.xmod-card { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); border-radius:10px; padding:14px 16px; position:relative; overflow:hidden; }
+.xmod-card::before { content:""; position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; background:rgba(200,151,91,0.06); }
+.xmod-card .xm-lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; position:relative; }
+.xmod-card .xm-title { font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:5px; position:relative; line-height:1.3; }
+.xmod-card .xm-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.xmod-card .xm-body { font-size:11px; color:var(--gold-soft); line-height:1.5; position:relative; }
+.xmod-card .xm-body b { color:var(--bg); font-weight:600; }
+
+/* Inline */
+.inline-link { color:var(--gold); font-weight:600; text-decoration:none; border-bottom:1px dotted var(--gold-soft); }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .col-2 { grid-template-columns:1fr; }
+  .referral-grid { grid-template-columns:1fr; }
+  .handoff-grid { grid-template-columns:1fr; }
+  .recon-strip { grid-template-columns:1fr; }
+  .stats-strip { grid-template-columns:repeat(2,1fr); }
+  .xmod-strip { grid-template-columns:1fr; }
+  .patient-header { grid-template-columns:1fr; }
+  .patient-flags { align-items:flex-start; flex-direction:row; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">MVP2 · Sickbay · surface 5 of 5</div>
+<h1>The referral <em>log.</em></h1>
+<div class="gold-rule"></div>
+<p>When a sickbay sends a student out, the work doesn't end at the gate. Parents need to know, hospitals need a handoff, NHIS cards need presenting, and someone has to track when the student is coming back. This is the multi-day tail of every referral — calls made, SMS sent, ER doctors' notes, costs reconciled, follow-ups scheduled. Two students are out right now. One is on her way back; the other is still inpatient.</p>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">Active referrals · two students out</div>
+<div class="section-meta">Live · Wed 14 May 15:30</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / sickbay / referrals</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Today's sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Visit record</div>
+<div class="nav-item sub"><div class="ic"></div>Chronic register</div>
+<div class="nav-item sub active"><div class="ic"></div>Referrals</div>
+<div class="nav-item sub"><div class="ic"></div>Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">A. Bediako</div><div class="meta-role">Matron · N&amp;MC reg.</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Sickbay</a> · Referrals · Active</div>
+<div class="top-row">
+<div>
+<h1>Referrals <em>log.</em></h1>
+<div class="lede"><b>Two students out right now.</b> Y. Aidoo at the district hospital since 06:45 with severe malaria — still inpatient. K. Boateng returning now from orthopaedic — wrist cast, ETA 15:45.</div>
+</div>
+<div class="actions">
+<button class="btn">Filter</button>
+<button class="btn">Export</button>
+<button class="btn primary">+ New referral</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="stats-strip">
+<div class="stat active"><div class="s-lbl">Active right now</div><div class="s-val"><em>2</em><span class="unit">students</span></div><div class="s-trend">Y. Aidoo · K. Boateng</div></div>
+<div class="stat"><div class="s-lbl">This week</div><div class="s-val">4<span class="unit">total</span></div><div class="s-trend"><b>3 returned</b> · 1 inpatient</div></div>
+<div class="stat"><div class="s-lbl">This semester</div><div class="s-val">27<span class="unit">total</span></div><div class="s-trend">19 malaria · 4 injury · 2 SCD · 2 other</div></div>
+<div class="stat"><div class="s-lbl">Outstanding cost</div><div class="s-val mono" style="font-size:24px">GHS 340</div><div class="s-trend">3 families · 1 over 30 days</div></div>
+</div>
+
+<div class="referral-grid">
+
+<div class="ref-card inpatient">
+<div class="ref-head">
+<div class="r-av">YA</div>
+<div class="r-meta">
+<div class="r-name">Y. <em>Aidoo</em></div>
+<div class="r-class">F3 Slessor House · <b>Science</b> · ID <b>SHS-2023-0817</b></div>
+</div>
+<div class="r-status">
+<div class="ref-status-pill inpatient">Inpatient</div>
+<div class="ref-day-pill">Day 1 · since 06:45</div>
+</div>
+</div>
+<div class="ref-body">
+<div class="ref-line"><div class="r-lbl">Diagnosis</div><div class="r-val"><b>Severe malaria</b> <span class="pill-mini severity">P. falciparum</span><span class="sub">RDT positive 06:20 · temp 38.9°C · vomiting · referred when matron could not start IV</span></div></div>
+<div class="ref-line"><div class="r-lbl">Hospital</div><div class="r-val"><b>Asankrangwa Government Hospital</b><span class="sub">Ward B · bed 7 · Dr K. Mensah (visiting doctor here, attending there)</span></div></div>
+<div class="ref-line"><div class="r-lbl">Transport</div><div class="r-val"><span class="pill-mini transport">School van</span><b>15 min drive</b><span class="sub">Matron Bediako accompanied · arrived 07:02</span></div></div>
+<div class="ref-line"><div class="r-lbl">NHIS</div><div class="r-val"><span class="pill-mini nhis">Active</span><span class="mono">NHIS-9842-1276-5503</span><span class="sub">Card presented at ER · valid through Dec 2026 · IV artesunate covered</span></div></div>
+<div class="ref-line"><div class="r-lbl">Parent</div><div class="r-val">Mother — <b>A. Aidoo</b> <span class="mono">+233 24 487 6612</span><span class="sub">Notified by phone 06:50 · 4 min · followed up SMS · last update 14:20</span></div></div>
+<div class="ref-line"><div class="r-lbl">Status</div><div class="r-val"><b>Improving.</b> Fever down to 37.4°C at 14:00 reassessment. Doctor will reassess tomorrow morning before deciding discharge.</div></div>
+<div class="ref-line"><div class="r-lbl">Expected back</div><div class="r-val"><b>Thu 15 May, afternoon</b> if morning reassessment is clear. Mrs Bediako will collect; school van on standby from 11:00.</div></div>
+</div>
+<div class="ref-foot">
+<div class="ff-lbl">Actions</div>
+<button class="ff-btn primary">Open case detail</button>
+<button class="ff-btn">Call hospital</button>
+<button class="ff-btn">Message parent</button>
+<button class="ff-btn">Mark returned</button>
+</div>
+</div>
+
+<div class="ref-card returning">
+<div class="ref-head">
+<div class="r-av">KB</div>
+<div class="r-meta">
+<div class="r-name">K. <em>Boateng</em></div>
+<div class="r-class">F2 Aggrey House · <b>Business</b> · ID <b>SHS-2024-1133</b></div>
+</div>
+<div class="r-status">
+<div class="ref-status-pill returning">Returning</div>
+<div class="ref-day-pill">Discharged 15:10</div>
+</div>
+</div>
+<div class="ref-body">
+<div class="ref-line"><div class="r-lbl">Diagnosis</div><div class="r-val"><b>Mild wrist fracture</b> · right radius distal <span class="pill-mini severity">Class A</span><span class="sub">Sports field injury · football tackle Tue 11:40 · referred when matron suspected fracture</span></div></div>
+<div class="ref-line"><div class="r-lbl">Hospital</div><div class="r-val"><b>Asankrangwa Government Hospital</b><span class="sub">Orthopaedic clinic · X-ray confirmed mild fracture · backslab cast applied 14:30</span></div></div>
+<div class="ref-line"><div class="r-lbl">Transport</div><div class="r-val"><span class="pill-mini transport">School van</span><b>Round trip arranged</b><span class="sub">Ms Grace Antwi (asst matron) accompanied · van returning now</span></div></div>
+<div class="ref-line"><div class="r-lbl">NHIS</div><div class="r-val"><span class="pill-mini nhis">Active</span><span class="mono">NHIS-9842-2208-1144</span><span class="sub">Consultation + X-ray covered · cast materials <b>parent-supplied (GHS 80)</b></span></div></div>
+<div class="ref-line"><div class="r-lbl">Parent</div><div class="r-val">Father — <b>K. Boateng Snr</b> <span class="mono">+233 20 113 4408</span><span class="sub">Phone 11:45 · 6 min · in person at hospital from 13:00 · arrived ahead of us</span></div></div>
+<div class="ref-line"><div class="r-lbl">Follow-up</div><div class="r-val">Cast review at <b>Asankrangwa Govt</b> in <b>2 weeks (Wed 28 May)</b>. Matron to escort. Cast care leaflet given to dorm prefect for posting in Aggrey common room.</div></div>
+<div class="ref-line"><div class="r-lbl">ETA back</div><div class="r-val"><b>15:45</b> — about 15 minutes. HM Mr Ofori notified to expect him at house. Excused from sports until follow-up.</div></div>
+</div>
+<div class="ref-foot">
+<div class="ff-lbl">Actions</div>
+<button class="ff-btn primary">Mark returned</button>
+<button class="ff-btn">Open case detail</button>
+<button class="ff-btn">Schedule follow-up</button>
+<button class="ff-btn">Print cast-care card</button>
+</div>
+</div>
+
+</div>
+
+<div class="xmod-strip">
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Attendance</div>
+<div class="xm-title">Y. Aidoo <em>marked excused</em> for Wed, Thu</div>
+<div class="xm-body">SCI class register and morning attendance auto-flagged. Teachers see <b>medical · excused</b> without seeing diagnosis. Marks back to normal when matron clears return.</div>
+</div>
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Boarding</div>
+<div class="xm-title">HMs <em>notified</em> · no medical detail</div>
+<div class="xm-body">Mr Mensah (Slessor HM) and Mr Ofori (Aggrey HM) see "student under sickbay care, off-campus" on their dorm rosters. Diagnosis stays inside the sickbay module per privacy default.</div>
+</div>
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Billing</div>
+<div class="xm-title">K. Boateng <em>GHS 80</em> cast cost</div>
+<div class="xm-body">Cast materials parent-supplied charge already on his account. NHIS-covered items don't touch billing. Outstanding from Y. Aidoo: nothing — fully covered.</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>Operating in the active state</h4>
+<ul>
+<li><b>Two cards, two stories.</b> Inpatient (terracotta border, day counter) is the higher-stakes worry; returning (warn border, ETA timer) is the wind-down. Visual rhythm matches the operational rhythm — Mrs Bediako knows at a glance which deserves her next phone call.</li>
+<li><b>The seven-line card pattern.</b> Diagnosis, hospital, transport, NHIS, parent, status, expected back. Every active referral fills the same seven lines. Anything missing is a real gap — not a UX gap. Forces the right operational discipline.</li>
+<li><b>NHIS card number is visible.</b> Matrons present it physically at ER. Mono-font, copy-pasteable, visible without drilling. The most operationally important number on the page.</li>
+<li><b>Cross-module strip is honest.</b> Attendance gets the fact, HMs get the fact, billing gets the cost — none of them get the diagnosis. Privacy bleeds outward only where it has to.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">Case detail · Y. Aidoo · severe malaria</div>
+<div class="section-meta">Day 1 inpatient · full thread</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / sickbay / referrals / r-2026-05-14-0817</div>
+</div>
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Today's sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Visit record</div>
+<div class="nav-item sub"><div class="ic"></div>Chronic register</div>
+<div class="nav-item sub active"><div class="ic"></div>Referrals</div>
+<div class="nav-item sub"><div class="ic"></div>Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">A. Bediako</div><div class="meta-role">Matron · N&amp;MC reg.</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Sickbay</a> · <a href="#">Referrals</a> · Y. Aidoo · case <span class="mono">R-2026-05-14-0817</span></div>
+<div class="top-row">
+<div>
+<h1>Y. Aidoo · <em>severe malaria.</em></h1>
+<div class="lede">Inpatient at <b>Asankrangwa Government Hospital · Ward B bed 7</b>. Improving — fever 37.4°C at 14:00 reassessment, down from 38.9°C at admission. Doctor reassesses tomorrow morning before discharge.</div>
+</div>
+<div class="actions">
+<button class="btn">Print case</button>
+<button class="btn">Add update</button>
+<button class="btn primary">Call parent</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="patient-header">
+<div class="patient-av">YA</div>
+<div class="patient-meta">
+<div class="p-name">Yaa <em>Aidoo</em></div>
+<div class="p-detail">
+<span><b>Form 3 Science</b></span>
+<span class="dot">·</span>
+<span><b>Slessor House</b> · dorm S-12</span>
+<span class="dot">·</span>
+<span>Age <b>17</b></span>
+<span class="dot">·</span>
+<span><b>HM</b> Mr E. Akoto</span>
+</div>
+</div>
+<div class="patient-flags">
+<div class="dx-flag">Severe malaria · P. falciparum</div>
+<div class="nhis-flag">NHIS active</div>
+<div class="id-flag">SHS-2023-0817 · NHIS-9842-1276-5503</div>
+</div>
+</div>
+
+<div class="col-2">
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">ER handoff <em>at admission</em></div>
+<div class="ch-meta">07:02 · Matron → Dr K. Mensah</div>
+</div>
+<div class="card-body">
+<div class="handoff-grid">
+<div class="handoff-col">
+<h5>Presenting</h5>
+<div class="h-row"><div class="h-lbl">Complaint</div><div class="h-val">Vomiting + fever since <b>04:00</b></div></div>
+<div class="h-row"><div class="h-lbl">RDT</div><div class="h-val"><b>Positive</b> · taken 06:20</div></div>
+<div class="h-row"><div class="h-lbl">Temp</div><div class="h-val"><span class="vital-num alert">38.9°C</span> at sickbay arrival</div></div>
+<div class="h-row"><div class="h-lbl">BP</div><div class="h-val"><span class="vital-num">98/62</span></div></div>
+<div class="h-row"><div class="h-lbl">Pulse</div><div class="h-val"><span class="vital-num alert">112</span></div></div>
+<div class="h-row"><div class="h-lbl">SpO₂</div><div class="h-val"><span class="vital-num">97%</span></div></div>
+<div class="h-row"><div class="h-lbl">Hydration</div><div class="h-val">Dry mucous · refused ORS · re-vomited at 06:35</div></div>
+</div>
+<div class="handoff-col">
+<h5>Pre-referral care</h5>
+<div class="h-row"><div class="h-lbl">Given</div><div class="h-val"><b>Paracetamol 1g</b> oral 06:25 · spat back at 06:35</div></div>
+<div class="h-row"><div class="h-lbl">ORS</div><div class="h-val">Started 06:22 · refused after 2 sips</div></div>
+<div class="h-row"><div class="h-lbl">Reason out</div><div class="h-val"><b>Cannot retain oral meds.</b> Needs IV antimalarial. Beyond N&amp;MC scope for matron-only.</div></div>
+<div class="h-row"><div class="h-lbl">Chronic</div><div class="h-val">None on register · no known drug allergies</div></div>
+<div class="h-row"><div class="h-lbl">Last meal</div><div class="h-val">Last solid Tue dinner 19:30 (12h ago)</div></div>
+<div class="h-row"><div class="h-lbl">Menses</div><div class="h-val">Not currently · LMP 22 Apr</div></div>
+<div class="h-row"><div class="h-lbl">Travel</div><div class="h-val">No · in school since term start 28 Apr</div></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Hospital <em>updates</em></div>
+<div class="ch-meta">3 reassessments logged</div>
+</div>
+<div class="card-body">
+<div class="h-row" style="display:grid; grid-template-columns:90px 1fr; gap:14px; padding:9px 0; border-bottom:1px solid var(--border); font-size:11px; color:var(--navy-2); align-items:start;">
+<div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy); font-weight:600;">08:30</div>
+<div><b>Dr Mensah ward round.</b> IV artesunate 120mg started · IV fluids running · paracetamol IV 1g for fever. Re-RDT confirmed. Bloods sent — PCV pending.</div>
+</div>
+<div class="h-row" style="display:grid; grid-template-columns:90px 1fr; gap:14px; padding:9px 0; border-bottom:1px solid var(--border); font-size:11px; color:var(--navy-2); align-items:start;">
+<div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy); font-weight:600;">11:00</div>
+<div><b>Nurse update.</b> Temp <span style="font-family:'JetBrains Mono', monospace; color:var(--warn); font-weight:600;">38.2°C</span> · pulse <span style="font-family:'JetBrains Mono', monospace; color:var(--navy); font-weight:600;">98</span> · tolerating sips of water. No more vomiting since 09:15. PCV 32% — mild anaemia, not transfusion threshold.</div>
+</div>
+<div class="h-row" style="display:grid; grid-template-columns:90px 1fr; gap:14px; padding:9px 0; border-bottom:1px solid var(--border); font-size:11px; color:var(--navy-2); align-items:start;">
+<div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy); font-weight:600;">14:00</div>
+<div><b>Dr Mensah ward round.</b> Temp <span style="font-family:'JetBrains Mono', monospace; color:var(--green); font-weight:600;">37.4°C</span> · pulse <span style="font-family:'JetBrains Mono', monospace; color:var(--green); font-weight:600;">84</span> · ate light porridge. Switched to oral artemether-lumefantrine. <b>Plan</b> · observe overnight · reassess 08:00 Thu · likely discharge afternoon if stable.</div>
+</div>
+<div class="h-row" style="display:grid; grid-template-columns:90px 1fr; gap:14px; padding:9px 0; font-size:11px; color:var(--navy-2); align-items:start;">
+<div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--gold); font-weight:600; font-style:italic;">15:25</div>
+<div><b>Latest.</b> Mother visited briefly during afternoon hours. Brought soup. Yaa eating. Hospital nurse confirmed she will phone if anything changes overnight.</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Parent comms <em>thread</em> · A. Aidoo (mother)</div>
+<div class="ch-meta">7 events · phone <b>+233 24 487 6612</b></div>
+</div>
+<div class="card-body">
+<div class="comms-thread">
+
+<div class="comms-row">
+<div class="ct-time">06:50<div class="day">9h ago</div></div>
+<div class="ct-chan call-out">→</div>
+<div class="ct-body">
+<div class="ct-hdr">Outbound call · Matron Bediako<span class="ct-tag outbound">Tier 3 · referral</span><span class="ct-dur">4m 12s</span></div>
+<div>Told her Yaa had positive malaria test, was vomiting, couldn't keep meds down, and needed IV at the hospital. Explained I was going with her in the school van. Reassured no need to rush from work — would update at every reassessment.</div>
+<div class="ct-note">Mother sounded shaken but accepted. Asked if she needed to come immediately — told her visiting hours from 17:00 if she wanted, no need before.</div>
+</div>
+</div>
+
+<div class="comms-row">
+<div class="ct-time">06:52<div class="day">9h ago</div></div>
+<div class="ct-chan sms-out">S</div>
+<div class="ct-body">
+<div class="ct-hdr">Outbound SMS · auto-confirm<span class="ct-tag outbound">Tier 3 · auto</span><span class="ct-dur">delivered 06:53</span></div>
+<div class="ct-msg">Confirming: your daughter Yaa Aidoo has been referred to Asankrangwa Government Hospital. Matron Bediako accompanying. NHIS card with us. Will call with updates. — Omnischools · Asankrangwa SHS</div>
+</div>
+</div>
+
+<div class="comms-row">
+<div class="ct-time">07:30<div class="day">8h ago</div></div>
+<div class="ct-chan call-fail">×</div>
+<div class="ct-body">
+<div class="ct-hdr">Outbound call · no answer<span class="ct-tag failed">attempted</span><span class="ct-dur">3 rings</span></div>
+<div class="ct-msg fail">Wanted to confirm she'd received the SMS and tell her admission was complete. Will retry.</div>
+</div>
+</div>
+
+<div class="comms-row">
+<div class="ct-time">08:15<div class="day">7h ago</div></div>
+<div class="ct-chan call-in">←</div>
+<div class="ct-body">
+<div class="ct-hdr">Inbound call · A. Aidoo<span class="ct-tag inbound">Tier 3 · parent-initiated</span><span class="ct-dur">6m 04s</span></div>
+<div>She'd seen the SMS. Wanted to confirm the NHIS card was being used — said she didn't want any out-of-pocket. Confirmed yes, card presented at ER, IV artesunate covered, only out-of-pocket would be optional comfort items.</div>
+<div class="ct-note">Also asked how Yaa was emotionally. Told her: scared but composed. She thanked me for staying with her.</div>
+</div>
+</div>
+
+<div class="comms-row">
+<div class="ct-time">11:00<div class="day">4h ago</div></div>
+<div class="ct-chan sms-out">S</div>
+<div class="ct-body">
+<div class="ct-hdr">Outbound SMS · ward update<span class="ct-tag outbound">Tier 3 · update</span><span class="ct-dur">delivered 11:01</span></div>
+<div class="ct-msg">Update: Yaa admitted to Ward B bed 7. IV antimalarial started. Temp coming down. Doctor sees her again at 14:00. — Matron Bediako</div>
+</div>
+</div>
+
+<div class="comms-row">
+<div class="ct-time">14:20<div class="day">1h ago</div></div>
+<div class="ct-chan call-out">→</div>
+<div class="ct-body">
+<div class="ct-hdr">Outbound call · Matron Bediako<span class="ct-tag outbound">Tier 3 · update</span><span class="ct-dur">8m 31s</span></div>
+<div>Relayed Dr Mensah's 14:00 reassessment in detail — improving, temp 37.4°C, fluids stable, plan to observe overnight and reassess at 08:00. Switched to oral meds. Likely Thursday afternoon discharge.</div>
+<div class="ct-note">Mother said she'd come at 17:00 visiting hours. Asked if she should bring food. Told her hospital meals fine but Yaa would appreciate light soup. She said she'd bring some.</div>
+</div>
+</div>
+
+<div class="comms-row">
+<div class="ct-time">15:25<div class="day">5m ago</div></div>
+<div class="ct-chan call-in">←</div>
+<div class="ct-body">
+<div class="ct-hdr">Inbound call · A. Aidoo · from hospital<span class="ct-tag inbound">Tier 3 · update</span><span class="ct-dur">2m 47s</span></div>
+<div>She's at the hospital now. Yaa eating the soup. Wanted to know if she's expected back at school tomorrow afternoon — yes, assuming morning reassessment is clear. Matron will collect; school van on standby from 11:00.</div>
+<div class="ct-note">No further action unless overnight call. Mother has matron's direct line.</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">NHIS <em>reconciliation</em> · this case</div>
+<div class="ch-meta">Card 9842-1276-5503 · valid Dec 2026</div>
+</div>
+<div class="card-body">
+<div class="nhis-block">
+<div class="nhis-head">
+<div class="nh-title">Itemised costs <em>· Day 1</em></div>
+<div class="nh-card">NHIS-9842-1276-5503 · A. Aidoo · Yaa Aidoo (minor)</div>
+</div>
+<table class="nhis-table">
+<thead><tr><th>Item</th><th>Provider</th><th>Coverage</th><th class="r">Out-of-pocket</th></tr></thead>
+<tbody>
+<tr><td>ER consultation</td><td>Asankrangwa Govt</td><td><span class="cov-pill covered">NHIS · covered</span></td><td class="r">—</td></tr>
+<tr><td>Malaria RDT confirmation</td><td>Asankrangwa Govt</td><td><span class="cov-pill covered">NHIS · covered</span></td><td class="r">—</td></tr>
+<tr><td>IV cannulation + fluids (3 bags Ringer's)</td><td>Asankrangwa Govt</td><td><span class="cov-pill covered">NHIS · covered</span></td><td class="r">—</td></tr>
+<tr><td>IV artesunate 120mg × 3 doses</td><td>Asankrangwa Govt</td><td><span class="cov-pill covered">NHIS · covered</span></td><td class="r">—</td></tr>
+<tr><td>IV paracetamol 1g</td><td>Asankrangwa Govt</td><td><span class="cov-pill covered">NHIS · covered</span></td><td class="r">—</td></tr>
+<tr><td>FBC + PCV bloods</td><td>Asankrangwa Govt</td><td><span class="cov-pill covered">NHIS · covered</span></td><td class="r">—</td></tr>
+<tr><td>Ward B bed (Day 1 night)</td><td>Asankrangwa Govt</td><td><span class="cov-pill covered">NHIS · covered</span></td><td class="r">—</td></tr>
+<tr><td>Take-home AL course (6 tablets)</td><td>Asankrangwa Govt pharmacy</td><td><span class="cov-pill covered">NHIS · covered</span></td><td class="r">—</td></tr>
+</tbody>
+<tfoot><tr><td colspan="3"><b>Total parent out-of-pocket</b></td><td class="r"><em>GHS 0.00</em></td></tr></tfoot>
+</table>
+</div>
+<div style="margin-top:14px; padding:12px 16px; background:var(--green-bg); border-radius:8px; border-left:3px solid var(--green); font-size:12px; color:var(--navy-2);">
+<b>Clean NHIS case.</b> All items covered. No billing module entry. If Day 2 charges arise tomorrow they'll append here; if anything falls outside NHIS, billing module gets a flag and parent gets an SMS before incurring the cost.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>How the case detail earns its space</h4>
+<ul>
+<li><b>ER handoff is verbatim recall.</b> What Mrs Bediako told Dr Mensah at 07:02 — vitals, pre-referral care, the reason she couldn't manage on-site (N&amp;MC scope). This is the clinical handoff that determines whether the receiving doctor wastes time re-investigating.</li>
+<li><b>Hospital updates are timestamped.</b> Three logged reassessments, the last one Mrs Bediako added 5 minutes ago from a phone call. The matron and the headmaster see one timeline; nobody re-asks "how is she now".</li>
+<li><b>Comms thread is the longest part.</b> Seven events in nine hours — call, SMS, missed call, parent callback, status SMS, second call, drop-in. This is the texture of a real referral day, not the line item in a log.</li>
+<li><b>NHIS is itemised, not aggregated.</b> Parents and bursars both want to see "covered" item-by-item, not a single "GHS 0.00 due" line. When something <i>does</i> fall outside, the row makes the gap obvious. Today: nothing fell outside.</li>
+<li><b>"Call parent" is the primary action.</b> Top right of the page. The matron uses this surface most often during a phone call — she's looking at it while talking. Action button matches the moment.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">Today's parent notifications · timeline</div>
+<div class="section-meta">14 May · 6 sent · 1 due</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / sickbay / referrals / notifications</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Today's sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Visit record</div>
+<div class="nav-item sub"><div class="ic"></div>Chronic register</div>
+<div class="nav-item sub active"><div class="ic"></div>Referrals</div>
+<div class="nav-item sub"><div class="ic"></div>Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">A. Bediako</div><div class="meta-role">Matron · N&amp;MC reg.</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Sickbay</a> · <a href="#">Referrals</a> · Notifications · Today</div>
+<div class="top-row">
+<div>
+<h1>Today's <em>notifications.</em></h1>
+<div class="lede">The three-tier rule fired <b>seven times</b> today across two referrals, two admissions, and three discharges. Every event keyed off the setup-page policy anchor. One Tier 3 notification is due in 90 minutes (Y. Aidoo evening update).</div>
+</div>
+<div class="actions">
+<button class="btn">Filter by tier</button>
+<button class="btn">Export day</button>
+<button class="btn primary">Send manual</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="stats-strip">
+<div class="stat"><div class="s-lbl">Tier 1 today</div><div class="s-val gold">3<span class="unit">SMS</span></div><div class="s-trend">Sickbay admission notify</div></div>
+<div class="stat"><div class="s-lbl">Tier 2 today</div><div class="s-val warn">1<span class="unit">call + SMS</span></div><div class="s-trend">Inpatient day update</div></div>
+<div class="stat"><div class="s-lbl">Tier 3 today</div><div class="s-val terra">3<span class="unit">phone-first</span></div><div class="s-trend">2 referrals · 1 follow-up</div></div>
+<div class="stat"><div class="s-lbl">Delivery rate</div><div class="s-val green">85<span class="unit">%</span></div><div class="s-trend"><b>1 fail</b> · retried successfully</div></div>
+</div>
+
+<div class="filter-strip">
+<span class="fs-lbl">Show</span>
+<button class="filter-pill active">All today <span class="ct">7</span></button>
+<button class="filter-pill">Tier 1 <span class="ct">3</span></button>
+<button class="filter-pill">Tier 2 <span class="ct">1</span></button>
+<button class="filter-pill">Tier 3 <span class="ct">3</span></button>
+<button class="filter-pill">Failed <span class="ct">1</span></button>
+<button class="filter-pill">Due / queued <span class="ct">1</span></button>
+</div>
+
+<div class="notify-timeline">
+
+<div class="notify-row">
+<div class="nt-time">06:50<div class="ago urgent">9h ago</div></div>
+<div class="nt-icon tier-3">3</div>
+<div class="nt-body">
+<div class="nt-line"><b>Y. Aidoo</b> · F3 Slessor · <em>severe malaria referral</em> · mother A. Aidoo notified by phone (4m 12s)</div>
+<div class="nt-meta"><span class="channel">Phone</span><span class="channel">SMS confirm 06:52</span> Per Tier 3 rule: phone first, SMS second within 5 min · matron-initiated</div>
+</div>
+<div class="nt-tier t3">Tier 3 · referral</div>
+</div>
+
+<div class="notify-row">
+<div class="nt-time">09:14<div class="ago urgent">6h ago</div></div>
+<div class="nt-icon tier-2">2</div>
+<div class="nt-body">
+<div class="nt-line"><b>Adwoa Mensa</b> · F1 Slessor · <em>sickbay admission · SCD mild crisis</em> · mother M. Mensa notified by phone (3m 50s)</div>
+<div class="nt-meta"><span class="channel">Phone</span><span class="channel">SMS confirm 09:17</span> Tier 2 fires for any chronic register admission · cross-referenced with chronic plan</div>
+</div>
+<div class="nt-tier t2">Tier 2 · admission</div>
+</div>
+
+<div class="notify-row">
+<div class="nt-time">09:45<div class="ago">6h ago</div></div>
+<div class="nt-icon tier-1">1</div>
+<div class="nt-body">
+<div class="nt-line"><b>J. Manu</b> · F2 Aggrey · <em>sickbay visit · headache + appetite concern</em> · grandmother E. Manu SMS only</div>
+<div class="nt-meta"><span class="channel">SMS</span> Tier 1 because of pastoral cross-reference flag on J. Manu's record · auto · delivered 09:46</div>
+</div>
+<div class="nt-tier t1">Tier 1 · pastoral</div>
+</div>
+
+<div class="notify-row">
+<div class="nt-time">11:00<div class="ago">4h ago</div></div>
+<div class="nt-icon tier-3">3</div>
+<div class="nt-body">
+<div class="nt-line"><b>Y. Aidoo</b> · F3 Slessor · <em>ward update</em> · mother SMS update — IV started, fever coming down</div>
+<div class="nt-meta"><span class="channel">SMS</span> Tier 3 ongoing notifications continue until discharge · scheduled by matron at handoff</div>
+</div>
+<div class="nt-tier t3">Tier 3 · update</div>
+</div>
+
+<div class="notify-row">
+<div class="nt-time">11:45<div class="ago">4h ago</div></div>
+<div class="nt-icon tier-3">3</div>
+<div class="nt-body">
+<div class="nt-line"><b>K. Boateng</b> · F2 Aggrey · <em>orthopaedic referral · suspected wrist fracture</em> · father K. Boateng Snr notified by phone (6m 10s)</div>
+<div class="nt-meta"><span class="channel">Phone</span><span class="channel">SMS confirm 11:47</span> Father arrived at hospital ahead of school van · already on site by 13:00</div>
+</div>
+<div class="nt-tier t3">Tier 3 · referral</div>
+</div>
+
+<div class="notify-row">
+<div class="nt-time">14:30<div class="ago">1h ago</div></div>
+<div class="nt-icon tier-1">1</div>
+<div class="nt-body">
+<div class="nt-line"><b>J. Manu</b> · F2 Aggrey · <em>discharged from sickbay</em> · grandmother SMS follow-up confirmation</div>
+<div class="nt-meta"><span class="channel">SMS</span> Tier 1 close-out · symptoms resolved · matron flagged for VLC follow-up (no medical reason for further sickbay action)</div>
+</div>
+<div class="nt-tier t1">Tier 1 · discharge</div>
+</div>
+
+<div class="notify-row">
+<div class="nt-time">15:25<div class="ago">5m ago</div></div>
+<div class="nt-icon tier-2">2</div>
+<div class="nt-body">
+<div class="nt-line"><b>Adwoa Mensa</b> · F1 Slessor · <em>status update</em> · mother phone (2m 20s) — comfortable, fluids and pain meds working</div>
+<div class="nt-meta"><span class="channel">Phone</span> Tier 2 follow-up while still in sickbay · mother asked to come at 17:30 visiting · agreed</div>
+</div>
+<div class="nt-tier t2">Tier 2 · update</div>
+</div>
+
+<div class="notify-row future">
+<div class="nt-time">17:00<div class="ago future">in 1h 30m</div></div>
+<div class="nt-icon tier-3">3</div>
+<div class="nt-body">
+<div class="nt-line"><b>Y. Aidoo</b> · F3 Slessor · <em>evening status update due</em> · scheduled SMS — auto-fire unless matron preempts</div>
+<div class="nt-meta"><span class="channel">SMS</span> Tier 3 inpatient day cadence: 06:00, 11:00, 17:00, 21:00 · evening slot due</div>
+</div>
+<div class="nt-tier t3">Due 17:00</div>
+</div>
+
+</div>
+
+<div style="margin-top:18px; padding:14px 18px; background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-radius:10px; font-size:12px; color:var(--navy-2); display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center;">
+<div>
+<div style="font-family:'Fraunces', serif; font-weight:600; font-size:14px; color:var(--navy); margin-bottom:4px;">One delivery failed and was retried.</div>
+<div>Mother's first SMS at 06:52 came back as <b>undelivered</b> from MTN at 06:55 — network issue. Auto-retry at 07:02 succeeded. Failed deliveries appear in the manual-handling queue per the comms setup defaults.</div>
+</div>
+<button class="btn">View retry log</button>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>What the timeline reveals</h4>
+<ul>
+<li><b>Three tiers fire visibly different.</b> Gold (Tier 1, light SMS), warn (Tier 2, call + SMS), terracotta (Tier 3, phone-first). At a glance the matron sees which families have heard the school's voice today and which only got a text.</li>
+<li><b>Pastoral cross-reference is honoured.</b> J. Manu's headache visit auto-elevated to Tier 1 notification because of his pastoral flag — even though the medical event was minor. The rule is operational, not just policy text.</li>
+<li><b>Future events stay in the same timeline.</b> The 17:00 due SMS sits where it will fire, with reduced opacity. Matron can preempt with a real call if she has news to share before then.</li>
+<li><b>Failure recovery is visible.</b> One delivery failed; the system retried; matron sees both the failure and the success. The 85% delivery rate stat reflects the failure honestly — manual-only handling per the resolved sub-decision.</li>
+<li><b>Cadence is per case, not per school.</b> Y. Aidoo gets 06:00 / 11:00 / 17:00 / 21:00 while inpatient. A discharged outpatient drops to one final SMS. Cadence comes from referral status, not a school-wide schedule.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">Referral history · last 30 days</div>
+<div class="section-meta">12 referrals · 10 returned · 2 active</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / sickbay / referrals / history</div>
+</div>
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Today's sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Visit record</div>
+<div class="nav-item sub"><div class="ic"></div>Chronic register</div>
+<div class="nav-item sub active"><div class="ic"></div>Referrals</div>
+<div class="nav-item sub"><div class="ic"></div>Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">A. Bediako</div><div class="meta-role">Matron · N&amp;MC reg.</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Sickbay</a> · <a href="#">Referrals</a> · History · 30 days</div>
+<div class="top-row">
+<div>
+<h1>30-day <em>history.</em></h1>
+<div class="lede"><b>Twelve referrals</b> in 30 days · ten closed · two still active. Malaria leads at <b>seven of twelve</b> — Semester 2 sits inside Ghana's main malaria season. Two SCD crises, both Adwoa. One sports injury (today). One asthma exacerbation.</div>
+</div>
+<div class="actions">
+<button class="btn">Export CSV</button>
+<button class="btn">Export PDF</button>
+<button class="btn primary">Term report</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="filter-strip">
+<span class="fs-lbl">Range</span>
+<button class="filter-pill active">30 days <span class="ct">12</span></button>
+<button class="filter-pill">90 days <span class="ct">31</span></button>
+<button class="filter-pill">This term <span class="ct">27</span></button>
+<button class="filter-pill">This year <span class="ct">68</span></button>
+<span class="fs-lbl" style="margin-left:14px;">Filter</span>
+<button class="filter-pill">Malaria <span class="ct">7</span></button>
+<button class="filter-pill">SCD <span class="ct">2</span></button>
+<button class="filter-pill">Injury <span class="ct">1</span></button>
+<button class="filter-pill">Asthma <span class="ct">1</span></button>
+<button class="filter-pill">Other <span class="ct">1</span></button>
+</div>
+
+<table class="history-table">
+<thead><tr>
+<th>Date</th>
+<th>Student</th>
+<th>Diagnosis</th>
+<th>Hospital</th>
+<th class="c">NHIS</th>
+<th>Status</th>
+<th class="r">Out-of-pocket</th>
+</tr></thead>
+<tbody>
+
+<tr class="tier-3 active-row">
+<td><div class="h-date">14 May<div class="h-time">06:45</div></div></td>
+<td><div class="h-student"><div class="h-av terra">YA</div><div class="h-meta"><div class="h-name">Y. Aidoo</div><div class="h-class">F3 Slessor · SCI</div></div></div></td>
+<td class="h-cond"><b>Severe malaria</b><span class="sub">P. falciparum · RDT+</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis yes">Yes</td>
+<td><span class="h-stat inpatient">Inpatient · Day 1</span></td>
+<td class="h-cost">GHS 0.00<span class="h-status">Covered</span></td>
+</tr>
+
+<tr class="tier-3 active-row">
+<td><div class="h-date">13 May<div class="h-time">11:40</div></div></td>
+<td><div class="h-student"><div class="h-av warn">KB</div><div class="h-meta"><div class="h-name">K. Boateng</div><div class="h-class">F2 Aggrey · BUS</div></div></div></td>
+<td class="h-cond"><b>Mild wrist fracture</b><span class="sub">Sports field · distal radius</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis exp">Partial</td>
+<td><span class="h-stat returning">Returning · today</span></td>
+<td class="h-cost">GHS 80.00<span class="h-status due">Parent due</span></td>
+</tr>
+
+<tr class="tier-3">
+<td><div class="h-date">08 May<div class="h-time">02:15</div></div></td>
+<td><div class="h-student"><div class="h-av terra">AM</div><div class="h-meta"><div class="h-name">Adwoa Mensa</div><div class="h-class">F1 Slessor · GA</div></div></div></td>
+<td class="h-cond"><b>SCD pain crisis</b><span class="sub">Moderate · IV opioid required</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis yes">Yes</td>
+<td><span class="h-stat returned">Returned 10 May</span></td>
+<td class="h-cost">GHS 45.00<span class="h-status partial">Comfort items</span></td>
+</tr>
+
+<tr class="tier-3">
+<td><div class="h-date">05 May<div class="h-time">21:30</div></div></td>
+<td><div class="h-student"><div class="h-av warn">EO</div><div class="h-meta"><div class="h-name">E. Owusu</div><div class="h-class">F2 Nkrumah · SCI</div></div></div></td>
+<td class="h-cond"><b>Severe asthma</b><span class="sub">Exacerbation · nebuliser at sickbay insufficient</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis yes">Yes</td>
+<td><span class="h-stat returned">Returned 06 May</span></td>
+<td class="h-cost">GHS 0.00<span class="h-status">Covered</span></td>
+</tr>
+
+<tr class="tier-3">
+<td><div class="h-date">02 May<div class="h-time">17:50</div></div></td>
+<td><div class="h-student"><div class="h-av navy">SA</div><div class="h-meta"><div class="h-name">S. Asante</div><div class="h-class">F3 Kufuor · BUS</div></div></div></td>
+<td class="h-cond"><b>Malaria</b><span class="sub">Moderate · IV required</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis yes">Yes</td>
+<td><span class="h-stat returned">Returned 03 May</span></td>
+<td class="h-cost">GHS 0.00<span class="h-status">Covered</span></td>
+</tr>
+
+<tr class="tier-2">
+<td><div class="h-date">30 Apr<div class="h-time">14:20</div></div></td>
+<td><div class="h-student"><div class="h-av navy">PD</div><div class="h-meta"><div class="h-name">P. Darko</div><div class="h-class">F1 Aggrey · GA</div></div></div></td>
+<td class="h-cond"><b>Suspected appendicitis</b><span class="sub">Ruled out at ER · gastroenteritis</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis yes">Yes</td>
+<td><span class="h-stat returned">Returned same day</span></td>
+<td class="h-cost">GHS 25.00<span class="h-status partial">ORS pack</span></td>
+</tr>
+
+<tr class="tier-3">
+<td><div class="h-date">28 Apr<div class="h-time">23:10</div></div></td>
+<td><div class="h-student"><div class="h-av terra">AM</div><div class="h-meta"><div class="h-name">Adwoa Mensa</div><div class="h-class">F1 Slessor · GA</div></div></div></td>
+<td class="h-cond"><b>SCD pain crisis</b><span class="sub">Mild · escalated when oral analgesia failed</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis yes">Yes</td>
+<td><span class="h-stat returned">Returned 30 Apr</span></td>
+<td class="h-cost">GHS 60.00<span class="h-status partial">Comfort items</span></td>
+</tr>
+
+<tr class="tier-2">
+<td><div class="h-date">25 Apr<div class="h-time">09:40</div></div></td>
+<td><div class="h-student"><div class="h-av navy">EM</div><div class="h-meta"><div class="h-name">E. Mensa</div><div class="h-class">F2 Slessor · BUS</div></div></div></td>
+<td class="h-cond"><b>Malaria</b><span class="sub">Moderate · tolerated oral after IV</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis yes">Yes</td>
+<td><span class="h-stat returned">Returned 26 Apr</span></td>
+<td class="h-cost">GHS 0.00<span class="h-status">Covered</span></td>
+</tr>
+
+<tr class="tier-2">
+<td><div class="h-date">22 Apr<div class="h-time">15:25</div></div></td>
+<td><div class="h-student"><div class="h-av navy">JT</div><div class="h-meta"><div class="h-name">J. Tetteh</div><div class="h-class">F3 Aggrey · SCI</div></div></div></td>
+<td class="h-cond"><b>Malaria</b><span class="sub">Moderate · vomiting</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis no">Expired</td>
+<td><span class="h-stat returned">Returned 23 Apr</span></td>
+<td class="h-cost">GHS 215.00<span class="h-status due">Parent due</span></td>
+</tr>
+
+<tr class="tier-2">
+<td><div class="h-date">19 Apr<div class="h-time">20:15</div></div></td>
+<td><div class="h-student"><div class="h-av navy">NA</div><div class="h-meta"><div class="h-name">N. Antwi</div><div class="h-class">F1 Kufuor · GA</div></div></div></td>
+<td class="h-cond"><b>Malaria</b><span class="sub">Mild · primarily for IV fluids</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis yes">Yes</td>
+<td><span class="h-stat returned">Returned 20 Apr</span></td>
+<td class="h-cost">GHS 0.00<span class="h-status">Covered</span></td>
+</tr>
+
+<tr class="tier-2">
+<td><div class="h-date">17 Apr<div class="h-time">06:30</div></div></td>
+<td><div class="h-student"><div class="h-av navy">FB</div><div class="h-meta"><div class="h-name">F. Boakye</div><div class="h-class">F3 Slessor · BUS</div></div></div></td>
+<td class="h-cond"><b>Malaria</b><span class="sub">Moderate</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis yes">Yes</td>
+<td><span class="h-stat returned">Returned 18 Apr</span></td>
+<td class="h-cost">GHS 0.00<span class="h-status">Covered</span></td>
+</tr>
+
+<tr class="tier-2">
+<td><div class="h-date">15 Apr<div class="h-time">13:45</div></div></td>
+<td><div class="h-student"><div class="h-av navy">RA</div><div class="h-meta"><div class="h-name">R. Acquah</div><div class="h-class">F2 Aggrey · GA</div></div></div></td>
+<td class="h-cond"><b>Malaria</b><span class="sub">Mild · day-case observation only</span></td>
+<td class="h-hosp"><b>Asankrangwa Govt</b><span class="km">4.2 km · primary</span></td>
+<td class="h-nhis yes">Yes</td>
+<td><span class="h-stat outpatient">Outpatient · returned same day</span></td>
+<td class="h-cost">GHS 0.00<span class="h-status">Covered</span></td>
+</tr>
+
+</tbody>
+</table>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px;">
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px;">
+<div style="font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:10px;">Diagnosis mix · 30 days</div>
+<div style="display:flex; flex-direction:column; gap:8px;">
+<div style="display:grid; grid-template-columns:90px 1fr 30px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Malaria</b></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--terra); height:100%; width:58%;"></div></div><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right;">7</span></div>
+<div style="display:grid; grid-template-columns:90px 1fr 30px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>SCD crisis</b></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--terra); height:100%; width:17%;"></div></div><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right;">2</span></div>
+<div style="display:grid; grid-template-columns:90px 1fr 30px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Asthma</b></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--warn); height:100%; width:8%;"></div></div><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right;">1</span></div>
+<div style="display:grid; grid-template-columns:90px 1fr 30px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Injury</b></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--warn); height:100%; width:8%;"></div></div><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right;">1</span></div>
+<div style="display:grid; grid-template-columns:90px 1fr 30px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Other</b></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--navy-3); height:100%; width:8%;"></div></div><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right;">1</span></div>
+</div>
+<div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border); font-size:11px; color:var(--navy-3); line-height:1.5;"><b>Malaria sits at 58%.</b> Apr–Jun in this part of the Western Region is rainy + breeding season. Stock projection for AL + RDT kits on the setup page is rebuilding from this pattern.</div>
+</div>
+
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px;">
+<div style="font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:10px;">Hospital mix · 30 days</div>
+<div style="display:flex; flex-direction:column; gap:8px;">
+<div style="display:grid; grid-template-columns:140px 1fr 30px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Asankrangwa Govt</b></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--gold); height:100%; width:100%;"></div></div><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right;">12</span></div>
+<div style="display:grid; grid-template-columns:140px 1fr 30px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Wassa Akropong</b></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--gold-soft); height:100%; width:0%;"></div></div><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right;">0</span></div>
+<div style="display:grid; grid-template-columns:140px 1fr 30px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>St. Martin's Clinic</b></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--gold-soft); height:100%; width:0%;"></div></div><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right;">0</span></div>
+<div style="display:grid; grid-template-columns:140px 1fr 30px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>KATH Kumasi</b></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--gold-soft); height:100%; width:0%;"></div></div><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right;">0</span></div>
+</div>
+<div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border); font-size:11px; color:var(--navy-3); line-height:1.5;"><b>Asankrangwa Govt takes everything.</b> St. Martin's after-hours and Wassa Akropong overflow have not been needed this semester. KATH tertiary referral is reserved for cases beyond the district hospital's capacity.</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>What the 30-day view shows</h4>
+<ul>
+<li><b>Twelve referrals in 30 days · about one every 2.5 days.</b> For a 1,200-student school this is the bottom of the operational range during malaria season. Semester 1 (dry season) typically runs at three to four referrals per month.</li>
+<li><b>Adwoa twice in 30 days.</b> Her name appears more than once on this table because SCD crises are part of her chronic register pattern. The chronic register surface shows the longitudinal view; this table shows the operational repetition.</li>
+<li><b>J. Tetteh's expired NHIS card is the only "parent due" of consequence.</b> GHS 215 outstanding for 22 days. Bursar has already chased twice. Cross-link to billing means this row drives a real receivable, not just a medical record.</li>
+<li><b>Hospital mix is monoculture.</b> Twelve of twelve to Asankrangwa Govt. This is healthy when the primary is performing. It becomes a single point of failure if the hospital ever runs out of beds, supplies, or doctors — fallback to Wassa Akropong is built into the setup page for exactly this reason.</li>
+<li><b>Diagnosis mix drives the next semester's drug procurement.</b> 7 malaria cases tells the matron how many AL courses, IV artesunate vials, and RDT kits to reorder before the next academic year starts. The mix bar isn't analytics — it's a procurement instrument.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">05</div>
+<div class="section-title display">Outstanding reconciliation · three families</div>
+<div class="section-meta">GHS 340.00 total · 1 over 30 days</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / sickbay / referrals / reconciliation</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Today's sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Visit record</div>
+<div class="nav-item sub"><div class="ic"></div>Chronic register</div>
+<div class="nav-item sub active"><div class="ic"></div>Referrals</div>
+<div class="nav-item sub"><div class="ic"></div>Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">A. Bediako</div><div class="meta-role">Matron · N&amp;MC reg.</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Sickbay</a> · <a href="#">Referrals</a> · Reconciliation</div>
+<div class="top-row">
+<div>
+<h1>Outstanding <em>reconciliation.</em></h1>
+<div class="lede">Three families carry referral-related balances. <b>GHS 340.00 total.</b> One sits over 30 days and is on the Bursar's chase list. The other two are recent and within the normal pay window. NHIS-covered items don't show here — only the gaps NHIS doesn't fill.</div>
+</div>
+<div class="actions">
+<button class="btn">Open in billing</button>
+<button class="btn">Print reminders</button>
+<button class="btn primary">Send SMS reminder</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="recon-strip">
+<div class="recon-card outstanding">
+<div class="rc-lbl">Total outstanding</div>
+<div class="rc-val"><span class="currency">GHS</span> 340.00</div>
+<div class="rc-trend"><b>3 families</b> · 1 over 30 days · 2 within normal pay window</div>
+</div>
+<div class="recon-card">
+<div class="rc-lbl">NHIS-covered (30d)</div>
+<div class="rc-val"><span class="currency">GHS</span> 2,180.00</div>
+<div class="rc-trend">Estimated value of NHIS coverage · 10 of 12 referrals fully covered</div>
+</div>
+<div class="recon-card">
+<div class="rc-lbl">Average parent-cost</div>
+<div class="rc-val"><span class="currency">GHS</span> 28.33</div>
+<div class="rc-trend">Per referral · 30-day average · trending down from <b>GHS 35</b> last semester</div>
+</div>
+</div>
+
+<div class="outstanding-list">
+
+<div class="outstanding-row">
+<div class="ol-av terra">JT</div>
+<div class="ol-body">
+<div class="ol-name">J. Tetteh · <span style="font-weight:400; font-size:11px; color:var(--navy-3); font-family:'Manrope', sans-serif; font-style:italic;">F3 Aggrey BUS</span></div>
+<div class="ol-line">Malaria 22 Apr · <b>NHIS card expired</b> at time of admission · IV artesunate course + 2-day inpatient · parent informed 22 Apr 16:30</div>
+</div>
+<div class="ol-amt">GHS 215.00<span class="ol-since">22 days · over 30d soon</span></div>
+<button class="ol-action primary">Send SMS</button>
+</div>
+
+<div class="outstanding-row">
+<div class="ol-av warn">KB</div>
+<div class="ol-body">
+<div class="ol-name">K. Boateng · <span style="font-weight:400; font-size:11px; color:var(--navy-3); font-family:'Manrope', sans-serif; font-style:italic;">F2 Aggrey BUS</span></div>
+<div class="ol-line">Wrist fracture today · NHIS active · <b>cast materials (parent-supplied)</b> · father acknowledged at hospital · normal pay window</div>
+</div>
+<div class="ol-amt">GHS 80.00<span class="ol-since" style="color:var(--green);">Today · within window</span></div>
+<button class="ol-action">View case</button>
+</div>
+
+<div class="outstanding-row">
+<div class="ol-av warn">AM</div>
+<div class="ol-body">
+<div class="ol-name">Adwoa Mensa · <span style="font-weight:400; font-size:11px; color:var(--navy-3); font-family:'Manrope', sans-serif; font-style:italic;">F1 Slessor GA</span></div>
+<div class="ol-line">SCD crisis 08 May · NHIS active · <b>comfort items + private room upgrade</b> · mother elected upgrade · within window</div>
+</div>
+<div class="ol-amt">GHS 45.00<span class="ol-since" style="color:var(--green);">6 days · within window</span></div>
+<button class="ol-action">View case</button>
+</div>
+
+</div>
+
+<div style="margin-top:22px; display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+<div class="card" style="margin-bottom:0;">
+<div class="card-head">
+<div class="ch-title">NHIS card health <em>across the school</em></div>
+<div class="ch-meta">Synced from student records</div>
+</div>
+<div class="card-body">
+<div style="display:grid; grid-template-columns:1fr auto; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; color:var(--navy-2); align-items:baseline;">
+<span><b>Active cards</b></span><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; color:var(--green);">1,108 / 1,200</span>
+</div>
+<div style="display:grid; grid-template-columns:1fr auto; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; color:var(--navy-2); align-items:baseline;">
+<span><b>Expired this semester</b></span><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; color:var(--warn);">52</span>
+</div>
+<div style="display:grid; grid-template-columns:1fr auto; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; color:var(--navy-2); align-items:baseline;">
+<span><b>Expiring next 30 days</b></span><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; color:var(--warn);">31</span>
+</div>
+<div style="display:grid; grid-template-columns:1fr auto; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; color:var(--navy-2); align-items:baseline;">
+<span><b>No card on file</b></span><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:600; color:var(--terra);">40</span>
+</div>
+<div style="display:grid; grid-template-columns:1fr auto; gap:8px; padding:8px 0; font-size:12px; color:var(--navy-2); align-items:baseline;">
+<span><b>Coverage rate</b></span><span class="mono" style="font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--green); font-size:14px;">92.3%</span>
+</div>
+<div style="margin-top:10px; padding:10px 12px; background:var(--warn-bg); border-radius:8px; border-left:3px solid var(--warn); font-size:11px; color:var(--navy-2); line-height:1.5;">
+<b>Bursar SMS campaign opens Monday.</b> Parents of 83 students with expired-or-expiring cards get a one-line SMS asking to renew before the 2026/27 academic year. Saves the school GHS 200+ per future malaria referral.
+</div>
+</div>
+</div>
+
+<div class="card" style="margin-bottom:0;">
+<div class="card-head">
+<div class="ch-title">Cross-module <em>handoff</em></div>
+<div class="ch-meta">Sickbay → Billing → Comms</div>
+</div>
+<div class="card-body">
+<div style="font-size:12px; color:var(--navy-2); line-height:1.6; padding:6px 0;">
+The matron does not chase money. When a referral incurs an out-of-pocket cost, three things happen automatically:
+</div>
+<div style="display:flex; flex-direction:column; gap:9px; margin-top:8px;">
+<div style="display:grid; grid-template-columns:24px 1fr; gap:10px; align-items:start; font-size:11px; color:var(--navy-2); line-height:1.5;"><span style="font-family:'Fraunces', serif; font-style:italic; color:var(--gold); font-weight:600;">1.</span><div><b>Billing module</b> creates the line item against the student's account with a "sickbay referral" tag. Parent sees it on the next invoice.</div></div>
+<div style="display:grid; grid-template-columns:24px 1fr; gap:10px; align-items:start; font-size:11px; color:var(--navy-2); line-height:1.5;"><span style="font-family:'Fraunces', serif; font-style:italic; color:var(--gold); font-weight:600;">2.</span><div><b>Comms module</b> sends a one-line SMS to the parent at the moment of incurring: <i>"Referral today incurred GHS 80 for cast materials. NHIS-covered items are 0. Details on your statement."</i></div></div>
+<div style="display:grid; grid-template-columns:24px 1fr; gap:10px; align-items:start; font-size:11px; color:var(--navy-2); line-height:1.5;"><span style="font-family:'Fraunces', serif; font-style:italic; color:var(--gold); font-weight:600;">3.</span><div><b>Reconciliation surface</b> (here) shows the open balance, age, and SMS history. The Bursar opens this when the over-30 list grows.</div></div>
+</div>
+<div style="margin-top:12px; padding:10px 12px; background:var(--gold-bg); border-radius:8px; font-size:11px; color:var(--navy-2); line-height:1.5; border-left:3px solid var(--gold);">
+<b>Matron, Bursar, parent — three audiences, one source of truth.</b> No spreadsheet, no double-entry, no "did the parent get told". The SMS at moment-of-incurring is the rule that closes most of the disputes before they start.
+</div>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>The reconciliation discipline</h4>
+<ul>
+<li><b>Most lines say zero.</b> Ten of twelve recent referrals carry no parent-due cost. NHIS works. The reconciliation surface exists for the two-out-of-twelve where it doesn't.</li>
+<li><b>"Within window" is gentle.</b> Today's K. Boateng GHS 80 is not a chase. Adwoa's GHS 45 from last week is not a chase. They appear here because they're <i>open</i> — not because they're <i>overdue</i>.</li>
+<li><b>Over-30 changes the tone.</b> J. Tetteh's GHS 215 has been open for 22 days; at 30 the SMS escalation script changes from courteous reminder to formal demand, and at 60 the Bursar adds a phone call. The age column is the operational signal, not the amount.</li>
+<li><b>NHIS card health is preventive.</b> The 92.3% coverage rate is fine; the 83 students with expired-or-expiring cards before 2026/27 are the actionable number. Sending an SMS now saves real referral money in three months.</li>
+<li><b>The matron never sees billing.</b> Mrs Bediako can read this surface (her name appears in the audit) but the bursar owns it. Sickbay creates the cost; billing carries it. Clean handoff, clean separation of concerns.</li>
+</ul>
+</div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

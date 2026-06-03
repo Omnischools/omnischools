@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — WASSCE programme setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1280px; }
+.sidebar.tall { min-height:1640px; }
+.sidebar.taller { min-height:1900px; }
+.sidebar.tallest { min-height:2300px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces', serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; background:var(--navy); border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:760px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.body { padding:28px 36px 60px; }
+
+/* Live-exam banner */
+.live-banner { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); border-radius:12px; padding:20px 24px; margin-bottom:28px; display:grid; grid-template-columns:auto 1fr auto; gap:22px; align-items:center; position:relative; overflow:hidden; }
+.live-banner::before { content:""; position:absolute; top:-30px; right:-30px; width:140px; height:140px; border-radius:50%; background:rgba(200,151,91,0.07); }
+.live-banner .lb-dot { width:52px; height:52px; border-radius:14px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:20px; position:relative; }
+.live-banner .lb-dot .pulse { position:absolute; width:14px; height:14px; background:var(--terra); border-radius:50%; top:-3px; right:-3px; border:2.5px solid var(--navy); }
+.live-banner .lb-text { position:relative; }
+.live-banner .lb-title { font-family:'Fraunces', serif; font-size:20px; font-weight:500; margin-bottom:4px; letter-spacing:-0.01em; }
+.live-banner .lb-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.live-banner .lb-sub { font-size:12px; color:var(--gold-soft); line-height:1.55; }
+.live-banner .lb-sub b { color:var(--bg); font-weight:600; }
+.live-banner .lb-cta { position:relative; display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+.live-banner .lb-cta .day-count { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--gold-soft); }
+.live-banner .lb-cta button { background:var(--gold); color:var(--navy); border:none; padding:8px 14px; border-radius:6px; font-size:11px; font-weight:700; font-family:inherit; cursor:pointer; }
+
+/* Programme matrix */
+.prog-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:22px; }
+.prog-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.prog-card.science { border-top:3px solid var(--terra); }
+.prog-card.business { border-top:3px solid var(--gold); }
+.prog-card.arts { border-top:3px solid #7B4A8A; }
+.prog-card.home { border-top:3px solid var(--green); }
+.prog-head { padding:14px 16px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:baseline; }
+.prog-head .ph-name { font-family:'Fraunces', serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; }
+.prog-head .ph-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.prog-head .ph-count { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy); font-weight:700; background:var(--bg); padding:2px 8px; border-radius:100px; border:1px solid var(--border); }
+.prog-body { padding:14px 16px 16px; }
+.prog-body .pb-label { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; }
+.prog-body .pb-label:not(:first-child) { margin-top:12px; }
+.prog-body .pb-list { display:flex; flex-direction:column; gap:5px; }
+.prog-body .pb-subj { font-size:12px; color:var(--navy-2); padding:5px 0; border-bottom:1px solid var(--border); display:flex; gap:8px; align-items:baseline; }
+.prog-body .pb-subj:last-child { border-bottom:none; }
+.prog-body .pb-subj b { color:var(--navy); font-weight:600; }
+.prog-body .pb-subj .pb-tag { font-size:8px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:2px 6px; border-radius:100px; margin-left:auto; }
+.prog-body .pb-subj .pb-tag.core { background:var(--navy); color:var(--bg); }
+.prog-body .pb-subj .pb-tag.elec { background:var(--gold-bg); color:var(--gold); }
+.prog-body .pb-subj .pb-tag.opt { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+
+/* Stat strip */
+.stats-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:24px; }
+.stat { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.stat .s-lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.stat .s-val { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.02em; line-height:1; }
+.stat .s-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.stat .s-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:5px; font-style:normal; }
+.stat .s-trend { font-size:10px; color:var(--navy-3); margin-top:5px; font-weight:500; }
+.stat .s-trend b { color:var(--navy-2); font-weight:700; }
+.stat.live { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold); }
+.stat.live .s-val { color:var(--gold); }
+
+/* Mock timeline */
+.mock-timeline { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0; overflow:hidden; }
+.mock-row { padding:18px 22px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:100px 1fr 1fr auto; gap:22px; align-items:center; }
+.mock-row:last-child { border-bottom:none; }
+.mock-row.future { background:linear-gradient(90deg, var(--bg) 0%, var(--surface) 100%); opacity:0.85; }
+.mock-row.live { background:linear-gradient(90deg, var(--gold-bg) 0%, var(--surface) 100%); }
+.mock-row .mr-when { font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--navy); font-weight:700; }
+.mock-row .mr-when .mr-date { display:block; font-size:9px; color:var(--navy-3); font-weight:500; margin-top:2px; font-family:'Manrope', sans-serif; letter-spacing:0.08em; text-transform:uppercase; }
+.mock-row .mr-title { font-family:'Fraunces', serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.mock-row .mr-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.mock-row .mr-title .mr-sub { display:block; font-size:11px; color:var(--navy-3); font-family:'Manrope', sans-serif; font-weight:500; margin-top:3px; font-style:italic; }
+.mock-row .mr-method { font-size:11px; color:var(--navy-2); line-height:1.55; }
+.mock-row .mr-method b { color:var(--navy); font-weight:600; }
+.mock-row .mr-status { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:5px 11px; border-radius:100px; }
+.mock-row .mr-status.complete { background:var(--green-bg); color:var(--green); }
+.mock-row .mr-status.live { background:var(--gold); color:var(--navy); }
+.mock-row .mr-status.future { background:var(--bg); color:var(--navy-3); border:1px solid var(--border-2); }
+
+/* Card */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px; }
+.card-head { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:baseline; }
+.card-head .ch-title { font-family:'Fraunces', serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.card-head .ch-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.card-head .ch-meta { font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.06em; }
+.card-body { padding:16px 20px 20px; }
+.col-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* University target system */
+.target-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:16px; }
+.target-band { padding:14px 16px; border-radius:10px; }
+.target-band.tier-1 { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border:1px solid var(--gold); }
+.target-band.tier-2 { background:var(--surface); border:1px solid var(--border-2); }
+.target-band.tier-3 { background:var(--surface); border:1px solid var(--border-2); }
+.target-band.tier-4 { background:var(--surface); border:1px solid var(--border-2); }
+.target-band .tb-aggr { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; color:var(--navy); background:var(--bg); padding:2px 8px; border-radius:100px; display:inline-block; margin-bottom:6px; }
+.target-band.tier-1 .tb-aggr { background:var(--gold); color:var(--navy); }
+.target-band .tb-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; margin-bottom:3px; }
+.target-band .tb-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.target-band .tb-line { font-size:10px; color:var(--navy-3); line-height:1.45; }
+
+.uni-list { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.uni-row { padding:11px 18px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:auto 1fr 80px 90px 60px; gap:14px; align-items:center; font-size:12px; color:var(--navy-2); }
+.uni-row:last-child { border-bottom:none; }
+.uni-row.head { background:var(--bg); font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; padding:9px 18px; }
+.uni-row .uni-logo { width:30px; height:30px; border-radius:6px; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:11px; }
+.uni-row .uni-logo.knust { background:var(--terra); color:var(--bg); }
+.uni-row .uni-logo.ucc { background:var(--green); color:var(--bg); }
+.uni-row .uni-logo.uew { background:var(--gold); color:var(--navy); }
+.uni-row .uni-logo.uds { background:#7B4A8A; color:var(--bg); }
+.uni-row .uni-logo.takoradi { background:var(--warn); color:var(--surface); }
+.uni-row .uni-name { font-weight:600; color:var(--navy); }
+.uni-row .uni-name .uni-loc { display:block; font-size:9px; color:var(--navy-3); font-weight:500; margin-top:2px; }
+.uni-row .uni-aggr-r { text-align:right; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); }
+.uni-row .uni-aggr-r .sub { display:block; font-size:8px; color:var(--navy-3); font-weight:500; margin-top:1px; font-family:'Manrope', sans-serif; letter-spacing:0.08em; text-transform:uppercase; }
+.uni-row .uni-targeted { text-align:right; font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:var(--navy); }
+.uni-row .uni-share { text-align:right; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-3); font-weight:600; }
+
+/* Reg roster */
+.roster-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:16px; }
+.roster-tile { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.roster-tile .rt-lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.roster-tile .rt-val { font-family:'Fraunces', serif; font-size:26px; font-weight:500; line-height:1; letter-spacing:-0.02em; }
+.roster-tile .rt-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.roster-tile .rt-trend { font-size:10px; color:var(--navy-3); margin-top:6px; line-height:1.4; }
+.roster-tile .rt-trend b { color:var(--navy-2); font-weight:700; }
+.roster-tile.flag { background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 100%); border-color:var(--warn); }
+.roster-tile.flag .rt-val { color:var(--warn); }
+.roster-tile.ok { background:linear-gradient(135deg, var(--green-bg) 0%, var(--surface) 100%); border-color:var(--green); }
+.roster-tile.ok .rt-val { color:var(--green); }
+
+.roster-table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.roster-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.roster-table th.c { text-align:center; }
+.roster-table th.r { text-align:right; }
+.roster-table td { padding:11px 12px; font-size:11.5px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.roster-table tr:last-child td { border-bottom:none; }
+.roster-table tr.live-row { background:linear-gradient(90deg, var(--warn-bg) 0%, rgba(245,233,208,0.2) 100%); }
+.roster-table tr.live-row td:first-child { border-left:3px solid var(--warn); }
+.roster-table td .st-cell { display:flex; gap:9px; align-items:center; }
+.roster-table td .st-av { width:30px; height:30px; border-radius:50%; background:var(--gold-soft); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.roster-table td .st-av.terra { background:var(--terra-bg); color:var(--terra); }
+.roster-table td .st-av.warn { background:var(--warn-bg); color:var(--warn); }
+.roster-table td .st-av.green { background:var(--green-bg); color:var(--green); }
+.roster-table td .st-av.navy { background:rgba(45,63,92,0.12); color:var(--navy-2); }
+.roster-table td .st-name { font-family:'Fraunces', serif; font-size:12px; font-weight:600; }
+.roster-table td .st-id { font-family:'JetBrains Mono', monospace; font-size:9px; color:var(--navy-3); margin-top:1px; }
+.roster-table td .prog-pill { display:inline-block; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:3px 7px; border-radius:100px; }
+.roster-table td .prog-pill.sci { background:var(--terra-bg); color:var(--terra); }
+.roster-table td .prog-pill.bus { background:var(--gold-bg); color:var(--gold); }
+.roster-table td .prog-pill.ga { background:rgba(123,74,138,0.12); color:#7B4A8A; }
+.roster-table td .prog-pill.he { background:var(--green-bg); color:var(--green); }
+.roster-table td .reg-status { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:100px; display:inline-block; }
+.roster-table td .reg-status.confirmed { background:var(--green-bg); color:var(--green); }
+.roster-table td .reg-status.flag { background:var(--warn-bg); color:var(--warn); }
+.roster-table td .reg-status.critical { background:var(--terra-bg); color:var(--terra); }
+.roster-table td .accom { font-size:10px; color:var(--navy-3); font-weight:500; }
+.roster-table td .accom b { color:var(--navy-2); font-weight:600; }
+.roster-table td.r { text-align:right; }
+.roster-table td.c { text-align:center; }
+.roster-table td .ind-num { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); }
+.roster-table td .ind-num .sub { display:block; font-size:8px; color:var(--navy-3); font-weight:500; margin-top:1px; letter-spacing:0.08em; text-transform:uppercase; font-family:'Manrope', sans-serif; }
+
+/* Filter strip */
+.filter-strip { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
+.filter-strip .fs-lbl { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-right:4px; }
+.filter-pill { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:6px 12px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.filter-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill .ct { background:rgba(200,151,91,0.18); color:var(--gold); padding:1px 6px; border-radius:100px; margin-left:5px; font-family:'JetBrains Mono', monospace; font-size:10px; }
+.filter-pill.active .ct { background:rgba(200,151,91,0.2); color:var(--gold-soft); }
+
+/* Reg banner */
+.reg-banner { background:linear-gradient(135deg, var(--green-bg) 0%, var(--surface) 100%); border:1.5px solid var(--green); border-radius:12px; padding:18px 22px; margin-bottom:22px; display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:center; }
+.reg-banner.warn { background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 100%); border-color:var(--warn); }
+.reg-banner .rb-ic { width:42px; height:42px; border-radius:10px; background:var(--green); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:700; font-size:18px; }
+.reg-banner.warn .rb-ic { background:var(--warn); }
+.reg-banner .rb-text .rb-t { font-family:'Fraunces', serif; font-size:15px; font-weight:500; letter-spacing:-0.005em; margin-bottom:3px; }
+.reg-banner .rb-text .rb-t em { font-style:italic; color:var(--gold); font-weight:400; }
+.reg-banner .rb-text .rb-d { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.reg-banner .rb-text .rb-d b { color:var(--navy); font-weight:600; }
+
+/* xmod cards */
+.xmod-strip { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:18px; }
+.xmod-card { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); border-radius:10px; padding:14px 16px; position:relative; overflow:hidden; }
+.xmod-card::before { content:""; position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; background:rgba(200,151,91,0.06); }
+.xmod-card .xm-lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; position:relative; }
+.xmod-card .xm-title { font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:5px; position:relative; line-height:1.3; }
+.xmod-card .xm-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.xmod-card .xm-body { font-size:11px; color:var(--gold-soft); line-height:1.5; position:relative; }
+.xmod-card .xm-body b { color:var(--bg); font-weight:600; }
+
+/* Save bar */
+.save-bar { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border:1.5px solid var(--gold); border-radius:12px; padding:18px 22px; display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; margin-top:16px; }
+.save-bar .sb-text .sb-t { font-family:'Fraunces', serif; font-size:16px; font-weight:500; letter-spacing:-0.005em; margin-bottom:4px; }
+.save-bar .sb-text .sb-t em { font-style:italic; color:var(--gold); font-weight:400; }
+.save-bar .sb-text .sb-d { font-size:12px; color:var(--navy-3); }
+.save-bar .sb-actions { display:flex; gap:8px; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .col-2 { grid-template-columns:1fr; }
+  .prog-grid { grid-template-columns:repeat(2, 1fr); }
+  .stats-strip { grid-template-columns:repeat(2,1fr); }
+  .target-strip { grid-template-columns:repeat(2,1fr); }
+  .roster-grid { grid-template-columns:repeat(2,1fr); }
+  .xmod-strip { grid-template-columns:1fr; }
+  .live-banner { grid-template-columns:1fr; }
+  .mock-row { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">MVP2 · WASSCE-readiness · surface 1 of 5</div>
+<h1>WASSCE programme <em>setup.</em></h1>
+<div class="gold-rule"></div>
+<p>The terminal exam. Four programmes, ten subjects each, two mocks per academic year, two-hundred-and-forty F3 students at Asankrangwa SHS sitting WASSCE this May–June. 2026 is Ghana's first International WASSCE since 2019 — back on the regional May/June calendar with Nigeria, Sierra Leone, Liberia and The Gambia. Main writing started Tuesday with Oral English. Day 2 is in progress.</p>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">Programmes · subjects · electives</div>
+<div class="section-meta">Headmaster + Head of Academics · school-wide</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / wassce / setup / programmes</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE</div>
+<div class="nav-item sub active"><div class="ic"></div>Setup</div>
+<div class="nav-item sub"><div class="ic"></div>Cohort readiness</div>
+<div class="nav-item sub"><div class="ic"></div>Student reports</div>
+<div class="nav-item sub"><div class="ic"></div>Subject view</div>
+<div class="nav-item sub"><div class="ic"></div>Live exam tracker</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">CO</div><div><div class="meta-name">C. Owusu-Ansah</div><div class="meta-role">Head of Academics</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">WASSCE</a> · Setup · Programmes &amp; subjects</div>
+<div class="top-row">
+<div>
+<h1>WASSCE 2026 <em>configuration.</em></h1>
+<div class="lede"><b>240 F3 candidates across 4 programmes.</b> Main writing started Tue 13 May with Oral English; Day 2 papers (English Language 1 + 2) running now. Setup is frozen for this cohort — changes apply to the F2 batch tracking toward WASSCE 2027.</div>
+</div>
+<div class="actions">
+<button class="btn">Export setup</button>
+<button class="btn">Audit history</button>
+<button class="btn primary">Edit · F2 cohort</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="live-banner">
+<div class="lb-dot">W<div class="pulse"></div></div>
+<div class="lb-text">
+<div class="lb-title">WASSCE 2026 is <em>live</em> · Day 2 of main writing</div>
+<div class="lb-sub">Started <b>Tue 13 May · Oral English</b>. Today (Wed 14 May) <b>English Language 2 (Essay) 09:30–12:00</b> + <b>English Language 1 (Objective) 14:00–15:00</b>. Ghana returns to the international May–June calendar after 5 years of Ghana-only WASSCE following the 2020 COVID disruption.</div>
+</div>
+<div class="lb-cta">
+<button>Open live tracker</button>
+<div class="day-count">Day 2 of 30 · ends Fri 19 Jun</div>
+</div>
+</div>
+
+<div class="stats-strip">
+<div class="stat live"><div class="s-lbl">F3 cohort</div><div class="s-val"><em>240</em><span class="unit">candidates</span></div><div class="s-trend"><b>237 confirmed</b> · 3 flagged today</div></div>
+<div class="stat"><div class="s-lbl">Programmes</div><div class="s-val">4<span class="unit">tracks</span></div><div class="s-trend">Science · Business · Arts · Home Ec.</div></div>
+<div class="stat"><div class="s-lbl">Subjects offered</div><div class="s-val">23<span class="unit">total</span></div><div class="s-trend"><b>4 core</b> · 19 electives</div></div>
+<div class="stat"><div class="s-lbl">Mocks completed</div><div class="s-val">2<span class="unit">of 2</span></div><div class="s-trend">Mock 1 <b>Nov 2025</b> · Mock 2 <b>Mar 2026</b></div></div>
+</div>
+
+<div class="prog-grid">
+
+<div class="prog-card science">
+<div class="prog-head"><div class="ph-name">General <em>Science</em></div><div class="ph-count">60</div></div>
+<div class="prog-body">
+<div class="pb-label">Core (mandatory · all)</div>
+<div class="pb-list">
+<div class="pb-subj"><b>English Language</b><span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Mathematics</b> (Core)<span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Integrated Science</b><span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Social Studies</b><span class="pb-tag core">Core</span></div>
+</div>
+<div class="pb-label">Electives (4 required)</div>
+<div class="pb-list">
+<div class="pb-subj"><b>Chemistry</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Physics</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Biology</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Elective Mathematics</b><span class="pb-tag elec">Elec</span></div>
+</div>
+</div>
+</div>
+
+<div class="prog-card business">
+<div class="prog-head"><div class="ph-name"><em>Business</em></div><div class="ph-count">60</div></div>
+<div class="prog-body">
+<div class="pb-label">Core (mandatory · all)</div>
+<div class="pb-list">
+<div class="pb-subj"><b>English Language</b><span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Mathematics</b> (Core)<span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Integrated Science</b><span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Social Studies</b><span class="pb-tag core">Core</span></div>
+</div>
+<div class="pb-label">Electives (4 required)</div>
+<div class="pb-list">
+<div class="pb-subj"><b>Financial Accounting</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Cost Accounting</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Business Management</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Economics</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Elective Mathematics</b> (or)<span class="pb-tag opt">Alt</span></div>
+</div>
+</div>
+</div>
+
+<div class="prog-card arts">
+<div class="prog-head"><div class="ph-name">General <em>Arts</em></div><div class="ph-count">80</div></div>
+<div class="prog-body">
+<div class="pb-label">Core (mandatory · all)</div>
+<div class="pb-list">
+<div class="pb-subj"><b>English Language</b><span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Mathematics</b> (Core)<span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Integrated Science</b><span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Social Studies</b><span class="pb-tag core">Core</span></div>
+</div>
+<div class="pb-label">Electives (choose 4)</div>
+<div class="pb-list">
+<div class="pb-subj"><b>Literature in English</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Geography</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Government</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Economics</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>History</b><span class="pb-tag opt">Alt</span></div>
+<div class="pb-subj"><b>Christian Religious Studies</b><span class="pb-tag opt">Alt</span></div>
+<div class="pb-subj"><b>French</b><span class="pb-tag opt">Alt</span></div>
+</div>
+</div>
+</div>
+
+<div class="prog-card home">
+<div class="prog-head"><div class="ph-name">Home <em>Economics</em></div><div class="ph-count">40</div></div>
+<div class="prog-body">
+<div class="pb-label">Core (mandatory · all)</div>
+<div class="pb-list">
+<div class="pb-subj"><b>English Language</b><span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Mathematics</b> (Core)<span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Integrated Science</b><span class="pb-tag core">Core</span></div>
+<div class="pb-subj"><b>Social Studies</b><span class="pb-tag core">Core</span></div>
+</div>
+<div class="pb-label">Electives (4 required)</div>
+<div class="pb-list">
+<div class="pb-subj"><b>Management in Living</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Food and Nutrition</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Clothing and Textiles</b><span class="pb-tag elec">Elec</span></div>
+<div class="pb-subj"><b>Biology</b> (or)<span class="pb-tag opt">Alt</span></div>
+<div class="pb-subj"><b>General Knowledge in Art</b> (or)<span class="pb-tag opt">Alt</span></div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">WASSCE <em>grading</em> · how the aggregate works</div>
+<div class="ch-meta">WAEC · 9-grade scale</div>
+</div>
+<div class="card-body">
+<div style="display:grid; grid-template-columns:repeat(9, 1fr); gap:6px; margin-bottom:14px;">
+<div style="background:var(--green); color:var(--bg); padding:8px; border-radius:6px; text-align:center;"><div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600;">A1</div><div style="font-size:9px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.9;">Excellent · 1pt</div></div>
+<div style="background:var(--green); color:var(--bg); padding:8px; border-radius:6px; text-align:center; opacity:0.85;"><div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600;">B2</div><div style="font-size:9px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.9;">V. Good · 2pt</div></div>
+<div style="background:var(--green); color:var(--bg); padding:8px; border-radius:6px; text-align:center; opacity:0.72;"><div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600;">B3</div><div style="font-size:9px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.9;">Good · 3pt</div></div>
+<div style="background:var(--gold); color:var(--navy); padding:8px; border-radius:6px; text-align:center;"><div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600;">C4</div><div style="font-size:9px; letter-spacing:0.08em; text-transform:uppercase;">Credit · 4pt</div></div>
+<div style="background:var(--gold); color:var(--navy); padding:8px; border-radius:6px; text-align:center; opacity:0.88;"><div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600;">C5</div><div style="font-size:9px; letter-spacing:0.08em; text-transform:uppercase;">Credit · 5pt</div></div>
+<div style="background:var(--gold); color:var(--navy); padding:8px; border-radius:6px; text-align:center; opacity:0.76;"><div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600;">C6</div><div style="font-size:9px; letter-spacing:0.08em; text-transform:uppercase;">Credit · 6pt</div></div>
+<div style="background:var(--warn); color:var(--surface); padding:8px; border-radius:6px; text-align:center;"><div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600;">D7</div><div style="font-size:9px; letter-spacing:0.08em; text-transform:uppercase;">Pass · 7pt</div></div>
+<div style="background:var(--warn); color:var(--surface); padding:8px; border-radius:6px; text-align:center; opacity:0.85;"><div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600;">E8</div><div style="font-size:9px; letter-spacing:0.08em; text-transform:uppercase;">Pass · 8pt</div></div>
+<div style="background:var(--terra); color:var(--bg); padding:8px; border-radius:6px; text-align:center;"><div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600;">F9</div><div style="font-size:9px; letter-spacing:0.08em; text-transform:uppercase;">Fail · 9pt</div></div>
+</div>
+<div style="font-size:12px; color:var(--navy-2); line-height:1.6; padding-top:8px; border-top:1px solid var(--border);">
+<b>Aggregate</b> = best 3 cores + best 3 electives = <span class="mono" style="background:var(--bg); padding:2px 8px; border-radius:100px; font-weight:700;">6 (best) → 54 (worst)</span>. Universities use this for admission. <b>A1–C6 are credit passes</b> and count toward tertiary admission; <b>D7–F9 do not.</b> University cut-offs typically run <span class="mono" style="font-weight:600;">6–24</span> with the most competitive programmes (Medicine, Pharmacy, Engineering) at <span class="mono" style="font-weight:600;">6–12</span>.
+</div>
+</div>
+</div>
+
+<div class="xmod-strip">
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Classes</div>
+<div class="xm-title">Programme → <em>class</em> mapping</div>
+<div class="xm-body">Each F3 student belongs to one programme via their class assignment. <b>F3 SCI 1, F3 SCI 2, F3 BUS 1, F3 BUS 2</b>, etc. Class → programme join carries forward into WASSCE registration.</div>
+</div>
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Teachers</div>
+<div class="xm-title">Subject teacher <em>roster</em> locked</div>
+<div class="xm-body">Each subject has one or more F3 teachers. <b>Mr S. Asiedu</b> takes Chemistry across all F3 SCI classes. Subject-view surface keys off this roster — readiness data flows back to each teacher.</div>
+</div>
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Billing</div>
+<div class="xm-title">WAEC exam <em>fee</em> reconciliation</div>
+<div class="xm-body">WAEC charges per student per paper. <b>GHS 1,400 per candidate</b> for 2026. Free SHS covers core fees; private add-ons (re-sits, extra electives) flow into billing as individual line items. 3 students flagged below.</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>Why this section comes first</h4>
+<ul>
+<li><b>WASSCE is high-stakes, irrevocable, and out-of-the-school's-hands.</b> Once a student is registered with WAEC, the school cannot change their programme, swap electives, or add a subject. Setup is frozen for the cohort whose exams have started. This page is read-only for the F3 cohort; the "Edit" button activates for F2 (tracking toward 2027).</li>
+<li><b>Four programmes, not five.</b> Asankrangwa runs Science, Business, General Arts, and Home Economics. No Agriculture or Visual Arts track (the nearest school offering Agric is Tarkwa SHS, 38 km away). Schools that do offer Agric/Visual Arts get the same matrix layout — five or six cards, same shape.</li>
+<li><b>Cores are universal, electives signal the programme.</b> All 240 students sit the same four core papers — English Lang, Math (Core), Integrated Science, Social Studies. The electives diverge: Science gets Chem/Phys/Bio/Elec Math; Business gets Accounting/Costing/Bus Mgt/Econ; Arts and Home Ec branch wider.</li>
+<li><b>The "or" pattern matters.</b> Business students can take Elective Maths OR a fourth specialist business elective. Arts students choose 4 from a list of 7+. The schema captures both "required" and "optional" electives, and the registration step records which choice each student made.</li>
+<li><b>The grading band visual is the most-referenced part of the page.</b> Teachers in faculty meetings, parents in admissions discussions, students at orientation. Putting A1–F9 in their natural progression with the aggregate explanation underneath does the explaining once.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">Mock exam cycle · Mock 1 · Mock 2</div>
+<div class="section-meta">Two predictive sittings · September → April</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / wassce / setup / mocks</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE</div>
+<div class="nav-item sub active"><div class="ic"></div>Setup</div>
+<div class="nav-item sub"><div class="ic"></div>Cohort readiness</div>
+<div class="nav-item sub"><div class="ic"></div>Student reports</div>
+<div class="nav-item sub"><div class="ic"></div>Subject view</div>
+<div class="nav-item sub"><div class="ic"></div>Live exam tracker</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">CO</div><div><div class="meta-name">C. Owusu-Ansah</div><div class="meta-role">Head of Academics</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">WASSCE</a> · <a href="#">Setup</a> · Mock cycle</div>
+<div class="top-row">
+<div>
+<h1>Mock exam <em>cycle.</em></h1>
+<div class="lede">Two predictive mocks across the academic year. <b>Mock 1 in November</b> sets a baseline; <b>Mock 2 in March</b> drives the readiness statement. Both run on simulated WAEC papers under exam conditions, marked by F3 subject teachers using WAEC mark schemes. The Mock 2 grade is the readiness statement's projected WASSCE grade.</div>
+</div>
+<div class="actions">
+<button class="btn">Mock 1 results</button>
+<button class="btn">Mock 2 results</button>
+<button class="btn primary">Schedule Mock 2027 · F2</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="mock-timeline">
+
+<div class="mock-row">
+<div class="mr-when">Nov 2025<div class="mr-date">Semester 1 · Week 10</div></div>
+<div class="mr-title">Mock <em>1</em><div class="mr-sub">Baseline diagnostic · 24 papers across 10 days</div></div>
+<div class="mr-method"><b>Methodology.</b> Past WAEC papers (2022, 2023) administered under exam conditions. Marked by F3 teachers using official WAEC mark schemes. <b>Purpose:</b> identify cohort weaknesses early in F3 with enough time to remediate before Mock 2.</div>
+<div class="mr-status complete">Complete</div>
+</div>
+
+<div class="mock-row">
+<div class="mr-when">Mar 2026<div class="mr-date">Semester 2 · Week 11</div></div>
+<div class="mr-title">Mock <em>2</em><div class="mr-sub">Predictive sitting · 24 papers · readiness statement source</div></div>
+<div class="mr-method"><b>Methodology.</b> Custom papers commissioned from a panel of 3 retired WAEC examiners. Set to mirror anticipated WASSCE 2026 difficulty. <b>Purpose:</b> the grade each student gets here is the projected WASSCE grade that drives their readiness statement and university match.</div>
+<div class="mr-status complete">Complete</div>
+</div>
+
+<div class="mock-row live">
+<div class="mr-when">May 13–Jun 19<div class="mr-date">2026 · live</div></div>
+<div class="mr-title">WASSCE <em>2026</em><div class="mr-sub">The real thing · 30 days · Day 2 today</div></div>
+<div class="mr-method"><b>Source of truth.</b> Replaces all Mock projections once results arrive. WAEC release window for 2025 was 5 Aug 2025; expect 2026 results by <b>early Aug 2026</b>. School posts results on this surface within 24 hours of WAEC release.</div>
+<div class="mr-status live">Day 2 live</div>
+</div>
+
+<div class="mock-row future">
+<div class="mr-when">Nov 2026<div class="mr-date">Semester 1 2026/27</div></div>
+<div class="mr-title">Mock <em>1 · F2 cohort</em><div class="mr-sub">Next cohort's baseline · F2 students tracking toward 2027</div></div>
+<div class="mr-method">Schedule auto-set 7 weeks into Semester 1. Papers ordered from same examiner panel in October. <b>Cohort:</b> the 245 students currently in F2 (counted at end of Semester 2 attendance freeze).</div>
+<div class="mr-status future">Scheduled</div>
+</div>
+
+</div>
+
+<div class="col-2" style="margin-top:24px;">
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Mock 2 → WASSCE <em>predictive accuracy</em></div>
+<div class="ch-meta">5-year track record · 2021–2025</div>
+</div>
+<div class="card-body">
+<div style="display:flex; flex-direction:column; gap:9px;">
+<div style="display:grid; grid-template-columns:60px 1fr 60px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--navy);">2021</span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--green); height:100%; width:73%;"></div></div><span style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right;">73%</span></div>
+<div style="display:grid; grid-template-columns:60px 1fr 60px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--navy);">2022</span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--green); height:100%; width:78%;"></div></div><span style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right;">78%</span></div>
+<div style="display:grid; grid-template-columns:60px 1fr 60px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--navy);">2023</span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--green); height:100%; width:81%;"></div></div><span style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right;">81%</span></div>
+<div style="display:grid; grid-template-columns:60px 1fr 60px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--navy);">2024</span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--green); height:100%; width:79%;"></div></div><span style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right;">79%</span></div>
+<div style="display:grid; grid-template-columns:60px 1fr 60px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--navy);">2025</span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--green); height:100%; width:82%;"></div></div><span style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right;">82%</span></div>
+</div>
+<div style="margin-top:14px; padding:12px 14px; background:var(--green-bg); border-radius:8px; border-left:3px solid var(--green); font-size:11px; color:var(--navy-2); line-height:1.55;">
+<b>Mock 2 lands within 1 grade of WASSCE about 80% of the time.</b> The other 20% mostly drift downward (WASSCE harder than Mock 2 for that student), with 6–8% drifting upward. The readiness statement explicitly states the historical drift to set parent expectations.
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Mock 2 <em>cohort distribution</em> · Mar 2026</div>
+<div class="ch-meta">240 candidates · aggregate distribution</div>
+</div>
+<div class="card-body">
+<div style="display:flex; flex-direction:column; gap:9px;">
+<div style="display:grid; grid-template-columns:90px 1fr 50px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Agg. 6–12</b><span style="font-size:9px; color:var(--navy-3); display:block;">Top tier</span></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--green); height:100%; width:16%;"></div></div><span style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right;">39</span></div>
+<div style="display:grid; grid-template-columns:90px 1fr 50px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Agg. 13–18</b><span style="font-size:9px; color:var(--navy-3); display:block;">Very good</span></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--gold); height:100%; width:38%;"></div></div><span style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right;">91</span></div>
+<div style="display:grid; grid-template-columns:90px 1fr 50px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Agg. 19–24</b><span style="font-size:9px; color:var(--navy-3); display:block;">Fair · Legon limit</span></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--warn); height:100%; width:31%;"></div></div><span style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right;">74</span></div>
+<div style="display:grid; grid-template-columns:90px 1fr 50px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Agg. 25–36</b><span style="font-size:9px; color:var(--navy-3); display:block;">Weak · tech track</span></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--terra); height:100%; width:13%;"></div></div><span style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right;">32</span></div>
+<div style="display:grid; grid-template-columns:90px 1fr 50px; gap:10px; align-items:center; font-size:11px; color:var(--navy-2);"><span><b>Agg. 37+</b><span style="font-size:9px; color:var(--navy-3); display:block;">No tertiary path</span></span><div style="background:var(--bg); height:14px; border-radius:100px; position:relative; overflow:hidden;"><div style="background:var(--navy-3); height:100%; width:1.7%;"></div></div><span style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right;">4</span></div>
+</div>
+<div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border); font-size:11px; color:var(--navy-3); line-height:1.55;">
+<b>Median Mock 2 aggregate: 18.</b> Mean 18.7. <b>54% in 13–24 range</b> — the bulk of the cohort. 16% in Legon-competitive range. 4 students projected without a tertiary path; the Dean is running individual exit-planning conversations with each.
+</div>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>How mocks become readiness</h4>
+<ul>
+<li><b>Two mocks, not three.</b> Mock 1 (Nov) is diagnostic — too early to be predictive but in time to remediate. Mock 2 (Mar) is the predictive one and the source for every readiness statement. Some schools run three; the marginal value of a third mock in a 60-day pre-WASSCE window is less than the marginal cost of teacher marking time. We stop at two.</li>
+<li><b>Mock 2 must be marked by the same teachers who'll see the readiness reports.</b> Subject teachers mark their own students' papers — not for grade inflation, but because the act of marking is the teacher reading every script and seeing exactly where the cohort is weak. That diagnostic is more valuable than the grade.</li>
+<li><b>80% predictive accuracy is the honest number.</b> Omnischools publishes it on the readiness statement so no parent is misled into thinking the Mock 2 grade is the WASSCE grade. The 20% who drift get a written caveat: "Mock 2 is a prediction, not a promise; the WASSCE you sit will determine your tertiary path".</li>
+<li><b>The distribution histogram is the headmaster's cohort summary in one chart.</b> When the headmaster meets the PTA at the end of Semester 2, this chart is what he shows. 16% in top tier, 54% in middle, 13% in weak tier, 1.7% with no path. He doesn't need to know more than that to plan resource allocation across the next 8 weeks.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">University target system · per-student tagging</div>
+<div class="section-meta">Headmaster + Dean of Students · academic guidance</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / wassce / setup / university-targets</div>
+</div>
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE</div>
+<div class="nav-item sub active"><div class="ic"></div>Setup</div>
+<div class="nav-item sub"><div class="ic"></div>Cohort readiness</div>
+<div class="nav-item sub"><div class="ic"></div>Student reports</div>
+<div class="nav-item sub"><div class="ic"></div>Subject view</div>
+<div class="nav-item sub"><div class="ic"></div>Live exam tracker</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">CO</div><div><div class="meta-name">C. Owusu-Ansah</div><div class="meta-role">Head of Academics</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">WASSCE</a> · <a href="#">Setup</a> · University targets</div>
+<div class="top-row">
+<div>
+<h1>University <em>target</em> system.</h1>
+<div class="lede">Every F3 student tags <b>up to three target programmes</b> after Mock 1 (revised after Mock 2). The system stores the WAEC cut-off for each programme and matches it against the student's projected aggregate. <b>The Dean runs a guidance interview</b> with every student whose Mock 2 aggregate exceeds their lowest target's cut-off.</div>
+</div>
+<div class="actions">
+<button class="btn">Cut-off table</button>
+<button class="btn">Unmatched list</button>
+<button class="btn primary">Run match · all students</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="target-strip">
+<div class="target-band tier-1"><div class="tb-aggr">6 – 12</div><div class="tb-name">Tier <em>1</em></div><div class="tb-line">Medicine, Pharmacy, Engineering, Law. KNUST/Legon competitive. <b>39 students</b> in this band.</div></div>
+<div class="target-band tier-2"><div class="tb-aggr">13 – 18</div><div class="tb-name">Tier <em>2</em></div><div class="tb-line">Most degrees at top 3 unis. Business Admin, Sciences, Education. <b>91 students.</b></div></div>
+<div class="target-band tier-3"><div class="tb-aggr">19 – 24</div><div class="tb-name">Tier <em>3</em></div><div class="tb-line">Less competitive programmes, teacher training, second-tier unis. <b>74 students.</b></div></div>
+<div class="target-band tier-4"><div class="tb-aggr">25 +</div><div class="tb-name">Tier <em>4</em></div><div class="tb-line">Technical universities, polytechnics, vocational paths, work track. <b>36 students.</b></div></div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Top <em>destinations</em> · how the cohort is targeting</div>
+<div class="ch-meta">First-choice university (most popular)</div>
+</div>
+<div class="card-body">
+<div class="uni-list">
+<div class="uni-row head">
+<span></span>
+<span>University</span>
+<span class="uni-aggr-r" style="text-align:right;">Median cut-off</span>
+<span class="uni-targeted" style="text-align:right;">Students targeting</span>
+<span class="uni-share" style="text-align:right;">% F3</span>
+</div>
+
+<div class="uni-row">
+<div class="uni-logo knust">KN</div>
+<div class="uni-name">Kwame Nkrumah Univ. of Science &amp; Technology<div class="uni-loc">Kumasi · public</div></div>
+<div class="uni-aggr-r">11<div class="sub">range 6–24</div></div>
+<div class="uni-targeted">68</div>
+<div class="uni-share">28%</div>
+</div>
+
+<div class="uni-row">
+<div class="uni-logo">UG</div>
+<div class="uni-name">University of Ghana<div class="uni-loc">Legon · public</div></div>
+<div class="uni-aggr-r">14<div class="sub">range 8–24</div></div>
+<div class="uni-targeted">52</div>
+<div class="uni-share">22%</div>
+</div>
+
+<div class="uni-row">
+<div class="uni-logo ucc">UC</div>
+<div class="uni-name">University of Cape Coast<div class="uni-loc">Cape Coast · public</div></div>
+<div class="uni-aggr-r">16<div class="sub">range 9–24</div></div>
+<div class="uni-targeted">41</div>
+<div class="uni-share">17%</div>
+</div>
+
+<div class="uni-row">
+<div class="uni-logo uew">UE</div>
+<div class="uni-name">Univ. of Education, Winneba<div class="uni-loc">Winneba · public</div></div>
+<div class="uni-aggr-r">17<div class="sub">range 10–24</div></div>
+<div class="uni-targeted">28</div>
+<div class="uni-share">12%</div>
+</div>
+
+<div class="uni-row">
+<div class="uni-logo takoradi">TT</div>
+<div class="uni-name">Takoradi Technical Univ.<div class="uni-loc">Takoradi · technical</div></div>
+<div class="uni-aggr-r">22<div class="sub">range 15–30</div></div>
+<div class="uni-targeted">21</div>
+<div class="uni-share">9%</div>
+</div>
+
+<div class="uni-row">
+<div class="uni-logo uds">UD</div>
+<div class="uni-name">Univ. for Development Studies<div class="uni-loc">Tamale · public</div></div>
+<div class="uni-aggr-r">18<div class="sub">range 12–24</div></div>
+<div class="uni-targeted">14</div>
+<div class="uni-share">6%</div>
+</div>
+
+<div class="uni-row">
+<div class="uni-logo">CA</div>
+<div class="uni-name">Other (private, vocational, abroad)<div class="uni-loc">Various</div></div>
+<div class="uni-aggr-r">—<div class="sub">range varies</div></div>
+<div class="uni-targeted">12</div>
+<div class="uni-share">5%</div>
+</div>
+
+<div class="uni-row" style="background:var(--bg); border-top:2px solid var(--navy);">
+<div></div>
+<div class="uni-name" style="color:var(--navy-3); font-style:italic;">No first-choice tagged yet</div>
+<div class="uni-aggr-r" style="color:var(--terra);">flag<div class="sub" style="color:var(--terra);">Dean follow-up</div></div>
+<div class="uni-targeted" style="color:var(--terra);">4</div>
+<div class="uni-share">2%</div>
+</div>
+
+</div>
+
+<div style="margin-top:14px; padding:12px 14px; background:var(--warn-bg); border-radius:8px; border-left:3px solid var(--warn); font-size:11px; color:var(--navy-2); line-height:1.55;">
+<b>4 students have not tagged a first-choice university</b> as of 12 May. Dean Mensa-Ofori is scheduled to meet each individually before Friday — three are Tier 3 candidates undecided between technical universities and teacher training; one (J. Anokye, F3 GA) is considering deferment.
+</div>
+
+</div>
+</div>
+
+<div class="col-2">
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">How the <em>match</em> works</div>
+<div class="ch-meta">Per student × per programme</div>
+</div>
+<div class="card-body">
+<div style="display:flex; flex-direction:column; gap:11px; font-size:12px; color:var(--navy-2); line-height:1.55;">
+<div style="display:grid; grid-template-columns:30px 1fr; gap:12px; align-items:start;"><span style="font-family:'Fraunces', serif; font-style:italic; color:var(--gold); font-weight:600; font-size:18px;">1.</span><div><b>Programme cut-off published by university.</b> KNUST Biochemistry = 11. Legon Medicine = 6. UCC Nursing = 12. The cut-off table is updated annually from each university's admissions page.</div></div>
+<div style="display:grid; grid-template-columns:30px 1fr; gap:12px; align-items:start;"><span style="font-family:'Fraunces', serif; font-style:italic; color:var(--gold); font-weight:600; font-size:18px;">2.</span><div><b>Subject prerequisites checked.</b> KNUST Biochem requires credits in English, Math, Int Sci, Biology, Chemistry + Physics or Elec Math. The system checks whether the student is sitting all required subjects (set at registration).</div></div>
+<div style="display:grid; grid-template-columns:30px 1fr; gap:12px; align-items:start;"><span style="font-family:'Fraunces', serif; font-style:italic; color:var(--gold); font-weight:600; font-size:18px;">3.</span><div><b>Mock 2 aggregate compared to cut-off.</b> Student's projected aggregate vs programme cut-off. Margin reported in points. Less than 2 points = "tight"; 2–5 points = "comfortable"; more than 5 = "very comfortable".</div></div>
+<div style="display:grid; grid-template-columns:30px 1fr; gap:12px; align-items:start;"><span style="font-family:'Fraunces', serif; font-style:italic; color:var(--gold); font-weight:600; font-size:18px;">4.</span><div><b>Three target programmes per student.</b> The "stretch" (top choice), the "match" (most likely), and the "safety" (back-up). Three is the maximum; some students tag fewer.</div></div>
+<div style="display:grid; grid-template-columns:30px 1fr; gap:12px; align-items:start;"><span style="font-family:'Fraunces', serif; font-style:italic; color:var(--gold); font-weight:600; font-size:18px;">5.</span><div><b>Dean reviews mismatches.</b> Any student whose top 2 targets exceed their Mock 2 aggregate gets a guidance interview. The Dean has reviewed <b>87 such cases</b> across the 2024/25 academic year.</div></div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Cut-off <em>table</em> · sample</div>
+<div class="ch-meta">2025/26 academic year · 12 referenced programmes</div>
+</div>
+<div class="card-body">
+<table style="width:100%; border-collapse:collapse; font-size:11px;">
+<thead><tr style="background:var(--bg);"><th style="padding:8px 10px; text-align:left; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; border-bottom:1px solid var(--border-2);">University</th><th style="padding:8px 10px; text-align:left; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; border-bottom:1px solid var(--border-2);">Programme</th><th style="padding:8px 10px; text-align:right; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; border-bottom:1px solid var(--border-2);">Cut-off</th></tr></thead>
+<tbody>
+<tr><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">KNUST</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">Medicine</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--terra);">6</td></tr>
+<tr><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">Legon</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">Medicine</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--terra);">6</td></tr>
+<tr><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">KNUST</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">Pharmacy</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--terra);">8</td></tr>
+<tr style="background:var(--gold-bg);"><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">KNUST</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">Biochemistry</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--gold);">11</td></tr>
+<tr><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">UCC</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">Nursing</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--warn);">12</td></tr>
+<tr><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">Legon</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">Business Admin</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--warn);">14</td></tr>
+<tr><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">KNUST</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">Civil Engineering</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--warn);">13</td></tr>
+<tr><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">UEW</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">B.Ed. Mathematics</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--warn);">17</td></tr>
+<tr><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">Legon</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">B.A. Political Science</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--warn);">18</td></tr>
+<tr><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">UCC</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">B.Ed. Economics</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--warn);">19</td></tr>
+<tr><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2); font-weight:600;">Legon</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); color:var(--navy-2);">General cut-off (lowest)</td><td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--green);">24</td></tr>
+<tr><td style="padding:7px 10px; color:var(--navy-2); font-weight:600;">Takoradi Tech</td><td style="padding:7px 10px; color:var(--navy-2);">B.Tech. Marketing</td><td style="padding:7px 10px; text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--green);">28</td></tr>
+</tbody>
+</table>
+<div style="margin-top:12px; padding:10px 12px; background:var(--bg); border-radius:8px; font-size:10px; color:var(--navy-3); line-height:1.5;">
+Cut-offs verified <b>Apr 2026</b> from each university's admissions portal. Universities sometimes adjust cut-offs after WASSCE results come in if applicant pool changes. The figures here are <b>indicative</b>, not guarantees.
+</div>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>The target system in practice</h4>
+<ul>
+<li><b>Stretch · match · safety is borrowed from US college-admissions terminology.</b> Imperfect fit (Ghana's process is single-cycle and university-mediated, not high-school-mediated) but the three-tier framing helps students understand they shouldn't tag all three at the same difficulty level.</li>
+<li><b>Cut-offs are indicative, not guarantees.</b> The same KNUST Biochemistry programme that took aggregate 11 in 2024 might raise to 10 in 2026 if the applicant pool is stronger. The system stores last-known cut-offs from official university admissions portals and updates annually.</li>
+<li><b>87 Dean guidance interviews per year is significant labour.</b> One Dean of Students cannot run 240 conversations; she runs about 90 (the at-risk subset) and the Form Masters run the rest. The number falls naturally from the 13-24 middle band that the Mock 2 distribution shows.</li>
+<li><b>Untagged students are a flag, not a fault.</b> Some F3 students legitimately don't know what they want to do — and the Dean's interview surfaces this earlier than a parent SMS would. The "no first-choice tagged" row at the bottom of the universities table is a worklist, not a shame.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">WASSCE registration · the 240</div>
+<div class="section-meta">Roster · WAEC · medical accommodations</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / wassce / setup / registration</div>
+</div>
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE</div>
+<div class="nav-item sub active"><div class="ic"></div>Setup</div>
+<div class="nav-item sub"><div class="ic"></div>Cohort readiness</div>
+<div class="nav-item sub"><div class="ic"></div>Student reports</div>
+<div class="nav-item sub"><div class="ic"></div>Subject view</div>
+<div class="nav-item sub"><div class="ic"></div>Live exam tracker</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">CO</div><div><div class="meta-name">C. Owusu-Ansah</div><div class="meta-role">Head of Academics</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">WASSCE</a> · <a href="#">Setup</a> · Registration roster</div>
+<div class="top-row">
+<div>
+<h1>WASSCE 2026 <em>roster.</em></h1>
+<div class="lede"><b>240 candidates registered</b> with WAEC. Centre code <span class="mono"><b>SU-0184</b></span>. Index numbers issued Feb 2026. 3 students flagged today — one inpatient (medical exemption process active), two with NHIS-card issues affecting the WAEC fee reconciliation.</div>
+</div>
+<div class="actions">
+<button class="btn">WAEC export</button>
+<button class="btn">Print roster</button>
+<button class="btn primary">+ Late registration</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="reg-banner warn">
+<div class="rb-ic">!</div>
+<div class="rb-text">
+<div class="rb-t">One <em>candidate</em> on medical leave · WAEC special consideration form filed</div>
+<div class="rb-d"><b>Y. Aidoo (F3 Slessor SCI · index 0184-0817)</b> is inpatient at Asankrangwa Government Hospital since 06:45 today with severe malaria. <b>WAEC Form SC-12 filed at 11:00</b>; awaiting acknowledgment. Medical certificate from Dr K. Mensah pending hospital discharge. Sickbay module → Referral log integration carries the case across modules.</div>
+</div>
+<button class="btn primary">Open case</button>
+</div>
+
+<div class="roster-grid">
+<div class="roster-tile ok"><div class="rt-lbl">Confirmed</div><div class="rt-val">237<span style="font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:5px;">of 240</span></div><div class="rt-trend">98.8% · all papers paid · index numbers issued</div></div>
+<div class="roster-tile flag"><div class="rt-lbl">Flagged today</div><div class="rt-val">3</div><div class="rt-trend">1 medical · 2 NHIS / fee admin</div></div>
+<div class="roster-tile"><div class="rt-lbl">Accommodations</div><div class="rt-val">4</div><div class="rt-trend">2 chronic · 1 sight · 1 hearing</div></div>
+<div class="roster-tile"><div class="rt-lbl">Total fees</div><div class="rt-val mono" style="font-size:22px;">GHS 336k</div><div class="rt-trend">Free SHS covers 100% · 0 outstanding</div></div>
+</div>
+
+<div class="filter-strip">
+<span class="fs-lbl">Show</span>
+<button class="filter-pill active">All <span class="ct">240</span></button>
+<button class="filter-pill">Flagged <span class="ct">3</span></button>
+<button class="filter-pill">Accommodations <span class="ct">4</span></button>
+<button class="filter-pill">Science <span class="ct">60</span></button>
+<button class="filter-pill">Business <span class="ct">60</span></button>
+<button class="filter-pill">Arts <span class="ct">80</span></button>
+<button class="filter-pill">Home Ec. <span class="ct">40</span></button>
+<span class="fs-lbl" style="margin-left:14px;">Sort</span>
+<button class="filter-pill">Index number</button>
+<button class="filter-pill active">Class</button>
+<button class="filter-pill">Aggregate</button>
+</div>
+
+<table class="roster-table">
+<thead><tr>
+<th>Candidate</th>
+<th>Programme</th>
+<th>Index number</th>
+<th class="c">Reg. status</th>
+<th>Notes / accommodation</th>
+<th class="r">Mock 2 agg.</th>
+</tr></thead>
+<tbody>
+
+<tr class="live-row">
+<td><div class="st-cell"><div class="st-av terra">YA</div><div><div class="st-name">Y. Aidoo</div><div class="st-id">SHS-2023-0817</div></div></div></td>
+<td><span class="prog-pill sci">Science</span></td>
+<td><span class="ind-num">0184-0817<span class="sub">SC-12 filed</span></span></td>
+<td class="c"><span class="reg-status flag">On medical</span></td>
+<td><span class="accom"><b>Inpatient · severe malaria</b> · Asankrangwa Govt Hospital · matron escorting · medical cert pending</span></td>
+<td class="r"><span class="ind-num">10<span class="sub">tier 1</span></span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av navy">JT</div><div><div class="st-name">J. Tetteh</div><div class="st-id">SHS-2023-0823</div></div></div></td>
+<td><span class="prog-pill sci">Science</span></td>
+<td><span class="ind-num">0184-0823</span></td>
+<td class="c"><span class="reg-status confirmed">Confirmed</span></td>
+<td><span class="accom">Sitting today's English 2 · no flags</span></td>
+<td class="r"><span class="ind-num">14<span class="sub">tier 2</span></span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av navy">FB</div><div><div class="st-name">F. Boakye</div><div class="st-id">SHS-2023-0841</div></div></div></td>
+<td><span class="prog-pill bus">Business</span></td>
+<td><span class="ind-num">0184-0841</span></td>
+<td class="c"><span class="reg-status confirmed">Confirmed</span></td>
+<td><span class="accom">Sitting today · no flags</span></td>
+<td class="r"><span class="ind-num">16<span class="sub">tier 2</span></span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av warn">SA</div><div><div class="st-name">S. Asante</div><div class="st-id">SHS-2023-0852</div></div></div></td>
+<td><span class="prog-pill bus">Business</span></td>
+<td><span class="ind-num">0184-0852</span></td>
+<td class="c"><span class="reg-status flag">NHIS issue</span></td>
+<td><span class="accom"><b>NHIS card expired Apr</b> · doesn't affect WASSCE writing · bursar SMS sent</span></td>
+<td class="r"><span class="ind-num">19<span class="sub">tier 3</span></span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av navy">FT</div><div><div class="st-name">F. Tetteh</div><div class="st-id">SHS-2023-0860</div></div></div></td>
+<td><span class="prog-pill bus">Business</span></td>
+<td><span class="ind-num">0184-0860</span></td>
+<td class="c"><span class="reg-status confirmed">Confirmed</span></td>
+<td><span class="accom">Sick Bay Prefect · assisting matron mornings · no exam conflict</span></td>
+<td class="r"><span class="ind-num">15<span class="sub">tier 2</span></span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av navy">AQ</div><div><div class="st-name">A. Quartey</div><div class="st-id">SHS-2023-0879</div></div></div></td>
+<td><span class="prog-pill ga">Gen. Arts</span></td>
+<td><span class="ind-num">0184-0879</span></td>
+<td class="c"><span class="reg-status confirmed">Confirmed</span></td>
+<td><span class="accom"><b>Pastoral · VLC flag</b> · Dean co-monitoring · no exam exemption</span></td>
+<td class="r"><span class="ind-num">22<span class="sub">tier 3</span></span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av green">EM</div><div><div class="st-name">E. Mensah</div><div class="st-id">SHS-2023-0891</div></div></div></td>
+<td><span class="prog-pill sci">Science</span></td>
+<td><span class="ind-num">0184-0891</span></td>
+<td class="c"><span class="reg-status confirmed">Confirmed</span></td>
+<td><span class="accom"><b>Chronic accommodation</b> · sickle cell · extra 15 min if needed · WAEC SC-7 filed Nov</span></td>
+<td class="r"><span class="ind-num">9<span class="sub">tier 1</span></span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av navy">KM</div><div><div class="st-name">K. Mensa</div><div class="st-id">SHS-2023-0905</div></div></div></td>
+<td><span class="prog-pill ga">Gen. Arts</span></td>
+<td><span class="ind-num">0184-0905</span></td>
+<td class="c"><span class="reg-status confirmed">Confirmed</span></td>
+<td><span class="accom"><b>Visual accommodation</b> · 1.5× time · WAEC SC-3 approved Jan</span></td>
+<td class="r"><span class="ind-num">17<span class="sub">tier 2</span></span></td>
+</tr>
+
+<tr>
+<td><div class="st-cell"><div class="st-av warn">PD</div><div><div class="st-name">P. Donkor</div><div class="st-id">SHS-2023-0918</div></div></div></td>
+<td><span class="prog-pill he">Home Ec.</span></td>
+<td><span class="ind-num">0184-0918</span></td>
+<td class="c"><span class="reg-status flag">Fee</span></td>
+<td><span class="accom"><b>Late Free-SHS reconciliation</b> · GHS 240 outstanding · bursar working with GES district</span></td>
+<td class="r"><span class="ind-num">21<span class="sub">tier 3</span></span></td>
+</tr>
+
+<tr>
+<td colspan="6" style="text-align:center; padding:14px; color:var(--navy-3); font-style:italic; font-size:11px;">+ 231 more rows · click to expand · sort by class shows all F3 SCI 1, then F3 SCI 2, etc.</td>
+</tr>
+
+</tbody>
+</table>
+
+<div class="xmod-strip">
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Sickbay</div>
+<div class="xm-title">Y. Aidoo case <em>linked</em> to today's referral</div>
+<div class="xm-body">The medical exemption banner above pulls live from <b>sickbay → referral log</b>. When the matron updates her status on the referral log, this banner updates here. Discharge will trigger the WAEC make-up scheduling.</div>
+</div>
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · VLC</div>
+<div class="xm-title">A. Quartey <em>pastoral</em> cross-reference</div>
+<div class="xm-body">Pastoral flag visible to Dean only · no exam exemption granted (VLC pastoral case is about the support, not the standards). She sits the same papers as everyone else; the Dean checks in privately.</div>
+</div>
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Billing</div>
+<div class="xm-title">3 fee flags <em>resolved or active</em></div>
+<div class="xm-body">P. Donkor's <b>GHS 240</b> is the only fee-blocking issue. Bursar is working with the GES district office. Per Free SHS policy, no candidate can be denied WASSCE for fee reasons — the school carries the gap if the district doesn't reconcile.</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>What the registration roster is for</h4>
+<ul>
+<li><b>One row per candidate, the data WAEC needs to see.</b> Index number, programme, papers sitting, accommodations. The school owns the source-of-truth; WAEC gets the authoritative export. The export ran <b>14 Feb 2026</b> for this cohort.</li>
+<li><b>Three flags today — one consequential, two administrative.</b> Y. Aidoo's medical exemption is consequential: she's missing live papers. The NHIS-expired and the Free SHS reconciliation flags are bursar-side, not WAEC-side; they don't stop her sitting.</li>
+<li><b>Accommodations sit in the same row as the candidate.</b> Extra time for chronic conditions (E. Mensah's sickle cell), 1.5× time for visual impairment (K. Mensa), pastoral monitoring (A. Quartey). Different needs, same column — the matron, the Dean, and the WAEC liaison see them together.</li>
+<li><b>WAEC SC-form filing is a real workflow.</b> SC-3 (sight/hearing/physical), SC-7 (chronic medical condition known in advance), SC-12 (exam-day medical emergency). Each has a different timeline; the SC-12 for Y. Aidoo had to be filed before she missed a paper. Today's filing was at 11:00, 30 minutes before the 09:30 English Lang 2 (Essay) paper had been scheduled to end.</li>
+<li><b>"No candidate denied WASSCE for fee reasons" is the Free SHS rule.</b> When the district doesn't reconcile in time (P. Donkor's case), the school covers the gap and seeks reimbursement after. Omnischools's billing module carries the receivable; the WASSCE module carries the seat.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-head">
+<div class="section-num display">05</div>
+<div class="section-title display">Policy & schema anchors</div>
+<div class="section-meta">WAEC · GES · Ministry of Education</div>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">asankrangwa.omnischools.gh / wassce / setup / anchors</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Semester 2 · Week 2</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE</div>
+<div class="nav-item sub active"><div class="ic"></div>Setup</div>
+<div class="nav-item sub"><div class="ic"></div>Cohort readiness</div>
+<div class="nav-item sub"><div class="ic"></div>Student reports</div>
+<div class="nav-item sub"><div class="ic"></div>Subject view</div>
+<div class="nav-item sub"><div class="ic"></div>Live exam tracker</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">CO</div><div><div class="meta-name">C. Owusu-Ansah</div><div class="meta-role">Head of Academics</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">WASSCE</a> · <a href="#">Setup</a> · Policy anchors</div>
+<div class="top-row">
+<div>
+<h1>Policy <em>anchors.</em></h1>
+<div class="lede">What the WASSCE module is built on. Three regulators (WAEC, GES, MoE), one cohort, one set of rules. The anchors below are referenced in every readiness statement.</div>
+</div>
+<div class="actions">
+<button class="btn">Export anchors</button>
+<button class="btn primary">Audit history</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">WAEC <em>policy anchors</em></div>
+<div class="ch-meta">West African Examinations Council · 1952</div>
+</div>
+<div class="card-body">
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; font-size:12px; line-height:1.6;">
+<div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:6px;">Centre code</div>
+<div style="color:var(--navy-2);"><b>SU-0184</b> · Asankrangwa Senior High School · Western Region · Wassa Amenfi West District. Reviewed annually before registration window opens (Jan).</div>
+</div>
+<div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:6px;">2026 calendar return</div>
+<div style="color:var(--navy-2);"><b>First International WASSCE</b> since 2019. Ghana on Ghana-only calendar 2020–2025 due to COVID disruption. <b>21 Apr → 19 Jun 2026.</b></div>
+</div>
+<div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:6px;">Special consideration forms</div>
+<div style="color:var(--navy-2);"><b>SC-3</b> (sensory/physical), <b>SC-7</b> (known chronic condition), <b>SC-12</b> (exam-day medical). Filed via WAEC online portal; medical cert from registered facility required.</div>
+</div>
+<div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:6px;">Grading + aggregate</div>
+<div style="color:var(--navy-2);"><b>A1=1, B2=2, B3=3, C4=4, C5=5, C6=6, D7=7, E8=8, F9=9.</b> Aggregate = best 3 cores + best 3 electives. Lower = better.</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">GES <em>operational anchors</em></div>
+<div class="ch-meta">Ghana Education Service · school authority</div>
+</div>
+<div class="card-body">
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; font-size:12px; line-height:1.6;">
+<div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:6px;">Free SHS coverage</div>
+<div style="color:var(--navy-2);">All WASSCE fees for school candidates covered by GES (2017 Free SHS policy). <b>GHS 1,400 per candidate</b> for core registration. Specialist electives may incur add-ons; school reconciles with GES district office.</div>
+</div>
+<div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:6px;">"No candidate denied"</div>
+<div style="color:var(--navy-2);"><b>No student can be denied WASSCE registration for fee reasons.</b> If district reconciliation lags, school carries the receivable. Omnischools billing module flags this; WASSCE module ignores it.</div>
+</div>
+<div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:6px;">Calendar alignment</div>
+<div style="color:var(--navy-2);">Per the GES SHS 2025/26 academic calendar, F3 Semester 2 runs <b>3 May → 21 Jun 2026</b> for single-track schools (a shortened Semester 2 since F3 ends earlier than F1–F2 to make way for WASSCE). F3 students complete WASSCE during Semester 2; F1–F2 students continue Semester 2 through <b>21 Aug 2026</b> per the same calendar. School-leaver ceremony scheduled for <b>Fri 26 Jun</b> (week after WASSCE ends).</div>
+</div>
+<div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:6px;">Discipline pause</div>
+<div style="color:var(--navy-2);"><b>F3 disciplinary actions paused</b> during WASSCE writing period unless safety-related. Boarding discipline ladder pauses for F3 from Apr 21 — penalty fees still accrue, but suspension and deboardinization on hold. Resumes Jun 22.</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="save-bar">
+<div class="sb-text">
+<div class="sb-t">Setup is <em>frozen</em> for this cohort</div>
+<div class="sb-d">240 candidates registered with WAEC · 4 programmes locked · Mock 2 results posted · 11 cross-module integrations active. <b>WASSCE 2026 is in progress.</b> No further setup changes possible until WAEC results arrive in August.</div>
+</div>
+<div class="sb-actions">
+<button class="btn">View change log</button>
+<button class="btn primary">Open cohort readiness</button>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<div class="notes">
+<h4>What the anchors do</h4>
+<ul>
+<li><b>Policy anchors prevent re-litigation.</b> When a parent asks "why is the aggregate calculated this way" or "why didn't you wait for fees", the readiness statement points to the WAEC rule or the GES policy. The school doesn't invent the rules; it implements them.</li>
+<li><b>Centre code is the school's identity at WAEC.</b> SU-0184 is the immutable identifier across all WAEC interactions — registration, results, certificates, anomaly reports. Every student's index number is anchored on the centre code.</li>
+<li><b>The Free SHS rule is binding.</b> P. Donkor's GHS 240 reconciliation gap doesn't stop her sitting; it accrues as a receivable that the school chases the GES district to clear. This rule has been in place since 2017 and is the foundation of cohort completeness — 240 out of 240 students sit WASSCE regardless of fee status.</li>
+<li><b>The discipline pause is a calm, written rule.</b> No Headmaster wants a Form 3 student deboardinized mid-WASSCE; the policy makes the pause structural rather than judgment-call. Penalty fees still accrue (the financial trigger from boarding discipline remains operational), but the disciplinary track itself rests. Resumes after the final paper.</li>
+</ul>
+</div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

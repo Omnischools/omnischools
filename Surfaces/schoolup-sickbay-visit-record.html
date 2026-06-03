@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Sickbay visit record</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:720px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1280px; }
+.sidebar.tall { min-height:1640px; }
+.sidebar.taller { min-height:1900px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces', serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; background:var(--navy); border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:720px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.body { padding:28px 36px 60px; }
+
+/* Patient header */
+.patient-header { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:24px 28px; margin-bottom:28px; display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; position:relative; overflow:hidden; }
+.patient-header::before { content:""; position:absolute; top:-40px; right:-40px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.patient-av { width:72px; height:72px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:24px; position:relative; flex-shrink:0; }
+.patient-meta { position:relative; }
+.patient-meta .p-name { font-family:'Fraunces', serif; font-size:26px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; margin-bottom:4px; }
+.patient-meta .p-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.patient-meta .p-detail { font-size:12px; color:var(--gold-soft); display:flex; gap:16px; flex-wrap:wrap; }
+.patient-meta .p-detail span { display:flex; gap:6px; align-items:center; }
+.patient-meta .p-detail b { color:var(--bg); font-weight:600; }
+.patient-meta .p-detail .dot { color:var(--gold); }
+.patient-flags { position:relative; display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+.chronic-flag { background:var(--terra); color:var(--bg); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; padding:5px 11px; border-radius:100px; }
+.nhis-flag { background:var(--green-bg); color:var(--green); font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:4px 10px; border-radius:100px; }
+.id-flag { font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--gold-soft); font-weight:500; }
+
+/* Status strip */
+.status-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:24px; }
+.status-tile { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.status-tile.gold-edge { border-color:var(--gold); border-width:1.5px; background:linear-gradient(180deg, var(--surface) 0%, var(--gold-bg) 100%); }
+.status-tile .st-lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:4px; }
+.status-tile .st-val { font-family:'Fraunces', serif; font-size:18px; font-weight:600; letter-spacing:-0.01em; line-height:1.15; }
+.status-tile .st-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.status-tile .st-val .mono-sub { font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--navy-2); font-weight:500; }
+.status-tile .st-sub { font-size:10px; color:var(--navy-3); font-style:italic; margin-top:2px; }
+.status-tile .st-sub b { color:var(--navy-2); font-style:normal; font-weight:600; }
+
+/* Card */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px; }
+.card-head { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:baseline; }
+.card-head .ch-title { font-family:'Fraunces', serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.card-head .ch-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.card-head .ch-meta { font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.06em; }
+.card-body { padding:16px 20px 20px; }
+.col-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+
+/* Vitals timeline */
+.vitals-table { width:100%; border-collapse:collapse; }
+.vitals-table th { background:var(--bg); padding:9px 12px; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.vitals-table th.r { text-align:right; }
+.vitals-table th.c { text-align:center; }
+.vitals-table td { padding:11px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.vitals-table td.time { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-2); font-weight:600; }
+.vitals-table td.time .day { display:block; font-size:9px; color:var(--navy-3); font-weight:500; margin-top:1px; font-family:'Manrope', sans-serif; }
+.vitals-table td.c { text-align:center; font-family:'JetBrains Mono', monospace; font-weight:500; }
+.vitals-table td.c.elevated { color:var(--terra); font-weight:700; }
+.vitals-table td.c.warn { color:var(--warn); font-weight:600; }
+.vitals-table td.c.ok { color:var(--navy-2); }
+.vitals-table td.c.normal { color:var(--green); font-weight:600; }
+.vitals-table td.r { text-align:right; }
+.vitals-table tr:last-child td { border-bottom:none; }
+.vitals-table tr.now td { background:var(--gold-bg); }
+.vitals-table tr.now td.time { color:var(--navy); }
+.pain-pill { display:inline-block; padding:2px 7px; border-radius:100px; font-size:10px; font-family:'JetBrains Mono', monospace; font-weight:700; }
+.pain-pill.high { background:var(--terra); color:var(--surface); }
+.pain-pill.mod { background:var(--warn); color:var(--surface); }
+.pain-pill.low { background:var(--gold-bg); color:var(--gold); }
+.pain-pill.min { background:var(--green-bg); color:var(--green); }
+
+/* Vitals trend mini */
+.trend-strip { display:grid; grid-template-columns:repeat(5, 1fr); gap:14px; margin-bottom:18px; padding:18px 20px; background:var(--bg); border:1px dashed var(--border-2); border-radius:10px; }
+.trend-tile { text-align:center; }
+.trend-tile .tt-lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.trend-tile .tt-val { font-family:'Fraunces', serif; font-size:22px; font-weight:600; line-height:1; margin-bottom:3px; }
+.trend-tile .tt-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.trend-tile .tt-val .u { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-3); font-weight:500; }
+.trend-tile .tt-delta { font-size:10px; color:var(--green); font-weight:700; }
+.trend-tile .tt-delta.up { color:var(--terra); }
+.trend-tile .tt-delta.flat { color:var(--navy-3); }
+
+/* Complaint block */
+.complaint-block { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+.complaint-block .cb-lbl { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.complaint-block .cb-text { font-family:'Fraunces', serif; font-size:15px; font-style:italic; color:var(--navy-2); line-height:1.55; }
+.complaint-block .cb-text b { font-style:normal; color:var(--navy); font-weight:600; }
+.complaint-block .cb-byline { font-size:10px; color:var(--navy-3); margin-top:10px; font-style:italic; }
+.complaint-block .cb-byline b { color:var(--navy-2); font-style:normal; font-weight:600; }
+
+/* Assessment block */
+.assessment-block { padding:4px 0; }
+.assessment-row { padding:12px 0; border-bottom:1px solid var(--border); display:grid; grid-template-columns:140px 1fr; gap:18px; }
+.assessment-row:last-child { border-bottom:none; }
+.assessment-row .ar-lbl { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; padding-top:2px; }
+.assessment-row .ar-val { font-size:13px; color:var(--navy-2); line-height:1.55; }
+.assessment-row .ar-val b { color:var(--navy); font-weight:600; }
+.assessment-row .ar-val em { color:var(--gold); font-style:normal; font-weight:600; }
+.assessment-row .ar-val .pos { color:var(--green); font-weight:600; }
+.assessment-row .ar-val .neg { color:var(--terra); font-weight:600; }
+
+/* Med log */
+.med-log { width:100%; border-collapse:collapse; }
+.med-log th { background:var(--bg); padding:9px 12px; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.med-log th.r { text-align:right; }
+.med-log td { padding:10px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.med-log td.time { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-2); font-weight:600; white-space:nowrap; }
+.med-log td.drug b { color:var(--navy); font-weight:600; }
+.med-log td.drug .sub { display:block; font-size:10px; color:var(--navy-3); font-style:italic; margin-top:1px; }
+.med-log td.dose { font-family:'JetBrains Mono', monospace; font-weight:500; }
+.med-log td.r { text-align:right; }
+.med-log tr:last-child td { border-bottom:none; }
+.med-log td .by { font-size:10px; color:var(--navy-3); font-style:italic; }
+.med-log td .by b { color:var(--navy-2); font-style:normal; font-weight:600; }
+.med-tag { display:inline-block; padding:2px 7px; border-radius:100px; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; }
+.med-tag.standing { background:var(--gold-bg); color:var(--gold); }
+.med-tag.scheduled { background:var(--green-bg); color:var(--green); }
+.med-tag.prn { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+
+/* Disposition */
+.disp-card { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border:2px solid var(--gold); border-radius:14px; padding:22px 26px; margin-bottom:20px; }
+.disp-card .dc-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.disp-card .dc-title { font-family:'Fraunces', serif; font-size:22px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; margin-bottom:10px; }
+.disp-card .dc-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.disp-card .dc-meta { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; padding-top:14px; border-top:1px solid var(--gold-soft); }
+.disp-card .dc-field .f-lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.disp-card .dc-field .f-val { font-size:13px; font-weight:600; color:var(--navy); }
+.disp-card .dc-field .f-val .mono-i { font-family:'JetBrains Mono', monospace; font-size:11px; }
+.disp-card .dc-field .f-val em { font-style:italic; color:var(--gold); font-weight:600; }
+
+/* Discharge criteria */
+.criteria-list { padding:4px 0; }
+.criteria-row { display:grid; grid-template-columns:24px 1fr auto; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); align-items:center; }
+.criteria-row:last-child { border-bottom:none; }
+.criteria-row .cr-check { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+.criteria-row .cr-check.met { background:var(--green); color:var(--surface); }
+.criteria-row .cr-check.pending { background:var(--gold-bg); color:var(--gold); border:1.5px solid var(--gold); }
+.criteria-row .cr-check.pending::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--gold); }
+.criteria-row .cr-text { font-size:12px; color:var(--navy-2); }
+.criteria-row .cr-text b { color:var(--navy); font-weight:600; }
+.criteria-row .cr-status { font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.criteria-row .cr-status.met { color:var(--green); }
+.criteria-row .cr-status.pending { color:var(--gold); }
+
+/* Notification log */
+.notif-row { display:grid; grid-template-columns:90px 1fr auto; gap:16px; padding:14px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
+.notif-row:last-child { border-bottom:none; }
+.notif-row .nr-time { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-2); font-weight:600; padding-top:2px; }
+.notif-row .nr-body .nr-who { font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:3px; letter-spacing:-0.005em; }
+.notif-row .nr-body .nr-who em { font-style:italic; color:var(--gold); font-weight:400; }
+.notif-row .nr-body .nr-detail { font-size:11px; color:var(--navy-3); margin-bottom:5px; }
+.notif-row .nr-body .nr-detail b { color:var(--navy-2); font-weight:600; }
+.notif-row .nr-body .nr-msg { font-size:12px; color:var(--navy-2); font-style:italic; line-height:1.5; padding:8px 12px; background:var(--bg); border-left:2px solid var(--gold); border-radius:0 6px 6px 0; }
+.notif-row .nr-channel { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:100px; flex-shrink:0; }
+.nr-channel.phone { background:var(--terra-bg); color:var(--terra); }
+.nr-channel.sms { background:var(--gold-bg); color:var(--gold); }
+.nr-channel.in-person { background:var(--green-bg); color:var(--green); }
+.nr-channel.system { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+
+/* Cross-link cards */
+.xlink-strip { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.xlink-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 20px; display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; }
+.xlink-card .xc-eyebrow { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.xlink-card .xc-title { font-family:'Fraunces', serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; margin-bottom:2px; }
+.xlink-card .xc-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.xlink-card .xc-meta { font-size:11px; color:var(--navy-3); }
+.xlink-card .xc-meta b { color:var(--navy-2); font-weight:600; }
+.xlink-arrow { width:32px; height:32px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; }
+
+/* Doctor consult */
+.consult-card { background:var(--surface); border:1px solid var(--border-2); border-left:3px solid var(--gold); border-radius:10px; padding:16px 20px; margin-bottom:14px; }
+.consult-card .cc-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+.consult-card .cc-who { font-family:'Fraunces', serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.consult-card .cc-who em { font-style:italic; color:var(--gold); font-weight:400; }
+.consult-card .cc-time { font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.consult-card .cc-body { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.consult-card .cc-body b { color:var(--navy); font-weight:600; }
+.consult-card .cc-body em { color:var(--gold); font-style:normal; font-weight:600; }
+.consult-card .cc-mode { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; padding:2px 8px; border-radius:100px; background:var(--gold-bg); color:var(--gold); margin-left:8px; }
+
+/* Next steps */
+.steps-list { padding:4px 0; }
+.steps-row { display:grid; grid-template-columns:32px 1fr; gap:14px; padding:12px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
+.steps-row:last-child { border-bottom:none; }
+.steps-row .sr-num { font-family:'Fraunces', serif; font-style:italic; font-size:20px; font-weight:400; color:var(--gold); text-align:center; line-height:1; padding-top:2px; }
+.steps-row .sr-body .sr-when { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.steps-row .sr-body .sr-when b { color:var(--gold); }
+.steps-row .sr-body .sr-text { font-size:13px; color:var(--navy-2); line-height:1.55; }
+.steps-row .sr-body .sr-text b { color:var(--navy); font-weight:600; }
+
+/* SCD protocol */
+.protocol-banner { background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 100%); border:1px solid var(--terra); border-radius:10px; padding:14px 18px; margin-bottom:16px; display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center; }
+.protocol-banner .pb-icon { width:32px; height:32px; border-radius:50%; background:var(--terra); color:var(--surface); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; }
+.protocol-banner .pb-body .pb-title { font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:2px; letter-spacing:-0.005em; }
+.protocol-banner .pb-body .pb-title em { font-style:italic; color:var(--terra); font-weight:400; }
+.protocol-banner .pb-body .pb-sub { font-size:11px; color:var(--navy-3); }
+.protocol-banner .pb-body .pb-sub b { color:var(--navy-2); font-weight:600; }
+.protocol-banner .pb-link { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--terra); font-weight:700; }
+
+.action-bar { background:var(--surface); border:2px solid var(--gold); border-radius:14px; padding:18px 24px; margin-top:32px; display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; }
+.action-bar .ab-note { font-size:12px; color:var(--navy-3); line-height:1.55; }
+.action-bar .ab-note b { color:var(--navy); font-weight:600; }
+.action-bar .ab-actions { display:flex; gap:8px; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .col-2 { grid-template-columns:1fr; }
+  .status-strip, .trend-strip { grid-template-columns:repeat(2, 1fr); }
+  .patient-header { grid-template-columns:1fr; }
+  .patient-flags { align-items:flex-start; flex-direction:row; }
+  .xlink-strip { grid-template-columns:1fr; }
+  .disp-card .dc-meta { grid-template-columns:1fr; }
+  .assessment-row { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">MVP2 · Sickbay · surface 3 of 5</div>
+<h1>The visit <em>record.</em></h1>
+<div class="gold-rule"></div>
+<p>One visit, completely captured. The patient identity sits at the top with the sickle cell flag visible inline, not buried. Vitals show as a timeline because pain crises evolve over hours. Medications log themselves to the standing order. Disposition surfaces parent notification status by the three-tier rule — and the chronic condition register sits one click away.</p>
+</div>
+
+<!-- SECTION 01 — PATIENT & PRESENTATION -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">Patient, presentation &amp; vitals timeline</div>
+<div class="section-meta">Matron · live record</div>
+</div>
+
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">app.omnischools.gh/sickbay/visits/VR-2026-05-14-0089-001</div>
+</div>
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="brand">
+<div class="logo-mini">A</div>
+<div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Matron · Mrs Bediako</div></div>
+</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub"><div class="ic"></div>Today's sickbay</div>
+<div class="nav-item sub active"><div class="ic"></div>Visit record</div>
+<div class="nav-item sub"><div class="ic"></div>Chronic register</div>
+<div class="nav-item sub"><div class="ic"></div>Referrals</div>
+<div class="nav-item sub"><div class="ic"></div>Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">A. Bediako</div><div class="meta-role">Matron · N&amp;MC reg.</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Sickbay</a> · <a href="#">Today</a> · Visit VR-2026-05-14-0089-001</div>
+<div class="top-row">
+<div>
+<h1>Visit <em>record.</em></h1>
+<div class="lede">Admitted <b>09:14</b> · Wed 14 May 2026 · Bed <b>3</b> · Day-shift attending <b>Mrs A. Bediako</b></div>
+</div>
+<div class="actions">
+<button class="btn">Print summary</button>
+<button class="btn">Add note</button>
+<button class="btn primary">Update vitals</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<!-- Patient header -->
+<div class="patient-header">
+<div class="patient-av">AM</div>
+<div class="patient-meta">
+<div class="p-name">Adwoa <em>Mensa</em></div>
+<div class="p-detail">
+<span><b>F1 SCI</b> · age 15</span>
+<span class="dot">·</span>
+<span><b>Slessor</b> House · bed S-12-B</span>
+<span class="dot">·</span>
+<span>Mother <b>Mrs E. Mensa</b> · primary contact</span>
+</div>
+</div>
+<div class="patient-flags">
+<div class="chronic-flag">Sickle cell · HbSS</div>
+<div class="nhis-flag">NHIS · active</div>
+<div class="id-flag">AS-2024-F1-0089</div>
+</div>
+</div>
+
+<!-- Status strip -->
+<div class="status-strip">
+<div class="status-tile gold-edge">
+<div class="st-lbl">Disposition</div>
+<div class="st-val"><em>Admitted</em></div>
+<div class="st-sub">general ward · <b>bed 3</b></div>
+</div>
+<div class="status-tile">
+<div class="st-lbl">Time on ward</div>
+<div class="st-val"><span class="mono-sub">05h 31m</span></div>
+<div class="st-sub">from <b>09:14</b></div>
+</div>
+<div class="status-tile">
+<div class="st-lbl">Pain · current</div>
+<div class="st-val"><span class="mono-sub">2/10</span> <em>↓</em></div>
+<div class="st-sub">was <b>6/10</b> on arrival</div>
+</div>
+<div class="status-tile">
+<div class="st-lbl">Expected discharge</div>
+<div class="st-val"><span class="mono-sub">16:00</span></div>
+<div class="st-sub">if criteria <b>met</b></div>
+</div>
+</div>
+
+<!-- SCD protocol banner -->
+<div class="protocol-banner">
+<div class="pb-icon">SCD</div>
+<div class="pb-body">
+<div class="pb-title">Sickle cell pain crisis protocol <em>· active</em></div>
+<div class="pb-sub">Following standing order: <b>hydroxyurea continuation + paracetamol PRN + oral hydration</b>. Escalate if pain &gt;7/10, fever &gt;38.5°C, chest pain, or breathlessness.</div>
+</div>
+<div class="pb-link">View care plan →</div>
+</div>
+
+<!-- Vitals timeline -->
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Vitals <em>timeline</em></div>
+<div class="ch-meta">4 readings · last <b>14:30</b></div>
+</div>
+<div class="card-body">
+
+<div class="trend-strip">
+<div class="trend-tile">
+<div class="tt-lbl">Temp</div>
+<div class="tt-val">37.2<span class="u">°C</span></div>
+<div class="tt-delta">−0.6 from arrival</div>
+</div>
+<div class="trend-tile">
+<div class="tt-lbl">BP</div>
+<div class="tt-val">108<span class="u">/68</span></div>
+<div class="tt-delta">stable</div>
+</div>
+<div class="trend-tile">
+<div class="tt-lbl">Heart rate</div>
+<div class="tt-val">84<span class="u">bpm</span></div>
+<div class="tt-delta">−12 from arrival</div>
+</div>
+<div class="trend-tile">
+<div class="tt-lbl">SpO₂</div>
+<div class="tt-val">98<span class="u">%</span></div>
+<div class="tt-delta flat">stable</div>
+</div>
+<div class="trend-tile">
+<div class="tt-lbl">Pain (0-10)</div>
+<div class="tt-val"><em>2</em></div>
+<div class="tt-delta">−4 from arrival</div>
+</div>
+</div>
+
+<table class="vitals-table">
+<thead>
+<tr>
+<th>Time</th>
+<th class="c">Temp</th>
+<th class="c">BP</th>
+<th class="c">HR</th>
+<th class="c">SpO₂</th>
+<th class="c">Pain</th>
+<th class="r">Taken by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="time">09:14<span class="day">on arrival</span></td>
+<td class="c warn">37.8°C</td>
+<td class="c ok">110/72</td>
+<td class="c warn">96</td>
+<td class="c ok">98%</td>
+<td class="c"><span class="pain-pill mod">6/10</span></td>
+<td class="r">A. Bediako</td>
+</tr>
+<tr>
+<td class="time">11:00<span class="day">2h obs</span></td>
+<td class="c warn">37.6°C</td>
+<td class="c ok">109/70</td>
+<td class="c ok">92</td>
+<td class="c ok">98%</td>
+<td class="c"><span class="pain-pill low">5/10</span></td>
+<td class="r">A. Bediako</td>
+</tr>
+<tr>
+<td class="time">13:30<span class="day">post-meds</span></td>
+<td class="c ok">37.4°C</td>
+<td class="c ok">108/70</td>
+<td class="c ok">88</td>
+<td class="c ok">98%</td>
+<td class="c"><span class="pain-pill low">3/10</span></td>
+<td class="r">G. Antwi</td>
+</tr>
+<tr class="now">
+<td class="time">14:30<span class="day">current</span></td>
+<td class="c normal">37.2°C</td>
+<td class="c normal">108/68</td>
+<td class="c normal">84</td>
+<td class="c normal">98%</td>
+<td class="c"><span class="pain-pill min">2/10</span></td>
+<td class="r">A. Bediako</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+
+<!-- Presenting complaint -->
+<div class="complaint-block">
+<div class="cb-lbl">Presenting complaint · as recorded</div>
+<div class="cb-text">"Joint pain — <b>knees, lower back, both wrists</b>. Started overnight. Worsened after morning prep run before 06:30 round. Mild abdominal discomfort, no nausea. No fever felt by patient. Took her usual hydroxyurea at 06:30 morning round."</div>
+<div class="cb-byline">Recorded by <b>F. Tetteh · Sick Bay Prefect</b> at intake 09:11 · confirmed by Matron at <b>09:14</b></div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Why the vitals are a timeline</h4>
+<ul>
+<li>A sickle cell crisis is <b>not a snapshot</b>. It evolves over hours. A single reading can read "fine" while the underlying crisis is brewing.</li>
+<li>The current row is <b>gold-tinted</b> — at a glance Matron sees what's "now" without re-reading the timestamps.</li>
+<li>Sick Bay Prefect <b>F. Tetteh</b> took the intake. The Matron's <b>09:14 confirmation</b> is the medico-legal anchor — the Council's scope of practice is clear that clinical assessment must be by the registered nurse.</li>
+<li>The <b>chronic flag</b> sits in the patient header where no Matron, doctor, or covering staff can miss it. SCD students cannot be treated like a generic ailment patient.</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- /SECTION 01 -->
+
+<!-- SECTION 02 — ASSESSMENT -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">Matron's assessment &amp; visiting doctor consult</div>
+<div class="section-meta">Clinical · scope of practice</div>
+</div>
+
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">app.omnischools.gh/sickbay/visits/VR-2026-05-14-0089-001#assessment</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand">
+<div class="logo-mini">A</div>
+<div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Matron · Mrs Bediako</div></div>
+</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub active"><div class="ic"></div>Visit record</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">A. Bediako</div><div class="meta-role">Matron</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Sickbay</a> · Visit <b>VR-2026-05-14-0089-001</b></div>
+<div class="top-row">
+<div>
+<h1>Assessment &amp; <em>consult.</em></h1>
+<div class="lede">Matron's clinical reasoning, the visiting doctor's input, and the line where each takes responsibility.</div>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Matron's <em>assessment</em></div>
+<div class="ch-meta">recorded <b>09:42</b> · A. Bediako · N&amp;MC #N-04827</div>
+</div>
+<div class="card-body">
+<div class="assessment-block">
+<div class="assessment-row">
+<div class="ar-lbl">Working impression</div>
+<div class="ar-val"><b>Mild sickle cell pain crisis</b> — vaso-occlusive type, joint &amp; lower-back distribution. Likely triggered by <em>dehydration + cold dawn + physical exertion</em>. No acute chest signs, no fever spike, oxygen saturation maintained.</div>
+</div>
+<div class="assessment-row">
+<div class="ar-lbl">Red flags screened</div>
+<div class="ar-val"><span class="pos">Negative</span> · chest pain · breathlessness · pallor change · jaundice progression · severe headache · neurological signs · abdominal guarding · fever above 38.5°C.</div>
+</div>
+<div class="assessment-row">
+<div class="ar-lbl">Hydration status</div>
+<div class="ar-val">Mild dehydration on arrival (dry tongue, reduced skin turgor). <b>Tolerating oral fluids</b> — ORS 500ml + water taken since admission. Urine output reported normal at 13:00 toilet break.</div>
+</div>
+<div class="assessment-row">
+<div class="ar-lbl">Plan</div>
+<div class="ar-val"><b>Continue standing order</b> — oral analgesia per protocol, encourage 200ml fluid every 30 min, rest on ward, reassess every 2 hours. <em>Hold for visiting doctor input</em> at next phone window before changing protocol.</div>
+</div>
+<div class="assessment-row">
+<div class="ar-lbl">Escalation triggers</div>
+<div class="ar-val">Pain rises to <span class="neg">≥7/10</span> · temperature <span class="neg">&gt;38.5°C</span> · any chest pain or breathlessness · SpO₂ <span class="neg">&lt;94%</span> · vomiting unable to retain fluids · drowsiness. → <b>Same-day referral to Asankrangwa Government Hospital</b>.</div>
+</div>
+<div class="assessment-row">
+<div class="ar-lbl">Recorded by</div>
+<div class="ar-val"><b>Mrs Akua Bediako</b> · School Matron · Nursing &amp; Midwifery Council reg. <span class="ar-val" style="font-family:monospace; font-size:11px;">N-04827</span> · within scope of practice for first-line vaso-occlusive management.</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="consult-card">
+<div class="cc-head">
+<div class="cc-who">Dr K. <em>Mensah</em> · visiting doctor <span class="cc-mode">phone consult</span></div>
+<div class="cc-time">11:30 · 14 May</div>
+</div>
+<div class="cc-body">
+Discussed vitals trend, no red flags. <em>Approved Matron's plan</em> — continue oral analgesia + hydration + observation. No need for hospital transfer at this point. <b>Will visit in person Thursday 14:00 round</b> for review. If pain rebounds overnight, call Asankrangwa Govt. ER directly; they have her chronic register summary on file from January admission.
+</div>
+</div>
+
+<div class="consult-card" style="border-left-color:var(--navy-3);">
+<div class="cc-head">
+<div class="cc-who">Mr S. <em>Bonsu</em> · Slessor housemaster <span class="cc-mode" style="background:var(--bg); color:var(--navy-2); border:1px solid var(--border);">notified</span></div>
+<div class="cc-time">09:20 · 14 May</div>
+</div>
+<div class="cc-body">
+Informed Adwoa admitted, sickle cell crisis, mild. <em>Attendance auto-excused</em> for the day. Slessor house dorm-side care plan PDF is on file with him; he confirmed possession. Will visit ward at 16:00 if she's discharged before evening prep.
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The scope-of-practice line</h4>
+<ul>
+<li>The Matron documents her <b>working impression</b> — what she clinically thinks. She does not write "diagnosis"; that's a doctor's word.</li>
+<li>The <b>N&amp;MC registration number</b> is on the record. If this case is ever audited or reviewed, the chain of clinical responsibility is clear.</li>
+<li>The visiting doctor consult is <b>logged as a separate artefact</b> — not folded into the Matron's note. Dr Mensah's call took 8 minutes; the record reflects what he actually said, not a summary.</li>
+<li>The housemaster's notification is medical-detail-light: he knows she's admitted and excused, not the clinical specifics.</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- /SECTION 02 -->
+
+<!-- SECTION 03 — MEDICATIONS -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">Medications administered · this visit</div>
+<div class="section-meta">Log · append-only</div>
+</div>
+
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">app.omnischools.gh/sickbay/visits/VR-2026-05-14-0089-001#medications</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand">
+<div class="logo-mini">A</div>
+<div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Matron · Mrs Bediako</div></div>
+</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub active"><div class="ic"></div>Visit record</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">A. Bediako</div><div class="meta-role">Matron</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Sickbay</a> · Visit <b>VR-2026-05-14-0089-001</b> · Medications</div>
+<div class="top-row">
+<div>
+<h1>Medications <em>administered.</em></h1>
+<div class="lede">Five entries this visit · every dose, the route, who gave it, and which standing order it sits inside.</div>
+</div>
+<div class="actions">
+<button class="btn">Add dose</button>
+<button class="btn primary">Print MAR sheet</button>
+</div>
+</div>
+</div>
+<div class="body">
+
+<table class="med-log">
+<thead>
+<tr>
+<th>Time</th>
+<th>Drug</th>
+<th>Dose · route</th>
+<th>Source</th>
+<th class="r">Administered by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="time">09:20</td>
+<td class="drug"><b>Paracetamol</b><span class="sub">acetaminophen tablet · school stock</span></td>
+<td class="dose">1000mg · oral</td>
+<td><span class="med-tag standing">Standing · SCD pain</span></td>
+<td class="r">A. Bediako<br><span class="by">witnessed <b>F. Tetteh</b></span></td>
+</tr>
+<tr>
+<td class="time">09:22</td>
+<td class="drug"><b>ORS</b> (oral rehydration salts)<span class="sub">WHO formulation · 500ml prepared</span></td>
+<td class="dose">500ml · oral</td>
+<td><span class="med-tag standing">Standing · hydration</span></td>
+<td class="r">A. Bediako</td>
+</tr>
+<tr>
+<td class="time">11:00</td>
+<td class="drug"><b>Hydroxyurea</b><span class="sub">brought from home · NHIS-supplied · her own bottle</span></td>
+<td class="dose">500mg · oral</td>
+<td><span class="med-tag scheduled">Scheduled · chronic</span></td>
+<td class="r">A. Bediako<br><span class="by">double-checked label, expiry <b>02/27</b></span></td>
+</tr>
+<tr>
+<td class="time">13:00</td>
+<td class="drug"><b>Paracetamol</b><span class="sub">acetaminophen tablet · school stock</span></td>
+<td class="dose">1000mg · oral</td>
+<td><span class="med-tag prn">PRN · pain ≥4/10</span></td>
+<td class="r">G. Antwi<br><span class="by">witnessed <b>F. Tetteh</b></span></td>
+</tr>
+<tr>
+<td class="time">14:00</td>
+<td class="drug"><b>ORS</b> (oral rehydration salts)<span class="sub">refresh 250ml prepared</span></td>
+<td class="dose">250ml · oral</td>
+<td><span class="med-tag standing">Standing · hydration</span></td>
+<td class="r">A. Bediako</td>
+</tr>
+</tbody>
+</table>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:20px;">
+<div class="card" style="margin-bottom:0;">
+<div class="card-head">
+<div class="ch-title">Next scheduled <em>dose</em></div>
+<div class="ch-meta">if needed</div>
+</div>
+<div class="card-body" style="padding:14px 20px 16px;">
+<div style="display:flex; gap:14px; align-items:center;">
+<div style="font-family:'JetBrains Mono', monospace; font-size:20px; font-weight:600; color:var(--gold);">17:00</div>
+<div style="flex:1;">
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600;">Paracetamol <em style="color:var(--gold);">1000mg</em></div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:2px;"><b>only if</b> pain ≥4/10 at reassessment · 4h min interval cleared</div>
+</div>
+</div>
+</div>
+</div>
+<div class="card" style="margin-bottom:0;">
+<div class="card-head">
+<div class="ch-title">Daily hydroxyurea <em>continuation</em></div>
+<div class="ch-meta">tomorrow</div>
+</div>
+<div class="card-body" style="padding:14px 20px 16px;">
+<div style="display:flex; gap:14px; align-items:center;">
+<div style="font-family:'JetBrains Mono', monospace; font-size:20px; font-weight:600; color:var(--green);">06:30</div>
+<div style="flex:1;">
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600;">Morning round · <em style="color:var(--gold);">500mg</em></div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:2px;">resumes <b>Thursday 15 May</b> · standard schedule from chronic register</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="cluster-note" style="background:var(--gold-bg); border-color:var(--gold-soft); color:var(--navy-2);">
+<b>Append-only log.</b> Once a dose is recorded it cannot be deleted — only corrected with a footnoted amendment. The <b>witness</b> column is required for any drug taken from school stock by a non-Matron staff member; this is the N&amp;MC double-signature standard adapted to Sick Bay Prefect supervision.
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Why three drug-source tags</h4>
+<ul>
+<li><b>Standing</b> — pre-approved in the sickbay configuration. Matron can give without doctor authorisation. Paracetamol, ORS, malaria first-line.</li>
+<li><b>Scheduled</b> — patient's own chronic medication, surrendered to sickbay on arrival per Ghana boarding protocol. Hydroxyurea here. Dispensed at her usual time, not a clinical decision.</li>
+<li><b>PRN</b> — "pro re nata", as-needed. Specific criteria must be met (pain ≥4/10 here). Each PRN dose creates an audit trail showing the criterion was satisfied.</li>
+<li>If a fourth tag — <b>Doctor-ordered</b> — appears, the consult timestamp is hyperlinked from that row. Nothing untraceable.</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- /SECTION 03 -->
+
+<!-- SECTION 04 — DISPOSITION & DISCHARGE -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">Disposition · admitted, discharge target</div>
+<div class="section-meta">Operational state</div>
+</div>
+
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">app.omnischools.gh/sickbay/visits/VR-2026-05-14-0089-001#disposition</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand">
+<div class="logo-mini">A</div>
+<div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Matron · Mrs Bediako</div></div>
+</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub active"><div class="ic"></div>Visit record</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">A. Bediako</div><div class="meta-role">Matron</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Sickbay</a> · Visit <b>VR-2026-05-14-0089-001</b> · Disposition</div>
+<div class="top-row">
+<div>
+<h1>Disposition <em>&amp; discharge.</em></h1>
+<div class="lede">Currently admitted · target discharge <b>16:00 today</b> if four criteria met. The criteria are explicit, checkable, and visible to the Matron who covers night shift.</div>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="disp-card">
+<div class="dc-eyebrow">Current disposition</div>
+<div class="dc-title">Admitted · <em>general ward, bed 3</em></div>
+<div class="dc-meta">
+<div class="dc-field">
+<div class="f-lbl">Admitted</div>
+<div class="f-val"><span class="mono-i">09:14</span> · 14 May</div>
+</div>
+<div class="dc-field">
+<div class="f-lbl">Target discharge</div>
+<div class="f-val"><em>16:00 today</em></div>
+</div>
+<div class="dc-field">
+<div class="f-lbl">Fallback overnight plan</div>
+<div class="f-val">stay on ward, Mrs Antwi covers</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Discharge <em>criteria</em></div>
+<div class="ch-meta">3 of 4 met · pending reassessment at 16:00</div>
+</div>
+<div class="card-body">
+<div class="criteria-list">
+<div class="criteria-row">
+<div class="cr-check met">✓</div>
+<div class="cr-text"><b>Pain ≤2/10</b> at reassessment</div>
+<div class="cr-status met">Met · 14:30</div>
+</div>
+<div class="criteria-row">
+<div class="cr-check met">✓</div>
+<div class="cr-text"><b>Temperature normal range</b> (36.5-37.5°C)</div>
+<div class="cr-status met">Met · 14:30</div>
+</div>
+<div class="criteria-row">
+<div class="cr-check met">✓</div>
+<div class="cr-text"><b>Oral intake adequate</b> — ≥750ml fluids since admission</div>
+<div class="cr-status met">Met · 850ml total</div>
+</div>
+<div class="criteria-row">
+<div class="cr-check pending"></div>
+<div class="cr-text"><b>Mobilising independently</b> — ward to bathroom unassisted</div>
+<div class="cr-status pending">Pending · 16:00 test</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="col-2" style="margin-top:14px;">
+<div class="card" style="margin-bottom:0;">
+<div class="card-head">
+<div class="ch-title">If criteria <em>met</em></div>
+<div class="ch-meta">expected path</div>
+</div>
+<div class="card-body" style="padding:14px 20px 16px;">
+<div style="font-size:12px; color:var(--navy-2); line-height:1.6;">
+Discharge to Slessor House at <b>16:00</b>. Excused from <b>tomorrow's 06:00 prep run</b> (auto-applied to roll-call). Resume normal hydroxyurea schedule from 06:30 round. Slessor HM to check on her at evening prep <b>19:00</b>. Return to sickbay immediately if any pain return.
+</div>
+</div>
+</div>
+<div class="card" style="margin-bottom:0;">
+<div class="card-head">
+<div class="ch-title">If criteria <em>not met</em></div>
+<div class="ch-meta">overnight path</div>
+</div>
+<div class="card-body" style="padding:14px 20px 16px;">
+<div style="font-size:12px; color:var(--navy-2); line-height:1.6;">
+Stay on bed 3 overnight. <b>Mrs Antwi</b> covers from 17:00. Re-call <b>Dr Mensah</b> if any escalation triggers fire. <b>Mrs Mensa to be re-notified by 18:00</b> with overnight stay plan. Reassess at 06:00 Thursday — visiting doctor in person at 14:00.
+</div>
+</div>
+</div>
+</div>
+
+<div class="cluster-note">
+<b>The 16:00 reassessment</b> is on the Matron's task list and on Mrs Antwi's incoming-shift handover. Either criterion-pass writes the discharge stamp; either criterion-fail extends admission with the parent re-notified. No silent overnight stays.
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Why discharge is a checklist, not a feeling</h4>
+<ul>
+<li>Matrons rotate shifts. Mrs Antwi takes over at 17:00. She needs to know <b>exactly</b> what "ready for discharge" means for this patient, not "Mrs Bediako thinks she looked fine."</li>
+<li>The criteria are <b>per-condition</b> in the chronic register's action plan — SCD has these four, asthma has different ones, anaphylaxis has its own.</li>
+<li>If the 4th criterion fails at 16:00, the parent is <b>re-notified before 18:00</b>. The three-tier rule doesn't end at admission; it covers stay extensions too.</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- /SECTION 04 -->
+
+<!-- SECTION 05 — COMMUNICATIONS & FOLLOW-UP -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">05</div>
+<div class="section-title display">Communications, follow-up &amp; cross-links</div>
+<div class="section-meta">Parent · HM · register</div>
+</div>
+
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar">
+<div class="dots"><span></span><span></span><span></span></div>
+<div class="url">app.omnischools.gh/sickbay/visits/VR-2026-05-14-0089-001#communications</div>
+</div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand">
+<div class="logo-mini">A</div>
+<div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Matron · Mrs Bediako</div></div>
+</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Attendance</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub active"><div class="ic"></div>Visit record</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">A. Bediako</div><div class="meta-role">Matron</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Sickbay</a> · Visit <b>VR-2026-05-14-0089-001</b> · Communications</div>
+<div class="top-row">
+<div>
+<h1>The <em>communications</em> trail.</h1>
+<div class="lede">Tier-2 admission → parent notified within <b>4 minutes</b>. Housemaster within 6. Doctor consult logged. The chronic register link sits two clicks from any future visit.</div>
+</div>
+</div>
+</div>
+<div class="body">
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Notification <em>log</em></div>
+<div class="ch-meta">4 entries · per the three-tier rule</div>
+</div>
+<div class="card-body">
+
+<div class="notif-row">
+<div class="nr-time">09:18</div>
+<div class="nr-body">
+<div class="nr-who">Mrs E. <em>Mensa</em> · mother · primary contact</div>
+<div class="nr-detail">+233 24 567 8901 · <b>answered on 2nd ring</b> · call duration <b>3m 12s</b></div>
+<div class="nr-msg">"Adwoa is admitted to the sickbay with a mild sickle cell crisis. We are following her standing care plan. She is comfortable. I will call you again at 16:00 with discharge update. Please call us back any time if you need to."</div>
+</div>
+<div class="nr-channel phone">Phone</div>
+</div>
+
+<div class="notif-row">
+<div class="nr-time">09:18</div>
+<div class="nr-body">
+<div class="nr-who">Mrs E. <em>Mensa</em> · written confirmation</div>
+<div class="nr-detail">SMS sent immediately after call · <b>delivered</b> at 09:18:47</div>
+<div class="nr-msg">Omnischools / Asankrangwa SHS: Adwoa admitted to sickbay 09:14 — mild sickle cell pain crisis, following care plan. Comfortable. Update at 16:00. Reply CALL to request callback. — Matron Bediako</div>
+</div>
+<div class="nr-channel sms">SMS</div>
+</div>
+
+<div class="notif-row">
+<div class="nr-time">09:20</div>
+<div class="nr-body">
+<div class="nr-who">Mr S. <em>Bonsu</em> · Slessor housemaster</div>
+<div class="nr-detail">In-app notification + walk-over · <b>acknowledged</b> at 09:23 from house office</div>
+<div class="nr-msg">Adwoa Mensa admitted with SCD pain crisis — mild, following plan. Attendance auto-excused for today. Please flag classmates if they ask, no medical detail to share.</div>
+</div>
+<div class="nr-channel in-person">In-app</div>
+</div>
+
+<div class="notif-row">
+<div class="nr-time">09:42</div>
+<div class="nr-body">
+<div class="nr-who">Mr P. <em>Asare-Mensah</em> · Headmaster</div>
+<div class="nr-detail">Daily sickbay summary (rolled into 09:45 admin digest) · <b>auto-routed</b></div>
+<div class="nr-msg">Sickbay morning report · 1 admission · A. Mensa (F1 Slessor) · SCD pain crisis · mild · parent notified 09:18 · expected discharge 16:00.</div>
+</div>
+<div class="nr-channel system">System</div>
+</div>
+
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Cross-<em>links</em></div>
+<div class="ch-meta">where this visit connects</div>
+</div>
+<div class="card-body">
+<div class="xlink-strip">
+<div class="xlink-card">
+<div>
+<div class="xc-eyebrow">Chronic register</div>
+<div class="xc-title">Sickle cell care <em>plan</em></div>
+<div class="xc-meta">last visit <b>23 Jan 2026</b> · 2 crises this semester · plan reviewed Apr 14</div>
+</div>
+<div class="xlink-arrow">→</div>
+</div>
+<div class="xlink-card">
+<div>
+<div class="xc-eyebrow">Attendance</div>
+<div class="xc-title">Today's excuse <em>auto-applied</em></div>
+<div class="xc-meta"><b>5 periods</b> · all classes · attendance flags "excused (sickbay)"</div>
+</div>
+<div class="xlink-arrow">→</div>
+</div>
+<div class="xlink-card">
+<div>
+<div class="xc-eyebrow">Boarding</div>
+<div class="xc-title">Slessor <em>house roll</em></div>
+<div class="xc-meta">marked "sickbay" on bed S-12-B · HM has read receipt</div>
+</div>
+<div class="xlink-arrow">→</div>
+</div>
+<div class="xlink-card">
+<div>
+<div class="xc-eyebrow">Billing</div>
+<div class="xc-title">School stock <em>only</em></div>
+<div class="xc-meta">paracetamol + ORS · <b>no charge</b> · within sickbay standing supply</div>
+</div>
+<div class="xlink-arrow">→</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div class="ch-title">Follow-up <em>plan</em></div>
+<div class="ch-meta">next 72 hours</div>
+</div>
+<div class="card-body">
+<div class="steps-list">
+<div class="steps-row">
+<div class="sr-num">i</div>
+<div class="sr-body">
+<div class="sr-when"><b>16:00 today</b> · discharge reassessment</div>
+<div class="sr-text"><b>Mrs Bediako</b> performs mobilisation test, reviews pain, confirms hydration. If criteria met, discharge to Slessor. Call <b>Mrs Mensa</b> with outcome.</div>
+</div>
+</div>
+<div class="steps-row">
+<div class="sr-num">ii</div>
+<div class="sr-body">
+<div class="sr-when"><b>19:00 today</b> · HM evening check</div>
+<div class="sr-text"><b>Mr Bonsu</b> checks Adwoa at Slessor evening prep. Confirms comfortable, eating, no pain return. SMS to Matron with one-word ack.</div>
+</div>
+</div>
+<div class="steps-row">
+<div class="sr-num">iii</div>
+<div class="sr-body">
+<div class="sr-when"><b>Thursday 06:30</b> · morning round</div>
+<div class="sr-text">Resume hydroxyurea standard dose. <b>Excused from morning prep run</b> auto-applied. Adwoa attends morning round herself; if she doesn't appear by 06:35, Sick Bay Prefect <b>F. Tetteh</b> sent to Slessor to retrieve.</div>
+</div>
+</div>
+<div class="steps-row">
+<div class="sr-num">iv</div>
+<div class="sr-body">
+<div class="sr-when"><b>Thursday 14:00</b> · doctor in-person review</div>
+<div class="sr-text"><b>Dr Mensah</b> on his weekly round. Adwoa added to his list. Quick check, no formal appointment needed. Care plan reviewed if any change warranted.</div>
+</div>
+</div>
+<div class="steps-row">
+<div class="sr-num">v</div>
+<div class="sr-body">
+<div class="sr-when"><b>Friday afternoon</b> · close visit</div>
+<div class="sr-text">If no further incident, close this visit record. Add to chronic register's <b>visit history</b>. Generate term-end summary line for parent.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="action-bar">
+<div class="ab-note">
+This record is <b>not yet closed</b>. It closes when the 16:00 discharge fires and the follow-up plan completes, or when Mrs Antwi extends admission overnight. Closing creates an immutable audit entry signed by <b>A. Bediako</b>.
+</div>
+<div class="ab-actions">
+<button class="btn">Save draft</button>
+<button class="btn primary">Mark for 16:00 reassessment</button>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The two parent notifications</h4>
+<ul>
+<li>A phone call is <b>not enough on its own</b>. Mrs Mensa is at Asankrangwa market; she might have answered while distracted. The SMS gives her something to re-read at home.</li>
+<li>The SMS is short, plain, and ends with <b>"Reply CALL to request callback"</b> — that's the safe-channel back to the Matron. A parent never has to guess how to reach the sickbay.</li>
+<li>The HM and Headmaster notifications are <b>medical-detail-light</b>. The Headmaster's morning digest line says "SCD pain crisis · mild" because he needs to know there's a sickbay event, not the granular vitals.</li>
+<li>The four cross-links mean any future Matron — or any auditor — finding this record can reach the chronic register, today's attendance, the boarding roll, and the billing trail in <b>one click each</b>. No re-keying student names. No silos.</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- /SECTION 05 -->
+
+</div>
+</body>
+</html>

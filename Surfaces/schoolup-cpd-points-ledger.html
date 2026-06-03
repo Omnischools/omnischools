@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — CPD points ledger</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Profile hero */
+.profile-hero { padding:32px 36px; background:linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%); border-bottom:1px solid var(--border); display:grid; grid-template-columns:auto 1fr auto; gap:28px; align-items:center; }
+.profile-hero .av-big { width:80px; height:80px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:30px; }
+.profile-hero .crumb { font-size:10px; color:var(--navy-3); letter-spacing:0.12em; text-transform:uppercase; font-weight:700; margin-bottom:6px; }
+.profile-hero h2 { font-family:'Fraunces',serif; font-size:30px; font-weight:500; letter-spacing:-0.02em; margin-bottom:6px; line-height:1.1; }
+.profile-hero h2 em { font-style:italic; color:var(--gold); }
+.profile-hero .submeta { font-size:13px; color:var(--navy-2); display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+.profile-hero .submeta .sep { color:var(--navy-3); }
+.profile-hero .submeta b { color:var(--navy); font-weight:700; }
+.profile-hero .submeta .ntc-id { font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 9px; background:var(--navy); color:var(--gold); border-radius:5px; font-weight:600; letter-spacing:0.04em; }
+.profile-hero .actions-right { display:flex; gap:8px; }
+
+/* Big progress hero · annual target */
+.target-hero { padding:28px 36px; background:var(--navy); color:var(--bg); display:grid; grid-template-columns:1.4fr 1fr; gap:36px; align-items:center; }
+.target-hero .left .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.target-hero .left h3 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; margin-bottom:16px; line-height:1.2; }
+.target-hero .left h3 em { font-style:italic; color:var(--gold); }
+.target-hero .left .progress-row { display:flex; align-items:center; gap:18px; margin-bottom:14px; }
+.target-hero .left .progress-row .big-num { font-family:'Fraunces',serif; font-size:48px; font-weight:500; line-height:1; letter-spacing:-0.02em; }
+.target-hero .left .progress-row .big-num em { font-style:italic; color:var(--gold); }
+.target-hero .left .progress-row .of { font-size:18px; color:rgba(250,247,242,0.5); font-family:'Fraunces',serif; }
+.target-hero .left .progress-row .target { font-family:'Fraunces',serif; font-size:24px; font-weight:500; color:rgba(250,247,242,0.7); }
+.target-hero .left .progress-bar { width:100%; height:10px; background:rgba(255,255,255,0.08); border-radius:100px; overflow:hidden; margin-bottom:10px; }
+.target-hero .left .progress-bar .fill { height:100%; background:linear-gradient(90deg, var(--gold) 0%, #E8B57A 100%); border-radius:100px; }
+.target-hero .left .progress-pct { font-size:11px; color:rgba(232,212,184,0.7); letter-spacing:0.04em; }
+.target-hero .left .progress-pct b { color:var(--gold); font-weight:700; }
+.target-hero .right { padding-left:36px; border-left:1px solid rgba(255,255,255,0.08); }
+.target-hero .right .stat-mini { padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; font-size:12px; color:rgba(250,247,242,0.85); }
+.target-hero .right .stat-mini:last-child { border-bottom:none; }
+.target-hero .right .stat-mini b { color:var(--bg); font-weight:700; }
+.target-hero .right .stat-mini b.gold { color:var(--gold); }
+.target-hero .right .stat-mini b.warn { color:var(--warn); }
+.target-hero .right .stat-mini b.green { color:var(--green-bg); }
+
+/* Source breakdown */
+.body-shell { padding:32px 36px 40px; }
+.section-block { margin-bottom:32px; }
+.section-block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.section-block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.section-block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.section-block-head h3 em { font-style:italic; color:var(--gold); }
+.section-block-head .meta { font-size:11px; color:var(--navy-3); }
+.section-block-head .meta b { color:var(--navy-2); font-weight:700; }
+
+.source-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; }
+.source-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.source-tile.over-cap { border-color:var(--warn); background:var(--warn-bg); }
+.source-tile.uncapped { border-left:3px solid var(--gold); }
+.source-tile.capped-met { border-left:3px solid var(--green); }
+.source-tile .source-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.source-tile .source-name { font-size:11px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; color:var(--navy-2); }
+.source-tile .cap-pill { font-size:9px; padding:2px 7px; border-radius:100px; font-weight:700; letter-spacing:0.04em; background:var(--bg); color:var(--navy-3); }
+.source-tile .cap-pill.met { background:var(--green-bg); color:var(--green); }
+.source-tile .cap-pill.over { background:var(--warn-bg); color:var(--warn); }
+.source-tile .pts-big { font-family:'Fraunces',serif; font-size:30px; font-weight:600; letter-spacing:-0.02em; line-height:1; margin-bottom:4px; }
+.source-tile .pts-big em { font-style:italic; color:var(--gold); }
+.source-tile .pts-detail { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.source-tile .pts-detail b { color:var(--navy-2); font-weight:600; }
+.source-tile .mini-progress { width:100%; height:4px; background:var(--border); border-radius:100px; margin-top:10px; overflow:hidden; }
+.source-tile .mini-progress .fill { height:100%; background:var(--green); }
+.source-tile .mini-progress .fill.warn { background:var(--warn); }
+
+/* Ledger table */
+.ledger-table { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.ledger-table table { width:100%; border-collapse:collapse; }
+.ledger-table thead th { padding:12px 18px; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border); background:var(--bg); }
+.ledger-table tbody td { padding:14px 18px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:12px; }
+.ledger-table tbody tr:last-child td { border-bottom:none; }
+.ledger-table tbody tr:hover { background:var(--gold-bg); }
+.ledger-row-date { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); font-weight:600; white-space:nowrap; }
+.ledger-row-source { display:flex; align-items:center; gap:8px; }
+.ledger-row-source .source-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.ledger-row-source .source-dot.plc { background:var(--navy); }
+.ledger-row-source .source-dot.workshop { background:var(--gold); }
+.ledger-row-source .source-dot.online { background:var(--green); }
+.ledger-row-source .source-dot.mentor { background:var(--terra); }
+.ledger-row-source .source-dot.research { background:var(--warn); }
+.ledger-row-source .source-dot.conference { background:#7B5A8E; }
+.ledger-row-source .lab { font-weight:600; color:var(--navy); }
+.ledger-row-source .detail { font-size:10px; color:var(--navy-3); margin-top:2px; line-height:1.4; }
+.ledger-row-source .detail b { color:var(--navy-2); font-weight:600; }
+.ledger-row-pts { font-family:'Fraunces',serif; font-size:16px; font-weight:600; color:var(--navy); text-align:right; }
+.ledger-row-pts em { font-style:italic; color:var(--gold); }
+.ledger-row-pts.partial { color:var(--warn); }
+.ledger-row-sync { font-size:10px; padding:4px 9px; border-radius:100px; font-weight:700; letter-spacing:0.04em; display:inline-flex; align-items:center; gap:5px; }
+.ledger-row-sync.synced { background:var(--green-bg); color:var(--green); }
+.ledger-row-sync.pending { background:var(--gold-bg); color:var(--gold); }
+.ledger-row-sync.failed { background:var(--terra-bg); color:var(--terra); }
+.ledger-row-sync .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+
+/* Three-year licence renewal panel */
+.licence-card { background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-radius:14px; padding:28px 32px; }
+.licence-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.licence-card h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.licence-card h3 em { font-style:italic; color:var(--gold); }
+.licence-card .countdown-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; margin-bottom:22px; }
+.licence-card .cd-tile { background:var(--surface); border:1px solid var(--gold-soft); border-radius:10px; padding:16px 18px; }
+.licence-card .cd-tile .lab { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.licence-card .cd-tile .val { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.licence-card .cd-tile .val em { font-style:italic; color:var(--gold); }
+.licence-card .cd-tile .detail { font-size:11px; color:var(--navy-2); margin-top:4px; line-height:1.4; }
+.licence-card .three-year-bar { background:var(--surface); border:1px solid var(--gold-soft); border-radius:10px; padding:20px 22px; }
+.licence-card .three-year-bar .row-y { display:grid; grid-template-columns:90px 1fr 80px; gap:14px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
+.licence-card .three-year-bar .row-y:last-child { border-bottom:none; }
+.licence-card .three-year-bar .row-y .year-lab { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--navy-2); }
+.licence-card .three-year-bar .row-y .year-lab b { color:var(--navy); font-weight:700; }
+.licence-card .three-year-bar .row-y .y-progress { width:100%; height:8px; background:var(--bg); border-radius:100px; overflow:hidden; position:relative; }
+.licence-card .three-year-bar .row-y .y-progress .fill { height:100%; background:var(--green); border-radius:100px; }
+.licence-card .three-year-bar .row-y .y-progress .fill.current { background:var(--gold); }
+.licence-card .three-year-bar .row-y .y-progress .target-marker { position:absolute; right:0; top:-2px; height:12px; width:2px; background:var(--terra); }
+.licence-card .three-year-bar .row-y .y-pts { font-family:'Fraunces',serif; font-size:14px; font-weight:600; text-align:right; }
+.licence-card .three-year-bar .row-y .y-pts em { font-style:italic; color:var(--gold); }
+.licence-card .three-year-bar .row-y.warning .y-pts { color:var(--warn); }
+
+/* Gap analysis */
+.gap-card { background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:12px; padding:22px 26px; margin-top:18px; }
+.gap-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--terra); font-weight:700; margin-bottom:6px; }
+.gap-card h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:8px; }
+.gap-card h4 em { font-style:italic; color:var(--terra); }
+.gap-card p { font-size:13px; color:var(--navy-2); line-height:1.65; margin-bottom:14px; }
+.gap-card p b { color:var(--navy); font-weight:600; }
+.gap-card .recommendations { display:flex; flex-direction:column; gap:8px; }
+.gap-card .rec-item { background:var(--surface); border:1px solid var(--terra); border-radius:8px; padding:12px 16px; font-size:12px; color:var(--navy-2); display:flex; gap:12px; align-items:flex-start; }
+.gap-card .rec-item .ic-rec { width:26px; height:26px; border-radius:6px; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:12px; flex-shrink:0; }
+.gap-card .rec-item .body { flex:1; line-height:1.55; }
+.gap-card .rec-item .body b { color:var(--navy); font-weight:600; }
+.gap-card .rec-item .pts-promised { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--terra); flex-shrink:0; padding-top:4px; }
+
+/* Editorial · why 20 and the 8 cap */
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.3; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-family:'Fraunces',serif; font-weight:500; font-style:italic; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · PLC/CPD batch · 03 of 06</div>
+  <span class="mvp-tag">SHS · teacher self-service</span>
+  <span class="related-tag">Per-teacher · the "am I on track" surface</span>
+  <h1 class="display">Twenty points, <em>one year at a time</em></h1>
+  <div class="gold-rule"></div>
+  <p>NTC requires 20 CPD points per teacher per year for licence renewal. <b>Of those, 8 must come from PLCs.</b> The rest come from workshops, online courses, mentoring, conference attendance, action research. This is the teacher's own ledger — running total, source breakdown, what's already counted, what's still needed, and the gentle math of "are you going to make it by 30 September." The ledger is also a permanent record · three years of points roll forward into the licence renewal evidence pack. <em>Built for the teacher to glance at on the way to work, not for the auditor to pore over at year-end.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The teacher's view · Mr Mensah's CPD this year</div>
+    <div class="section-meta">My profile → CPD &amp; licence</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / me / cpd-ledger</div>
+      </div>
+
+      <div class="profile-hero">
+        <div class="av-big">AM</div>
+        <div>
+          <div class="crumb">My profile · CPD &amp; licence renewal</div>
+          <h2 class="display">Mr Alexander <em>Mensah</em></h2>
+          <div class="submeta">
+            <span>Mathematics teacher</span>
+            <span class="sep">·</span>
+            <span>Form Master · Form 2 GA A</span>
+            <span class="sep">·</span>
+            <span>Senior Member · <b>GES rank: Principal Superintendent</b></span>
+            <span class="sep">·</span>
+            <span class="ntc-id">NTC: GH-T-2018-04472</span>
+          </div>
+        </div>
+        <div class="actions-right">
+          <button class="btn ghost">Download evidence pack</button>
+          <button class="btn primary">+ Log external CPD</button>
+        </div>
+      </div>
+
+      <div class="target-hero">
+        <div class="left">
+          <div class="eb">Academic year 2025/26 · annual NTC target</div>
+          <h3 class="display">You're at <em>14.5 of 20 pts</em> · 5.5 to go · 138 days remaining</h3>
+          <div class="progress-row">
+            <div class="big-num display"><em>14.5</em></div>
+            <div class="of">of</div>
+            <div class="target">20 pts</div>
+          </div>
+          <div class="progress-bar"><div class="fill" style="width:72.5%;"></div></div>
+          <div class="progress-pct"><b>72.5%</b> of annual target · pace check: on-track if you maintain 0.04 pts/day average · <em>you're averaging 0.06</em></div>
+        </div>
+        <div class="right">
+          <div class="stat-mini"><span>Days until target deadline (30 Sep)</span><b>138 days</b></div>
+          <div class="stat-mini"><span>Required average from now</span><b class="green">0.04 pts/day</b></div>
+          <div class="stat-mini"><span>Your YTD average</span><b class="gold">0.06 pts/day</b></div>
+          <div class="stat-mini"><span>Forecast year-end</span><b class="gold">22.3 pts ✓</b></div>
+          <div class="stat-mini"><span>Last NTC sync</span><b>12 May · 2 days ago</b></div>
+          <div class="stat-mini"><span>Sync pending</span><b class="warn">3 entries</b></div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- Source breakdown -->
+        <div class="section-block">
+          <div class="section-block-head">
+            <div>
+              <div class="eb">Where points come from this year</div>
+              <h3 class="display">Source <em>breakdown</em></h3>
+            </div>
+            <div class="meta">PLC has an <b>8 pt cap</b> · all other sources uncapped · only capped categories show a target bar</div>
+          </div>
+
+          <div class="source-grid">
+            <div class="source-tile capped-met">
+              <div class="source-head">
+                <div class="source-name">PLC · weekly</div>
+                <div class="cap-pill met">CAP 8</div>
+              </div>
+              <div class="pts-big display"><em>7.5</em> / 8.0</div>
+              <div class="pts-detail">9 sessions attended this term · <b>8 with reflection submitted</b> · 0.5 pt shy of cap</div>
+              <div class="mini-progress"><div class="fill" style="width:94%;"></div></div>
+            </div>
+
+            <div class="source-tile uncapped">
+              <div class="source-head">
+                <div class="source-name">Workshops</div>
+                <div class="cap-pill">UNCAPPED</div>
+              </div>
+              <div class="pts-big display"><em>4.0</em></div>
+              <div class="pts-detail">2 workshops attended · GES district-organised (2 pts) + Cambridge IGCSE pedagogy (2 pts)</div>
+            </div>
+
+            <div class="source-tile uncapped">
+              <div class="source-head">
+                <div class="source-name">Online courses</div>
+                <div class="cap-pill">UNCAPPED</div>
+              </div>
+              <div class="pts-big display"><em>3.0</em></div>
+              <div class="pts-detail">2 courses completed · Coursera "Teaching Maths Online" (2 pts) + NTC e-learning module (1 pt)</div>
+            </div>
+
+            <div class="source-tile uncapped">
+              <div class="source-head">
+                <div class="source-name">Mentoring</div>
+                <div class="cap-pill">UNCAPPED</div>
+              </div>
+              <div class="pts-big display"><em>0</em></div>
+              <div class="pts-detail">No mentee assigned this year · <b>1 pt per mentee per term</b> available if you take one on</div>
+            </div>
+
+            <div class="source-tile uncapped">
+              <div class="source-head">
+                <div class="source-name">Conference</div>
+                <div class="cap-pill">UNCAPPED</div>
+              </div>
+              <div class="pts-big display"><em>0</em></div>
+              <div class="pts-detail">No conference attended yet this year · GAMA conference Aug · 4 pts available</div>
+            </div>
+
+            <div class="source-tile uncapped">
+              <div class="source-head">
+                <div class="source-name">Action research</div>
+                <div class="cap-pill">UNCAPPED</div>
+              </div>
+              <div class="pts-big display"><em>0</em></div>
+              <div class="pts-detail">No active project · classroom research project earns <b>5-10 pts on completion</b> + publication</div>
+            </div>
+
+            <div class="source-tile uncapped">
+              <div class="source-head">
+                <div class="source-name">Subject professional</div>
+                <div class="cap-pill">UNCAPPED</div>
+              </div>
+              <div class="pts-big display"><em>0</em></div>
+              <div class="pts-detail">GAMA membership, journal subscriptions, professional body activity · <b>1-2 pts per year</b></div>
+            </div>
+
+            <div class="source-tile uncapped">
+              <div class="source-head">
+                <div class="source-name">Other / external</div>
+                <div class="cap-pill">UNCAPPED</div>
+              </div>
+              <div class="pts-big display"><em>0</em></div>
+              <div class="pts-detail">Anything not captured automatically · self-logged · evidence required for sync</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ledger entries -->
+        <div class="section-block">
+          <div class="section-block-head">
+            <div>
+              <div class="eb">Every entry · oldest to newest</div>
+              <h3 class="display">Ledger <em>this academic year</em></h3>
+            </div>
+            <div class="meta">14 entries · 3 awaiting NTC sync · click any row to view evidence</div>
+          </div>
+
+          <div class="ledger-table">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:14%">Date awarded</th>
+                  <th style="width:38%">Source &amp; activity</th>
+                  <th style="width:14%; text-align:right">Points</th>
+                  <th style="width:18%">NTC sync</th>
+                  <th style="width:16%">Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="ledger-row-date">16 May 2026</div></td>
+                  <td>
+                    <div class="ledger-row-source">
+                      <div class="source-dot plc"></div>
+                      <div>
+                        <div class="lab">Maths PLC · session 9</div>
+                        <div class="detail">Item analysis of Form 3 mock · circle theorems · <b>+ reflection submitted</b></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><div class="ledger-row-pts display">+1.0</div></td>
+                  <td><div class="ledger-row-sync pending"><span class="dot"></span>QUEUED · NEXT SYNC</div></td>
+                  <td><a style="font-size:10px; color:var(--gold); font-weight:600; letter-spacing:0.04em; text-transform:uppercase;">PLC log →</a></td>
+                </tr>
+                <tr>
+                  <td><div class="ledger-row-date">09 May 2026</div></td>
+                  <td>
+                    <div class="ledger-row-source">
+                      <div class="source-dot plc"></div>
+                      <div>
+                        <div class="lab">Maths PLC · session 8</div>
+                        <div class="detail">Algebra reteach planning · <b>+ reflection submitted</b></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><div class="ledger-row-pts display">+1.0</div></td>
+                  <td><div class="ledger-row-sync pending"><span class="dot"></span>QUEUED</div></td>
+                  <td><a style="font-size:10px; color:var(--gold); font-weight:600; letter-spacing:0.04em; text-transform:uppercase;">PLC log →</a></td>
+                </tr>
+                <tr>
+                  <td><div class="ledger-row-date">28 Apr 2026</div></td>
+                  <td>
+                    <div class="ledger-row-source">
+                      <div class="source-dot workshop"></div>
+                      <div>
+                        <div class="lab">Cambridge IGCSE pedagogy workshop</div>
+                        <div class="detail">2-day workshop · British Council Accra · <b>certificate uploaded</b></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><div class="ledger-row-pts display">+2.0</div></td>
+                  <td><div class="ledger-row-sync synced"><span class="dot"></span>SYNCED 02 MAY</div></td>
+                  <td><a style="font-size:10px; color:var(--gold); font-weight:600; letter-spacing:0.04em; text-transform:uppercase;">CERTIFICATE →</a></td>
+                </tr>
+                <tr>
+                  <td><div class="ledger-row-date">02 May 2026</div></td>
+                  <td>
+                    <div class="ledger-row-source">
+                      <div class="source-dot plc"></div>
+                      <div>
+                        <div class="lab">Maths PLC · session 7</div>
+                        <div class="detail">Attended only — reflection <b>missed 48-hour window</b></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><div class="ledger-row-pts display partial">+0.5</div></td>
+                  <td><div class="ledger-row-sync pending"><span class="dot"></span>QUEUED</div></td>
+                  <td><a style="font-size:10px; color:var(--gold); font-weight:600; letter-spacing:0.04em; text-transform:uppercase;">PLC log →</a></td>
+                </tr>
+                <tr>
+                  <td><div class="ledger-row-date">25 Apr 2026</div></td>
+                  <td>
+                    <div class="ledger-row-source">
+                      <div class="source-dot plc"></div>
+                      <div>
+                        <div class="lab">Maths PLC · session 6</div>
+                        <div class="detail">Reflection submitted on time</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><div class="ledger-row-pts display">+1.0</div></td>
+                  <td><div class="ledger-row-sync synced"><span class="dot"></span>SYNCED 30 APR</div></td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td><div class="ledger-row-date">18 Apr 2026</div></td>
+                  <td>
+                    <div class="ledger-row-source">
+                      <div class="source-dot online"></div>
+                      <div>
+                        <div class="lab">Coursera · "Teaching Mathematics Online"</div>
+                        <div class="detail">6-week course completed · <b>certificate verified</b></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><div class="ledger-row-pts display">+2.0</div></td>
+                  <td><div class="ledger-row-sync synced"><span class="dot"></span>SYNCED 21 APR</div></td>
+                  <td><a style="font-size:10px; color:var(--gold); font-weight:600; letter-spacing:0.04em; text-transform:uppercase;">CERTIFICATE →</a></td>
+                </tr>
+                <tr>
+                  <td><div class="ledger-row-date">04 Mar 2026</div></td>
+                  <td>
+                    <div class="ledger-row-source">
+                      <div class="source-dot workshop"></div>
+                      <div>
+                        <div class="lab">GES Cape Coast workshop · WASSCE prep</div>
+                        <div class="detail">District-organised · 1 day</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><div class="ledger-row-pts display">+2.0</div></td>
+                  <td><div class="ledger-row-sync synced"><span class="dot"></span>SYNCED 06 MAR</div></td>
+                  <td><a style="font-size:10px; color:var(--gold); font-weight:600; letter-spacing:0.04em; text-transform:uppercase;">CERTIFICATE →</a></td>
+                </tr>
+                <tr style="background:var(--bg);">
+                  <td colspan="5" style="padding:14px 18px; text-align:center; font-size:11px; color:var(--navy-3); font-style:italic;">
+                    <b>7 more entries from Sep 2025 to Feb 2026</b> · click to expand the full ledger
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3-year licence renewal -->
+        <div class="section-block">
+          <div class="section-block-head">
+            <div>
+              <div class="eb">The bigger picture · NTC licence renewal</div>
+              <h3 class="display">Three-year <em>licence cycle</em></h3>
+            </div>
+            <div class="meta">Your licence expires <b>30 September 2027</b> · 60 cumulative points required</div>
+          </div>
+
+          <div class="licence-card">
+            <div class="eb">Renewal in 502 days</div>
+            <h3 class="display">You're <em>on track</em> for renewal · current cycle 14 of 60 pts complete</h3>
+
+            <div class="countdown-row">
+              <div class="cd-tile">
+                <div class="lab">Current licence valid until</div>
+                <div class="val display">30 Sept 2027</div>
+                <div class="detail">Issued 1 Oct 2024 · 3-year cycle</div>
+              </div>
+              <div class="cd-tile">
+                <div class="lab">Cumulative pts this cycle</div>
+                <div class="val display"><em>14.5</em> / 60</div>
+                <div class="detail">Year 1 complete · year 2 in progress · year 3 ahead</div>
+              </div>
+              <div class="cd-tile">
+                <div class="lab">Renewal evidence due</div>
+                <div class="val display">1 Aug 2027</div>
+                <div class="detail">2 months before expiry · auto-package available</div>
+              </div>
+            </div>
+
+            <div class="three-year-bar">
+              <div class="row-y">
+                <div class="year-lab"><b>Year 1</b><br/>2024/25</div>
+                <div class="y-progress"><div class="fill" style="width:100%;"></div><div class="target-marker"></div></div>
+                <div class="y-pts display"><em>22.0</em> / 20 ✓</div>
+              </div>
+              <div class="row-y">
+                <div class="year-lab"><b>Year 2</b><br/>2025/26 · now</div>
+                <div class="y-progress"><div class="fill current" style="width:72.5%;"></div><div class="target-marker"></div></div>
+                <div class="y-pts display"><em>14.5</em> / 20</div>
+              </div>
+              <div class="row-y warning">
+                <div class="year-lab"><b>Year 3</b><br/>2026/27 · ahead</div>
+                <div class="y-progress"><div class="fill" style="width:0%;"></div><div class="target-marker"></div></div>
+                <div class="y-pts display">0 / 20</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gap analysis -->
+        <div class="section-block">
+          <div class="gap-card">
+            <div class="eb">If you do nothing · what's at risk</div>
+            <h4 class="display">Closing the 5.5-point gap <em>before 30 September</em></h4>
+            <p>You're on track but not coasting. <b>The 5.5 points still needed for this year</b> can come from a few obvious places. The PLC tap will give you 0.5 more (one more session to cap it at 8.0). The rest needs to come from workshops, courses, mentoring, or a conference. <b>Here are the easiest paths from your situation:</b></p>
+
+            <div class="recommendations">
+              <div class="rec-item">
+                <div class="ic-rec">1</div>
+                <div class="body"><b>Take on a year-1 mentee</b> · Mr Yeboah is in his first year, no assigned mentor. <b>1 pt per term, retroactive to start of term</b> if you mentor him for the remainder. Realistic, low-effort relative to gain.</div>
+                <div class="pts-promised">+2.0 pts</div>
+              </div>
+              <div class="rec-item">
+                <div class="ic-rec">2</div>
+                <div class="body"><b>Attend GAMA conference 7-9 August</b> · Ghana Association of Mathematics Teachers annual conference. 3-day, Accra, school covers fee. <b>4 pts upon attendance + reflection.</b></div>
+                <div class="pts-promised">+4.0 pts</div>
+              </div>
+              <div class="rec-item">
+                <div class="ic-rec">3</div>
+                <div class="body"><b>Complete one more online course</b> · Khan Academy "Differentiated Instruction in Maths" · 4 weeks, self-paced. NTC-recognised provider. <b>2 pts on completion.</b></div>
+                <div class="pts-promised">+2.0 pts</div>
+              </div>
+              <div class="rec-item">
+                <div class="ic-rec">4</div>
+                <div class="body"><b>Start an action research project</b> · "Effect of small-group reteach on circle theorems retention" — connects to your current PLC work. <b>Earns 5-10 pts on completion + write-up.</b></div>
+                <div class="pts-promised">+5-10 pts</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Design notes</h4>
+      <ul>
+        <li><b>The target hero is the most-glanced piece.</b> Teacher opens this surface to answer one question: "am I going to make it?" The hero answers in one line: 14.5 of 20, 138 days, on track. Everything else is detail.</li>
+        <li><b>Source breakdown shows capped vs uncapped.</b> PLC has an 8-pt cap (matching NTC rule). Workshops, online, mentoring, conferences are uncapped. Tiles communicate the difference with a CAP pill.</li>
+        <li><b>The ledger is read-only and append-only.</b> Most entries auto-post (PLC, attendance-driven). External entries (workshops, online courses) require evidence upload — certificate, completion proof.</li>
+        <li><b>Three-year cycle is the big picture.</b> Annual target is the immediate concern; cumulative 60-pt cycle is the renewal concern. Year 1 complete is a green tick — Mr Mensah's already in good shape.</li>
+        <li><b>Gap analysis is opinionated.</b> It doesn't just say "you need 5.5 pts" — it suggests the 4 most realistic paths given Mr Mensah's specific situation. Mentoring suggests Mr Yeboah because they're in the same PLC.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Schema this drives</h4>
+      <ul>
+        <li><b>cpd_points_ledger</b> · the append-only point record · staff_id, source_type, source_ref_id, points, awarded_at, ntc_sync_status, ntc_synced_at, evidence_file_id</li>
+        <li><b>cpd_source_rules</b> · per-school configurable · source_type, points_per_unit, cap_pts_annual, evidence_required</li>
+        <li><b>ntc_licences</b> · per-teacher · issued_at, expires_at, cycle_start, cycle_end, cumulative_pts_required</li>
+        <li><b>cpd_evidence_uploads</b> · certificates, completion proofs · staff_id, file_id, source_ledger_id</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why 20 and 8 · the NTC rules in plain language</div>
+    <div class="section-meta">Editorial · the regulatory frame</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The rules Omnischools enforces</div>
+        <h3 class="display">20 points a year. <em>60 over the 3-year licence cycle.</em> 8 of every 20 must come from PLC.</h3>
+        <p>The National Teaching Council sets the framework. Every licensed teacher must accumulate <b>20 CPD points per year</b> across recognised activities. The licence cycle is <b>3 years</b> — so 60 cumulative points across that cycle to renew. <b>At least 8 of every year's 20 must come from school-based Professional Learning Communities</b>, which is why this batch puts the PLC programme first. The remaining 12 are flexible: workshops, online courses, mentoring, conferences, action research, professional body participation.</p>
+        <p>Omnischools's job is not to invent the rules. It's to <em>make them legible</em>. The teacher should never have to ask "how much have I got" or "what counts" — the ledger answers both. The school's job (Headmaster, HoD) is also helped: they can see across the staff who's at risk and intervene early. The NTC's job is helped too: the sync surface (file 5 in this batch) pushes the synced ledger to the NTC portal so the regulator doesn't depend on year-end paperwork.</p>
+        <p>The 0.5 + 0.5 split on PLC sessions is a Omnischools design choice, <em>not an NTC rule</em>. NTC says PLC participation earns points; it doesn't prescribe how each session is weighted. We weight half the point on attendance (you showed up) and half on reflection (you thought about it). This rule is in the school's PLC settings and could be changed if a school disagreed — but the default makes the participation contract clear.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>NTC rules · what the platform enforces</h4>
+      <ul>
+        <li><b>20 pts/year mandatory.</b> Falling short two years in a row puts the licence at risk. Teachers see this; HoDs see this on the school dashboard.</li>
+        <li><b>8 pts/year from PLC.</b> Hard floor. A teacher can't compensate by going to extra workshops if they skip PLC.</li>
+        <li><b>3-year cycle.</b> 60 cumulative pts. Year-on-year over-performance carries forward through the cycle but doesn't reduce the per-year floor.</li>
+        <li><b>NTC sync is the proof.</b> Synced entries are the official record. A pending entry is real but provisional until pushed.</li>
+        <li><b>Evidence required for external entries.</b> Certificate upload mandatory for workshops, courses, conferences. PLC entries auto-evidence from the session register.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

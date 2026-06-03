@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Boarding discipline & deboardinization</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --terra-deep:#8E3528; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.prose p { font-size:15px; line-height:1.7; color:var(--navy-2); margin-bottom:18px; }
+.prose p:first-child { font-size:17px; }
+.prose p b { color:var(--navy); font-weight:600; }
+.prose p em { font-style:italic; color:var(--gold); font-weight:500; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+.btn.terra { background:var(--terra); color:var(--bg); border-color:var(--terra); font-weight:700; }
+.btn.green { background:var(--green); color:var(--bg); border-color:var(--green); font-weight:700; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.browser-bar .ctx { margin-left:auto; font-size:10px; letter-spacing:0.12em; color:rgba(232,212,184,0.6); font-weight:600; text-transform:uppercase; }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+.head-row .actions { display:flex; gap:8px; flex-shrink:0; }
+
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.sum-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.sum-card.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-card.warn { background:var(--warn-bg); border-color:var(--warn); }
+.sum-card.terra { background:var(--terra-bg); border-color:var(--terra); }
+.sum-card.gold-soft { background:var(--gold-bg); border-color:var(--gold); }
+.sum-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-card.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-card.warn .lab { color:var(--warn); }
+.sum-card.terra .lab { color:var(--terra); }
+.sum-card.gold-soft .lab { color:var(--gold); }
+.sum-card .big { font-family:'Fraunces',serif; font-size:26px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-card .big em { font-style:italic; color:var(--gold); }
+.sum-card.warn .big em { color:var(--warn); }
+.sum-card.terra .big em { color:var(--terra); }
+.sum-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-card.featured .sub { color:rgba(232,212,184,0.6); }
+.sum-card .sub b { color:var(--navy-2); font-weight:600; }
+.sum-card.featured .sub b { color:var(--gold); }
+
+.body-shell { padding:32px 36px 36px; }
+
+.block { margin-bottom:32px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:500; }
+.block-head h3 em { font-style:italic; color:var(--gold); font-weight:500; }
+.block-head .meta { font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+
+/* 5-RUNG LADDER */
+.ladder { background:var(--bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.ladder-row { display:grid; grid-template-columns:64px 1fr 100px 64px; gap:0; align-items:stretch; border-bottom:1px solid var(--border); }
+.ladder-row:last-child { border-bottom:none; }
+.ladder-rung { background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-style:italic; font-size:22px; font-weight:500; }
+.ladder-row.r1 .ladder-rung { background:var(--navy-3); }
+.ladder-row.r2 .ladder-rung { background:var(--warn); color:var(--navy); }
+.ladder-row.r3 .ladder-rung { background:var(--gold); color:var(--navy); }
+.ladder-row.r4 .ladder-rung { background:var(--terra); }
+.ladder-row.r5 .ladder-rung { background:var(--terra-deep); }
+.ladder-body { padding:14px 20px; background:var(--surface); }
+.ladder-body .ld-name { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.01em; margin-bottom:3px; }
+.ladder-body .ld-desc { font-size:12px; color:var(--navy-3); line-height:1.5; }
+.ladder-body .ld-desc b { color:var(--navy-2); font-weight:600; }
+.ladder-count { background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center; border-left:1px solid var(--border); }
+.ladder-count .lc-big { font-family:'Fraunces',serif; font-size:24px; font-weight:600; line-height:1; }
+.ladder-count .lc-lab { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-top:3px; }
+.ladder-arrow { background:var(--surface); border-left:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--gold); font-weight:700; }
+
+/* LEDGER TABLE */
+.ledger-group { margin-bottom:20px; }
+.ledger-group:last-child { margin-bottom:0; }
+.ledger-head { display:flex; align-items:center; gap:14px; padding:10px 14px; background:var(--bg); border:1px solid var(--border); border-radius:8px 8px 0 0; border-bottom:none; }
+.ledger-head .lh-badge { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; }
+.ledger-head .lh-badge.note { background:var(--navy-3); color:var(--bg); }
+.ledger-head .lh-badge.warn { background:var(--warn); color:var(--navy); }
+.ledger-head .lh-badge.bond { background:var(--gold); color:var(--navy); }
+.ledger-head .lh-badge.susp { background:var(--terra); color:var(--bg); }
+.ledger-head .lh-name { font-family:'Fraunces',serif; font-size:16px; font-weight:600; }
+.ledger-head .lh-count { font-size:11px; color:var(--navy-3); font-weight:600; }
+.ledger-head .lh-tail { margin-left:auto; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.ledger-rows { border:1px solid var(--border); border-radius:0 0 8px 8px; overflow:hidden; }
+.ledger-row { display:grid; grid-template-columns:180px 100px 110px 1fr 110px 90px; gap:14px; padding:12px 14px; align-items:center; border-bottom:1px solid var(--border); font-size:13px; background:var(--surface); }
+.ledger-row:last-child { border-bottom:none; }
+.ledger-row:hover { background:var(--bg); }
+.ledger-row .student { font-weight:600; color:var(--navy); }
+.ledger-row .student .sub { display:block; font-size:11px; color:var(--navy-3); font-weight:500; margin-top:1px; }
+.ledger-row .house { font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.ledger-row .date { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); }
+.ledger-row .offence { color:var(--navy-2); line-height:1.45; }
+.ledger-row .offence b { color:var(--navy); font-weight:600; }
+.ledger-row .hm { font-size:11px; color:var(--navy-3); }
+.ledger-row .ra { display:flex; justify-content:flex-end; }
+.ledger-row .ra .mini-btn { padding:5px 10px; border-radius:5px; font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); cursor:pointer; }
+.ledger-row.flagged { background:var(--warn-bg); }
+.ledger-row.active { background:var(--gold-bg); }
+.ledger-row.active .student::after { content:" ★"; color:var(--gold); }
+
+/* DEBOARDINIZED CARDS */
+.deboard-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+.deboard-card { background:var(--surface); border:1px solid var(--terra); border-radius:10px; padding:0; overflow:hidden; }
+.deboard-card.review { border:2px solid var(--terra); box-shadow:0 0 0 4px var(--terra-bg); }
+.deboard-card-head { background:var(--terra-deep); color:var(--bg); padding:10px 16px; display:flex; align-items:center; justify-content:space-between; }
+.deboard-card-head .dh-status { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; }
+.deboard-card-head .dh-ref { font-family:'JetBrains Mono',monospace; font-size:10px; opacity:0.7; }
+.deboard-card-body { padding:16px; }
+.deboard-card-body .db-name { font-family:'Fraunces',serif; font-size:19px; font-weight:600; letter-spacing:-0.01em; margin-bottom:2px; }
+.deboard-card-body .db-meta { font-size:11px; color:var(--navy-3); margin-bottom:14px; }
+.deboard-card-body .db-meta b { color:var(--navy-2); font-weight:600; }
+.deboard-card-body .db-strike { font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--terra); font-weight:700; margin-bottom:6px; }
+.deboard-card-body .db-offence { font-size:13px; color:var(--navy-2); line-height:1.5; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.deboard-card-body .db-offence b { color:var(--navy); font-weight:600; }
+.deboard-card-body .db-row { display:flex; justify-content:space-between; font-size:11px; padding:5px 0; }
+.deboard-card-body .db-row .l { color:var(--navy-3); }
+.deboard-card-body .db-row .v { color:var(--navy-2); font-weight:600; }
+.deboard-card-body .db-cosigns { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+.deboard-card-body .cosign { font-size:9px; text-align:center; padding:6px 4px; background:var(--bg); border:1px solid var(--border); border-radius:4px; }
+.deboard-card-body .cosign .cs-role { letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:2px; }
+.deboard-card-body .cosign .cs-name { color:var(--navy-2); font-weight:600; font-size:10px; }
+.deboard-card-body .cosign.signed { background:var(--green-bg); border-color:var(--green); }
+.deboard-card-body .cosign.signed .cs-role { color:var(--green); }
+.deboard-card-body .db-review { margin-top:12px; padding:10px 12px; background:var(--terra-bg); border:1px solid var(--terra); border-radius:6px; font-size:11px; color:var(--terra-deep); line-height:1.45; }
+.deboard-card-body .db-review b { color:var(--terra-deep); font-weight:700; }
+
+/* BOND ARTEFACT */
+.bond-artefact { background:var(--surface); border:1px solid var(--gold); border-radius:10px; overflow:hidden; }
+.bond-head { background:var(--gold-bg); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--gold); }
+.bond-head .bh-l { display:flex; align-items:center; gap:14px; }
+.bond-head .bh-icon { width:36px; height:36px; background:var(--gold); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--navy); font-weight:600; }
+.bond-head .bh-title { font-family:'Fraunces',serif; font-size:17px; font-weight:600; }
+.bond-head .bh-meta { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.bond-head .bh-status { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; padding:5px 12px; background:var(--gold); color:var(--navy); border-radius:100px; }
+.bond-body { padding:24px 28px; display:grid; grid-template-columns:1fr 280px; gap:32px; }
+.bond-body .bond-prose { font-family:'Fraunces',serif; font-size:14px; line-height:1.7; color:var(--navy-2); }
+.bond-body .bond-prose .bp-title { font-family:'Fraunces',serif; font-style:italic; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); margin-bottom:14px; font-weight:600; }
+.bond-body .bond-prose .bp-sub { font-family:'Manrope',sans-serif; font-size:11px; color:var(--navy-3); margin-top:14px; line-height:1.6; padding-top:14px; border-top:1px dashed var(--border); }
+.bond-body .bond-prose .bp-sub b { color:var(--navy); font-weight:700; }
+.bond-body .bond-sigs { display:flex; flex-direction:column; gap:12px; }
+.bond-body .sig { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:10px 12px; }
+.bond-body .sig .sg-role { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:4px; }
+.bond-body .sig .sg-name { font-size:12px; color:var(--navy-2); font-weight:600; }
+.bond-body .sig .sg-line { margin-top:8px; height:24px; border-bottom:1px solid var(--navy-3); position:relative; }
+.bond-body .sig .sg-line::after { content:"awaiting signature"; position:absolute; top:6px; left:0; font-size:10px; color:var(--navy-3); letter-spacing:0.08em; text-transform:uppercase; font-weight:600; font-style:italic; }
+.bond-body .sig.signed .sg-line::after { content:"signed " attr(data-when); color:var(--green); font-style:normal; }
+.bond-body .sig.signed .sg-line { border-bottom-color:var(--green); }
+.bond-body .sig.signed { background:var(--green-bg); border-color:var(--green); }
+
+/* PENALTY FEES */
+.penalty-table { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.penalty-row { display:grid; grid-template-columns:120px 200px 1fr 120px 110px 100px; gap:14px; padding:14px 18px; align-items:center; border-bottom:1px solid var(--border); font-size:13px; background:var(--surface); }
+.penalty-row:last-child { border-bottom:none; }
+.penalty-row.head { background:var(--bg); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; padding:10px 18px; }
+.penalty-row .inv { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); }
+.penalty-row .student { font-weight:600; color:var(--navy); }
+.penalty-row .student .sub { display:block; font-size:11px; color:var(--navy-3); font-weight:500; margin-top:1px; }
+.penalty-row .calc { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.penalty-row .calc b { color:var(--navy-2); font-weight:600; }
+.penalty-row .amount { font-family:'Fraunces',serif; font-size:17px; font-weight:600; }
+.penalty-row .amount em { font-style:italic; color:var(--gold); font-weight:500; font-size:13px; margin-right:2px; }
+.penalty-row .stat { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:100px; display:inline-block; text-align:center; }
+.penalty-row .stat.outstanding { background:var(--warn-bg); color:var(--warn); }
+.penalty-row .stat.paid { background:var(--green-bg); color:var(--green); }
+.penalty-row .xlink { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--gold); font-weight:700; text-align:right; }
+.penalty-row .xlink::before { content:"↳ "; }
+
+/* PASTORAL PROTECTION */
+.pastoral-card { background:var(--green-bg); border:1px solid var(--green); border-radius:10px; padding:18px 22px; display:flex; gap:18px; align-items:flex-start; }
+.pastoral-icon { width:38px; height:38px; background:var(--green); color:var(--bg); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-style:italic; font-weight:600; flex-shrink:0; }
+.pastoral-body h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; margin-bottom:4px; color:var(--green); }
+.pastoral-body p { font-size:13px; color:var(--navy-2); line-height:1.55; }
+.pastoral-body p b { color:var(--navy); font-weight:600; }
+.pastoral-body .ref { display:inline-block; margin-top:8px; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--green); font-weight:700; padding:3px 10px; background:var(--surface); border:1px solid var(--green); border-radius:100px; }
+
+/* FOOT */
+.foot-bar { padding:20px 36px; background:var(--bg); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:24px; }
+.foot-bar .fb-stats { display:flex; gap:32px; }
+.foot-bar .fb-stat .fbs-big { font-family:'Fraunces',serif; font-size:22px; font-weight:600; line-height:1; }
+.foot-bar .fb-stat .fbs-big em { font-style:italic; color:var(--gold); }
+.foot-bar .fb-stat .fbs-lab { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-top:3px; }
+.foot-bar .fb-actions { display:flex; gap:8px; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="page-header">
+    <div>
+      <span class="mvp-tag">MVP2 · SHS</span>
+      <span class="related-tag">Boarding · 7 of 7</span>
+    </div>
+    <div class="eyebrow">Boarding · Surface 07</div>
+    <h1>Boarding <em>discipline</em> & deboardinization.</h1>
+    <div class="gold-rule"></div>
+    <p>The disciplinary ledger that sits alongside boarding operations. <b>Five rungs from informal note to deboardinization</b>, each with prescribed counter-actions, all signed by named staff, all append-only. Deboardinization — removal from the boarding roll — requires three co-signs and is reversible only by the Board. The point at which discipline first crosses into billing: <b>three times the boarding fee per unauthorised day</b>, generated as an invoice line item the moment the action is logged.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <div class="section-num">01</div>
+      <div class="section-title">The ledger</div>
+      <div class="section-meta">SENIOR HM · CROSS-HOUSE · SEMESTER 2 WEEK 2</div>
+    </div>
+
+    <div class="desktop">
+
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh/asankrangwa/boarding/discipline</div>
+        <div class="ctx">SIGNED IN AS MR K. ASARE-NTI · SENIOR HM</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">BOARDING · DISCIPLINE & DEBOARDINIZATION</div>
+          <h2>Discipline <em>ledger</em> · Semester 2, Week 2</h2>
+          <div class="lede">23 open infractions across six Houses ranging from informal note to active deboardinization. Three students currently off the boarding roll; one Board review set for Friday. Wed 14 May 2026, 14:22 GMT.</div>
+        </div>
+        <div class="actions">
+          <button class="btn ghost">Filter by House</button>
+          <button class="btn ghost">Export ledger</button>
+          <button class="btn primary">Log new infraction</button>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-card">
+          <div class="lab">OPEN THIS SEMESTER</div>
+          <div class="big">23</div>
+          <div class="sub">Across <b>6 Houses</b> · all severities</div>
+        </div>
+        <div class="sum-card warn">
+          <div class="lab">BONDS ACTIVE</div>
+          <div class="big">8</div>
+          <div class="sub">Signed and in force this semester</div>
+        </div>
+        <div class="sum-card terra">
+          <div class="lab">DEBOARDINIZED</div>
+          <div class="big">3</div>
+          <div class="sub"><b>2× Form 3</b> · <b>1× Form 1</b></div>
+        </div>
+        <div class="sum-card gold-soft">
+          <div class="lab">CO-SIGNS PENDING</div>
+          <div class="big">1</div>
+          <div class="sub">Bond signing · <b>14:30 today</b></div>
+        </div>
+        <div class="sum-card featured">
+          <div class="lab">PENALTY FEES TTD</div>
+          <div class="big"><em>GHS</em> 918.00</div>
+          <div class="sub"><b>2 invoices</b> · 1 outstanding</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <div class="block">
+          <div class="block-head">
+            <h3>The five-rung <em>ladder</em></h3>
+            <div class="meta">SCHEMA-LOCKED · ALIGNED WITH GENERAL SHS RULES</div>
+          </div>
+          <div class="ladder">
+
+            <div class="ladder-row r1">
+              <div class="ladder-rung">i</div>
+              <div class="ladder-body">
+                <div class="ld-name">Note</div>
+                <div class="ld-desc">Informal verbal correction, logged for the record. <b>No further action</b> unless pattern emerges. Three notes in a term auto-escalates to Warning.</div>
+              </div>
+              <div class="ladder-count">
+                <div class="lc-big">9</div>
+                <div class="lc-lab">Open</div>
+              </div>
+              <div class="ladder-arrow">↓</div>
+            </div>
+
+            <div class="ladder-row r2">
+              <div class="ladder-rung">ii</div>
+              <div class="ladder-body">
+                <div class="ld-name">Warning</div>
+                <div class="ld-desc"><b>One-day internal suspension</b> from class, exeat blocked for one term. Parent notified by SMS. HM signs alone.</div>
+              </div>
+              <div class="ladder-count">
+                <div class="lc-big">3</div>
+                <div class="lc-lab">Open</div>
+              </div>
+              <div class="ladder-arrow">↓</div>
+            </div>
+
+            <div class="ladder-row r3">
+              <div class="ladder-rung">iii</div>
+              <div class="ladder-body">
+                <div class="ld-name">Bond of good behaviour</div>
+                <div class="ld-desc">Student signs formal bond witnessed by HM and Senior HM. Counselling assigned. <b>Co-signs required: 3</b> (student, HM, Senior HM). Stored as printable artefact.</div>
+              </div>
+              <div class="ladder-count">
+                <div class="lc-big">8</div>
+                <div class="lc-lab">Active</div>
+              </div>
+              <div class="ladder-arrow">↓</div>
+            </div>
+
+            <div class="ladder-row r4">
+              <div class="ladder-rung">iv</div>
+              <div class="ladder-body">
+                <div class="ld-name">Suspension · external</div>
+                <div class="ld-desc"><b>Two weeks off campus</b>. Student returns home; academic work issued by tutors. Parent collects in person, signs receipt. HM + Headmaster co-sign.</div>
+              </div>
+              <div class="ladder-count">
+                <div class="lc-big">2</div>
+                <div class="lc-lab">In effect</div>
+              </div>
+              <div class="ladder-arrow">↓</div>
+            </div>
+
+            <div class="ladder-row r5">
+              <div class="ladder-rung">v</div>
+              <div class="ladder-body">
+                <div class="ld-name">Deboardinization</div>
+                <div class="ld-desc"><b>Removal from the boarding roll · day status only</b>. Co-signs required: 3 (HM, Senior HM, Headmaster). Reversible only by Board decision. <b>3× boarding fee penalty</b> per unauthorised day if student attempts return.</div>
+              </div>
+              <div class="ladder-count">
+                <div class="lc-big">3</div>
+                <div class="lc-lab">Active</div>
+              </div>
+              <div class="ladder-arrow">·</div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <h3>Active cases · <em>grouped</em> by severity</h3>
+            <div class="meta">11 ACTIVE · WED 14 MAY 2026</div>
+          </div>
+
+          <div class="ledger-group">
+            <div class="ledger-head">
+              <span class="lh-badge note">i · Note</span>
+              <span class="lh-name">Informal · logged</span>
+              <span class="lh-count">3 of 9 shown</span>
+              <span class="lh-tail">HM SIGNS ALONE</span>
+            </div>
+            <div class="ledger-rows">
+              <div class="ledger-row">
+                <div class="student">E. Boateng<span class="sub">F2 BUS A · 16y</span></div>
+                <div class="house">Guggisberg</div>
+                <div class="date">12 May · 06:23</div>
+                <div class="offence">Late to <b>roll call</b> · third instance this week · approaching auto-escalation</div>
+                <div class="hm">Mr E. Boakye</div>
+                <div class="ra"><button class="mini-btn">View</button></div>
+              </div>
+              <div class="ledger-row">
+                <div class="student">A. Mensah<span class="sub">F1 SC C · 14y</span></div>
+                <div class="house">Aggrey</div>
+                <div class="date">12 May · 05:48</div>
+                <div class="offence">Missed <b>morning duties</b> · second instance this semester</div>
+                <div class="hm">Mr A. Mensah</div>
+                <div class="ra"><button class="mini-btn">View</button></div>
+              </div>
+              <div class="ledger-row">
+                <div class="student">L. Owusu<span class="sub">F2 GS B · 16y</span></div>
+                <div class="house">Aryee</div>
+                <div class="date">11 May · 21:12</div>
+                <div class="offence">Wearing <b>unauthorised dress</b> in dorm after lights out</div>
+                <div class="hm">Mrs J. Ofori</div>
+                <div class="ra"><button class="mini-btn">View</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ledger-group">
+            <div class="ledger-head">
+              <span class="lh-badge warn">ii · Warning</span>
+              <span class="lh-name">1-day internal + exeat block</span>
+              <span class="lh-count">3 of 3 shown</span>
+              <span class="lh-tail">HM SIGNS · PARENT NOTIFIED</span>
+            </div>
+            <div class="ledger-rows">
+              <div class="ledger-row">
+                <div class="student">D. Asante<span class="sub">F2 BUS A · 16y</span></div>
+                <div class="house">Fraser</div>
+                <div class="date">12 May · 14:08</div>
+                <div class="offence">Receiving <b>visitor at unauthorised time</b> · sister appeared Tuesday afternoon, refused to leave gate</div>
+                <div class="hm">Mr K. Owusu</div>
+                <div class="ra"><button class="mini-btn">View</button></div>
+              </div>
+              <div class="ledger-row">
+                <div class="student">J. Frimpong<span class="sub">F3 GA D · 17y</span></div>
+                <div class="house">Aggrey</div>
+                <div class="date">10 May · 19:45</div>
+                <div class="offence">Repeated <b>late prep arrival</b> · three strikes auto-promoted from Note</div>
+                <div class="hm">Mr A. Mensah</div>
+                <div class="ra"><button class="mini-btn">View</button></div>
+              </div>
+              <div class="ledger-row">
+                <div class="student">F. Mensah<span class="sub">F2 GA C · 16y</span></div>
+                <div class="house">Kingsley</div>
+                <div class="date">8 May · 22:18</div>
+                <div class="offence">Possessing <b>mobile phone</b> in dorm after lights out · phone surrendered to HM</div>
+                <div class="hm">Mrs Y. Akoto</div>
+                <div class="ra"><button class="mini-btn">View</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ledger-group">
+            <div class="ledger-head">
+              <span class="lh-badge bond">iii · Bond</span>
+              <span class="lh-name">Signed bond of good behaviour</span>
+              <span class="lh-count">3 of 8 shown</span>
+              <span class="lh-tail">3 CO-SIGNS · ARTEFACT STORED</span>
+            </div>
+            <div class="ledger-rows">
+              <div class="ledger-row active">
+                <div class="student">G. Aboagye<span class="sub">F2 GA B · 16y</span></div>
+                <div class="house">Aryee</div>
+                <div class="date">14 May · 14:30</div>
+                <div class="offence"><b>Bond signing today</b> · bullying of junior student over two days · counselling scheduled · awaiting all three signatures</div>
+                <div class="hm">Mrs J. Ofori</div>
+                <div class="ra"><button class="mini-btn">Open</button></div>
+              </div>
+              <div class="ledger-row">
+                <div class="student">S. Ofori<span class="sub">F2 SC A · 16y</span></div>
+                <div class="house">Guggisberg</div>
+                <div class="date">8 May · 16:00</div>
+                <div class="offence"><b>Bullying junior</b> · bond signed · weekly counselling with Padre Kwame</div>
+                <div class="hm">Mr E. Boakye</div>
+                <div class="ra"><button class="mini-btn">Artefact</button></div>
+              </div>
+              <div class="ledger-row">
+                <div class="student">B. Tetteh<span class="sub">F3 BUS B · 17y</span></div>
+                <div class="house">Slessor</div>
+                <div class="date">5 May · 11:20</div>
+                <div class="offence"><b>Cooking with electrical appliance</b> in dorm · fire-hazard offence · bond + Matron oversight</div>
+                <div class="hm">Mrs G. Asante</div>
+                <div class="ra"><button class="mini-btn">Artefact</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ledger-group">
+            <div class="ledger-head">
+              <span class="lh-badge susp">iv · Suspension</span>
+              <span class="lh-name">2 weeks external</span>
+              <span class="lh-count">2 of 2 shown</span>
+              <span class="lh-tail">HM + HEADMASTER CO-SIGN</span>
+            </div>
+            <div class="ledger-rows">
+              <div class="ledger-row">
+                <div class="student">K. Owusu<span class="sub">F3 SC B · 17y</span></div>
+                <div class="house">Aggrey</div>
+                <div class="date">11 May · returns 25 May</div>
+                <div class="offence"><b>Fighting</b> with peer from another House during prep · injury minor · parent collected</div>
+                <div class="hm">Mr A. Mensah + Headmaster</div>
+                <div class="ra"><button class="mini-btn">View</button></div>
+              </div>
+              <div class="ledger-row flagged">
+                <div class="student">M. Boateng<span class="sub">F2 BUS C · 16y</span></div>
+                <div class="house">Kingsley</div>
+                <div class="date">9 May · returns 23 May</div>
+                <div class="offence"><b>Theft attempt</b> · chop box of dormmate forced · already on Bond from Semester 1 · pending Senior HM review for escalation</div>
+                <div class="hm">Mrs Y. Akoto + Headmaster</div>
+                <div class="ra"><button class="mini-btn">Review</button></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <h3>Currently <em>deboardinized</em></h3>
+            <div class="meta">3 STUDENTS · 1 BOARD REVIEW PENDING</div>
+          </div>
+          <div class="deboard-grid">
+
+            <div class="deboard-card">
+              <div class="deboard-card-head">
+                <span class="dh-status">Deboardinized</span>
+                <span class="dh-ref">DEB-2026-002</span>
+              </div>
+              <div class="deboard-card-body">
+                <div class="db-name">M. Yeboah</div>
+                <div class="db-meta">F3 BUS A · 17y · ex-<b>Guggisberg</b> · now day student</div>
+                <div class="db-strike">Effective · 14 Feb 2026 (Semester 1 wk 6)</div>
+                <div class="db-offence"><b>Fighting + damage to property</b> · second offence after Semester 1 Bond · assault on House Prefect during enforcement of lights out · two Houses involved</div>
+                <div class="db-row"><span class="l">Days off roll</span><span class="v">89 days</span></div>
+                <div class="db-row"><span class="l">Bond status</span><span class="v">Semester 1 bond breached</span></div>
+                <div class="db-row"><span class="l">Penalty invoice</span><span class="v">— (no return attempt)</span></div>
+                <div class="db-cosigns">
+                  <div class="cosign signed"><div class="cs-role">HM</div><div class="cs-name">E. Boakye</div></div>
+                  <div class="cosign signed"><div class="cs-role">SR HM</div><div class="cs-name">K. Asare-Nti</div></div>
+                  <div class="cosign signed"><div class="cs-role">HEAD</div><div class="cs-name">Dr S. Owusu</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="deboard-card">
+              <div class="deboard-card-head">
+                <span class="dh-status">Deboardinized</span>
+                <span class="dh-ref">DEB-2026-001</span>
+              </div>
+              <div class="deboard-card-body">
+                <div class="db-name">P. Annan</div>
+                <div class="db-meta">F3 SC C · 17y · ex-<b>Fraser</b> · now day student</div>
+                <div class="db-strike">Effective · 6 Feb 2026 (Semester 1 wk 5)</div>
+                <div class="db-offence"><b>Repeated unauthorised exit</b> + housing deboardinized student · sneaked out via perimeter four nights running · admitted to harbouring a previously-removed peer</div>
+                <div class="db-row"><span class="l">Days off roll</span><span class="v">97 days</span></div>
+                <div class="db-row"><span class="l">Bond status</span><span class="v">Semester 1 bond breached</span></div>
+                <div class="db-row"><span class="l">Penalty invoice</span><span class="v">PEN-2026-009 · paid</span></div>
+                <div class="db-cosigns">
+                  <div class="cosign signed"><div class="cs-role">HM</div><div class="cs-name">K. Owusu</div></div>
+                  <div class="cosign signed"><div class="cs-role">SR HM</div><div class="cs-name">K. Asare-Nti</div></div>
+                  <div class="cosign signed"><div class="cs-role">HEAD</div><div class="cs-name">Dr S. Owusu</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="deboard-card review">
+              <div class="deboard-card-head" style="background:var(--terra);">
+                <span class="dh-status">★ Board review pending</span>
+                <span class="dh-ref">DEB-2026-003</span>
+              </div>
+              <div class="deboard-card-body">
+                <div class="db-name">K. Donkor</div>
+                <div class="db-meta">F1 GA C · 14y · ex-<b>Aggrey</b> · awaiting decision</div>
+                <div class="db-strike">Effective · 12 May 2026 · 2 days ago</div>
+                <div class="db-offence"><b>Theft of provisions</b> from dormitory chop boxes · second offence · signed false bond declaration · attempted unauthorised return Mon night</div>
+                <div class="db-row"><span class="l">Days off roll</span><span class="v">2 days</span></div>
+                <div class="db-row"><span class="l">Unauthorised days</span><span class="v">1 (Mon night)</span></div>
+                <div class="db-row"><span class="l">Penalty invoice</span><span class="v">PEN-2026-014 · outstanding</span></div>
+                <div class="db-cosigns">
+                  <div class="cosign signed"><div class="cs-role">HM</div><div class="cs-name">A. Mensah</div></div>
+                  <div class="cosign signed"><div class="cs-role">SR HM</div><div class="cs-name">K. Asare-Nti</div></div>
+                  <div class="cosign signed"><div class="cs-role">HEAD</div><div class="cs-name">Dr S. Owusu</div></div>
+                </div>
+                <div class="db-review"><b>Board review</b> · Fri 16 May, 10:00 GMT · Headmaster has filed motion for Bond reinstatement on grounds of student age (14) and admission of remorse. Parent attending. Outcome appended to record.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <h3>Bond <em>artefact</em> in flight</h3>
+            <div class="meta">G. ABOAGYE · F2 GA · ARYEE · SIGNING SCHEDULED 14:30 TODAY</div>
+          </div>
+          <div class="bond-artefact">
+
+            <div class="bond-head">
+              <div class="bh-l">
+                <div class="bh-icon">B</div>
+                <div>
+                  <div class="bh-title">Bond of good behaviour</div>
+                  <div class="bh-meta">BOND-2026-014 · Asankrangwa SHS · Semester 2 · Wed 14 May 2026</div>
+                </div>
+              </div>
+              <span class="bh-status">Awaiting 3 signatures</span>
+            </div>
+
+            <div class="bond-body">
+
+              <div class="bond-prose">
+                <div class="bp-title">— BOND TEXT (STANDARD FORM) —</div>
+                I, <b>Grace Aboagye</b>, a student of Form 2 General Arts at Asankrangwa Senior High School and a boarder in Aryee House, do hereby acknowledge that on the eighth and ninth days of May, two thousand and twenty-six, I did engage in repeated bullying of a Form 1 dormmate, contrary to the rules of the school and the bond of mutual care that binds this House.
+                <br><br>
+                I undertake before the Housemistress and the Senior Housemaster that I shall not, for the remainder of my time in this school, engage in any conduct that demeans, intimidates, or causes harm to any junior or peer student. I commit to weekly counselling with the Padre for the duration of this semester. I accept that any breach of this bond shall constitute grounds for external suspension and may proceed to deboardinization.
+                <br><br>
+                Signed this fourteenth day of May, two thousand and twenty-six.
+                <div class="bp-sub"><b>Note · pastoral cross-reference clear.</b> No active pastoral case on student record. Bond proceeds at standard escalation. Filed under Aryee House · BOND-2026-014.</div>
+              </div>
+
+              <div class="bond-sigs">
+                <div class="sig">
+                  <div class="sg-role">Student</div>
+                  <div class="sg-name">G. Aboagye</div>
+                  <div class="sg-line"></div>
+                </div>
+                <div class="sig">
+                  <div class="sg-role">Housemistress · witness</div>
+                  <div class="sg-name">Mrs J. Ofori · Aryee</div>
+                  <div class="sg-line"></div>
+                </div>
+                <div class="sig">
+                  <div class="sg-role">Senior HM · witness</div>
+                  <div class="sg-name">Mr K. Asare-Nti</div>
+                  <div class="sg-line"></div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <h3>Penalty <em>invoices</em> · cross-module to billing</h3>
+            <div class="meta">3× BOARDING FEE PER UNAUTHORISED DAY</div>
+          </div>
+          <div class="penalty-table">
+
+            <div class="penalty-row head">
+              <div>INVOICE</div>
+              <div>STUDENT</div>
+              <div>CALCULATION</div>
+              <div>AMOUNT</div>
+              <div>STATUS</div>
+              <div></div>
+            </div>
+
+            <div class="penalty-row">
+              <div class="inv">PEN-2026-014</div>
+              <div class="student">K. Donkor<span class="sub">F1 GA · ex-Aggrey</span></div>
+              <div class="calc">Unauthorised return · Mon 12 May night → discovered Tue 06:10. <b>1 day</b> × GHS 136.00 boarding/day × <b>3</b> = GHS 408.00</div>
+              <div class="amount"><em>GHS</em> 408.00</div>
+              <div><span class="stat outstanding">Outstanding</span></div>
+              <div class="xlink">View in billing</div>
+            </div>
+
+            <div class="penalty-row">
+              <div class="inv">PEN-2026-009</div>
+              <div class="student">P. Annan<span class="sub">F3 SC · ex-Fraser</span></div>
+              <div class="calc">Unauthorised exits · 4 nights from 28 Jan → 1 Feb. <b>4 days</b> × GHS 125.00 boarding/day × <b>3</b> = GHS 1,500.00 → adjusted GHS 510.00 (Head's discretion, partial)</div>
+              <div class="amount"><em>GHS</em> 510.00</div>
+              <div><span class="stat paid">Paid</span></div>
+              <div class="xlink">View in billing</div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <h3>Pastoral <em>protection</em> · cross-reference</h3>
+            <div class="meta">FROM VLC · 1 STUDENT FLAGGED</div>
+          </div>
+          <div class="pastoral-card">
+            <div class="pastoral-icon">§</div>
+            <div class="pastoral-body">
+              <h4>A. Quartey · F3 GA A · Slessor House</h4>
+              <p>Active pastoral case file open with the Dean and external social services since Semester 1. <b>Any disciplinary action flagged for Senior HM review before logging.</b> No infractions on record this semester; surface notes that two near-incidents were re-routed to the Dean rather than the ledger. The ladder pauses where pastoral cases run.</p>
+              <span class="ref">↳ See VLC pastoral flag · case 2026-014</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="foot-bar">
+        <div class="fb-stats">
+          <div class="fb-stat">
+            <div class="fbs-big">23</div>
+            <div class="fbs-lab">Open cases</div>
+          </div>
+          <div class="fb-stat">
+            <div class="fbs-big">3</div>
+            <div class="fbs-lab">Deboardinized</div>
+          </div>
+          <div class="fb-stat">
+            <div class="fbs-big">8</div>
+            <div class="fbs-lab">Active bonds</div>
+          </div>
+          <div class="fb-stat">
+            <div class="fbs-big"><em>GHS</em> 408</div>
+            <div class="fbs-lab">Penalty outstanding</div>
+          </div>
+          <div class="fb-stat">
+            <div class="fbs-big">14:30</div>
+            <div class="fbs-lab">Next signing</div>
+          </div>
+        </div>
+        <div class="fb-actions">
+          <button class="btn ghost">Audit log</button>
+          <button class="btn gold">Open bond signing room</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <div class="section-num">02</div>
+      <div class="section-title">Architecture</div>
+      <div class="section-meta">DESIGN NOTES · BOARDING 07</div>
+    </div>
+    <div class="layout">
+      <div class="prose">
+        <p>Discipline is the most <em>consequential routine action</em> a school takes. A test score affects one transcript; a deboardinization changes where a child sleeps for the next year of their life. The surface treats the work with that weight: nothing is deletable, every action is signed by named staff, and the ladder is locked into the schema so that no school can quietly invent a sixth rung between Bond and Suspension.</p>
+        <p>The <b>five rungs are schema-locked</b> against the canonical General SHS Rules: Note, Warning, Bond, Suspension, Deboardinization. Each rung specifies its required co-signs — one for Note and Warning (HM alone), three for Bond (student, HM, Senior HM), two for Suspension (HM + Headmaster), three for Deboardinization (HM, Senior HM, Headmaster). The co-sign count is enforced at the database — a Deboardinization with only two signatures simply cannot be written.</p>
+        <p>The most surprising design choice is treating <em>discipline as a cross-module trigger into billing</em>. The "three times the boarding fee per unauthorised day" rule from the General SHS Rules creates an invoice line item the moment the action is logged, not at end of semester. The Headmaster has discretion to adjust the figure (PEN-2026-009 above was reduced from GHS 1,500 to GHS 510 at Head's discretion) but the adjustment itself is logged with a reason. This is the first time we've had discipline and billing share a record.</p>
+        <p>Deboardinization carries a special status: <b>reversible only by the Board</b>, never by the school. A Headmaster who imposes a deboardinization in week six cannot quietly reverse it in week eight if the student's parents apply pressure. The Board meets termly. K. Donkor's record above shows the Board review window in operation — a 14-year-old caught two days into the action, parents present, Head filing a motion for Bond reinstatement. The architecture lets that motion exist as a first-class object on the record, regardless of outcome.</p>
+        <p>The <b>pastoral protection cross-reference</b> is the humane layer over the punitive one. A. Quartey, escalated through the VLC pastoral flag system in the prior batch, appears here not as an offender but as a <em>flagged student whose discipline route runs through the Dean instead</em>. Near-incidents that would have produced a Note for another student are re-routed before they enter the ledger. The ladder pauses where pastoral cases run. This is a hard line: no child carrying social services involvement should accumulate disciplinary points from the boarding system the same way a peer would.</p>
+        <p>The bond-of-good-behaviour artefact is the most ceremonial element of the surface. The standard text is rendered in Fraunces serif because the document is meant to feel like what it is — a signed promise between three named people, archived against the student's file for the rest of their school career. The digital surface produces a printable copy; both the digital record and the paper copy carry the same identifier. <b>The signing room is a room.</b> The 14:30 appointment for G. Aboagye's bond happens at a table with three chairs and a witness; the software just makes sure the right people show up with the right paper.</p>
+      </div>
+      <div class="notes">
+        <h4>Architectural decisions</h4>
+        <ul>
+          <li><b>5-rung ladder</b> schema-locked against the canonical General SHS Rules · no sixth rung permitted</li>
+          <li><b>Co-sign requirements</b> enforced at the database · a Deboardinization with two signatures cannot be written</li>
+          <li><b>Append-only ledger</b> · no infraction is deletable · corrections appear as additional rows</li>
+          <li><b>3× boarding fee penalty</b> per unauthorised day · cross-module trigger into billing · Head has discretion to adjust with reason logged</li>
+          <li><b>Reversible only by Board</b> · deboardinization carries that status as a field, not a culture</li>
+          <li><b>Board review window</b> first-class · motions filed and outcomes appended regardless of decision</li>
+          <li><b>Pastoral protection flag</b> · students with active pastoral cases bypass the disciplinary ladder and route through the Dean</li>
+          <li><b>Bond as printable artefact</b> · serif-rendered standard form, three signatures, paper and digital identical identifier</li>
+          <li><b>"Unauthorised return" detection</b> · cross-references deboardinized roll against bunk-inspection roll at 06:10 each morning</li>
+          <li><b>House → HM chain</b> · every infraction routes to the resident HM by default, Senior HM sees cross-house view</li>
+          <li><b>Auto-escalation rules</b> · 3 Notes in a term → Warning · 2 Warnings in a term → Bond eligibility (HM decides)</li>
+          <li><b>Parent notification</b> at Warning and above · SMS via the existing communications module</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

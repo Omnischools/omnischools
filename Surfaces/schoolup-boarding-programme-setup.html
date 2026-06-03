@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Boarding programme setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.browser-bar .ctx { margin-left:auto; font-size:10px; letter-spacing:0.12em; color:rgba(232,212,184,0.6); font-weight:600; text-transform:uppercase; }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.sum-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.sum-card.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-card.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-card .big { font-family:'Fraunces',serif; font-size:26px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-card .big em { font-style:italic; color:var(--gold); }
+.sum-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-card.featured .sub { color:rgba(232,212,184,0.6); }
+.sum-card .sub b { color:var(--navy-2); font-weight:600; }
+.sum-card.featured .sub b { color:var(--gold); }
+
+.body-shell { padding:32px 36px 36px; }
+
+.block { margin-bottom:36px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+.block-head .actions { display:flex; gap:8px; }
+
+/* Houses grid */
+.houses-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+.house-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0; overflow:hidden; }
+.house-card .h-band { height:6px; background:var(--gold); }
+.house-card .h-body { padding:18px 20px; }
+.house-card .h-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed var(--border); }
+.house-card .h-head .info h4 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; line-height:1.15; }
+.house-card .h-head .info h4 em { font-style:italic; color:var(--gold); }
+.house-card .h-head .info .sub { font-size:10px; color:var(--navy-3); margin-top:4px; letter-spacing:0.02em; }
+.house-card .h-head .info .sub b { color:var(--navy-2); font-weight:600; }
+.house-card .gender-pill { padding:3px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; }
+.house-card .gender-pill.boys { background:var(--navy); color:var(--bg); }
+.house-card .gender-pill.girls { background:var(--terra); color:var(--bg); }
+.house-card .cap-row { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:14px; }
+.house-card .cap-cell { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px; }
+.house-card .cap-cell .l { font-size:9px; color:var(--navy-3); letter-spacing:0.06em; text-transform:uppercase; font-weight:700; }
+.house-card .cap-cell .v { font-family:'Fraunces',serif; font-size:16px; font-weight:600; margin-top:2px; line-height:1; }
+.house-card .cap-cell .v em { font-style:italic; color:var(--gold); }
+.house-card .occupancy { height:6px; background:var(--border); border-radius:100px; overflow:hidden; margin-bottom:12px; }
+.house-card .occupancy .fill { height:100%; background:var(--green); }
+.house-card .occupancy .fill.warn { background:var(--warn); }
+.house-card .hm-row { display:flex; align-items:center; gap:10px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:8px; }
+.house-card .hm-row .av { width:30px; height:30px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:11px; font-weight:700; flex-shrink:0; }
+.house-card .hm-row .info { flex:1; }
+.house-card .hm-row .info .lab { font-size:9px; color:var(--navy-3); letter-spacing:0.06em; text-transform:uppercase; font-weight:700; }
+.house-card .hm-row .info .nm { font-size:12px; font-weight:700; color:var(--navy); }
+.house-card .hm-row .info .role { font-size:10px; color:var(--navy-3); margin-top:1px; }
+
+/* Daily schedule */
+.schedule-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.schedule-row { display:grid; grid-template-columns:120px 100px 1fr 90px; gap:14px; padding:11px 22px; border-bottom:1px solid var(--border); align-items:center; font-size:12px; }
+.schedule-row:last-child { border-bottom:none; }
+.schedule-row.section-marker { background:var(--bg); padding:8px 22px; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.schedule-row.now { background:var(--gold-bg); border-left:3px solid var(--gold); padding-left:19px; }
+.schedule-row.now::after { content:"NOW"; font-size:9px; color:var(--navy); background:var(--gold); padding:2px 7px; border-radius:100px; font-weight:700; letter-spacing:0.08em; }
+.schedule-row .time { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--navy-2); font-weight:600; letter-spacing:0.02em; }
+.schedule-row .duration { font-size:10px; color:var(--navy-3); font-family:'JetBrains Mono',monospace; }
+.schedule-row .activity { font-family:'Fraunces',serif; font-size:13px; font-weight:600; }
+.schedule-row .activity em { font-style:italic; color:var(--gold); }
+.schedule-row .who { text-align:right; font-size:10px; color:var(--navy-3); letter-spacing:0.04em; font-weight:600; text-transform:uppercase; }
+.schedule-row.now .who { color:var(--gold); }
+
+/* Policy cards strip */
+.policy-strip { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.policy-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 22px; }
+.policy-card .pc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed var(--border); }
+.policy-card .pc-head h4 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; line-height:1.2; }
+.policy-card .pc-head h4 em { font-style:italic; color:var(--gold); }
+.policy-card .pc-head .pill { padding:3px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; background:var(--gold-bg); color:var(--gold); }
+.policy-card .pc-body { display:flex; flex-direction:column; gap:8px; }
+.policy-line { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed var(--border); font-size:11px; }
+.policy-line:last-child { border-bottom:none; }
+.policy-line .l { color:var(--navy-3); font-weight:500; }
+.policy-line .v { font-family:'Fraunces',serif; font-weight:600; color:var(--navy); }
+.policy-line .v em { font-style:italic; color:var(--gold); }
+.policy-line .v.mono { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; }
+
+/* Calendar card */
+.calendar-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 26px; }
+.cal-grid { display:grid; grid-template-columns:repeat(6, 1fr); gap:8px; margin-bottom:14px; }
+.cal-event { padding:10px 12px; border-radius:8px; background:var(--bg); border:1px solid var(--border); border-left:3px solid var(--green); }
+.cal-event.past { opacity:0.55; }
+.cal-event.upcoming { border-left-color:var(--gold); background:var(--gold-bg); }
+.cal-event.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.cal-event .typ { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--green); font-weight:700; }
+.cal-event.upcoming .typ { color:var(--gold); }
+.cal-event.warn .typ { color:var(--warn); }
+.cal-event .date { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--navy); margin-top:2px; }
+.cal-event .name { font-size:11px; color:var(--navy-2); margin-top:3px; line-height:1.3; font-weight:600; }
+.cal-foot { padding:12px 14px; background:var(--bg); border-radius:8px; font-size:11px; color:var(--navy-2); line-height:1.5; border-left:3px solid var(--gold); }
+.cal-foot b { color:var(--navy); font-weight:700; }
+.cal-foot em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+/* Deboardinization ladder */
+.ladder-card { background:var(--navy); color:var(--bg); border-radius:14px; padding:26px 30px; }
+.ladder-card .lc-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.1); }
+.ladder-card .lc-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.ladder-card .lc-head h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; }
+.ladder-card .lc-head h4 em { font-style:italic; color:var(--gold); }
+.ladder-card .lc-head .meta { font-size:11px; color:rgba(232,212,184,0.7); font-family:'JetBrains Mono',monospace; font-weight:600; }
+.ladder-rows { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; }
+.lad { background:rgba(255,255,255,0.04); border:1px solid rgba(232,212,184,0.15); border-radius:10px; padding:14px 14px; }
+.lad.terra { background:rgba(184,74,57,0.15); border-color:var(--terra); }
+.lad.warn { background:rgba(197,138,46,0.12); border-color:var(--warn); }
+.lad .stage { font-family:'Fraunces',serif; font-style:italic; font-size:13px; color:var(--gold); font-weight:600; }
+.lad .name { font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-top:6px; color:var(--bg); line-height:1.2; }
+.lad .desc { font-size:10px; color:rgba(232,212,184,0.75); margin-top:8px; line-height:1.45; }
+.lad .desc b { color:var(--bg); font-weight:600; }
+.lad .penalty { margin-top:10px; padding-top:8px; border-top:1px dashed rgba(232,212,184,0.2); font-size:9px; color:var(--gold); letter-spacing:0.06em; font-weight:700; text-transform:uppercase; }
+
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Boarding batch · 01 of 07</div>
+  <span class="mvp-tag">SHS · Senior Housemaster + Admin · configuration</span>
+  <span class="related-tag">The foundation surface · everything else reads from this</span>
+  <h1 class="display">The <em>boarding programme</em> · structure, rhythm, ladder</h1>
+  <div class="gold-rule"></div>
+  <p>What the Senior Housemaster and Admin configure once at programme setup, and revisit once a year at start-of-session. <b>Six Houses</b>, each with a colour, a capacity, and a Housemaster who lives in the bungalow attached to the dormitory block. <b>The daily rhythm</b> from rising at 4:30 AM to lights out at 9:30 PM, every weekday for thirty weeks. <b>Three policy doctrines</b> — exeats, visiting, and deboardinization — that govern how a student crosses the school gate during term. <em>None of this is incidental. It is the architecture of what boarding actually is.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The programme as configured · Asankrangwa SHS · 2025/26</div>
+    <div class="section-meta">Boarding → Programme → Setup</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / boarding / programme / setup</div>
+        <div class="ctx">CO-ED · SINGLE-TRACK · GES CAL 2025/26</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Boarding &amp; residential life · Programme setup · 2025/26 academic year</div>
+          <h2 class="display">Asankrangwa SHS <em>· six Houses, 720 boarders</em></h2>
+          <div class="lede">Semester 2 · Week 2 · single-track calendar · resumption was 11 days ago (May 3) · next visiting Sunday this Sunday (May 17) · vacation Aug 21 for Forms 1 &amp; 2, June 21 for Form 3 (post-WASSCE) · 8 vacant bunks · 3 students currently deboardinized</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">View change history</button>
+          <button class="btn">Edit programme</button>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-card featured">
+          <div class="lab">Houses configured</div>
+          <div class="big display"><em>6</em></div>
+          <div class="sub"><b>3 boys'</b> · 3 girls' · 120 cap each</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Boarder capacity</div>
+          <div class="big display"><em>720</em> / 720</div>
+          <div class="sub"><b>712 boarding</b> · 8 vacant bunks · 99% utilisation</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Day students</div>
+          <div class="big display"><em>480</em></div>
+          <div class="sub">Not in boarding rolls · 1,200 total enrolment</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Deboardinized</div>
+          <div class="big display"><em>3</em> active</div>
+          <div class="sub">Reverted to day · 2 Form 3 · 1 Form 1 · 1 board review pending</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Exeat quota · term</div>
+          <div class="big display"><em>3</em> × per semester</div>
+          <div class="sub">Plus special exeats · parent-initiated, Senior HM signs</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- Houses grid -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">The six Houses · the social and pastoral unit</div>
+              <h3 class="display">Houses <em>· named, coloured, capped, staffed</em></h3>
+            </div>
+            <div class="meta"><b>Capacity governed centrally</b> · individual student-to-dormitory-to-bed assignment lives on surface 02</div>
+          </div>
+
+          <div class="houses-grid">
+
+            <div class="house-card">
+              <div class="h-band" style="background:#B43A2F;"></div>
+              <div class="h-body">
+                <div class="h-head">
+                  <div class="info">
+                    <h4 class="display">Aggrey <em>House</em></h4>
+                    <div class="sub"><b>Colour</b> red · <b>Founded</b> 1956 · named after Dr J. E. K. Aggrey</div>
+                  </div>
+                  <div class="gender-pill boys">BOYS</div>
+                </div>
+                <div class="cap-row">
+                  <div class="cap-cell"><div class="l">Dorms</div><div class="v display">8</div></div>
+                  <div class="cap-cell"><div class="l">Beds</div><div class="v display"><em>120</em></div></div>
+                  <div class="cap-cell"><div class="l">Filled</div><div class="v display">119</div></div>
+                </div>
+                <div class="occupancy"><div class="fill" style="width:99%;"></div></div>
+                <div class="hm-row">
+                  <div class="av">AM</div>
+                  <div class="info">
+                    <div class="lab">Housemaster</div>
+                    <div class="nm">Mr A. Mensah</div>
+                    <div class="role">Resident · also Form Master GA A</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="house-card">
+              <div class="h-band" style="background:#1A2B47;"></div>
+              <div class="h-body">
+                <div class="h-head">
+                  <div class="info">
+                    <h4 class="display">Guggisberg <em>House</em></h4>
+                    <div class="sub"><b>Colour</b> navy blue · <b>Founded</b> 1956 · governor &amp; co-founder</div>
+                  </div>
+                  <div class="gender-pill boys">BOYS</div>
+                </div>
+                <div class="cap-row">
+                  <div class="cap-cell"><div class="l">Dorms</div><div class="v display">8</div></div>
+                  <div class="cap-cell"><div class="l">Beds</div><div class="v display"><em>120</em></div></div>
+                  <div class="cap-cell"><div class="l">Filled</div><div class="v display">118</div></div>
+                </div>
+                <div class="occupancy"><div class="fill" style="width:98%;"></div></div>
+                <div class="hm-row">
+                  <div class="av">EB</div>
+                  <div class="info">
+                    <div class="lab">Housemaster</div>
+                    <div class="nm">Mr E. Boakye</div>
+                    <div class="role">Resident · also HoD Mathematics</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="house-card">
+              <div class="h-band" style="background:#2F6B47;"></div>
+              <div class="h-body">
+                <div class="h-head">
+                  <div class="info">
+                    <h4 class="display">Fraser <em>House</em></h4>
+                    <div class="sub"><b>Colour</b> bottle green · <b>Founded</b> 1958 · first Principal Rev A. G. Fraser</div>
+                  </div>
+                  <div class="gender-pill boys">BOYS</div>
+                </div>
+                <div class="cap-row">
+                  <div class="cap-cell"><div class="l">Dorms</div><div class="v display">8</div></div>
+                  <div class="cap-cell"><div class="l">Beds</div><div class="v display"><em>120</em></div></div>
+                  <div class="cap-cell"><div class="l">Filled</div><div class="v display">117</div></div>
+                </div>
+                <div class="occupancy"><div class="fill warn" style="width:97%;"></div></div>
+                <div class="hm-row">
+                  <div class="av">KO</div>
+                  <div class="info">
+                    <div class="lab">Housemaster</div>
+                    <div class="nm">Mr K. Owusu</div>
+                    <div class="role">Resident · also HoD Science</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="house-card">
+              <div class="h-band" style="background:#FFFFFF; border-bottom:1px solid var(--border-2);"></div>
+              <div class="h-body">
+                <div class="h-head">
+                  <div class="info">
+                    <h4 class="display">Slessor <em>House</em></h4>
+                    <div class="sub"><b>Colour</b> white · <b>Founded</b> 1965 · Mary Slessor, missionary</div>
+                  </div>
+                  <div class="gender-pill girls">GIRLS</div>
+                </div>
+                <div class="cap-row">
+                  <div class="cap-cell"><div class="l">Dorms</div><div class="v display">8</div></div>
+                  <div class="cap-cell"><div class="l">Beds</div><div class="v display"><em>120</em></div></div>
+                  <div class="cap-cell"><div class="l">Filled</div><div class="v display">120</div></div>
+                </div>
+                <div class="occupancy"><div class="fill" style="width:100%;"></div></div>
+                <div class="hm-row">
+                  <div class="av">GA</div>
+                  <div class="info">
+                    <div class="lab">Housemistress</div>
+                    <div class="nm">Mrs G. Asante</div>
+                    <div class="role">Resident · also Form Master GA Form 3</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="house-card">
+              <div class="h-band" style="background:#E5C44A;"></div>
+              <div class="h-body">
+                <div class="h-head">
+                  <div class="info">
+                    <h4 class="display">Kingsley <em>House</em></h4>
+                    <div class="sub"><b>Colour</b> yellow · <b>Founded</b> 1972 · Mary Kingsley, explorer</div>
+                  </div>
+                  <div class="gender-pill girls">GIRLS</div>
+                </div>
+                <div class="cap-row">
+                  <div class="cap-cell"><div class="l">Dorms</div><div class="v display">8</div></div>
+                  <div class="cap-cell"><div class="l">Beds</div><div class="v display"><em>120</em></div></div>
+                  <div class="cap-cell"><div class="l">Filled</div><div class="v display">119</div></div>
+                </div>
+                <div class="occupancy"><div class="fill" style="width:99%;"></div></div>
+                <div class="hm-row">
+                  <div class="av">YA</div>
+                  <div class="info">
+                    <div class="lab">Housemistress</div>
+                    <div class="nm">Mrs Y. Akoto</div>
+                    <div class="role">Resident · also Form Master Form 1 GS</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="house-card">
+              <div class="h-band" style="background:#9B6FAA;"></div>
+              <div class="h-body">
+                <div class="h-head">
+                  <div class="info">
+                    <h4 class="display">Aryee <em>House</em></h4>
+                    <div class="sub"><b>Colour</b> mauve · <b>Founded</b> 2014 · Rev Dr Joyce Aryee, alumna</div>
+                  </div>
+                  <div class="gender-pill girls">GIRLS</div>
+                </div>
+                <div class="cap-row">
+                  <div class="cap-cell"><div class="l">Dorms</div><div class="v display">8</div></div>
+                  <div class="cap-cell"><div class="l">Beds</div><div class="v display"><em>120</em></div></div>
+                  <div class="cap-cell"><div class="l">Filled</div><div class="v display">119</div></div>
+                </div>
+                <div class="occupancy"><div class="fill" style="width:99%;"></div></div>
+                <div class="hm-row">
+                  <div class="av">JO</div>
+                  <div class="info">
+                    <div class="lab">Housemistress</div>
+                    <div class="nm">Mrs J. Ofori</div>
+                    <div class="role">Resident · also Form Master Form 2 BUS</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Daily schedule -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">The daily rhythm · Monday — Friday template</div>
+              <h3 class="display">From <em>rising at 4:30 AM</em> to lights out at 9:30 PM</h3>
+            </div>
+            <div class="meta">Configurable per school · Saturday &amp; Sunday schedules are separate templates · Form 3 prep extends to 10 PM during WASSCE prep</div>
+          </div>
+
+          <div class="schedule-card">
+            <div class="schedule-row section-marker">Morning · the inspection block · 4:30 → 7:00 AM</div>
+            <div class="schedule-row">
+              <div class="time">04:30 — 05:00</div>
+              <div class="duration">30 min</div>
+              <div class="activity display">Rising · prayer · personal hygiene begins</div>
+              <div class="who">House</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">05:00 — 05:30</div>
+              <div class="duration">30 min</div>
+              <div class="activity display">Bathing, dressing, bed-laying</div>
+              <div class="who">House · self</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">05:30 — 06:10</div>
+              <div class="duration">40 min</div>
+              <div class="activity display">Morning duties <em>· dormitory cleaning, surroundings</em></div>
+              <div class="who">Prefect-led</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">06:10 — 06:20</div>
+              <div class="duration">10 min</div>
+              <div class="activity display">Daily inspection <em>· bunks, lockers, attire</em></div>
+              <div class="who">Housemaster</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">06:20 — 06:30</div>
+              <div class="duration">10 min</div>
+              <div class="activity display">Roll call · trafficking to assembly hall</div>
+              <div class="who">House · SoD</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">06:30 — 06:50</div>
+              <div class="duration">20 min</div>
+              <div class="activity display">Assembly · prayers · school anthem · announcements</div>
+              <div class="who">School-wide</div>
+            </div>
+
+            <div class="schedule-row section-marker">Academic day · 7:00 AM → 2:20 PM</div>
+            <div class="schedule-row">
+              <div class="time">07:00 — 14:20</div>
+              <div class="duration">7 hr 20</div>
+              <div class="activity display">Classes <em>· 9 periods, 1 break, 1 mid-morning snack</em></div>
+              <div class="who">Academic timetable</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">14:20 — 14:50</div>
+              <div class="duration">30 min</div>
+              <div class="activity display">Lunch · dining hall <em>· all boarders, sittings by House</em></div>
+              <div class="who">Dining Hall Prefect</div>
+            </div>
+
+            <div class="schedule-row section-marker">Afternoon · siesta block · 3:00 → 4:30 PM · current time</div>
+            <div class="schedule-row now">
+              <div class="time">15:00 — 16:00</div>
+              <div class="duration">60 min</div>
+              <div class="activity display">Siesta <em>· mandatory rest, no movement</em></div>
+              <div class="who">House · silent</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">16:00 — 16:30</div>
+              <div class="duration">30 min</div>
+              <div class="activity display">Wash down · uniform change to outing wear</div>
+              <div class="who">Self</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">16:30 — 17:30</div>
+              <div class="duration">60 min</div>
+              <div class="activity display">Readwide · remedial classes <em>· optional Tue / Thu</em></div>
+              <div class="who">Teaching staff</div>
+            </div>
+
+            <div class="schedule-row section-marker">Evening · prep block · 5:30 → 9:30 PM</div>
+            <div class="schedule-row">
+              <div class="time">17:30 — 18:00</div>
+              <div class="duration">30 min</div>
+              <div class="activity display">Supper · dining hall</div>
+              <div class="who">Dining Hall Prefect</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">19:00 — 21:00</div>
+              <div class="duration">2 hr</div>
+              <div class="activity display">Prep <em>· supervised study · classrooms by year</em></div>
+              <div class="who">Prep Master rota</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">21:00 — 21:30</div>
+              <div class="duration">30 min</div>
+              <div class="activity display">Night prayer · lights out announcement</div>
+              <div class="who">House · SoD</div>
+            </div>
+            <div class="schedule-row">
+              <div class="time">21:30</div>
+              <div class="duration">—</div>
+              <div class="activity display">Lights out <em>· no movement</em> · F3 prep ext to 22:00</div>
+              <div class="who">Housemaster</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Policy strip: Exeat, Visiting, Inspection -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">The three gate policies · how a student crosses the school boundary</div>
+              <h3 class="display">Exeats, visiting, inspection <em>· the operational doctrines</em></h3>
+            </div>
+            <div class="meta">Editable per school · GES default values shown</div>
+          </div>
+
+          <div class="policy-strip">
+
+            <div class="policy-card">
+              <div class="pc-head">
+                <h4 class="display">Exeat <em>policy</em></h4>
+                <div class="pill">3 PER TERM</div>
+              </div>
+              <div class="pc-body">
+                <div class="policy-line"><span class="l">Scheduled exeats / term</span><span class="v display"><em>3</em></span></div>
+                <div class="policy-line"><span class="l">Return-by time</span><span class="v mono">16:00</span></div>
+                <div class="policy-line"><span class="l">Dress code returning</span><span class="v">Uniform or outing dress</span></div>
+                <div class="policy-line"><span class="l">Fee-owing student rule</span><span class="v">Must collect fees</span></div>
+                <div class="policy-line"><span class="l">Special exeats</span><span class="v">Senior HM only</span></div>
+                <div class="policy-line"><span class="l">Parent-initiated</span><span class="v">Allowed · in writing</span></div>
+                <div class="policy-line"><span class="l">Exeat card</span><span class="v">Signed by Housemaster</span></div>
+              </div>
+            </div>
+
+            <div class="policy-card">
+              <div class="pc-head">
+                <h4 class="display">Visiting <em>day</em></h4>
+                <div class="pill">2ND SUN</div>
+              </div>
+              <div class="pc-body">
+                <div class="policy-line"><span class="l">Cadence</span><span class="v">2nd Sun · monthly</span></div>
+                <div class="policy-line"><span class="l">Visiting hours</span><span class="v mono">12:00 — 16:00</span></div>
+                <div class="policy-line"><span class="l">Lunch served</span><span class="v mono">11:30</span></div>
+                <div class="policy-line"><span class="l">Dormitories</span><span class="v">Out of bounds</span></div>
+                <div class="policy-line"><span class="l">Approved visitors only</span><span class="v">Parent · guardian · sibling</span></div>
+                <div class="policy-line"><span class="l">Visitors' book</span><span class="v">Digital · SoD owns</span></div>
+                <div class="policy-line"><span class="l">Next visiting</span><span class="v"><em>Sun 17 May</em> · 3 days</span></div>
+              </div>
+            </div>
+
+            <div class="policy-card">
+              <div class="pc-head">
+                <h4 class="display">Inspection <em>cadence</em></h4>
+                <div class="pill">2 BEATS</div>
+              </div>
+              <div class="pc-body">
+                <div class="policy-line"><span class="l">Daily inspection</span><span class="v mono">06:10 — 06:20</span></div>
+                <div class="policy-line"><span class="l">Daily scope</span><span class="v">Bunks · lockers · attire</span></div>
+                <div class="policy-line"><span class="l">Weekly inspection</span><span class="v">Saturday 08:00</span></div>
+                <div class="policy-line"><span class="l">Weekly scope</span><span class="v">Whole House · top to bottom</span></div>
+                <div class="policy-line"><span class="l">Mid-week scrubbing</span><span class="v">Wed 16:00 — 17:00</span></div>
+                <div class="policy-line"><span class="l">Washing days</span><span class="v">Wed &amp; Fri afternoons</span></div>
+                <div class="policy-line"><span class="l">Inspector</span><span class="v">HM &amp; House Prefects</span></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Term calendar · keyed to GES 2025/26 single-track</div>
+              <h3 class="display">Resumption · vacation · exeat windows <em>· the boarding year</em></h3>
+            </div>
+            <div class="meta">Configurable within GES bounds · F3 ends earlier post-WASSCE</div>
+          </div>
+
+          <div class="calendar-card">
+            <div class="cal-grid">
+              <div class="cal-event past">
+                <div class="typ">RESUMPTION</div>
+                <div class="date">5 JAN 2026</div>
+                <div class="name">Semester 1 resumption · all forms</div>
+              </div>
+              <div class="cal-event past">
+                <div class="typ">VACATION</div>
+                <div class="date">27 FEB 2026</div>
+                <div class="name">Semester 1 vacation · all forms</div>
+              </div>
+              <div class="cal-event past">
+                <div class="typ">RESUMPTION</div>
+                <div class="date">3 MAY 2026</div>
+                <div class="name">Semester 2 resumption · 11 days ago</div>
+              </div>
+              <div class="cal-event upcoming">
+                <div class="typ">VISITING</div>
+                <div class="date">17 MAY 2026</div>
+                <div class="name">Visiting Sunday · 3 days · this Sunday</div>
+              </div>
+              <div class="cal-event">
+                <div class="typ">EXEAT W1</div>
+                <div class="date">31 MAY 2026</div>
+                <div class="name">Semester 2 · scheduled exeat 1 of 3</div>
+              </div>
+              <div class="cal-event">
+                <div class="typ">VISITING</div>
+                <div class="date">14 JUN 2026</div>
+                <div class="name">Visiting Sunday · Form 3 WASSCE wk</div>
+              </div>
+              <div class="cal-event warn">
+                <div class="typ">F3 VAC</div>
+                <div class="date">21 JUN 2026</div>
+                <div class="name">Form 3 academic year ends · post-WASSCE</div>
+              </div>
+              <div class="cal-event">
+                <div class="typ">EXEAT W2</div>
+                <div class="date">5 JUL 2026</div>
+                <div class="name">Semester 2 · scheduled exeat 2 of 3</div>
+              </div>
+              <div class="cal-event">
+                <div class="typ">VISITING</div>
+                <div class="date">12 JUL 2026</div>
+                <div class="name">Visiting Sunday · Forms 1 &amp; 2 only</div>
+              </div>
+              <div class="cal-event">
+                <div class="typ">EXEAT W3</div>
+                <div class="date">2 AUG 2026</div>
+                <div class="name">Semester 2 · scheduled exeat 3 of 3</div>
+              </div>
+              <div class="cal-event">
+                <div class="typ">VISITING</div>
+                <div class="date">9 AUG 2026</div>
+                <div class="name">Visiting Sunday · Forms 1 &amp; 2 only</div>
+              </div>
+              <div class="cal-event warn">
+                <div class="typ">VACATION</div>
+                <div class="date">21 AUG 2026</div>
+                <div class="name">Academic year ends · Forms 1 &amp; 2</div>
+              </div>
+            </div>
+            <div class="cal-foot">
+              <b>Single-track schools end 21 August.</b> Asankrangwa is single-track since 2025/26 — the modified double-track was retired by GES when the new academic calendar landed. Form 3 ends earlier, at the close of WASSCE (Apr 20 — Jun 20, 2026), with formal vacation on 21 June. <em>The 2026/27 academic year begins 11 September.</em>
+            </div>
+          </div>
+        </div>
+
+        <!-- Deboardinization ladder -->
+        <div class="ladder-card">
+          <div class="lc-head">
+            <div>
+              <div class="eb">Discipline escalation · the boarding ladder</div>
+              <h4 class="display">Five rungs <em>· bond to board referral</em></h4>
+            </div>
+            <div class="meta">DEFAULTS · EDITABLE PER SCHOOL</div>
+          </div>
+          <div class="ladder-rows">
+            <div class="lad">
+              <div class="stage">01</div>
+              <div class="name display">Verbal note</div>
+              <div class="desc">First instance of a minor infraction. Logged in the student record as a <b>NOTE</b>. No external sanction. <b>FM &amp; HM</b> aware.</div>
+              <div class="penalty">NO PENALTY</div>
+            </div>
+            <div class="lad">
+              <div class="stage">02</div>
+              <div class="name display">Written warning</div>
+              <div class="desc">Repeat infraction. <b>1-day internal suspension</b>. Sometimes paired with <b>forfeiture of exeat</b> for the rest of the term. Parents are notified by SMS.</div>
+              <div class="penalty">1-DAY INT · EXEAT BLOCK</div>
+            </div>
+            <div class="lad warn">
+              <div class="stage">03</div>
+              <div class="name display">Bond of good behaviour</div>
+              <div class="desc">Signed commitment by the student. Witnessed by HM and Senior HM. Logged as artefact. Counselling sessions begin. <b>Parents in writing.</b></div>
+              <div class="penalty">SIGNED ARTEFACT · COUNSELLING</div>
+            </div>
+            <div class="lad warn">
+              <div class="stage">04</div>
+              <div class="name display">External suspension</div>
+              <div class="desc"><b>2 weeks external</b>. Student is sent home formally. Counselling continues. Re-entry conditional on bond re-affirmation. School board notified at next meeting.</div>
+              <div class="penalty">2 WK EXT · CONDITIONAL RE-ENTRY</div>
+            </div>
+            <div class="lad terra">
+              <div class="stage">05</div>
+              <div class="name display">Deboardinization</div>
+              <div class="desc">Removed from the boarding house, becomes a day student. <b>Reversible only by the Board</b>. <em>3× boarding fee penalty</em> for any unauthorised days. <b>HM + Senior HM + Headmaster</b> all co-sign.</div>
+              <div class="penalty">CO-SIGN × 3 · 3× FEE PENALTY</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What lives on this surface</h4>
+      <ul>
+        <li><b>Schema-shaping decisions only.</b> Houses, capacities, schedules, policies. Changes here propagate to every other boarding surface — bunk allocation, daily life, exeats, visiting day, discipline.</li>
+        <li><b>Edits are versioned, not destructive.</b> Changing a House's capacity from 120 to 132 creates a new version; the prior version stays in audit. Mid-year capacity changes are rare but happen.</li>
+        <li><b>The daily schedule is a template.</b> Individual days can override (e.g. Speech &amp; Prize Giving Day, NSMQ travel day) — but the template is what every Monday-to-Friday inherits.</li>
+        <li><b>The five-rung ladder is the operating contract</b> between Housemaster and parent. Parents see steps 1—5 in their child's record when escalation begins. Transparency is part of the design.</li>
+      </ul>
+      <h4 style="margin-top:24px;">What does NOT live here</h4>
+      <ul>
+        <li>Per-student bed assignment — that is surface 02 (House roster &amp; allocation)</li>
+        <li>Tonight's prep attendance — that is surface 04 (Daily life)</li>
+        <li>An individual exeat in flight — that is surface 05 (Exeat management)</li>
+        <li>This Sunday's visitors — that is surface 06 (Visiting day operations)</li>
+        <li>The bond J. Adjei signed last Tuesday — that is surface 07 (Discipline)</li>
+      </ul>
+      <h4 style="margin-top:24px;">Editable but rarely edited</h4>
+      <ul>
+        <li><b>Once a year at start-of-session.</b> Headmaster + Senior HM sit together for an afternoon. Confirm House list, confirm HM assignments, confirm calendar, confirm policy tweaks. Lock for the year.</li>
+        <li><b>Audit catches everything.</b> An edit on 23 March logs which staff member, from which IP, with what reason. No silent changes.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why boarding is its own operating system</div>
+    <div class="section-meta">Editorial · structural adjacency, not feature</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The architectural choice this surface is making</div>
+        <h3 class="display">Boarding is <em>not a feature</em> of the school module. It is structurally adjacent to it.</h3>
+        <p>Eighteen sessions into the design of Omnischools, every surface we have built so far reads from one canonical thing: <b>the student</b>. The student belongs to a Class, has a Form Master, has subjects, has a transcript, has parents, has an attendance record. The whole architecture is a constellation around the student. A school management system is, fundamentally, a student management system with administrative scaffolding around it.</p>
+        <p>Boarding breaks that. A boarder is still a student — they still attend Form 2 GA A, they still write Maths quizzes, they still need a school-leaver report. <em>But during the eighteen hours a day they are not in a classroom, they are running a parallel operating system.</em> They have a House (not a Class). They have a Housemaster (not a Form Master — though sometimes the same person). They have a bunk (not a desk). They have inspection in the morning and prep in the evening. They get three exeats a term and one visiting Sunday a month. They can be deboardinized — a thing no day student can have happen to them.</p>
+        <p>If we modelled boarding as a feature of the school module, we would be folding fifteen state transitions per student per day into the same table that tracks attendance in Maths class. That table would become unmanageable, and worse, it would force boarding-specific logic to leak into surfaces that day-student schools should never have to see. <b>The cleaner architecture treats boarding as a distinct module that the school module is aware of</b> — students have a `residency_type` (BOARDER / DAY / DEBOARDINIZED), and the boarding module owns everything that residency_type implies.</p>
+        <p>This separation is what makes the rest of the system work for Ghanaian SHSs of every shape. <em>A pure-day school flips the boarding module off entirely and never sees this surface.</em> A pure-boarding school flips it on and uses every part. A mixed school — the most common case in the Free-SHS era — operates both modules side by side, with the residency_type field on the student record being the join. The Headmistress's day-student dashboard does not show inspections; the Housemistress's boarding dashboard does not show non-boarders. <b>Each role sees what its role is responsible for.</b></p>
+        <p>The same separation maps cleanly onto the data model. Boarding's tables — houses, dormitories, bunks, daily_schedules, exeats, visiting_log, inspections, bond_artefacts, deboardinization_records — live in their own namespace. They reference the student by ID. They never write back to the student record except through one column: residency_type, which the deboardinization workflow flips. Everything else is owned by the boarding module. <em>Clean borders make clean code, and clean code makes a school that doesn't have to teach its software what kind of school it is.</em></p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Counter-argument we considered</h4>
+      <ul>
+        <li><b>"Just put a 'boarder' flag on the student record and add boarding fields inline."</b> Simpler at first. Fails at month two. Inspection records, exeat counts, bond artefacts — none of them belong on the student record. The student record bloats. Day-student schools end up with hundreds of NULL columns.</li>
+        <li><b>"Make boarding a sub-module of the residential/wellbeing module."</b> Closer, but conflates pastoral care with residential operations. Pastoral care (VLC, FM notes, the character paragraph) is about who the student is becoming. Boarding is about where they sleep and who watches them sleep there. Different work, different staff, different surfaces.</li>
+      </ul>
+      <h4 style="margin-top:24px;">Read this surface as</h4>
+      <ul>
+        <li><b>The contract between school and the boarding module.</b> Six Houses with these names. This rhythm. These policies. This ladder. Everything downstream — surfaces 02 through 07 — is the implementation of what is declared here.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,2156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Announcements composer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+/* App shell */
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+  position: relative;
+}
+.app-shell.has-drawer::before {
+  content: "";
+  position: absolute;
+  inset: 0; left: 220px;
+  background: rgba(26,43,71,0.32);
+  z-index: 5;
+  pointer-events: none;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head .crumb a { color: var(--gold); text-decoration: none; }
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+.main-head .lede {
+  font-size: 13px; color: var(--navy-3);
+  margin-top: 6px; max-width: 540px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.danger { background: var(--terra); color: var(--bg); border-color: var(--terra); }
+.btn.subtle { background: transparent; border-color: transparent; color: var(--navy-3); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ============ COMPOSER LAYOUT ============ */
+.composer-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 18px;
+}
+.composer-col {
+  display: flex; flex-direction: column;
+  gap: 14px;
+}
+.composer-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.cc-head {
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.cc-head .label {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 3px;
+}
+.cc-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.cc-head h3 em { font-style: italic; color: var(--gold); }
+.cc-head .meta-right {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.cc-head .meta-right b { color: var(--navy); font-weight: 600; }
+.cc-body { padding: 18px 20px 20px; }
+
+/* Audience picker — chips */
+.audience-row {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 14px;
+}
+.audience-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+}
+.audience-chip:hover { border-color: var(--gold-soft); color: var(--navy); }
+.audience-chip.selected {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.audience-chip .count {
+  font-size: 9px;
+  margin-left: 4px;
+  background: rgba(255,255,255,0.15);
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+.audience-chip:not(.selected) .count {
+  background: var(--bg);
+  color: var(--navy-3);
+}
+.audience-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 7px 4px;
+}
+
+/* Selected-audience summary block */
+.audience-summary {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.audience-summary .ic {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--bg);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+}
+.audience-summary .text {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.audience-summary .text b { color: var(--navy); font-weight: 600; }
+.audience-summary .recipients {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--navy);
+  letter-spacing: -0.015em;
+  text-align: right;
+  line-height: 1;
+}
+.audience-summary .recipients .sub {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  margin-top: 3px;
+}
+
+/* Channel toggles — segmented */
+.channel-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.channel-tile {
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  position: relative;
+}
+.channel-tile.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.channel-tile.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg);
+}
+.channel-tile.mvp2 {
+  background: var(--bg);
+  border-style: dashed;
+  border-color: var(--border-2);
+}
+.channel-tile.mvp2 .ct-icon {
+  background: rgba(37,168,89,0.12);
+  color: #25A859;
+}
+.channel-tile .mvp2-tag {
+  position: absolute;
+  top: 12px; right: 36px;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  background: var(--surface);
+  padding: 2px 7px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+}
+.channel-tile .ct-row {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 6px;
+}
+.channel-tile .ct-icon {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--navy);
+  flex-shrink: 0;
+}
+.channel-tile.selected .ct-icon {
+  background: var(--surface);
+}
+.channel-tile .ct-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.channel-tile .ct-meta {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.channel-tile .ct-cost {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+.channel-tile.selected .ct-cost { border-top-color: var(--gold-soft); }
+.channel-tile .ct-cost b {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 12px;
+}
+.channel-tile .ct-check {
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-2);
+  background: var(--surface);
+}
+.channel-tile.selected .ct-check {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.channel-tile.selected .ct-check::after {
+  content: "✓";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--navy);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Message field */
+.field { margin-bottom: 14px; }
+.field label {
+  display: block;
+  font-size: 11px; color: var(--navy-2); font-weight: 600;
+  margin-bottom: 6px; letter-spacing: 0.02em;
+}
+.field label .hint { color: var(--navy-3); font-weight: 400; margin-left: 4px; font-size: 10px; }
+
+.subject-input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 8px;
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+}
+.subject-input::placeholder { color: var(--navy-3); font-style: italic; opacity: 0.7; font-weight: 500; }
+.subject-input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+.body-textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 8px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  color: var(--navy);
+  line-height: 1.55;
+  min-height: 140px;
+  resize: vertical;
+}
+.body-textarea::placeholder { color: var(--navy-3); font-style: italic; opacity: 1; }
+.body-textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+/* Character meter for SMS */
+.char-meter {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: 6px;
+  font-size: 11px;
+}
+.char-meter .left {
+  color: var(--navy-3);
+}
+.char-meter .left b { color: var(--navy); font-weight: 600; }
+.char-meter .meter-bar {
+  display: flex; align-items: center; gap: 8px;
+}
+.char-meter .meter-line {
+  width: 100px; height: 5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.char-meter .meter-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 100px;
+  transition: width 0.2s, background 0.2s;
+}
+.char-meter .meter-fill.warn { background: var(--gold); }
+.char-meter .meter-fill.danger { background: var(--terra); }
+.char-meter .meter-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--navy);
+}
+.char-meter .meter-count.warn { color: var(--gold); }
+.char-meter .meter-count.danger { color: var(--terra); }
+
+/* Sign-off preview */
+.signoff-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 6px;
+  padding: 6px 12px;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+.signoff-row b {
+  color: var(--navy-2);
+  font-weight: 600;
+  font-style: normal;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ============ TEMPLATE PICKER ============ */
+.template-list {
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+.template-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.template-row:hover {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.template-row.recent {
+  border-left: 3px solid var(--gold);
+}
+.template-row .t-icon {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+}
+.template-row .body .name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.template-row .body .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.template-row .arrow {
+  color: var(--navy-3);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Cost summary card */
+.cost-summary {
+  background: var(--navy);
+  color: var(--bg);
+  border-radius: 12px;
+  padding: 16px 20px 20px;
+  margin-bottom: 14px;
+}
+.cost-summary .cs-head {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.cost-summary .cs-row {
+  display: flex; justify-content: space-between;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--gold-soft);
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.cost-summary .cs-row:first-of-type { border-top: none; padding-top: 0; }
+.cost-summary .cs-row b {
+  color: var(--bg);
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+}
+.cost-summary .cs-total {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 2px solid var(--gold);
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.cost-summary .cs-total .l {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--gold-soft);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.cost-summary .cs-total .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 26px;
+  color: var(--gold);
+  letter-spacing: -0.02em;
+}
+
+/* ============ SMS PREVIEW ============ */
+.sms-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+.sms-preview .sp-phone {
+  background: var(--surface);
+  border-radius: 22px;
+  padding: 16px 14px;
+  border: 1px solid var(--border);
+}
+.sms-preview .sp-from {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.sms-preview .sp-from b { color: var(--navy); font-weight: 700; letter-spacing: 0.02em; }
+.sms-preview .sp-bubble {
+  background: var(--bg);
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  color: var(--navy);
+  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  border-radius: 14px 14px 14px 4px;
+  max-width: 95%;
+}
+
+/* ============ SCHEDULE BLOCK ============ */
+.schedule-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+.schedule-tile {
+  padding: 11px 14px;
+  border: 1.5px solid var(--border-2);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--surface);
+  display: flex; gap: 10px; align-items: start;
+}
+.schedule-tile.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.schedule-tile .radio {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-2);
+  background: var(--surface);
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+}
+.schedule-tile.selected .radio { border-color: var(--gold); }
+.schedule-tile.selected .radio::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--gold);
+  border-radius: 50%;
+}
+.schedule-tile .body .t1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.schedule-tile .body .t2 {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+
+/* Emergency toggle */
+.emergency-toggle {
+  background: var(--terra-bg);
+  border: 1px solid rgba(184,74,57,0.2);
+  border-left: 3px solid var(--terra);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.emergency-toggle .ic {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--terra);
+  color: var(--bg);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.emergency-toggle .body { font-size: 11px; color: var(--navy-2); line-height: 1.5; }
+.emergency-toggle .body b { color: var(--navy); font-weight: 600; }
+.toggle-switch {
+  width: 36px; height: 20px;
+  background: var(--border-2);
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toggle-switch.on {
+  background: var(--terra);
+}
+.toggle-switch::after {
+  content: "";
+  position: absolute;
+  width: 16px; height: 16px;
+  background: var(--surface);
+  border-radius: 50%;
+  top: 2px; left: 2px;
+  transition: left 0.15s;
+}
+.toggle-switch.on::after { left: 18px; }
+
+/* ============ FOOTER BAR ============ */
+.composer-footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 14px 20px;
+  margin: 0 -36px -28px;
+  display: flex; justify-content: space-between; align-items: center;
+  border-radius: 0;
+}
+.composer-footer .left {
+  font-size: 12px;
+  color: var(--navy-3);
+}
+.composer-footer .left b { color: var(--navy); font-weight: 600; }
+.composer-footer .actions {
+  display: flex; gap: 8px;
+}
+
+/* ============ DRAWER (CONFIRM) ============ */
+.drawer {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 480px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -16px 0 40px -10px rgba(26,43,71,0.18);
+  z-index: 10;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.drawer-head {
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: start;
+}
+.drawer-head .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+  margin-bottom: 6px;
+}
+.drawer-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.drawer-head h3 em { font-style: italic; color: var(--gold); }
+.drawer-head .close {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-size: 14px;
+}
+.drawer-body {
+  flex: 1;
+  padding: 22px 24px;
+  overflow-y: auto;
+}
+.drawer-section-label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+  margin: 22px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.drawer-section-label::before {
+  content: ""; width: 18px; height: 1px; background: var(--gold);
+}
+.drawer-section-label:first-child { margin-top: 0; }
+
+/* Recipient breakdown card */
+.recipient-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.recipient-card .group-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 7px 0;
+  font-size: 12px;
+  border-bottom: 1px dashed var(--border);
+}
+.recipient-card .group-row:last-of-type { border-bottom: none; }
+.recipient-card .group-row .name {
+  color: var(--navy-2);
+}
+.recipient-card .group-row .name b { color: var(--navy); font-weight: 600; }
+.recipient-card .group-row .count {
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.recipient-card .group-row .cost {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--navy);
+}
+.recipient-card .total-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 2px solid var(--navy);
+}
+.recipient-card .total-row .name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 13px;
+}
+.recipient-card .total-row .count {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--navy);
+}
+.recipient-card .total-row .cost {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--navy);
+  letter-spacing: -0.01em;
+}
+
+/* Confirm checkbox */
+.confirm-block {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex; gap: 10px; align-items: start;
+}
+.confirm-block .check {
+  width: 18px; height: 18px;
+  border: 1.5px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+}
+.confirm-block .check.on {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 700;
+}
+.confirm-block .check.on::before { content: "✓"; }
+.confirm-block .body {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.confirm-block .body b { color: var(--navy); font-weight: 600; }
+
+.drawer-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  display: flex; gap: 8px; justify-content: space-between;
+  align-items: center;
+}
+
+/* ============ HISTORY LIST ============ */
+.history-table-head {
+  display: grid;
+  grid-template-columns: 130px 1fr 120px 120px 120px 90px;
+  gap: 14px;
+  padding: 12px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.history-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 120px 120px 120px 90px;
+  gap: 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+}
+.history-row:last-child { border-bottom: none; }
+.history-row:hover { background: var(--bg); }
+.history-row.scheduled { background: var(--gold-bg); }
+.history-row.scheduled:hover { background: rgba(245,235,220,0.7); }
+.history-row.emergency { background: var(--terra-bg-soft); }
+
+.history-row .when {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.history-row .when .date {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 12px;
+  display: block;
+}
+.history-row .when .scheduled-tag {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-top: 2px;
+  display: inline-block;
+}
+.history-row .when .emergency-tag {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--terra);
+  font-weight: 700;
+  margin-top: 2px;
+  display: inline-block;
+}
+.history-row .subject {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.history-row .subject .preview {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'Manrope', sans-serif;
+  font-weight: 500;
+  margin-top: 2px;
+  font-style: italic;
+}
+.history-row .audience-tag {
+  display: inline-flex;
+  font-size: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-weight: 600;
+  color: var(--navy-2);
+}
+.history-row .channel-list {
+  display: flex; gap: 4px;
+  font-size: 9px;
+}
+.history-row .channel-list .ch {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 100px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--navy-2);
+  text-transform: uppercase;
+}
+.history-row .delivery {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px;
+}
+.history-row .delivery .meter {
+  width: 50px; height: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.history-row .delivery .meter-fill {
+  height: 100%;
+  background: var(--green);
+}
+.history-row .delivery .meter-fill.warn { background: var(--gold); }
+.history-row .delivery .pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--green);
+}
+.history-row .delivery .pct.warn { color: var(--gold); }
+.history-row .delivery .pct.muted { color: var(--navy-3); font-style: italic; }
+.history-row .actions { text-align: right; }
+.history-row .ghost-btn {
+  font-size: 9px; letter-spacing: 0.04em;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  padding: 4px 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.history-row .ghost-btn:hover { color: var(--gold); border-color: var(--gold-soft); }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .composer-grid { grid-template-columns: 1fr; }
+  .channel-row { grid-template-columns: 1fr; }
+  .schedule-block { grid-template-columns: 1fr; }
+  .history-table-head, .history-row { grid-template-columns: 1fr; gap: 6px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Announcements</div>
+  <h1 class="display">Saying it <em>once</em>, reaching everyone</h1>
+  <div class="gold-rule"></div>
+  <p>The composer for school-to-parent announcements. SMS is the workhorse for MVP1 — universal reach, feature-phone-friendly, predictable cost. <b>WhatsApp ships in MVP2</b> as the second pillar: cheaper per conversation, richer media, but requires opted-in recipients and Meta-approved templates. School-name suffixes ("School", "JHS") are stripped from SMS sign-offs to conserve every character.</p>
+</header>
+
+<!-- ============ 01 COMPOSER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Composer · full edit state</div>
+    <div class="section-meta">Admin · Announcements &gt; New</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / announcements / new</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item active"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Announcements</a> / New announcement</div>
+              <h2 class="display">New <em>announcement</em></h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Save as draft</button>
+              <button class="btn">Cancel</button>
+            </div>
+          </div>
+
+          <div class="composer-grid">
+
+            <!-- LEFT COLUMN: composer fields -->
+            <div class="composer-col">
+
+              <!-- Audience -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label">Step 1 · Audience</div>
+                    <h3>Who should <em>receive</em> this?</h3>
+                  </div>
+                </div>
+                <div class="cc-body">
+                  <div class="audience-row">
+                    <div class="audience-chip">All school <span class="count">600</span></div>
+                    <div class="audience-divider"></div>
+                    <div class="audience-chip selected">JHS 1 · all sections <span class="count">52</span></div>
+                    <div class="audience-chip selected">JHS 2 · all sections <span class="count">66</span></div>
+                    <div class="audience-chip">JHS 3 · all sections <span class="count">73</span></div>
+                    <div class="audience-divider"></div>
+                    <div class="audience-chip">All teachers <span class="count">22</span></div>
+                    <div class="audience-chip">Specific class...</div>
+                    <div class="audience-chip">Specific student...</div>
+                  </div>
+
+                  <div class="audience-summary">
+                    <div class="ic">i</div>
+                    <div class="text">
+                      Sending to <b>JHS 1 and JHS 2 guardians</b> — 4 sections combined. Excludes JHS 3 and teachers.
+                    </div>
+                    <div class="recipients">
+                      118<div class="sub">recipients</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Channels -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label">Step 2 · Channels</div>
+                    <h3>How should it be <em>delivered</em>?</h3>
+                  </div>
+                  <div class="meta-right">SMS recommended for <b>parent</b> notices</div>
+                </div>
+                <div class="cc-body">
+                  <div class="channel-row">
+                    <div class="channel-tile selected">
+                      <div class="ct-check"></div>
+                      <div class="ct-row">
+                        <div class="ct-icon">SMS</div>
+                        <div>
+                          <div class="ct-name">SMS</div>
+                          <div class="ct-meta">Universal reach · feature phones</div>
+                        </div>
+                      </div>
+                      <div class="ct-cost">
+                        ~<b>GHS 0.05</b> per send · 118 will receive
+                      </div>
+                    </div>
+
+                    <div class="channel-tile mvp2">
+                      <div class="ct-check"></div>
+                      <div class="mvp2-tag">MVP2</div>
+                      <div class="ct-row">
+                        <div class="ct-icon" style="background:rgba(37,168,89,0.12);color:#25A859">WA</div>
+                        <div>
+                          <div class="ct-name">WhatsApp</div>
+                          <div class="ct-meta">Templates · richer · cheaper</div>
+                        </div>
+                      </div>
+                      <div class="ct-cost">
+                        ~<b>GHS 0.18</b> per conversation · 84 opted in
+                      </div>
+                    </div>
+
+                    <div class="channel-tile">
+                      <div class="ct-check"></div>
+                      <div class="ct-row">
+                        <div class="ct-icon">App</div>
+                        <div>
+                          <div class="ct-name">In-app push</div>
+                          <div class="ct-meta">Free · 41% have app</div>
+                        </div>
+                      </div>
+                      <div class="ct-cost">
+                        <b>Free</b> · 48 will receive
+                      </div>
+                    </div>
+
+                    <div class="channel-tile disabled">
+                      <div class="ct-check"></div>
+                      <div class="ct-row">
+                        <div class="ct-icon">Em</div>
+                        <div>
+                          <div class="ct-name">Email</div>
+                          <div class="ct-meta">Coming MVP2</div>
+                        </div>
+                      </div>
+                      <div class="ct-cost">
+                        Not available yet
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Message -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label">Step 3 · Message</div>
+                    <h3>What do you want to <em>say</em>?</h3>
+                  </div>
+                </div>
+                <div class="cc-body">
+
+                  <div class="field">
+                    <label>Subject <span class="hint">— shown in-app and as email subject</span></label>
+                    <input class="subject-input" value="PTA meeting · Friday 9 May at 4:30 PM" />
+                  </div>
+
+                  <div class="field">
+                    <label>Message body <span class="hint">— SMS limited to 160 chars including school sign-off</span></label>
+                    <textarea class="body-textarea">PTA meeting Fri 9 May, 4:30 PM in the assembly hall. Topics: Term 2 calendar, BECE prep for JHS 3, fee schedule. Please attend if you can.</textarea>
+
+                    <div class="char-meter">
+                      <div class="left">
+                        SMS body: <b>136 / 160 chars</b> · 1 segment · sign-off adds 17 chars
+                      </div>
+                      <div class="meter-bar">
+                        <div class="meter-line">
+                          <div class="meter-fill" style="width:84%"></div>
+                        </div>
+                        <div class="meter-count">153</div>
+                      </div>
+                    </div>
+
+                    <div class="signoff-row">
+                      Sign-off appended automatically: <b>- Christ the King</b> <span style="color:var(--gold);font-weight:700;font-style:normal;font-family:'Manrope',sans-serif;font-size:9px;letter-spacing:0.08em;margin-left:6px">"JHS" STRIPPED FOR SMS · SAVES 4 CHARS</span>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Schedule -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label">Step 4 · Timing</div>
+                    <h3>When should it <em>send</em>?</h3>
+                  </div>
+                </div>
+                <div class="cc-body">
+                  <div class="schedule-block">
+                    <div class="schedule-tile selected">
+                      <div class="radio"></div>
+                      <div class="body">
+                        <div class="t1">Send now</div>
+                        <div class="t2">Goes out within seconds</div>
+                      </div>
+                    </div>
+                    <div class="schedule-tile">
+                      <div class="radio"></div>
+                      <div class="body">
+                        <div class="t1">Schedule...</div>
+                        <div class="t2">Pick a date and time</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="emergency-toggle" style="margin-top:14px">
+                    <div class="ic">!</div>
+                    <div class="body">
+                      <b>Mark as emergency.</b> Bypasses quiet hours, uses priority delivery. Use only for genuine emergencies — flooding, security, immediate closures.
+                    </div>
+                    <div class="toggle-switch"></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: cost + preview + templates -->
+            <div class="composer-col">
+
+              <!-- Cost summary -->
+              <div class="cost-summary">
+                <div class="cs-head">Estimated cost</div>
+                <div class="cs-row">
+                  <span>SMS · 118 recipients</span>
+                  <b>GHS 5.90</b>
+                </div>
+                <div class="cs-row">
+                  <span>In-app · 48 recipients</span>
+                  <b>GHS 0.00</b>
+                </div>
+                <div class="cs-total">
+                  <div class="l">Total to send</div>
+                  <div class="v">GHS 5.90</div>
+                </div>
+              </div>
+
+              <!-- SMS preview -->
+              <div class="composer-card" style="background:var(--bg)">
+                <div class="cc-head" style="background:var(--surface)">
+                  <div>
+                    <div class="label">SMS preview</div>
+                    <h3>How it <em>arrives</em></h3>
+                  </div>
+                </div>
+                <div class="cc-body">
+                  <div class="sms-preview">
+                    <div class="sp-phone">
+                      <div class="sp-from">From <b>Omnischools</b></div>
+                      <div class="sp-bubble">
+                        PTA meeting Fri 9 May, 4:30 PM in the assembly hall. Topics: Term 2 calendar, BECE prep for JHS 3, fee schedule. Please attend if you can.
+- Christ the King
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Template picker -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label">Or start from a template</div>
+                    <h3>Common <em>announcements</em></h3>
+                  </div>
+                </div>
+                <div class="cc-body">
+                  <div class="template-list">
+                    <div class="template-row recent">
+                      <div class="t-icon">P</div>
+                      <div class="body">
+                        <div class="name">PTA meeting reminder</div>
+                        <div class="meta">Used 5 times this year</div>
+                      </div>
+                      <div class="arrow">›</div>
+                    </div>
+                    <div class="template-row">
+                      <div class="t-icon">T</div>
+                      <div class="body">
+                        <div class="name">Term start reminder</div>
+                        <div class="meta">School-wide announcement</div>
+                      </div>
+                      <div class="arrow">›</div>
+                    </div>
+                    <div class="template-row">
+                      <div class="t-icon">F</div>
+                      <div class="body">
+                        <div class="name">Fee deadline reminder</div>
+                        <div class="meta">Targets parents with balances</div>
+                      </div>
+                      <div class="arrow">›</div>
+                    </div>
+                    <div class="template-row">
+                      <div class="t-icon">H</div>
+                      <div class="body">
+                        <div class="name">Holiday closure</div>
+                        <div class="meta">No school + return date</div>
+                      </div>
+                      <div class="arrow">›</div>
+                    </div>
+                    <div class="template-row">
+                      <div class="t-icon">E</div>
+                      <div class="body">
+                        <div class="name">Exam timetable</div>
+                        <div class="meta">Sent before each exam period</div>
+                      </div>
+                      <div class="arrow">›</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Sticky footer -->
+          <div class="composer-footer">
+            <div class="left">
+              Ready to send to <b>118 recipients</b> · estimated cost <b>GHS 5.90</b>
+            </div>
+            <div class="actions">
+              <button class="btn subtle">Save as draft</button>
+              <button class="btn gold">Review &amp; send →</button>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Four-step structure</b> (Audience → Channels → Message → Timing) makes the composition order explicit. Audience first because everything else depends on it — recipient count drives cost, channel availability, and message constraints.</li>
+        <li><b>Audience as chips with grouping dividers.</b> "All school" sits separate from "JHS 1, 2, 3" which sits separate from "All teachers" — three governance categories. Multi-select is allowed (JHS 1 + JHS 2 selected); the chip count updates the recipient total live.</li>
+        <li><b>Audience summary block in gold</b> reads back the selection in plain language: "Sending to JHS 1 and JHS 2 guardians — 4 sections combined. Excludes JHS 3 and teachers." Plus the recipient count (118) in a Fraunces accent. Admin sees what they've selected and what they've excluded — both matter.</li>
+        <li><b>Channel tiles with cost shown per channel.</b> SMS shows "~GHS 0.05 per send"; in-app shows "Free · 41% have app" — the trade-off is explicit. Admin chooses based on reach (SMS gets to everyone; app only reaches the 41% who've activated).</li>
+        <li><b>Email tile is disabled with "Coming MVP2" label.</b> Honest about what's not shipping yet, while making space for the future. The disabled state matches the "MVP2" coming-soon pattern from the reports module.</li>
+        <li><b>Subject + body as separate fields.</b> Subject shows in-app (push notification heading) and email; body is the SMS content. Different channels, same composer — the data model handles the multiplexing.</li>
+        <li><b>Character meter is the load-bearing detail.</b> "136 / 160 chars · 1 segment · sign-off adds 17 chars" — the meter accounts for the auto-appended sign-off so admin doesn't write a 155-char body that becomes a 174-char send (= 2 SMS segments = double cost). The meter shows 153 as the actual total.</li>
+        <li><b>School-name suffix stripped for SMS sign-off.</b> "Christ the King JHS" displays everywhere — receipts, in-app, dashboards — but the SMS sign-off uses "Christ the King" only. <b>"JHS", "SHS", "School", "Basic School" all strip;</b> "Academy", "College", "Institute", and religious designations preserve. The savings are real: 4-7 chars per SMS, which is the difference between staying under 160 and running into a second segment. Admin sees what gets stripped via the small label below the sign-off so it's transparent, not magic.</li>
+        <li><b>Four-channel picker:</b> SMS (MVP1), WhatsApp (MVP2), In-app push (MVP1), Email (MVP2). Two-by-two grid keeps each tile prominent. SMS is the default selection because it has universal reach and doesn't require parent opt-in. WhatsApp shows as a real future option with realistic cost figures and opt-in counts so admin can plan ahead.</li>
+        <li><b>WhatsApp tile shows opt-in count</b> — "84 opted in" of 118 selected recipients. WhatsApp Business API requires recipients to have opted in; the tile makes that constraint visible. In MVP2, admins will use SMS for non-opted-in recipients and WhatsApp for opted-in, automatically.</li>
+        <li><b>WhatsApp cost ("~GHS 0.18 per conversation")</b> uses Meta's actual conversation-based pricing, not per-message. A "conversation" is 24 hours of back-and-forth; one outbound template plus any subsequent two-way messaging counts as one conversation. The cost per recipient looks higher than SMS but each conversation can carry multiple messages, attachments, and quick-reply buttons — net cheaper for richer interactions.</li>
+        <li><b>Schedule is "send now" by default.</b> Most announcements are immediate. Schedule reveals a date/time picker (not drawn — separate flow). Two clean options, no decision paralysis.</li>
+        <li><b>Emergency toggle in terracotta</b> with explicit consequence text. "Bypasses quiet hours, uses priority delivery. Use only for genuine emergencies." The toggle is off by default and the language discourages casual use — emergency status has system consequences (priority queue, possibly higher cost from SMS provider) and shouldn't be casual.</li>
+        <li><b>Cost summary in navy</b> prominently in the right rail. Per-channel breakdown plus total. The total is the headline; admin sees this before clicking Review &amp; send.</li>
+        <li><b>SMS preview as a phone bubble</b> showing exactly how the message will arrive on the parent's phone. From "Omnischools" (the SMS sender ID), the body, the auto-appended sign-off. <b>Preview = ground truth</b> — what's shown is what sends.</li>
+        <li><b>Template picker on the right</b> lists common school announcements. The "PTA meeting reminder" tile has a gold left-border because it was just used as the starting point. Click any other template to swap in its content.</li>
+        <li><b>Sticky footer with the recipient count and cost echoed.</b> "Ready to send to 118 recipients · estimated cost GHS 5.90". Even if admin scrolls back up to edit the body, the bottom bar reminds them of the consequences. Two actions: Save as draft (no commitment) and Review &amp; send (proceeds to confirmation drawer).</li>
+        <li><b>Save as draft is everywhere</b> — page header and footer. Composing under pressure isn't always linear; admin should be able to step away and come back.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 SEND CONFIRMATION DRAWER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Send confirmation drawer</div>
+    <div class="section-meta">Admin · clicked "Review &amp; send"</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / announcements / new / confirm</div>
+      </div>
+      <div class="app-shell has-drawer">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item active"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <!-- Faded background -->
+          <div style="opacity:0.4">
+            <div class="main-head">
+              <div>
+                <div class="crumb">Announcements / New announcement</div>
+                <h2 class="display">New <em>announcement</em></h2>
+              </div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;height:300px"></div>
+          </div>
+
+          <!-- Drawer overlay -->
+          <aside class="drawer">
+            <div class="drawer-head">
+              <div>
+                <div class="label">Final confirmation</div>
+                <h3>Send this <em>announcement?</em></h3>
+              </div>
+              <div class="close">×</div>
+            </div>
+
+            <div class="drawer-body">
+
+              <div class="drawer-section-label">Message that will be sent</div>
+
+              <div class="sms-preview" style="margin-bottom:0">
+                <div class="sp-phone">
+                  <div class="sp-from">SMS · From <b>Omnischools</b></div>
+                  <div class="sp-bubble">
+                    PTA meeting Fri 9 May, 4:30 PM in the assembly hall. Topics: Term 2 calendar, BECE prep for JHS 3, fee schedule. Please attend if you can.
+- Christ the King
+                  </div>
+                </div>
+              </div>
+
+              <div class="drawer-section-label">Recipients · 118 in total</div>
+
+              <div class="recipient-card">
+                <div class="group-row">
+                  <div class="name">Guardians of <b>JHS 1A</b></div>
+                  <div class="count">28 sends</div>
+                  <div class="cost">GHS 1.40</div>
+                </div>
+                <div class="group-row">
+                  <div class="name">Guardians of <b>JHS 1B</b></div>
+                  <div class="count">24 sends</div>
+                  <div class="cost">GHS 1.20</div>
+                </div>
+                <div class="group-row">
+                  <div class="name">Guardians of <b>JHS 2A</b></div>
+                  <div class="count">34 sends</div>
+                  <div class="cost">GHS 1.70</div>
+                </div>
+                <div class="group-row">
+                  <div class="name">Guardians of <b>JHS 2B</b></div>
+                  <div class="count">32 sends</div>
+                  <div class="cost">GHS 1.60</div>
+                </div>
+                <div class="total-row">
+                  <div class="name">Total</div>
+                  <div class="count">118 sends</div>
+                  <div class="cost">GHS 5.90</div>
+                </div>
+              </div>
+
+              <div style="margin-top:12px;padding:10px 14px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--navy-3);line-height:1.5">
+                <b style="color:var(--navy)">Note:</b> Some guardians have multiple students enrolled. Omnischools sends one SMS per phone number to avoid duplicates — the actual SMS count above already deduplicates.
+              </div>
+
+              <div class="drawer-section-label">Timing</div>
+
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--navy-2);display:flex;gap:10px;align-items:center">
+                <div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:var(--bg);font-family:'Fraunces',serif;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">→</div>
+                <div><b style="color:var(--navy);font-weight:600">Send now.</b> Messages will start arriving within 30 seconds. Estimated full delivery in 4-6 minutes.</div>
+              </div>
+
+              <div class="confirm-block">
+                <div class="check on"></div>
+                <div class="body">
+                  <b>I understand this cannot be undone.</b> Once sent, SMS messages cannot be recalled. The cost (GHS 5.90) will be deducted from the school's SMS balance.
+                </div>
+              </div>
+
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn subtle">← Edit message</button>
+              <button class="btn gold">Send to 118 recipients →</button>
+            </div>
+          </aside>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Final confirmation, not "are you sure?"</b> The drawer's job is to show admin exactly what's about to happen — message text, recipients per group, cost per group, timing. The decision is enabled by full information, not by abstract warning.</li>
+        <li><b>Message preview at the top</b> in the same SMS phone bubble shape as the composer. <b>Identical visual format means identical interpretation</b> — what admin saw composing is what admin sees confirming.</li>
+        <li><b>Recipients broken down by group with per-group cost.</b> "Guardians of JHS 1A — 28 sends — GHS 1.40" lets admin verify each group is correct. If one of the groups looks off (wrong class, unexpected count), admin sees it before sending.</li>
+        <li><b>Total row with a heavy navy underline</b> — same pattern as receipt totals. The total is the consequence; everything above is the breakdown.</li>
+        <li><b>Deduplication note explains the count.</b> A guardian with two children gets one SMS, not two. Without this note the math wouldn't add up to admin (118 students but only 96 sends?). The note prevents support questions.</li>
+        <li><b>Timing block in green</b> tells admin when delivery happens. Not "sent" but "starting to arrive within 30 seconds" — sets accurate expectation. SMS gateways take 4-6 minutes for full delivery to a 100+ recipient blast; admin shouldn't expect instant.</li>
+        <li><b>Confirm checkbox is required.</b> Unchecked, the send button is disabled. The "I understand this cannot be undone" framing is the single piece of friction that prevents accidental sends.</li>
+        <li><b>Cost deduction is mentioned in the confirm block</b> — "the cost (GHS 5.90) will be deducted from the school's SMS balance." Surfaces the financial reality. Schools running low on SMS balance see this and know to top up.</li>
+        <li><b>Edit message button</b> goes back to the composer with everything preserved. Confirmation drawer doesn't lose state — admin can iterate.</li>
+        <li><b>Send button anchored to specific count</b>: "Send to 118 recipients →". Not "Send" alone — anchored to the number so admin knows exactly what they're authorising.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 ANNOUNCEMENTS HISTORY ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Announcements history</div>
+    <div class="section-meta">Admin · Announcements (default landing)</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / announcements</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item active"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Announcements</div>
+              <h2 class="display">School-wide <em>communications</em></h2>
+              <div class="lede">Recent announcements, scheduled sends, and drafts. Click any row to see delivery details and parent read-receipts.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">SMS balance · GHS 432.00</button>
+              <button class="btn gold">+ New announcement</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
+            <div style="padding:6px 12px;border-radius:100px;background:var(--navy);color:var(--bg);border:1px solid var(--navy);font-size:11px;font-weight:600;cursor:pointer">All <span style="font-size:10px;margin-left:4px;opacity:0.7">47</span></div>
+            <div style="height:18px;width:1px;background:var(--border);margin:0 4px"></div>
+            <div style="padding:6px 12px;border-radius:100px;background:var(--surface);color:var(--navy-3);border:1px solid var(--border);font-size:11px;font-weight:600;cursor:pointer">Sent <span style="font-size:10px;margin-left:4px;opacity:0.7">42</span></div>
+            <div style="padding:6px 12px;border-radius:100px;background:var(--surface);color:var(--navy-3);border:1px solid var(--border);font-size:11px;font-weight:600;cursor:pointer">Scheduled <span style="font-size:10px;margin-left:4px;opacity:0.7">3</span></div>
+            <div style="padding:6px 12px;border-radius:100px;background:var(--surface);color:var(--navy-3);border:1px solid var(--border);font-size:11px;font-weight:600;cursor:pointer">Drafts <span style="font-size:10px;margin-left:4px;opacity:0.7">2</span></div>
+            <div style="height:18px;width:1px;background:var(--border);margin:0 4px"></div>
+            <input style="padding:6px 12px;border-radius:100px;background:var(--surface);border:1px solid var(--border);font-size:12px;font-family:inherit;width:240px;color:var(--navy)" placeholder="Search subject or audience..." />
+          </div>
+
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <div class="history-table-head">
+              <div>When</div>
+              <div>Subject</div>
+              <div>Audience</div>
+              <div>Channels</div>
+              <div>Delivery</div>
+              <div></div>
+            </div>
+
+            <!-- Scheduled (top) -->
+            <div class="history-row scheduled">
+              <div class="when">
+                <span class="date">Sun 11 May</span>
+                18:00
+                <div class="scheduled-tag">Scheduled</div>
+              </div>
+              <div class="subject">
+                Term 2 starts Monday
+                <div class="preview">Welcome back. Term 2 begins Monday 12 May. Please ensure students arrive by 7:30 AM in full uniform...</div>
+              </div>
+              <div><span class="audience-tag">All school · 600</span></div>
+              <div class="channel-list">
+                <span class="ch">SMS</span>
+                <span class="ch">App</span>
+              </div>
+              <div class="delivery">
+                <span class="pct muted">queued</span>
+              </div>
+              <div class="actions"><button class="ghost-btn">Edit</button></div>
+            </div>
+
+            <!-- Sent today -->
+            <div class="history-row">
+              <div class="when">
+                <span class="date">Today</span>
+                10:24
+              </div>
+              <div class="subject">
+                PTA meeting · Friday 9 May at 4:30 PM
+                <div class="preview">PTA meeting Fri 9 May, 4:30 PM in the assembly hall. Topics: Term 2 calendar, BECE prep...</div>
+              </div>
+              <div><span class="audience-tag">JHS 1 + 2 · 118</span></div>
+              <div class="channel-list">
+                <span class="ch">SMS</span>
+              </div>
+              <div class="delivery">
+                <div class="meter"><div class="meter-fill" style="width:99%"></div></div>
+                <span class="pct">99%</span>
+              </div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <!-- Sent yesterday -->
+            <div class="history-row">
+              <div class="when">
+                <span class="date">Yesterday</span>
+                09:14
+              </div>
+              <div class="subject">
+                Fee deadline reminder · 3 days left
+                <div class="preview">Friendly reminder: Term 1 fees are due this Friday 4 May. Please settle outstanding balances...</div>
+              </div>
+              <div><span class="audience-tag">Outstanding · 142</span></div>
+              <div class="channel-list">
+                <span class="ch">SMS</span>
+              </div>
+              <div class="delivery">
+                <div class="meter"><div class="meter-fill" style="width:96%"></div></div>
+                <span class="pct">96%</span>
+              </div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <!-- Emergency -->
+            <div class="history-row emergency">
+              <div class="when">
+                <span class="date">28 Apr</span>
+                07:42
+                <div class="emergency-tag">Emergency</div>
+              </div>
+              <div class="subject">
+                School closed today · heavy flooding
+                <div class="preview">Christ the King JHS is closed today (Mon 28 Apr) due to flooding on the access roads. Please keep...</div>
+              </div>
+              <div><span class="audience-tag">All school · 597</span></div>
+              <div class="channel-list">
+                <span class="ch">SMS</span>
+                <span class="ch">App</span>
+              </div>
+              <div class="delivery">
+                <div class="meter"><div class="meter-fill" style="width:100%"></div></div>
+                <span class="pct">100%</span>
+              </div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <!-- Sent 25 Apr -->
+            <div class="history-row">
+              <div class="when">
+                <span class="date">25 Apr</span>
+                14:18
+              </div>
+              <div class="subject">
+                Mid-term exam timetable · JHS 2
+                <div class="preview">JHS 2 mid-term exams begin Mon 5 May. Maths Mon, English Tue, Science Wed, Social Studies Thu...</div>
+              </div>
+              <div><span class="audience-tag">JHS 2 · 66</span></div>
+              <div class="channel-list">
+                <span class="ch">SMS</span>
+                <span class="ch">App</span>
+              </div>
+              <div class="delivery">
+                <div class="meter"><div class="meter-fill" style="width:97%"></div></div>
+                <span class="pct">97%</span>
+              </div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <!-- Partial delivery example -->
+            <div class="history-row">
+              <div class="when">
+                <span class="date">22 Apr</span>
+                11:33
+              </div>
+              <div class="subject">
+                Sports day reminder
+                <div class="preview">Annual sports day this Saturday 26 Apr at 9 AM. Athletes report by 8:00 AM in PE uniform...</div>
+              </div>
+              <div><span class="audience-tag">All school · 600</span></div>
+              <div class="channel-list">
+                <span class="ch">SMS</span>
+              </div>
+              <div class="delivery">
+                <div class="meter"><div class="meter-fill warn" style="width:88%"></div></div>
+                <span class="pct warn">88%</span>
+              </div>
+              <div class="actions"><button class="ghost-btn">Resend</button></div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>SMS balance prominent in the page header</b> — "SMS balance · GHS 432.00." Admin sees the running balance every time they visit the page. Encourages topping up before it hits zero rather than discovering empty mid-emergency.</li>
+        <li><b>Filter pills with counts</b>: All / Sent / Scheduled / Drafts. Same shape as the audit log filters. Most common scan is "what's gone out lately" (default All view, sorted by recency).</li>
+        <li><b>Scheduled rows tinted gold</b> with "Scheduled" tag in the When column. Sit at the top because they're the most consequential — admin needs to verify or cancel before the send time arrives.</li>
+        <li><b>Emergency rows tinted soft red</b> with "Emergency" tag. The flood-closure announcement reads as significant in the timeline; auditor scrolling through the year sees emergency events stand out.</li>
+        <li><b>Delivery percentage with progress meter.</b> 99% / 96% / 100% — most messages don't reach 100% because of inactive numbers, network failures, or full inboxes. The 88% sports day row shows that lower delivery rates are flagged in gold and prompt a "Resend" action.</li>
+        <li><b>"Resend" button</b> only appears on rows below a delivery threshold. The action triggers a re-send to undelivered numbers only — not duplicating to delivered ones. Cost is reduced because only the failed attempts get re-billed.</li>
+        <li><b>Subject + preview pattern.</b> Subject in Fraunces, first sentence of body in italic Manrope grey below. Admin scans subjects; the preview offers context without expanding rows.</li>
+        <li><b>Audience tag is a pill</b> showing the broadcast scope and recipient count. "JHS 1 + 2 · 118" / "Outstanding · 142" / "All school · 600" — terse but informative.</li>
+        <li><b>Channel chips in mono caps</b> ("SMS", "App") show how each announcement was delivered. A row with both means admin sent to multiple channels; admin can verify the choice was right.</li>
+        <li><b>"View" vs "Edit" actions per row.</b> Sent rows offer View (read-only detail with delivery breakdown by recipient). Scheduled and draft rows offer Edit. Emergency rows offer View; emergencies aren't editable post-send because they may have triggered priority dispatch.</li>
+        <li><b>Default sort is recency descending,</b> with scheduled pinned to the top regardless of date. The eye reads the upcoming first, then the past in reverse chronological — same temporal logic as a calendar.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 WHATSAPP SETUP (MVP2 PREVIEW) ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">WhatsApp Business · setup</div>
+    <div class="section-meta">MVP2 preview · Settings &gt; Channels &gt; WhatsApp</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / channels / whatsapp</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Settings</a> / Channels / WhatsApp</div>
+              <h2 class="display"><em>WhatsApp Business</em> · setup</h2>
+              <div class="lede">Connect your school's WhatsApp Business account to send announcements, reminders, and receipts via WhatsApp. Cheaper than SMS per conversation, supports rich media, but requires opted-in recipients.</div>
+            </div>
+          </div>
+
+          <!-- Connection status -->
+          <div style="background:var(--green-bg);border:1px solid rgba(47,107,71,0.2);border-left:3px solid var(--green);border-radius:10px;padding:14px 18px;margin-bottom:24px;display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center">
+            <div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:var(--bg);font-family:'Fraunces',serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">✓</div>
+            <div>
+              <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--green);letter-spacing:-0.005em">WhatsApp Business connected</div>
+              <div style="font-size:11px;color:var(--navy-2);margin-top:2px">Connected as <b>Christ the King JHS</b> · phone <b>+233 30 222 4488</b> · Meta verified <b>Apr 12, 2026</b></div>
+            </div>
+            <button class="btn">Manage connection</button>
+          </div>
+
+          <!-- Stats grid -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+              <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:6px">Opted-in parents</div>
+              <div style="font-family:'Fraunces',serif;font-weight:600;font-size:24px;letter-spacing:-0.025em;line-height:1">237<span style="font-size:14px;color:var(--navy-3);font-weight:500">/600</span></div>
+              <div style="font-size:11px;color:var(--navy-3);margin-top:6px">39% of parents · growing each term</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+              <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:6px">Approved templates</div>
+              <div style="font-family:'Fraunces',serif;font-weight:600;font-size:24px;letter-spacing:-0.025em;line-height:1">12</div>
+              <div style="font-size:11px;color:var(--navy-3);margin-top:6px">3 pending Meta review</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+              <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:6px">Sent this month</div>
+              <div style="font-family:'Fraunces',serif;font-weight:600;font-size:24px;letter-spacing:-0.025em;line-height:1">1,840</div>
+              <div style="font-size:11px;color:var(--navy-3);margin-top:6px">486 conversations · 4 messages avg</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+              <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:6px">Cost this month</div>
+              <div style="font-family:'Fraunces',serif;font-weight:600;font-size:24px;letter-spacing:-0.025em;line-height:1;color:var(--navy)">GHS 87.48</div>
+              <div style="font-size:11px;color:var(--green);margin-top:6px;font-weight:600">~62% cheaper than SMS for this volume</div>
+            </div>
+          </div>
+
+          <!-- Two-column body: opt-in flow + templates -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px">
+
+            <!-- Opt-in flow -->
+            <div class="composer-card">
+              <div class="cc-head">
+                <div>
+                  <div class="label">Parent opt-in</div>
+                  <h3>How parents <em>connect</em></h3>
+                </div>
+              </div>
+              <div class="cc-body">
+                <div style="display:flex;flex-direction:column;gap:14px">
+
+                  <div style="display:grid;grid-template-columns:32px 1fr;gap:12px">
+                    <div style="width:28px;height:28px;border-radius:50%;background:var(--gold-bg);color:var(--gold);font-family:'Fraunces',serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">1</div>
+                    <div>
+                      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px;letter-spacing:-0.005em">Parent taps "Get WhatsApp updates" in app</div>
+                      <div style="font-size:11px;color:var(--navy-3);margin-top:2px">Visible on parent home screen for any parent who hasn't opted in</div>
+                    </div>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:32px 1fr;gap:12px">
+                    <div style="width:28px;height:28px;border-radius:50%;background:var(--gold-bg);color:var(--gold);font-family:'Fraunces',serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">2</div>
+                    <div>
+                      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px;letter-spacing:-0.005em">Omnischools sends a one-time WhatsApp invite</div>
+                      <div style="font-size:11px;color:var(--navy-3);margin-top:2px">"Christ the King would like to send updates via WhatsApp. Reply YES to confirm."</div>
+                    </div>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:32px 1fr;gap:12px">
+                    <div style="width:28px;height:28px;border-radius:50%;background:var(--green-bg);color:var(--green);font-family:'Fraunces',serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">3</div>
+                    <div>
+                      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px;letter-spacing:-0.005em">Parent replies YES → opted in</div>
+                      <div style="font-size:11px;color:var(--navy-3);margin-top:2px">From now on, WhatsApp is available alongside SMS for this parent</div>
+                    </div>
+                  </div>
+
+                  <div style="background:var(--bg);border-radius:6px;padding:12px 14px;font-size:11px;color:var(--navy-2);line-height:1.5;margin-top:6px">
+                    <b style="color:var(--navy)">Why opt-in matters:</b> WhatsApp Business policy requires explicit consent before businesses can message users. Omnischools tracks the consent timestamp and reply for audit; opt-out is one-tap from any message.
+                  </div>
+
+                  <button class="btn" style="width:100%;justify-content:center">View opt-in invitation flow →</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Templates -->
+            <div class="composer-card">
+              <div class="cc-head">
+                <div>
+                  <div class="label">Approved templates</div>
+                  <h3>Meta-approved <em>messages</em></h3>
+                </div>
+                <button class="btn" style="font-size:11px;padding:6px 12px">+ Submit new</button>
+              </div>
+              <div class="cc-body">
+                <div style="display:flex;flex-direction:column;gap:6px">
+
+                  <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+                    <div>
+                      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px;letter-spacing:-0.005em">payment_confirmation_v3</div>
+                      <div style="font-size:10px;color:var(--navy-3);margin-top:2px;font-style:italic">"Thank you {parent_name}. Your payment of {amount} has been received..."</div>
+                    </div>
+                    <span style="display:inline-flex;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:100px;background:var(--green-bg);color:var(--green)">Approved</span>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+                    <div>
+                      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px;letter-spacing:-0.005em">fee_reminder_v2</div>
+                      <div style="font-size:10px;color:var(--navy-3);margin-top:2px;font-style:italic">"Hi {parent_name}, {student_name}'s {term} fees of {amount} are due..."</div>
+                    </div>
+                    <span style="display:inline-flex;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:100px;background:var(--green-bg);color:var(--green)">Approved</span>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+                    <div>
+                      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px;letter-spacing:-0.005em">pta_meeting_reminder</div>
+                      <div style="font-size:10px;color:var(--navy-3);margin-top:2px;font-style:italic">"PTA meeting at {school_name} on {date} at {time}..."</div>
+                    </div>
+                    <span style="display:inline-flex;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:100px;background:var(--green-bg);color:var(--green)">Approved</span>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+                    <div>
+                      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px;letter-spacing:-0.005em">grade_report_v1</div>
+                      <div style="font-size:10px;color:var(--navy-3);margin-top:2px;font-style:italic">"{student_name}'s {term} report is ready. Tap to view..."</div>
+                    </div>
+                    <span style="display:inline-flex;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:100px;background:var(--gold-bg);color:var(--gold)">Pending</span>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+                    <div>
+                      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px;letter-spacing:-0.005em">emergency_closure</div>
+                      <div style="font-size:10px;color:var(--navy-3);margin-top:2px;font-style:italic">"URGENT: {school_name} is closed today due to {reason}..."</div>
+                    </div>
+                    <span style="display:inline-flex;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:100px;background:var(--green-bg);color:var(--green)">Approved</span>
+                  </div>
+
+                  <div style="background:var(--bg);border-radius:6px;padding:11px 14px;font-size:11px;color:var(--navy-2);line-height:1.5;margin-top:6px">
+                    <b style="color:var(--navy)">Templates require Meta approval</b> (typically 24-72 hours) before they can be sent. Omnischools manages submission and tracks status for you.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Channel mix recommendation -->
+          <div class="composer-card">
+            <div class="cc-head">
+              <div>
+                <div class="label">Recommended channel strategy</div>
+                <h3>How to <em>mix</em> SMS and WhatsApp</h3>
+              </div>
+            </div>
+            <div class="cc-body">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+                <div>
+                  <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+                    <div style="width:30px;height:30px;border-radius:8px;background:var(--gold-bg);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:12px">SMS</div>
+                    <div style="font-family:'Fraunces',serif;font-weight:600;font-size:14px;letter-spacing:-0.005em">Use SMS for</div>
+                  </div>
+                  <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
+                    <li style="font-size:12px;color:var(--navy-2);padding-left:18px;position:relative;line-height:1.5"><span style="position:absolute;left:0;color:var(--gold);font-weight:700">·</span><b style="color:var(--navy);font-weight:600">Emergencies</b> — universal reach including feature phones</li>
+                    <li style="font-size:12px;color:var(--navy-2);padding-left:18px;position:relative;line-height:1.5"><span style="position:absolute;left:0;color:var(--gold);font-weight:700">·</span><b style="color:var(--navy);font-weight:600">First-time outreach</b> to parents who haven't opted in</li>
+                    <li style="font-size:12px;color:var(--navy-2);padding-left:18px;position:relative;line-height:1.5"><span style="position:absolute;left:0;color:var(--gold);font-weight:700">·</span><b style="color:var(--navy);font-weight:600">Authentication codes</b> — OTPs always go via SMS</li>
+                    <li style="font-size:12px;color:var(--navy-2);padding-left:18px;position:relative;line-height:1.5"><span style="position:absolute;left:0;color:var(--gold);font-weight:700">·</span><b style="color:var(--navy);font-weight:600">Critical balance reminders</b> — overdue 30+ days</li>
+                  </ul>
+                </div>
+                <div>
+                  <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+                    <div style="width:30px;height:30px;border-radius:8px;background:rgba(37,168,89,0.12);color:#25A859;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:12px">WA</div>
+                    <div style="font-family:'Fraunces',serif;font-weight:600;font-size:14px;letter-spacing:-0.005em">Use WhatsApp for</div>
+                  </div>
+                  <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
+                    <li style="font-size:12px;color:var(--navy-2);padding-left:18px;position:relative;line-height:1.5"><span style="position:absolute;left:0;color:#25A859;font-weight:700">·</span><b style="color:var(--navy);font-weight:600">Receipt PDFs</b> — attach the file directly to the message</li>
+                    <li style="font-size:12px;color:var(--navy-2);padding-left:18px;position:relative;line-height:1.5"><span style="position:absolute;left:0;color:#25A859;font-weight:700">·</span><b style="color:var(--navy);font-weight:600">Achievements</b> with photos — sports day, performances</li>
+                    <li style="font-size:12px;color:var(--navy-2);padding-left:18px;position:relative;line-height:1.5"><span style="position:absolute;left:0;color:#25A859;font-weight:700">·</span><b style="color:var(--navy);font-weight:600">Routine reminders</b> with quick-reply buttons (Confirm / Decline)</li>
+                    <li style="font-size:12px;color:var(--navy-2);padding-left:18px;position:relative;line-height:1.5"><span style="position:absolute;left:0;color:#25A859;font-weight:700">·</span><b style="color:var(--navy);font-weight:600">Term reports</b> — link to PDF + brief summary</li>
+                  </ul>
+                </div>
+              </div>
+              <div style="background:var(--gold-bg);border:1px solid var(--gold-soft);border-left:3px solid var(--gold);border-radius:8px;padding:12px 16px;margin-top:18px;font-size:12px;color:var(--navy-2);line-height:1.55">
+                <b style="color:var(--navy);font-weight:600">Omnischools can choose automatically.</b> When this is on, Omnischools picks the best channel per recipient — WhatsApp if they've opted in, SMS otherwise. Admin doesn't think about it; the system minimises cost while maximising reach.
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Connection status banner at the top</b> in green tells admin the integration is live. Includes the Meta verification date — schools that need to demonstrate compliance to parents or board can point to this.</li>
+        <li><b>Four-tile stats strip</b> with the data that matters: opted-in parents, approved templates, sent this month, cost this month. The cost tile flags the savings vs SMS — <b>62% cheaper for the same volume</b> — which is the business case in one number.</li>
+        <li><b>Opt-in flow as 3 numbered steps</b>. Tap in app → Omnischools sends invite → parent replies YES. The flow is genuinely simple but worth showing because most schools and most admins haven't done WhatsApp Business onboarding before. The "Why opt-in matters" callout explains the policy reason without lecturing.</li>
+        <li><b>Templates list with status pills</b> (Approved / Pending). Pending templates can't be sent yet — Meta typically takes 24-72 hours. Showing pending status sets expectation. Each row shows the actual template body with placeholder variables ({parent_name}, {amount}) so admin knows what gets sent.</li>
+        <li><b>"Submit new" template button</b> opens a separate flow (not drawn) where admin writes a template and submits to Meta for approval. Omnischools manages the API submission; admin just sees status.</li>
+        <li><b>Recommended channel strategy block</b> as the educational anchor. Two columns: "Use SMS for" / "Use WhatsApp for" — with concrete examples. <b>OTPs always SMS</b> is the load-bearing rule (WhatsApp's 24-hour conversation window doesn't fit short-lived OTPs, and SMS is the universal authentication channel).</li>
+        <li><b>"Omnischools can choose automatically"</b> as an explicit feature in gold. Once both channels are set up, the system can route per-recipient. This is the real product win — schools don't think about channels, they think about messages, and Omnischools picks. Reduces cost without admin friction.</li>
+        <li><b>Receipt PDFs via WhatsApp</b> is genuinely transformative. Currently SMS sends a link the parent has to tap, then a browser opens, then PDF loads. WhatsApp attaches the PDF directly — three taps becomes one. Worth highlighting as a use case because it's tangible.</li>
+        <li><b>This whole screen is MVP2 scope.</b> Designed now to validate the data model (opt-in tracking, template registry, conversation costs, channel routing) and to show where things land. Ships when WhatsApp Business API integration is built — probably 2-3 weeks of focused work after MVP1.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

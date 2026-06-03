@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Reports module</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head .crumb a { color: var(--gold); text-decoration: none; }
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+.main-head .lede {
+  font-size: 13px; color: var(--navy-3);
+  margin-top: 6px; max-width: 540px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.subtle { background: transparent; border-color: transparent; color: var(--navy-3); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ============ REPORTS LANDING ============ */
+.category-tabs {
+  display: flex; gap: 6px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.category-tab {
+  padding: 11px 18px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  margin-bottom: -1px;
+  display: flex; align-items: center; gap: 8px;
+}
+.category-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--gold);
+}
+.category-tab .count {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 500;
+  background: var(--bg);
+  padding: 2px 7px;
+  border-radius: 100px;
+}
+.category-tab.active .count {
+  background: var(--gold-bg);
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.report-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 22px 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+.report-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px -10px rgba(26,43,71,0.18);
+}
+.report-card.featured {
+  border: 1.5px solid var(--gold);
+  background: linear-gradient(180deg, var(--gold-bg) 0%, var(--surface) 30%);
+}
+.report-card.featured::before {
+  content: "MOST USED";
+  position: absolute;
+  top: 14px; right: 16px;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  font-weight: 700;
+  background: var(--surface);
+  padding: 3px 8px;
+  border-radius: 100px;
+  border: 1px solid var(--gold-soft);
+}
+.report-card .rc-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 16px;
+  margin-bottom: 14px;
+}
+.report-card .rc-icon.green { background: var(--green-bg); color: var(--green); }
+.report-card .rc-icon.terra { background: var(--terra-bg); color: var(--terra); }
+.report-card .rc-icon.navy { background: rgba(26,43,71,0.08); color: var(--navy); }
+.report-card .rc-name {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.report-card .rc-desc {
+  font-size: 12px;
+  color: var(--navy-3);
+  line-height: 1.5;
+  margin-bottom: 16px;
+  min-height: 36px;
+}
+.report-card .rc-snapshot {
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.report-card .rc-snapshot .l {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-bottom: 3px;
+}
+.report-card .rc-snapshot .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+}
+.report-card .rc-snapshot .v.green { color: var(--green); }
+.report-card .rc-snapshot .v.terra { color: var(--terra); }
+.report-card .rc-snapshot .change {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+.report-card .rc-snapshot .change b { color: var(--green); font-weight: 700; }
+.report-card .rc-snapshot .change b.terra { color: var(--terra); }
+.report-card.coming-soon {
+  opacity: 0.6;
+}
+.report-card.coming-soon::after {
+  content: "MVP2";
+  position: absolute;
+  top: 14px; right: 16px;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--navy-3);
+  font-weight: 700;
+  background: var(--bg);
+  padding: 3px 8px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+}
+.report-card.coming-soon:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+/* ============ REPORT DETAIL ============ */
+.period-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 22px;
+}
+.period-bar .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-right: 4px;
+}
+.period-bar .period-pill {
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+}
+.period-bar .period-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.period-bar .period-pill .sub {
+  font-size: 9px;
+  margin-left: 4px;
+  opacity: 0.7;
+  font-weight: 500;
+}
+.period-bar .right {
+  margin-left: auto;
+  display: flex; gap: 8px;
+}
+
+/* KPI strip — 4 big numbers */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.kpi.featured {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.kpi .l {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-bottom: 6px;
+}
+.kpi.featured .l { color: var(--gold-soft); }
+.kpi .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.025em;
+  color: var(--navy);
+  line-height: 1;
+}
+.kpi.featured .v { color: var(--bg); }
+.kpi .change {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 8px;
+  display: flex; align-items: center; gap: 4px;
+}
+.kpi.featured .change { color: var(--gold-soft); }
+.kpi .change .arrow {
+  display: inline-flex;
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  background: var(--green-bg);
+  color: var(--green);
+  font-weight: 700;
+  font-size: 11px;
+  align-items: center; justify-content: center;
+}
+.kpi .change .arrow.down {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.kpi.featured .change .arrow {
+  background: rgba(255,255,255,0.15);
+  color: var(--gold);
+}
+.kpi .change b { color: var(--navy); font-weight: 600; }
+.kpi.featured .change b { color: var(--bg); font-weight: 600; }
+
+/* Two-column body for charts and breakdowns */
+.report-body {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.report-card-big {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.rcb-head {
+  padding: 16px 22px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.rcb-head .label {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 3px;
+}
+.rcb-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.rcb-head .ctx {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.rcb-head .ctx b { color: var(--navy); font-weight: 600; }
+.rcb-body { padding: 20px 22px 22px; }
+
+/* Bar chart */
+.bar-chart {
+  height: 240px;
+  display: flex; align-items: flex-end;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.bar-chart .grid-line {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 1px dashed var(--border);
+}
+.bar-chart .grid-line .label {
+  position: absolute;
+  left: -8px;
+  top: -7px;
+  transform: translateX(-100%);
+  font-size: 9px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+}
+.bar-col {
+  flex: 1;
+  display: flex; flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  position: relative;
+}
+.bar-col .bar {
+  width: 70%;
+  background: var(--gold);
+  border-radius: 3px 3px 0 0;
+  position: relative;
+}
+.bar-col .bar.peak { background: var(--green); }
+.bar-col .bar:hover::after {
+  content: attr(data-amt);
+  position: absolute;
+  top: -22px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--navy);
+  color: var(--bg);
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+.bar-col .x-label {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Method breakdown — donut + legend */
+.method-list {
+  display: flex; flex-direction: column;
+  gap: 10px;
+}
+.method-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.method-row:last-child { border-bottom: none; padding-bottom: 0; }
+.method-row .swatch {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  background: var(--gold);
+}
+.method-row .swatch.cash { background: var(--green); }
+.method-row .swatch.bank { background: var(--navy); }
+.method-row .swatch.telecel { background: #C8975B; opacity: 0.5; }
+.method-row .swatch.airtel { background: #B84A39; opacity: 0.4; }
+.method-row .body .name {
+  font-size: 12px; font-weight: 600;
+}
+.method-row .body .amount {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--navy);
+  margin-top: 2px;
+}
+.method-row .pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy-3);
+  font-size: 13px;
+}
+
+/* By-class breakdown table */
+.class-table {
+  width: 100%;
+}
+.class-table-head {
+  display: grid;
+  grid-template-columns: 100px 1fr 120px 130px 90px;
+  gap: 14px;
+  padding: 12px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.class-table-head .right { text-align: right; }
+.class-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 120px 130px 90px;
+  gap: 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+}
+.class-row:last-child { border-bottom: none; }
+.class-row:hover { background: var(--bg); }
+.class-row .cls {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.class-row .progress-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
+.class-row .progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  overflow: hidden;
+  position: relative;
+}
+.class-row .progress-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 100px;
+}
+.class-row .progress-fill.warn { background: var(--gold); }
+.class-row .progress-fill.danger { background: var(--terra); }
+.class-row .progress-pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  width: 36px;
+  text-align: right;
+}
+.class-row .progress-pct.green { color: var(--green); }
+.class-row .progress-pct.warn { color: var(--gold); }
+.class-row .progress-pct.danger { color: var(--terra); }
+.class-row .amount {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  text-align: right;
+}
+.class-row .amount.terra { color: var(--terra); }
+.class-row .actions { text-align: right; }
+.class-row .ghost-btn {
+  font-size: 10px; letter-spacing: 0.04em;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  padding: 4px 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.class-row .ghost-btn:hover { color: var(--gold); border-color: var(--gold-soft); }
+
+/* ============ OUTSTANDING REPORT ============ */
+.aging-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.aging-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  position: relative;
+}
+.aging-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 18px; right: 18px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--green);
+}
+.aging-card.warn::before { background: var(--warn); }
+.aging-card.danger::before { background: var(--terra); }
+.aging-card.future::before { background: var(--navy-3); }
+
+.aging-card .l {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-bottom: 6px;
+}
+.aging-card .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+}
+.aging-card.warn .v { color: var(--warn); }
+.aging-card.danger .v { color: var(--terra); }
+.aging-card .meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+
+/* Outstanding table */
+.out-table-head {
+  display: grid;
+  grid-template-columns: 1fr 110px 110px 110px 100px 110px;
+  gap: 14px;
+  padding: 12px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.out-table-head .right { text-align: right; }
+.out-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 110px 110px 100px 110px;
+  gap: 14px;
+  padding: 13px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+}
+.out-row:last-child { border-bottom: none; }
+.out-row:hover { background: var(--bg); }
+.out-row.flagged { background: var(--terra-bg-soft); }
+.out-row.flagged:hover { background: var(--terra-bg); }
+
+.out-row .student-cell {
+  display: flex; gap: 10px; align-items: center;
+}
+.out-row .student-cell .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.out-row .student-cell .body .name {
+  font-weight: 600;
+  font-size: 13px;
+}
+.out-row .student-cell .body .guardian {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.out-row .class-pill {
+  display: inline-block;
+  font-size: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-weight: 600;
+  color: var(--navy-2);
+}
+.out-row .amount {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  text-align: right;
+}
+.out-row .amount.terra { color: var(--terra); }
+.out-row .amount.muted { color: var(--navy-3); font-weight: 500; }
+.out-row .aging-pill {
+  display: inline-flex;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 100px;
+}
+.out-row .aging-pill.future { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+.out-row .aging-pill.due { background: var(--gold-bg); color: var(--gold); }
+.out-row .aging-pill.warn { background: var(--warn-bg); color: var(--warn); }
+.out-row .aging-pill.danger { background: var(--terra-bg); color: var(--terra); }
+.out-row .actions { text-align: right; }
+.out-row .send-btn {
+  font-size: 10px; letter-spacing: 0.04em;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--gold-soft);
+  color: var(--gold);
+  padding: 4px 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.out-row .send-btn:hover { background: var(--gold); color: var(--navy); }
+.out-row .send-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: var(--border);
+  color: var(--navy-3);
+}
+
+/* Filter strip */
+.filter-strip {
+  display: flex; gap: 8px;
+  margin-bottom: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filter-pill {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.filter-pill .count {
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+.filter-divider {
+  height: 18px;
+  width: 1px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.filter-search {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-family: inherit;
+  width: 240px;
+  color: var(--navy);
+}
+.filter-search::placeholder { color: var(--navy-3); font-style: italic; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .report-grid { grid-template-columns: 1fr; }
+  .kpi-strip { grid-template-columns: 1fr 1fr; }
+  .aging-strip { grid-template-columns: 1fr 1fr; }
+  .report-body { grid-template-columns: 1fr; }
+  .out-table-head, .out-row { grid-template-columns: 1fr; gap: 6px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Reports</div>
+  <h1 class="display">Answers, not <em>spreadsheets</em></h1>
+  <div class="gold-rule"></div>
+  <p>Reports answer recurring questions: how much have we collected, who hasn't paid, how is each class doing. Each report leads with the answer, shows the trend, and lets the admin drill into the detail. MVP1 ships finance reports first; academic and operational follow as the data accrues.</p>
+</header>
+
+<!-- ============ 01 REPORTS LANDING ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Reports landing</div>
+    <div class="section-meta">Admin / accountant · Reports</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Reports</div>
+              <h2 class="display">What would you like to <em>know</em>?</h2>
+              <div class="lede">Each report answers a specific question. Click any card to see the detail; export to CSV or PDF for filing.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Schedule reports...</button>
+              <button class="btn">Export all (zip)</button>
+            </div>
+          </div>
+
+          <div class="category-tabs">
+            <div class="category-tab active">Finance <span class="count">5</span></div>
+            <div class="category-tab">Academic <span class="count">2</span></div>
+            <div class="category-tab">Operational <span class="count">3</span></div>
+          </div>
+
+          <div class="report-grid">
+
+            <div class="report-card featured">
+              <div class="rc-icon">$</div>
+              <div class="rc-name">Term collection summary</div>
+              <div class="rc-desc">How much you've collected this term, by method and by class.</div>
+              <div class="rc-snapshot">
+                <div class="l">Term 1 · 2026 collected</div>
+                <div class="v green">GHS 94,830.00</div>
+                <div class="change">62% of GHS 152,400.00 billed · <b>+12%</b> vs Term 3 last year at this point</div>
+              </div>
+            </div>
+
+            <div class="report-card">
+              <div class="rc-icon terra">!</div>
+              <div class="rc-name">Outstanding balances</div>
+              <div class="rc-desc">Who hasn't paid, grouped by aging bucket. Send reminders directly.</div>
+              <div class="rc-snapshot">
+                <div class="l">Currently outstanding</div>
+                <div class="v terra">GHS 57,570.00</div>
+                <div class="change"><b class="terra">29</b> students with balances overdue 30+ days</div>
+              </div>
+            </div>
+
+            <div class="report-card">
+              <div class="rc-icon green">%</div>
+              <div class="rc-name">Discounts given</div>
+              <div class="rc-desc">Total discount value applied this term, broken down by tier.</div>
+              <div class="rc-snapshot">
+                <div class="l">Term 1 · 2026 discounts</div>
+                <div class="v">GHS 8,420.00</div>
+                <div class="change">43 applications · sibling tier most used</div>
+              </div>
+            </div>
+
+            <div class="report-card">
+              <div class="rc-icon navy">↗</div>
+              <div class="rc-name">Collection trend</div>
+              <div class="rc-desc">Term-on-term collection rates and timing patterns.</div>
+              <div class="rc-snapshot">
+                <div class="l">Average days to settle</div>
+                <div class="v">14 days</div>
+                <div class="change"><b>3 days faster</b> than the same week last term</div>
+              </div>
+            </div>
+
+            <div class="report-card">
+              <div class="rc-icon terra">×</div>
+              <div class="rc-name">Voids &amp; refunds</div>
+              <div class="rc-desc">Reversed transactions this term with reasons summarised.</div>
+              <div class="rc-snapshot">
+                <div class="l">Reversed this term</div>
+                <div class="v terra">−GHS 740.00</div>
+                <div class="change">3 events · 0.5% of collected</div>
+              </div>
+            </div>
+
+            <div class="report-card coming-soon">
+              <div class="rc-icon">A</div>
+              <div class="rc-name">Class performance</div>
+              <div class="rc-desc">Average grades by class, with term-on-term comparison.</div>
+              <div class="rc-snapshot">
+                <div class="l">Academic data needed</div>
+                <div class="v" style="font-style:italic;color:var(--navy-3);font-size:14px;font-weight:500">Available in MVP2</div>
+                <div class="change">Once gradebook has 2+ terms of data</div>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Page title is a question:</b> "What would you like to know?" Reports module is fundamentally a question-answering surface, not a data warehouse browser. The framing matches the user's intent.</li>
+        <li><b>Three category tabs:</b> Finance (5 reports, MVP1) / Academic (2, MVP2) / Operational (3, mostly MVP2). Default tab is Finance because that's what 80% of report visits are for. Tab counts include both shipped and coming-soon reports for transparency.</li>
+        <li><b>Each card shows a live snapshot,</b> not just a name + description. "Term 1 · 2026 collected: GHS 94,830.00 — 62% of GHS 152,400.00 billed, +12% vs Term 3 last year." The snapshot is the answer; the card is the question. Many days the headmistress doesn't even need to click in.</li>
+        <li><b>Featured "MOST USED" badge</b> on Term collection summary. Promotes the report that headmistresses open every Monday — first thing they see in the grid. The featured card has a subtle gold background gradient that visually anchors it.</li>
+        <li><b>Snapshot includes comparative context.</b> "+12% vs Term 3 last year at this point" is more useful than just the absolute number. Reports without comparisons are just numbers; reports with comparisons are insights.</li>
+        <li><b>Color-coded icons by report character:</b> dollar (gold) for collection, terracotta exclamation for outstanding, green percent for discounts, navy arrow for trends. Visual scan tells admin what kind of answer each card gives.</li>
+        <li><b>Coming-soon cards visible at reduced opacity,</b> with "MVP2" badge and explanation of what's needed before they activate. Sets expectations honestly without pretending the feature isn't planned.</li>
+        <li><b>Two header actions: "Schedule reports..." and "Export all (zip)".</b> Schedule lets admin set "email me Term collection every Monday at 7am". Export-all lets accountant grab everything at once for end-of-month filing.</li>
+        <li><b>Reports lives at the top level of the sidebar,</b> not nested under Billing. It's a destination of its own, used by both admin and accountant. Nesting it would bury the most-used finance views.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 TERM COLLECTION REPORT ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Term collection · detail</div>
+    <div class="section-meta">Admin · Reports &gt; Term collection</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / term-collection</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Reports</a> / Term collection</div>
+              <h2 class="display">Term <em>collection</em> · Term 1 · 2026</h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export CSV</button>
+              <button class="btn">Export PDF</button>
+            </div>
+          </div>
+
+          <div class="period-bar">
+            <div class="label">Period</div>
+            <div class="period-pill">This week</div>
+            <div class="period-pill">This month</div>
+            <div class="period-pill active">Term 1 · 2026 <span class="sub">11 weeks</span></div>
+            <div class="period-pill">Academic year</div>
+            <div class="period-pill">Custom...</div>
+          </div>
+
+          <div class="kpi-strip">
+            <div class="kpi">
+              <div class="l">Total billed</div>
+              <div class="v">GHS 152,400.00</div>
+              <div class="change">381 invoices · 354 students</div>
+            </div>
+            <div class="kpi featured">
+              <div class="l">Collected</div>
+              <div class="v">GHS 94,830.00</div>
+              <div class="change">
+                <span class="arrow">↑</span>
+                <b>62%</b> of billed · vs 50% same week last term
+              </div>
+            </div>
+            <div class="kpi">
+              <div class="l">Outstanding</div>
+              <div class="v">GHS 57,570.00</div>
+              <div class="change">142 students with balances</div>
+            </div>
+            <div class="kpi">
+              <div class="l">Reversed</div>
+              <div class="v" style="color:var(--terra)">−GHS 740.00</div>
+              <div class="change">3 voids &amp; refunds</div>
+            </div>
+          </div>
+
+          <div class="report-body">
+            <div class="report-card-big">
+              <div class="rcb-head">
+                <div>
+                  <div class="label">Weekly collection</div>
+                  <h3>Pattern across the term</h3>
+                </div>
+                <div class="ctx">Peak in <b>Week 3</b> when most parents settle term fees</div>
+              </div>
+              <div class="rcb-body">
+                <div class="bar-chart">
+                  <div class="grid-line" style="bottom:75%"><div class="label">20k</div></div>
+                  <div class="grid-line" style="bottom:50%"><div class="label">15k</div></div>
+                  <div class="grid-line" style="bottom:25%"><div class="label">10k</div></div>
+                  <div class="grid-line" style="bottom:0%"><div class="label">5k</div></div>
+
+                  <div class="bar-col"><div class="bar" style="height:24%" data-amt="GHS 4,200.00"></div><div class="x-label">W1</div></div>
+                  <div class="bar-col"><div class="bar" style="height:48%" data-amt="GHS 9,640.00"></div><div class="x-label">W2</div></div>
+                  <div class="bar-col"><div class="bar peak" style="height:88%" data-amt="GHS 22,180.00"></div><div class="x-label">W3</div></div>
+                  <div class="bar-col"><div class="bar" style="height:64%" data-amt="GHS 14,940.00"></div><div class="x-label">W4</div></div>
+                  <div class="bar-col"><div class="bar" style="height:42%" data-amt="GHS 8,820.00"></div><div class="x-label">W5</div></div>
+                  <div class="bar-col"><div class="bar" style="height:38%" data-amt="GHS 7,640.00"></div><div class="x-label">W6</div></div>
+                  <div class="bar-col"><div class="bar" style="height:34%" data-amt="GHS 6,910.00"></div><div class="x-label">W7</div></div>
+                  <div class="bar-col"><div class="bar" style="height:28%" data-amt="GHS 5,440.00"></div><div class="x-label">W8</div></div>
+                  <div class="bar-col"><div class="bar" style="height:24%" data-amt="GHS 4,810.00"></div><div class="x-label">W9</div></div>
+                  <div class="bar-col"><div class="bar" style="height:18%" data-amt="GHS 3,560.00"></div><div class="x-label">W10</div></div>
+                  <div class="bar-col"><div class="bar" style="height:14%" data-amt="GHS 2,690.00"></div><div class="x-label">W11</div></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:11px;color:var(--navy-3)">
+                  <span>Term started <b style="color:var(--navy)">15 Jan 2026</b></span>
+                  <span>Now in week <b style="color:var(--navy)">11 of 11</b></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="report-card-big">
+              <div class="rcb-head">
+                <div>
+                  <div class="label">By payment method</div>
+                  <h3>Where it came from</h3>
+                </div>
+              </div>
+              <div class="rcb-body">
+                <div class="method-list">
+                  <div class="method-row">
+                    <div class="swatch"></div>
+                    <div class="body">
+                      <div class="name">MTN MoMo</div>
+                      <div class="amount">GHS 71,440.00</div>
+                    </div>
+                    <div class="pct">75%</div>
+                  </div>
+                  <div class="method-row">
+                    <div class="swatch cash"></div>
+                    <div class="body">
+                      <div class="name">Cash</div>
+                      <div class="amount">GHS 18,200.00</div>
+                    </div>
+                    <div class="pct">19%</div>
+                  </div>
+                  <div class="method-row">
+                    <div class="swatch bank"></div>
+                    <div class="body">
+                      <div class="name">Bank transfer</div>
+                      <div class="amount">GHS 4,790.00</div>
+                    </div>
+                    <div class="pct">5%</div>
+                  </div>
+                  <div class="method-row">
+                    <div class="swatch telecel"></div>
+                    <div class="body">
+                      <div class="name">Telecel Cash</div>
+                      <div class="amount">GHS 340.00</div>
+                    </div>
+                    <div class="pct">0.4%</div>
+                  </div>
+                  <div class="method-row">
+                    <div class="swatch airtel"></div>
+                    <div class="body">
+                      <div class="name">AirtelTigo Money</div>
+                      <div class="amount">GHS 60.00</div>
+                    </div>
+                    <div class="pct">0.06%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-card-big">
+            <div class="rcb-head">
+              <div>
+                <div class="label">By class</div>
+                <h3>Collection rate per class</h3>
+              </div>
+              <div class="ctx">Click a class to see <b>which students</b> are outstanding</div>
+            </div>
+            <div class="class-table-head">
+              <div>Class</div>
+              <div>Collection rate</div>
+              <div class="right">Billed</div>
+              <div class="right">Collected</div>
+              <div></div>
+            </div>
+            <div class="class-row">
+              <div class="cls">JHS 1A</div>
+              <div class="progress-wrap">
+                <div class="progress-bar"><div class="progress-fill" style="width:78%"></div></div>
+                <div class="progress-pct green">78%</div>
+              </div>
+              <div class="amount">GHS 25,200.00</div>
+              <div class="amount">GHS 19,656.00</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+            <div class="class-row">
+              <div class="cls">JHS 1B</div>
+              <div class="progress-wrap">
+                <div class="progress-bar"><div class="progress-fill" style="width:71%"></div></div>
+                <div class="progress-pct green">71%</div>
+              </div>
+              <div class="amount">GHS 24,800.00</div>
+              <div class="amount">GHS 17,608.00</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+            <div class="class-row">
+              <div class="cls">JHS 2A</div>
+              <div class="progress-wrap">
+                <div class="progress-bar"><div class="progress-fill warn" style="width:58%"></div></div>
+                <div class="progress-pct warn">58%</div>
+              </div>
+              <div class="amount">GHS 26,400.00</div>
+              <div class="amount">GHS 15,312.00</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+            <div class="class-row">
+              <div class="cls">JHS 2B</div>
+              <div class="progress-wrap">
+                <div class="progress-bar"><div class="progress-fill warn" style="width:62%"></div></div>
+                <div class="progress-pct warn">62%</div>
+              </div>
+              <div class="amount">GHS 25,600.00</div>
+              <div class="amount">GHS 15,872.00</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+            <div class="class-row">
+              <div class="cls">JHS 3A</div>
+              <div class="progress-wrap">
+                <div class="progress-bar"><div class="progress-fill" style="width:74%"></div></div>
+                <div class="progress-pct green">74%</div>
+              </div>
+              <div class="amount">GHS 25,200.00</div>
+              <div class="amount">GHS 18,648.00</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+            <div class="class-row">
+              <div class="cls">JHS 3B</div>
+              <div class="progress-wrap">
+                <div class="progress-bar"><div class="progress-fill danger" style="width:31%"></div></div>
+                <div class="progress-pct danger">31%</div>
+              </div>
+              <div class="amount">GHS 25,200.00</div>
+              <div class="amount">GHS 7,734.00</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Period bar at the top</b> defaults to the current term — that's the question 90% of admins are asking. "This week" and "This month" are quick filters; Custom opens a date picker.</li>
+        <li><b>Four-KPI strip</b> answers the question in four numbers: billed, collected (featured navy card — the headline answer), outstanding, reversed. Same shape as the financial audit summary; reuse intentional.</li>
+        <li><b>Featured KPI card in navy</b> with the collection figure — visual anchor for the page. The arrow with comparative context ("vs 50% same week last term") shows trajectory, not just absolute value.</li>
+        <li><b>Weekly bar chart</b> shows the peak-and-decay pattern that's universal to school terms. Week 3 is colored green (peak); subsequent weeks fade. The annotation ("Term started 15 Jan, now in week 11 of 11") sets context without legend friction.</li>
+        <li><b>Method breakdown</b> ranks by amount with percentages. MTN MoMo dominates at 75% — useful for the school to understand its collection mix and for cash-flow planning around MoMo settlement timing.</li>
+        <li><b>By-class table with progress bars</b> color-coded by collection rate: green ≥70%, gold 50-69%, terra <50%. The class scoring 31% (JHS 3B) reads as immediately problematic; the headmistress can click View and address it.</li>
+        <li><b>Drill-through on every breakdown.</b> Click a class → see outstanding students. Click a method → see those payments. Click the bar chart → see that week's payments. Reports without drill-through are dead-ends.</li>
+        <li><b>Sub-line context lives in the rcb-head</b> — "Peak in Week 3 when most parents settle term fees" — adding interpretation without requiring the user to figure it out themselves.</li>
+        <li><b>Export CSV and PDF</b> in the page header. CSV for spreadsheet work; PDF for filing or board meetings. Same data both formats.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 OUTSTANDING BALANCES ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Outstanding balances · detail</div>
+    <div class="section-meta">Admin · Reports &gt; Outstanding</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / outstanding</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Reports</a> / Outstanding balances</div>
+              <h2 class="display">Who hasn't <em>paid</em></h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export CSV</button>
+              <button class="btn gold">Send reminders to all overdue (29)</button>
+            </div>
+          </div>
+
+          <div style="background:var(--terra-bg-soft);border:1px solid rgba(184,74,57,0.2);border-left:3px solid var(--terra);border-radius:10px;padding:18px 24px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--terra);font-weight:700;margin-bottom:4px">Currently outstanding</div>
+              <div style="font-family:'Fraunces',serif;font-weight:600;font-size:34px;color:var(--terra);letter-spacing:-0.025em;line-height:1">GHS 57,570.00</div>
+              <div style="font-size:12px;color:var(--navy-2);margin-top:6px"><b>142 students</b> with unpaid balances · <b>29</b> are overdue 30+ days</div>
+            </div>
+            <div style="text-align:right;font-size:11px;color:var(--navy-3);max-width:220px">
+              <b style="color:var(--navy)">38% of total billed</b> remains unsettled with 1 week left in the term.
+            </div>
+          </div>
+
+          <div class="aging-strip">
+            <div class="aging-card future">
+              <div class="l">Not yet due</div>
+              <div class="v">GHS 14,800.00</div>
+              <div class="meta">42 students · due Term 1 close</div>
+            </div>
+            <div class="aging-card">
+              <div class="l">Due this week</div>
+              <div class="v">GHS 18,940.00</div>
+              <div class="meta">71 students · expected to settle</div>
+            </div>
+            <div class="aging-card warn">
+              <div class="l">1 — 30 days overdue</div>
+              <div class="v">GHS 16,420.00</div>
+              <div class="meta">38 students · gentle reminder due</div>
+            </div>
+            <div class="aging-card danger">
+              <div class="l">30+ days overdue</div>
+              <div class="v">GHS 7,410.00</div>
+              <div class="meta">29 students · escalation needed</div>
+            </div>
+          </div>
+
+          <div class="filter-strip">
+            <div class="filter-pill active">All <span class="count">180</span></div>
+            <div class="filter-divider"></div>
+            <div class="filter-pill">Not yet due <span class="count">42</span></div>
+            <div class="filter-pill">Due this week <span class="count">71</span></div>
+            <div class="filter-pill">1-30 overdue <span class="count">38</span></div>
+            <div class="filter-pill">30+ overdue <span class="count">29</span></div>
+            <div class="filter-divider"></div>
+            <select class="filter-search" style="width:140px;padding:6px 12px;cursor:pointer">
+              <option>All classes</option>
+              <option>JHS 1A</option>
+              <option>JHS 1B</option>
+              <option>JHS 2A</option>
+            </select>
+            <input class="filter-search" placeholder="Search by student or guardian..." />
+          </div>
+
+          <div class="report-card-big">
+            <div class="out-table-head">
+              <div>Student</div>
+              <div>Class</div>
+              <div class="right">Billed</div>
+              <div class="right">Paid</div>
+              <div class="right">Balance</div>
+              <div></div>
+              <div></div>
+            </div>
+
+            <div class="out-row flagged">
+              <div class="student-cell">
+                <div class="av">YA</div>
+                <div class="body">
+                  <div class="name">Yaw Asante</div>
+                  <div class="guardian">Joseph Asante · +233 24 661 7724</div>
+                </div>
+              </div>
+              <div><span class="class-pill">JHS 2A</span></div>
+              <div class="amount">GHS 400.00</div>
+              <div class="amount muted">GHS 0.00</div>
+              <div class="amount terra">GHS 400.00</div>
+              <div><span class="aging-pill danger">42 days</span></div>
+              <div class="actions"><button class="send-btn">Send reminder</button></div>
+            </div>
+
+            <div class="out-row flagged">
+              <div class="student-cell">
+                <div class="av">EM</div>
+                <div class="body">
+                  <div class="name">Esi Mensah</div>
+                  <div class="guardian">Grace Mensah · +233 50 884 2210</div>
+                </div>
+              </div>
+              <div><span class="class-pill">JHS 1A</span></div>
+              <div class="amount">GHS 380.00</div>
+              <div class="amount">GHS 80.00</div>
+              <div class="amount terra">GHS 300.00</div>
+              <div><span class="aging-pill danger">36 days</span></div>
+              <div class="actions"><button class="send-btn">Send reminder</button></div>
+            </div>
+
+            <div class="out-row">
+              <div class="student-cell">
+                <div class="av">KA</div>
+                <div class="body">
+                  <div class="name">Kwame Adjei</div>
+                  <div class="guardian">Adwoa Adjei · +233 27 117 0084</div>
+                </div>
+              </div>
+              <div><span class="class-pill">JHS 3B</span></div>
+              <div class="amount">GHS 420.00</div>
+              <div class="amount">GHS 200.00</div>
+              <div class="amount terra">GHS 220.00</div>
+              <div><span class="aging-pill warn">18 days</span></div>
+              <div class="actions"><button class="send-btn">Send reminder</button></div>
+            </div>
+
+            <div class="out-row">
+              <div class="student-cell">
+                <div class="av">AB</div>
+                <div class="body">
+                  <div class="name">Akosua Boateng</div>
+                  <div class="guardian">Ama Boateng · +233 24 555 8392</div>
+                </div>
+              </div>
+              <div><span class="class-pill">JHS 2A</span></div>
+              <div class="amount">GHS 108.00</div>
+              <div class="amount">GHS 0.00</div>
+              <div class="amount terra">GHS 108.00</div>
+              <div><span class="aging-pill due">due Fri</span></div>
+              <div class="actions"><button class="send-btn">Send reminder</button></div>
+            </div>
+
+            <div class="out-row">
+              <div class="student-cell">
+                <div class="av">JO</div>
+                <div class="body">
+                  <div class="name">Joseph Owusu</div>
+                  <div class="guardian">Mary Owusu · +233 50 442 8917</div>
+                </div>
+              </div>
+              <div><span class="class-pill">JHS 3A</span></div>
+              <div class="amount">GHS 400.00</div>
+              <div class="amount">GHS 0.00</div>
+              <div class="amount terra">GHS 400.00</div>
+              <div><span class="aging-pill future">due 12 May</span></div>
+              <div class="actions"><button class="send-btn disabled">Not yet due</button></div>
+            </div>
+
+            <div class="out-row">
+              <div class="student-cell">
+                <div class="av">FK</div>
+                <div class="body">
+                  <div class="name">Fafa Kuma</div>
+                  <div class="guardian">Edem Kuma · +233 24 776 1188</div>
+                </div>
+              </div>
+              <div><span class="class-pill">JHS 1B</span></div>
+              <div class="amount">GHS 380.00</div>
+              <div class="amount">GHS 200.00</div>
+              <div class="amount terra">GHS 180.00</div>
+              <div><span class="aging-pill due">due Fri</span></div>
+              <div class="actions"><button class="send-btn">Send reminder</button></div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Page title is direct:</b> "Who hasn't paid". The outstanding balances report is action-oriented — not "review the data" but "do something about it." The title and the gold "Send reminders to all overdue (29)" CTA make the action clear.</li>
+        <li><b>Big terracotta headline number</b> shows the total at-risk: GHS 57,570.00. With context: 142 students, 29 overdue 30+ days, 38% of billed unsettled with 1 week left. This is what the headmistress brings to the next staff meeting.</li>
+        <li><b>Four aging buckets</b> with colored top-bars: navy (not yet due), green (due this week), warn-gold (1-30 overdue), terra (30+ overdue). The eye scans left-to-right from "expected" to "problem." Future + due-this-week sit in the green; the action items live in the warn/danger.</li>
+        <li><b>Filter strip mirrors the aging buckets.</b> Pills with counts: All / Not yet due / Due this week / 1-30 overdue / 30+ overdue. Click any to filter the table. Plus class dropdown and free-text search.</li>
+        <li><b>Table rows in 30+ days overdue are tinted soft red.</b> Same flagging pattern as the audit log — when scanning, the eye finds the cases needing attention.</li>
+        <li><b>Aging pill on each row</b> tells the exact age: "42 days", "18 days", "due Fri", "due 12 May". The pill colour matches the bucket; the text gives precision.</li>
+        <li><b>Send reminder button per row</b> — admin can take action without leaving the page. For "not yet due" rows the button is disabled (no reminder needed yet). For overdue rows the button is gold-outlined and sends an SMS using the overdue-notice template.</li>
+        <li><b>Bulk action in page header</b> — "Send reminders to all overdue (29)" — for the weekly Monday morning sweep. Headmistress hits it once and 29 SMS reminders go out from the templates we built.</li>
+        <li><b>Guardian name + phone shown next to student name</b> so admin knows exactly who's getting the reminder. Anchors the action to a specific person, not just a row.</li>
+        <li><b>Paid column shown alongside balance</b> — useful context. A student with GHS 200 paid and GHS 220 outstanding reads differently from one with GHS 0 paid and GHS 400 outstanding. Both might be "overdue" but the conversation differs.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

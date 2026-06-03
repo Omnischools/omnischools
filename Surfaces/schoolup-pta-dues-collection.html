@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — PTA dues & collection</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Tab bar */
+.tab-bar { padding:0 36px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; gap:4px; }
+.tab { padding:16px 22px; font-size:12px; font-weight:700; color:var(--navy-3); letter-spacing:0.06em; text-transform:uppercase; cursor:pointer; border-bottom:3px solid transparent; }
+.tab.active { color:var(--navy); border-bottom-color:var(--gold); background:var(--surface); }
+.tab .badge-tab { display:inline-block; background:var(--gold); color:var(--navy); padding:2px 7px; border-radius:100px; font-size:9px; font-weight:700; margin-left:7px; letter-spacing:0.04em; }
+
+.head-row { padding:24px 36px 20px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+/* Fee category sidebar */
+.category-shell { padding:28px 36px 36px; display:grid; grid-template-columns:260px 1fr; gap:32px; align-items:start; }
+.cat-list { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:18px 0; }
+.cat-list .cat-list-head { padding:0 22px 14px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+.cat-list .cat-list-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:4px; }
+.cat-list .cat-list-head h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; }
+.cat-row { padding:11px 22px; display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer; border-left:3px solid transparent; }
+.cat-row:hover { background:var(--surface); }
+.cat-row.selected { background:var(--surface); border-left-color:var(--gold); font-weight:600; color:var(--navy); }
+.cat-row .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.cat-row .dot.tuition { background:var(--navy); }
+.cat-row .dot.boarding { background:var(--gold); }
+.cat-row .dot.feeding { background:var(--green); }
+.cat-row .dot.exam { background:var(--warn); }
+.cat-row .dot.pta { background:var(--terra); }
+.cat-row .dot.other { background:var(--border-2); }
+.cat-row .count { margin-left:auto; font-size:10px; color:var(--navy-3); font-weight:600; }
+.cat-row.selected .count { color:var(--navy-2); }
+
+/* Selected category detail */
+.cat-detail { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:28px 32px; }
+.cat-detail .cd-head { display:flex; align-items:center; gap:14px; margin-bottom:18px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+.cat-detail .cd-head .ic { width:48px; height:48px; border-radius:12px; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:16px; }
+.cat-detail .cd-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; letter-spacing:-0.005em; margin-bottom:3px; }
+.cat-detail .cd-head h3 em { font-style:italic; color:var(--terra); }
+.cat-detail .cd-head .submeta { font-size:11px; color:var(--navy-3); }
+.cat-detail .cd-head .submeta b { color:var(--navy); font-weight:700; }
+.cat-detail .right { margin-left:auto; }
+
+.tier-rate-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+.tier-rate-tile { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.tier-rate-tile.off { background:var(--surface); }
+.tier-rate-tile .head-r { display:flex; align-items:center; gap:8px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+.tier-rate-tile .head-r .ic-mini { width:26px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.tier-rate-tile .head-r .ic-mini.form { background:var(--navy); color:var(--bg); }
+.tier-rate-tile .head-r .ic-mini.house { background:var(--gold); color:var(--navy); }
+.tier-rate-tile .head-r .ic-mini.general { background:var(--green); color:var(--bg); }
+.tier-rate-tile .head-r .ic-mini.emergency { background:var(--terra); color:var(--bg); }
+.tier-rate-tile .head-r .tier-name { font-size:11px; font-weight:700; letter-spacing:0.04em; }
+.tier-rate-tile .head-r .tier-state { margin-left:auto; font-size:9px; padding:2px 7px; border-radius:100px; font-weight:700; letter-spacing:0.04em; }
+.tier-rate-tile .head-r .tier-state.on { background:var(--green-bg); color:var(--green); }
+.tier-rate-tile .head-r .tier-state.off { background:var(--bg); color:var(--navy-3); }
+.tier-rate-tile .amount-big { font-family:'Fraunces',serif; font-size:24px; font-weight:600; letter-spacing:-0.01em; margin-bottom:4px; }
+.tier-rate-tile .amount-big em { font-style:italic; color:var(--gold); }
+.tier-rate-tile.off .amount-big { color:var(--navy-3); font-size:18px; }
+.tier-rate-tile .amount-meta { font-size:10px; color:var(--navy-3); line-height:1.4; }
+.tier-rate-tile .amount-meta b { color:var(--navy-2); font-weight:600; }
+.tier-rate-tile .edit-link { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:10px; color:var(--gold); font-weight:600; cursor:pointer; letter-spacing:0.04em; text-transform:uppercase; }
+.tier-rate-tile.off .edit-link { color:var(--navy-3); }
+
+/* Recent changes log */
+.change-log { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:16px 20px; }
+.change-log .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.change-row { padding:8px 0; border-bottom:1px dashed var(--gold-soft); font-size:12px; color:var(--navy-2); line-height:1.55; display:flex; gap:12px; }
+.change-row:last-child { border-bottom:none; }
+.change-row .timestamp { flex-shrink:0; width:90px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.change-row .body b { color:var(--navy); font-weight:600; }
+.change-row .body em { color:var(--gold); font-style:italic; }
+.change-row .body .reason { display:block; font-style:italic; color:var(--navy-3); font-size:11px; margin-top:3px; }
+
+/* Collection report */
+.report-shell { padding:24px 36px 36px; }
+.summary-strip { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:28px; }
+.sum-tile { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+.sum-tile.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-tile .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-tile.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-tile .big { font-family:'Fraunces',serif; font-size:28px; font-weight:600; letter-spacing:-0.015em; margin-bottom:4px; }
+.sum-tile .big em { font-style:italic; color:var(--gold); }
+.sum-tile.featured .big em { color:var(--gold); }
+.sum-tile .delta { font-size:10px; color:var(--navy-3); }
+.sum-tile.featured .delta { color:rgba(232,212,184,0.6); }
+.sum-tile .delta b { color:var(--green); font-weight:700; }
+.sum-tile.featured .delta b { color:var(--gold); }
+
+/* Tier collection cards */
+.coll-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:18px; overflow:hidden; }
+.coll-card .coll-head { padding:18px 24px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:auto 1fr auto auto; gap:20px; align-items:center; }
+.coll-card .coll-head .ic { width:40px; height:40px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; }
+.coll-card .coll-head .ic.form { background:var(--navy); color:var(--bg); }
+.coll-card .coll-head .ic.general { background:var(--green); color:var(--bg); }
+.coll-card .coll-head .meta h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.coll-card .coll-head .meta h4 em { font-style:italic; color:var(--gold); }
+.coll-card .coll-head .meta .submeta { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.coll-card .coll-head .meta .submeta b { color:var(--navy); font-weight:700; }
+.coll-card .coll-head .collected-stat .lab { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.coll-card .coll-head .collected-stat .val { font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
+.coll-card .coll-head .collected-stat .val em { font-style:italic; color:var(--gold); }
+.coll-card .coll-head .rate-stack .progress-bar { width:140px; height:8px; background:var(--border); border-radius:100px; overflow:hidden; margin-bottom:5px; }
+.coll-card .coll-head .rate-stack .progress-bar .fill { height:100%; background:var(--green); border-radius:100px; }
+.coll-card .coll-head .rate-stack .progress-bar .fill.warn { background:var(--warn); }
+.coll-card .coll-head .rate-stack .progress-bar .fill.terra { background:var(--terra); }
+.coll-card .coll-head .rate-stack .rate-lab { font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.04em; text-align:right; }
+.coll-card .coll-head .rate-stack .rate-lab b { color:var(--navy); }
+
+/* PTA instances expanded */
+.instance-list { padding:14px 24px 18px; }
+.instance-row { display:grid; grid-template-columns:200px 1fr 110px 110px 110px; gap:14px; padding:11px 0; border-bottom:1px solid var(--border); align-items:center; font-size:12px; }
+.instance-row:last-child { border-bottom:none; }
+.instance-row .inst-name { font-family:'Fraunces',serif; font-weight:600; font-size:13px; }
+.instance-row .progress-mini { width:100%; height:6px; background:var(--border); border-radius:100px; overflow:hidden; }
+.instance-row .progress-mini .fill { height:100%; background:var(--green); }
+.instance-row .progress-mini .fill.warn { background:var(--warn); }
+.instance-row .progress-mini .fill.terra { background:var(--terra); }
+.instance-row .num-cell { text-align:right; }
+.instance-row .num-cell .v { font-family:'JetBrains Mono',monospace; font-weight:600; }
+.instance-row .num-cell .v.outstanding { color:var(--terra); }
+.instance-row .num-cell .v.paid { color:var(--green); }
+.instance-row .num-cell .l { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); margin-top:2px; }
+
+.action-bar-coll { padding:14px 24px; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.action-bar-coll .info { font-size:11px; color:var(--navy-2); }
+.action-bar-coll .info b { color:var(--navy); font-weight:700; }
+
+/* Outstanding parents drill-down */
+.parent-drill { background:var(--terra-bg); border:1px solid var(--terra); border-radius:12px; padding:20px 26px; margin-top:20px; }
+.parent-drill .head-pd { display:flex; align-items:center; gap:14px; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--terra); }
+.parent-drill .head-pd .ic-pd { width:36px; height:36px; border-radius:8px; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; }
+.parent-drill .head-pd h4 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; }
+.parent-drill .head-pd h4 em { font-style:italic; color:var(--terra); }
+.parent-drill .head-pd .submeta { font-size:11px; color:var(--navy-2); margin-top:2px; }
+.parent-drill .head-pd .submeta b { color:var(--terra); font-weight:700; }
+.parent-drill .actions-pd { margin-left:auto; display:flex; gap:8px; }
+.parent-drill .parent-row { display:grid; grid-template-columns:40px 1fr 100px 100px 100px; gap:14px; padding:10px 0; border-bottom:1px solid var(--terra-bg); align-items:center; font-size:12px; }
+.parent-drill .parent-row:last-child { border-bottom:none; }
+.parent-drill .parent-row .av-pd { width:32px; height:32px; border-radius:50%; background:var(--surface); color:var(--terra); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; border:1.5px solid var(--terra); }
+.parent-drill .parent-row .info-pd .nm { font-weight:600; color:var(--navy); }
+.parent-drill .parent-row .info-pd .sub { font-size:10px; color:var(--navy-3); margin-top:1px; }
+.parent-drill .parent-row .info-pd .sub b { color:var(--navy-2); font-weight:600; }
+.parent-drill .parent-row .amt { font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--terra); text-align:right; }
+.parent-drill .parent-row .aging { font-size:10px; color:var(--navy-3); text-align:right; }
+.parent-drill .parent-row .aging b { color:var(--terra); }
+.parent-drill .parent-row .action-btn-mini { padding:6px 10px; background:var(--surface); border:1px solid var(--terra); border-radius:6px; font-size:10px; font-weight:700; color:var(--terra); cursor:pointer; letter-spacing:0.04em; text-transform:uppercase; }
+
+/* Editorial: why separate category */
+.why-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.why-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.why-card h3 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.why-card h3 em { font-style:italic; color:var(--gold); }
+.why-card p { font-size:14px; color:var(--navy-2); line-height:1.7; margin-bottom:14px; }
+.why-card p b { color:var(--navy); font-weight:600; }
+.why-card .reasons-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; margin-top:24px; }
+.why-card .reason-tile { background:var(--bg); border-left:3px solid var(--gold); padding:14px 16px; border-radius:0 8px 8px 0; }
+.why-card .reason-tile .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:5px; }
+.why-card .reason-tile h5 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; margin-bottom:6px; }
+.why-card .reason-tile p { font-size:11px; line-height:1.55; color:var(--navy-2); margin:0; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Forms/PTA batch · 05 of 06</div>
+  <span class="mvp-tag">SHS · PTA finance</span>
+  <span class="related-tag">Treasurer view · separate fee category</span>
+  <h1 class="display">Dues that <em>aren't tuition</em></h1>
+  <div class="gold-rule"></div>
+  <p>PTA dues are not tuition. They're not boarding fees. They're not feeding fees. <b>They're their own thing</b> — collected by elected parent Treasurers at four different tiers, with their own dues schedules, their own audit, their own collection reports. Omnischools models PTA dues as a separate fee category that lives alongside Tuition, Boarding, Feeding, and Exam fees in the billing module. The Setup tab handles dues configuration (with forward-only change posture). The Collection tab gives Form, House, and General PTA Treasurers the daily-use view: who's paid, who hasn't, how much is outstanding, what to chase. <em>Same billing engine, separate accountability, different people doing the chasing.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The setup tab · dues as a fee category</div>
+    <div class="section-meta">Billing → Fee categories → PTA dues</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing / fee-categories / pta-dues</div>
+      </div>
+
+      <div class="tab-bar">
+        <div class="tab active">Setup</div>
+        <div class="tab">Collection report <span class="badge-tab">23 outstanding</span></div>
+        <div class="tab">Change log</div>
+        <div class="tab">Treasurer accounts</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Billing · Fee categories · PTA dues</div>
+          <h2 class="display">PTA <em>dues</em> · setup</h2>
+          <div class="lede">PTA dues sit in their own fee category. Per-tier rates, optional toggle per tier, forward-only changes. Configured here · invoiced through the standard billing pipeline · collected by elected parent Treasurers.</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Export config</button>
+          <button class="btn primary">Edit dues</button>
+        </div>
+      </div>
+
+      <div class="category-shell">
+
+        <div class="cat-list">
+          <div class="cat-list-head">
+            <div class="eb">All fee categories</div>
+            <h4 class="display">6 categories</h4>
+          </div>
+          <div class="cat-row"><div class="dot tuition"></div>Tuition<div class="count">GHS 2,500</div></div>
+          <div class="cat-row"><div class="dot boarding"></div>Boarding<div class="count">GHS 1,800</div></div>
+          <div class="cat-row"><div class="dot feeding"></div>Feeding<div class="count">GHS 950</div></div>
+          <div class="cat-row"><div class="dot exam"></div>Exam &amp; assessment<div class="count">GHS 320</div></div>
+          <div class="cat-row selected"><div class="dot pta"></div>PTA dues<div class="count">multi-tier</div></div>
+          <div class="cat-row"><div class="dot other"></div>Other / discretionary<div class="count">varies</div></div>
+        </div>
+
+        <div class="cat-detail">
+          <div class="cd-head">
+            <div class="ic">PD</div>
+            <div>
+              <h3 class="display">PTA <em>dues</em></h3>
+              <div class="submeta">Active category · <b>4 tiers configured</b> · 2 tiers collecting · forward-only changes only · ledger separate from school operating fees</div>
+            </div>
+            <div class="right">
+              <div style="display:flex; gap:6px; align-items:center; font-size:11px;"><div style="width:8px; height:8px; border-radius:50%; background:var(--green);"></div><b style="color:var(--green); font-weight:700; letter-spacing:0.04em;">ACTIVE CATEGORY</b></div>
+            </div>
+          </div>
+
+          <div class="tier-rate-grid">
+
+            <div class="tier-rate-tile">
+              <div class="head-r">
+                <div class="ic-mini form">FP</div>
+                <div class="tier-name">Form PTA</div>
+                <div class="tier-state on">● COLLECTING</div>
+              </div>
+              <div class="amount-big display">GHS 50<em>.00</em></div>
+              <div class="amount-meta">Per student · per term · <b>20 PTAs × ~32 students = 640 invoices/term</b></div>
+              <div class="edit-link">EDIT RATE →</div>
+            </div>
+
+            <div class="tier-rate-tile off">
+              <div class="head-r">
+                <div class="ic-mini house">HP</div>
+                <div class="tier-name">House PTA</div>
+                <div class="tier-state off">○ NO DUES</div>
+              </div>
+              <div class="amount-big display">No dues</div>
+              <div class="amount-meta">Houses fund projects ad-hoc · <b>flip on in PTA structure</b> to enable</div>
+              <div class="edit-link">TURN ON →</div>
+            </div>
+
+            <div class="tier-rate-tile">
+              <div class="head-r">
+                <div class="ic-mini general">GP</div>
+                <div class="tier-name">General PTA</div>
+                <div class="tier-state on">● COLLECTING</div>
+              </div>
+              <div class="amount-big display">GHS 200<em>.00</em></div>
+              <div class="amount-meta">Per family · per academic year · <b>~600 families = ~GHS 120,000/year expected</b></div>
+              <div class="edit-link">EDIT RATE →</div>
+            </div>
+
+            <div class="tier-rate-tile off">
+              <div class="head-r">
+                <div class="ic-mini emergency">EP</div>
+                <div class="tier-name">Emergency PTA</div>
+                <div class="tier-state off">○ AD-HOC ONLY</div>
+              </div>
+              <div class="amount-big display">No standing</div>
+              <div class="amount-meta">Levies raised by resolution · <b>routed through this category</b> when passed</div>
+              <div class="edit-link">VIEW LEVY HISTORY →</div>
+            </div>
+
+          </div>
+
+          <div class="change-log">
+            <div class="eb">Recent changes · forward-only audit</div>
+
+            <div class="change-row">
+              <div class="timestamp">14 May 2026 09:23</div>
+              <div class="body"><b>Mrs Boateng (Admin)</b> changed Form PTA dues from <em>GHS 45.00</em> to <em>GHS 50.00</em> per student per term. <b>Effective from Term 3 invoicing run.</b><span class="reason">"Approved at General PTA AGM, 12 May 2026, minute 7.4 — adjustment for inflation"</span></div>
+            </div>
+
+            <div class="change-row">
+              <div class="timestamp">02 Mar 2026 14:08</div>
+              <div class="body"><b>Mrs Boateng (Admin)</b> toggled <em>House PTA dues</em> from collecting (GHS 30/term) to <em>no dues</em>. <b>3 existing invoices preserved · no new invoices generated.</b><span class="reason">"Resolution from House Masters Council, 28 Feb 2026 — House projects to be funded from speech-day collections going forward"</span></div>
+            </div>
+
+            <div class="change-row">
+              <div class="timestamp">10 Oct 2025 11:42</div>
+              <div class="body"><b>Headmaster (Rev Dr Otoo)</b> approved General PTA dues at <em>GHS 200.00</em> per family per academic year. Initial setup.<span class="reason">"Adopted at General PTA AGM, 14 October 2025, founding resolution"</span></div>
+            </div>
+
+            <div class="change-row">
+              <div class="timestamp">10 Oct 2025 11:39</div>
+              <div class="body"><b>Headmaster (Rev Dr Otoo)</b> created the <em>PTA dues fee category</em> alongside Tuition, Boarding, Feeding, Exam. Initial setup.<span class="reason">"School-wide adoption of Omnischools PTA module"</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Setup tab</h4>
+      <ul>
+        <li><b>One category, four tier-rates.</b> PTA dues is a single fee category. Each of the four tiers has its own rate (or "no dues"). The category isn't broken into four categories because they're conceptually one thing — parents pay PTA dues, just at different tiers.</li>
+        <li><b>Tiles match the PTA structure setup.</b> Same four tiers, same on/off state, same amounts. This screen is the financial face of the governance screen. Change in one place reflects in both.</li>
+        <li><b>Forward-only is reinforced.</b> Every change in the audit log records "effective from" date. Past invoices keep their original amounts. Cancelled or restructured tiers preserve old invoices.</li>
+        <li><b>Change log is append-only.</b> Same pattern as discount changes elsewhere in Omnischools. Audit, audit, audit.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">The collection tab · who's paid, who hasn't</div>
+    <div class="section-meta">Treasurer's daily-use view</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing / fee-categories / pta-dues / collection</div>
+      </div>
+
+      <div class="tab-bar">
+        <div class="tab">Setup</div>
+        <div class="tab active">Collection report <span class="badge-tab">23 outstanding</span></div>
+        <div class="tab">Change log</div>
+        <div class="tab">Treasurer accounts</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Billing · PTA dues · Collection · Term 2 · 2025/26</div>
+          <h2 class="display">Collection <em>· Term 2</em></h2>
+          <div class="lede">Live snapshot · updates with every payment · drill into specific PTAs · trigger SMS chasers · download for treasurer meetings. Filtered to the current term by default.</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Download Excel</button>
+          <button class="btn primary">SMS all outstanding</button>
+        </div>
+      </div>
+
+      <div class="report-shell">
+
+        <div class="summary-strip">
+          <div class="sum-tile featured">
+            <div class="lab">Expected · Term 2</div>
+            <div class="big display"><em>GHS</em> 152,000<em>.00</em></div>
+            <div class="delta">Form (640 × 50) + General (600 × 200)</div>
+          </div>
+          <div class="sum-tile">
+            <div class="lab">Collected to date</div>
+            <div class="big display"><em>GHS</em> 128,450<em>.00</em></div>
+            <div class="delta"><b>84.5%</b> · 12% week-over-week</div>
+          </div>
+          <div class="sum-tile">
+            <div class="lab">Outstanding</div>
+            <div class="big display" style="color:var(--terra);"><em>GHS</em> 23,550<em>.00</em></div>
+            <div class="delta">Across <b style="color:var(--terra);">23 families</b></div>
+          </div>
+          <div class="sum-tile">
+            <div class="lab">In MoMo float (not reconciled)</div>
+            <div class="big display"><em>GHS</em> 4,200<em>.00</em></div>
+            <div class="delta">Awaiting Hubtel batch reconcile</div>
+          </div>
+          <div class="sum-tile">
+            <div class="lab">Aged &gt; 30 days</div>
+            <div class="big display" style="color:var(--warn);"><em>GHS</em> 8,750<em>.00</em></div>
+            <div class="delta"><b style="color:var(--warn);">9 families</b> · escalate</div>
+          </div>
+        </div>
+
+        <!-- Form PTA collection card -->
+        <div class="coll-card">
+          <div class="coll-head">
+            <div class="ic form">FP</div>
+            <div class="meta">
+              <h4 class="display">Form PTA <em>dues · Term 2</em></h4>
+              <div class="submeta"><b>20 Form PTAs</b> · <b>640 student invoices</b> at GHS 50.00 each · expected <b>GHS 32,000.00</b></div>
+            </div>
+            <div class="collected-stat">
+              <div class="lab">Collected</div>
+              <div class="val display"><em>GHS</em> 28,450.00</div>
+            </div>
+            <div class="rate-stack">
+              <div class="progress-bar"><div class="fill" style="width:89%;"></div></div>
+              <div class="rate-lab"><b>89%</b> · 11% outstanding</div>
+            </div>
+          </div>
+          <div class="instance-list">
+            <div class="instance-row">
+              <div class="inst-name">Form 1 GA A</div>
+              <div class="progress-mini"><div class="fill" style="width:100%;"></div></div>
+              <div class="num-cell"><div class="v paid">32 / 32</div><div class="l">Paid · 100%</div></div>
+              <div class="num-cell"><div class="v">GHS 1,600.00</div><div class="l">Collected</div></div>
+              <div class="num-cell"><div class="v">—</div><div class="l">Outstanding</div></div>
+            </div>
+            <div class="instance-row">
+              <div class="inst-name">Form 2 GA A</div>
+              <div class="progress-mini"><div class="fill warn" style="width:75%;"></div></div>
+              <div class="num-cell"><div class="v">24 / 32</div><div class="l">Paid · 75%</div></div>
+              <div class="num-cell"><div class="v">GHS 1,200.00</div><div class="l">Collected</div></div>
+              <div class="num-cell"><div class="v outstanding">GHS 400.00</div><div class="l">8 students</div></div>
+            </div>
+            <div class="instance-row">
+              <div class="inst-name">Form 2 Science B</div>
+              <div class="progress-mini"><div class="fill" style="width:97%;"></div></div>
+              <div class="num-cell"><div class="v">30 / 31</div><div class="l">Paid · 97%</div></div>
+              <div class="num-cell"><div class="v">GHS 1,500.00</div><div class="l">Collected</div></div>
+              <div class="num-cell"><div class="v outstanding">GHS 50.00</div><div class="l">1 student</div></div>
+            </div>
+            <div class="instance-row">
+              <div class="inst-name">Form 3 Business C</div>
+              <div class="progress-mini"><div class="fill terra" style="width:62%;"></div></div>
+              <div class="num-cell"><div class="v">18 / 29</div><div class="l">Paid · 62%</div></div>
+              <div class="num-cell"><div class="v">GHS 900.00</div><div class="l">Collected</div></div>
+              <div class="num-cell"><div class="v outstanding">GHS 550.00</div><div class="l">11 students</div></div>
+            </div>
+            <div class="instance-row" style="opacity:0.6;">
+              <div class="inst-name" style="font-style:italic; color:var(--navy-3);">16 more Form PTAs · click to expand</div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+          </div>
+          <div class="action-bar-coll">
+            <div class="info"><b>Form 3 Business C</b> is the laggard · <b>11 of 29 students still owing</b> · last reminder sent 8 days ago</div>
+            <button class="btn ghost">View Form 3 Business C drill-down →</button>
+          </div>
+        </div>
+
+        <!-- General PTA collection card -->
+        <div class="coll-card">
+          <div class="coll-head">
+            <div class="ic general">GP</div>
+            <div class="meta">
+              <h4 class="display">General PTA <em>dues · academic year 2025/26</em></h4>
+              <div class="submeta"><b>600 families</b> at GHS 200.00 per academic year · expected <b>GHS 120,000.00</b> · invoiced at admission · payable any time during the year</div>
+            </div>
+            <div class="collected-stat">
+              <div class="lab">Collected</div>
+              <div class="val display"><em>GHS</em> 100,000.00</div>
+            </div>
+            <div class="rate-stack">
+              <div class="progress-bar"><div class="fill warn" style="width:83%;"></div></div>
+              <div class="rate-lab"><b>83%</b> · 100 families pending</div>
+            </div>
+          </div>
+          <div class="instance-list">
+            <div class="instance-row">
+              <div class="inst-name">Paid in full</div>
+              <div class="progress-mini"><div class="fill" style="width:100%;"></div></div>
+              <div class="num-cell"><div class="v paid">500 families</div><div class="l">83.3%</div></div>
+              <div class="num-cell"><div class="v">GHS 100,000.00</div><div class="l">Total collected</div></div>
+              <div class="num-cell"><div class="v">—</div><div class="l">Outstanding</div></div>
+            </div>
+            <div class="instance-row">
+              <div class="inst-name">Partial payment (instalment)</div>
+              <div class="progress-mini"><div class="fill warn" style="width:50%;"></div></div>
+              <div class="num-cell"><div class="v">38 families</div><div class="l">6.3%</div></div>
+              <div class="num-cell"><div class="v">GHS 3,800.00</div><div class="l">Avg GHS 100/family</div></div>
+              <div class="num-cell"><div class="v outstanding">GHS 3,800.00</div><div class="l">Half remaining</div></div>
+            </div>
+            <div class="instance-row">
+              <div class="inst-name">Unpaid</div>
+              <div class="progress-mini"><div class="fill terra" style="width:0%;"></div></div>
+              <div class="num-cell"><div class="v" style="color:var(--terra);">62 families</div><div class="l">10.3%</div></div>
+              <div class="num-cell"><div class="v">—</div><div class="l">Nothing paid</div></div>
+              <div class="num-cell"><div class="v outstanding">GHS 12,400.00</div><div class="l">Full amount</div></div>
+            </div>
+          </div>
+          <div class="action-bar-coll">
+            <div class="info"><b>62 families fully unpaid</b> · 41 of those are families admitted in Term 1 · escalation overdue</div>
+            <button class="btn ghost">View all 100 outstanding →</button>
+          </div>
+        </div>
+
+        <!-- Outstanding drill-down -->
+        <div class="parent-drill">
+          <div class="head-pd">
+            <div class="ic-pd">!</div>
+            <div>
+              <h4 class="display"><em>Aged &gt; 30 days</em> · 9 families · escalation queue</h4>
+              <div class="submeta"><b>GHS 8,750.00 total outstanding</b> · oldest invoice 67 days · pattern: 6 families have outstanding fees in <b>other categories</b> too</div>
+            </div>
+            <div class="actions-pd">
+              <button class="btn ghost">Export</button>
+              <button class="btn gold">SMS all 9 now</button>
+            </div>
+          </div>
+
+          <div class="parent-row">
+            <div class="av-pd">KO</div>
+            <div class="info-pd">
+              <div class="nm">Mr Kingsley Opoku · Form 2 GA A parent</div>
+              <div class="sub">Outstanding · <b>Form PTA dues × 2 terms</b> + General PTA dues · also <b>tuition arrears GHS 800</b></div>
+            </div>
+            <div class="amt">GHS 350.00</div>
+            <div class="aging"><b>67 days</b><br>Term 1 invoice</div>
+            <div><button class="action-btn-mini">SMS →</button></div>
+          </div>
+
+          <div class="parent-row">
+            <div class="av-pd">AB</div>
+            <div class="info-pd">
+              <div class="nm">Mrs Akua Bediako · Form 2 GA A parent</div>
+              <div class="sub">Outstanding · <b>Form PTA Term 2</b> only · <em>responded to last SMS asking for instalment plan</em></div>
+            </div>
+            <div class="amt">GHS 50.00</div>
+            <div class="aging"><b>42 days</b><br>Term 2 invoice</div>
+            <div><button class="action-btn-mini">Plan</button></div>
+          </div>
+
+          <div class="parent-row">
+            <div class="av-pd">JM</div>
+            <div class="info-pd">
+              <div class="nm">Mr Joseph Mireku · Form 3 Business C parent</div>
+              <div class="sub">Outstanding · <b>Form PTA × 2 terms + General PTA full year</b> · second child in school · <em>last contact 14 days ago, promised payment by end-May</em></div>
+            </div>
+            <div class="amt">GHS 300.00</div>
+            <div class="aging"><b>54 days</b><br>Multi-term</div>
+            <div><button class="action-btn-mini">SMS →</button></div>
+          </div>
+
+          <div class="parent-row">
+            <div class="av-pd">YS</div>
+            <div class="info-pd">
+              <div class="nm">Mrs Yvonne Sarkodie · Form 1 Science A parent</div>
+              <div class="sub">Outstanding · <b>General PTA only</b> · admission was late · no Form PTA dues yet (Term 1 was admission term)</div>
+            </div>
+            <div class="amt">GHS 200.00</div>
+            <div class="aging"><b>38 days</b><br>Admission</div>
+            <div><button class="action-btn-mini">SMS →</button></div>
+          </div>
+
+          <div class="parent-row" style="opacity:0.65;">
+            <div class="av-pd" style="background:var(--bg);">…</div>
+            <div class="info-pd">
+              <div class="nm">5 more families &gt; 30 days outstanding</div>
+              <div class="sub">Click to expand · or send bulk SMS to all 9 at once</div>
+            </div>
+            <div class="amt">GHS 7,850.00</div>
+            <div class="aging">avg 47 days</div>
+            <div><button class="action-btn-mini">Expand</button></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Collection tab</h4>
+      <ul>
+        <li><b>Summary strip is the morning glance.</b> Treasurer opens, sees expected vs collected, week-on-week direction. If outstanding is creeping up, the aging tile tells them to escalate.</li>
+        <li><b>Per-tier cards drill into instances.</b> Form PTA shows 20 classes ranked by collection rate. The laggard surfaces. The Treasurer knows which class to walk into next.</li>
+        <li><b>Aged escalation is its own block.</b> Anything outstanding &gt; 30 days gets the warning treatment · also reveals if the family has fees outstanding in other categories, because the chase strategy differs.</li>
+        <li><b>SMS bulk send is one click.</b> "SMS all outstanding" composes a templated reminder, sends to all 23 families, audit-logs the send. Single SMS each.</li>
+        <li><b>Instalment plans are visible.</b> Mrs Bediako responded last time and is on a plan. The action button changes to "Plan" instead of "SMS" so the Treasurer knows the conversation is in progress.</li>
+        <li><b>Cross-category awareness.</b> Mr Opoku owes PTA dues AND tuition. The PTA Treasurer can see this even though tuition isn't their remit · helps them prioritise who to escalate.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Schema this drives</h4>
+      <ul>
+        <li><b>pta_dues_invoices</b> · one row per parent per term per tier · amount, status, paid_at</li>
+        <li><b>pta_dues_payments</b> · payment events linked to invoices · MoMo refs, manual receipts</li>
+        <li><b>pta_dues_reminders</b> · audit of SMS reminders sent · prevents reminder fatigue</li>
+        <li><b>pta_dues_plans</b> · instalment plan records · agreed amount per instalment, target dates</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Why a separate category, not a tag on tuition</div>
+    <div class="section-meta">Editorial · the architectural call</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="why-card">
+        <div class="eb">The architectural call</div>
+        <h3 class="display">PTA dues are <em>structurally different</em> from tuition. They needed their own category.</h3>
+        <p>It would have been simpler to tag PTA dues onto the existing tuition fee structure — one less category to maintain, one less ledger line. <b>We chose not to.</b> Tuition is collected by the school's bursar and goes into school operating accounts. PTA dues are collected by elected parent Treasurers and go into PTA accounts that are <b>not the school's money</b>. They fund different things, get spent by different decision-makers, and answer to different audit chains. Conflating them would have created problems no UI affordance could fix.</p>
+        <p>The setup tab makes this concrete: PTA dues live in the fee-category sidebar alongside Tuition, Boarding, Feeding, and Exam fees — visible as one of six sibling categories. The collection tab is treasurer-shaped (per-tier breakdowns, aging by family), not bursar-shaped (per-term reconciliation against operating budget). <em>Same plumbing, different accountability.</em></p>
+
+        <div class="reasons-grid">
+          <div class="reason-tile">
+            <div class="lab">Reason 1 · accountability</div>
+            <h5 class="display">Different people own the money</h5>
+            <p>Tuition: school bursar. PTA dues: elected parent Treasurer. <b>The PTA Treasurer must be able to see exactly what's collected without seeing tuition.</b> Separation is a permissions boundary.</p>
+          </div>
+          <div class="reason-tile">
+            <div class="lab">Reason 2 · audit</div>
+            <h5 class="display">Different audit chains</h5>
+            <p>Tuition flows audit through GES financial audits. PTA dues flow audit through PTA Treasurer's report at AGM and the General PTA's own oversight. <b>One commingled ledger would make either audit impossible.</b></p>
+          </div>
+          <div class="reason-tile">
+            <div class="lab">Reason 3 · spend governance</div>
+            <h5 class="display">Different decision-makers</h5>
+            <p>Tuition spend is the Headmaster's authority. PTA spend is the PTA's authority — by resolution. The Cape Coast trip is paid from PTA dues because the parents voted to fund it. <b>Conflating funds would conflate authority.</b></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The fee-category model</h4>
+      <ul>
+        <li><b>Six categories total.</b> Tuition, Boarding, Feeding, Exam, PTA dues, Other. PTA dues is one of six. Equal citizen of the billing module.</li>
+        <li><b>One invoice can span multiple categories.</b> A parent's term invoice might show tuition GHS 2,500 + boarding GHS 1,800 + Form PTA GHS 50 + General PTA GHS 200 = GHS 4,550 total · with category-level breakdown on the receipt.</li>
+        <li><b>Payment can be category-allocated.</b> If parent pays GHS 4,000, the bursar allocates first to tuition (per school policy), and PTA dues can remain outstanding even when tuition is paid. The Treasurer sees PTA outstanding cleanly.</li>
+        <li><b>This was the right call even though it cost a schema table.</b> The alternative (PTA tag on existing invoices) would have made every collection report into a complex query and every audit into a guessing game.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

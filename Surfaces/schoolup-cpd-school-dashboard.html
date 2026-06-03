@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — CPD school dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+/* Top summary strip */
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.sum-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.sum-card.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-card.at-risk { background:var(--terra-bg); border-color:var(--terra); }
+.sum-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-card.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-card.at-risk .lab { color:var(--terra); }
+.sum-card .big { font-family:'Fraunces',serif; font-size:26px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-card .big em { font-style:italic; color:var(--gold); }
+.sum-card.at-risk .big { color:var(--terra); }
+.sum-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-card.featured .sub { color:rgba(232,212,184,0.6); }
+.sum-card.at-risk .sub { color:var(--navy-2); }
+.sum-card .sub b { color:var(--navy-2); font-weight:600; }
+.sum-card.featured .sub b { color:var(--gold); }
+.sum-card.at-risk .sub b { color:var(--terra); }
+
+.body-shell { padding:28px 36px 36px; }
+
+/* Filter bar */
+.filter-bar { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:24px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.filter-bar .filter-lab { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-right:6px; }
+.filter-chip { padding:6px 12px; border:1px solid var(--border-2); border-radius:100px; font-size:11px; font-weight:600; background:var(--surface); cursor:pointer; color:var(--navy-2); display:inline-flex; gap:5px; align-items:center; }
+.filter-chip.selected { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-chip.warn { color:var(--terra); border-color:var(--terra); }
+.filter-chip .count-mini { background:var(--bg); color:var(--navy-2); padding:1px 6px; border-radius:100px; font-size:9px; font-weight:700; }
+.filter-chip.selected .count-mini { background:var(--gold); color:var(--navy); }
+.filter-chip.warn .count-mini { background:var(--terra-bg); color:var(--terra); }
+.filter-bar .search-input { margin-left:auto; padding:7px 12px; border:1px solid var(--border); border-radius:7px; font-family:inherit; font-size:12px; width:220px; background:var(--bg); }
+.filter-bar .sort-select { padding:7px 12px; border:1px solid var(--border); border-radius:7px; font-family:inherit; font-size:12px; background:var(--surface); }
+
+/* Staff table */
+.staff-table { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.staff-table table { width:100%; border-collapse:collapse; }
+.staff-table thead th { padding:11px 14px; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border); background:var(--bg); }
+.staff-table thead th.right { text-align:right; }
+.staff-table tbody td { padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:12px; }
+.staff-table tbody tr:last-child td { border-bottom:none; }
+.staff-table tbody tr:hover { background:var(--gold-bg); cursor:pointer; }
+.staff-table .staff-cell { display:flex; align-items:center; gap:10px; }
+.staff-table .staff-cell .av { width:32px; height:32px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; flex-shrink:0; }
+.staff-table .staff-cell .av.new { background:var(--green); color:var(--bg); }
+.staff-table .staff-cell .av.at-risk { background:var(--terra); color:var(--bg); }
+.staff-table .staff-cell .info .nm { font-weight:600; color:var(--navy); font-size:12px; }
+.staff-table .staff-cell .info .role { font-size:10px; color:var(--navy-3); margin-top:1px; }
+.staff-table .staff-cell .info .role .role-flag { display:inline-block; padding:1px 6px; border-radius:100px; font-size:8px; font-weight:700; letter-spacing:0.04em; margin-left:4px; vertical-align:middle; }
+.staff-table .staff-cell .info .role .role-flag.new { background:var(--green); color:var(--bg); }
+.staff-table .staff-cell .info .role .role-flag.hod { background:var(--gold); color:var(--navy); }
+.staff-table .staff-cell .info .role .role-flag.seconded { background:var(--navy-3); color:var(--bg); }
+
+.staff-table .dept-pill { display:inline-block; padding:3px 9px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.staff-table .dept-pill.maths { background:#E8E5F2; color:#5A4B8C; }
+.staff-table .dept-pill.english { background:#FFE9D9; color:#A6502C; }
+.staff-table .dept-pill.science { background:#D8EFE3; color:var(--green); }
+.staff-table .dept-pill.humanities { background:#F0E5D0; color:#8C6F30; }
+.staff-table .dept-pill.ict { background:#DDE4F0; color:#3D5180; }
+.staff-table .dept-pill.elective { background:#EDD9D9; color:#8E3A3A; }
+
+.staff-table .progress-cell { display:flex; align-items:center; gap:10px; }
+.staff-table .progress-cell .bar { width:90px; height:6px; background:var(--border); border-radius:100px; overflow:hidden; }
+.staff-table .progress-cell .bar .fill { height:100%; background:var(--green); border-radius:100px; }
+.staff-table .progress-cell .bar .fill.warn { background:var(--warn); }
+.staff-table .progress-cell .bar .fill.terra { background:var(--terra); }
+.staff-table .progress-cell .pts { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--navy); white-space:nowrap; }
+.staff-table .progress-cell .pts em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; }
+.staff-table .progress-cell .pts.warn { color:var(--warn); }
+.staff-table .progress-cell .pts.terra { color:var(--terra); }
+
+.staff-table .plc-cell { font-size:11px; color:var(--navy-2); line-height:1.4; }
+.staff-table .plc-cell .pts-num { font-family:'Fraunces',serif; font-weight:600; color:var(--navy); }
+.staff-table .plc-cell .pts-num em { font-style:italic; color:var(--gold); }
+.staff-table .plc-cell .pts-num.short { color:var(--warn); }
+.staff-table .plc-cell .meta-sm { font-size:9px; color:var(--navy-3); letter-spacing:0.04em; }
+
+.staff-table .licence-cell { font-size:11px; color:var(--navy-2); }
+.staff-table .licence-cell .renew-date { font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--navy); }
+.staff-table .licence-cell .days-away { font-size:9px; color:var(--navy-3); letter-spacing:0.04em; margin-top:1px; text-transform:uppercase; font-weight:600; }
+.staff-table .licence-cell .days-away.urgent { color:var(--terra); }
+.staff-table .licence-cell .days-away.warn { color:var(--warn); }
+
+.staff-table .at-risk-cell { text-align:center; }
+.staff-table .at-risk-cell .pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.staff-table .at-risk-cell .pill.ok { background:var(--green-bg); color:var(--green); }
+.staff-table .at-risk-cell .pill.watch { background:var(--warn-bg); color:var(--warn); }
+.staff-table .at-risk-cell .pill.risk { background:var(--terra-bg); color:var(--terra); }
+.staff-table .at-risk-cell .pill .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+
+/* At-risk drill-down callout */
+.at-risk-callout { background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:14px; padding:24px 28px; margin-top:24px; }
+.at-risk-callout .arc-head { display:flex; align-items:center; gap:16px; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--terra); }
+.at-risk-callout .arc-head .ic-arc { width:42px; height:42px; border-radius:10px; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:18px; }
+.at-risk-callout .arc-head h4 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; margin-bottom:4px; }
+.at-risk-callout .arc-head h4 em { font-style:italic; color:var(--terra); }
+.at-risk-callout .arc-head .sub { font-size:11px; color:var(--navy-2); }
+.at-risk-callout .arc-head .sub b { color:var(--terra); font-weight:700; }
+.at-risk-callout .actions-arc { margin-left:auto; display:flex; gap:8px; }
+.at-risk-callout .arc-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+.at-risk-callout .arc-card { background:var(--surface); border:1px solid var(--terra); border-radius:10px; padding:14px 16px; }
+.at-risk-callout .arc-card .arc-staff { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.at-risk-callout .arc-card .arc-staff .av-mini { width:30px; height:30px; border-radius:50%; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.at-risk-callout .arc-card .arc-staff .nm { font-weight:600; color:var(--navy); font-size:12px; }
+.at-risk-callout .arc-card .arc-staff .role { font-size:10px; color:var(--navy-3); }
+.at-risk-callout .arc-card .arc-pts { display:flex; align-items:baseline; gap:6px; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.at-risk-callout .arc-card .arc-pts .big-pts { font-family:'Fraunces',serif; font-size:22px; font-weight:600; color:var(--terra); }
+.at-risk-callout .arc-card .arc-pts .big-pts em { font-style:italic; }
+.at-risk-callout .arc-card .arc-pts .lab-pts { font-size:10px; color:var(--navy-3); letter-spacing:0.06em; text-transform:uppercase; font-weight:700; }
+.at-risk-callout .arc-card .arc-reason { font-size:11px; color:var(--navy-2); line-height:1.55; margin-bottom:8px; }
+.at-risk-callout .arc-card .arc-reason b { color:var(--navy); font-weight:600; }
+.at-risk-callout .arc-card .arc-next { font-size:10px; color:var(--terra); font-weight:600; padding:6px 10px; background:var(--terra-bg); border-radius:6px; line-height:1.4; }
+
+/* Licence renewal calendar */
+.calendar-card { background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-radius:14px; padding:24px 28px; margin-top:32px; }
+.calendar-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.calendar-card h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; margin-bottom:16px; line-height:1.25; }
+.calendar-card h3 em { font-style:italic; color:var(--gold); }
+.calendar-grid { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; }
+.cal-month { background:var(--surface); border:1px solid var(--gold-soft); border-radius:8px; padding:12px 14px; }
+.cal-month.has-renewals { border:1.5px solid var(--gold); }
+.cal-month .month-lab { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.cal-month .month-lab b { color:var(--navy); font-weight:700; }
+.cal-month .renew-count { font-family:'Fraunces',serif; font-size:24px; font-weight:600; line-height:1; }
+.cal-month .renew-count em { font-style:italic; color:var(--gold); }
+.cal-month.empty .renew-count { color:var(--navy-3); font-style:italic; font-size:14px; }
+.cal-month .renew-sub { font-size:10px; color:var(--navy-3); margin-top:4px; line-height:1.3; }
+.cal-month .renew-sub b { color:var(--navy-2); font-weight:600; }
+.cal-month .renew-list { margin-top:8px; padding-top:8px; border-top:1px dashed var(--gold-soft); font-size:10px; color:var(--navy-2); line-height:1.5; }
+.cal-month .renew-list b { color:var(--navy); font-weight:600; }
+
+/* Editorial · the dashboard view */
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:14px; color:var(--navy-2); line-height:1.7; margin-bottom:14px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-family:'Fraunces',serif; font-style:italic; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · PLC/CPD batch · 04 of 06</div>
+  <span class="mvp-tag">SHS · Headmaster / HoD view</span>
+  <span class="related-tag">School-wide rollup · monthly check-in surface</span>
+  <h1 class="display">Forty-seven teachers, <em>one screen</em></h1>
+  <div class="gold-rule"></div>
+  <p>The Headmaster glances at this surface once a month. <b>Who's on track for licence renewal, who's at risk, who needs a nudge.</b> Sortable, filterable, drilldown to each teacher's individual ledger. The at-risk callout brings the worst three cases to the surface so the conversation is teed up before the staff meeting. The licence renewal calendar shows the rolling 24 months ahead — useful when planning who covers a class while a teacher attends their renewal workshop. <em>This is the same data as the per-teacher ledger, rolled up for the people responsible for the school's compliance.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">School-wide CPD rollup · the Headmaster's monthly check</div>
+    <div class="section-meta">Teacher Development → CPD → School view</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / teacher-development / cpd / school-view</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Teacher development · CPD · School-wide dashboard</div>
+          <h2 class="display">CPD <em>· academic year 2025/26</em></h2>
+          <div class="lede">47 staff · Term 2 in progress · 138 days to annual NTC target deadline · last NTC sync 12 May 2026 (2 days ago) · 3 teachers flagged at-risk</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Download report (Excel)</button>
+          <button class="btn primary">Sync to NTC now →</button>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-card featured">
+          <div class="lab">School average · current year</div>
+          <div class="big display"><em>13.2</em> / 20 pts</div>
+          <div class="sub"><b>66%</b> of annual target · pace check: on track</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Staff on track</div>
+          <div class="big display"><em>38</em> / 47</div>
+          <div class="sub"><b>81%</b> · forecast meeting target by 30 Sep</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Staff to watch</div>
+          <div class="big display" style="color:var(--warn);"><em>6</em> / 47</div>
+          <div class="sub"><b>13%</b> · need 0.08+ pts/day to catch up</div>
+        </div>
+        <div class="sum-card at-risk">
+          <div class="lab">At risk · escalate</div>
+          <div class="big display"><em>3</em></div>
+          <div class="sub"><b>6%</b> · &lt;50% by mid-year</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Licence expiring in 12 mo</div>
+          <div class="big display"><em>8</em> staff</div>
+          <div class="sub">Renewals between Jun 2026 - May 2027</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+          <div class="filter-lab">Filter</div>
+          <div class="filter-chip selected">All staff <div class="count-mini">47</div></div>
+          <div class="filter-chip">On track <div class="count-mini">38</div></div>
+          <div class="filter-chip">Watch <div class="count-mini">6</div></div>
+          <div class="filter-chip warn">At risk <div class="count-mini">3</div></div>
+          <div class="filter-chip">New teachers <div class="count-mini">5</div></div>
+          <div class="filter-chip">GES-seconded <div class="count-mini">7</div></div>
+          <div class="filter-chip">Licence in 12 mo <div class="count-mini">8</div></div>
+          <input type="text" class="search-input" placeholder="Search staff name or department…">
+          <select class="sort-select">
+            <option>Sort: Most at-risk first</option>
+            <option>Sort: A–Z</option>
+            <option>Sort: Lowest pts</option>
+            <option>Sort: Licence expiry</option>
+            <option>Sort: Department</option>
+          </select>
+        </div>
+
+        <!-- Staff table -->
+        <div class="staff-table">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:22%">Staff</th>
+                <th style="width:11%">Department</th>
+                <th style="width:18%">Annual progress</th>
+                <th style="width:13%">PLC pts</th>
+                <th style="width:14%">Licence renews</th>
+                <th style="width:12%; text-align:center">Status</th>
+                <th style="width:10%; text-align:right">→</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              <!-- AT RISK · ordered first -->
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av at-risk">CK</div>
+                    <div class="info">
+                      <div class="nm">Mrs Clara Korkor</div>
+                      <div class="role">Maths teacher · Form 1 GS</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill maths">Maths</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill terra" style="width:32.5%;"></div></div>
+                    <div class="pts terra"><em>6.5</em> / 20</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num short"><em>5.5</em> / 8</div>
+                    <div class="meta-sm">3 sessions missed</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">15 Oct 2026</div>
+                    <div class="days-away urgent">154 DAYS</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill risk"><span class="dot"></span>AT RISK</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av at-risk">RA</div>
+                    <div class="info">
+                      <div class="nm">Mrs Rebecca Asomaning</div>
+                      <div class="role">Elective Maths · Form 2 &amp; 3 <span class="role-flag seconded">SECONDED</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill elective">Elective</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill terra" style="width:35%;"></div></div>
+                    <div class="pts terra"><em>7.0</em> / 20</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num"><em>7.0</em> / 8</div>
+                    <div class="meta-sm">Almost capped</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">8 Aug 2027</div>
+                    <div class="days-away">~15 mo away</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill risk"><span class="dot"></span>AT RISK</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av at-risk">FY</div>
+                    <div class="info">
+                      <div class="nm">Mr Felix Yeboah</div>
+                      <div class="role">Maths · Form 1 GS <span class="role-flag new">NEW · Y1</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill maths">Maths</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill terra" style="width:35%;"></div></div>
+                    <div class="pts terra"><em>7.0</em> / 20</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num"><em>7.0</em> / 8</div>
+                    <div class="meta-sm">+ NTC induction</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">1 Sep 2027</div>
+                    <div class="days-away">Initial 3yr</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill risk"><span class="dot"></span>AT RISK</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <!-- WATCH -->
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av">KO</div>
+                    <div class="info">
+                      <div class="nm">Mr Kojo Otoo</div>
+                      <div class="role">Physics · Form 3 · Lab manager</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill science">Science</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill warn" style="width:50%;"></div></div>
+                    <div class="pts warn"><em>10.0</em> / 20</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num"><em>6.0</em> / 8</div>
+                    <div class="meta-sm">2 missed</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">22 Mar 2027</div>
+                    <div class="days-away warn">~10 mo</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill watch"><span class="dot"></span>WATCH</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av">SK</div>
+                    <div class="info">
+                      <div class="nm">Mr Samuel Kpodo</div>
+                      <div class="role">Maths · Elective Maths <span class="role-flag new">NEW · Y2</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill maths">Maths</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill warn" style="width:55%;"></div></div>
+                    <div class="pts warn"><em>11.0</em> / 20</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num"><em>8.0</em> / 8</div>
+                    <div class="meta-sm">PLC capped</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">15 Jul 2027</div>
+                    <div class="days-away">~14 mo</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill watch"><span class="dot"></span>WATCH</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <!-- ON TRACK · key examples -->
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av">AM</div>
+                    <div class="info">
+                      <div class="nm">Mr Alexander Mensah</div>
+                      <div class="role">Maths · Form Master Form 2 GA A</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill maths">Maths</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill" style="width:72.5%;"></div></div>
+                    <div class="pts"><em>14.5</em> / 20</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num"><em>7.5</em> / 8</div>
+                    <div class="meta-sm">Reflection 94%</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">30 Sep 2027</div>
+                    <div class="days-away">~17 mo</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill ok"><span class="dot"></span>ON TRACK</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av">EA</div>
+                    <div class="info">
+                      <div class="nm">Mr Emmanuel Adusei</div>
+                      <div class="role">HoD Maths · PLC facilitator <span class="role-flag hod">HOD</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill maths">Maths</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill" style="width:115%; max-width:100%; background:linear-gradient(90deg, var(--green), var(--gold));"></div></div>
+                    <div class="pts" style="color:var(--gold);"><em>23.0</em> / 20 ✓</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num"><em>8.0</em> / 8</div>
+                    <div class="meta-sm">+ facilitator pts</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">12 Jun 2026</div>
+                    <div class="days-away urgent">29 DAYS</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill ok"><span class="dot"></span>EXCEEDED</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av">GA</div>
+                    <div class="info">
+                      <div class="nm">Mrs Gloria Asante</div>
+                      <div class="role">HoD English · Literature lead <span class="role-flag hod">HOD</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill english">English</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill" style="width:85%;"></div></div>
+                    <div class="pts"><em>17.0</em> / 20</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num"><em>8.0</em> / 8</div>
+                    <div class="meta-sm">Capped at limit</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">3 May 2028</div>
+                    <div class="days-away">~24 mo</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill ok"><span class="dot"></span>ON TRACK</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av">ET</div>
+                    <div class="info">
+                      <div class="nm">Dr Ebenezer Tetteh</div>
+                      <div class="role">HoD Science · Chemistry Form 2 &amp; 3 <span class="role-flag hod">HOD</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill science">Science</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill" style="width:90%;"></div></div>
+                    <div class="pts"><em>18.0</em> / 20</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num"><em>8.0</em> / 8</div>
+                    <div class="meta-sm">+ research project</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">20 Aug 2027</div>
+                    <div class="days-away">~15 mo</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill ok"><span class="dot"></span>ON TRACK</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av">DM</div>
+                    <div class="info">
+                      <div class="nm">Mr David Mensah</div>
+                      <div class="role">Maths · Form 1 SC <span class="role-flag new">NEW · Y1</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill maths">Maths</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill" style="width:65%;"></div></div>
+                    <div class="pts"><em>13.0</em> / 20</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num"><em>7.5</em> / 8</div>
+                    <div class="meta-sm">+ NTC induction</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">1 Sep 2027</div>
+                    <div class="days-away">Initial 3yr</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill ok"><span class="dot"></span>ON TRACK</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="staff-cell">
+                    <div class="av">PA</div>
+                    <div class="info">
+                      <div class="nm">Mr Patrick Akoto</div>
+                      <div class="role">ICT teacher · Cross-cutting PLC facilitator</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="dept-pill ict">ICT</span></td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="bar"><div class="fill" style="width:80%;"></div></div>
+                    <div class="pts"><em>16.0</em> / 20</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="plc-cell">
+                    <div class="pts-num"><em>6.0</em> / 8</div>
+                    <div class="meta-sm">Biweekly cadence</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="licence-cell">
+                    <div class="renew-date">14 Nov 2027</div>
+                    <div class="days-away">~18 mo</div>
+                  </div>
+                </td>
+                <td class="at-risk-cell"><div class="pill ok"><span class="dot"></span>ON TRACK</div></td>
+                <td style="text-align:right; color:var(--navy-3); font-size:14px;">→</td>
+              </tr>
+
+              <tr style="background:var(--bg);">
+                <td colspan="7" style="padding:14px; text-align:center; font-size:11px; color:var(--navy-3); font-style:italic;">
+                  <b>36 more staff on track</b> · click to expand · or use filters above to narrow
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- At-risk drill-down -->
+        <div class="at-risk-callout">
+          <div class="arc-head">
+            <div class="ic-arc">!</div>
+            <div>
+              <h4 class="display"><em>3 teachers at risk</em> · &lt;50% of annual target by 14 May</h4>
+              <div class="sub"><b>The conversation is overdue.</b> Each needs a HoD or Headmaster sit-down before end of Term 2 to agree a catch-up plan.</div>
+            </div>
+            <div class="actions-arc">
+              <button class="btn ghost">Schedule 1-on-1s</button>
+              <button class="btn gold">Notify HoDs</button>
+            </div>
+          </div>
+
+          <div class="arc-grid">
+            <div class="arc-card">
+              <div class="arc-staff">
+                <div class="av-mini">CK</div>
+                <div>
+                  <div class="nm">Mrs Clara Korkor</div>
+                  <div class="role">Maths · medical leave Q1</div>
+                </div>
+              </div>
+              <div class="arc-pts">
+                <div class="big-pts display"><em>6.5</em></div>
+                <div class="lab-pts">of 20 · 32.5%</div>
+              </div>
+              <div class="arc-reason"><b>Why she's behind:</b> 6-week medical leave in Term 1 (Sep-Oct) cost ~5 sessions of PLC and a workshop. Now back · attending sessions but reflection is patchy.</div>
+              <div class="arc-next"><b>Suggested:</b> Mr Adusei (HoD) to discuss · GAMA conference in August fits her timeline · +4 pts. Plus 2 more PLC reflections to cap PLC = +1.0 pt.</div>
+            </div>
+
+            <div class="arc-card">
+              <div class="arc-staff">
+                <div class="av-mini">RA</div>
+                <div>
+                  <div class="nm">Mrs Rebecca Asomaning</div>
+                  <div class="role">Elective Maths · GES-seconded</div>
+                </div>
+              </div>
+              <div class="arc-pts">
+                <div class="big-pts display"><em>7.0</em></div>
+                <div class="lab-pts">of 20 · 35%</div>
+              </div>
+              <div class="arc-reason"><b>Why she's behind:</b> GES-seconded teachers split CPD between their home school and seconding school. Her home-school sessions are credited there · only her workshops + this school's PLC count here. <b>Possible double-counting issue at NTC end.</b></div>
+              <div class="arc-next"><b>Suggested:</b> Verify with district GES whether her sessions are syncing to both schools or just one. If only one, Headmaster to formally cite the gap.</div>
+            </div>
+
+            <div class="arc-card">
+              <div class="arc-staff">
+                <div class="av-mini">FY</div>
+                <div>
+                  <div class="nm">Mr Felix Yeboah</div>
+                  <div class="role">Maths · year-1 new teacher</div>
+                </div>
+              </div>
+              <div class="arc-pts">
+                <div class="big-pts display"><em>7.0</em></div>
+                <div class="lab-pts">of 20 · 35%</div>
+              </div>
+              <div class="arc-reason"><b>Why he's behind:</b> Year-1 teachers haven't had a full year to accumulate. <b>Expected to be behind right now</b>, but the trajectory matters. PLC engagement is high (7/8). External pts are 0.</div>
+              <div class="arc-next"><b>Suggested:</b> Pair with mentor (Mr A. Mensah agreed). Sign up for Khan Academy free differentiated instruction course = +2 pts. Attend district induction Aug workshop = +2 pts.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Licence renewal calendar -->
+        <div class="calendar-card">
+          <div class="eb">Rolling 6 months · licence renewals coming up</div>
+          <h3 class="display">Renewal <em>calendar</em> · who, when, by how much</h3>
+
+          <div class="calendar-grid">
+            <div class="cal-month has-renewals">
+              <div class="month-lab"><b>May 2026</b> · this month</div>
+              <div class="renew-count display"><em>0</em> renewals</div>
+              <div class="renew-sub">No expirations</div>
+            </div>
+            <div class="cal-month has-renewals">
+              <div class="month-lab"><b>Jun 2026</b></div>
+              <div class="renew-count display"><em>1</em> renewal</div>
+              <div class="renew-sub"><b>1 staff</b> · 22.5 / 60 cycle pts</div>
+              <div class="renew-list"><b>Mr E. Adusei</b> · HoD Maths · ready</div>
+            </div>
+            <div class="cal-month has-renewals">
+              <div class="month-lab"><b>Jul 2026</b></div>
+              <div class="renew-count display"><em>2</em> renewals</div>
+              <div class="renew-sub"><b>2 staff</b> · avg 18 cycle pts each</div>
+              <div class="renew-list"><b>Mrs Y. Sarpong</b> · HoD Humanities<br/><b>Mrs J. Boateng</b> · French</div>
+            </div>
+            <div class="cal-month empty">
+              <div class="month-lab"><b>Aug 2026</b></div>
+              <div class="renew-count display"><em>0</em> renewals</div>
+              <div class="renew-sub">No expirations</div>
+            </div>
+            <div class="cal-month has-renewals">
+              <div class="month-lab"><b>Sep 2026</b></div>
+              <div class="renew-count display"><em>3</em> renewals</div>
+              <div class="renew-sub"><b>3 staff</b> · 1 may need extension</div>
+              <div class="renew-list"><b>Mrs O. Sarpong</b> · Accounting<br/><b>Mr K. Boateng</b> · History<br/><b>Mrs A. Bediako</b> · French</div>
+            </div>
+            <div class="cal-month has-renewals">
+              <div class="month-lab"><b>Oct 2026</b></div>
+              <div class="renew-count display"><em>2</em> renewals</div>
+              <div class="renew-sub"><b>2 staff</b> · <b style="color:var(--terra);">1 AT RISK</b></div>
+              <div class="renew-list"><b>Mrs C. Korkor</b> · Maths · low<br/><b>Mr J. Mensah</b> · WASSCE</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Dashboard design</h4>
+      <ul>
+        <li><b>One-glance summary up top.</b> Five tiles: school average, on-track count, watch count, at-risk count, licences due in 12 months. The Headmaster gets the picture in 3 seconds.</li>
+        <li><b>At-risk teachers ordered first.</b> Default sort puts the 3 most-at-risk teachers at the top of the table. Don't make the Headmaster scroll to find the problems.</li>
+        <li><b>Filter chips for context.</b> By status, by department, by special category (new teachers, GES-seconded, licence-due-soon). Match the way HoDs actually think about staff.</li>
+        <li><b>Department pill is visual aid.</b> Each subject area has its own colour. Helps scan across the table quickly.</li>
+        <li><b>At-risk callout is opinionated.</b> Doesn't just show the 3 names — explains why each is behind and what to suggest. The Headmaster can walk into the staff meeting with a plan.</li>
+        <li><b>Rolling licence calendar.</b> 6 months ahead by default · 24-month view available on click. Helps with cover planning, with proactive renewal reminders, with knowing when workshop budgets are needed.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Permissions</h4>
+      <ul>
+        <li><b>Headmaster sees all staff.</b></li>
+        <li><b>HoD sees only their department.</b> Same UI, scoped data.</li>
+        <li><b>Form Master sees CPD only on their own page</b>, not on this dashboard.</li>
+        <li><b>Class teachers see only themselves.</b></li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why this is the surface the Headmaster actually uses</div>
+    <div class="section-meta">Editorial · the operational frame</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The Headmaster's reality</div>
+        <h3 class="display">Compliance is <em>recurring work</em>, not a year-end audit panic.</h3>
+        <p>Most schools deal with CPD compliance once a year — typically in August or September, when the NTC asks for the previous year's points return and the school scrambles to back-fill records. By then, half the year is unrecoverable: a teacher who hasn't attended a workshop in 9 months can't attend 4 of them in 4 weeks. <b>The damage is already done.</b></p>
+        <p>This dashboard is designed to make the year-end panic impossible. <em>If you check it monthly,</em> at-risk teachers surface in October — when they can still attend the GAMA conference in August, take a course in November, mentor a new teacher in Term 3. The conversation is "we noticed you're at 6 of 20 — what would help" not "your licence renewal is in 60 days and you have 8 points."</p>
+        <p>The dashboard also makes the school-wide story visible to the Headmaster in a way it isn't otherwise. 81% on-track is a reasonable number; 50% would be a crisis. <b>The number is right there.</b> No spreadsheet to maintain, no quarterly request to HoDs, no scramble in September. The point of building this is not to produce a dashboard — it's to <em>make the Headmaster's job actually doable</em> on this dimension.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The recurring rhythm</h4>
+      <ul>
+        <li><b>Headmaster checks monthly.</b> First Monday of each month, 5 minutes. Look at the at-risk callout. Schedule any needed conversations.</li>
+        <li><b>HoDs check biweekly.</b> Filter to their department. Surface conversation topics for next dept meeting.</li>
+        <li><b>Term-end review.</b> Headmaster reviews term-by-term trends. Patterns in who's lagging.</li>
+        <li><b>Pre-NTC sync.</b> Before the monthly NTC sync, review what's queued vs synced. Surface 5 of this batch (NTC portal sync) is the next-level drilldown.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

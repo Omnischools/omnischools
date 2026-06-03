@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — PTA officer assignment</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.head-row { padding:28px 36px 20px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:680px; line-height:1.55; }
+.head-row .lede b { color:var(--navy-2); font-weight:600; }
+
+.filter-bar { padding:14px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.filter-pill { display:inline-flex; align-items:center; gap:7px; padding:7px 13px; border-radius:100px; font-size:11px; font-weight:600; background:var(--surface); border:1px solid var(--border); color:var(--navy-2); cursor:pointer; }
+.filter-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill .dot { width:6px; height:6px; border-radius:50%; }
+.filter-pill .dot.form { background:var(--navy); }
+.filter-pill.active .dot.form { background:var(--gold); }
+.filter-pill .dot.house { background:var(--gold); }
+.filter-pill .dot.general { background:var(--green); }
+.filter-pill .dot.emergency { background:var(--terra); }
+.filter-bar .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+.filter-bar .search { display:flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:7px 12px; font-size:12px; color:var(--navy-3); }
+
+.matrix-body { padding:24px 36px 32px; }
+
+/* Section: General PTA — featured first */
+.general-pta-card { background:var(--surface); border:1.5px solid var(--green); border-radius:14px; overflow:hidden; margin-bottom:28px; }
+.general-pta-card .head-card { padding:18px 24px; background:var(--green-bg); border-bottom:1px solid var(--green); display:flex; align-items:center; gap:18px; }
+.general-pta-card .head-card .icon { width:48px; height:48px; border-radius:10px; background:var(--green); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:18px; }
+.general-pta-card .head-card .info h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; letter-spacing:-0.005em; margin-bottom:3px; }
+.general-pta-card .head-card .info h3 em { font-style:italic; color:var(--green); }
+.general-pta-card .head-card .info .meta { font-size:12px; color:var(--navy-2); }
+.general-pta-card .head-card .info .meta b { color:var(--navy); font-weight:700; }
+.general-pta-card .head-card .right { margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.general-pta-card .head-card .right .agm { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--green); font-weight:700; }
+.general-pta-card .head-card .right .agm-date { font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
+
+.officer-table { width:100%; }
+.officer-table thead th { padding:12px 18px; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border); background:var(--bg); }
+.officer-table tbody td { padding:14px 18px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:13px; }
+.officer-table tbody tr:last-child td { border-bottom:none; }
+.officer-table tbody tr:hover { background:var(--gold-bg); }
+.role-cell { display:flex; align-items:center; gap:10px; }
+.role-cell .badge-num { width:28px; height:28px; border-radius:50%; background:var(--green); color:var(--bg); font-family:'Fraunces',serif; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+.role-cell .role-name { font-family:'Fraunces',serif; font-size:15px; font-weight:600; }
+.role-cell .role-name em { font-style:italic; color:var(--gold); font-weight:500; }
+.person-cell { display:flex; align-items:center; gap:10px; }
+.person-cell .av { width:32px; height:32px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:12px; }
+.person-cell .av.teacher { background:var(--navy); color:var(--gold); }
+.person-cell .name { font-weight:600; color:var(--navy); }
+.person-cell .role-tag { font-size:10px; color:var(--navy-3); margin-top:2px; }
+.person-cell .role-tag b { color:var(--navy-2); font-weight:600; }
+.person-cell .role-tag .tag-mini { display:inline-block; padding:1px 6px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; margin-left:4px; }
+.person-cell .role-tag .tag-mini.parent { background:var(--gold-bg); color:var(--gold); }
+.person-cell .role-tag .tag-mini.teacher { background:var(--navy); color:var(--gold); }
+.person-cell .role-tag .tag-mini.ex-officio { background:var(--green-bg); color:var(--green); }
+.term-cell .start { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); font-weight:600; }
+.term-cell .progress { width:80px; height:4px; background:var(--border); border-radius:100px; margin-top:6px; position:relative; }
+.term-cell .progress .fill { background:var(--gold); height:100%; border-radius:100px; }
+.term-cell .progress .fill.green { background:var(--green); }
+.term-cell .progress .fill.warn { background:var(--warn); }
+.term-cell .pmeta { font-size:10px; color:var(--navy-3); margin-top:5px; font-style:italic; }
+.term-cell .pmeta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.action-cell { text-align:right; }
+.action-cell button { background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:6px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+
+.row-vacant td { background:var(--terra-bg); }
+.row-vacant .role-cell .badge-num { background:var(--terra); color:var(--bg); }
+.row-vacant .person-cell .name { color:var(--terra); font-style:italic; font-weight:600; }
+.row-vacant .person-cell .av { background:var(--terra-bg); color:var(--terra); border:2px dashed var(--terra); }
+
+/* Tier sections — Form & House grouped */
+.tier-section { background:var(--surface); border:1.5px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+.tier-section.form-section { border-color:var(--navy); }
+.tier-section.house-section { border-color:var(--gold); }
+.tier-section .ts-head { padding:18px 24px; display:flex; align-items:center; gap:18px; border-bottom:1px solid var(--border); }
+.tier-section.form-section .ts-head { background:var(--bg); }
+.tier-section.house-section .ts-head { background:var(--gold-bg); border-bottom-color:var(--gold-soft); }
+.tier-section .ts-head .icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:16px; }
+.tier-section.form-section .ts-head .icon { background:var(--navy); color:var(--bg); }
+.tier-section.house-section .ts-head .icon { background:var(--gold); color:var(--navy); }
+.tier-section .ts-head .info h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.005em; margin-bottom:3px; }
+.tier-section .ts-head .info h3 em { font-style:italic; color:var(--gold); }
+.tier-section .ts-head .info .meta { font-size:11px; color:var(--navy-3); }
+.tier-section .ts-head .info .meta b { color:var(--navy-2); font-weight:700; }
+.tier-section .ts-head .completion { margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
+.tier-section .ts-head .completion .stat { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.tier-section .ts-head .completion .stat em { font-style:italic; color:var(--gold); }
+.tier-section .ts-head .completion .lab { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+
+.expand-row { padding:16px 24px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:200px 1fr auto; gap:18px; align-items:center; cursor:pointer; }
+.expand-row:hover { background:var(--bg); }
+.expand-row:last-child { border-bottom:none; }
+.expand-row .instance-name { font-family:'Fraunces',serif; font-size:14px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.expand-row .instance-name .badge-inst { font-size:9px; padding:2px 7px; border-radius:100px; font-weight:700; letter-spacing:0.04em; background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.expand-row .roles-mini { display:flex; gap:8px; flex-wrap:wrap; }
+.expand-row .role-mini { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; background:var(--bg); border:1px solid var(--border); border-radius:100px; font-size:11px; }
+.expand-row .role-mini.vacant { background:var(--terra-bg); border-color:var(--terra); color:var(--terra); }
+.expand-row .role-mini .role-lab { font-weight:700; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); }
+.expand-row .role-mini.vacant .role-lab { color:var(--terra); }
+.expand-row .role-mini .role-person { color:var(--navy); font-weight:600; }
+.expand-row .role-mini.vacant .role-person { font-style:italic; }
+.expand-row .chev { color:var(--navy-3); font-size:18px; }
+
+.emergency-card { background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:14px; padding:20px 24px; margin-bottom:24px; }
+.emergency-card .head-c { display:flex; align-items:center; gap:16px; margin-bottom:14px; }
+.emergency-card .icon { width:44px; height:44px; border-radius:10px; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:16px; }
+.emergency-card h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
+.emergency-card h3 em { font-style:italic; color:var(--terra); }
+.emergency-card .meta { font-size:11px; color:var(--navy-3); }
+.emergency-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.emergency-card p b { color:var(--navy); font-weight:600; }
+
+/* Multi-hat callout */
+.multi-hat-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:12px; padding:22px 26px; margin-bottom:32px; display:grid; grid-template-columns:auto 1fr; gap:22px; align-items:center; }
+.multi-hat-card .left { display:flex; flex-direction:column; align-items:center; gap:8px; }
+.multi-hat-card .av-big { width:64px; height:64px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:22px; }
+.multi-hat-card .name-big { font-family:'Fraunces',serif; font-size:14px; font-weight:600; text-align:center; line-height:1.2; }
+.multi-hat-card .name-big .sub { display:block; font-family:'Manrope',sans-serif; font-size:10px; color:var(--navy-3); font-weight:500; margin-top:2px; }
+.multi-hat-card .right h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; letter-spacing:-0.005em; margin-bottom:10px; }
+.multi-hat-card .right h4 em { font-style:italic; color:var(--gold); }
+.multi-hat-card .hats { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.multi-hat-card .hat-chip { padding:7px 13px; background:var(--surface); border:1px solid var(--gold-soft); border-radius:100px; font-size:11px; font-weight:600; display:flex; align-items:center; gap:7px; }
+.multi-hat-card .hat-chip .dot { width:7px; height:7px; border-radius:50%; }
+.multi-hat-card .hat-chip .dot.form { background:var(--navy); }
+.multi-hat-card .hat-chip .dot.house { background:var(--gold); }
+.multi-hat-card .hat-chip .dot.general { background:var(--green); }
+.multi-hat-card .right p { font-size:12px; color:var(--navy-2); line-height:1.55; font-style:italic; }
+.multi-hat-card .right p b { color:var(--navy); font-weight:600; font-style:normal; }
+
+/* Assign drawer */
+.drawer-mock { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.2); }
+.drawer-head { background:var(--gold-bg); padding:20px 24px; border-bottom:1px solid var(--gold-soft); }
+.drawer-head .crumb { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:5px; }
+.drawer-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; letter-spacing:-0.01em; }
+.drawer-head h3 em { font-style:italic; color:var(--gold); }
+.drawer-body { padding:22px 24px; }
+.drawer-field { margin-bottom:18px; }
+.drawer-field .fl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:7px; }
+.drawer-field input, .drawer-field select { width:100%; padding:11px 13px; border:1px solid var(--border); background:var(--bg); border-radius:7px; font-family:inherit; font-size:13px; color:var(--navy); }
+.drawer-field .hint { font-size:11px; color:var(--navy-3); margin-top:5px; font-style:italic; line-height:1.4; }
+.drawer-field .hint b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+.search-result { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-top:8px; display:flex; align-items:center; gap:12px; }
+.search-result.selected { background:var(--gold-bg); border-color:var(--gold); }
+.search-result .av-r { width:36px; height:36px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; }
+.search-result.selected .av-r { background:var(--gold); color:var(--navy); }
+.search-result .info { flex:1; }
+.search-result .info .nm { font-size:13px; font-weight:600; color:var(--navy); margin-bottom:2px; }
+.search-result .info .ctx { font-size:11px; color:var(--navy-3); }
+.search-result .info .ctx b { color:var(--navy-2); font-weight:600; }
+.search-result .info .hats-existing { font-size:10px; color:var(--gold); margin-top:3px; font-style:italic; }
+.search-result .pick { font-size:11px; font-weight:700; color:var(--gold); }
+
+.conflict-callout { background:var(--warn-bg); border:1px solid var(--warn); border-radius:9px; padding:14px 18px; margin-top:14px; }
+.conflict-callout .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--warn); font-weight:700; margin-bottom:5px; }
+.conflict-callout p { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.conflict-callout p b { color:var(--navy); font-weight:600; }
+
+.drawer-foot { padding:16px 24px; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.drawer-foot .ftext { font-size:11px; color:var(--navy-3); font-style:italic; }
+.drawer-foot .factions { display:flex; gap:8px; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Forms/PTA batch · 02 of 06</div>
+  <span class="mvp-tag">SHS · PTA governance</span>
+  <span class="related-tag">Multi-role · spans tiers</span>
+  <h1 class="display">One parent, <em>three hats</em></h1>
+  <div class="gold-rule"></div>
+  <p>Mrs Vivian Asare is the General PTA Treasurer. She's also the Aryee House PTA Vice-Chair. And she's a parent in Form 2 General Arts A. <b>One person, three concurrent PTA roles.</b> Officer assignment is multi-dimensional and Omnischools models it as a matrix: tier × role × person, with start dates, term lengths, and audit on every change. Vacancies are flagged in red. Election dates are tracked. Teacher ex-officio roles (Headmaster on General PTA, Form Master as Form PTA Secretary) are auto-populated and read-only.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The matrix surface · all officer assignments at a glance</div>
+    <div class="section-meta">PTA → Officers · admin & PTA Chair view</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / pta / officers</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">PTA · Officers</div>
+          <h2 class="display">Officer <em>assignments</em></h2>
+          <div class="lede">Every role at every tier · who holds it, since when, until when, and the audit trail of how they got there. <b>Vacancies are red.</b> Election dates trigger nudges 30 days out.</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Export to PDF</button>
+          <button class="btn primary">+ Assign officer</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-pill active">All tiers</div>
+        <div class="filter-pill"><span class="dot form"></span>Form (20)</div>
+        <div class="filter-pill"><span class="dot house"></span>House (6)</div>
+        <div class="filter-pill"><span class="dot general"></span>General (1)</div>
+        <div class="filter-pill"><span class="dot emergency"></span>Emergency</div>
+        <div style="width:1px; height:20px; background:var(--border); margin:0 4px;"></div>
+        <div class="filter-pill">All roles</div>
+        <div class="filter-pill">Vacant only · <b style="color:var(--terra);">3</b></div>
+        <div class="filter-pill">Term ending &lt; 30 days · <b style="color:var(--warn);">2</b></div>
+        <div class="right">
+          <div class="search">⌕ Search by name or role</div>
+        </div>
+      </div>
+
+      <div class="matrix-body">
+
+        <!-- Multi-hat callout -->
+        <div class="multi-hat-card">
+          <div class="left">
+            <div class="av-big">VA</div>
+            <div class="name-big">Mrs Vivian Asare<span class="sub">parent · 3 active PTA roles</span></div>
+          </div>
+          <div class="right">
+            <h4 class="display">One parent, <em>three concurrent roles</em></h4>
+            <div class="hats">
+              <div class="hat-chip"><span class="dot general"></span>General PTA · <b>Treasurer</b></div>
+              <div class="hat-chip"><span class="dot house"></span>Aryee House PTA · <b>Vice-Chair</b></div>
+              <div class="hat-chip"><span class="dot form"></span>Form 2 GA A PTA · <b>Member (no office)</b></div>
+            </div>
+            <p>Mrs Asare's son is in Form 2 GA A. She was elected House PTA Vice last June and General PTA Treasurer at the AGM in October. <b>Three concurrent assignments, all tracked, no double-counting on attendance registers.</b></p>
+          </div>
+        </div>
+
+        <!-- General PTA card -->
+        <div class="general-pta-card">
+          <div class="head-card">
+            <div class="icon">GP</div>
+            <div class="info">
+              <h3 class="display">General PTA <em>Executive</em></h3>
+              <div class="meta">7 elected roles · <b>1 ex-officio</b> · term length 2 academic years · current term elected at <b>AGM 14 October 2025</b></div>
+            </div>
+            <div class="right">
+              <div class="agm">Next AGM</div>
+              <div class="agm-date">12 October 2026</div>
+            </div>
+          </div>
+
+          <table class="officer-table">
+            <thead>
+              <tr>
+                <th style="width:22%">Role</th>
+                <th style="width:32%">Holder</th>
+                <th style="width:24%">Term</th>
+                <th style="width:22%; text-align:right">Last edit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="role-cell">
+                    <div class="badge-num">1</div>
+                    <div class="role-name display">Chair</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="person-cell">
+                    <div class="av">EM</div>
+                    <div>
+                      <div class="name">Mr Emmanuel Mensah-Yeboah</div>
+                      <div class="role-tag">Parent · Form 3 General Science B <span class="tag-mini parent">PARENT</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="term-cell">
+                  <div class="start">14 Oct 2025 → 12 Oct 2027</div>
+                  <div class="progress"><div class="fill" style="width:30%"></div></div>
+                  <div class="pmeta">7 months in · <b>17 months remaining</b></div>
+                </td>
+                <td class="action-cell">
+                  <div style="font-size:11px; color:var(--navy-3); margin-bottom:6px;">Elected · AGM 2025</div>
+                  <button>Edit</button>
+                </td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="role-cell">
+                    <div class="badge-num">2</div>
+                    <div class="role-name display">Vice-Chair</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="person-cell">
+                    <div class="av">GO</div>
+                    <div>
+                      <div class="name">Dr Grace Owusu</div>
+                      <div class="role-tag">Parent · Form 1 Business C <span class="tag-mini parent">PARENT</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="term-cell">
+                  <div class="start">14 Oct 2025 → 12 Oct 2027</div>
+                  <div class="progress"><div class="fill" style="width:30%"></div></div>
+                  <div class="pmeta">7 months in · <b>17 months remaining</b></div>
+                </td>
+                <td class="action-cell">
+                  <div style="font-size:11px; color:var(--navy-3); margin-bottom:6px;">Elected · AGM 2025</div>
+                  <button>Edit</button>
+                </td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="role-cell">
+                    <div class="badge-num">3</div>
+                    <div class="role-name display">Secretary</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="person-cell">
+                    <div class="av">SA</div>
+                    <div>
+                      <div class="name">Mr Samuel Adjei</div>
+                      <div class="role-tag">Parent · Form 2 General Arts A <span class="tag-mini parent">PARENT</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="term-cell">
+                  <div class="start">14 Oct 2025 → 12 Oct 2027</div>
+                  <div class="progress"><div class="fill" style="width:30%"></div></div>
+                  <div class="pmeta">7 months in · <b>17 months remaining</b></div>
+                </td>
+                <td class="action-cell">
+                  <div style="font-size:11px; color:var(--navy-3); margin-bottom:6px;">Elected · AGM 2025</div>
+                  <button>Edit</button>
+                </td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="role-cell">
+                    <div class="badge-num">4</div>
+                    <div class="role-name display">Asst <em>Secretary</em></div>
+                  </div>
+                </td>
+                <td>
+                  <div class="person-cell">
+                    <div class="av">FM</div>
+                    <div>
+                      <div class="name">Mrs Florence Mireku</div>
+                      <div class="role-tag">Parent · Form 2 Business B <span class="tag-mini parent">PARENT</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="term-cell">
+                  <div class="start">14 Oct 2025 → 12 Oct 2027</div>
+                  <div class="progress"><div class="fill" style="width:30%"></div></div>
+                  <div class="pmeta">7 months in · <b>17 months remaining</b></div>
+                </td>
+                <td class="action-cell">
+                  <div style="font-size:11px; color:var(--navy-3); margin-bottom:6px;">Elected · AGM 2025</div>
+                  <button>Edit</button>
+                </td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="role-cell">
+                    <div class="badge-num">5</div>
+                    <div class="role-name display">Treasurer</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="person-cell">
+                    <div class="av">VA</div>
+                    <div>
+                      <div class="name">Mrs Vivian Asare</div>
+                      <div class="role-tag">Parent · Form 2 General Arts A · <b>+2 other PTA roles</b> <span class="tag-mini parent">PARENT</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="term-cell">
+                  <div class="start">14 Oct 2025 → 12 Oct 2027</div>
+                  <div class="progress"><div class="fill" style="width:30%"></div></div>
+                  <div class="pmeta">7 months in · <b>17 months remaining</b></div>
+                </td>
+                <td class="action-cell">
+                  <div style="font-size:11px; color:var(--navy-3); margin-bottom:6px;">Elected · AGM 2025</div>
+                  <button>Edit</button>
+                </td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="role-cell">
+                    <div class="badge-num">6</div>
+                    <div class="role-name display">Financial <em>Secretary</em></div>
+                  </div>
+                </td>
+                <td>
+                  <div class="person-cell">
+                    <div class="av">KB</div>
+                    <div>
+                      <div class="name">Mr Kwabena Boateng</div>
+                      <div class="role-tag">Parent · Form 3 General Arts B <span class="tag-mini parent">PARENT</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="term-cell">
+                  <div class="start">14 Oct 2025 → 12 Oct 2027</div>
+                  <div class="progress"><div class="fill warn" style="width:96%"></div></div>
+                  <div class="pmeta" style="color:var(--warn);"><b>Resigning June 2026</b> · son completes Form 3</div>
+                </td>
+                <td class="action-cell">
+                  <div style="font-size:11px; color:var(--warn); margin-bottom:6px; font-weight:600;">Replacement needed</div>
+                  <button>Edit</button>
+                </td>
+              </tr>
+
+              <tr class="row-vacant">
+                <td>
+                  <div class="role-cell">
+                    <div class="badge-num">7</div>
+                    <div class="role-name display">Organising <em>Secretary</em></div>
+                  </div>
+                </td>
+                <td>
+                  <div class="person-cell">
+                    <div class="av">—</div>
+                    <div>
+                      <div class="name">Vacant since 12 March 2026</div>
+                      <div class="role-tag">Previous holder Mr Nkrumah relocated</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="term-cell">
+                  <div class="start" style="color:var(--terra);">Awaiting by-election</div>
+                  <div class="pmeta" style="color:var(--terra);">63 days vacant · <b>next General PTA meeting can fill</b></div>
+                </td>
+                <td class="action-cell">
+                  <button style="background:var(--terra); color:var(--bg); border:none;">+ Assign</button>
+                </td>
+              </tr>
+
+              <tr style="background:var(--green-bg);">
+                <td>
+                  <div class="role-cell">
+                    <div class="badge-num" style="background:var(--gold); color:var(--navy);">EX</div>
+                    <div class="role-name display">Headmaster <em>(ex-officio)</em></div>
+                  </div>
+                </td>
+                <td>
+                  <div class="person-cell">
+                    <div class="av teacher">JO</div>
+                    <div>
+                      <div class="name">Rev Dr James Otoo</div>
+                      <div class="role-tag">Headmaster since Jan 2023 · <b>non-voting</b> <span class="tag-mini ex-officio">EX-OFFICIO</span></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="term-cell">
+                  <div class="start">Permanent (while in post)</div>
+                  <div class="pmeta">Auto-reassigns when Headmaster changes</div>
+                </td>
+                <td class="action-cell">
+                  <div style="font-size:11px; color:var(--navy-3);">Read-only · role attached</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- House PTA section -->
+        <div class="tier-section house-section">
+          <div class="ts-head">
+            <div class="icon">HP</div>
+            <div class="info">
+              <h3 class="display">House PTA <em>officers</em></h3>
+              <div class="meta">6 House PTAs · <b>24 elected roles</b> + 6 Housemaster ex-officio Secretaries · all chairs/vice/treasurers elected at House PTA AGMs</div>
+            </div>
+            <div class="completion">
+              <div class="stat display"><em>22</em> / 24 filled</div>
+              <div class="lab">2 vacancies</div>
+            </div>
+          </div>
+
+          <div class="expand-row">
+            <div class="instance-name">Aryee House <span class="badge-inst">BOYS · 245</span></div>
+            <div class="roles-mini">
+              <div class="role-mini"><span class="role-lab">CHAIR</span><span class="role-person">Mr B. Owusu</span></div>
+              <div class="role-mini"><span class="role-lab">VICE</span><span class="role-person">Mrs V. Asare</span></div>
+              <div class="role-mini"><span class="role-lab">SEC</span><span class="role-person">Mr K. Mensah · housemaster</span></div>
+              <div class="role-mini"><span class="role-lab">TREAS</span><span class="role-person">Mrs A. Boateng</span></div>
+            </div>
+            <div class="chev">›</div>
+          </div>
+
+          <div class="expand-row">
+            <div class="instance-name">Gibson House <span class="badge-inst">BOYS · 268</span></div>
+            <div class="roles-mini">
+              <div class="role-mini"><span class="role-lab">CHAIR</span><span class="role-person">Dr E. Tetteh</span></div>
+              <div class="role-mini vacant"><span class="role-lab">VICE</span><span class="role-person">vacant</span></div>
+              <div class="role-mini"><span class="role-lab">SEC</span><span class="role-person">Mr S. Quaye · housemaster</span></div>
+              <div class="role-mini"><span class="role-lab">TREAS</span><span class="role-person">Mr P. Annan</span></div>
+            </div>
+            <div class="chev">›</div>
+          </div>
+
+          <div class="expand-row">
+            <div class="instance-name">Pink 1 House <span class="badge-inst">GIRLS · 198</span></div>
+            <div class="roles-mini">
+              <div class="role-mini"><span class="role-lab">CHAIR</span><span class="role-person">Mrs C. Darko</span></div>
+              <div class="role-mini"><span class="role-lab">VICE</span><span class="role-person">Mrs J. Owusu-Ansah</span></div>
+              <div class="role-mini"><span class="role-lab">SEC</span><span class="role-person">Mrs M. Sefa · housemistress</span></div>
+              <div class="role-mini"><span class="role-lab">TREAS</span><span class="role-person">Mrs L. Boakye</span></div>
+            </div>
+            <div class="chev">›</div>
+          </div>
+
+          <div class="expand-row">
+            <div class="instance-name">Pink 2 House <span class="badge-inst">GIRLS · 207</span></div>
+            <div class="roles-mini">
+              <div class="role-mini"><span class="role-lab">CHAIR</span><span class="role-person">Mrs E. Asamoah</span></div>
+              <div class="role-mini"><span class="role-lab">VICE</span><span class="role-person">Mrs P. Donkor</span></div>
+              <div class="role-mini"><span class="role-lab">SEC</span><span class="role-person">Mrs N. Frimpong · housemistress</span></div>
+              <div class="role-mini"><span class="role-lab">TREAS</span><span class="role-person">Mrs B. Manu</span></div>
+            </div>
+            <div class="chev">›</div>
+          </div>
+
+          <div class="expand-row">
+            <div class="instance-name">Quist House <span class="badge-inst">BOYS · 254</span></div>
+            <div class="roles-mini">
+              <div class="role-mini"><span class="role-lab">CHAIR</span><span class="role-person">Mr R. Akoto</span></div>
+              <div class="role-mini"><span class="role-lab">VICE</span><span class="role-person">Mr D. Twum</span></div>
+              <div class="role-mini"><span class="role-lab">SEC</span><span class="role-person">Mr T. Boadu · housemaster</span></div>
+              <div class="role-mini vacant"><span class="role-lab">TREAS</span><span class="role-person">vacant</span></div>
+            </div>
+            <div class="chev">›</div>
+          </div>
+
+          <div class="expand-row">
+            <div class="instance-name">Bartels House <span class="badge-inst">MIXED · 312</span></div>
+            <div class="roles-mini">
+              <div class="role-mini"><span class="role-lab">CHAIR</span><span class="role-person">Mrs Y. Sarpong</span></div>
+              <div class="role-mini"><span class="role-lab">VICE</span><span class="role-person">Mr K. Appiah</span></div>
+              <div class="role-mini"><span class="role-lab">SEC</span><span class="role-person">Mr F. Asare · housemaster</span></div>
+              <div class="role-mini"><span class="role-lab">TREAS</span><span class="role-person">Mrs E. Nyarko</span></div>
+            </div>
+            <div class="chev">›</div>
+          </div>
+        </div>
+
+        <!-- Form PTA section -->
+        <div class="tier-section form-section">
+          <div class="ts-head">
+            <div class="icon">FP</div>
+            <div class="info">
+              <h3 class="display">Form PTA <em>officers</em></h3>
+              <div class="meta">20 Form PTAs · <b>80 elected roles</b> + 20 Form Master ex-officio Secretaries · click row to expand class roster</div>
+            </div>
+            <div class="completion">
+              <div class="stat display"><em>79</em> / 80 filled</div>
+              <div class="lab">1 vacancy</div>
+            </div>
+          </div>
+
+          <div class="expand-row">
+            <div class="instance-name">Form 2 General Arts A <span class="badge-inst">32 students</span></div>
+            <div class="roles-mini">
+              <div class="role-mini"><span class="role-lab">CHAIR</span><span class="role-person">Mr S. Adjei</span></div>
+              <div class="role-mini"><span class="role-lab">VICE</span><span class="role-person">Mrs J. Boateng</span></div>
+              <div class="role-mini"><span class="role-lab">SEC</span><span class="role-person">Mr A. Mensah · form master</span></div>
+              <div class="role-mini"><span class="role-lab">TREAS</span><span class="role-person">Mrs O. Sarpong</span></div>
+            </div>
+            <div class="chev">›</div>
+          </div>
+
+          <div class="expand-row">
+            <div class="instance-name">Form 1 General Science B <span class="badge-inst">28 students</span></div>
+            <div class="roles-mini">
+              <div class="role-mini"><span class="role-lab">CHAIR</span><span class="role-person">Dr K. Owusu</span></div>
+              <div class="role-mini"><span class="role-lab">VICE</span><span class="role-person">Mr P. Adusei</span></div>
+              <div class="role-mini"><span class="role-lab">SEC</span><span class="role-person">Mrs G. Asante · form mistress</span></div>
+              <div class="role-mini vacant"><span class="role-lab">TREAS</span><span class="role-person">vacant · 14 days</span></div>
+            </div>
+            <div class="chev">›</div>
+          </div>
+
+          <div class="expand-row">
+            <div class="instance-name" style="color:var(--navy-3); font-style:italic;">18 more Form PTAs · click to expand</div>
+            <div></div>
+            <div class="chev">›</div>
+          </div>
+        </div>
+
+        <!-- Emergency PTA -->
+        <div class="emergency-card">
+          <div class="head-c">
+            <div class="icon">EP</div>
+            <div>
+              <h3 class="display">Emergency PTA <em>· no standing officers</em></h3>
+              <div class="meta">On-demand tier · no elections · attendees draw from General PTA membership when convened</div>
+            </div>
+          </div>
+          <p><b>Emergency PTAs don't have standing officers.</b> When convened, the General PTA Chair (or Headmaster, if Chair unavailable) presides; the General PTA Secretary takes minutes. The matrix doesn't track separate Emergency-tier roles because the executive is always the General PTA executive. The Emergency tier exists to track <b>meetings and resolutions</b>, not officers.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Design notes</h4>
+      <ul>
+        <li><b>Three person types.</b> Parent officers (most), teacher officers (some — Headmaster ex-officio, Form Masters as Form PTA Secretaries), and external officers (rare — BOG member who sits on PTA). The schema models all three.</li>
+        <li><b>Multi-hat is the norm, not the exception.</b> Active parents often hold roles at multiple tiers. The matrix is designed to make multi-hat visible (the "+2 other PTA roles" tag on Mrs Asare) without making it confusing.</li>
+        <li><b>Vacancies are red.</b> Three vacancies in this snapshot · one at General (Organising Secretary), one Gibson House Vice, one Form 1 General Science B Treasurer. PTA Chair sees these on dashboard load.</li>
+        <li><b>Term ending warnings.</b> Mr Boateng's Financial Secretary role ends June when his son completes Form 3. The system flags 30 days out so the AGM can plan a by-election.</li>
+        <li><b>Ex-officio roles are read-only.</b> They attach to whoever holds the linked staff role. When the Headmaster changes, the PTA Headmaster ex-officio auto-updates.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Assigning an officer · the drawer</div>
+    <div class="section-meta">Click + Assign · the picker</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="drawer-mock" style="max-width:540px;">
+        <div class="drawer-head">
+          <div class="crumb">PTA · Officers · Assign</div>
+          <h3 class="display">Assign <em>Form 1 GS B Treasurer</em></h3>
+        </div>
+        <div class="drawer-body">
+          <div class="drawer-field">
+            <div class="fl">PTA · pre-filled</div>
+            <input type="text" value="Form 1 General Science B · Form PTA" disabled style="background:var(--surface); color:var(--navy-3);">
+          </div>
+
+          <div class="drawer-field">
+            <div class="fl">Role · pre-filled</div>
+            <input type="text" value="Treasurer" disabled style="background:var(--surface); color:var(--navy-3);">
+          </div>
+
+          <div class="drawer-field">
+            <div class="fl">Search parent or staff</div>
+            <input type="text" value="boa" placeholder="Type to search...">
+            <div class="hint">Searches parents of Form 1 GS B students first, then all school parents, then staff</div>
+
+            <div class="search-result selected">
+              <div class="av-r">JB</div>
+              <div class="info">
+                <div class="nm">Mrs Joana Boateng</div>
+                <div class="ctx">Parent · Form 1 General Science B · <b>Kofi Boateng's mother</b></div>
+                <div class="hats-existing">No other PTA roles · clean slate</div>
+              </div>
+              <div class="pick">✓ Selected</div>
+            </div>
+
+            <div class="search-result">
+              <div class="av-r">AB</div>
+              <div class="info">
+                <div class="nm">Mrs Akua Boateng</div>
+                <div class="ctx">Parent · Form 3 General Arts A · <b>not a Form 1 GS B parent</b></div>
+                <div class="hats-existing">Holds: Form 3 GA A Chair · Aryee House Treasurer</div>
+              </div>
+            </div>
+
+            <div class="search-result">
+              <div class="av-r">PB</div>
+              <div class="info">
+                <div class="nm">Mr Patrick Boadu</div>
+                <div class="ctx">Parent · Form 2 Business C</div>
+                <div class="hats-existing">Holds: Form 2 B C Vice-Chair</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="drawer-field">
+            <div class="fl">Assignment basis</div>
+            <select>
+              <option>Elected at Form PTA meeting (default)</option>
+              <option>Appointed by Form Master (interim only)</option>
+              <option>Appointed by General PTA Chair (rare)</option>
+            </select>
+            <div class="hint">Audit captures basis · <b>elections are the norm</b>, appointments are interim</div>
+          </div>
+
+          <div class="drawer-field">
+            <div class="fl">Term start date</div>
+            <input type="text" value="15 May 2026">
+          </div>
+
+          <div class="drawer-field">
+            <div class="fl">Term end date · auto-calculated</div>
+            <input type="text" value="15 May 2028 (2 academic years per tier config)" disabled style="background:var(--surface);">
+          </div>
+
+          <div class="drawer-field">
+            <div class="fl">Election reference (for audit)</div>
+            <input type="text" value="Form 1 GS B emergency meeting · 14 May 2026 · minute 3.2">
+          </div>
+
+          <div class="conflict-callout">
+            <div class="eb">No conflicts detected</div>
+            <p>Mrs Boateng holds no other PTA roles. Term doesn't overlap with any existing assignment. <b>Safe to assign.</b> If she'd been an existing officer at another tier, the system would flag it here for awareness, not as a block.</p>
+          </div>
+        </div>
+
+        <div class="drawer-foot">
+          <div class="ftext">Audit-logged · Mrs Boateng will receive SMS notification</div>
+          <div class="factions">
+            <button class="btn">Cancel</button>
+            <button class="btn primary">Assign &amp; notify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Drawer behaviour</h4>
+      <ul>
+        <li><b>Search prioritises the relevant pool.</b> For a Form PTA role, parents of that class surface first. For a House PTA role, parents of that House. For General, all school parents.</li>
+        <li><b>Existing hats are shown.</b> Search results reveal what other PTA roles a person already holds, so admin can decide if loading another hat is appropriate.</li>
+        <li><b>Conflict callout is informational, not blocking.</b> Multi-hat is allowed by design. The callout exists to make multi-hat visible, not to prevent it.</li>
+        <li><b>Term end is auto-calculated.</b> From the tier's configured term length (set in PTA structure). Manual override allowed for interim appointments.</li>
+        <li><b>Election reference is mandatory.</b> Audit needs to know how this person got the role. Free-text but required.</li>
+        <li><b>SMS notification on assign.</b> Mrs Boateng gets "You've been assigned as Form 1 GS B PTA Treasurer · term 15 May 2026 to 15 May 2028. Reply HELP for more."</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

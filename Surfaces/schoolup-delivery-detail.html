@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Per-recipient delivery detail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+  position: relative;
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+  min-height: 1480px;
+}
+.sidebar.with-drawer { min-height: 1500px; }
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main {
+  padding: 0;
+  background: var(--bg);
+}
+
+/* Page head */
+.page-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 22px 32px 18px;
+}
+.page-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.page-head .crumb a { color: var(--gold); text-decoration: none; }
+.page-head .top-row {
+  display: flex; justify-content: space-between; align-items: end;
+}
+.page-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.1;
+}
+.page-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-head .lede {
+  font-size: 12px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.page-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); font-weight: 700; }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); font-weight: 700; }
+
+.actions { display: flex; gap: 8px; }
+
+/* Body */
+.body-content {
+  padding: 24px 32px 60px;
+}
+
+/* ============ MESSAGE PREVIEW CARD ============ */
+.message-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  align-items: start;
+}
+.message-card .msg-info .label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.message-card .msg-info .subject {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin-bottom: 4px;
+}
+.message-card .msg-info .subject em {
+  font-style: italic;
+  color: var(--gold);
+}
+.message-card .msg-info .meta-line {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-bottom: 14px;
+}
+.message-card .msg-info .meta-line b { color: var(--navy-2); font-weight: 600; }
+.message-card .msg-info .meta-line .pill-inline {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 100px;
+  margin-left: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--navy-2);
+}
+
+.message-body-block {
+  background: var(--bg);
+  border-left: 2px solid var(--gold);
+  padding: 12px 16px;
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--navy);
+  font-style: italic;
+}
+.message-body-block b { font-style: normal; font-weight: 600; }
+
+.message-card .channels-info {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.message-card .channels-info .ci-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.channel-fact-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px dashed var(--border);
+  font-size: 11px;
+}
+.channel-fact-row:first-of-type { border-top: none; padding-top: 0; }
+.channel-fact-row .ic-circle {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+}
+.channel-fact-row .ic-circle.sms {
+  background: var(--gold);
+  color: var(--navy);
+}
+.channel-fact-row .ic-circle.wa {
+  background: var(--wa-green);
+  color: white;
+}
+.channel-fact-row .ic-circle.email {
+  background: var(--bg);
+  color: var(--navy);
+  border: 1.5px solid var(--border-2);
+}
+.channel-fact-row .name {
+  font-weight: 600;
+  color: var(--navy);
+}
+.channel-fact-row .meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy-3);
+}
+
+/* ============ DELIVERY STATS STRIP ============ */
+.stats-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.stat-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+.stat-tile.hero {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+  background-image: radial-gradient(circle at 100% 0%, rgba(200,151,91,0.12) 0%, transparent 50%);
+}
+.stat-tile .lbl {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.stat-tile.hero .lbl { color: rgba(232,212,184,0.7); }
+.stat-tile .val {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-top: 4px;
+}
+.stat-tile.hero .val { color: var(--gold); font-size: 32px; }
+.stat-tile .val.green { color: var(--green); }
+.stat-tile .val.warn { color: var(--warn); }
+.stat-tile .val.terra { color: var(--terra); }
+.stat-tile .val.gold-c { color: var(--gold); }
+.stat-tile .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.stat-tile.hero .sub { color: rgba(232,212,184,0.75); }
+.stat-tile .sub b { color: var(--navy-2); font-weight: 600; }
+.stat-tile.hero .sub b { color: var(--bg); font-weight: 600; }
+
+/* ============ FAILURES CALLOUT ============ */
+.failures-callout {
+  background: var(--terra-bg);
+  border: 1px solid rgba(184,74,57,0.3);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+.failures-callout .ic {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--terra);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+.failures-callout .text .heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  color: var(--terra);
+}
+.failures-callout .text .detail {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+.failures-callout .text .detail b { color: var(--navy); font-weight: 600; }
+.failures-callout .actions {
+  display: flex; gap: 6px;
+}
+.failures-callout .btn.primary {
+  background: var(--terra);
+  border-color: var(--terra);
+  color: white;
+}
+
+/* ============ FILTER BAR ============ */
+.filter-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px 10px 0 0;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filter-group {
+  display: flex; gap: 4px;
+  align-items: center;
+}
+.filter-group .group-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-right: 4px;
+}
+.filter-pill {
+  padding: 5px 11px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+}
+.filter-pill.active {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--navy);
+}
+.filter-pill .count {
+  background: var(--bg);
+  color: var(--navy-3);
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+.filter-pill.active .count {
+  background: var(--gold);
+  color: var(--navy);
+}
+.filter-pill.active.terra-active {
+  background: var(--terra-bg);
+  border-color: var(--terra);
+  color: var(--terra);
+}
+.filter-pill.active.terra-active .count {
+  background: var(--terra);
+  color: white;
+}
+
+.search-input {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-radius: 100px;
+  padding: 4px 12px;
+  width: 220px;
+}
+.search-input input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--navy);
+  flex: 1;
+}
+.search-input input::placeholder { color: var(--navy-3); font-style: italic; }
+.search-input .ic {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-right: 6px;
+}
+
+/* ============ RECIPIENT TABLE ============ */
+.recipient-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+}
+.recipient-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.recipient-table thead th {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 18px;
+  text-align: left;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.recipient-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.recipient-table tbody tr:hover { background: var(--bg); }
+.recipient-table tbody tr:last-child { border-bottom: none; }
+.recipient-table tbody tr.failed-row {
+  background: rgba(184,74,57,0.04);
+}
+.recipient-table tbody tr.failed-row:hover {
+  background: rgba(184,74,57,0.08);
+}
+.recipient-table td {
+  padding: 12px 18px;
+  vertical-align: middle;
+}
+
+.row-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 600;
+  width: 28px;
+}
+
+.recipient-cell {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.recipient-cell .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+}
+.recipient-cell .info { min-width: 0; }
+.recipient-cell .name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--navy);
+}
+.recipient-cell .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.recipient-cell .meta b { color: var(--navy-2); font-weight: 600; }
+
+/* Channel pills inline */
+.channels-cell {
+  display: flex; gap: 6px;
+  flex-wrap: wrap;
+}
+.channel-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+.channel-pill .ic {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 8px;
+}
+.channel-pill .ic.sms {
+  background: var(--gold);
+  color: var(--navy);
+}
+.channel-pill .ic.wa {
+  background: var(--wa-green);
+  color: white;
+}
+.channel-pill .ic.email {
+  background: var(--bg);
+  color: var(--navy);
+  border: 1px solid var(--border-2);
+  font-size: 9px;
+}
+.channel-pill .state-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+}
+.channel-pill .state-dot.delivered { background: var(--green); }
+.channel-pill .state-dot.read { background: var(--green); box-shadow: 0 0 0 1.5px var(--green-bg); }
+.channel-pill .state-dot.sent { background: var(--gold); }
+.channel-pill .state-dot.queued { background: var(--warn); }
+.channel-pill .state-dot.failed { background: var(--terra); }
+.channel-pill.delivered { background: var(--green-bg); border-color: rgba(47,107,71,0.3); color: var(--green); }
+.channel-pill.read { background: var(--green-bg); border-color: rgba(47,107,71,0.4); color: var(--green); }
+.channel-pill.sent { background: var(--gold-bg); border-color: var(--gold-soft); color: var(--gold); }
+.channel-pill.queued { background: var(--warn-bg); border-color: rgba(197,138,46,0.3); color: var(--warn); }
+.channel-pill.failed { background: var(--terra-bg); border-color: rgba(184,74,57,0.3); color: var(--terra); }
+.channel-pill .label-text {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.time-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--navy-2);
+  font-weight: 600;
+}
+.time-cell .relative {
+  display: block;
+  font-family: 'Manrope', sans-serif;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-style: italic;
+  font-weight: 500;
+  margin-top: 1px;
+  letter-spacing: 0;
+}
+
+.action-cell {
+  display: flex; gap: 4px;
+  justify-content: flex-end;
+}
+.row-action-btn {
+  padding: 5px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  font-family: inherit;
+}
+.row-action-btn.primary {
+  background: var(--gold);
+  color: var(--navy);
+  border-color: var(--gold);
+}
+
+.chevron-cell {
+  color: var(--navy-3);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  width: 24px;
+}
+
+/* ============ STATE B: TIMELINE DRAWER ============ */
+.drawer-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(26,43,71,0.4);
+  z-index: 10;
+  pointer-events: none;
+}
+.drawer {
+  position: absolute;
+  top: 0; bottom: 0; right: 0;
+  width: 480px;
+  background: var(--surface);
+  z-index: 20;
+  display: flex; flex-direction: column;
+  box-shadow: -16px 0 40px -8px rgba(26,43,71,0.25);
+  overflow: hidden;
+}
+
+.drawer-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-head .top-line {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.drawer-head .eyebrow-tag {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.drawer-head .close-btn {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.drawer-recipient {
+  display: flex; gap: 14px; align-items: center;
+  margin-bottom: 12px;
+}
+.drawer-recipient .av {
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.drawer-recipient .info { flex: 1; min-width: 0; }
+.drawer-recipient .name {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.drawer-recipient .name em { font-style: italic; color: var(--gold); font-weight: 400; }
+.drawer-recipient .meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+.drawer-recipient .meta b { color: var(--navy-2); font-weight: 600; }
+
+/* Status banner */
+.delivery-banner {
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  align-items: start;
+  margin-top: 4px;
+}
+.delivery-banner.terra {
+  background: var(--terra-bg);
+  border: 1px solid rgba(184,74,57,0.25);
+}
+.delivery-banner.green {
+  background: var(--green-bg);
+  border: 1px solid rgba(47,107,71,0.25);
+}
+.delivery-banner .ic {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  color: white;
+}
+.delivery-banner.terra .ic { background: var(--terra); }
+.delivery-banner.green .ic { background: var(--green); }
+.delivery-banner .body { font-size: 12px; line-height: 1.5; }
+.delivery-banner .body .heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+  letter-spacing: -0.005em;
+}
+.delivery-banner.terra .heading { color: var(--terra); }
+.delivery-banner.green .heading { color: var(--green); }
+.delivery-banner .body .detail { color: var(--navy-2); }
+.delivery-banner .body .detail b { color: var(--navy); font-weight: 600; }
+
+/* Drawer body */
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.drawer-section {
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-section:last-child { border-bottom: none; }
+.drawer-section .section-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+/* Channel summary */
+.channel-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.channel-summary {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.channel-summary.failed {
+  border-color: rgba(184,74,57,0.3);
+  background: rgba(184,74,57,0.04);
+}
+.channel-summary.read {
+  border-color: rgba(47,107,71,0.3);
+  background: rgba(47,107,71,0.04);
+}
+.channel-summary .head-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px;
+}
+.channel-summary .ic-circle {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+}
+.channel-summary .ic-circle.sms { background: var(--gold); color: var(--navy); }
+.channel-summary .ic-circle.wa { background: var(--wa-green); color: white; }
+.channel-summary .ch-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.channel-summary .state-text {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+  text-transform: uppercase;
+}
+.channel-summary.read .state-text { color: var(--green); }
+.channel-summary.failed .state-text { color: var(--terra); }
+.channel-summary .destination {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* Timeline */
+.timeline {
+  display: flex; flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+.timeline-entry {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 14px;
+  padding: 8px 0;
+  position: relative;
+}
+.timeline-entry::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 28px;
+  bottom: -8px;
+  width: 1.5px;
+  background: var(--border);
+}
+.timeline-entry:last-child::before { display: none; }
+.timeline-entry .te-dot {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+  color: var(--navy-2);
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.timeline-entry.delivered .te-dot { background: var(--green); border-color: var(--green); color: white; }
+.timeline-entry.read .te-dot { background: var(--green); border-color: var(--green); color: white; }
+.timeline-entry.sent .te-dot { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+.timeline-entry.queued .te-dot { background: var(--warn); border-color: var(--warn); color: white; }
+.timeline-entry.failed .te-dot { background: var(--terra); border-color: var(--terra); color: white; }
+
+.timeline-entry .te-body {
+  padding-top: 1px;
+  min-width: 0;
+}
+.timeline-entry .te-top-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 2px;
+  gap: 8px;
+}
+.timeline-entry .te-event {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.timeline-entry .te-event em {
+  font-style: normal;
+  font-weight: 700;
+}
+.timeline-entry.delivered .te-event em { color: var(--green); }
+.timeline-entry.read .te-event em { color: var(--green); }
+.timeline-entry.sent .te-event em { color: var(--gold); }
+.timeline-entry.failed .te-event em { color: var(--terra); }
+
+.timeline-entry .te-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.timeline-entry .te-detail {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+.timeline-entry .te-detail b { color: var(--navy); font-weight: 600; }
+.timeline-entry .te-detail .channel-tag {
+  display: inline-block;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 100px;
+  margin-right: 4px;
+}
+.timeline-entry .te-detail .channel-tag.sms {
+  background: var(--gold);
+  color: var(--navy);
+}
+.timeline-entry .te-detail .channel-tag.wa {
+  background: var(--wa-green);
+  color: white;
+}
+
+/* Failure reason block */
+.failure-reason-block {
+  background: var(--terra-bg);
+  border: 1px solid rgba(184,74,57,0.25);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 8px;
+}
+.failure-reason-block .heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--terra);
+  margin-bottom: 4px;
+  letter-spacing: -0.005em;
+}
+.failure-reason-block .detail {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.failure-reason-block .detail b { color: var(--navy); font-weight: 600; }
+.failure-reason-block .technical {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin-top: 6px;
+  background: var(--surface);
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+/* Drawer footer */
+.drawer-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  flex-shrink: 0;
+}
+.drawer-footer .left-info {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+.drawer-footer .actions {
+  display: flex; gap: 6px;
+}
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: repeat(3, 1fr); }
+  .drawer { width: 100%; }
+  .message-card { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Announcements · Delivery detail</div>
+  <h1 class="display">Who got the <em>message</em>, and when</h1>
+  <div class="gold-rule"></div>
+  <p>When a parent says "I never got the notice," the headmistress needs to know whether Omnischools sent it, whether it was delivered, and at what time. The per-recipient delivery detail page exists for two reasons: operational follow-up on failures, and audit when a parent disputes. Two states: the full table view drilled in from announcements history, and the per-recipient timeline drawer for one specific person.</p>
+</header>
+
+<!-- ============ STATE A: PER-RECIPIENT DELIVERY DETAIL ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Delivery detail · the table view</div>
+    <div class="section-meta">Drilled-in from Announcements · "JHS 2 fee reminder" · sent 2:14 PM</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / announcements / a-2025-0142 / delivery</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item active"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+
+          <!-- Page head -->
+          <div class="page-head">
+            <div class="crumb"><a href="#">Announcements</a> / History / Delivery detail</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Delivery <em>detail</em></h1>
+                <div class="lede">Sent by <b>Florence Addo</b> · Wed 22 Oct 2025 at <b>2:14 PM</b> · ID <b style="font-family:'JetBrains Mono',monospace;font-weight:600">A-2025-0142</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn">Export CSV</button>
+                <button class="btn">Resend to failed →</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body-content">
+
+            <!-- Message preview card -->
+            <div class="message-card">
+              <div class="msg-info">
+                <div class="label">Announcement sent</div>
+                <div class="subject display">Term 1 fees · payment <em>reminder</em></div>
+                <div class="meta-line">
+                  Targeted to <b>All JHS 2 parents</b> (3 classes) <span class="pill-inline">102 recipients</span>
+                </div>
+
+                <div class="message-body-block">
+                  Dear Parent, this is a friendly reminder that <b>Term 1 fees</b> are due. Most balances are now overdue. Please make payment by Friday 24 Oct. Tap <b>pay.htl.gh/ck-{ref}</b> to settle securely with MoMo or card. If you've already paid, please ignore this message. — <b>Christ the King JHS</b>
+                </div>
+              </div>
+
+              <div class="channels-info">
+                <div class="ci-label">Sent through</div>
+                <div class="channel-fact-row">
+                  <div class="ic-circle wa">W</div>
+                  <div class="name">WhatsApp</div>
+                  <div class="meta">94 recipients</div>
+                </div>
+                <div class="channel-fact-row">
+                  <div class="ic-circle sms">SMS</div>
+                  <div class="name">SMS fallback</div>
+                  <div class="meta">8 recipients</div>
+                </div>
+                <div class="channel-fact-row">
+                  <div class="ic-circle email">@</div>
+                  <div class="name">Email</div>
+                  <div class="meta">not selected</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stats strip -->
+            <div class="stats-row">
+              <div class="stat-tile hero">
+                <div class="lbl">Reach so far</div>
+                <div class="val">96<span style="font-size:18px;color:rgba(232,212,184,0.7)">/102</span></div>
+                <div class="sub"><b>94.1%</b> reached · 6 not yet</div>
+              </div>
+              <div class="stat-tile">
+                <div class="lbl">Read</div>
+                <div class="val green">71</div>
+                <div class="sub">WhatsApp only</div>
+              </div>
+              <div class="stat-tile">
+                <div class="lbl">Delivered</div>
+                <div class="val gold-c">25</div>
+                <div class="sub">not yet read</div>
+              </div>
+              <div class="stat-tile">
+                <div class="lbl">Sent · pending</div>
+                <div class="val warn">2</div>
+                <div class="sub">awaiting confirmation</div>
+              </div>
+              <div class="stat-tile">
+                <div class="lbl">Failed</div>
+                <div class="val terra">4</div>
+                <div class="sub"><b>3 invalid</b> · 1 blocked</div>
+              </div>
+              <div class="stat-tile">
+                <div class="lbl">Cost so far</div>
+                <div class="val">GHS<span style="font-size:18px;color:var(--navy-3);margin-left:4px">5.20</span></div>
+                <div class="sub">8 SMS · WhatsApp included</div>
+              </div>
+            </div>
+
+            <!-- Failures callout -->
+            <div class="failures-callout">
+              <div class="ic">!</div>
+              <div class="text">
+                <div class="heading">4 messages failed to deliver</div>
+                <div class="detail"><b>3 invalid phone numbers</b> · <b>1 recipient blocked the school</b> on WhatsApp · these guardians have not received this announcement</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Review each →</button>
+                <button class="btn primary">Resend via SMS</button>
+              </div>
+            </div>
+
+            <!-- Filter bar + Recipient table -->
+            <div class="filter-bar">
+              <div class="filter-group">
+                <div class="group-label">Show</div>
+                <button class="filter-pill active">All <span class="count">102</span></button>
+                <button class="filter-pill">Read <span class="count">71</span></button>
+                <button class="filter-pill">Delivered <span class="count">25</span></button>
+                <button class="filter-pill">Pending <span class="count">2</span></button>
+                <button class="filter-pill terra-active active">Failed <span class="count">4</span></button>
+              </div>
+              <div class="filter-group">
+                <div class="group-label">Class</div>
+                <button class="filter-pill active">All</button>
+                <button class="filter-pill">JHS 2A</button>
+                <button class="filter-pill">JHS 2B</button>
+                <button class="filter-pill">JHS 2C</button>
+              </div>
+              <div class="search-input">
+                <span class="ic">⌕</span>
+                <input placeholder="Search by name, phone..." />
+              </div>
+            </div>
+
+            <div class="recipient-table-wrap">
+              <table class="recipient-table">
+                <thead>
+                  <tr>
+                    <th class="row-num">#</th>
+                    <th>Recipient</th>
+                    <th>Channels</th>
+                    <th>Last update</th>
+                    <th></th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+
+                  <!-- Failed: invalid number -->
+                  <tr class="failed-row">
+                    <td class="row-num">001</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">MM</div>
+                        <div class="info">
+                          <div class="name">Mary Mensah</div>
+                          <div class="meta">Guardian of <b>James Mensah</b> · JHS 2A</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill failed">
+                          <div class="ic wa">W</div>
+                          <div class="state-dot failed"></div>
+                          <span class="label-text">Failed</span>
+                        </div>
+                        <div class="channel-pill failed">
+                          <div class="ic sms">S</div>
+                          <div class="state-dot failed"></div>
+                          <span class="label-text">Invalid</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      2:14 PM
+                      <div class="relative">~3h ago · failed</div>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <button class="row-action-btn primary">Update phone</button>
+                        <button class="row-action-btn">Resend</button>
+                      </div>
+                    </td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <!-- Failed: invalid number 2 -->
+                  <tr class="failed-row">
+                    <td class="row-num">002</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">FA</div>
+                        <div class="info">
+                          <div class="name">Felix Adjei</div>
+                          <div class="meta">Guardian of <b>Daniel Adjei</b> · JHS 2A</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill failed">
+                          <div class="ic sms">S</div>
+                          <div class="state-dot failed"></div>
+                          <span class="label-text">Invalid number</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      2:14 PM
+                      <div class="relative">~3h ago · failed</div>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <button class="row-action-btn primary">Update phone</button>
+                        <button class="row-action-btn">Resend</button>
+                      </div>
+                    </td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <!-- Failed: blocked -->
+                  <tr class="failed-row">
+                    <td class="row-num">003</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">SA</div>
+                        <div class="info">
+                          <div class="name">Sarah Amponsah</div>
+                          <div class="meta">Guardian of <b>Yaa Amponsah</b> · JHS 2C</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill failed">
+                          <div class="ic wa">W</div>
+                          <div class="state-dot failed"></div>
+                          <span class="label-text">Blocked</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      2:14 PM
+                      <div class="relative">~3h ago · blocked</div>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <button class="row-action-btn primary">Send via SMS</button>
+                      </div>
+                    </td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <!-- Failed: invalid 3 -->
+                  <tr class="failed-row">
+                    <td class="row-num">004</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">PT</div>
+                        <div class="info">
+                          <div class="name">Patrick Tetteh</div>
+                          <div class="meta">Guardian of <b>Akua Tetteh</b> · JHS 2B</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill failed">
+                          <div class="ic sms">S</div>
+                          <div class="state-dot failed"></div>
+                          <span class="label-text">Invalid number</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      2:14 PM
+                      <div class="relative">~3h ago · failed</div>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <button class="row-action-btn primary">Update phone</button>
+                        <button class="row-action-btn">Resend</button>
+                      </div>
+                    </td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <!-- Section divider -->
+                  <tr style="background:var(--bg);border-top:1.5px solid var(--border-2)">
+                    <td colspan="6" style="padding:8px 18px;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700">Pending · 2</td>
+                  </tr>
+
+                  <!-- Pending -->
+                  <tr>
+                    <td class="row-num">005</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">CB</div>
+                        <div class="info">
+                          <div class="name">Cynthia Boateng</div>
+                          <div class="meta">Guardian of <b>Nathaniel Boateng</b> · JHS 2A</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill sent">
+                          <div class="ic wa">W</div>
+                          <div class="state-dot sent"></div>
+                          <span class="label-text">Sent</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      2:14 PM
+                      <div class="relative">~3h ago · awaiting</div>
+                    </td>
+                    <td></td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <tr>
+                    <td class="row-num">006</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">JK</div>
+                        <div class="info">
+                          <div class="name">Jonathan Kwakye</div>
+                          <div class="meta">Guardian of <b>Aba Kwakye</b> · JHS 2B</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill sent">
+                          <div class="ic wa">W</div>
+                          <div class="state-dot sent"></div>
+                          <span class="label-text">Sent</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      2:14 PM
+                      <div class="relative">~3h ago · awaiting</div>
+                    </td>
+                    <td></td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <!-- Section divider -->
+                  <tr style="background:var(--bg);border-top:1.5px solid var(--border-2)">
+                    <td colspan="6" style="padding:8px 18px;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700">Delivered · not yet read · 25</td>
+                  </tr>
+
+                  <tr>
+                    <td class="row-num">007</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">AB</div>
+                        <div class="info">
+                          <div class="name">Akua Boahene</div>
+                          <div class="meta">Guardian of <b>Esi Boahene</b> · JHS 2A</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill delivered">
+                          <div class="ic wa">W</div>
+                          <div class="state-dot delivered"></div>
+                          <span class="label-text">Delivered</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      2:14 PM
+                      <div class="relative">~3h ago · delivered</div>
+                    </td>
+                    <td></td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <tr>
+                    <td class="row-num">008</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">EM</div>
+                        <div class="info">
+                          <div class="name">Emmanuel Mensah</div>
+                          <div class="meta">Guardian of <b>Florence Mensah</b> · JHS 2B</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill delivered">
+                          <div class="ic wa">W</div>
+                          <div class="state-dot delivered"></div>
+                          <span class="label-text">Delivered</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      2:14 PM
+                      <div class="relative">~3h ago · delivered</div>
+                    </td>
+                    <td></td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <!-- Section divider -->
+                  <tr style="background:var(--bg);border-top:1.5px solid var(--border-2)">
+                    <td colspan="6" style="padding:8px 18px;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700">Read · 71 · most recent first</td>
+                  </tr>
+
+                  <tr>
+                    <td class="row-num">009</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">PB</div>
+                        <div class="info">
+                          <div class="name">Patricia Boateng</div>
+                          <div class="meta">Guardian of <b>Akosua Boateng</b> · JHS 2A</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill read">
+                          <div class="ic wa">W</div>
+                          <div class="state-dot read"></div>
+                          <span class="label-text">Read 4:32 PM</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      4:32 PM
+                      <div class="relative">~50m ago · read</div>
+                    </td>
+                    <td></td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <tr>
+                    <td class="row-num">010</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">KA</div>
+                        <div class="info">
+                          <div class="name">Kofi Asante</div>
+                          <div class="meta">Guardian of <b>Mary Asante</b> · JHS 2A</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill read">
+                          <div class="ic wa">W</div>
+                          <div class="state-dot read"></div>
+                          <span class="label-text">Read 4:18 PM</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      4:18 PM
+                      <div class="relative">~1h ago · read</div>
+                    </td>
+                    <td></td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <tr>
+                    <td class="row-num">011</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">YO</div>
+                        <div class="info">
+                          <div class="name">Yaw Owusu</div>
+                          <div class="meta">Guardian of <b>Florence Owusu</b> · JHS 2A</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill read">
+                          <div class="ic wa">W</div>
+                          <div class="state-dot read"></div>
+                          <span class="label-text">Read 4:01 PM</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      4:01 PM
+                      <div class="relative">~1h ago · read</div>
+                    </td>
+                    <td></td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <tr>
+                    <td class="row-num">012</td>
+                    <td>
+                      <div class="recipient-cell">
+                        <div class="av">AO</div>
+                        <div class="info">
+                          <div class="name">Akua Ofori</div>
+                          <div class="meta">Guardian of <b>Stephen Ofori</b> · JHS 2C</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="channels-cell">
+                        <div class="channel-pill read">
+                          <div class="ic sms">S</div>
+                          <div class="state-dot delivered"></div>
+                          <span class="label-text">Delivered</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="time-cell">
+                      2:14 PM
+                      <div class="relative">~3h ago · SMS</div>
+                    </td>
+                    <td></td>
+                    <td class="chevron-cell">›</td>
+                  </tr>
+
+                  <tr>
+                    <td colspan="6" style="padding:14px;text-align:center;font-size:11px;color:var(--navy-3);font-style:italic;background:var(--bg);border-top:1px solid var(--border)">90 more recipients · scroll or filter to narrow</td>
+                  </tr>
+
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Top-down hierarchy: announcement → stats → failures → table.</b> The headmistress drilling into delivery detail almost always wants to know the same things in the same order: what was sent, how many got it, what failed, who specifically. The page architecture makes that flow inevitable.</li>
+        <li><b>Message preview card at the top reuses the actual message text in italic gold-bordered blockquote.</b> Same pattern as the WhatsApp template authoring page — the message itself is the anchoring fact. Admin can verify she's looking at the right announcement before drilling deeper.</li>
+        <li><b>Right side of the message card shows channel-by-channel breakdown</b> in a small bordered card. "WhatsApp · 94 · SMS fallback · 8 · Email · not selected." <b>Tells admin which channels were attempted</b>; emails being "not selected" is honest about what didn't happen.</li>
+        <li><b>"SMS fallback" framing</b> reflects the actual policy: WhatsApp first because of cost, SMS only when WhatsApp can't reach (no opt-in, expired window, user without WhatsApp). The label tells admin <i>why</i> 8 people got SMS specifically — not because they were chosen for SMS, but because WhatsApp didn't work for them.</li>
+        <li><b>6-tile stat strip with hero "Reach so far"</b> in navy/gold. Reach (96/102) is the headline because it answers "did the announcement land?" Reading rate (71/96 = 74%) is secondary; admin cares more about reach than read in most operational scenarios.</li>
+        <li><b>Stats split into Read / Delivered / Pending / Failed.</b> Four states reflect the WhatsApp lifecycle (Read = saw it, Delivered = on phone, not yet read, Pending = sent but no confirmation yet, Failed = didn't get there). <b>SMS doesn't have "Read"</b> — there's no read receipt for SMS — so SMS recipients show as "Delivered" at best.</li>
+        <li><b>"Cost so far · GHS 5.20 · 8 SMS · WhatsApp included"</b> stat tile makes cost transparent. WhatsApp messages are part of the school's monthly conversation bundle (effectively free per message); SMS costs GHS 0.05 each. <b>Admin sees that this announcement's marginal cost is GHS 5.20</b> — meaningful number, useful for budgeting.</li>
+        <li><b>Failures callout in terra-bordered card sits above the table.</b> "4 messages failed to deliver · 3 invalid phone numbers · 1 recipient blocked the school." <b>Pulls failures up</b> because that's the most common reason admin drilled in. Two action buttons: "Review each →" (drill into each failure) and "Resend via SMS" (terra-primary, the destructive-but-corrective action).</li>
+        <li><b>"1 recipient blocked the school" is a real WhatsApp failure mode.</b> Sarah Amponsah blocked the school's WhatsApp number — a parent disagreement, perhaps, or just hygiene. The system surfaces this honestly. Resending via SMS is the workaround; the school can't unilaterally restore WhatsApp access.</li>
+        <li><b>Filter bar uses two filter groups + search.</b> "Show: All / Read / Delivered / Pending / Failed" + "Class: All / JHS 2A / 2B / 2C" + search by name/phone. <b>Failed filter is terra-active</b> when selected — visual signal that the user is in "see only the problems" mode. Two filters active simultaneously narrows aggressively.</li>
+        <li><b>Recipient table groups rows by status with section dividers.</b> "Failed · 4" / "Pending · 2" / "Delivered · not yet read · 25" / "Read · 71 · most recent first." <b>Failures float to the top</b> regardless of which filter is active because they're what admin needs to act on. Within each group, ordering is by recency.</li>
+        <li><b>Each row: # / Recipient (avatar + name + child) / Channel pills / Last update / Actions / chevron.</b> Six columns, each earned. The recipient cell shows guardian + the child they're a guardian of — admin's mental model is "messages go to parents, but they're <i>about</i> students." Both names visible.</li>
+        <li><b>Channel pills are the centrepiece.</b> Each pill: small channel icon (gold S for SMS, WA-green W for WhatsApp) + state dot (green/gold/warn/terra) + state label. <b>One row can have multiple channel pills</b> — Mary Mensah's row shows both WhatsApp Failed AND SMS Invalid because both channels were tried. The denser layout matches the mental model.</li>
+        <li><b>State dots use the locked colour vocabulary:</b> green delivered/read, gold sent (in transit), warn queued, terra failed. <b>Read state has a subtle ring</b> around the dot to distinguish from plain delivered — same dot, slightly more emphasis. Visual signal that someone actually saw it, not just that it landed on a phone.</li>
+        <li><b>"Read 4:32 PM" inline in the channel pill</b> for read messages. Time-of-read is operationally useful — admin can see a parent read at 4:32 and called the school at 4:45 (the 13-min gap is meaningful). Time embedded in the pill prevents the table from getting wider with another column.</li>
+        <li><b>Failed rows have terra-tinted background</b> across the entire row width. Hover deepens the tint. <b>Visual scan reveals failures instantly</b>; admin's eye lands on the failed rows even when scrolling through 102 entries.</li>
+        <li><b>Action buttons differ by failure type.</b> Mary's row (invalid phone): "Update phone" (primary, gold) + "Resend" (secondary). Sarah's row (blocked): "Send via SMS" only. Patrick's row (invalid): "Update phone" + "Resend." <b>Each failure type gets the right action</b> — updating a phone is meaningless if the user blocked you; resending to a blocked user just fails again.</li>
+        <li><b>Last-update column shows precise time + relative phrase.</b> "2:14 PM" in mono on top, "~3h ago · failed" italic below. Two formats serve two needs: admin verifying the timeline wants the precise time; admin scanning for "what's recent" wants the relative phrase.</li>
+        <li><b>Chevron column on the far right</b> indicates the row is clickable into a drawer (next state). Convention from the inbox and follow-up flows — clickable rows have a chevron, non-clickable don't.</li>
+        <li><b>"Resend to failed →" CTA in the page header</b> is the highest-frequency action on this page. Admin drills in, sees the failures, clicks resend. The action is in two places (page header + failures callout) because both are reasonable entry points.</li>
+        <li><b>"Export CSV" CTA for the audit case.</b> When a parent disputes ("I never got the message"), admin exports the full delivery record and can attach it to the response. <b>The export includes timestamps to the second, channel attempted, channel result, failure reason</b> — the audit trail is the export, not the screen.</li>
+        <li><b>What's not on the table:</b> No phone numbers visible (privacy + screen real estate). No message content (it's at the top of the page, doesn't need repeating per row). No bulk-select checkboxes (would clutter; bulk action is "Resend to failed" which operates on the failed-filter view, not row selection).</li>
+        <li><b>What's also not here:</b> No re-target option ("send to All JHS 2 again with a different message"). That belongs in the announcements compose flow, not in delivery detail. Mixing the two would create a wormhole.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE B: PER-RECIPIENT TIMELINE DRAWER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Per-recipient timeline · drawer</div>
+    <div class="section-meta">Click any row · slides in from the right · full delivery story for one person</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / announcements / a-2025-0142 / delivery / mary-mensah</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar with-drawer">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item active"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <!-- Behind drawer: dimmed page outline -->
+          <div class="page-head" style="opacity:0.4">
+            <div class="crumb"><a href="#">Announcements</a> / History / Delivery detail</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Delivery <em>detail</em></h1>
+                <div class="lede">Sent by <b>Florence Addo</b> · Wed 22 Oct 2025 at <b>2:14 PM</b></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="body-content" style="opacity:0.4">
+            <div class="message-card">
+              <div class="msg-info">
+                <div class="label">Announcement sent</div>
+                <div class="subject display">Term 1 fees · payment <em>reminder</em></div>
+                <div class="meta-line">
+                  Targeted to <b>All JHS 2 parents</b> <span class="pill-inline">102 recipients</span>
+                </div>
+              </div>
+              <div></div>
+            </div>
+
+            <div style="height:300px;background:var(--surface);border:1px solid var(--border);border-radius:10px"></div>
+          </div>
+
+          <div class="drawer-overlay"></div>
+
+          <!-- DRAWER -->
+          <div class="drawer">
+            <div class="drawer-head">
+              <div class="top-line">
+                <div class="eyebrow-tag">Delivery timeline</div>
+                <button class="close-btn">×</button>
+              </div>
+              <div class="drawer-recipient">
+                <div class="av">MM</div>
+                <div class="info">
+                  <div class="name display">Mary <em>Mensah</em></div>
+                  <div class="meta">Guardian of <b>James Mensah</b> · JHS 2A · CTK-2024-042</div>
+                </div>
+              </div>
+              <div class="delivery-banner terra">
+                <div class="ic">!</div>
+                <div class="body">
+                  <div class="heading">Did not receive this announcement</div>
+                  <div class="detail">Both <b>WhatsApp</b> and <b>SMS</b> failed · Mary has not been informed of the fee reminder</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="drawer-body">
+
+              <!-- Channel summary -->
+              <div class="drawer-section">
+                <div class="section-eyebrow">Channels attempted</div>
+                <div class="channel-summary-grid">
+                  <div class="channel-summary failed">
+                    <div class="head-row">
+                      <div class="ic-circle wa">W</div>
+                      <div class="ch-name">WhatsApp</div>
+                    </div>
+                    <div class="state-text">Failed · invalid number</div>
+                    <div class="destination">+233 24 555 0421</div>
+                  </div>
+                  <div class="channel-summary failed">
+                    <div class="head-row">
+                      <div class="ic-circle sms">S</div>
+                      <div class="ch-name">SMS · fallback</div>
+                    </div>
+                    <div class="state-text">Failed · invalid number</div>
+                    <div class="destination">+233 24 555 0421</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Timeline -->
+              <div class="drawer-section">
+                <div class="section-eyebrow">Full timeline · Wed 22 Oct</div>
+
+                <div class="timeline">
+
+                  <div class="timeline-entry sent">
+                    <div class="te-dot">↑</div>
+                    <div class="te-body">
+                      <div class="te-top-row">
+                        <div class="te-event">Announcement <em>queued</em> for delivery</div>
+                        <div class="te-time">2:14:03 PM</div>
+                      </div>
+                      <div class="te-detail">Florence sent to <b>All JHS 2 parents</b> · 102 recipients · WhatsApp + SMS fallback</div>
+                    </div>
+                  </div>
+
+                  <div class="timeline-entry sent">
+                    <div class="te-dot">W</div>
+                    <div class="te-body">
+                      <div class="te-top-row">
+                        <div class="te-event"><span class="te-detail" style="margin:0;display:inline"><span class="channel-tag wa">WhatsApp</span></span><em>sent</em> to Mary</div>
+                        <div class="te-time">2:14:08 PM</div>
+                      </div>
+                      <div class="te-detail">WhatsApp template <b>fee_reminder_v2</b> dispatched to <b>+233 24 555 0421</b></div>
+                    </div>
+                  </div>
+
+                  <div class="timeline-entry failed">
+                    <div class="te-dot">✕</div>
+                    <div class="te-body">
+                      <div class="te-top-row">
+                        <div class="te-event"><span class="te-detail" style="margin:0;display:inline"><span class="channel-tag wa">WhatsApp</span></span><em>failed</em></div>
+                        <div class="te-time">2:14:11 PM</div>
+                      </div>
+                      <div class="te-detail">Meta returned: <b>recipient phone number not registered on WhatsApp</b></div>
+                      <div class="failure-reason-block">
+                        <div class="heading">Why it failed</div>
+                        <div class="detail">The number <b>+233 24 555 0421</b> doesn't have a WhatsApp account associated with it. This is common when a guardian shares a feature phone or recently switched numbers. The system fell back to SMS automatically.</div>
+                        <div class="technical">META-API · code 131026 · "Receiver is unable to receive message"</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="timeline-entry sent">
+                    <div class="te-dot">↻</div>
+                    <div class="te-body">
+                      <div class="te-top-row">
+                        <div class="te-event">Auto-fallback to <em>SMS</em> triggered</div>
+                        <div class="te-time">2:14:11 PM</div>
+                      </div>
+                      <div class="te-detail">Omnischools automatically queued an SMS to the same number after WhatsApp failed</div>
+                    </div>
+                  </div>
+
+                  <div class="timeline-entry sent">
+                    <div class="te-dot">S</div>
+                    <div class="te-body">
+                      <div class="te-top-row">
+                        <div class="te-event"><span class="te-detail" style="margin:0;display:inline"><span class="channel-tag sms">SMS</span></span><em>sent</em> to Mary</div>
+                        <div class="te-time">2:14:14 PM</div>
+                      </div>
+                      <div class="te-detail">SMS dispatched via Hubtel SMS gateway to <b>+233 24 555 0421</b></div>
+                    </div>
+                  </div>
+
+                  <div class="timeline-entry failed">
+                    <div class="te-dot">✕</div>
+                    <div class="te-body">
+                      <div class="te-top-row">
+                        <div class="te-event"><span class="te-detail" style="margin:0;display:inline"><span class="channel-tag sms">SMS</span></span><em>failed</em></div>
+                        <div class="te-time">2:14:18 PM</div>
+                      </div>
+                      <div class="te-detail">Carrier returned: <b>invalid number · subscriber not found</b></div>
+                      <div class="failure-reason-block">
+                        <div class="heading">Why it failed</div>
+                        <div class="detail">MTN Ghana's network rejected the SMS. The number <b>+233 24 555 0421</b> isn't an active MTN subscriber. This usually means: <b>(a)</b> the number was disconnected, <b>(b)</b> the guardian switched to a different network, or <b>(c)</b> the number was entered incorrectly when James was enrolled.</div>
+                        <div class="technical">SMS-GW · status 4 · "Number not in service"</div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Recommended action -->
+              <div class="drawer-section">
+                <div class="section-eyebrow">What to do next</div>
+                <div style="background:var(--gold-bg);border-left:2px solid var(--gold);padding:12px 16px;border-radius:0 8px 8px 0;font-size:12px;color:var(--navy-2);line-height:1.55">
+                  <div style="font-family:'Fraunces',serif;font-weight:600;color:var(--navy);margin-bottom:6px;font-size:13px;letter-spacing:-0.005em">Update Mary's phone number</div>
+                  Both channels failed because the number on file isn't reachable. Open Mary's contact record to update her number, then resend this announcement. <b>James's class teacher (Mr. Mensah)</b> may have a newer number for the family.
+                </div>
+              </div>
+
+            </div>
+
+            <div class="drawer-footer">
+              <div class="left-info">3 of 4 failed recipients</div>
+              <div class="actions">
+                <button class="btn">Open Mary's record →</button>
+                <button class="btn primary">Resend after update</button>
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>The drawer slides over the page, not replacing it.</b> Background page is dimmed but visible — admin keeps the context of the broader announcement (102 recipients, sent at 2:14 PM, etc.) while focusing on one specific person. Closing the drawer returns to the table; no navigation lost.</li>
+        <li><b>Drawer head with recipient identity + delivery banner.</b> Big avatar, "Mary <em>Mensah</em>" in display Fraunces, guardian-of relationship and student ID. Below: terra-tinted banner reading "Did not receive this announcement · Both WhatsApp and SMS failed · Mary has not been informed of the fee reminder." <b>Plain English summary at the top</b>; admin doesn't need to read the timeline to know the bottom line.</li>
+        <li><b>Banner state changes by recipient.</b> For a successful recipient (Patricia Boateng who read at 4:32 PM), the banner would be green: "Read this announcement · Read on WhatsApp at 4:32 PM, ~50 min after sending." For pending: gold "Sent, awaiting confirmation." <b>The banner answers the headmistress's first question</b> ("did this person get the message?") in one sentence.</li>
+        <li><b>"Channels attempted" section uses two cards side by side</b> for WhatsApp and SMS. Each card shows: channel icon, name, state text in colour, destination phone number. <b>Both cards in failed-tinted bg</b> because both failed for Mary; this would be mixed (e.g., WhatsApp failed, SMS delivered) for other recipients.</li>
+        <li><b>Timeline is the centerpiece of the drawer.</b> Vertical rail with circles connecting events. Each circle's colour matches the locked vocabulary: gold for sent/transit, terra for failed, green for delivered/read. <b>Six events shown for Mary's timeline</b>: queued → WhatsApp sent → WhatsApp failed → auto-fallback triggered → SMS sent → SMS failed.</li>
+        <li><b>Timeline shows precise timestamps to the second.</b> "2:14:03 PM · 2:14:08 PM · 2:14:11 PM · 2:14:14 PM · 2:14:18 PM" — the entire round trip happened in 15 seconds. <b>Second-level precision matters for audit</b>; "around 2 PM" wouldn't be enough if a parent disputes specifics.</li>
+        <li><b>"WhatsApp template fee_reminder_v2 dispatched"</b> shows the actual template used. Connects this delivery to the WhatsApp template authoring file we designed earlier — the same template name appears here. <b>Visible identifier connects the surfaces</b>; admin who wonders "which template was sent?" can trace it.</li>
+        <li><b>Failure reason blocks are detailed but readable.</b> When WhatsApp failed: "Meta returned: recipient phone number not registered on WhatsApp." Plain-English explanation: "This is common when a guardian shares a feature phone or recently switched numbers." Technical reference: "META-API · code 131026 · Receiver is unable to receive message." <b>Three layers serve three audiences</b> — the admin understanding the failure, the support agent helping admin, the engineer debugging.</li>
+        <li><b>Auto-fallback event is its own timeline entry.</b> "Auto-fallback to SMS triggered" with circular ↻ icon. <b>Makes the system's behaviour visible</b>; admin sees that Omnischools tried SMS automatically when WhatsApp failed, didn't have to be told. Trust through transparency.</li>
+        <li><b>SMS failure has a different explanation than WhatsApp failure.</b> "MTN Ghana's network rejected the SMS." Three possibilities listed: number disconnected, guardian switched networks, number entered incorrectly. <b>Specific to the failure mode</b> — wouldn't be useful to give the same generic explanation for both.</li>
+        <li><b>"What to do next" section gives actionable guidance.</b> Gold-bordered card with headline "Update Mary's phone number" and a recommendation to ask Mr. Mensah (James's class teacher) for a newer number. <b>System suggests action without taking it</b>; admin still decides. The mention of Mr. Mensah is helpful — class teachers often have updated parent contacts because they communicate with families daily.</li>
+        <li><b>Drawer footer: 2 actions + recipient counter.</b> Left: "3 of 4 failed recipients" — admin knows there are more failures to review. Right: "Open Mary's record →" (navigate to Mary's contact) + "Resend after update" (primary, gold — the actionable path). <b>Two actions that both make sense</b>; not a choice between right and wrong.</li>
+        <li><b>Background dimming uses 0.4 opacity</b>, not full opacity 0. The admin can see roughly what's behind the drawer (the message preview, the table) but it's clearly demoted. <b>Modal-like focus without losing context</b>; closing returns to the same scroll position.</li>
+        <li><b>What's not in the drawer:</b> No "edit message and resend" option (re-targeting belongs in compose). No "block this guardian" action (out of scope). No conversation history with this guardian (separate to delivery detail; lives in Mary's contact record). No detailed read-receipt history if she'd read the message twice (WhatsApp doesn't expose multiple reads).</li>
+        <li><b>What's also not here:</b> No carrier billing detail. The cost (GHS 0.05 SMS) is shown at the page level, not per-recipient — granular cost attribution is more detail than admin needs at the recipient level.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

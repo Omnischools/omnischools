@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Unified onboarding wizard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:780px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+/* Desktop frame */
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Wizard shell — vertical nav + content panel */
+.wiz-shell { display:grid; grid-template-columns:300px 1fr; background:var(--bg); min-height:680px; }
+
+/* Top bar */
+.wiz-top { grid-column:1 / -1; background:var(--surface); border-bottom:1px solid var(--border); padding:18px 28px; display:flex; align-items:center; gap:16px; }
+.wiz-top-brand { display:flex; align-items:center; gap:12px; }
+.wiz-top-logo { width:38px; height:38px; border-radius:9px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:18px; }
+.wiz-top-title { font-family:'Fraunces', serif; font-size:18px; font-weight:500; }
+.wiz-top-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.wiz-top-school { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.wiz-top-school b { color:var(--navy); }
+.wiz-top-actions { margin-left:auto; display:flex; gap:10px; }
+.wiz-top-btn { padding:7px 13px; font-size:12px; font-weight:600; border-radius:6px; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); cursor:pointer; }
+.wiz-top-btn.ghost { background:transparent; border-color:transparent; color:var(--navy-3); }
+
+/* Wizard top bar with school grid layout - applies only after .wiz-top */
+.wiz-shell { grid-template-rows:auto 1fr; }
+
+/* Vertical step nav */
+.wiz-nav { background:var(--bg); border-right:1px solid var(--border); padding:24px 0; }
+.wiz-nav-head { padding:0 24px 18px; border-bottom:1px solid var(--border); margin-bottom:18px; }
+.wiz-nav-eyebrow { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.wiz-nav-title { font-family:'Fraunces', serif; font-size:16px; font-weight:500; line-height:1.3; }
+.wiz-nav-progress { font-size:11px; color:var(--navy-3); margin-top:6px; }
+.wiz-nav-progress b { color:var(--navy); }
+.wiz-step { display:grid; grid-template-columns:40px 1fr; gap:12px; padding:14px 24px; position:relative; cursor:pointer; }
+.wiz-step::before { content:""; position:absolute; left:39px; top:36px; bottom:-14px; width:2px; background:var(--border); z-index:0; }
+.wiz-step:last-of-type::before { display:none; }
+.wiz-step.done::before { background:var(--green); }
+.wiz-step.active::before { background:var(--gold); }
+.wiz-step-dot { width:28px; height:28px; border-radius:50%; background:var(--surface); border:2px solid var(--border-2); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:11px; font-weight:600; color:var(--navy-3); position:relative; z-index:1; }
+.wiz-step.done .wiz-step-dot { background:var(--green); border-color:var(--green); color:var(--surface); }
+.wiz-step.active .wiz-step-dot { background:var(--gold); border-color:var(--gold); color:var(--navy); box-shadow:0 0 0 4px rgba(200,151,91,0.18); }
+.wiz-step.shs-only.greyed { opacity:0.45; }
+.wiz-step.shs-only.greyed .wiz-step-dot { border-style:dashed; }
+.wiz-step-info { padding-top:3px; min-width:0; }
+.wiz-step-title { font-size:13px; font-weight:600; color:var(--navy); line-height:1.3; margin-bottom:3px; }
+.wiz-step.done .wiz-step-title { color:var(--navy-3); font-weight:500; }
+.wiz-step.active .wiz-step-title { color:var(--navy); }
+.wiz-step-sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.wiz-step-sub b { color:var(--navy-2); font-weight:600; }
+.wiz-step.done .wiz-step-sub { color:var(--green); }
+.wiz-step.done .wiz-step-sub b { color:var(--green); }
+.wiz-step-flag { display:inline-block; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; padding:2px 7px; border-radius:100px; background:var(--gold-bg); color:var(--gold); margin-top:5px; }
+.wiz-step-flag.shs { background:var(--green-bg); color:var(--green); }
+.wiz-step-flag.basic { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+
+.wiz-nav-foot { padding:18px 24px 0; border-top:1px solid var(--border); margin-top:14px; font-size:11px; color:var(--navy-3); line-height:1.6; }
+.wiz-nav-foot a { color:var(--gold); font-weight:600; }
+
+/* Content panel */
+.wiz-content { padding:32px 40px; background:var(--surface); }
+.wiz-content-head { margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid var(--border); }
+.wiz-step-pill { display:inline-block; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.wiz-content h2 { font-family:'Fraunces', serif; font-size:26px; font-weight:500; letter-spacing:-0.015em; line-height:1.2; margin-bottom:8px; }
+.wiz-content h2 em { font-style:italic; color:var(--gold); font-weight:400; }
+.wiz-content-lede { font-size:13px; color:var(--navy-3); line-height:1.6; max-width:620px; }
+.wiz-content-lede b { color:var(--navy-2); }
+
+/* Form */
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:18px; }
+.form-row.single { grid-template-columns:1fr; }
+.form-row.three { grid-template-columns:1fr 1fr 1fr; }
+.form-row.two-one { grid-template-columns:2fr 1fr; }
+.form-field { display:flex; flex-direction:column; gap:5px; }
+.form-label { font-size:12px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:6px; }
+.form-label .req { color:var(--terra); }
+.form-label .help-icon { width:14px; height:14px; border-radius:50%; background:var(--bg); border:1px solid var(--border-2); color:var(--navy-3); font-size:10px; display:inline-flex; align-items:center; justify-content:center; font-weight:600; cursor:help; }
+.form-input { padding:10px 12px; font-size:13px; font-family:inherit; color:var(--navy); background:var(--surface); border:1px solid var(--border-2); border-radius:7px; }
+.form-input:focus { outline:none; border-color:var(--gold); }
+.form-input.filled { background:var(--gold-bg); border-color:var(--gold-soft); }
+.form-help { font-size:11px; color:var(--navy-3); line-height:1.5; }
+.form-help b { color:var(--navy-2); }
+.form-help a { color:var(--gold); }
+.form-select { padding:10px 12px; font-size:13px; font-family:inherit; color:var(--navy); background:var(--surface); border:1px solid var(--border-2); border-radius:7px; }
+
+/* Footer with back/next */
+.wiz-foot { background:var(--bg); border-top:1px solid var(--border); padding:18px 40px; display:flex; align-items:center; gap:14px; }
+.wiz-foot-meta { font-size:11px; color:var(--navy-3); }
+.wiz-foot-meta b { color:var(--navy); }
+.wiz-foot-actions { margin-left:auto; display:flex; gap:10px; }
+.wiz-btn { padding:10px 18px; font-size:13px; font-weight:600; border-radius:7px; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); cursor:pointer; }
+.wiz-btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.wiz-btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.wiz-btn.ghost { background:transparent; border-color:transparent; color:var(--navy-3); }
+
+/* School type cards (step 2) */
+.type-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin:8px 0 8px; }
+.type-card { background:var(--surface); border:2px solid var(--border-2); border-radius:10px; padding:18px 20px; cursor:pointer; position:relative; }
+.type-card.selected { border-color:var(--gold); background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); }
+.type-card.selected::after { content:"✓"; position:absolute; top:14px; right:14px; width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; }
+.type-card-name { font-family:'Fraunces', serif; font-size:16px; font-weight:500; margin-bottom:6px; }
+.type-card-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.type-card-desc { font-size:11px; color:var(--navy-3); line-height:1.5; margin-bottom:10px; }
+.type-card-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding-top:8px; border-top:1px solid var(--border); }
+.type-card-meta b { color:var(--navy); }
+.type-card-meta.flag-extra { color:var(--green); }
+.type-card-meta.flag-extra b { color:var(--green); }
+
+.branch-note { background:var(--gold-bg); border-left:3px solid var(--gold); padding:14px 18px; border-radius:0 8px 8px 0; font-size:12px; color:var(--navy-2); line-height:1.6; margin-top:18px; }
+.branch-note b { color:var(--navy); }
+
+/* Step 4 branch display - side by side */
+.branch-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.branch-panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px 22px; }
+.branch-panel.basic { border-top:3px solid var(--navy-2); }
+.branch-panel.shs { border-top:3px solid var(--gold); }
+.branch-tag { display:inline-block; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; padding:3px 9px; border-radius:100px; margin-bottom:10px; }
+.branch-tag.basic { background:var(--bg); color:var(--navy-2); border:1px solid var(--border-2); }
+.branch-tag.shs { background:var(--gold-bg); color:var(--gold); }
+.branch-panel h3 { font-family:'Fraunces', serif; font-size:16px; font-weight:500; margin-bottom:4px; }
+.branch-panel .b-sub { font-size:11px; color:var(--navy-3); margin-bottom:14px; }
+
+/* Class/programme rows */
+.struct-row { display:grid; grid-template-columns:60px 1fr auto; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:12px; align-items:center; }
+.struct-row:last-child { border-bottom:none; }
+.struct-row.head { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; padding-bottom:10px; }
+.struct-row-label b { color:var(--navy); font-weight:600; }
+.struct-row-sub { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.struct-row-count { font-family:'JetBrains Mono', monospace; font-weight:600; color:var(--navy); }
+
+/* Programmes (SHS) */
+.prog-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-bottom:10px; }
+.prog-card:last-child { margin-bottom:0; }
+.prog-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+.prog-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.prog-meta { font-size:11px; color:var(--navy-3); }
+.prog-subjects { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+.prog-sub-chip { font-size:10px; padding:2px 8px; border-radius:100px; background:var(--surface); border:1px solid var(--border-2); color:var(--navy-2); font-weight:500; }
+.prog-sub-chip.elective { background:var(--gold-bg); color:var(--gold); border-color:var(--gold-soft); }
+
+/* Completion celebration (Basic finish) */
+.celebrate { background:linear-gradient(135deg, var(--green-bg) 0%, var(--surface) 100%); border:2px solid var(--green); border-radius:12px; padding:28px 32px; }
+.celebrate-row { display:grid; grid-template-columns:auto 1fr auto; gap:20px; align-items:center; }
+.celebrate-icon { width:56px; height:56px; border-radius:14px; background:var(--green); color:var(--surface); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:26px; font-weight:600; }
+.celebrate h3 { font-family:'Fraunces', serif; font-size:22px; font-weight:500; margin-bottom:5px; }
+.celebrate h3 em { font-style:italic; color:var(--gold); font-weight:400; }
+.celebrate p { font-size:13px; color:var(--navy-2); line-height:1.6; max-width:520px; }
+.celebrate p b { color:var(--navy); }
+
+/* Summary card (step 6 Basic vs step 8 SHS continue) */
+.summary-strip { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin:18px 0 20px; }
+.sum-cell { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+.sum-cell-lbl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:4px; }
+.sum-cell-val { font-family:'Fraunces', serif; font-size:16px; font-weight:500; }
+.sum-cell-sub { font-size:11px; color:var(--navy-3); margin-top:2px; }
+
+/* SHS-specific (residency, WAEC) */
+.residency-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:8px; }
+.res-card { background:var(--surface); border:2px solid var(--border-2); border-radius:10px; padding:16px 18px; cursor:pointer; }
+.res-card.selected { border-color:var(--gold); background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); }
+.res-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:4px; }
+.res-desc { font-size:11px; color:var(--navy-3); line-height:1.5; margin-bottom:10px; }
+.res-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding-top:8px; border-top:1px solid var(--border); }
+.res-meta b { color:var(--navy); }
+
+.house-row { display:grid; grid-template-columns:auto 1fr auto; gap:14px; padding:11px 14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; align-items:center; }
+.house-row:last-child { margin-bottom:0; }
+.house-dot { width:22px; height:22px; border-radius:50%; }
+.house-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; }
+.house-meta { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.house-action { font-size:11px; color:var(--gold); font-weight:600; cursor:pointer; }
+
+/* WAEC step */
+.waec-card { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 22px; }
+
+/* Final confirmation */
+.confirm-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; }
+.confirm-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+.confirm-card-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.confirm-step-num { font-family:'Fraunces', serif; font-style:italic; font-size:13px; color:var(--gold); font-weight:500; }
+.confirm-step-title { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.confirm-edit { font-size:11px; color:var(--gold); font-weight:600; cursor:pointer; }
+.confirm-row { display:grid; grid-template-columns:120px 1fr; gap:10px; padding:5px 0; font-size:12px; }
+.confirm-row .lbl { color:var(--navy-3); font-weight:500; }
+.confirm-row .val { color:var(--navy); font-weight:600; }
+.confirm-row .val b { color:var(--navy); }
+
+/* Replacement notice */
+.replaces-banner { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); padding:16px 22px; border-radius:10px; margin-bottom:24px; display:flex; gap:14px; align-items:center; }
+.replaces-icon { width:32px; height:32px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; flex-shrink:0; }
+.replaces-text { font-size:12px; line-height:1.6; }
+.replaces-text b { color:var(--gold); }
+.replaces-text em { color:var(--gold-soft); font-style:italic; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Setup wizard · unified · replaces 2 prior surfaces</div>
+<div class="eyebrow">The school onboarding flow · Basic stops at 6, SHS continues to 8</div>
+<h1>One <em>onboarding</em>.<br>One branch point. One layout.</h1>
+<div class="gold-rule"></div>
+<p>The setup wizard is the school's first conversation with Omnischools — and until today it was two conversations, an MVP1 six-step "any school" flow and a later SHS-specific eight-step flow that drifted apart in chrome and step 4 content. This unified surface collapses them: one vertical step nav that scales to either tier, one shared step canon, one branch point at step 2 (school type) that activates the SHS-only steps. Step 4 adapts content based on the type decision — Basic gets classes + subjects, SHS gets programmes + cores + electives. Below: the wizard's full journey, in six demonstration states.</p>
+</div>
+
+<!-- ============================================ SECTION 1 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">The wizard layout · step 1 active · school identity</div>
+<div class="section-meta">Vertical nav · 8 steps visible · CSSPS code field added</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/onboarding</div></div>
+
+<div class="wiz-shell">
+
+<div class="wiz-top">
+<div class="wiz-top-brand">
+<div class="wiz-top-logo">S</div>
+<div>
+<div class="wiz-top-title">Omnischools <em>onboarding</em></div>
+<div class="wiz-top-school">Setting up · <b>St. Theresa's Senior High</b> · Sunyani</div>
+</div>
+</div>
+<div class="wiz-top-actions">
+<div class="wiz-top-btn ghost">Save &amp; continue later</div>
+<div class="wiz-top-btn">Exit</div>
+</div>
+</div>
+
+<div class="wiz-nav">
+<div class="wiz-nav-head">
+<div class="wiz-nav-eyebrow">Setup progress</div>
+<div class="wiz-nav-title">Step 1 of 6<span style="color:var(--navy-3); font-weight:400;"> · or 8 for SHS</span></div>
+<div class="wiz-nav-progress"><b>0 of 6</b> complete · ~12 min remaining</div>
+</div>
+
+<div class="wiz-step active">
+<div class="wiz-step-dot">1</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">School identity</div>
+<div class="wiz-step-sub">Name, GES code, CSSPS code, district</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">2</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">School type</div>
+<div class="wiz-step-sub">Branch point · determines steps 4–8</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">3</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Academic calendar</div>
+<div class="wiz-step-sub">Terms, holidays, week numbering</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">4</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Academic structure</div>
+<div class="wiz-step-sub">Classes / programmes · adapts to type</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">5</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Staff &amp; roles</div>
+<div class="wiz-step-sub">Headmaster, senior staff, role grants</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">6</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Billing &amp; payments</div>
+<div class="wiz-step-sub">Fee structure, MoMo, Free SHS</div>
+</div>
+</div>
+
+<div class="wiz-step shs-only greyed">
+<div class="wiz-step-dot">7</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Residency &amp; boarding<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">Activates if SHS chosen at step 2</div>
+</div>
+</div>
+
+<div class="wiz-step shs-only greyed">
+<div class="wiz-step-dot">8</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">WAEC centre &amp; WASSCE<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">Centre code, programmes offered</div>
+</div>
+</div>
+
+<div class="wiz-nav-foot">
+Steps 7–8 are conditional on school type. Basic schools complete at step 6.<br><br>
+<a href="#">Need help? Talk to onboarding →</a>
+</div>
+</div>
+
+<div>
+<div class="wiz-content">
+<div class="wiz-content-head">
+<div class="wiz-step-pill">Step 1 of 6 · School identity</div>
+<h2>Tell us about <em>your school</em>.</h2>
+<div class="wiz-content-lede">The basics — name, official codes, and where you sit in the Ghana education map. These are <b>one-time identifiers</b> that shouldn't change after setup; changes later require a Headmaster + GES code re-verification. Five of the seven fields are required.</div>
+</div>
+
+<div class="form-row two-one">
+<div class="form-field">
+<div class="form-label">School name <span class="req">*</span></div>
+<input class="form-input filled" value="St. Theresa's Senior High School" />
+<div class="form-help">Official name as registered with GES. Used on transcripts, certificates, and parent comms.</div>
+</div>
+<div class="form-field">
+<div class="form-label">Short name / alias</div>
+<input class="form-input filled" value="St. Theresa's" />
+<div class="form-help">Used in app navigation. Optional.</div>
+</div>
+</div>
+
+<div class="form-row three">
+<div class="form-field">
+<div class="form-label">GES school code <span class="req">*</span><span class="help-icon" title="From your EMIS registration">?</span></div>
+<input class="form-input filled mono" value="BR-SUN-018" />
+<div class="form-help">From EMIS. Format <b>RG-DIST-NNN</b>.</div>
+</div>
+<div class="form-field">
+<div class="form-label">CSSPS school code <span class="help-icon" title="Used to log in at hm.cssps.gov.gh">?</span></div>
+<input class="form-input filled mono" value="ST-0741" />
+<div class="form-help">From <a href="#">hm.cssps.gov.gh</a> · SHS/TVI only.</div>
+</div>
+<div class="form-field">
+<div class="form-label">Year founded</div>
+<input class="form-input filled" value="1965" />
+<div class="form-help">60th anniversary in 2025.</div>
+</div>
+</div>
+
+<div class="form-row three">
+<div class="form-field">
+<div class="form-label">Ownership <span class="req">*</span></div>
+<select class="form-select filled">
+<option>Public — GES-administered</option>
+</select>
+<div class="form-help">Public schools are Free SHS eligible.</div>
+</div>
+<div class="form-field">
+<div class="form-label">Region <span class="req">*</span></div>
+<select class="form-select filled">
+<option>Bono Region</option>
+</select>
+</div>
+<div class="form-field">
+<div class="form-label">District <span class="req">*</span></div>
+<select class="form-select filled">
+<option>Sunyani Municipal</option>
+</select>
+</div>
+</div>
+
+<div class="form-row single">
+<div class="form-field">
+<div class="form-label">School address (postal + GPS)</div>
+<input class="form-input filled" value="P.O. Box 18, Sunyani · GA-077-0418" />
+<div class="form-help">Postal address for official correspondence; GPS Ghana Post code for parent navigation. Both fed to Google Maps where supported.</div>
+</div>
+</div>
+
+</div>
+
+<div class="wiz-foot">
+<div class="wiz-foot-meta"><b>0 of 6 steps complete</b> · all entered values saved automatically</div>
+<div class="wiz-foot-actions">
+<div class="wiz-btn ghost">Back</div>
+<div class="wiz-btn primary">Save &amp; continue →</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Why this layout</h4>
+<ul>
+<li><b>Vertical step nav, fixed width.</b> Scales 6 → 8 → 10+ without redesign. Subtitles show what each step covers — no mystery boxes.</li>
+<li><b>"Step 1 of 6 · or 8 for SHS" upfront.</b> Honesty about scope: the SHS user sees they'll do 8; the Basic user sees they'll do 6. No bait-and-switch.</li>
+<li><b>Steps 7–8 are visible but greyed.</b> Branch transparency — anyone scanning the nav sees that more might come, with the dashed dot signalling "conditional on step 2".</li>
+<li><b>CSSPS code field added.</b> Single-field addition that lets SHS later flow placement lists through the admissions module from <code>hm.cssps.gov.gh</code>.</li>
+<li><b>Required vs optional marked.</b> Five of seven fields required at this step; the rest can be skipped now and filled later.</li>
+<li><b>Auto-save behaviour.</b> Filled fields tinted gold so the user knows the system is keeping them — typed value persists across Save &amp; continue later.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 2 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">The branch point · step 2 · school type</div>
+<div class="section-meta">5 type options · SHS selected · activates steps 7–8</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/onboarding/step-2-school-type</div></div>
+
+<div class="wiz-shell">
+
+<div class="wiz-top">
+<div class="wiz-top-brand">
+<div class="wiz-top-logo">S</div>
+<div>
+<div class="wiz-top-title">Omnischools <em>onboarding</em></div>
+<div class="wiz-top-school">Setting up · <b>St. Theresa's Senior High</b> · Sunyani</div>
+</div>
+</div>
+<div class="wiz-top-actions">
+<div class="wiz-top-btn ghost">Save &amp; continue later</div>
+<div class="wiz-top-btn">Exit</div>
+</div>
+</div>
+
+<div class="wiz-nav">
+<div class="wiz-nav-head">
+<div class="wiz-nav-eyebrow">Setup progress</div>
+<div class="wiz-nav-title">Step 2 of 8<span style="color:var(--gold); font-weight:400;"> · SHS path</span></div>
+<div class="wiz-nav-progress"><b>1 of 8</b> complete · ~16 min remaining</div>
+</div>
+
+<div class="wiz-step done">
+<div class="wiz-step-dot">✓</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">School identity</div>
+<div class="wiz-step-sub"><b>St. Theresa's</b> · BR-SUN-018 · Sunyani</div>
+</div>
+</div>
+
+<div class="wiz-step active">
+<div class="wiz-step-dot">2</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">School type</div>
+<div class="wiz-step-sub">Branch point · determines steps 4–8</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">3</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Academic calendar</div>
+<div class="wiz-step-sub">Terms, holidays, week numbering</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">4</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Academic structure</div>
+<div class="wiz-step-sub">Classes / programmes · adapts to type</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">5</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Staff &amp; roles</div>
+<div class="wiz-step-sub">Headmaster, senior staff, role grants</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">6</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Billing &amp; payments</div>
+<div class="wiz-step-sub">Fee structure, MoMo, Free SHS</div>
+</div>
+</div>
+
+<div class="wiz-step shs-only greyed">
+<div class="wiz-step-dot">7</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Residency &amp; boarding<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">Activates after step 2 choice</div>
+</div>
+</div>
+
+<div class="wiz-step shs-only greyed">
+<div class="wiz-step-dot">8</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">WAEC centre &amp; WASSCE<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">Centre code, programmes offered</div>
+</div>
+</div>
+
+<div class="wiz-nav-foot">
+Selecting SHS at this step <b>activates steps 7–8</b>. Basic and JHS finish at step 6.
+</div>
+</div>
+
+<div>
+<div class="wiz-content">
+<div class="wiz-content-head">
+<div class="wiz-step-pill">Step 2 of 8 · School type — the branch point</div>
+<h2>What kind of <em>school</em> are you?</h2>
+<div class="wiz-content-lede">This is the only step that changes what steps 4 to 8 look like. <b>Basic, JHS, SHS, SHTS, or Multi-tier</b> — pick the one closest to your operational reality. You can change this later only via a Headmaster + GES code re-verification.</div>
+</div>
+
+<div class="type-grid">
+
+<div class="type-card">
+<div class="type-card-name">Basic</div>
+<div class="type-card-desc">KG + Primary, sometimes through P6. Class-based academic structure, subject teachers.</div>
+<div class="type-card-meta"><b>6 steps</b> · finishes at billing</div>
+</div>
+
+<div class="type-card">
+<div class="type-card-name">JHS</div>
+<div class="type-card-desc">Junior High School only. Class-based, BECE preparation in JHS3, standard GES syllabus.</div>
+<div class="type-card-meta"><b>6 steps</b> · finishes at billing</div>
+</div>
+
+<div class="type-card selected">
+<div class="type-card-name">SHS<span style="font-size:11px; color:var(--navy-3); font-style:normal; font-family:inherit; font-weight:400; margin-left:6px;">— selected</span></div>
+<div class="type-card-desc">Senior High School. Programme-based (Science / Business / GA / Home Econ), 4 cores, WASSCE-bound.</div>
+<div class="type-card-meta flag-extra"><b>8 steps</b> · residency + WAEC added</div>
+</div>
+
+<div class="type-card">
+<div class="type-card-name">SHTS</div>
+<div class="type-card-desc">Senior High Technical School. Same WASSCE base + technical programmes (engineering, IT, building).</div>
+<div class="type-card-meta flag-extra"><b>8 steps</b> · residency + WAEC added</div>
+</div>
+
+<div class="type-card">
+<div class="type-card-name">Multi-tier</div>
+<div class="type-card-desc">Combined campus running two or more tiers (e.g., JHS + SHS, or Basic + JHS). Both structures coexist.</div>
+<div class="type-card-meta flag-extra"><b>8 steps</b> · all paths included</div>
+</div>
+
+<div class="type-card" style="opacity:0.5; cursor:not-allowed; border-style:dashed;">
+<div class="type-card-name" style="color:var(--navy-3);">TVET-only</div>
+<div class="type-card-desc">Technical/Vocational Institution under Ghana TVET Service. Coming Q3 2026.</div>
+<div class="type-card-meta">Not yet available</div>
+</div>
+
+</div>
+
+<div class="branch-note">
+<b>Why this matters:</b> Your step 2 answer determines whether Omnischools's later surfaces show class-based or programme-based academic structure, whether residency &amp; boarding setup appears, and whether the WAEC integration in step 8 is offered. The choice flows into the database as <code>school_type_enum</code> and cannot be changed without GES code re-verification — so pick the one that reflects your <i>operational</i> reality, not what you might become.
+</div>
+
+</div>
+
+<div class="wiz-foot">
+<div class="wiz-foot-meta"><b>1 of 8 steps complete</b> · SHS path now active</div>
+<div class="wiz-foot-actions">
+<div class="wiz-btn">← Back</div>
+<div class="wiz-btn primary">Save &amp; continue →</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>The branch point</h4>
+<ul>
+<li><b>Five real options + one not-yet-available.</b> TVET shown as dashed so the user knows it's planned without selecting it.</li>
+<li><b>Step count visible per card.</b> "6 steps" or "8 steps" right on the card — the user knows the cost of each choice before clicking.</li>
+<li><b>Counter recalibrates on selection.</b> Top of nav shifts from "Step 2 of 6" to "Step 2 of 8 · SHS path" the moment SHS is picked. Time-remaining estimate updates too.</li>
+<li><b>Greyed steps brighten on next page.</b> Steps 7–8 lose their dashed border once the user advances from step 2 — they become real steps in the plan.</li>
+<li><b>Branch is one-way unless re-verified.</b> Changing school type later is a Headmaster + GES code action, audit-logged. Prevents accidental tier shifts.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 3 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">Step 4 · academic structure · the branch in action</div>
+<div class="section-meta">Same step number · adapts to step 2 choice · Basic vs SHS side-by-side</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/onboarding/step-4-academic-structure</div></div>
+
+<div class="wiz-shell">
+
+<div class="wiz-top">
+<div class="wiz-top-brand">
+<div class="wiz-top-logo">S</div>
+<div>
+<div class="wiz-top-title">Omnischools <em>onboarding</em></div>
+<div class="wiz-top-school">Two demos: <b>Basic school</b> path vs <b>SHS</b> path · same step</div>
+</div>
+</div>
+<div class="wiz-top-actions">
+<div class="wiz-top-btn ghost">Save &amp; continue later</div>
+<div class="wiz-top-btn">Exit</div>
+</div>
+</div>
+
+<div class="wiz-nav">
+<div class="wiz-nav-head">
+<div class="wiz-nav-eyebrow">Setup progress</div>
+<div class="wiz-nav-title">Step 4 · branched</div>
+<div class="wiz-nav-progress">Comparing the two paths · same nav, different content</div>
+</div>
+
+<div class="wiz-step done">
+<div class="wiz-step-dot">✓</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">School identity</div>
+<div class="wiz-step-sub"><b>Done</b></div>
+</div>
+</div>
+
+<div class="wiz-step done">
+<div class="wiz-step-dot">✓</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">School type</div>
+<div class="wiz-step-sub"><b>Demo branch</b></div>
+</div>
+</div>
+
+<div class="wiz-step done">
+<div class="wiz-step-dot">✓</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Academic calendar</div>
+<div class="wiz-step-sub"><b>3-term · GES</b></div>
+</div>
+</div>
+
+<div class="wiz-step active">
+<div class="wiz-step-dot">4</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Academic structure</div>
+<div class="wiz-step-sub">Adapts to step 2 choice</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">5</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Staff &amp; roles</div>
+<div class="wiz-step-sub">Up next</div>
+</div>
+</div>
+
+<div class="wiz-step">
+<div class="wiz-step-dot">6</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Billing &amp; payments</div>
+<div class="wiz-step-sub">Last universal step</div>
+</div>
+</div>
+
+<div class="wiz-step shs-only">
+<div class="wiz-step-dot">7</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Residency &amp; boarding<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">SHS path only</div>
+</div>
+</div>
+
+<div class="wiz-step shs-only">
+<div class="wiz-step-dot">8</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">WAEC centre &amp; WASSCE<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">SHS path only</div>
+</div>
+</div>
+
+<div class="wiz-nav-foot">
+This demo shows <b>both</b> step-4 variants side by side. In a real user's flow, only one appears.
+</div>
+</div>
+
+<div>
+<div class="wiz-content">
+<div class="wiz-content-head">
+<div class="wiz-step-pill">Step 4 of 6 or 8 · Academic structure · branched</div>
+<h2>Same step. Different <em>content</em>.</h2>
+<div class="wiz-content-lede">Step 4 is "academic structure" for every school type. <b>What's structured differs</b>: Basic schools build a class list with subjects per class; SHS schools build a programmes matrix with cores and electives. The step number stays at 4 so navigation feels consistent; the content adapts to the step 2 answer.</div>
+</div>
+
+<div class="branch-grid">
+
+<div class="branch-panel basic">
+<div class="branch-tag basic">Step 4 · Basic / JHS path</div>
+<h3>Classes &amp; subjects</h3>
+<div class="b-sub">For class-based academic structure · subject teachers assigned per class</div>
+
+<div style="margin-top:14px;">
+<div class="struct-row head">
+<div>Class</div>
+<div>Subjects offered</div>
+<div>Streams</div>
+</div>
+<div class="struct-row">
+<div class="struct-row-label"><b>JHS 1</b></div>
+<div>
+<div class="struct-row-sub">English, Math, Int Sci, Social, ICT, BDT, Twi, RME, French, PE — <b>10 subjects</b></div>
+</div>
+<div class="struct-row-count">2</div>
+</div>
+<div class="struct-row">
+<div class="struct-row-label"><b>JHS 2</b></div>
+<div>
+<div class="struct-row-sub">Same as JHS 1</div>
+</div>
+<div class="struct-row-count">2</div>
+</div>
+<div class="struct-row">
+<div class="struct-row-label"><b>JHS 3</b></div>
+<div>
+<div class="struct-row-sub">Same as JHS 1 + BECE prep block</div>
+</div>
+<div class="struct-row-count">3</div>
+</div>
+</div>
+
+<div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border); font-size:11px; color:var(--navy-3); line-height:1.6;">
+<b style="color:var(--navy);">Pattern.</b> One class row, one subject set. Streams (A, B, C) optional — for larger cohorts. Subjects loaded from GES Basic syllabus.
+</div>
+</div>
+
+<div class="branch-panel shs">
+<div class="branch-tag shs">Step 4 · SHS / SHTS path</div>
+<h3>Programmes, cores, electives</h3>
+<div class="b-sub">For programme-based academic structure · cores universal, electives per programme</div>
+
+<div style="margin-top:14px;">
+<div style="font-size:11px; color:var(--navy-3); margin-bottom:8px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">Core subjects (all programmes)</div>
+<div class="prog-subjects" style="margin-bottom:14px;">
+<div class="prog-sub-chip">English Language</div>
+<div class="prog-sub-chip">Mathematics (Core)</div>
+<div class="prog-sub-chip">Integrated Science</div>
+<div class="prog-sub-chip">Social Studies</div>
+</div>
+
+<div class="prog-card">
+<div class="prog-head">
+<div class="prog-name">Science</div>
+<div class="prog-meta">280 candidates · 4 core + 4 elective</div>
+</div>
+<div class="prog-subjects">
+<div class="prog-sub-chip elective">Chemistry</div>
+<div class="prog-sub-chip elective">Physics</div>
+<div class="prog-sub-chip elective">Biology</div>
+<div class="prog-sub-chip elective">Elective Math</div>
+</div>
+</div>
+
+<div class="prog-card">
+<div class="prog-head">
+<div class="prog-name">Business</div>
+<div class="prog-meta">240 candidates · 4 core + 4 elective</div>
+</div>
+<div class="prog-subjects">
+<div class="prog-sub-chip elective">Financial Accounting</div>
+<div class="prog-sub-chip elective">Cost Accounting</div>
+<div class="prog-sub-chip elective">Business Mgt</div>
+<div class="prog-sub-chip elective">Economics</div>
+</div>
+</div>
+
+<div class="prog-card">
+<div class="prog-head">
+<div class="prog-name">General Arts</div>
+<div class="prog-meta">380 candidates · 4 core + 4 elective</div>
+</div>
+<div class="prog-subjects">
+<div class="prog-sub-chip elective">Literature</div>
+<div class="prog-sub-chip elective">Geography</div>
+<div class="prog-sub-chip elective">Government</div>
+<div class="prog-sub-chip elective">History / CRS / French</div>
+</div>
+</div>
+
+<div class="prog-card">
+<div class="prog-head">
+<div class="prog-name">Home Economics</div>
+<div class="prog-meta">280 candidates · 4 core + 4 elective</div>
+</div>
+<div class="prog-subjects">
+<div class="prog-sub-chip elective">Mgt in Living</div>
+<div class="prog-sub-chip elective">Food &amp; Nutrition</div>
+<div class="prog-sub-chip elective">Clothing &amp; Textiles</div>
+<div class="prog-sub-chip elective">Biology / Gen. Knowledge in Art</div>
+</div>
+</div>
+</div>
+
+<div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border); font-size:11px; color:var(--navy-3); line-height:1.6;">
+<b style="color:var(--navy);">Pattern.</b> Cores once (4 universal). One card per programme, electives per programme. Loaded from WAEC syllabus. Drives the WASSCE module downstream.
+</div>
+</div>
+
+</div>
+
+<div class="branch-note">
+<b>Why same step number, different content.</b> Step 4 means "tell us your academic structure" universally. What that structure looks like is a function of school type. Putting Basic at step 4a and SHS at step 4b would suggest they're different *moments* in setup; they're not — they're the same moment with different shapes. The nav stays clean; the content does the work.
+</div>
+
+</div>
+
+<div class="wiz-foot">
+<div class="wiz-foot-meta"><b>Comparison view</b> · in a real flow, only one panel shows</div>
+<div class="wiz-foot-actions">
+<div class="wiz-btn">← Back</div>
+<div class="wiz-btn primary">Save &amp; continue →</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>The same-step-different-content rule</h4>
+<ul>
+<li><b>Step 4 means "academic structure" universally.</b> What gets entered differs; the step's purpose does not.</li>
+<li><b>Step number stays consistent.</b> Basic users at step 4 and SHS users at step 4 are doing the same conceptual work — the structural definition — at the same moment in onboarding.</li>
+<li><b>Loaded defaults, not blank fields.</b> Basic loads GES syllabus subjects per class; SHS loads WAEC programmes + cores + electives. The school confirms or edits, doesn't type from scratch.</li>
+<li><b>Cores are universal.</b> The four WASSCE cores (English, Math, Int Sci, Social) appear once at the top of the SHS panel; not duplicated under each programme.</li>
+<li><b>Counts shown if available.</b> The user can either pre-populate counts (if they know their cohort) or leave them for the admissions module to fill — both supported.</li>
+<li><b>Step 4 sets up everything downstream.</b> Programme rosters, the WASSCE module's subject matrix, gradebook structure, the timetable engine — all read from the choices made here. The wizard is honest about this in the help copy.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 4 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">Basic finishes here · step 6 complete · Setup wrap-up</div>
+<div class="section-meta">No steps 7 or 8 for Basic / JHS · "Go to dashboard" handoff</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/onboarding/complete</div></div>
+
+<div class="wiz-shell">
+
+<div class="wiz-top">
+<div class="wiz-top-brand">
+<div class="wiz-top-logo">S</div>
+<div>
+<div class="wiz-top-title">Omnischools <em>onboarding</em></div>
+<div class="wiz-top-school">Demo · <b>Achiase JHS</b> · Eastern Region · Basic path finish</div>
+</div>
+</div>
+<div class="wiz-top-actions">
+<div class="wiz-top-btn ghost">Save &amp; continue later</div>
+<div class="wiz-top-btn">Exit</div>
+</div>
+</div>
+
+<div class="wiz-nav">
+<div class="wiz-nav-head">
+<div class="wiz-nav-eyebrow">Setup complete</div>
+<div class="wiz-nav-title" style="color:var(--green);">6 of 6 done</div>
+<div class="wiz-nav-progress" style="color:var(--green);">JHS path · all steps complete</div>
+</div>
+
+<div class="wiz-step done">
+<div class="wiz-step-dot">✓</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">School identity</div>
+<div class="wiz-step-sub"><b>Achiase JHS</b> · ER-NSU-104</div>
+</div>
+</div>
+
+<div class="wiz-step done">
+<div class="wiz-step-dot">✓</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">School type</div>
+<div class="wiz-step-sub"><b>JHS</b> · 6-step path</div>
+</div>
+</div>
+
+<div class="wiz-step done">
+<div class="wiz-step-dot">✓</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Academic calendar</div>
+<div class="wiz-step-sub"><b>3 terms</b> · GES default</div>
+</div>
+</div>
+
+<div class="wiz-step done">
+<div class="wiz-step-dot">✓</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Academic structure</div>
+<div class="wiz-step-sub">JHS 1–3 · <b>10 subjects</b></div>
+</div>
+</div>
+
+<div class="wiz-step done">
+<div class="wiz-step-dot">✓</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Staff &amp; roles</div>
+<div class="wiz-step-sub"><b>14 staff</b> · 3 roles</div>
+</div>
+</div>
+
+<div class="wiz-step done">
+<div class="wiz-step-dot">✓</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Billing &amp; payments</div>
+<div class="wiz-step-sub"><b>Term-based</b> · MoMo + cash</div>
+</div>
+</div>
+
+<div class="wiz-step shs-only greyed" style="opacity:0.3;">
+<div class="wiz-step-dot">7</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Residency &amp; boarding<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">Skipped · not applicable</div>
+</div>
+</div>
+
+<div class="wiz-step shs-only greyed" style="opacity:0.3;">
+<div class="wiz-step-dot">8</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">WAEC centre &amp; WASSCE<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">Skipped · not applicable</div>
+</div>
+</div>
+
+<div class="wiz-nav-foot">
+<b>Basic / JHS path finishes at step 6.</b> SHS-specific steps remain greyed.
+</div>
+</div>
+
+<div>
+<div class="wiz-content">
+
+<div class="celebrate">
+<div class="celebrate-row">
+<div class="celebrate-icon">✓</div>
+<div>
+<h3>You're <em>set up</em>. Welcome to Omnischools.</h3>
+<p><b>Achiase JHS</b> is now configured on the platform. Your 14 staff members have been invited by SMS. Your three JHS class rosters are ready to receive students through the admissions module. <b>Total setup time · 11 minutes</b>.</p>
+</div>
+<div class="wiz-btn gold" style="padding:14px 24px; font-size:14px;">Go to dashboard →</div>
+</div>
+</div>
+
+<div class="summary-strip">
+<div class="sum-cell">
+<div class="sum-cell-lbl">Steps completed</div>
+<div class="sum-cell-val" style="color:var(--green);">6 of 6</div>
+<div class="sum-cell-sub">JHS path · full</div>
+</div>
+<div class="sum-cell">
+<div class="sum-cell-lbl">Setup time</div>
+<div class="sum-cell-val">11 min</div>
+<div class="sum-cell-sub">~12 estimated</div>
+</div>
+<div class="sum-cell">
+<div class="sum-cell-lbl">Staff invited</div>
+<div class="sum-cell-val">14 / 14</div>
+<div class="sum-cell-sub">SMS sent to all</div>
+</div>
+</div>
+
+<div style="margin-top:24px;">
+<div style="font-family:'Fraunces', serif; font-size:16px; font-weight:500; margin-bottom:12px;">Next steps · suggested order</div>
+
+<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px;">
+
+<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 20px;">
+<div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px;">First · this week</div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:5px;">Admit your students</div>
+<div style="font-size:12px; color:var(--navy-3); line-height:1.6;">Use the admissions module to enter or upload your student list. Bulk paste from spreadsheet works best.</div>
+<div style="font-size:12px; color:var(--gold); font-weight:600; margin-top:10px; cursor:pointer;">Open admissions →</div>
+</div>
+
+<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 20px;">
+<div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px;">Second · this week</div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:5px;">Invite parents</div>
+<div style="font-size:12px; color:var(--navy-3); line-height:1.6;">Parents get a Omnischools account from the student record. SMS link arrives automatically.</div>
+<div style="font-size:12px; color:var(--gold); font-weight:600; margin-top:10px; cursor:pointer;">Configure SMS template →</div>
+</div>
+
+<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 20px;">
+<div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px;">Third · before term starts</div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:5px;">Build your timetable</div>
+<div style="font-size:12px; color:var(--navy-3); line-height:1.6;">Timetable engine reads your subjects + staff + classes from setup. Generates a draft you edit.</div>
+<div style="font-size:12px; color:var(--gold); font-weight:600; margin-top:10px; cursor:pointer;">Open timetable →</div>
+</div>
+
+<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 20px;">
+<div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px;">Anytime · ongoing</div>
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:5px;">Customise settings</div>
+<div style="font-size:12px; color:var(--navy-3); line-height:1.6;">Holidays, grading scale, fee categories, audit retention — all in Settings.</div>
+<div style="font-size:12px; color:var(--gold); font-weight:600; margin-top:10px; cursor:pointer;">Open settings →</div>
+</div>
+
+</div>
+</div>
+
+</div>
+
+<div class="wiz-foot">
+<div class="wiz-foot-meta"><b>Onboarding complete.</b> All data saved · this wizard will not appear again.</div>
+<div class="wiz-foot-actions">
+<div class="wiz-btn">View setup summary</div>
+<div class="wiz-btn gold">Go to dashboard →</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Basic completion design</h4>
+<ul>
+<li><b>Same wizard, different end-point.</b> Achiase JHS completes at step 6; the SHS steps stay visible (greyed at 30% opacity) so the product story is honest — you can see what doesn't apply to you.</li>
+<li><b>Celebrate without overselling.</b> Green checkmark + "Welcome" tone. The school has done real work; the moment deserves acknowledgement. But no confetti, no fireworks — this is a tool, not a game.</li>
+<li><b>"Go to dashboard" is the next step.</b> Primary gold button, top-right of the celebrate card AND bottom-right of the page. The user shouldn't need to think.</li>
+<li><b>Suggested next-steps grid.</b> Four cards in priority order: admit students, invite parents, build timetable, customise settings. The school doesn't have to figure out what to do next.</li>
+<li><b>Setup time shown.</b> "11 min · 12 estimated" — honest accounting. Builds trust in time estimates for the next admin who will set up another instance.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 5 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">05</div>
+<div class="section-title display">SHS continues · steps 7 &amp; 8 · residency + WAEC</div>
+<div class="section-meta">Activated by SHS / SHTS / Multi-tier at step 2 · St. Theresa's path</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/onboarding/step-7-residency</div></div>
+
+<div class="wiz-shell">
+
+<div class="wiz-top">
+<div class="wiz-top-brand">
+<div class="wiz-top-logo">S</div>
+<div>
+<div class="wiz-top-title">Omnischools <em>onboarding</em></div>
+<div class="wiz-top-school">Setting up · <b>St. Theresa's Senior High</b> · Sunyani · SHS path</div>
+</div>
+</div>
+<div class="wiz-top-actions">
+<div class="wiz-top-btn ghost">Save &amp; continue later</div>
+<div class="wiz-top-btn">Exit</div>
+</div>
+</div>
+
+<div class="wiz-nav">
+<div class="wiz-nav-head">
+<div class="wiz-nav-eyebrow">Setup progress</div>
+<div class="wiz-nav-title">Step 7 of 8</div>
+<div class="wiz-nav-progress"><b>6 of 8</b> complete · ~5 min remaining</div>
+</div>
+
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">School identity</div><div class="wiz-step-sub"><b>Done</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">School type</div><div class="wiz-step-sub"><b>SHS</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Academic calendar</div><div class="wiz-step-sub"><b>3 terms · GES</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Academic structure</div><div class="wiz-step-sub"><b>4 programmes</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Staff &amp; roles</div><div class="wiz-step-sub"><b>62 staff</b> · 7 roles</div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Billing &amp; payments</div><div class="wiz-step-sub"><b>Free SHS</b> · MoMo</div></div></div>
+
+<div class="wiz-step active">
+<div class="wiz-step-dot">7</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">Residency &amp; boarding<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">Day, mixed, or boarding · house system</div>
+</div>
+</div>
+
+<div class="wiz-step shs-only">
+<div class="wiz-step-dot">8</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">WAEC centre &amp; WASSCE<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">Up next · final step</div>
+</div>
+</div>
+
+<div class="wiz-nav-foot">
+Steps 7 and 8 active <b>only because step 2 was SHS</b>. Basic schools never see these.
+</div>
+</div>
+
+<div>
+<div class="wiz-content">
+<div class="wiz-content-head">
+<div class="wiz-step-pill">Step 7 of 8 · Residency &amp; boarding · SHS only</div>
+<h2>How do students <em>live</em> on campus?</h2>
+<div class="wiz-content-lede">Residency model determines whether the Boarding module activates and whether the house system, dormitory inventory, and visiting day calendar appear in your settings. Mixed and boarding-only schools also activate the Sickbay module by default (boarders sleep on site; medical needs are a 24/7 responsibility).</div>
+</div>
+
+<div style="margin-bottom:18px;">
+<div style="font-size:11px; color:var(--navy-3); margin-bottom:8px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">Residency model</div>
+<div class="residency-grid">
+
+<div class="res-card">
+<div class="res-name">Day-only</div>
+<div class="res-desc">All students commute. No on-campus residence. Boarding module stays off.</div>
+<div class="res-meta">7% of Ghanaian SHS · <b>urban</b></div>
+</div>
+
+<div class="res-card selected">
+<div class="res-name">Mixed</div>
+<div class="res-desc">Some boarders, some day. Most common Free SHS pattern. Boarding module active.</div>
+<div class="res-meta">81% of Ghanaian SHS · <b>most common</b></div>
+</div>
+
+<div class="res-card">
+<div class="res-name">Boarding-only</div>
+<div class="res-desc">All students reside on campus. Boarding module active in stricter mode.</div>
+<div class="res-meta">12% of Ghanaian SHS · <b>traditional</b></div>
+</div>
+
+</div>
+</div>
+
+<div style="margin-bottom:18px;">
+<div style="font-size:11px; color:var(--navy-3); margin-bottom:8px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">House system · optional · <span style="color:var(--gold); font-weight:700;">4 houses configured</span></div>
+
+<div class="house-row">
+<div class="house-dot" style="background:#B84A39;"></div>
+<div>
+<div class="house-name">Theresa House</div>
+<div class="house-meta">~295 students · Master <b>Mrs A. Boateng</b></div>
+</div>
+<div class="house-action">Edit →</div>
+</div>
+
+<div class="house-row">
+<div class="house-dot" style="background:#2F6B47;"></div>
+<div>
+<div class="house-name">Joseph House</div>
+<div class="house-meta">~295 students · Master <b>Mr K. Asare</b></div>
+</div>
+<div class="house-action">Edit →</div>
+</div>
+
+<div class="house-row">
+<div class="house-dot" style="background:#C8975B;"></div>
+<div>
+<div class="house-name">Augustine House</div>
+<div class="house-meta">~295 students · Master <b>Mr E. Owusu</b></div>
+</div>
+<div class="house-action">Edit →</div>
+</div>
+
+<div class="house-row">
+<div class="house-dot" style="background:#1A2B47;"></div>
+<div>
+<div class="house-name">Cecilia House</div>
+<div class="house-meta">~295 students · Master <b>Mrs D. Mensah</b></div>
+</div>
+<div class="house-action">Edit →</div>
+</div>
+
+</div>
+
+<div class="form-row two-one">
+<div class="form-field">
+<div class="form-label">Visiting day cadence <span class="help-icon" title="Determines parent visit scheduling">?</span></div>
+<select class="form-select filled">
+<option>Once per term · 1st Saturday of month 2</option>
+</select>
+<div class="form-help">Schools can configure 1–3 visiting days per term. Defaults from GES boarding policy.</div>
+</div>
+<div class="form-field">
+<div class="form-label">Boarder enrolment ratio</div>
+<input class="form-input filled" value="~78% boarders" />
+<div class="form-help">Estimate · refines from admissions.</div>
+</div>
+</div>
+
+<div class="branch-note">
+<b>Mixed residency activates more modules.</b> Boarding (rosters, visiting day, dormitory), Sickbay (with chronic register), and the prep-attendance module are all enabled by this choice. The Discipline module's "boarding-only" rules (light out, dormitory inspection) activate only for boarder students; day students follow a separate code.
+</div>
+
+</div>
+
+<div class="wiz-foot">
+<div class="wiz-foot-meta"><b>6 of 8 steps complete</b> · 1 step remaining</div>
+<div class="wiz-foot-actions">
+<div class="wiz-btn">← Back</div>
+<div class="wiz-btn primary">Save &amp; continue →</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Step 7 design</h4>
+<ul>
+<li><b>Three residency models · honest percentages.</b> Day 7%, mixed 81%, boarding-only 12% across Ghanaian SHS. The default option ("Mixed") is highlighted because it matches reality for 8 in 10 schools.</li>
+<li><b>House system is optional but shown by default.</b> Not every SHS uses houses, but most do. The four-house pattern (named after school patrons) is pre-populated for the school to confirm or rename.</li>
+<li><b>Module activation flagged in the help copy.</b> The choice here drives whether Boarding, Sickbay, prep-attendance, and discipline-by-residency modules turn on. The user sees this consequence upfront.</li>
+<li><b>Visiting day is a setup decision, not a per-event one.</b> The cadence locks here; individual dates flow from the calendar module.</li>
+</ul>
+</div>
+
+</div>
+
+<!-- step 8 -->
+<div class="layout" style="margin-top:40px;">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/onboarding/step-8-waec</div></div>
+
+<div class="wiz-shell">
+
+<div class="wiz-top">
+<div class="wiz-top-brand">
+<div class="wiz-top-logo">S</div>
+<div>
+<div class="wiz-top-title">Omnischools <em>onboarding</em></div>
+<div class="wiz-top-school">Setting up · <b>St. Theresa's Senior High</b> · Sunyani · final step</div>
+</div>
+</div>
+<div class="wiz-top-actions">
+<div class="wiz-top-btn ghost">Save &amp; continue later</div>
+<div class="wiz-top-btn">Exit</div>
+</div>
+</div>
+
+<div class="wiz-nav">
+<div class="wiz-nav-head">
+<div class="wiz-nav-eyebrow">Setup progress</div>
+<div class="wiz-nav-title">Step 8 of 8 · final</div>
+<div class="wiz-nav-progress"><b>7 of 8</b> complete · ~2 min remaining</div>
+</div>
+
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">School identity</div><div class="wiz-step-sub"><b>Done</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">School type</div><div class="wiz-step-sub"><b>SHS</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Academic calendar</div><div class="wiz-step-sub"><b>3 terms · GES</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Academic structure</div><div class="wiz-step-sub"><b>4 programmes</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Staff &amp; roles</div><div class="wiz-step-sub"><b>62 staff</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Billing &amp; payments</div><div class="wiz-step-sub"><b>Free SHS</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Residency &amp; boarding<span class="wiz-step-flag shs">SHS</span></div><div class="wiz-step-sub"><b>Mixed</b> · 4 houses</div></div></div>
+
+<div class="wiz-step active">
+<div class="wiz-step-dot">8</div>
+<div class="wiz-step-info">
+<div class="wiz-step-title">WAEC centre &amp; WASSCE<span class="wiz-step-flag shs">SHS</span></div>
+<div class="wiz-step-sub">Final step</div>
+</div>
+</div>
+
+<div class="wiz-nav-foot">
+After this step, you'll see the <b>final review</b> and then the dashboard.
+</div>
+</div>
+
+<div>
+<div class="wiz-content">
+<div class="wiz-content-head">
+<div class="wiz-step-pill">Step 8 of 8 · WAEC centre &amp; WASSCE programmes · SHS only</div>
+<h2>Connect to <em>WAEC</em>.</h2>
+<div class="wiz-content-lede">Your WAEC centre code is the school's identifier with the West African Examinations Council. It's used for WASSCE registration, the SC special-consideration workflow, results retrieval, and the WASSCE timetable sync. Omnischools pulls the published WAEC timetable annually for your cohort year — you don't maintain dates manually.</div>
+</div>
+
+<div class="waec-card" style="margin-bottom:16px;">
+<div style="display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:center; margin-bottom:16px;">
+<div style="width:42px; height:42px; border-radius:10px; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:18px; font-weight:600;">W</div>
+<div>
+<div style="font-family:'Fraunces', serif; font-size:16px; font-weight:500;">West African Examinations Council · Ghana</div>
+<div style="font-size:12px; color:var(--navy-3); margin-top:2px;">2026 International WASSCE · Ghana returns to regional calendar after 6 years</div>
+</div>
+<div style="font-size:11px; color:var(--green); font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">Active</div>
+</div>
+
+<div class="form-row two-one">
+<div class="form-field">
+<div class="form-label">WAEC centre code <span class="req">*</span></div>
+<input class="form-input filled mono" value="SU-0418" />
+<div class="form-help">Issued by WAEC at school registration. Format <b>RG-NNNN</b>.</div>
+</div>
+<div class="form-field">
+<div class="form-label">Regional office</div>
+<select class="form-select filled">
+<option>WAEC Sunyani (BR)</option>
+</select>
+<div class="form-help">Handles SC-12 make-ups.</div>
+</div>
+</div>
+
+<div class="form-row two-one">
+<div class="form-field">
+<div class="form-label">First WASSCE cohort year</div>
+<select class="form-select filled">
+<option>2028 (current F1 in 2025)</option>
+</select>
+<div class="form-help">Drives the WASSCE module's first-cohort activation.</div>
+</div>
+<div class="form-field">
+<div class="form-label">Calendar sync</div>
+<select class="form-select filled">
+<option>Auto · Omnischools master timetable</option>
+</select>
+<div class="form-help">Manual override per centre.</div>
+</div>
+</div>
+</div>
+
+<div style="margin-bottom:14px;">
+<div style="font-size:11px; color:var(--navy-3); margin-bottom:8px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">WASSCE programmes offered · <span style="color:var(--gold); font-weight:700;">confirmed from step 4</span></div>
+
+<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;">
+
+<div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center;">
+<div>
+<div style="font-family:'Fraunces', serif; font-size:13px; font-weight:600;">Science</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:2px;">4 cores + 4 electives · 280 candidates</div>
+</div>
+<div style="font-size:10px; color:var(--green); font-weight:600; letter-spacing:0.06em;">ACTIVE</div>
+</div>
+
+<div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center;">
+<div>
+<div style="font-family:'Fraunces', serif; font-size:13px; font-weight:600;">Business</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:2px;">4 cores + 4 electives · 240 candidates</div>
+</div>
+<div style="font-size:10px; color:var(--green); font-weight:600; letter-spacing:0.06em;">ACTIVE</div>
+</div>
+
+<div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center;">
+<div>
+<div style="font-family:'Fraunces', serif; font-size:13px; font-weight:600;">General Arts</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:2px;">4 cores + 4 electives · 380 candidates</div>
+</div>
+<div style="font-size:10px; color:var(--green); font-weight:600; letter-spacing:0.06em;">ACTIVE</div>
+</div>
+
+<div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center;">
+<div>
+<div style="font-family:'Fraunces', serif; font-size:13px; font-weight:600;">Home Economics</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:2px;">4 cores + 4 electives · 280 candidates</div>
+</div>
+<div style="font-size:10px; color:var(--green); font-weight:600; letter-spacing:0.06em;">ACTIVE</div>
+</div>
+</div>
+</div>
+
+<div class="branch-note">
+<b>WAEC centre code unlocks the WASSCE module.</b> Once entered and verified, the WASSCE module appears in your dashboard nav, mock exam cycles can be created, the SC special-consideration workflow becomes available, and the candidate registration roster opens for each F3 cohort. Your first F3 cohort is the 2028 cycle (today's F1).
+</div>
+
+</div>
+
+<div class="wiz-foot">
+<div class="wiz-foot-meta"><b>7 of 8 steps complete</b> · final review next</div>
+<div class="wiz-foot-actions">
+<div class="wiz-btn">← Back</div>
+<div class="wiz-btn primary">Save &amp; continue to review →</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Step 8 design</h4>
+<ul>
+<li><b>WAEC centre code is the unlock.</b> Without it, the WASSCE module stays hidden. The school provides it once.</li>
+<li><b>Programmes inherit from step 4.</b> No re-typing — the cards reflect step 4's choices, marked ACTIVE.</li>
+<li><b>Calendar sync defaults to auto.</b> Omnischools ops curates the WASSCE master timetable annually from WAEC's PDF; the school doesn't maintain it. Manual override available for centre-specific anomalies.</li>
+<li><b>Regional office is significant.</b> Drives where SC-12 make-up sittings happen — the school's accompaniment pattern depends on knowing this in advance.</li>
+<li><b>First cohort year visible.</b> A school onboarding in 2026 with current F1 students will see WASSCE for them in 2028; the module knows when to activate.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 6 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">06</div>
+<div class="section-title display">Final review · all 8 steps summarised · then dashboard</div>
+<div class="section-meta">SHS path · St. Theresa's · ready to launch</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/onboarding/review</div></div>
+
+<div class="wiz-shell">
+
+<div class="wiz-top">
+<div class="wiz-top-brand">
+<div class="wiz-top-logo">S</div>
+<div>
+<div class="wiz-top-title">Omnischools <em>onboarding</em></div>
+<div class="wiz-top-school">Final review · <b>St. Theresa's Senior High</b> · Sunyani</div>
+</div>
+</div>
+<div class="wiz-top-actions">
+<div class="wiz-top-btn ghost">Save &amp; continue later</div>
+<div class="wiz-top-btn">Exit</div>
+</div>
+</div>
+
+<div class="wiz-nav">
+<div class="wiz-nav-head">
+<div class="wiz-nav-eyebrow">All steps done</div>
+<div class="wiz-nav-title" style="color:var(--green);">8 of 8 complete</div>
+<div class="wiz-nav-progress" style="color:var(--green);">Review your setup before launch</div>
+</div>
+
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">School identity</div><div class="wiz-step-sub"><b>St. Theresa's</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">School type</div><div class="wiz-step-sub"><b>SHS</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Academic calendar</div><div class="wiz-step-sub"><b>3 terms · GES</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Academic structure</div><div class="wiz-step-sub"><b>4 programmes</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Staff &amp; roles</div><div class="wiz-step-sub"><b>62 staff · 7 roles</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Billing &amp; payments</div><div class="wiz-step-sub"><b>Free SHS</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">Residency &amp; boarding<span class="wiz-step-flag shs">SHS</span></div><div class="wiz-step-sub"><b>Mixed · 4 houses</b></div></div></div>
+<div class="wiz-step done"><div class="wiz-step-dot">✓</div><div class="wiz-step-info"><div class="wiz-step-title">WAEC centre &amp; WASSCE<span class="wiz-step-flag shs">SHS</span></div><div class="wiz-step-sub"><b>SU-0418 · 4 progs</b></div></div></div>
+
+<div class="wiz-nav-foot">
+<b>17 min total</b> · launch your school instance from the review panel →
+</div>
+</div>
+
+<div>
+<div class="wiz-content">
+
+<div class="celebrate" style="margin-bottom:24px;">
+<div class="celebrate-row">
+<div class="celebrate-icon">✓</div>
+<div>
+<h3>All 8 steps <em>complete</em>. Ready to launch.</h3>
+<p><b>St. Theresa's Senior High School</b> is configured as a public SHS in the Bono Region. Review the summary below; edit any step from here if needed. Once you launch, the wizard closes and you'll land on your Headmaster dashboard.</p>
+</div>
+<div class="wiz-btn gold" style="padding:14px 24px; font-size:14px;">Launch school →</div>
+</div>
+</div>
+
+<div class="confirm-grid">
+
+<div class="confirm-card">
+<div class="confirm-card-head">
+<div><div class="confirm-step-num">Step 1</div><div class="confirm-step-title">School identity</div></div>
+<div class="confirm-edit">Edit →</div>
+</div>
+<div class="confirm-row"><div class="lbl">Name</div><div class="val">St. Theresa's Senior High School</div></div>
+<div class="confirm-row"><div class="lbl">GES code</div><div class="val mono">BR-SUN-018</div></div>
+<div class="confirm-row"><div class="lbl">CSSPS code</div><div class="val mono">ST-0741</div></div>
+<div class="confirm-row"><div class="lbl">Ownership</div><div class="val">Public · Free SHS eligible</div></div>
+<div class="confirm-row"><div class="lbl">Region · District</div><div class="val">Bono · Sunyani Municipal</div></div>
+</div>
+
+<div class="confirm-card">
+<div class="confirm-card-head">
+<div><div class="confirm-step-num">Step 2</div><div class="confirm-step-title">School type</div></div>
+<div class="confirm-edit">Edit →</div>
+</div>
+<div class="confirm-row"><div class="lbl">Type</div><div class="val">SHS · 8-step path</div></div>
+<div class="confirm-row"><div class="lbl">Activates</div><div class="val">WASSCE · Boarding · Sickbay</div></div>
+<div class="confirm-row"><div class="lbl">Mode</div><div class="val">Mixed residency</div></div>
+</div>
+
+<div class="confirm-card">
+<div class="confirm-card-head">
+<div><div class="confirm-step-num">Step 3</div><div class="confirm-step-title">Academic calendar</div></div>
+<div class="confirm-edit">Edit →</div>
+</div>
+<div class="confirm-row"><div class="lbl">Structure</div><div class="val">3 terms · GES default</div></div>
+<div class="confirm-row"><div class="lbl">Term 1</div><div class="val">3 Sep 2025 – 19 Dec 2025</div></div>
+<div class="confirm-row"><div class="lbl">Holidays</div><div class="val">Ghana national + Christian</div></div>
+</div>
+
+<div class="confirm-card">
+<div class="confirm-card-head">
+<div><div class="confirm-step-num">Step 4</div><div class="confirm-step-title">Academic structure</div></div>
+<div class="confirm-edit">Edit →</div>
+</div>
+<div class="confirm-row"><div class="lbl">Programmes</div><div class="val">SCI · BUS · GA · HE</div></div>
+<div class="confirm-row"><div class="lbl">Cores</div><div class="val">4 (universal WAEC)</div></div>
+<div class="confirm-row"><div class="lbl">Electives</div><div class="val">4 per programme · 16 total</div></div>
+</div>
+
+<div class="confirm-card">
+<div class="confirm-card-head">
+<div><div class="confirm-step-num">Step 5</div><div class="confirm-step-title">Staff &amp; roles</div></div>
+<div class="confirm-edit">Edit →</div>
+</div>
+<div class="confirm-row"><div class="lbl">Headmaster</div><div class="val">Mr K. Owusu-Frempong</div></div>
+<div class="confirm-row"><div class="lbl">Senior staff</div><div class="val">62 invited · 0 confirmed</div></div>
+<div class="confirm-row"><div class="lbl">Roles</div><div class="val">7 (HoA, HOD ×4, Bursar, Matron)</div></div>
+</div>
+
+<div class="confirm-card">
+<div class="confirm-card-head">
+<div><div class="confirm-step-num">Step 6</div><div class="confirm-step-title">Billing &amp; payments</div></div>
+<div class="confirm-edit">Edit →</div>
+</div>
+<div class="confirm-row"><div class="lbl">Tuition</div><div class="val">Free SHS (GHS 0)</div></div>
+<div class="confirm-row"><div class="lbl">Other fees</div><div class="val">PTA dues + boarding optional</div></div>
+<div class="confirm-row"><div class="lbl">Payment</div><div class="val">MTN MoMo + bank transfer</div></div>
+</div>
+
+<div class="confirm-card">
+<div class="confirm-card-head">
+<div><div class="confirm-step-num">Step 7</div><div class="confirm-step-title">Residency &amp; boarding</div></div>
+<div class="confirm-edit">Edit →</div>
+</div>
+<div class="confirm-row"><div class="lbl">Model</div><div class="val">Mixed · ~78% boarders</div></div>
+<div class="confirm-row"><div class="lbl">Houses</div><div class="val">4 (Theresa, Joseph, Augustine, Cecilia)</div></div>
+<div class="confirm-row"><div class="lbl">Visiting day</div><div class="val">1st Sat · month 2 per term</div></div>
+</div>
+
+<div class="confirm-card">
+<div class="confirm-card-head">
+<div><div class="confirm-step-num">Step 8</div><div class="confirm-step-title">WAEC centre &amp; WASSCE</div></div>
+<div class="confirm-edit">Edit →</div>
+</div>
+<div class="confirm-row"><div class="lbl">Centre code</div><div class="val mono">SU-0418</div></div>
+<div class="confirm-row"><div class="lbl">Regional office</div><div class="val">WAEC Sunyani (BR)</div></div>
+<div class="confirm-row"><div class="lbl">First WASSCE</div><div class="val">2028 cohort</div></div>
+</div>
+
+</div>
+
+<div style="margin-top:20px; padding:16px 20px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:8px; font-size:12px; color:var(--navy-2); line-height:1.6;">
+<b>Once launched, the wizard closes.</b> If anything changes — new district boundaries, regional office reassignment, new programmes — you'll find these settings under <b>Settings → School profile</b>. Changes to school type (step 2) require Headmaster + GES code re-verification.
+</div>
+
+</div>
+
+<div class="wiz-foot">
+<div class="wiz-foot-meta"><b>All 8 steps reviewed</b> · launch initialises Headmaster dashboard</div>
+<div class="wiz-foot-actions">
+<div class="wiz-btn">← Back to step 8</div>
+<div class="wiz-btn gold">Launch school →</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Why a final review</h4>
+<ul>
+<li><b>One screen, all decisions.</b> Eight cards summarising eight steps. The Headmaster can confirm what's set without scrolling back through the wizard.</li>
+<li><b>Edit-from-here.</b> Every card has an "Edit →" affordance; clicking it jumps to that step. No multi-step "back" navigation.</li>
+<li><b>Launch is a deliberate action.</b> Gold primary button, top-right and bottom-right of the page. Until clicked, nothing in the school's instance is "live".</li>
+<li><b>Post-launch settings location stated.</b> "Find these under Settings → School profile" sets the expectation that changes are possible but happen elsewhere.</li>
+<li><b>Re-verification flagged.</b> Changing school type requires Headmaster + GES code — the most consequential setting is the hardest to change, the rest are just "Edit".</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

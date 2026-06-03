@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — PTA meeting minutes & resolutions</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Lifecycle pills */
+.lifecycle-bar { background:var(--bg); padding:18px 36px; border-bottom:1px solid var(--border); display:flex; gap:6px; overflow-x:auto; }
+.lc-pill { display:flex; align-items:center; gap:10px; padding:10px 16px; background:var(--surface); border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:600; flex-shrink:0; }
+.lc-pill .num { width:22px; height:22px; border-radius:50%; background:var(--bg); color:var(--navy-3); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.lc-pill.done { background:var(--green-bg); border-color:var(--green); color:var(--green); }
+.lc-pill.done .num { background:var(--green); color:var(--bg); }
+.lc-pill.active { background:var(--navy); border-color:var(--navy); color:var(--bg); }
+.lc-pill.active .num { background:var(--gold); color:var(--navy); }
+.lc-pill .lab-detail { font-size:9px; font-weight:600; letter-spacing:0.04em; opacity:0.7; margin-top:1px; display:block; }
+
+/* Context bar */
+.context-bar { padding:20px 36px; background:var(--surface); border-bottom:1px solid var(--border); display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; }
+.context-bar .icon-wrap { width:64px; height:64px; border-radius:12px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:24px; }
+.context-bar .icon-wrap.form { background:var(--navy); }
+.context-bar .icon-wrap.general { background:var(--green); }
+.context-bar .icon-wrap.house { background:var(--gold); color:var(--navy); }
+.context-bar .meta-cluster .crumb { font-size:10px; color:var(--navy-3); letter-spacing:0.12em; text-transform:uppercase; font-weight:700; margin-bottom:5px; }
+.context-bar .meta-cluster h2 { font-family:'Fraunces',serif; font-size:26px; font-weight:500; letter-spacing:-0.015em; margin-bottom:5px; line-height:1.15; }
+.context-bar .meta-cluster h2 em { font-style:italic; color:var(--gold); }
+.context-bar .meta-cluster .submeta { font-size:12px; color:var(--navy-2); display:flex; gap:14px; flex-wrap:wrap; }
+.context-bar .meta-cluster .submeta span b { color:var(--navy); font-weight:700; }
+.context-bar .meta-cluster .submeta .sep { color:var(--navy-3); }
+.context-bar .status-pill { padding:8px 16px; background:var(--gold-bg); color:var(--gold); border:1px solid var(--gold); border-radius:100px; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; }
+
+/* Minutes drafting layout */
+.minutes-shell { padding:0; display:grid; grid-template-columns:1fr 360px; gap:0; }
+.minutes-main { padding:32px 36px 40px; border-right:1px solid var(--border); }
+.minutes-side { padding:32px 28px 40px; background:var(--bg); }
+
+.section-block { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 28px; margin-bottom:20px; }
+.section-block.has-issue { border-color:var(--warn); }
+.section-block .blk-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.section-block .blk-head .left .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.section-block .blk-head .left h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.005em; }
+.section-block .blk-head .left h3 em { font-style:italic; color:var(--gold); }
+.section-block .blk-head .badge { padding:5px 11px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.section-block .blk-head .badge.draft { background:var(--gold-bg); color:var(--gold); }
+.section-block .blk-head .badge.done { background:var(--green-bg); color:var(--green); }
+.section-block .blk-head .badge.warn { background:var(--warn-bg); color:var(--warn); }
+
+.minutes-textarea { width:100%; min-height:140px; padding:14px 16px; border:1px solid var(--border); border-radius:8px; font-family:inherit; font-size:13px; background:var(--bg); resize:vertical; line-height:1.6; color:var(--navy-2); }
+.minutes-textarea:focus { outline:none; border-color:var(--gold); background:var(--surface); }
+.minutes-textarea.filled { background:var(--surface); color:var(--navy); }
+.tape-row { padding:6px 0; font-size:13px; color:var(--navy-2); line-height:1.7; border-bottom:1px dashed var(--border); }
+.tape-row:last-child { border-bottom:none; }
+.tape-row b { color:var(--navy); font-weight:600; }
+.tape-row em { color:var(--gold); font-style:italic; }
+
+/* Agenda items */
+.agenda-item { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin-bottom:12px; }
+.agenda-item.discussed { background:var(--surface); }
+.agenda-item.in-progress { background:var(--gold-bg); border-color:var(--gold-soft); }
+.agenda-item .ai-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.agenda-item .ai-num { display:inline-flex; align-items:center; gap:8px; font-family:'Fraunces',serif; font-weight:600; font-size:15px; }
+.agenda-item .ai-num .badge-n { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+.agenda-item.in-progress .ai-num .badge-n { background:var(--gold); color:var(--navy); }
+.agenda-item .ai-status { font-size:10px; font-weight:700; letter-spacing:0.06em; }
+.agenda-item .ai-status.discussed { color:var(--green); }
+.agenda-item .ai-status.in-progress { color:var(--gold); }
+.agenda-item .ai-status.pending { color:var(--navy-3); }
+.agenda-item .ai-body { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.agenda-item .ai-body b { color:var(--navy); font-weight:600; }
+.agenda-item .ai-classify { display:flex; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+.agenda-item .classify-chip { padding:4px 11px; border-radius:100px; font-size:10px; font-weight:600; letter-spacing:0.04em; border:1px solid var(--border); background:var(--surface); cursor:pointer; }
+.agenda-item .classify-chip.selected { background:var(--gold); color:var(--navy); border-color:var(--gold); }
+.agenda-item .classify-chip.discussion.selected { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.agenda-item .classify-chip.action.selected { background:var(--warn); color:var(--bg); border-color:var(--warn); }
+.agenda-item .classify-chip.resolution.selected { background:var(--green); color:var(--bg); border-color:var(--green); }
+
+/* Action items */
+.action-table { width:100%; }
+.action-table thead th { padding:10px 14px; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border); background:var(--bg); }
+.action-table tbody td { padding:14px 14px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:12px; }
+.action-table tbody tr:last-child td { border-bottom:none; }
+.action-table .action-text { color:var(--navy); font-weight:500; line-height:1.5; }
+.action-table .action-text b { color:var(--navy-2); font-weight:600; }
+.action-table .owner-cell { display:flex; align-items:center; gap:8px; }
+.action-table .owner-cell .av-mini { width:26px; height:26px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:10px; }
+.action-table .owner-cell .nm { font-weight:600; font-size:12px; color:var(--navy); }
+.action-table .owner-cell .sub { font-size:10px; color:var(--navy-3); }
+.action-table .deadline-cell .date { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); font-weight:600; }
+.action-table .deadline-cell .countdown { font-size:9px; color:var(--gold); margin-top:2px; }
+.action-table .status-pill-mini { padding:4px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; display:inline-flex; gap:5px; align-items:center; }
+.action-table .status-pill-mini.pending { background:var(--gold-bg); color:var(--gold); }
+.action-table .status-pill-mini.done { background:var(--green-bg); color:var(--green); }
+.action-table .status-pill-mini .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+
+/* Resolutions */
+.resolution-card { background:var(--green-bg); border:1.5px solid var(--green); border-radius:12px; padding:20px 24px; margin-bottom:16px; }
+.resolution-card .res-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.resolution-card .res-num { font-family:'Fraunces',serif; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--green); font-weight:700; margin-bottom:4px; }
+.resolution-card .res-title { font-family:'Fraunces',serif; font-size:16px; font-weight:600; line-height:1.3; max-width:560px; }
+.resolution-card .res-title em { font-style:italic; color:var(--green); }
+.resolution-card .binding-tag { padding:5px 11px; background:var(--green); color:var(--bg); border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.06em; flex-shrink:0; }
+.resolution-card .res-body { font-size:13px; color:var(--navy-2); line-height:1.65; margin-bottom:14px; padding:12px 14px; background:var(--surface); border-left:3px solid var(--green); border-radius:0 8px 8px 0; }
+.resolution-card .res-body b { color:var(--navy); font-weight:600; }
+.resolution-card .vote-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding-top:12px; border-top:1px solid var(--green); }
+.resolution-card .vote-tile .lab { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.resolution-card .vote-tile .val { font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
+.resolution-card .vote-tile.for .val { color:var(--green); }
+.resolution-card .vote-tile.against .val { color:var(--terra); }
+.resolution-card .vote-tile.abstain .val { color:var(--navy-3); }
+.resolution-card .vote-tile.result .val { color:var(--green); font-style:italic; font-size:14px; padding-top:6px; }
+
+/* Side panel */
+.side-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; margin-bottom:16px; }
+.side-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.side-card h4 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-bottom:10px; line-height:1.3; }
+.side-card h4 em { font-style:italic; color:var(--gold); }
+.side-card .meta-row { display:flex; justify-content:space-between; padding:6px 0; font-size:11px; color:var(--navy-2); border-bottom:1px solid var(--border); }
+.side-card .meta-row:last-child { border-bottom:none; }
+.side-card .meta-row b { color:var(--navy); font-weight:700; }
+.side-card.attendance .stats { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px; }
+.side-card.attendance .stat-box { padding:10px 12px; background:var(--bg); border-radius:8px; }
+.side-card.attendance .stat-box .num { font-family:'Fraunces',serif; font-size:22px; font-weight:600; color:var(--navy); }
+.side-card.attendance .stat-box .num em { font-style:italic; color:var(--gold); }
+.side-card.attendance .stat-box .lab { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.side-card.attendance .stat-box .lab b { color:var(--navy-2); }
+
+/* Distribution */
+.distrib-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:12px; padding:20px 24px; margin-bottom:16px; }
+.distrib-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.distrib-card h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; margin-bottom:10px; }
+.distrib-card h4 em { font-style:italic; color:var(--gold); }
+.distrib-card .channel-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--gold-soft); font-size:12px; }
+.distrib-card .channel-row:last-child { border-bottom:none; }
+.distrib-card .channel-row .name { font-weight:600; color:var(--navy); }
+.distrib-card .channel-row .name .sub { font-size:10px; color:var(--navy-3); font-weight:500; }
+.distrib-card .channel-row .toggle-mini { width:36px; height:20px; background:var(--green); border-radius:100px; position:relative; }
+.distrib-card .channel-row .toggle-mini.off { background:var(--border-2); }
+.distrib-card .channel-row .toggle-mini::after { content:""; position:absolute; top:2px; left:18px; width:16px; height:16px; border-radius:50%; background:var(--surface); }
+.distrib-card .channel-row .toggle-mini.off::after { left:2px; }
+
+/* Foot */
+.foot-summary { padding:18px 36px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:space-between; }
+.foot-summary .ftext { font-size:12px; color:var(--gold-soft); line-height:1.5; }
+.foot-summary .ftext b { color:var(--bg); font-weight:700; }
+.foot-summary .factions { display:flex; gap:10px; }
+.foot-summary .factions button { padding:11px 18px; border-radius:7px; font-size:12px; font-weight:700; cursor:pointer; border:none; }
+.foot-summary .factions button.secondary { background:rgba(255,255,255,0.08); color:var(--bg); border:1px solid rgba(255,255,255,0.2); }
+.foot-summary .factions button.primary { background:var(--gold); color:var(--navy); }
+
+/* Discussion vs Resolution editorial */
+.dvr-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; }
+.dvr-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 24px; }
+.dvr-card.discussion { border-top:4px solid var(--navy); }
+.dvr-card.action { border-top:4px solid var(--warn); }
+.dvr-card.resolution { border-top:4px solid var(--green); }
+.dvr-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; margin-bottom:6px; }
+.dvr-card.discussion .eb { color:var(--navy); }
+.dvr-card.action .eb { color:var(--warn); }
+.dvr-card.resolution .eb { color:var(--green); }
+.dvr-card h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:8px; }
+.dvr-card h4 em { font-style:italic; color:var(--gold); }
+.dvr-card .what { font-size:12px; color:var(--navy-3); margin-bottom:14px; font-style:italic; line-height:1.5; }
+.dvr-card .example { background:var(--bg); border-left:3px solid var(--border); padding:12px 14px; font-size:12px; color:var(--navy-2); line-height:1.6; border-radius:0 6px 6px 0; }
+.dvr-card.discussion .example { border-left-color:var(--navy); }
+.dvr-card.action .example { border-left-color:var(--warn); }
+.dvr-card.resolution .example { border-left-color:var(--green); }
+.dvr-card .example b { color:var(--navy); font-weight:600; }
+.dvr-card .effect { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+.dvr-card .effect .lab { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.dvr-card .effect .val { font-size:12px; color:var(--navy-2); font-weight:500; }
+.dvr-card .effect .val b { color:var(--navy); font-weight:700; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Forms/PTA batch · 04 of 06</div>
+  <span class="mvp-tag">SHS · PTA governance · post-meeting</span>
+  <span class="related-tag">Secretary view · structured capture</span>
+  <h1 class="display">Minutes that <em>do something</em></h1>
+  <div class="gold-rule"></div>
+  <p>The meeting ended at 12:15 PM. Mr Mensah has half a notebook of scribbles, three action items he agreed to chase, and one big resolution about the Cape Coast trip funding. <b>Most PTA minutes get filed and forgotten.</b> Omnischools's structured capture asks the Secretary to classify each agenda item as <em>discussion</em>, <em>action</em>, or <em>resolution</em> — because they behave differently downstream. Actions get auto-tracked. Resolutions trigger governance follow-through. Discussions become searchable record. <em>Same Secretary, same notebook · the structure does the rest of the work.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The drafting view · Secretary captures the meeting</div>
+    <div class="section-meta">PTA → Meeting → Minutes · Secretary only</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / pta / meeting / 2-ga-a / minutes</div>
+      </div>
+
+      <div class="lifecycle-bar">
+        <div class="lc-pill done">
+          <div class="num">✓</div>
+          <div>Schedule<span class="lab-detail">2 weeks ago</span></div>
+        </div>
+        <div class="lc-pill done">
+          <div class="num">✓</div>
+          <div>Generate register<span class="lab-detail">yesterday</span></div>
+        </div>
+        <div class="lc-pill done">
+          <div class="num">✓</div>
+          <div>Live attendance<span class="lab-detail">closed 12:15 PM</span></div>
+        </div>
+        <div class="lc-pill active">
+          <div class="num">4</div>
+          <div>Minutes<span class="lab-detail">drafting · 25 min in</span></div>
+        </div>
+      </div>
+
+      <div class="context-bar">
+        <div class="icon-wrap form">FP</div>
+        <div class="meta-cluster">
+          <div class="crumb">Minutes · drafting</div>
+          <h2 class="display">Form 2 GA A <em>· Saturday 30 May</em></h2>
+          <div class="submeta">
+            <span>Secretary <b>Mr A. Mensah (Form Master)</b></span>
+            <span class="sep">·</span>
+            <span>Chair was <b>Mr S. Adjei</b></span>
+            <span class="sep">·</span>
+            <span>Meeting closed <b>12:15 PM</b> · drafting started 12:20 PM</span>
+          </div>
+        </div>
+        <div class="status-pill">DRAFT · auto-saved 2 min ago</div>
+      </div>
+
+      <div class="minutes-shell">
+        <div class="minutes-main">
+
+          <!-- Preamble auto-filled -->
+          <div class="section-block">
+            <div class="blk-head">
+              <div class="left">
+                <div class="eb">01 · Auto-filled from register</div>
+                <h3 class="display">Preamble <em>· who, when, where</em></h3>
+              </div>
+              <div class="badge done">● Locked from register</div>
+            </div>
+            <div class="tape-row"><b>Meeting:</b> Form 2 General Arts A PTA · Term 2 Regular Meeting</div>
+            <div class="tape-row"><b>Date:</b> Saturday, 30 May 2026 · 10:00 AM – 12:15 PM (overran by 15 min)</div>
+            <div class="tape-row"><b>Venue:</b> Classroom C4, Block C · Christ the King SHS</div>
+            <div class="tape-row"><b>Chair:</b> Mr Samuel Adjei · <em>Form PTA Chair</em></div>
+            <div class="tape-row"><b>Secretary:</b> Mr Alexander Mensah · <em>Form Master (ex-officio Secretary)</em></div>
+            <div class="tape-row"><b>Attendance:</b> 21 parents present, 1 late · 10 absent · 3 teachers present</div>
+            <div class="tape-row"><b>Quorum:</b> <em>Met</em> — 22 parents present (need 17)</div>
+          </div>
+
+          <!-- Agenda item walk-through -->
+          <div class="section-block">
+            <div class="blk-head">
+              <div class="left">
+                <div class="eb">02 · Agenda item by item</div>
+                <h3 class="display">Classify <em>each item</em></h3>
+              </div>
+              <div class="badge draft">● 5 of 7 classified</div>
+            </div>
+
+            <div class="agenda-item discussed">
+              <div class="ai-head">
+                <div class="ai-num"><div class="badge-n">1</div>Welcome and prayer</div>
+                <div class="ai-status discussed">● Discussed</div>
+              </div>
+              <div class="ai-body">Mr Adjei opened at 10:23 (delayed for quorum). Opening prayer by Mrs Boateng. Apologies received from Mrs Owusu (medical), Mr Kissi (work travel), Mrs Asare (running late · arrived 10:45).</div>
+              <div class="ai-classify">
+                <div class="classify-chip discussion selected">DISCUSSION</div>
+                <div class="classify-chip">ACTION</div>
+                <div class="classify-chip">RESOLUTION</div>
+              </div>
+            </div>
+
+            <div class="agenda-item discussed">
+              <div class="ai-head">
+                <div class="ai-num"><div class="badge-n">2</div>Reading of last meeting minutes</div>
+                <div class="ai-status discussed">● Discussed · adopted</div>
+              </div>
+              <div class="ai-body">Minutes from <b>15 February meeting</b> read by Secretary. <b>Adopted</b> with no amendments. Proposed by Mr Annan, seconded by Mrs Frimpong.</div>
+              <div class="ai-classify">
+                <div class="classify-chip discussion selected">DISCUSSION</div>
+                <div class="classify-chip">ACTION</div>
+                <div class="classify-chip">RESOLUTION</div>
+              </div>
+            </div>
+
+            <div class="agenda-item discussed">
+              <div class="ai-head">
+                <div class="ai-num"><div class="badge-n">3</div>End-of-term-2 academic performance review</div>
+                <div class="ai-status discussed">● Discussed</div>
+              </div>
+              <div class="ai-body">Mr Mensah presented the class's term 2 results · <b>class average rose from 64% to 71%</b> · 4 students still failing core maths · 12 students achieved distinctions. Concerns raised about Friday afternoon attendance dropping. <b>No actions agreed</b>, but parents asked Form Master to share weekly check-in calls with parents of the 4 failing students.</div>
+              <div class="ai-classify">
+                <div class="classify-chip discussion selected">DISCUSSION</div>
+                <div class="classify-chip">ACTION</div>
+                <div class="classify-chip">RESOLUTION</div>
+              </div>
+            </div>
+
+            <div class="agenda-item in-progress">
+              <div class="ai-head">
+                <div class="ai-num"><div class="badge-n">4</div>Class trip to Cape Coast Castle — proposal &amp; funding</div>
+                <div class="ai-status in-progress">● Drafting · classify</div>
+              </div>
+              <div class="ai-body">Proposed budget GHS 6,400 (transport, entry, lunches). Discussion on per-student contribution. <b>Three options tabled:</b> GHS 200/student fully covers / GHS 150/student with Form PTA topping up GHS 1,600 from term-1 surplus / GHS 100/student with sponsorship outreach. Chair called a vote.</div>
+              <textarea class="minutes-textarea filled" style="margin-top:10px;">After deliberation, the parents present voted by show of hands: 16 in favour of Option B (GHS 150/student + Form PTA top-up of GHS 1,600), 3 in favour of Option A, 2 abstentions. Resolution adopted. Treasurer (Mrs Sarpong) to coordinate collection by 20 June. Trip date confirmed Saturday 5 July.</textarea>
+              <div class="ai-classify">
+                <div class="classify-chip discussion">DISCUSSION</div>
+                <div class="classify-chip action">ACTION</div>
+                <div class="classify-chip resolution selected">RESOLUTION</div>
+              </div>
+            </div>
+
+            <div class="agenda-item">
+              <div class="ai-head">
+                <div class="ai-num"><div class="badge-n">5</div>Class Prefect leaving gift</div>
+                <div class="ai-status pending">● Not yet drafted</div>
+              </div>
+              <div class="ai-body" style="color:var(--navy-3); font-style:italic;">Secretary's notebook · pending entry</div>
+              <textarea class="minutes-textarea" placeholder="Type the minutes for this agenda item..."></textarea>
+              <div class="ai-classify">
+                <div class="classify-chip">DISCUSSION</div>
+                <div class="classify-chip">ACTION</div>
+                <div class="classify-chip">RESOLUTION</div>
+              </div>
+            </div>
+
+            <div class="agenda-item">
+              <div class="ai-head">
+                <div class="ai-num"><div class="badge-n">6</div>AOB</div>
+                <div class="ai-status pending">● Not yet drafted</div>
+              </div>
+              <div class="ai-body" style="color:var(--navy-3); font-style:italic;">Several parents raised separate concerns · capture each</div>
+              <textarea class="minutes-textarea" placeholder="Type the minutes for this agenda item..."></textarea>
+              <div class="ai-classify">
+                <div class="classify-chip">DISCUSSION</div>
+                <div class="classify-chip">ACTION</div>
+                <div class="classify-chip">RESOLUTION</div>
+              </div>
+            </div>
+
+            <div class="agenda-item discussed">
+              <div class="ai-head">
+                <div class="ai-num"><div class="badge-n">7</div>Closing prayer · meeting adjourned</div>
+                <div class="ai-status discussed">● Discussed</div>
+              </div>
+              <div class="ai-body">Closing prayer by Mr Otoo at <b>12:15 PM</b>. Next meeting tentatively scheduled for week 6 of Term 3 · Saturday 12 September (to be confirmed by Chair).</div>
+              <div class="ai-classify">
+                <div class="classify-chip discussion selected">DISCUSSION</div>
+                <div class="classify-chip">ACTION</div>
+                <div class="classify-chip">RESOLUTION</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action items extracted -->
+          <div class="section-block">
+            <div class="blk-head">
+              <div class="left">
+                <div class="eb">03 · Auto-extracted from action-classified items</div>
+                <h3 class="display">Action <em>items</em></h3>
+              </div>
+              <div class="badge draft">● 3 actions captured</div>
+            </div>
+
+            <table class="action-table">
+              <thead>
+                <tr>
+                  <th style="width:40%">Action</th>
+                  <th style="width:22%">Owner</th>
+                  <th style="width:18%">Deadline</th>
+                  <th style="width:20%">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="action-text">Coordinate <b>GHS 150/student collection</b> for Cape Coast trip · invoice via Omnischools dues category</div>
+                  </td>
+                  <td>
+                    <div class="owner-cell">
+                      <div class="av-mini">OS</div>
+                      <div>
+                        <div class="nm">Mrs O. Sarpong</div>
+                        <div class="sub">Treasurer · parent</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="deadline-cell">
+                    <div class="date">20 Jun 2026</div>
+                    <div class="countdown">21 days</div>
+                  </td>
+                  <td>
+                    <div class="status-pill-mini pending"><span class="dot"></span>Pending</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="action-text">Begin <b>weekly check-in calls</b> with parents of the 4 failing-maths students · informal cadence</div>
+                  </td>
+                  <td>
+                    <div class="owner-cell">
+                      <div class="av-mini" style="background:var(--navy); color:var(--gold);">AM</div>
+                      <div>
+                        <div class="nm">Mr A. Mensah</div>
+                        <div class="sub">Form Master</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="deadline-cell">
+                    <div class="date">Ongoing</div>
+                    <div class="countdown">Started 31 May</div>
+                  </td>
+                  <td>
+                    <div class="status-pill-mini pending"><span class="dot"></span>Pending</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="action-text"><b>Confirm Cape Coast trip date</b> with School Headmaster (transport availability, school calendar clash)</div>
+                  </td>
+                  <td>
+                    <div class="owner-cell">
+                      <div class="av-mini">SA</div>
+                      <div>
+                        <div class="nm">Mr S. Adjei</div>
+                        <div class="sub">Form PTA Chair · parent</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="deadline-cell">
+                    <div class="date">7 Jun 2026</div>
+                    <div class="countdown">8 days · <b>SMS reminder day-before</b></div>
+                  </td>
+                  <td>
+                    <div class="status-pill-mini pending"><span class="dot"></span>Pending</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Resolutions -->
+          <div class="section-block">
+            <div class="blk-head">
+              <div class="left">
+                <div class="eb">04 · Resolutions passed at this meeting</div>
+                <h3 class="display">Resolutions <em>(binding)</em></h3>
+              </div>
+              <div class="badge done">● 1 resolution</div>
+            </div>
+
+            <div class="resolution-card">
+              <div class="res-head">
+                <div>
+                  <div class="res-num">RESOLUTION FORM-2-GA-A-2026-Q2-001</div>
+                  <div class="res-title display">Cape Coast trip · <em>funding structure adopted</em></div>
+                </div>
+                <div class="binding-tag">● BINDING</div>
+              </div>
+              <div class="res-body">
+                <b>RESOLVED THAT</b> the Form 2 General Arts A Form PTA will fund the proposed class trip to Cape Coast Castle on <b>Saturday, 5 July 2026</b> through a combined contribution model: <b>GHS 150.00 per student</b> (32 students = GHS 4,800.00) topped up by <b>GHS 1,600.00 from the Form PTA term-1 surplus</b>, total budget GHS 6,400.00. <b>The Treasurer is mandated to issue invoices by 5 June, with collection complete by 20 June.</b> Students unable to contribute will be considered for partial subsidy at the Treasurer's discretion, with anonymity preserved.
+              </div>
+              <div class="vote-row">
+                <div class="vote-tile for"><div class="lab">In favour</div><div class="val">16</div></div>
+                <div class="vote-tile against"><div class="lab">Against</div><div class="val">3</div></div>
+                <div class="vote-tile abstain"><div class="lab">Abstain</div><div class="val">2</div></div>
+                <div class="vote-tile result"><div class="lab">Result</div><div class="val">PASSED</div></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="minutes-side">
+
+          <div class="side-card attendance">
+            <div class="eb">From attendance register</div>
+            <h4 class="display">Who was <em>there</em></h4>
+            <div class="stats">
+              <div class="stat-box">
+                <div class="num display"><em>22</em></div>
+                <div class="lab"><b>Parents</b> · 21 P + 1 L</div>
+              </div>
+              <div class="stat-box">
+                <div class="num display"><em>3</em></div>
+                <div class="lab"><b>Teachers</b> · all 3</div>
+              </div>
+              <div class="stat-box">
+                <div class="num display"><em>10</em></div>
+                <div class="lab"><b>Absent</b> parents</div>
+              </div>
+              <div class="stat-box">
+                <div class="num display"><em>69%</em></div>
+                <div class="lab"><b>Parent rate</b></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <div class="eb">Officers in the room</div>
+            <h4 class="display">For voting <em>quorum</em></h4>
+            <div class="meta-row"><span>Chair</span><b>Mr S. Adjei · ✓</b></div>
+            <div class="meta-row"><span>Vice-Chair</span><b>Mrs J. Boateng · ✓</b></div>
+            <div class="meta-row"><span>Treasurer</span><b>Mrs O. Sarpong · ✓</b></div>
+            <div class="meta-row"><span>Secretary</span><b>Mr A. Mensah · ✓</b></div>
+            <div class="meta-row" style="color:var(--green);"><span><b>All officers present</b></span><b>4 of 4</b></div>
+          </div>
+
+          <div class="distrib-card">
+            <div class="eb">When you submit</div>
+            <h4 class="display">Distribution <em>channels</em></h4>
+            <div class="channel-row">
+              <div class="name">SMS summary<div class="sub">to all 32 parents</div></div>
+              <div class="toggle-mini"></div>
+            </div>
+            <div class="channel-row">
+              <div class="name">PDF minutes link<div class="sub">via SMS · downloadable</div></div>
+              <div class="toggle-mini"></div>
+            </div>
+            <div class="channel-row">
+              <div class="name">Email full minutes<div class="sub">parents with email · 14 of 32</div></div>
+              <div class="toggle-mini"></div>
+            </div>
+            <div class="channel-row">
+              <div class="name">General PTA notification<div class="sub">share resolutions upward</div></div>
+              <div class="toggle-mini off"></div>
+            </div>
+            <div class="channel-row">
+              <div class="name">GES district returns<div class="sub">termly auto-include</div></div>
+              <div class="toggle-mini"></div>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <div class="eb">Validation before submit</div>
+            <h4 class="display">Checks <em>passed</em></h4>
+            <div class="meta-row"><span>Preamble complete</span><b style="color:var(--green);">✓</b></div>
+            <div class="meta-row"><span>All 7 agenda items classified</span><b style="color:var(--warn);">5 / 7</b></div>
+            <div class="meta-row"><span>Action items have owners</span><b style="color:var(--green);">✓ 3/3</b></div>
+            <div class="meta-row"><span>Action items have deadlines</span><b style="color:var(--green);">✓ 3/3</b></div>
+            <div class="meta-row"><span>Resolutions have vote counts</span><b style="color:var(--green);">✓ 1/1</b></div>
+            <div class="meta-row"><span>Quorum recorded</span><b style="color:var(--green);">✓ Met</b></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="foot-summary">
+        <div class="ftext">
+          <b>Two agenda items still unclassified</b> · drafting will pause until you complete items 5 and 6 · auto-saved continuously
+        </div>
+        <div class="factions">
+          <button class="secondary">Preview as PDF</button>
+          <button class="secondary">Save &amp; resume later</button>
+          <button class="primary">Submit for Chair review →</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Drafting view</h4>
+      <ul>
+        <li><b>Preamble is auto-filled from the register.</b> Date, venue, chair, secretary, attendance stats — all locked from the attendance surface. Secretary doesn't retype.</li>
+        <li><b>Classify-as-you-go.</b> Each agenda item is tagged Discussion / Action / Resolution. The classification cascades: actions extract to a table, resolutions extract to formal records, discussions stay as searchable narrative.</li>
+        <li><b>Action items need owner + deadline.</b> Can't submit minutes with an action lacking either. The validator panel on the right surfaces this in real time.</li>
+        <li><b>Resolutions capture vote counts.</b> For/against/abstain. Binding-flag is automatic for General PTA, optional elsewhere.</li>
+        <li><b>Distribution is per-meeting.</b> Form PTA minutes go to that class's parents. House PTA minutes go to House parents. General PTA minutes go school-wide. The channel toggles let the Secretary tailor.</li>
+        <li><b>Two-stage approval.</b> Secretary drafts → Chair reviews → adopted. Adopted minutes can't be edited; corrections happen by amendment in the next meeting.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Schema this drives</h4>
+      <ul>
+        <li><b>pta_minutes</b> · one row per meeting · status, secretary_id, adopted_at, distributed_at</li>
+        <li><b>pta_agenda_items</b> · structured list per minutes · classification (discussion/action/resolution), narrative text</li>
+        <li><b>pta_action_items</b> · auto-extracted · owner, deadline, status, completed_at</li>
+        <li><b>pta_resolutions</b> · auto-extracted · resolution text, votes_for/against/abstain, binding flag</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why three classifications · the downstream divergence</div>
+    <div class="section-meta">Editorial · what each classification does after the meeting</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="dvr-grid">
+
+        <div class="dvr-card discussion">
+          <div class="eb">Classification 1</div>
+          <h4 class="display">Discussion <em>· narrative</em></h4>
+          <div class="what">Captures what was said. No commitments, no follow-through. Searchable record for posterity and context.</div>
+          <div class="example">
+            <b>Example:</b> "The class average rose from 64% to 71% in Term 2. Concerns raised about Friday afternoon attendance dropping. Parents asked the Form Master about possible interventions."
+          </div>
+          <div class="effect">
+            <div class="lab">Downstream effect</div>
+            <div class="val">Stays in the minutes record. <b>No system actions triggered.</b> Indexed for full-text search so future meetings can reference. No SMS, no nudges, no accountability.</div>
+          </div>
+        </div>
+
+        <div class="dvr-card action">
+          <div class="eb">Classification 2</div>
+          <h4 class="display">Action <em>· someone owns it</em></h4>
+          <div class="what">A specific commitment. One person owns it, one deadline, one outcome. Auto-tracked until done.</div>
+          <div class="example">
+            <b>Example:</b> "Mr Adjei to confirm Cape Coast trip date with the Headmaster by 7 June. Reminder SMS day-before. Status visible to Form PTA Chair and Secretary."
+          </div>
+          <div class="effect">
+            <div class="lab">Downstream effect</div>
+            <div class="val"><b>Adds to owner's task list.</b> Sends SMS reminder day before deadline. Surfaces as overdue if deadline passes without status update. Next PTA meeting's agenda auto-populates with outstanding actions.</div>
+          </div>
+        </div>
+
+        <div class="dvr-card resolution">
+          <div class="eb">Classification 3</div>
+          <h4 class="display">Resolution <em>· binding governance</em></h4>
+          <div class="what">A formal decision adopted by vote. Constitutes the PTA's collective will. May trigger financial, operational, or policy consequences.</div>
+          <div class="example">
+            <b>Example:</b> "Resolution Form-2-GA-A-2026-Q2-001 · Cape Coast trip funding adopted at GHS 150/student + GHS 1,600 from Form PTA surplus. Treasurer mandated to issue invoices by 5 June."
+          </div>
+          <div class="effect">
+            <div class="lab">Downstream effect</div>
+            <div class="val"><b>Creates a numbered resolution record</b> citable in future meetings. If financial, auto-creates the fee category and invoicing schedule. <b>For General PTA, escalates to Headmaster for awareness.</b> Cannot be edited after adoption — only amended by future resolution.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Why classify at all</h4>
+      <ul>
+        <li><b>Traditional PTA minutes file everything together.</b> A typed page with all the discussion, all the decisions, all the actions in one block of prose. Nothing happens after filing.</li>
+        <li><b>Classification routes the output.</b> Discussion → record. Action → tracker. Resolution → binding registry. Same Secretary, same notebook, different downstream behaviour.</li>
+        <li><b>It's also how the General PTA tracks Form PTAs.</b> When a Form PTA resolves on something that affects the school (e.g., dues levy proposal), the resolution surfaces up. Discussions don't.</li>
+        <li><b>The Secretary doesn't choose lightly.</b> A "resolution" tag means a vote was held — vote counts are mandatory. If there was no vote, it's discussion or action.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

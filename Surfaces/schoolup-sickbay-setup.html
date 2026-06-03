@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Sickbay setup &amp; configuration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:720px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1280px; }
+.sidebar.tall { min-height:1640px; }
+.sidebar.taller { min-height:1900px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces', serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.nav-item .new-tag { margin-left:auto; background:var(--gold); color:var(--navy); font-size:8px; font-weight:700; letter-spacing:0.06em; padding:1px 5px; border-radius:100px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; background:var(--navy); border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:720px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.body { padding:28px 36px 60px; }
+.mode-strip { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:32px; }
+.mode-card { background:var(--surface); border:1.5px solid var(--border); border-radius:14px; padding:20px 22px; position:relative; cursor:pointer; }
+.mode-card.active { border-color:var(--gold); border-width:2px; background:linear-gradient(180deg, var(--surface) 0%, var(--gold-bg) 100%); }
+.mode-card.active::after { content:""; position:absolute; top:14px; right:14px; width:18px; height:18px; border-radius:50%; background:var(--gold); }
+.mode-card .mode-tag { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.mode-card .mode-name { font-family:'Fraunces', serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; margin-bottom:6px; }
+.mode-card .mode-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.mode-card .mode-desc { font-size:12px; color:var(--navy-2); line-height:1.55; margin-bottom:10px; }
+.mode-card .mode-stat { font-size:10px; color:var(--navy-3); font-style:italic; padding-top:10px; border-top:1px solid var(--border); }
+.mode-card .mode-stat b { font-family:'JetBrains Mono', monospace; color:var(--navy); font-style:normal; font-weight:600; }
+.mode-card.active .mode-stat { border-top-color:var(--gold-soft); }
+.col-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:24px; }
+.col-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:24px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.card-head { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:baseline; }
+.card-head .ch-title { font-family:'Fraunces', serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.card-head .ch-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.card-head .ch-meta { font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.06em; }
+.card-body { padding:14px 20px 18px; }
+.staff-row { display:grid; grid-template-columns:36px 1fr auto; gap:12px; padding:11px 0; align-items:center; border-bottom:1px solid var(--border); }
+.staff-row:last-child { border-bottom:none; }
+.staff-row .av { width:36px; height:36px; border-radius:50%; background:var(--gold-bg); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:700; font-size:12px; }
+.staff-row .av.prefect { background:var(--green-bg); color:var(--green); }
+.staff-row .av.visiting { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+.staff-row .info .name { font-weight:600; font-size:13px; color:var(--navy); }
+.staff-row .info .role { font-size:11px; color:var(--navy-3); margin-top:1px; }
+.staff-row .info .role b { color:var(--navy-2); font-weight:600; }
+.staff-row .status-pill { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:3px 9px; border-radius:100px; }
+.status-pill.on-shift { background:var(--green-bg); color:var(--green); }
+.status-pill.scheduled { background:var(--gold-bg); color:var(--gold); }
+.status-pill.weekly { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+.status-pill.roster { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+.add-staff { margin-top:8px; padding:9px 14px; font-size:11px; font-weight:600; color:var(--gold); border:1px dashed var(--gold); background:transparent; border-radius:8px; cursor:pointer; text-align:left; display:flex; align-items:center; gap:8px; font-family:inherit; width:100%; }
+.add-staff::before { content:"+"; display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:var(--surface); font-weight:700; font-size:12px; }
+.capacity-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:18px; }
+.cap-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+.cap-tile .lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.cap-tile .val { font-family:'Fraunces', serif; font-size:28px; font-weight:600; letter-spacing:-0.018em; margin-top:4px; line-height:1.05; }
+.cap-tile .val em { font-style:italic; color:var(--gold); }
+.cap-tile .val .sub-num { font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--navy-3); font-weight:500; }
+.cap-tile .desc { font-size:10px; color:var(--navy-3); margin-top:3px; font-style:italic; }
+.cap-tile .desc b { color:var(--navy-2); font-style:normal; font-weight:600; }
+.hours-table { border-collapse:collapse; width:100%; }
+.hours-table th { background:var(--bg); padding:9px 14px; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.hours-table th:last-child { text-align:right; }
+.hours-table td { padding:10px 14px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.hours-table td:last-child { text-align:right; }
+.hours-table tr:last-child td { border-bottom:none; }
+.hours-table td.lbl { font-weight:600; color:var(--navy); }
+.hours-table td.time { font-family:'JetBrains Mono', monospace; color:var(--navy-2); font-weight:500; }
+.hours-table td .anchor-tag { display:inline-block; font-size:8px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:1px 6px; border-radius:100px; background:var(--gold); color:var(--navy); margin-left:6px; }
+.hours-table td .desc { display:block; font-size:10px; color:var(--navy-3); margin-top:1px; }
+.drug-table { width:100%; border-collapse:collapse; }
+.drug-table th { background:var(--bg); padding:8px 12px; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.drug-table th.r { text-align:right; }
+.drug-table td { padding:9px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.drug-table td.r { text-align:right; font-family:'JetBrains Mono', monospace; font-weight:600; }
+.drug-table td.name b { color:var(--navy); }
+.drug-table td.name .sub { display:block; font-size:10px; color:var(--navy-3); font-style:italic; margin-top:1px; }
+.drug-table tr:last-child td { border-bottom:none; }
+.stock-pill { display:inline-block; padding:2px 8px; border-radius:100px; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; }
+.stock-pill.ok { background:var(--green-bg); color:var(--green); }
+.stock-pill.low { background:var(--warn-bg); color:var(--warn); }
+.stock-pill.critical { background:var(--terra-bg); color:var(--terra); }
+.hospital-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 18px; display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; }
+.hospital-card + .hospital-card { margin-top:8px; }
+.hospital-card .h-info .h-name { font-family:'Fraunces', serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; margin-bottom:2px; }
+.hospital-card .h-info .h-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.hospital-card .h-info .h-meta { font-size:11px; color:var(--navy-3); display:flex; gap:14px; flex-wrap:wrap; }
+.hospital-card .h-info .h-meta span { display:flex; gap:5px; align-items:center; }
+.hospital-card .h-info .h-meta b { color:var(--navy-2); font-weight:600; }
+.hospital-card .h-info .h-meta .dot { color:var(--gold); }
+.hospital-card .h-tags { display:flex; gap:6px; flex-wrap:wrap; }
+.tag { display:inline-block; padding:3px 9px; border-radius:100px; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; }
+.tag.nhis { background:var(--green-bg); color:var(--green); }
+.tag.private { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+.tag.primary-ref { background:var(--gold); color:var(--navy); }
+.tag.after-hours { background:var(--gold-bg); color:var(--gold); }
+.standing-list { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.standing-row { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; }
+.standing-row .s-complaint { font-family:'Fraunces', serif; font-weight:600; font-size:13px; letter-spacing:-0.005em; color:var(--navy); margin-bottom:3px; }
+.standing-row .s-treat { font-size:11px; color:var(--navy-2); line-height:1.5; }
+.standing-row .s-treat b { color:var(--navy); font-weight:600; }
+.standing-row .s-treat .arrow { color:var(--gold); margin:0 4px; }
+.policy-anchor { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--gold-soft); border-radius:14px; padding:24px 28px; position:relative; overflow:hidden; }
+.policy-anchor::before { content:""; position:absolute; top:-30px; right:-30px; width:140px; height:140px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.policy-anchor .pa-eyebrow { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:10px; position:relative; }
+.policy-anchor h3 { font-family:'Fraunces', serif; font-size:24px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; margin-bottom:14px; color:var(--bg); position:relative; }
+.policy-anchor h3 em { font-style:italic; color:var(--gold); font-weight:400; }
+.policy-anchor .pa-body { font-size:13px; color:var(--gold-soft); line-height:1.65; position:relative; }
+.policy-anchor .pa-body b { color:var(--bg); font-weight:600; }
+.notify-rule { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:0; overflow:hidden; }
+.notify-tier { display:grid; grid-template-columns:60px 1fr 220px; gap:18px; align-items:center; padding:18px 22px; border-bottom:1px solid var(--border); }
+.notify-tier:last-child { border-bottom:none; }
+.notify-tier .tier-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); text-align:center; }
+.notify-tier .tier-body .t-trigger { font-family:'Fraunces', serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; margin-bottom:4px; }
+.notify-tier .tier-body .t-desc { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.notify-tier .tier-body .t-desc b { color:var(--navy); font-weight:600; }
+.notify-tier.bg-1 { background:var(--bg); }
+.notify-tier.bg-2 { background:var(--gold-bg); }
+.notify-tier.bg-3 { background:linear-gradient(90deg, var(--terra-bg) 0%, var(--surface) 100%); }
+.notify-action { font-size:11px; color:var(--navy-2); }
+.notify-action .action-tag { display:inline-block; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:100px; margin-bottom:5px; }
+.notify-action .action-tag.none { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.notify-action .action-tag.notify { background:var(--gold-bg); color:var(--gold); }
+.notify-action .action-tag.immediate { background:var(--terra); color:var(--surface); }
+.notify-action .a-channel { font-size:10px; color:var(--navy-3); font-style:italic; }
+.notify-action .a-channel b { color:var(--navy-2); font-style:normal; font-weight:600; }
+.cluster-note { background:var(--bg); border:1px dashed var(--border-2); border-radius:10px; padding:14px 18px; margin-top:16px; font-size:12px; color:var(--navy-3); font-style:italic; }
+.cluster-note b { color:var(--navy-2); font-style:normal; font-weight:600; }
+.save-bar { background:var(--surface); border:2px solid var(--gold); border-radius:14px; padding:18px 24px; margin-top:32px; display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; }
+.save-bar .sb-note { font-size:12px; color:var(--navy-3); line-height:1.55; }
+.save-bar .sb-note b { color:var(--navy); font-weight:600; }
+.save-bar .sb-actions { display:flex; gap:8px; }
+@media (max-width:1280px) { .layout { grid-template-columns:1fr; } .col-2, .col-3 { grid-template-columns:1fr; } .mode-strip { grid-template-columns:1fr; } .standing-list { grid-template-columns:1fr; } .capacity-strip { grid-template-columns:repeat(2, 1fr); } .notify-tier { grid-template-columns:40px 1fr; } .notify-tier .notify-action { grid-column:2; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Sickbay · Setup &amp; configuration</div>
+  <span class="mvp-tag">SHS · Boarding · Sickbay batch</span>
+  <h1 class="display">When the sickbay <em>holds the dose</em></h1>
+  <div class="gold-rule"></div>
+  <p>Sickbay setup tells the system three things: what kind of medical capacity this school actually has, who runs it, and which hospitals catch the cases the sickbay can't. The Ghanaian reality is bimodal — about half of public SHS have no sickbay at all and rely on student health prefects with hospital referral. The other half range from a first-aid station with a matron to a full sickbay with beds, isolation, and a visiting doctor. One module, three operational modes.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Mode &amp; staff</div>
+    <div class="section-meta">Asankrangwa SHS · Mode B · 4 staff registered</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / sickbay / setup</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">AS</div>
+            <div>
+              <div class="school-name">Asankrangwa SHS</div>
+              <div class="school-meta">SHS · Western North</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Boarding</div>
+          <div class="nav-item active"><div class="ic"></div>Sickbay<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub active">Setup</div>
+          <div class="nav-item sub">Today</div>
+          <div class="nav-item sub">Chronic register</div>
+          <div class="nav-item sub">Referrals</div>
+          <div class="nav-item"><div class="ic"></div>Communications</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">AM</div>
+            <div><div class="meta-name">Mr Asare-Mensah</div><div class="meta-role">Headmaster</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Sickbay</a> / Setup &amp; configuration</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Sickbay <em>configuration</em></h1>
+                <div class="lede">How your sickbay is run · <b>mode</b>, <b>staff</b>, <b>capacity</b>, <b>standing orders</b>, <b>referral hospitals</b>, and <b>policy anchors</b> · all editable here</div>
+              </div>
+              <div class="actions">
+                <button class="btn">SHEP policy ↗</button>
+                <button class="btn gold">Save changes</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+            <h3 class="display" style="font-size:18px;font-weight:600;margin-bottom:14px;color:var(--navy);"><em style="font-style:italic;color:var(--gold);font-weight:400;">Sickbay mode</em> · what kind of medical operation is this?</h3>
+
+            <div class="mode-strip">
+              <div class="mode-card">
+                <div class="mode-tag">Mode A</div>
+                <div class="mode-name display">Full <em>sickbay</em></div>
+                <div class="mode-desc">Beds, isolation ward, resident matron, visiting doctor, drug stock. Can admit overnight, manage outbreaks on-site, run scheduled medication rounds.</div>
+                <div class="mode-stat">Typical for <b>Cat. A</b> schools · ~16% of public SHS</div>
+              </div>
+              <div class="mode-card active">
+                <div class="mode-tag">Mode B · selected</div>
+                <div class="mode-name display">First-aid <em>station</em></div>
+                <div class="mode-desc">Matron on-site, basic capacity for short-stay observation, drug stock, weekly visiting doctor. Refers serious cases to district hospital within hours.</div>
+                <div class="mode-stat">Typical for <b>Cat. B–C</b> schools · ~30% of public SHS</div>
+              </div>
+              <div class="mode-card">
+                <div class="mode-tag">Mode C</div>
+                <div class="mode-name display">Referral <em>only</em></div>
+                <div class="mode-desc">No sickbay. School Health Prefect roster handles first response, all cases route to nearest hospital. SHEP-coordinated, no on-site clinical capacity.</div>
+                <div class="mode-stat">~59% of public SHS without sickbays use this</div>
+              </div>
+            </div>
+
+            <div class="col-2">
+              <div class="card">
+                <div class="card-head">
+                  <div class="ch-title display">Clinical <em>staff</em></div>
+                  <div class="ch-meta">2 active · 1 visiting</div>
+                </div>
+                <div class="card-body">
+                  <div class="staff-row">
+                    <div class="av">AB</div>
+                    <div class="info">
+                      <div class="name">Mrs Akua Bediako</div>
+                      <div class="role">Senior Matron · <b>N&amp;MC #N-04827</b> · 11 years here</div>
+                    </div>
+                    <div class="status-pill on-shift">On shift</div>
+                  </div>
+                  <div class="staff-row">
+                    <div class="av">GA</div>
+                    <div class="info">
+                      <div class="name">Ms Grace Antwi</div>
+                      <div class="role">Assistant Matron · CHN cert. · weekend &amp; nights</div>
+                    </div>
+                    <div class="status-pill scheduled">Off · back 18:00</div>
+                  </div>
+                  <div class="staff-row">
+                    <div class="av visiting">DM</div>
+                    <div class="info">
+                      <div class="name">Dr K. Mensah</div>
+                      <div class="role">Visiting doctor · <b>Asankrangwa Govt. Hospital</b> · Thursdays 14:00–17:00</div>
+                    </div>
+                    <div class="status-pill weekly">Tomorrow</div>
+                  </div>
+                  <button class="add-staff">Add clinical staff member</button>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head">
+                  <div class="ch-title display">School Health <em>Prefects</em></div>
+                  <div class="ch-meta">6 students · SHEP-aligned</div>
+                </div>
+                <div class="card-body">
+                  <div class="staff-row">
+                    <div class="av prefect">FT</div>
+                    <div class="info">
+                      <div class="name">F. Tetteh · F3 BUS</div>
+                      <div class="role">Senior · <b>Aggrey House</b> · 06:30 round assist</div>
+                    </div>
+                    <div class="status-pill roster">Roster lead</div>
+                  </div>
+                  <div class="staff-row">
+                    <div class="av prefect">AO</div>
+                    <div class="info">
+                      <div class="name">A. Osei · F3 GA</div>
+                      <div class="role">Senior · <b>Aggrey House</b> · first-aid trained</div>
+                    </div>
+                    <div class="status-pill roster">Roster</div>
+                  </div>
+                  <div class="staff-row">
+                    <div class="av prefect">EA</div>
+                    <div class="info">
+                      <div class="name">E. Asare · F2 SCI</div>
+                      <div class="role">Slessor House · trained Feb 2026</div>
+                    </div>
+                    <div class="status-pill roster">Roster</div>
+                  </div>
+                  <div class="staff-row">
+                    <div class="av prefect">+3</div>
+                    <div class="info">
+                      <div class="name">3 more prefects · Aggrey, Kufuor, Nkrumah</div>
+                      <div class="role">Full roster covers all 6 houses · two-week rotation</div>
+                    </div>
+                    <div class="status-pill roster">View all</div>
+                  </div>
+                  <button class="add-staff">Add School Health Prefect</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Mode &amp; staff</h4>
+      <ul>
+        <li><b>Mode picker shows three operational shapes the same module supports.</b> The Ghanaian reality is that <b>49% of public SHS have no sickbay</b> and another large share have only a first-aid station. One schema, three modes via a <span class="mono">sickbay_mode_enum</span> field; surfaces below adapt their affordances based on this choice.</li>
+        <li><b>Asankrangwa is Mode B</b> · first-aid station with a Matron, basic stock, weekly visiting doctor. Selected card has gold gradient + filled gold dot top-right. The selected mode drives every other setting on this page.</li>
+        <li><b>Each mode shows real percentages</b> from the school-based health delivery research. Gives the headmaster grounding in what's typical rather than presenting modes as arbitrary choices.</li>
+        <li><b>Two-column staff register: Clinical staff vs School Health Prefects.</b> Different governance — clinical staff are credentialed adults, prefects are student volunteers under SHEP. Each card carries the relevant credential format: <b>N&amp;MC number</b> for the matron, <b>SHEP roster</b> for prefects.</li>
+        <li><b>Matron's N&amp;MC license number is captured as a structured field.</b> Same pattern as teachers' NTC numbers in the staff records. The Nursing &amp; Midwifery Council is the regulator (LI 683, 1971); audit-relevant if the matron's clinical scope is ever questioned.</li>
+        <li><b>F. Tetteh appears as Senior School Health Prefect</b> · continues the named-student narrative from boarding surface 2 where he was established as Aggrey's Sick Bay Prefect. Cross-batch consistency; the same student appears with the same role.</li>
+        <li><b>Status pills are short and operational:</b> "On shift" / "Off · back 18:00" / "Tomorrow" / "Roster lead". Not titles, not credentials — what's true about this person right now. The matron is here; the assistant matron returns in 4 hours.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Capacity &amp; hours</div>
+    <div class="section-meta">8 beds total · 2 isolation · 06:30 anchor round</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / sickbay / setup#capacity</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar tall">
+          <div class="brand">
+            <div class="logo-mini">AS</div>
+            <div>
+              <div class="school-name">Asankrangwa SHS</div>
+              <div class="school-meta">SHS · Western North</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Boarding</div>
+          <div class="nav-item active"><div class="ic"></div>Sickbay<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub active">Setup</div>
+          <div class="nav-item sub">Today</div>
+          <div class="nav-item sub">Chronic register</div>
+          <div class="nav-item sub">Referrals</div>
+          <div class="nav-item"><div class="ic"></div>Communications</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">AM</div>
+            <div><div class="meta-name">Mr Asare-Mensah</div><div class="meta-role">Headmaster</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Sickbay</a> / Setup / Capacity &amp; hours</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Capacity &amp; <em>hours</em></h1>
+                <div class="lede">Beds, isolation, operating hours, and the <b>06:30 medication round</b> · the anchor that defines a boarding sickbay's daily shape</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Reset to defaults</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+            <h3 class="display" style="font-size:16px;font-weight:600;margin-bottom:12px;color:var(--navy);">Bed capacity</h3>
+
+            <div class="capacity-strip">
+              <div class="cap-tile">
+                <div class="lbl">General beds</div>
+                <div class="val display"><em>6</em></div>
+                <div class="desc">Mixed-use · short observation</div>
+              </div>
+              <div class="cap-tile">
+                <div class="lbl">Isolation beds</div>
+                <div class="val display"><em>2</em></div>
+                <div class="desc">Cross-infection containment</div>
+              </div>
+              <div class="cap-tile">
+                <div class="lbl">Currently occupied</div>
+                <div class="val display"><em>1</em><span class="sub-num"> / 8</span></div>
+                <div class="desc"><b>Adwoa Mensa</b> · bed 3 · since 09:14</div>
+              </div>
+              <div class="cap-tile">
+                <div class="lbl">Avg. weekly load</div>
+                <div class="val display"><em>2.4</em><span class="sub-num"> beds</span></div>
+                <div class="desc">Semester 2 to date · was 3.1 in Semester 1</div>
+              </div>
+            </div>
+
+            <h3 class="display" style="font-size:16px;font-weight:600;margin:24px 0 12px;color:var(--navy);">Operating hours &amp; rounds</h3>
+
+            <div class="card">
+              <table class="hours-table">
+                <thead>
+                  <tr>
+                    <th>Schedule slot</th>
+                    <th>Time window</th>
+                    <th>Staffing</th>
+                    <th>Day type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="lbl">Morning medication round<span class="anchor-tag">Anchor</span><span class="desc">Chronic-condition students collect dose · sickle cell hydration check</span></td>
+                    <td class="time">06:30 – 07:00</td>
+                    <td>Matron + Prefect</td>
+                    <td>Every school day</td>
+                  </tr>
+                  <tr>
+                    <td class="lbl">Morning clinic<span class="desc">Walk-in · students before assembly</span></td>
+                    <td class="time">07:00 – 08:00</td>
+                    <td>Matron</td>
+                    <td>Every school day</td>
+                  </tr>
+                  <tr>
+                    <td class="lbl">Daytime clinic<span class="desc">Walk-ins with HM exeat slip from class</span></td>
+                    <td class="time">10:00 – 17:00</td>
+                    <td>Matron</td>
+                    <td>Mon · Tue · Wed · Thu · Fri</td>
+                  </tr>
+                  <tr>
+                    <td class="lbl">Noon medication round<span class="desc">Mid-day chronic doses · post-lunch</span></td>
+                    <td class="time">12:30 – 13:00</td>
+                    <td>Matron</td>
+                    <td>Every school day</td>
+                  </tr>
+                  <tr>
+                    <td class="lbl">Visiting doctor<span class="desc">Dr K. Mensah · admissions reviewed</span></td>
+                    <td class="time">14:00 – 17:00</td>
+                    <td>Doctor + Matron</td>
+                    <td>Thursdays</td>
+                  </tr>
+                  <tr>
+                    <td class="lbl">Evening medication round<span class="desc">After prep · pre-bed doses</span></td>
+                    <td class="time">21:00 – 21:30</td>
+                    <td>Matron or Asst.</td>
+                    <td>Every day incl. weekend</td>
+                  </tr>
+                  <tr>
+                    <td class="lbl">On-call overnight<span class="desc">Asst. Matron sleeps in adjoining room</span></td>
+                    <td class="time">22:00 – 06:00</td>
+                    <td>Asst. Matron</td>
+                    <td>Every day · 365</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Capacity &amp; hours</h4>
+      <ul>
+        <li><b>Eight beds: 6 general + 2 isolation.</b> Realistic Mode-B sickbay scale. Isolation beds are separate because cross-infection containment is a real Term-2 concern as the malaria/flu season approaches. The two numbers can't pool.</li>
+        <li><b>Currently occupied tile shows <span class="mono">1 / 8</span> with the patient named</b> · Adwoa Mensa, bed 3, since 09:14. Real-time state cross-references the live ops surface. Click-through to that surface from this tile.</li>
+        <li><b>Avg. weekly load: 2.4 beds.</b> Operational baseline. Semester 1 was 3.1 (malaria season). Trend data tells the headmaster when stock or capacity needs review — a Term-2 rise above 3.5 would signal an outbreak.</li>
+        <li><b>06:30 morning round has the gold "Anchor" tag.</b> This is the canonical Ghanaian boarding-sickbay routine — verified across multiple school medical policies. Students surrender meds on arrival to the boarding house; matron dispenses at 06:30 before breakfast. The anchor tag tells the schema this slot can't be moved; everything else flexes around it.</li>
+        <li><b>Seven schedule slots cover the canonical Mode-B day:</b> morning round + morning clinic + daytime clinic + noon round + visiting doctor + evening round + overnight on-call. Each row has a day-type column because some slots are weekday-only, some run 365.</li>
+        <li><b>Description sub-line on each slot</b> tells the matron what the slot is operationally about · "chronic-condition students collect dose · sickle cell hydration check" for the morning round. Schema captures intent, not just time. When the matron is on leave and a substitute fills in, the description is the handoff document.</li>
+        <li><b>Visiting doctor scheduled Thursdays 14:00–17:00.</b> Mode-B reality — most schools at this scale don't have a resident doctor; they have a visiting one from the district hospital. The schedule is per-school-configurable; some have daily, some have fortnightly.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Standing orders &amp; drug stock</div>
+    <div class="section-meta">8 first-line treatments · 24 stock items · 3 reorder alerts</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / sickbay / setup#standing-orders</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar taller">
+          <div class="brand">
+            <div class="logo-mini">AS</div>
+            <div>
+              <div class="school-name">Asankrangwa SHS</div>
+              <div class="school-meta">SHS · Western North</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Boarding</div>
+          <div class="nav-item active"><div class="ic"></div>Sickbay<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub active">Setup</div>
+          <div class="nav-item sub">Today</div>
+          <div class="nav-item sub">Chronic register</div>
+          <div class="nav-item sub">Referrals</div>
+          <div class="nav-item"><div class="ic"></div>Communications</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">AB</div>
+            <div><div class="meta-name">Mrs Bediako</div><div class="meta-role">Senior Matron</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Sickbay</a> / Setup / Standing orders &amp; stock</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Standing orders &amp; <em>stock</em></h1>
+                <div class="lede">First-line treatments the Matron is cleared to administer without doctor sign-off · plus the master drug stock register · <b>3 items at or below reorder point</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn">N&amp;MC scope ↗</button>
+                <button class="btn">+ Add standing order</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+            <h3 class="display" style="font-size:16px;font-weight:600;margin-bottom:12px;color:var(--navy);"><em style="font-style:italic;color:var(--gold);font-weight:400;">Standing orders</em> · what the Matron treats without escalation</h3>
+
+            <p style="font-size:12px;color:var(--navy-3);max-width:740px;line-height:1.6;margin-bottom:16px;">These are the first-line treatments registered with the visiting doctor under N&amp;MC scope of practice. Anything outside this list waits for Dr Mensah on Thursdays — or escalates to referral.</p>
+
+            <div class="standing-list">
+              <div class="standing-row">
+                <div class="s-complaint display">Headache · uncomplicated</div>
+                <div class="s-treat"><b>Paracetamol</b> 500mg <span class="arrow">→</span> 1–2 tabs · rest 30 min · review</div>
+              </div>
+              <div class="standing-row">
+                <div class="s-complaint display">Menstrual pain</div>
+                <div class="s-treat"><b>Paracetamol</b> 500mg + hot water bottle <span class="arrow">→</span> rest in sickbay if needed</div>
+              </div>
+              <div class="standing-row">
+                <div class="s-complaint display">Sore throat · viral</div>
+                <div class="s-treat"><b>Saline gargle</b> + paracetamol <span class="arrow">→</span> review 24h · refer if fever rises</div>
+              </div>
+              <div class="standing-row">
+                <div class="s-complaint display">Diarrhoea · uncomplicated</div>
+                <div class="s-treat"><b>ORS sachet</b> + observation <span class="arrow">→</span> refer if &gt;6 episodes or fever</div>
+              </div>
+              <div class="standing-row">
+                <div class="s-complaint display">Suspected malaria</div>
+                <div class="s-treat"><b>RDT test</b> · if positive <span class="arrow">→</span> AL first dose + refer to OPD same day</div>
+              </div>
+              <div class="standing-row">
+                <div class="s-complaint display">Minor cuts &amp; abrasions</div>
+                <div class="s-treat"><b>Saline wash</b> + povidone iodine + dressing <span class="arrow">→</span> tetanus check on chronic register</div>
+              </div>
+              <div class="standing-row">
+                <div class="s-complaint display">Sprains · sports injury</div>
+                <div class="s-treat"><b>RICE protocol</b> + paracetamol <span class="arrow">→</span> X-ray referral if weight-bearing fails</div>
+              </div>
+              <div class="standing-row">
+                <div class="s-complaint display">Insect bites · allergic skin</div>
+                <div class="s-treat"><b>Chlorpheniramine</b> 4mg + topical calamine <span class="arrow">→</span> refer if facial swelling</div>
+              </div>
+            </div>
+
+            <h3 class="display" style="font-size:16px;font-weight:600;margin:32px 0 12px;color:var(--navy);">Drug stock register · top 12 of 24 items</h3>
+
+            <div class="card">
+              <table class="drug-table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th class="r">In stock</th>
+                    <th class="r">Reorder at</th>
+                    <th class="r">Last restocked</th>
+                    <th class="r">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td class="name"><b>Paracetamol 500mg</b><span class="sub">tablets · adult dose</span></td><td class="r">412</td><td class="r">200</td><td class="r">28 Apr</td><td class="r"><span class="stock-pill ok">OK</span></td></tr>
+                  <tr><td class="name"><b>ORS sachets</b><span class="sub">oral rehydration · standard</span></td><td class="r">84</td><td class="r">40</td><td class="r">2 May</td><td class="r"><span class="stock-pill ok">OK</span></td></tr>
+                  <tr><td class="name"><b>Artemether-lumefantrine</b><span class="sub">AL · 20/120mg · malaria first-line</span></td><td class="r">14</td><td class="r">12</td><td class="r">14 Apr</td><td class="r"><span class="stock-pill low">Low</span></td></tr>
+                  <tr><td class="name"><b>Malaria RDT kits</b><span class="sub">rapid diagnostic · SD Bioline</span></td><td class="r">22</td><td class="r">20</td><td class="r">20 Apr</td><td class="r"><span class="stock-pill low">Low</span></td></tr>
+                  <tr><td class="name"><b>Hydroxyurea 500mg</b><span class="sub">sickle cell chronic · for Adwoa Mensa</span></td><td class="r">8</td><td class="r">14</td><td class="r">15 Apr</td><td class="r"><span class="stock-pill critical">Reorder</span></td></tr>
+                  <tr><td class="name"><b>Salbutamol inhaler</b><span class="sub">100mcg · asthma rescue</span></td><td class="r">3</td><td class="r">2</td><td class="r">5 Mar</td><td class="r"><span class="stock-pill ok">OK</span></td></tr>
+                  <tr><td class="name"><b>Chlorpheniramine 4mg</b><span class="sub">antihistamine · allergies</span></td><td class="r">68</td><td class="r">40</td><td class="r">28 Apr</td><td class="r"><span class="stock-pill ok">OK</span></td></tr>
+                  <tr><td class="name"><b>Povidone iodine 10%</b><span class="sub">antiseptic · 100ml</span></td><td class="r">4 bottles</td><td class="r">2</td><td class="r">12 Mar</td><td class="r"><span class="stock-pill ok">OK</span></td></tr>
+                  <tr><td class="name"><b>Adhesive bandages</b><span class="sub">various sizes</span></td><td class="r">240</td><td class="r">100</td><td class="r">2 May</td><td class="r"><span class="stock-pill ok">OK</span></td></tr>
+                  <tr><td class="name"><b>Sterile gauze</b><span class="sub">10cm × 10cm packs</span></td><td class="r">38</td><td class="r">30</td><td class="r">2 May</td><td class="r"><span class="stock-pill ok">OK</span></td></tr>
+                  <tr><td class="name"><b>Calamine lotion</b><span class="sub">topical · 100ml</span></td><td class="r">2</td><td class="r">3</td><td class="r">14 Feb</td><td class="r"><span class="stock-pill critical">Reorder</span></td></tr>
+                  <tr><td class="name"><b>Sanitary pads</b><span class="sub">menstrual supply · school-issued</span></td><td class="r">112</td><td class="r">60</td><td class="r">28 Apr</td><td class="r"><span class="stock-pill ok">OK</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="cluster-note"><b>Three items below reorder point</b> · Hydroxyurea (Adwoa's chronic supply) · Calamine lotion · Malaria RDT kits are within margin. The 7-day procurement window means Hydroxyurea needs ordering this week to avoid a gap in Adwoa Mensa's chronic dose schedule.</div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Standing orders &amp; stock</h4>
+      <ul>
+        <li><b>Standing orders are the Matron's clinical authority</b>, registered with the visiting doctor under N&amp;MC scope of practice. The list defines what she can treat without escalation; everything else either waits for Dr Mensah on Thursdays or routes to referral.</li>
+        <li><b>Eight standing orders cover the canonical Ghanaian SHS sickbay caseload:</b> headache, menstrual pain, sore throat, diarrhoea, suspected malaria, cuts, sprains, allergic skin reactions. Each pairs a complaint with the first-line treatment and the escalation trigger — when the treatment fails or the symptoms cross a line, refer.</li>
+        <li><b>Suspected malaria has the most operationally specific protocol:</b> RDT test first, then if positive, AL first dose + refer to OPD same day. Malaria is the top SHS complaint by volume in Ghana (especially Semester 2 onward as rainy season begins); the protocol matches Ghana National Drugs Programme guidance.</li>
+        <li><b>Cuts &amp; abrasions include a tetanus-check cross-reference</b> to the chronic register. The fields aren't isolated — a routine first-aid event triggers a check against the student's immunization history.</li>
+        <li><b>Drug stock register shows 12 of 24 items.</b> Three categories: OK (above reorder point) / Low (at or just above) / Reorder (below). The 47% of schools that cite "inadequate drug supply" as their top challenge need a stock register that surfaces this proactively, not after the fact.</li>
+        <li><b>Hydroxyurea has a sub-line "for Adwoa Mensa".</b> Chronic-condition meds are tied to specific students through the chronic register. If Adwoa transfers or graduates, the schema knows her supply was a function of her case; the stock returns to general inventory.</li>
+        <li><b>Critical reorder warning uses terra-bg pill, not red alarm.</b> Calm-but-clear urgency. The dashed cluster-note below the table translates the numbers into operational consequence: "Hydroxyurea needs ordering this week to avoid a gap in Adwoa Mensa's chronic dose schedule." The system narrates what action is needed, not just what's low.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Referral hospitals</div>
+    <div class="section-meta">4 facilities · 1 primary · NHIS-acceptance tracked</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / sickbay / setup#hospitals</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">AS</div>
+            <div>
+              <div class="school-name">Asankrangwa SHS</div>
+              <div class="school-meta">SHS · Western North</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Boarding</div>
+          <div class="nav-item active"><div class="ic"></div>Sickbay<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub active">Setup</div>
+          <div class="nav-item sub">Today</div>
+          <div class="nav-item sub">Chronic register</div>
+          <div class="nav-item sub">Referrals</div>
+          <div class="nav-item"><div class="ic"></div>Communications</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">AM</div>
+            <div><div class="meta-name">Mr Asare-Mensah</div><div class="meta-role">Headmaster</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Sickbay</a> / Setup / Referral hospitals</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Where serious <em>cases go</em></h1>
+                <div class="lede">When the sickbay can't, the hospital does · <b>Asankrangwa Government</b> is the primary referral; three more cover specialised cases and after-hours · NHIS acceptance tracked because <b>parent cost matters</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn">+ Add hospital</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+            <div class="hospital-card" style="border-color:var(--gold);border-width:2px;background:linear-gradient(180deg,var(--surface) 0%, var(--gold-bg) 100%);">
+              <div class="h-info">
+                <div class="h-name display">Asankrangwa Government <em>Hospital</em></div>
+                <div class="h-meta">
+                  <span><b>4.2 km</b></span>
+                  <span class="dot">·</span>
+                  <span>OPD · in-patient · X-ray · pharmacy</span>
+                  <span class="dot">·</span>
+                  <span>Dr K. Mensah (visiting MO) here</span>
+                  <span class="dot">·</span>
+                  <span>24h emergency</span>
+                </div>
+              </div>
+              <div class="h-tags">
+                <span class="tag primary-ref">Primary referral</span>
+                <span class="tag nhis">NHIS accepted</span>
+              </div>
+            </div>
+
+            <div class="hospital-card">
+              <div class="h-info">
+                <div class="h-name display">Wassa Akropong District <em>Hospital</em></div>
+                <div class="h-meta">
+                  <span><b>38 km</b></span>
+                  <span class="dot">·</span>
+                  <span>Higher capacity · 2 ambulances</span>
+                  <span class="dot">·</span>
+                  <span>For cases beyond Asankrangwa's scope</span>
+                </div>
+              </div>
+              <div class="h-tags">
+                <span class="tag nhis">NHIS accepted</span>
+                <span class="tag after-hours">After-hours backup</span>
+              </div>
+            </div>
+
+            <div class="hospital-card">
+              <div class="h-info">
+                <div class="h-name display">St. Martin's <em>Clinic</em> · Asankrangwa</div>
+                <div class="h-meta">
+                  <span><b>1.8 km</b></span>
+                  <span class="dot">·</span>
+                  <span>Private · faster waits</span>
+                  <span class="dot">·</span>
+                  <span>Some sickle-cell expertise</span>
+                </div>
+              </div>
+              <div class="h-tags">
+                <span class="tag private">Private · cost</span>
+                <span class="tag after-hours">After-hours</span>
+              </div>
+            </div>
+
+            <div class="hospital-card">
+              <div class="h-info">
+                <div class="h-name display">Komfo Anokyé Teaching <em>Hospital</em> · Kumasi</div>
+                <div class="h-meta">
+                  <span><b>198 km</b></span>
+                  <span class="dot">·</span>
+                  <span>Tertiary care · specialist referrals only</span>
+                  <span class="dot">·</span>
+                  <span>By onward referral from district</span>
+                </div>
+              </div>
+              <div class="h-tags">
+                <span class="tag nhis">NHIS accepted</span>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Referral hospitals</h4>
+      <ul>
+        <li><b>Four-tier referral hierarchy</b> matches Ghana's actual public health structure: primary (Asankrangwa Govt., 4.2km) → district (Wassa Akropong, 38km) → tertiary (Komfo Anokyé Teaching Hospital, Kumasi). Plus a private option (St. Martin's) for after-hours.</li>
+        <li><b>Primary referral gets the gold treatment</b> — heavier border, gradient background, the gold "Primary referral" tag. The matron knows where to call first without scanning the list. Default for any new referral.</li>
+        <li><b>Distance is captured because it matters operationally.</b> 4.2km to Asankrangwa Govt. is reachable on motorbike or school van within 15 minutes. 198km to KATH means an overnight stay and a chartered transport. The schema's <span class="mono">distance_km</span> field drives realistic time-to-care estimates.</li>
+        <li><b>NHIS acceptance tagged on every hospital.</b> Cost is a real barrier for Ghanaian families; the matron should know whether a referral will or won't be covered. Komfo Anokyé and the district hospital accept NHIS; St. Martin's is private. Adwoa's family carries the NHIS card.</li>
+        <li><b>Wassa Akropong tagged "After-hours backup"</b> because it has 2 ambulances Asankrangwa Govt. doesn't reliably have. When a 23:00 emergency happens and there's no transport, the district 38km away is the realistic option.</li>
+        <li><b>KATH listed even though 198km away</b> because for specialist cases (paediatric oncology, neurosurgery, certain sickle-cell crises) the chain ends there. Schema captures the realistic onward-referral path; if a student is sent to Asankrangwa Govt. with a sickle-cell crisis severe enough, KATH is the destination not the district.</li>
+        <li><b>The "One SHS, One Sickbay" policy debate sits behind this surface.</b> Schools without a sickbay are essentially in Mode C and rely entirely on this list; their first-response is to call the primary hospital and arrange transport. Whether a school has a sickbay or not, the referral list still matters.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">05</div>
+    <div class="section-title display">Policy anchors &amp; parent notification</div>
+    <div class="section-meta">SHEP · N&amp;MC · three-tier notification rule</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / sickbay / setup#policy</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar tall">
+          <div class="brand">
+            <div class="logo-mini">AS</div>
+            <div>
+              <div class="school-name">Asankrangwa SHS</div>
+              <div class="school-meta">SHS · Western North</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Boarding</div>
+          <div class="nav-item active"><div class="ic"></div>Sickbay<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub active">Setup</div>
+          <div class="nav-item sub">Today</div>
+          <div class="nav-item sub">Chronic register</div>
+          <div class="nav-item sub">Referrals</div>
+          <div class="nav-item"><div class="ic"></div>Communications</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">AM</div>
+            <div><div class="meta-name">Mr Asare-Mensah</div><div class="meta-role">Headmaster</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Sickbay</a> / Setup / Policy anchors</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Policy <em>anchors</em></h1>
+                <div class="lede">The two outside frameworks this sickbay sits inside · and the <b>three-tier parent notification rule</b> that turns sickbay events into parent calls</div>
+              </div>
+              <div class="actions"></div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <div class="col-2">
+              <div class="policy-anchor">
+                <div class="pa-eyebrow">GES side</div>
+                <h3 class="display">SHEP · <em>School Health Education Programme</em></h3>
+                <div class="pa-body">The Ghana Education Service's unit responsible for school-based health promotion and delivery. SHEP coordinates the <b>School Health Prefect roster</b>, sets the curriculum for health education, and links public schools to district health teams. The sickbay's prefects, drug stock guidance, and outbreak reporting all sit under SHEP.</div>
+              </div>
+
+              <div class="policy-anchor">
+                <div class="pa-eyebrow">MoH side</div>
+                <h3 class="display">N&amp;MC · <em>Scope of Practice</em></h3>
+                <div class="pa-body">Nursing and Midwifery Council of Ghana, the statutory regulator (LI 683, 1971). The <b>Matron's clinical authority</b> derives from her N&amp;MC license and her registered standing orders with the visiting doctor. Anything outside scope routes to Dr Mensah or the hospital. The N&amp;MC license number is captured on the staff record and shows on every dispensary action she signs.</div>
+              </div>
+            </div>
+
+            <h3 class="display" style="font-size:18px;font-weight:600;margin:36px 0 14px;color:var(--navy);"><em style="font-style:italic;color:var(--gold);font-weight:400;">Three-tier</em> parent notification rule</h3>
+
+            <p style="font-size:13px;color:var(--navy-3);max-width:760px;line-height:1.6;margin-bottom:18px;">Boarding-school practice is settled on this: parents are not told about every minor scratch or headache, but admissions and hospital handoffs are notified immediately. The rule below is what the system fires automatically once an event hits the right tier.</p>
+
+            <div class="notify-rule">
+              <div class="notify-tier bg-1">
+                <div class="tier-num display">01</div>
+                <div class="tier-body">
+                  <div class="t-trigger display">Routine visit · discharge same day</div>
+                  <div class="t-desc">Headache treated, sore throat, period pain, minor cut dressed · student walks back to class or dorm within the hour. <b>No automatic notification</b>; weekly digest mentions the visit if parent has opted in.</div>
+                </div>
+                <div class="notify-action">
+                  <span class="action-tag none">No notification</span>
+                  <div class="a-channel">Visible in parent portal · <b>weekly digest if opted in</b></div>
+                </div>
+              </div>
+
+              <div class="notify-tier bg-2">
+                <div class="tier-num display">02</div>
+                <div class="tier-body">
+                  <div class="t-trigger display">Sickbay admission · overnight or beyond class hours</div>
+                  <div class="t-desc">Student admitted to a sickbay bed · suspected malaria with positive RDT · chronic-condition pain episode · injury requiring observation. <b>Parent notified by SMS within the hour</b>; matron's note includes condition and expected duration.</div>
+                </div>
+                <div class="notify-action">
+                  <span class="action-tag notify">Notify parent</span>
+                  <div class="a-channel">SMS within <b>1 hour</b> · phone call by HM if no acknowledgement</div>
+                </div>
+              </div>
+
+              <div class="notify-tier bg-3">
+                <div class="tier-num display">03</div>
+                <div class="tier-body">
+                  <div class="t-trigger display">Doctor consultation or hospital referral</div>
+                  <div class="t-desc">Visiting doctor reviews · or student transported to Asankrangwa Govt., Wassa Akropong, or further · serious injury · suspected fracture · severe sickle-cell crisis · mental health crisis. <b>Parent called immediately</b> · phone-first, SMS confirmation. HM also notified in parallel.</div>
+                </div>
+                <div class="notify-action">
+                  <span class="action-tag immediate">Call now</span>
+                  <div class="a-channel">Phone call · <b>matron + HM in parallel</b> · SMS confirms after</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="save-bar">
+              <div class="sb-note"><b>Setup is complete for Asankrangwa SHS · Mode B operation.</b> One outstanding alert: Hydroxyurea is below reorder point and Adwoa Mensa's chronic supply needs replenishment this week. <b>Save and acknowledge</b> to make the configuration live across the sickbay surfaces.</div>
+              <div class="sb-actions">
+                <button class="btn">Cancel</button>
+                <button class="btn gold">Save &amp; acknowledge →</button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Policy &amp; notification</h4>
+      <ul>
+        <li><b>Two policy anchor cards in navy/gold gradient</b> · SHEP (GES side) and N&amp;MC scope of practice (MoH side). The sickbay sits at the intersection of two government frameworks; making them visible at setup signals to the headmaster that this isn't a generic feature, it's designed for the Ghanaian regulatory environment.</li>
+        <li><b>SHEP card explains where prefects sit in policy.</b> The School Health Prefect roster on the staff card above isn't arbitrary — it's the GES-recommended structure for sickbay-less and sickbay-having schools alike. The system inherits SHEP vocabulary rather than reinventing it.</li>
+        <li><b>N&amp;MC card grounds the matron's clinical authority.</b> Why is Mrs Bediako allowed to administer paracetamol without doctor sign-off? Because of her N&amp;MC license + registered standing orders. The legal basis for every dispensary action is one click away.</li>
+        <li><b>Three-tier notification rule sits in a layered card</b> with progressively saturated background tints · neutral bg / gold-bg / terra-bg-gradient. Visual progression matches escalation severity; the eye reads top-to-bottom as "calm → attention → urgent."</li>
+        <li><b>Tier 01 routine visits don't notify by default</b>, but parent can opt in to a weekly digest. Boarding-school norm matches the schema: parents don't want a ping for every headache, but some want a summary. The opt-in lives on the parent's preference record.</li>
+        <li><b>Tier 02 admission notifies within 1 hour by SMS</b>, with phone-call escalation by HM if no acknowledgement. Two-step protocol matches Ghanaian reality where SMS is read but not always promptly; the HM call ensures the parent actually knows.</li>
+        <li><b>Tier 03 hospital referral is phone-first, immediate.</b> Matron + HM in parallel, not in sequence — both call so the parent gets through to one of them. SMS confirms after the call so there's a written record of what was said. The audit trail captures both.</li>
+        <li><b>Save bar reminds the headmaster of the outstanding Hydroxyurea reorder</b> · pulled from section 03's stock alert. One workflow surface, multiple subsystems; the save action makes the configuration live and the alert visible.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

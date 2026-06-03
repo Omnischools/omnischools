@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Backup &amp; disaster recovery</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.terra { background:var(--terra); color:var(--bg); border-color:var(--terra); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+/* Hero card */
+.principle-hero { background:linear-gradient(135deg, var(--navy) 0%, #243652 100%); color:var(--bg); border-radius:14px; padding:32px 36px; margin-bottom:24px; display:grid; grid-template-columns:1fr 320px; gap:36px; align-items:center; }
+.principle-hero .hero-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:10px; }
+.principle-hero h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.02em; line-height:1.15; margin-bottom:14px; max-width:560px; }
+.principle-hero h2 em { font-style:italic; color:var(--gold); }
+.principle-hero p { font-size:13px; color:rgba(250,247,242,0.78); line-height:1.65; margin-bottom:10px; max-width:560px; }
+.principle-hero p b { color:var(--bg); font-weight:600; }
+.principle-hero p:last-child { margin-bottom:0; }
+.last-good { background:rgba(47,107,71,0.18); border:1px solid rgba(47,107,71,0.45); border-radius:10px; padding:18px 22px; }
+.last-good .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:#7BB78F; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+.last-good .lab .dot { width:7px; height:7px; border-radius:50%; background:#7BB78F; }
+.last-good .val { font-family:'Fraunces',serif; font-size:20px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; margin-bottom:4px; }
+.last-good .val em { font-style:italic; color:var(--gold); }
+.last-good .desc { font-size:11px; color:rgba(250,247,242,0.65); line-height:1.5; }
+.last-good .desc b { color:var(--bg); font-weight:600; }
+
+/* Commitment table */
+.commit-table { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.commit-row { display:grid; grid-template-columns:200px 180px 1fr 130px; gap:18px; padding:16px 22px; border-bottom:1px solid var(--border); align-items:start; }
+.commit-row:last-child { border-bottom:none; }
+.commit-row.head { background:var(--bg); padding:11px 22px; }
+.commit-row.head div { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.commit-row.section-divider { background:var(--gold-bg); padding:9px 22px; border-bottom:1px solid var(--gold-soft); }
+.commit-row.section-divider .div-label { font-family:'Fraunces',serif; font-size:13px; font-weight:600; color:var(--gold); font-style:italic; grid-column:1/-1; }
+.commit-row.section-divider .div-label b { color:var(--navy); font-style:normal; font-weight:700; }
+.com-what { font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
+.com-what .sub { display:block; font-family:'Manrope',sans-serif; font-size:11px; color:var(--navy-3); font-weight:400; margin-top:3px; line-height:1.4; }
+.com-freq { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; background:var(--gold-bg); color:var(--gold); }
+.com-freq .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.com-freq.green { background:var(--green-bg); color:var(--green); }
+.com-detail { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.com-detail b { color:var(--navy); font-weight:600; }
+.com-detail em { font-style:italic; color:var(--gold); }
+.com-rpo { font-family:'Fraunces',serif; font-size:14px; font-weight:600; color:var(--navy); }
+.com-rpo .sub { display:block; font-family:'Manrope',sans-serif; font-size:10px; color:var(--navy-3); font-weight:400; margin-top:2px; font-style:italic; }
+
+/* Recovery flow */
+.recovery-card { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; overflow:hidden; }
+.recovery-head { background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); padding:18px 24px; }
+.recovery-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.recovery-head h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; }
+.recovery-head h3 em { font-style:italic; color:var(--gold); }
+.recovery-head .meta { font-size:11px; color:var(--navy-3); margin-top:4px; }
+.recovery-head .meta b { color:var(--navy-2); font-weight:600; }
+
+.timeline-strip { background:var(--surface); padding:24px 28px; }
+.timeline-strip .lab { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:14px; }
+.timeline-track { position:relative; height:64px; margin:0 12px; }
+.timeline-axis { position:absolute; left:0; right:0; top:32px; height:2px; background:var(--border); }
+.timeline-tick { position:absolute; top:24px; width:18px; height:18px; border-radius:50%; background:var(--surface); border:2px solid var(--border-2); transform:translateX(-50%); }
+.timeline-tick.snapshot { border-color:var(--gold); background:var(--gold); }
+.timeline-tick.now { border-color:var(--green); background:var(--green); width:14px; height:14px; top:26px; }
+.timeline-tick.deletion { border-color:var(--terra); background:var(--terra); width:14px; height:14px; top:26px; }
+.timeline-tick.selected { border:3px solid var(--gold); background:var(--surface); width:22px; height:22px; top:22px; box-shadow:0 0 0 4px var(--gold-bg); }
+.timeline-label { position:absolute; bottom:0; transform:translateX(-50%); font-size:10px; color:var(--navy-3); font-family:'JetBrains Mono',monospace; white-space:nowrap; font-weight:500; }
+.timeline-label.gold { color:var(--gold); font-weight:700; }
+.timeline-label.terra { color:var(--terra); font-weight:700; }
+.timeline-label.green { color:var(--green); font-weight:700; }
+.timeline-label .sub-line { display:block; font-family:'Manrope',sans-serif; font-size:9px; color:var(--navy-3); font-weight:500; margin-top:2px; font-style:italic; }
+.timeline-tlabel { position:absolute; top:0; transform:translateX(-50%); font-size:10px; color:var(--gold); font-weight:700; letter-spacing:0.04em; text-transform:uppercase; white-space:nowrap; }
+
+.recovery-body { padding:22px 24px; display:grid; grid-template-columns:1fr 320px; gap:22px; }
+.recovery-preview { background:var(--bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.recovery-preview .head { background:var(--surface); padding:13px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.recovery-preview .head h4 { font-family:'Fraunces',serif; font-size:13px; font-weight:600; }
+.recovery-preview .head h4 em { font-style:italic; color:var(--gold); }
+.recovery-preview .head .when { font-size:10px; color:var(--navy-3); font-family:'JetBrains Mono',monospace; font-style:italic; }
+.recovery-preview .head .when b { color:var(--gold); font-style:normal; font-weight:700; }
+.recovery-preview .student-record { padding:18px 20px; }
+.recovery-preview .field-row { display:grid; grid-template-columns:120px 1fr; gap:14px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.recovery-preview .field-row:last-child { border-bottom:none; padding-bottom:0; }
+.recovery-preview .field-row .lab { color:var(--navy-3); font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; }
+.recovery-preview .field-row .val { color:var(--navy); font-weight:500; }
+.recovery-preview .field-row .val b { font-weight:600; }
+.recovery-preview .field-row .val em { font-style:italic; color:var(--gold); }
+.recovery-preview .field-row .val .changed { background:var(--gold-bg); padding:1px 5px; border-radius:3px; font-weight:600; }
+
+.recovery-action { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 20px; }
+.recovery-action h4 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-bottom:8px; letter-spacing:-0.005em; }
+.recovery-action h4 em { font-style:italic; color:var(--gold); }
+.recovery-action .desc { font-size:11px; color:var(--navy-3); margin-bottom:14px; line-height:1.5; }
+.recovery-action .ra-row { display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--gold-soft); font-size:12px; }
+.recovery-action .ra-row:last-of-type { border-bottom:none; }
+.recovery-action .ra-row .lab { color:var(--navy-2); }
+.recovery-action .ra-row .val { font-weight:600; color:var(--navy); font-family:'JetBrains Mono',monospace; }
+.recovery-action .reason-field { background:var(--surface); border:1px dashed var(--border-2); border-radius:6px; padding:10px 12px; margin-top:12px; font-size:12px; color:var(--navy-2); font-style:italic; line-height:1.5; }
+.recovery-action .reason-field b { color:var(--navy); font-style:normal; font-weight:600; }
+
+.save-bar { background:var(--navy); color:var(--bg); padding:14px 24px; display:flex; justify-content:space-between; align-items:center; }
+.save-bar .left { font-size:12px; color:rgba(250,247,242,0.7); }
+.save-bar .left b { color:var(--bg); font-weight:600; }
+.save-bar .right { display:flex; gap:8px; }
+
+/* Snapshots browser */
+.snapshots { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.snap-head { background:var(--bg); padding:16px 22px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.snap-head .left h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.snap-head .left h4 em { font-style:italic; color:var(--gold); }
+.snap-head .left .meta { font-size:11px; color:var(--navy-3); margin-top:2px; font-style:italic; }
+.snap-head .left .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+.snap-list { padding:0; }
+.snap-row { display:grid; grid-template-columns:100px 1fr 200px 130px; gap:18px; padding:14px 22px; border-bottom:1px solid var(--border); align-items:center; }
+.snap-row:last-child { border-bottom:none; }
+.snap-row.head { background:var(--bg); padding:11px 22px; }
+.snap-row.head div { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.snap-date { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; }
+.snap-date .day { font-family:'Fraunces',serif; font-size:11px; font-weight:500; color:var(--navy-3); display:block; margin-bottom:2px; font-style:italic; }
+.snap-meta { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.snap-meta b { color:var(--navy); font-weight:600; }
+.snap-meta .changes { font-size:10px; color:var(--navy-3); margin-top:2px; font-style:italic; display:block; }
+.snap-checks { display:flex; gap:6px; flex-wrap:wrap; }
+.snap-check { padding:3px 8px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; background:var(--green-bg); color:var(--green); }
+.snap-check.terra { background:var(--terra-bg); color:var(--terra); }
+.snap-action { text-align:right; }
+.snap-action .btn { padding:6px 12px; font-size:11px; }
+
+/* Incident comms */
+.incident-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:18px; }
+.incident-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.incident-card .head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:start; }
+.incident-card .ic { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; flex-shrink:0; }
+.incident-card .ic.green { background:var(--green-bg); color:var(--green); }
+.incident-card .ic.gold { background:var(--gold-bg); color:var(--gold); }
+.incident-card .ic.warn { background:var(--warn-bg); color:var(--warn); }
+.incident-card .ic.terra { background:var(--terra-bg); color:var(--terra); }
+.incident-card .head .txt h4 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; line-height:1.25; margin-bottom:3px; }
+.incident-card .head .txt h4 em { font-style:italic; color:var(--gold); }
+.incident-card .head .txt .sub { font-size:10px; color:var(--navy-3); letter-spacing:0.04em; }
+.incident-card .body { padding:14px 20px; }
+.incident-card .desc { font-size:12px; color:var(--navy-2); line-height:1.6; }
+.incident-card .desc b { color:var(--navy); font-weight:600; }
+.incident-card .desc em { font-style:italic; color:var(--gold); }
+
+/* Status page mock */
+.status-mock { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.status-bar { background:var(--navy); padding:10px 16px; display:flex; align-items:center; gap:8px; }
+.status-bar .dots { display:flex; gap:5px; }
+.status-bar .dots span { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.status-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:4px 10px; border-radius:5px; font-size:10px; font-family:'Fraunces',monospace; margin-left:10px; letter-spacing:0.04em; }
+.status-body { padding:24px 28px; background:var(--bg); }
+.status-pill { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; border-radius:100px; font-size:12px; font-weight:600; background:var(--green-bg); color:var(--green); border:1px solid var(--green); margin-bottom:18px; }
+.status-pill .dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
+.status-body h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; letter-spacing:-0.018em; margin-bottom:6px; }
+.status-body h3 em { font-style:italic; color:var(--gold); }
+.status-body .lede { font-size:13px; color:var(--navy-3); margin-bottom:24px; line-height:1.6; }
+.status-body .lede b { color:var(--navy-2); font-weight:600; }
+
+.service-row { display:grid; grid-template-columns:1fr 90px 200px; gap:18px; padding:13px 18px; background:var(--surface); border:1px solid var(--border); border-radius:8px; align-items:center; margin-bottom:8px; }
+.service-row .name { font-family:'Fraunces',serif; font-size:13px; font-weight:600; }
+.service-row .status-cell { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.service-row .status-cell.green { background:var(--green-bg); color:var(--green); }
+.service-row .status-cell.warn { background:var(--warn-bg); color:var(--warn); }
+.service-row .status-cell.terra { background:var(--terra-bg); color:var(--terra); }
+.service-row .status-cell .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.service-row .uptime-bars { display:flex; gap:2px; align-items:flex-end; }
+.service-row .uptime-bar { width:5px; height:18px; background:var(--green); border-radius:1px; }
+.service-row .uptime-bar.warn { background:var(--warn); height:14px; }
+.service-row .uptime-bar.dim { background:var(--border-2); }
+
+/* Editorial card */
+.principle-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:20px; }
+.principle-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.principle-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.principle-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.principle-card p b { color:var(--navy); font-weight:600; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Deferred surface</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <span class="related-tag">Pairs with data-export · audit-log</span>
+  <h1 class="display">What we promise, <em>in writing</em></h1>
+  <div class="gold-rule"></div>
+  <p>This is the platform-side commitment: <b>Omnischools will not lose your data, and if something goes wrong, here is exactly how we make you whole.</b> Distinct from data-export, which is about <em>taking your data out</em>. Backup and DR is about <em>not losing it while it's in</em> — and it's a trust artefact for school admins, MoE inspectors, and auditors who need to know the platform is safe enough for sensitive student records.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The commitments · what · how often · where</div>
+    <div class="section-meta">7 commitments · published, audited, contractual</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="principle-hero">
+        <div>
+          <div class="hero-eyebrow">The promise</div>
+          <h2 class="display">Continuous protection, <em>30-day recovery window</em>, geographic redundancy.</h2>
+          <p>Every change a teacher makes is captured to a transaction log within seconds. Every night at <b>02:00 GMT</b>, the system snapshots the full database. Snapshots are encrypted at rest, replicated to a second cloud region, and retained for <b>30 days</b>. Recovery is admin-triggered, audit-logged, and never destructive.</p>
+          <p>Schools shouldn't have to take any of this on faith. <b>This page is the contract</b> — published, dated, and tied to actual mechanism.</p>
+        </div>
+        <div class="last-good">
+          <div class="lab"><span class="dot"></span>Last good backup</div>
+          <div class="val display"><em>02:00 GMT</em> · today</div>
+          <div class="desc">Snapshot <b>SCH-CKJHS-2025-05-02-0200</b> · 312 students · 36,247 records · 38.4 MB encrypted · replicated to <b>eu-west-3</b> 02:14 GMT</div>
+        </div>
+      </div>
+
+      <div class="commit-table">
+        <div class="commit-row head">
+          <div>What</div>
+          <div>Frequency</div>
+          <div>Detail</div>
+          <div>Recovery window</div>
+        </div>
+
+        <div class="commit-row section-divider">
+          <div class="div-label"><b>Live data</b> · transaction log captures every change</div>
+        </div>
+
+        <div class="commit-row">
+          <div class="com-what">Transaction log<span class="sub">every database write</span></div>
+          <div><span class="com-freq green"><span class="dot"></span>Continuous</span></div>
+          <div class="com-detail">Every insert, update, delete is captured to a write-ahead log within <b>5 seconds</b>. Logs are streamed to a hot replica in real-time and to cold storage every <em>15 minutes</em>.</div>
+          <div class="com-rpo">5 sec<span class="sub">RPO target</span></div>
+        </div>
+
+        <div class="commit-row">
+          <div class="com-what">Hot replica<span class="sub">read-only mirror in second region</span></div>
+          <div><span class="com-freq green"><span class="dot"></span>Continuous</span></div>
+          <div class="com-detail">Standby database in a second region (eu-west-3) replays the transaction log in near-real-time. <b>If primary fails</b>, replica is promoted within <em>~90 seconds</em>. School barely notices.</div>
+          <div class="com-rpo">90 sec<span class="sub">RTO target</span></div>
+        </div>
+
+        <div class="commit-row section-divider">
+          <div class="div-label"><b>Snapshots</b> · point-in-time recovery anchors</div>
+        </div>
+
+        <div class="commit-row">
+          <div class="com-what">Daily snapshot<span class="sub">full database state</span></div>
+          <div><span class="com-freq"><span class="dot"></span>Daily · 02:00 GMT</span></div>
+          <div class="com-detail">Full encrypted snapshot taken each night at 02:00 GMT (chosen for low traffic). Snapshot includes <b>all tables, all schools, all audit logs</b>. AES-256 at rest. Verified weekly via test-restore.</div>
+          <div class="com-rpo">24 hr<span class="sub">max gap</span></div>
+        </div>
+
+        <div class="commit-row">
+          <div class="com-what">Snapshot retention<span class="sub">30-day rolling window</span></div>
+          <div><span class="com-freq"><span class="dot"></span>30 days</span></div>
+          <div class="com-detail"><b>30 daily snapshots</b> always available. Older snapshots roll off. Retention extends to <em>90 days</em> for schools with the audit-extended add-on. Beyond 90 days: data lives on, but recovery is via support ticket.</div>
+          <div class="com-rpo">30 days<span class="sub">window</span></div>
+        </div>
+
+        <div class="commit-row">
+          <div class="com-what">Geographic redundancy<span class="sub">snapshots replicated cross-region</span></div>
+          <div><span class="com-freq green"><span class="dot"></span>Within 15m</span></div>
+          <div class="com-detail">Each snapshot is replicated to a second cloud region within <b>15 minutes</b> of creation. If the primary region has a disaster, snapshots are recoverable from the secondary. <em>One region failing is not a data-loss event.</em></div>
+          <div class="com-rpo">2 regions<span class="sub">cross-replicated</span></div>
+        </div>
+
+        <div class="commit-row section-divider">
+          <div class="div-label"><b>Verification</b> · we test the backups so admins don't have to</div>
+        </div>
+
+        <div class="commit-row">
+          <div class="com-what">Test-restore<span class="sub">verify snapshots are actually recoverable</span></div>
+          <div><span class="com-freq"><span class="dot"></span>Weekly</span></div>
+          <div class="com-detail">Every Sunday at 03:00 GMT, a random snapshot from the past 7 days is restored to a sandbox database and verified. <b>If verification fails, the on-call engineer is paged immediately</b> and the affected snapshot is regenerated.</div>
+          <div class="com-rpo">100%<span class="sub">verified</span></div>
+        </div>
+
+        <div class="commit-row">
+          <div class="com-what">Restore drill<span class="sub">full DR exercise</span></div>
+          <div><span class="com-freq"><span class="dot"></span>Quarterly</span></div>
+          <div class="com-detail">Once per quarter, the engineering team runs a full disaster recovery drill: simulate primary region loss, fail over to replica, verify all schools' data intact. <b>Drill report published to status page</b> within 7 days.</div>
+          <div class="com-rpo">4×/year<span class="sub">drilled</span></div>
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Why this is published</div>
+        <p>Most SaaS platforms describe backup in vague marketing language — <em>"enterprise-grade backups"</em> means nothing concrete. Omnischools publishes <b>specific RPO/RTO targets, snapshot times, retention windows, and verification cadence</b> because schools and ministries need to evaluate the platform on technical merit, not adjectives. <em>If we can't say it in writing, we shouldn't say it at all.</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>RPO (Recovery Point Objective) = <b>maximum data loss allowed</b>. RTO (Recovery Time Objective) = <b>maximum downtime allowed</b>. The 5-second RPO and 90-second RTO are <em>aspirational targets</em>, not guarantees — but they're the contracts the engineering team holds itself to.</li>
+        <li>Snapshot at <b>02:00 GMT</b> = 02:00 Accra time (Ghana is on GMT year-round). Chosen because it's the lowest-traffic hour for Ghanaian schools. UK/EU schools (if Omnischools expands) get the same window — works for them too.</li>
+        <li>30-day default retention is the <b>industry-standard sweet spot</b>. Long enough to recover from "we noticed a deletion 3 weeks later"; short enough that storage costs don't become absurd. Audit-extended add-on (90 days) is for schools with longer audit cycles.</li>
+        <li>Test-restore on Sunday is critical — <b>backups that aren't tested are not backups</b>. Many DR programs fail not because backups don't exist but because they were never verified to actually restore. Omnischools verifies weekly and pages on failure.</li>
+        <li>The <em>"Last good backup: 02:00 GMT today"</em> stat in the hero is dynamic — admins see freshness in real-time. Trust signal, not a static promise.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Recovering Akosua's record · point-in-time</div>
+    <div class="section-meta">Florence accidentally deleted · recovers from 5 days ago</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="recovery-card">
+        <div class="recovery-head">
+          <div class="eb">Point-in-time recovery · admin-triggered</div>
+          <h3 class="display">Recover <em>Akosua Asantewaa</em></h3>
+          <div class="meta">Student record was deleted on <b>27 April at 14:23</b> by Florence A. · Florence is now recovering it from the snapshot 5 days prior</div>
+        </div>
+
+        <div class="timeline-strip">
+          <div class="lab">Available snapshots · last 30 days</div>
+          <div class="timeline-track">
+            <div class="timeline-axis"></div>
+            <!-- 30 day axis with snapshots -->
+            <div class="timeline-tlabel" style="left:50%;">SELECTED</div>
+            <div class="timeline-tick snapshot" style="left:7%;"></div>
+            <div class="timeline-tick snapshot" style="left:14%;"></div>
+            <div class="timeline-tick snapshot" style="left:21%;"></div>
+            <div class="timeline-tick snapshot" style="left:28%;"></div>
+            <div class="timeline-tick snapshot" style="left:35%;"></div>
+            <div class="timeline-tick snapshot" style="left:42%;"></div>
+            <div class="timeline-tick selected" style="left:50%;"></div>
+            <div class="timeline-tick snapshot" style="left:57%;"></div>
+            <div class="timeline-tick snapshot" style="left:64%;"></div>
+            <div class="timeline-tick deletion" style="left:71%;"></div>
+            <div class="timeline-tick snapshot" style="left:78%;"></div>
+            <div class="timeline-tick snapshot" style="left:85%;"></div>
+            <div class="timeline-tick snapshot" style="left:92%;"></div>
+            <div class="timeline-tick now" style="left:99%;"></div>
+
+            <div class="timeline-label" style="left:7%;">2 Apr</div>
+            <div class="timeline-label gold" style="left:50%;">22 Apr<span class="sub-line">last good</span></div>
+            <div class="timeline-label terra" style="left:71%;">27 Apr<span class="sub-line">deleted</span></div>
+            <div class="timeline-label green" style="left:99%;">2 May<span class="sub-line">now</span></div>
+          </div>
+        </div>
+
+        <div class="recovery-body">
+
+          <div class="recovery-preview">
+            <div class="head">
+              <h4 class="display">Akosua's record · <em>as of 22 April</em></h4>
+              <div class="when">snapshot · <b>SCH-CKJHS-2025-04-22-0200</b></div>
+            </div>
+            <div class="student-record">
+              <div class="field-row">
+                <div class="lab">Name</div>
+                <div class="val"><b>Akosua Asantewaa</b></div>
+              </div>
+              <div class="field-row">
+                <div class="lab">Class</div>
+                <div class="val">JHS 2A · <em>Mrs Akua's class</em></div>
+              </div>
+              <div class="field-row">
+                <div class="lab">Admission</div>
+                <div class="val">Sept 2024 · ADM-2024-0142</div>
+              </div>
+              <div class="field-row">
+                <div class="lab">Parent contact</div>
+                <div class="val">Mrs Asantewaa · 024-XXX-1923</div>
+              </div>
+              <div class="field-row">
+                <div class="lab">Term 2 attendance</div>
+                <div class="val">42 of 45 days · <em>93%</em></div>
+              </div>
+              <div class="field-row">
+                <div class="lab">Term 2 fees</div>
+                <div class="val"><span class="changed">GHS 1,200.00 paid in full</span> · <em>23 Apr</em></div>
+              </div>
+              <div class="field-row">
+                <div class="lab">Last activity</div>
+                <div class="val">21 Apr · attendance marked Present</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="recovery-action">
+            <h4 class="display">Restore <em>this record</em></h4>
+            <div class="desc">Akosua's record will be re-created with the data from the 22 April snapshot. <b>Any data captured after that date</b> (5 days of attendance, 1 fee payment) will need to be re-entered.</div>
+            <div class="ra-row"><span class="lab">Restore from</span><span class="val">22 Apr 02:00</span></div>
+            <div class="ra-row"><span class="lab">Records affected</span><span class="val">1 student</span></div>
+            <div class="ra-row"><span class="lab">Re-entry needed</span><span class="val">5 attendance · 1 payment</span></div>
+            <div class="ra-row"><span class="lab">Audit entries</span><span class="val">2 created</span></div>
+            <div class="reason-field">
+              <b>Reason · required:</b><br>
+              "Akosua's record was deleted in error during a bulk withdrawal — <em>I selected the wrong cohort</em>. Her family is current on fees and she's still enrolled."
+            </div>
+          </div>
+
+        </div>
+
+        <div class="save-bar">
+          <div class="left">Recovery cannot be undone · audit log will record this action</div>
+          <div class="right">
+            <button class="btn ghost" style="border-color:rgba(255,255,255,0.2); color:rgba(255,255,255,0.8);">Cancel</button>
+            <button class="btn gold">Restore Akosua's record →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Recovery is forward-only</div>
+        <p>The 27 April deletion stays in the audit log. The 2 May restore is a <b>new event</b> — restored from snapshot, by Florence, with reason captured. The audit chain shows: record existed, was deleted, was restored. <em>No event is erased</em>; the timeline is continuous. This is the same forward-only principle that governs voids, refunds, and bulk-undo across Omnischools.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>Recovery is <b>admin-only</b> — teachers can't trigger it. Requires the admin who triggered the original deletion (or another admin if not available) to authenticate and provide a reason. <em>Recovery is a sensitive action</em>; co-signing may be added in MVP3 for high-risk recoveries.</li>
+        <li>The timeline shows the gap honestly — <b>5 days of data captured between 22 Apr and 27 Apr will need to be re-entered</b>. Florence sees this before she clicks restore. No silent data loss; visible cost.</li>
+        <li>Snapshot SCH-CKJHS-2025-04-22-0200 is <b>per-school</b>, not per-record — restoring a single student record reads only that student's data from the snapshot. <em>The snapshot is the source; the restore is targeted</em>.</li>
+        <li>Reason field is <b>required</b> — unlike bulk-undo where reason is optional. Recovery happens days/weeks after the original event; the reason is critical for auditors who'll ask <em>"why was this restored?"</em></li>
+        <li>For deletions older than 30 days, recovery requires a <b>support ticket</b> — beyond the standard window, the data still exists in cold storage but retrieval needs engineering. Surfaced in a clear "Beyond 30 days? Contact support" path.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Snapshots · the time-machine view</div>
+    <div class="section-meta">30 daily snapshots · drill into any day · read-only</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="snapshots">
+        <div class="snap-head">
+          <div class="left">
+            <h4 class="display">Snapshots · <em>browse the past 30 days</em></h4>
+            <div class="meta"><b>30 snapshots available</b> · oldest 2 April · all verified · click any row to view system state on that date</div>
+          </div>
+          <button class="btn">Filter by date range</button>
+        </div>
+
+        <div class="snap-list">
+          <div class="snap-row head">
+            <div>Date</div>
+            <div>Snapshot · stats</div>
+            <div>Verification</div>
+            <div></div>
+          </div>
+
+          <div class="snap-row">
+            <div class="snap-date"><span class="day">today</span>2 May<br>02:00</div>
+            <div class="snap-meta"><b>SCH-CKJHS-2025-05-02-0200</b> · 312 students · 38.4 MB<span class="changes">+2 students enrolled · +47 attendance entries · +14 fee payments since yesterday</span></div>
+            <div class="snap-checks"><span class="snap-check">✓ encrypted</span><span class="snap-check">✓ replicated</span><span class="snap-check">✓ verified</span></div>
+            <div class="snap-action"><button class="btn">View →</button></div>
+          </div>
+
+          <div class="snap-row">
+            <div class="snap-date"><span class="day">yesterday</span>1 May<br>02:00</div>
+            <div class="snap-meta"><b>SCH-CKJHS-2025-05-01-0200</b> · 310 students · 38.2 MB<span class="changes">public holiday · minimal change · attendance not taken</span></div>
+            <div class="snap-checks"><span class="snap-check">✓ encrypted</span><span class="snap-check">✓ replicated</span><span class="snap-check">✓ verified</span></div>
+            <div class="snap-action"><button class="btn">View →</button></div>
+          </div>
+
+          <div class="snap-row">
+            <div class="snap-date"><span class="day">2 days ago</span>30 Apr<br>02:00</div>
+            <div class="snap-meta"><b>SCH-CKJHS-2025-04-30-0200</b> · 310 students · 38.1 MB<span class="changes">end of month · billing run · 47 receipts issued · 312 SMS sent</span></div>
+            <div class="snap-checks"><span class="snap-check">✓ encrypted</span><span class="snap-check">✓ replicated</span><span class="snap-check">✓ verified</span></div>
+            <div class="snap-action"><button class="btn">View →</button></div>
+          </div>
+
+          <div class="snap-row">
+            <div class="snap-date"><span class="day">5 days ago</span>27 Apr<br>02:00</div>
+            <div class="snap-meta"><b>SCH-CKJHS-2025-04-27-0200</b> · 310 students · 38.0 MB<span class="changes">last snapshot before <em>Akosua deletion</em> at 14:23 same day</span></div>
+            <div class="snap-checks"><span class="snap-check">✓ encrypted</span><span class="snap-check">✓ replicated</span><span class="snap-check">✓ verified</span></div>
+            <div class="snap-action"><button class="btn">View →</button></div>
+          </div>
+
+          <div class="snap-row">
+            <div class="snap-date"><span class="day">10 days ago</span>22 Apr<br>02:00</div>
+            <div class="snap-meta"><b>SCH-CKJHS-2025-04-22-0200</b> · 311 students · 38.0 MB<span class="changes">used for Akosua's record restore on 2 May</span></div>
+            <div class="snap-checks"><span class="snap-check">✓ encrypted</span><span class="snap-check">✓ replicated</span><span class="snap-check">✓ verified</span></div>
+            <div class="snap-action"><button class="btn">View →</button></div>
+          </div>
+
+          <div class="snap-row" style="opacity:0.7;">
+            <div class="snap-date"><span class="day">29 days ago</span>3 Apr<br>02:00</div>
+            <div class="snap-meta"><b>SCH-CKJHS-2025-04-03-0200</b> · 310 students · 37.8 MB<span class="changes">earliest in standard window · expires <em>tomorrow</em></span></div>
+            <div class="snap-checks"><span class="snap-check">✓ encrypted</span><span class="snap-check">✓ replicated</span><span class="snap-check">✓ verified</span></div>
+            <div class="snap-action"><button class="btn">View →</button></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Time-machine, not just a backup list</div>
+        <p>Most backup UIs show a list of file dumps and a restore button. <b>Omnischools lets admin browse the system state at any snapshot point</b> — see the school's roster as of 22 April, see Akosua's profile as of 15 March, see the audit log on the day of a disputed event. Read-only. The view answers questions auditors actually ask: <em>"What did the records show at the time?"</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The <b>"View →"</b> button opens a read-only mode of the entire app — same UI Florence uses every day, but every page is showing data from the chosen snapshot. Banner across the top: <em>"Viewing 22 April · changes disabled."</em></li>
+        <li>"Stats since yesterday" line in the snap-meta gives admin a quick narrative — <em>"+2 enrolled, +47 attendance entries"</em> — instead of just a file size and timestamp.</li>
+        <li>The 27 Apr row carries a <b>narrative annotation</b>: <em>"last snapshot before Akosua deletion at 14:23"</em>. Snapshots are linked to the audit log; admin can see why a particular date matters.</li>
+        <li>The 22 Apr row shows it was <b>used for a restore</b> — links snapshots to recovery events. Admin can audit "which snapshot has been restored from, when, by whom."</li>
+        <li>Expiring snapshot (3 Apr, expiring tomorrow) is dimmed — gentle visual signal. Admin who needs to extend can purchase the <em>audit-extended</em> add-on to retain it; otherwise it rolls off.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Incident comms · when something goes wrong on our side</div>
+    <div class="section-meta">Status page · email · SMS · post-incident review</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="incident-grid">
+
+        <div class="incident-card">
+          <div class="head">
+            <div class="ic green">SP</div>
+            <div class="txt">
+              <h4 class="display">Status page · <em>status.omnischools.gh</em></h4>
+              <div class="sub">PUBLIC · ALWAYS-ON · 24/7</div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="desc">First place to look. <b>Public, always-on, hosted on a separate provider</b> from the main app — so when Omnischools is down, the status page still works. Auto-updated by monitoring; manual updates from the on-call engineer during incidents.</div>
+          </div>
+        </div>
+
+        <div class="incident-card">
+          <div class="head">
+            <div class="ic gold">EM</div>
+            <div class="txt">
+              <h4 class="display">Email · <em>admin email-on-file</em></h4>
+              <div class="sub">SEV-1 &amp; SEV-2 · WITHIN 15 MIN OF DETECTION</div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="desc">For incidents affecting service availability. Sent to the <b>admin email on file for each affected school</b>. Subject: <em>"[Omnischools] Service incident — Term 2 attendance unavailable."</em> Plain English, no jargon.</div>
+          </div>
+        </div>
+
+        <div class="incident-card">
+          <div class="head">
+            <div class="ic terra">SM</div>
+            <div class="txt">
+              <h4 class="display">SMS · <em>SEV-1 only</em></h4>
+              <div class="sub">CRITICAL OUTAGE · WITHIN 30 MIN</div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="desc">Reserved for the rarest case — <b>Omnischools is fully down for over 30 minutes</b>. SMS to admin phone-on-file. Includes status page link. <em>"Omnischools is currently down. We are working on it. status.omnischools.gh for updates. — Omnischools."</em> No noise; respect the channel.</div>
+          </div>
+        </div>
+
+        <div class="incident-card">
+          <div class="head">
+            <div class="ic warn">PI</div>
+            <div class="txt">
+              <h4 class="display">Post-incident review · <em>published</em></h4>
+              <div class="sub">WITHIN 7 DAYS OF RESOLUTION</div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="desc">After every Sev-1 or Sev-2, a <b>public post-incident review</b> is published to the status page. What happened, why, what was affected, what we're changing. <em>Honesty over PR</em> — schools and the MoE need to see the platform's reasoning, not its branding.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="status-mock">
+        <div class="status-bar">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <div class="url">status.omnischools.gh</div>
+        </div>
+        <div class="status-body">
+          <div class="status-pill"><span class="dot"></span>All systems operational</div>
+          <h3 class="display">Omnischools is <em>up &amp; running</em></h3>
+          <div class="lede">Last incident: <b>14 April 2025</b> · 23-minute SMS dispatch delay · resolved · <a href="#" style="color:var(--gold); text-decoration:none; font-weight:700;">post-incident review →</a></div>
+
+          <div class="service-row">
+            <div class="name">Web app · app.omnischools.gh</div>
+            <div><span class="status-cell green"><span class="dot"></span>Operational</span></div>
+            <div class="uptime-bars">
+              <div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div>
+            </div>
+          </div>
+
+          <div class="service-row">
+            <div class="name">Database &amp; storage</div>
+            <div><span class="status-cell green"><span class="dot"></span>Operational</span></div>
+            <div class="uptime-bars">
+              <div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div>
+            </div>
+          </div>
+
+          <div class="service-row">
+            <div class="name">SMS dispatch · Hubtel rail</div>
+            <div><span class="status-cell green"><span class="dot"></span>Operational</span></div>
+            <div class="uptime-bars">
+              <div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar warn"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div>
+            </div>
+          </div>
+
+          <div class="service-row">
+            <div class="name">Backups &amp; replication</div>
+            <div><span class="status-cell green"><span class="dot"></span>Operational</span></div>
+            <div class="uptime-bars">
+              <div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div><div class="uptime-bar"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Why this matters · honesty over silence</div>
+        <p>Most platforms hide their incidents until they have to acknowledge them. <b>Omnischools publishes by default</b> — status page visible to anyone, post-incident reviews public, the 14 April SMS delay shown on the front page even though it was minor. Schools choose Omnischools partly because the MoE asked <em>"how do we know it's reliable?"</em> The answer is not <em>"trust us"</em> — it's <em>"read the public history."</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>SMS for Sev-1 only is <b>deliberate restraint</b>. Schools see Omnischools SMS as parent-comm channel; flooding it with platform alerts dilutes the signal. <em>One platform SMS per quarter is the goal</em>; if it's more, something is wrong.</li>
+        <li>Status page hosted on a <b>different provider</b> than the main app — when Omnischools's primary cloud has a regional outage, the status page is on a CDN that survives. Lessons learned from companies whose status pages went down with their main service.</li>
+        <li>Uptime bars show <b>30-day rolling history</b>. The slight warn dot in the SMS dispatch row is from 14 April (the 23-min Hubtel-side delay). Historical context, not just current state.</li>
+        <li>Post-incident reviews follow a <b>standard structure</b>: timeline · impact · root cause · remediation · process changes. Schools and the MoE can compare reviews over time and judge how the platform learns.</li>
+        <li>For <b>school-side</b> incidents (admin lost password, lost archive, accidental deletion), this is not the right comm channel — those go through normal support. This page is for <em>platform-side</em> issues that affect multiple schools.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

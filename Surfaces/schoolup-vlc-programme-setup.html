@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — VLC programme setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:680px; line-height:1.5; }
+
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.sum-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.sum-card.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-card.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-card .big { font-family:'Fraunces',serif; font-size:26px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-card .big em { font-style:italic; color:var(--gold); }
+.sum-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-card.featured .sub { color:rgba(232,212,184,0.6); }
+.sum-card .sub b { color:var(--navy-2); font-weight:600; }
+.sum-card.featured .sub b { color:var(--gold); }
+
+.body-shell { padding:32px 36px 36px; }
+
+.block { margin-bottom:36px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+.block-head .actions { display:flex; gap:8px; }
+
+.cadence-card { background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-radius:14px; padding:24px 28px; display:grid; grid-template-columns:auto 1fr auto; gap:28px; align-items:center; }
+.cadence-card .cal-block { width:88px; height:88px; background:var(--surface); border:1.5px solid var(--gold); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.cadence-card .cal-block .day { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.cadence-card .cal-block .num { font-family:'Fraunces',serif; font-size:36px; font-weight:500; line-height:1; color:var(--navy); }
+.cadence-card .cal-block .time { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; color:var(--navy-3); margin-top:3px; }
+.cadence-card .cad-info .eb { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.cadence-card .cad-info h4 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; margin-bottom:6px; line-height:1.25; }
+.cadence-card .cad-info h4 em { font-style:italic; color:var(--gold); }
+.cadence-card .cad-info p { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.cadence-card .cad-info p b { color:var(--navy); font-weight:600; }
+.cadence-card .cad-actions { display:flex; flex-direction:column; gap:8px; }
+
+.rhythm-strip { background:var(--navy); color:var(--bg); border-radius:14px; padding:22px 26px; margin-top:14px; }
+.rhythm-strip .rs-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); }
+.rhythm-strip .rs-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.rhythm-strip .rs-head h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-top:4px; }
+.rhythm-strip .rs-head h4 em { font-style:italic; color:var(--gold); }
+.rhythm-strip .rs-head .total { font-family:'Fraunces',serif; font-size:14px; color:rgba(232,212,184,0.7); }
+.rhythm-strip .rs-head .total b { color:var(--gold); font-weight:700; }
+.phases { display:grid; grid-template-columns:0.4fr 1.2fr 0.8fr 0.6fr 0.4fr; gap:6px; }
+.phase { background:rgba(255,255,255,0.05); border-radius:8px; padding:12px 14px; border-top:3px solid var(--gold); }
+.phase .ph-mins { font-family:'Fraunces',serif; font-size:20px; font-weight:600; line-height:1; }
+.phase .ph-mins em { font-style:italic; color:var(--gold); }
+.phase .ph-name { font-size:11px; font-weight:600; margin-top:4px; }
+.phase .ph-who { font-size:9px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(232,212,184,0.6); font-weight:700; margin-top:4px; }
+.phase .ph-desc { font-size:10px; color:rgba(250,247,242,0.65); line-height:1.4; margin-top:6px; }
+
+.values-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+.value-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; position:relative; overflow:hidden; }
+.value-card.taught { background:var(--bg); }
+.value-card.current { border:1.5px solid var(--gold); background:var(--gold-bg); }
+.value-card.upcoming { border-style:dashed; }
+.value-card .vc-num { position:absolute; top:12px; right:14px; font-family:'Fraunces',serif; font-style:italic; font-size:30px; color:var(--gold-soft); font-weight:500; line-height:1; }
+.value-card.current .vc-num { color:var(--gold); }
+.value-card .vc-status { display:inline-block; padding:2px 8px; border-radius:100px; font-size:8px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
+.value-card.taught .vc-status { background:var(--green-bg); color:var(--green); }
+.value-card.current .vc-status { background:var(--gold); color:var(--navy); }
+.value-card.upcoming .vc-status { background:var(--border); color:var(--navy-3); }
+.value-card .vc-name { font-family:'Fraunces',serif; font-size:18px; font-weight:600; line-height:1.2; margin-bottom:2px; }
+.value-card .vc-name em { font-style:italic; color:var(--gold); }
+.value-card .vc-twi { font-size:11px; color:var(--navy-3); font-style:italic; margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed var(--border); }
+.value-card.current .vc-twi { border-bottom-color:var(--gold-soft); }
+.value-card .vc-session { font-size:11px; color:var(--navy-2); line-height:1.45; padding:5px 0; display:flex; gap:7px; }
+.value-card .vc-session .ss-tag { font-family:'Fraunces',serif; font-style:italic; font-size:12px; font-weight:600; color:var(--gold); width:14px; flex-shrink:0; }
+.value-card .vc-session b { color:var(--navy); font-weight:600; }
+
+.pg-card { background:var(--navy); color:var(--bg); border-radius:14px; padding:28px 32px; }
+.pg-card .pg-eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.pg-card h3 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; margin-bottom:16px; line-height:1.25; }
+.pg-card h3 em { font-style:italic; color:var(--gold); }
+.pg-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:18px; }
+.pg-tile { background:rgba(255,255,255,0.04); border:1px solid rgba(232,212,184,0.15); border-radius:10px; padding:14px 16px; }
+.pg-tile .lab { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,212,184,0.6); font-weight:700; margin-bottom:5px; }
+.pg-tile .num { font-family:'Fraunces',serif; font-size:24px; font-weight:600; letter-spacing:-0.015em; line-height:1; }
+.pg-tile .num em { font-style:italic; color:var(--gold); }
+.pg-tile .sub { font-size:10px; color:rgba(250,247,242,0.6); margin-top:4px; line-height:1.4; }
+.pg-tile .sub b { color:var(--bg); font-weight:600; }
+.pg-policy { background:rgba(200,151,91,0.1); border-left:3px solid var(--gold); padding:14px 18px; border-radius:0 8px 8px 0; }
+.pg-policy .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:5px; }
+.pg-policy p { font-size:12px; color:rgba(250,247,242,0.85); line-height:1.6; }
+.pg-policy p b { color:var(--bg); font-weight:700; }
+.pg-policy p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+.term-arc { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px 28px; }
+.term-arc .ta-head { margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.term-arc .ta-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.term-arc .ta-head h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; line-height:1.3; }
+.term-arc .ta-head h4 em { font-style:italic; color:var(--gold); }
+.term-arc .arc-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+.term-arc .arc-col { padding:18px 20px; border-radius:10px; }
+.term-arc .arc-col.t1 { background:var(--gold-bg); border-top:3px solid var(--gold); }
+.term-arc .arc-col.t2 { background:var(--green-bg); border-top:3px solid var(--green); }
+.term-arc .arc-col.t3 { background:var(--terra-bg); border-top:3px solid var(--terra); }
+.term-arc .arc-col .term-lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.term-arc .arc-col .term-title { font-family:'Fraunces',serif; font-size:16px; font-weight:600; line-height:1.2; margin-bottom:3px; }
+.term-arc .arc-col .term-title em { font-style:italic; color:var(--gold); }
+.term-arc .arc-col.t2 .term-title em { color:var(--green); }
+.term-arc .arc-col.t3 .term-title em { color:var(--terra); }
+.term-arc .arc-col .term-sub { font-size:10px; color:var(--navy-3); margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed var(--border-2); letter-spacing:0.02em; }
+.term-arc .arc-col .vals-list { font-size:11px; color:var(--navy-2); line-height:1.65; }
+.term-arc .arc-col .vals-list b { color:var(--navy); font-weight:600; }
+.term-arc .arc-col .vals-list .num-mini { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:600; margin-right:4px; }
+.term-arc .arc-col.t2 .vals-list .num-mini { color:var(--green); }
+.term-arc .arc-col.t3 .vals-list .num-mini { color:var(--terra); }
+
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:14px; color:var(--navy-2); line-height:1.7; margin-bottom:14px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-family:'Fraunces',serif; font-style:italic; font-weight:500; }
+.editorial .compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:20px; }
+.editorial .compare-col { padding:18px 22px; border-radius:10px; }
+.editorial .compare-col.rme { background:var(--bg); border:1px solid var(--border); }
+.editorial .compare-col.vlc { background:var(--gold-bg); border:1.5px solid var(--gold-soft); }
+.editorial .compare-col .lab { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.editorial .compare-col.vlc .lab { color:var(--gold); }
+.editorial .compare-col h5 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; margin-bottom:10px; }
+.editorial .compare-col h5 em { font-style:italic; color:var(--gold); }
+.editorial .compare-col ul { list-style:none; }
+.editorial .compare-col li { font-size:12px; color:var(--navy-2); padding:4px 0; line-height:1.5; display:flex; gap:7px; }
+.editorial .compare-col li::before { content:"·"; color:var(--gold); font-weight:700; }
+.editorial .compare-col li b { color:var(--navy); font-weight:600; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · VLC batch · 01 of 05</div>
+  <span class="mvp-tag">SHS · Dean of Students view</span>
+  <span class="related-tag">Student-facing counterpart to PLC</span>
+  <h1 class="display">Eleven values, <em>twenty-two sessions</em>, one year</h1>
+  <div class="gold-rule"></div>
+  <p>Values Learning Communities (VLC) are Omnischools's student-facing pastoral programme — the counterpart to PLCs for teachers. Every Wednesday at 2:30 PM, every class meets for sixty minutes around one of <b>eleven core values</b> drawn from Ghanaian school tradition. Form Master frames, two trained <b>Peer Guides</b> lead small-group discussions, the class share-backs in plenary, every student journals privately for ten minutes, and the FM closes. <em>The rhythm is the design.</em> Twenty-two sessions over thirty teaching weeks leaves eight weeks of slack for the realities of a Ghanaian school calendar — exams, sports, public holidays, and the days the rain takes the roof off the assembly hall.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The programme · curriculum, Peer Guides, and the Wednesday rhythm</div>
+    <div class="section-meta">Pastoral &amp; values → VLC → Programme setup</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / pastoral / vlc / programme-setup</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Pastoral &amp; values · VLC · Programme setup</div>
+          <h2 class="display">VLC <em>· academic year 2025/26</em></h2>
+          <div class="lede">Week 26 of 30 · Semester 2 in progress · today's session: Value 7 Patriotism (Ɔman dɔ) session B · 18 classes · 36 Peer Guides trained · last pastoral flag 7 minutes ago</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Open curriculum library</button>
+          <button class="btn gold">Edit programme</button>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-card featured">
+          <div class="lab">Core values · annual</div>
+          <div class="big display"><em>11</em> values</div>
+          <div class="sub"><b>22 sessions</b> · 2 per value (A intro, B applied)</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Active classes</div>
+          <div class="big display"><em>18</em> classes</div>
+          <div class="sub">Form 1 · Form 2 · Form 3 · all programmes</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Peer Guides trained</div>
+          <div class="big display"><em>36</em> · 2/class</div>
+          <div class="sub">17 boys · 17 girls · 2 in selection rotation</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Sessions held this year</div>
+          <div class="big display"><em>13</em> / 22</div>
+          <div class="sub">59% complete · 9 sessions to year-end</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Pastoral flags open</div>
+          <div class="big display"><em>4</em> open</div>
+          <div class="sub">3 with FM check-in queued · 1 escalated to Dean</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">When and how it runs</div>
+              <h3 class="display">The <em>Wednesday rhythm</em> · 60 minutes, every class, every week</h3>
+            </div>
+            <div class="meta">Locked at programme level · individual class can defer with Dean approval</div>
+          </div>
+
+          <div class="cadence-card">
+            <div class="cal-block">
+              <div class="day">WED</div>
+              <div class="num">2:30</div>
+              <div class="time">PM</div>
+            </div>
+            <div class="cad-info">
+              <div class="eb">Master timetable · protected slot</div>
+              <h4 class="display">Every Wednesday <em>2:30 — 3:30 PM</em></h4>
+              <p>Last period of the day. <b>No classes, no assemblies, no clubs scheduled in this slot</b> · master timetable enforces. Different day from PLC (Friday) so teacher load is spread. Form Master + 2 Peer Guides facilitate; whole class attends in their normal classroom. <b>22 sessions across the academic year</b> · 8 weeks of slack for exams, sports days, public holidays, and other disruptions baked into the planning.</p>
+            </div>
+            <div class="cad-actions">
+              <button class="btn">Adjust cadence</button>
+              <button class="btn ghost">View calendar</button>
+            </div>
+          </div>
+
+          <div class="rhythm-strip">
+            <div class="rs-head">
+              <div>
+                <div class="eb">Five-phase session structure</div>
+                <h4 class="display">Every session <em>follows the same rhythm</em></h4>
+              </div>
+              <div class="total">Total <b>60 min</b> · phase widths reflect time</div>
+            </div>
+            <div class="phases">
+              <div class="phase">
+                <div class="ph-mins display"><em>5</em> min</div>
+                <div class="ph-name">Opener</div>
+                <div class="ph-who">FM frames</div>
+                <div class="ph-desc">Value of the week introduced · today's focus question posed</div>
+              </div>
+              <div class="phase">
+                <div class="ph-mins display"><em>25</em> min</div>
+                <div class="ph-name">Small groups</div>
+                <div class="ph-who">PGs lead</div>
+                <div class="ph-desc">Class splits in two · each Peer Guide leads 4-5 students through the discussion prompts</div>
+              </div>
+              <div class="phase">
+                <div class="ph-mins display"><em>15</em> min</div>
+                <div class="ph-name">Plenary</div>
+                <div class="ph-who">FM moderates</div>
+                <div class="ph-desc">Each group shares back · class hears the range of perspectives</div>
+              </div>
+              <div class="phase">
+                <div class="ph-mins display"><em>10</em> min</div>
+                <div class="ph-name">Reflection</div>
+                <div class="ph-who">Silent · journal</div>
+                <div class="ph-desc">Each student writes a private journal entry · append-only</div>
+              </div>
+              <div class="phase">
+                <div class="ph-mins display"><em>5</em> min</div>
+                <div class="ph-name">Close</div>
+                <div class="ph-who">FM closes</div>
+                <div class="ph-desc">Next week's value previewed · session formally closed</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Three-term curriculum arc</div>
+              <h3 class="display">Foundations <em>→ Interpersonal → Integration</em></h3>
+            </div>
+            <div class="meta">Sequence locked at programme level · same order every academic year</div>
+          </div>
+
+          <div class="term-arc">
+            <div class="ta-head">
+              <div class="eb">The 11 values, grouped by term</div>
+              <h4 class="display">Building from <em>self → others → community</em></h4>
+            </div>
+            <div class="arc-grid">
+              <div class="arc-col t1">
+                <div class="term-lab">Semester 1 · Sept — Dec</div>
+                <div class="term-title display">Foundations <em>· self-formation</em></div>
+                <div class="term-sub">Values 1—4 · weeks 1—9 · 4 values × 2 sessions = 8 sessions</div>
+                <div class="vals-list">
+                  <div><span class="num-mini">1</span><b>Respect</b> · Obu</div>
+                  <div><span class="num-mini">2</span><b>Integrity</b> · Nokwaredi</div>
+                  <div><span class="num-mini">3</span><b>Responsibility</b> · Asɛyɛde</div>
+                  <div><span class="num-mini">4</span><b>Discipline</b> · Akwankyerɛ</div>
+                </div>
+              </div>
+              <div class="arc-col t2">
+                <div class="term-lab">Semester 2 · Jan — Apr</div>
+                <div class="term-title display">Interpersonal <em>· toward others</em></div>
+                <div class="term-sub">Values 5—8 · weeks 14—22 · 4 values × 2 sessions = 8 sessions</div>
+                <div class="vals-list">
+                  <div><span class="num-mini">5</span><b>Perseverance</b> · Boasetɔ</div>
+                  <div><span class="num-mini">6</span><b>Compassion</b> · Mmɔborɔhunu</div>
+                  <div><span class="num-mini">7</span><b>Patriotism</b> · Ɔman dɔ <em style="color:var(--gold);">(this week)</em></div>
+                  <div><span class="num-mini">8</span><b>Tolerance</b> · Asomdwoe</div>
+                </div>
+              </div>
+              <div class="arc-col t3">
+                <div class="term-lab">Semester 2 · May — Aug</div>
+                <div class="term-title display">Integration <em>· into community</em></div>
+                <div class="term-sub">Values 9—11 · weeks 26—30 · 3 values × 2 sessions = 6 sessions</div>
+                <div class="vals-list">
+                  <div><span class="num-mini">9</span><b>Service</b> · Adwumayɛ</div>
+                  <div><span class="num-mini">10</span><b>Excellence</b> · Papayɛ</div>
+                  <div><span class="num-mini">11</span><b>Wisdom</b> · Nyansa <em style="color:var(--terra);">capstone</em></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Curriculum library · 11 values, 22 sessions</div>
+              <h3 class="display">Each value <em>· session A intro, session B application</em></h3>
+            </div>
+            <div class="actions">
+              <button class="btn ghost">Download full curriculum (PDF)</button>
+              <button class="btn">Edit prompts</button>
+            </div>
+          </div>
+
+          <div class="values-grid">
+
+            <div class="value-card taught">
+              <div class="vc-num display">01</div>
+              <div class="vc-status">Taught · Wks 1-2</div>
+              <div class="vc-name display">Respect</div>
+              <div class="vc-twi">Obu · foundation value</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>What is respect?</b> · for self, for elders, for peers</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>Respect in practice</b> · how we speak, listen, disagree</div></div>
+            </div>
+
+            <div class="value-card taught">
+              <div class="vc-num display">02</div>
+              <div class="vc-status">Taught · Wks 3-4</div>
+              <div class="vc-name display">Integrity</div>
+              <div class="vc-twi">Nokwaredi · honesty &amp; consistency</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>Truth-telling</b> · why it costs, why it matters</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>When no one is watching</b> · who you are alone</div></div>
+            </div>
+
+            <div class="value-card taught">
+              <div class="vc-num display">03</div>
+              <div class="vc-status">Taught · Wks 5-6</div>
+              <div class="vc-name display">Responsibility</div>
+              <div class="vc-twi">Asɛyɛde · ownership of self &amp; tasks</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>What's mine to own</b> · circles of responsibility</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>Excuses and accountability</b> · catching the slip</div></div>
+            </div>
+
+            <div class="value-card taught">
+              <div class="vc-num display">04</div>
+              <div class="vc-status">Taught · Wks 7-8</div>
+              <div class="vc-name display">Discipline</div>
+              <div class="vc-twi">Akwankyerɛ · self-direction</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>Doing what must be done</b> · even when hard</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>Habit and routine</b> · small choices, big results</div></div>
+            </div>
+
+            <div class="value-card taught">
+              <div class="vc-num display">05</div>
+              <div class="vc-status">Taught · Wks 14-15</div>
+              <div class="vc-name display">Perseverance</div>
+              <div class="vc-twi">Boasetɔ · endurance under difficulty</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>When things are hard</b> · stories of endurance</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>Failing forward</b> · how to fail and continue</div></div>
+            </div>
+
+            <div class="value-card taught">
+              <div class="vc-num display">06</div>
+              <div class="vc-status">Taught · Wks 16-17</div>
+              <div class="vc-name display">Compassion</div>
+              <div class="vc-twi">Mmɔborɔhunu · seeing the other's burden</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>Noticing the unseen</b> · who is left out</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>Compassion in action</b> · what helping really looks like</div></div>
+            </div>
+
+            <div class="value-card current">
+              <div class="vc-num display">07</div>
+              <div class="vc-status">Current · Wks 25-26</div>
+              <div class="vc-name display">Patriotism</div>
+              <div class="vc-twi">Ɔman dɔ · love of country, civic duty</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>What Ghana means to me</b> · belonging beyond family</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>Service project planning</b> · today · what we will do</div></div>
+            </div>
+
+            <div class="value-card upcoming">
+              <div class="vc-num display">08</div>
+              <div class="vc-status">Upcoming · Wks 27-28</div>
+              <div class="vc-name display">Tolerance</div>
+              <div class="vc-twi">Asomdwoe · peaceful difference</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>Tribe, faith, region</b> · the diversity we live with</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>Disagreeing well</b> · making space without losing self</div></div>
+            </div>
+
+            <div class="value-card upcoming">
+              <div class="vc-num display">09</div>
+              <div class="vc-status">Upcoming · Wk 28-29</div>
+              <div class="vc-name display">Service</div>
+              <div class="vc-twi">Adwumayɛ · using what you have for others</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>What service is not</b> · service vs charity vs duty</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>Service project execution</b> · paired with Value 7B</div></div>
+            </div>
+
+            <div class="value-card upcoming">
+              <div class="vc-num display">10</div>
+              <div class="vc-status">Upcoming · Wk 29</div>
+              <div class="vc-name display">Excellence</div>
+              <div class="vc-twi">Papayɛ · doing what is good, well</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>The whole work</b> · finishing what you start, well</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>Quiet excellence</b> · without praise, without audience</div></div>
+            </div>
+
+            <div class="value-card upcoming">
+              <div class="vc-num display">11</div>
+              <div class="vc-status">Capstone · Wk 30</div>
+              <div class="vc-name display">Wisdom</div>
+              <div class="vc-twi">Nyansa · capstone · integration</div>
+              <div class="vc-session"><span class="ss-tag">A</span><div><b>What the year taught me</b> · pulling threads together</div></div>
+              <div class="vc-session"><span class="ss-tag">B</span><div><b>Carrying forward</b> · what stays with you after this year</div></div>
+            </div>
+
+            <div class="value-card" style="background:var(--bg); border-style:dashed; display:flex; align-items:center; justify-content:center; min-height:170px; text-align:center;">
+              <div>
+                <div style="font-family:'Fraunces',serif; font-size:32px; color:var(--gold-soft); margin-bottom:6px; font-style:italic;">+</div>
+                <div style="font-size:11px; color:var(--navy-3); font-weight:600;">Add a value to next year's<br/>curriculum</div>
+                <div style="font-size:10px; color:var(--navy-3); margin-top:6px; font-style:italic; line-height:1.4;">Year-by-year configurable · admin only · changes apply next academic year</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Student leadership pattern</div>
+              <h3 class="display">Peer Guides <em>· the design move on top of values curriculum</em></h3>
+            </div>
+            <div class="meta">Detailed roster &amp; training in surface 2 of this batch</div>
+          </div>
+
+          <div class="pg-card">
+            <div class="pg-eb">The pattern</div>
+            <h3 class="display">Two <em>Peer Guides per class</em> · one boy, one girl · Form 2 or 3 · one-term tenure</h3>
+
+            <div class="pg-grid">
+              <div class="pg-tile">
+                <div class="lab">Per class</div>
+                <div class="num display"><em>2</em></div>
+                <div class="sub"><b>1 boy + 1 girl</b> by default · class vote, FM approval, Dean sign-off</div>
+              </div>
+              <div class="pg-tile">
+                <div class="lab">Eligibility</div>
+                <div class="num display"><em>F2 / F3</em> only</div>
+                <div class="sub"><b>Form 1 students don't supply PGs</b> · they receive, not lead, in their first year</div>
+              </div>
+              <div class="pg-tile">
+                <div class="lab">Tenure</div>
+                <div class="num display"><em>1 term</em></div>
+                <div class="sub">Then rotates · keeps leadership opportunity wide, prevents burnout</div>
+              </div>
+              <div class="pg-tile">
+                <div class="lab">Training</div>
+                <div class="num display"><em>monthly</em></div>
+                <div class="sub">Dean-led · facilitation, listening, when to flag · 90 min, last Saturday morning</div>
+              </div>
+            </div>
+
+            <div class="pg-policy">
+              <div class="lab">Why this pattern, and not Prefects</div>
+              <p><b>Peer Guides are not Prefects.</b> A Prefect carries authority — enforces rules, reports infractions, represents the school. A <em>Peer Guide facilitates a conversation</em> — leads small-group discussion of a value, holds space for a peer's struggle, escalates a pastoral concern to the Form Master. <b>Different role, different selection, different training.</b> A student can hold both at once · most don't. The PG role exists to put students in front of each other on questions that adults asking would distort.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What this surface configures</h4>
+      <ul>
+        <li><b>The 11 values are an ordered list per school.</b> Default is the Omnischools canonical set; schools can reorder, rename English/Twi, or extend to 12-13 with Dean approval.</li>
+        <li><b>Each value has session A &amp; session B</b> — A introduces the idea, B applies it. Curriculum library holds the prompts; Dean &amp; senior staff can edit.</li>
+        <li><b>The Wednesday cadence is master-timetable protected.</b> Classes can defer with Dean approval (exam week, sports day) — auto-reschedules to the following Wednesday.</li>
+        <li><b>5-phase rhythm is locked but configurable.</b> Schools can adjust durations; the 5+25+15+10+5 default is the Omnischools opinion based on teacher feedback during pilot.</li>
+        <li><b>Term arc is sequence-locked.</b> Foundations → Interpersonal → Integration. The same order every academic year. Builds from self → others → community over 30 weeks.</li>
+        <li><b>Peer Guides are configured here.</b> Eligibility (F2/F3 only), gender pairing default, tenure length, training cadence. Per-class roster is on surface 2.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Permissions</h4>
+      <ul>
+        <li><b>Dean of Students</b> · full edit · adds/removes values, edits prompts, sets cadence</li>
+        <li><b>Headmaster</b> · view all · approves any sequence change</li>
+        <li><b>Form Master</b> · view their class's schedule · cannot edit curriculum</li>
+        <li><b>Students / Peer Guides</b> · cannot see this surface · see the session register only</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">VLC is not RME · why both exist</div>
+    <div class="section-meta">Editorial · the boundary that matters</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The boundary</div>
+        <h3 class="display">RME teaches <em>about</em> values. VLC creates the space to <em>practice</em> them.</h3>
+        <p>Ghanaian schools already teach Religious &amp; Moral Education and Citizenship Education — these are <b>examinable NaCCA subjects</b>, with curriculum, textbooks, weekly periods, end-of-term assessments, and grades that appear on transcripts. They are essential. <em>They are not the same thing as VLC</em>, and trying to make VLC replace them or duplicate them would be a category error.</p>
+        <p>RME is taught by a subject teacher with a syllabus and a grading rubric. The teacher knows what the answer is — or at least, what the examination wants the student to write. VLC is led by the Form Master and two Peer Guides, on a Wednesday afternoon, in the class's own room, with no exam at the end. <b>There is no grade on the transcript</b>. There is no right answer to write down. There is a private journal entry, a Form Master who knows the class as humans, and the slow accumulation of twenty-two sessions across nine months that becomes the character paragraph in the student's school-leaver report.</p>
+        <p>The Form Master leads VLC for the same reason a guidance counsellor leads pastoral care: <em>they know the students.</em> They've taught them Maths or English for two terms already. They've watched them through a flu outbreak and a house competition and a difficult assembly. When Value 6 is Compassion and a student goes quiet, the FM knows what that quiet means — in a way no subject teacher rotating through a syllabus could. The Peer Guides add the dimension only students can bring: <b>the friend who can ask the question that an adult asking would distort.</b></p>
+
+        <div class="compare-grid">
+          <div class="compare-col rme">
+            <div class="lab">Already exists · NaCCA-mandated</div>
+            <h5 class="display">RME &amp; Citizenship Education</h5>
+            <ul>
+              <li><b>Examinable subject</b> · WASSCE grade on transcript</li>
+              <li>Taught by subject teacher with textbook</li>
+              <li>Weekly periods · ~3-4 per week</li>
+              <li>End-of-term tests, end-of-year exams</li>
+              <li>Curriculum prescribed nationally</li>
+              <li>Goal: knowledge of moral &amp; civic principles</li>
+            </ul>
+          </div>
+          <div class="compare-col vlc">
+            <div class="lab">New addition · Omnischools design</div>
+            <h5 class="display">VLC <em>· this programme</em></h5>
+            <ul>
+              <li><b>Not examined</b> · no grade · pastoral by nature</li>
+              <li>Led by Form Master + 2 Peer Guides</li>
+              <li>One 60-min session per week · Wednesday</li>
+              <li>Private journal · contributes to character paragraph</li>
+              <li>Curriculum school-designed · 11 values + 2 sessions each</li>
+              <li>Goal: practice of values in a community of peers</li>
+            </ul>
+          </div>
+        </div>
+
+        <p style="margin-top:20px;">The two are <b>complementary</b>, not competing. A school running both has the examinable knowledge work and the lived community work each in their proper place. <em>One teaches the syllabus, the other forms the person.</em></p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Why this matters for design</h4>
+      <ul>
+        <li><b>Don't put VLC entries on the transcript.</b> The transcript is the formal academic record. VLC outputs (reflection journals, FM pastoral notes) live on the school-leaver character paragraph — a separate document.</li>
+        <li><b>Don't treat reflections like assignments.</b> Reflections are append-only, never graded, never visible to peers. The student writes, the FM reads, that's it.</li>
+        <li><b>Don't try to "grade" the values.</b> A student who writes a thin reflection isn't failing VLC. The reflection is for them, not for you. Engagement matters; performance does not.</li>
+        <li><b>Don't let parents see the journal.</b> Pastoral confidentiality. The FM may share themes if a serious concern arises, not the entries themselves.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

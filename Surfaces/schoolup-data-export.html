@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Data export</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:720px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1620px; }
+.brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar-footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar-footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar-footer .meta-name { font-weight:600; }
+.sidebar-footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; margin-bottom:0; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:680px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+
+.body { padding:28px 36px 60px; }
+
+/* Trust banner */
+.trust-banner { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:13px 20px; margin-bottom:24px; display:grid; grid-template-columns:24px 1fr; gap:14px; align-items:center; font-size:12px; }
+.trust-banner .ic { width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:12px; }
+.trust-banner .text { color:var(--navy-2); line-height:1.55; }
+.trust-banner .text b { color:var(--navy); font-weight:600; }
+.trust-banner .text em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+/* Region structure */
+.region { margin-bottom:36px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Quick exports grid */
+.quick-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.quick-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; cursor:pointer; transition:border-color 0.15s; display:flex; flex-direction:column; gap:10px; }
+.quick-card:hover { border-color:var(--gold); }
+.quick-card .ico-row { display:flex; justify-content:space-between; align-items:start; }
+.quick-card .ico { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; }
+.quick-card .ico.attendance { background:var(--green-bg); color:var(--green); }
+.quick-card .ico.billing { background:var(--gold-bg); color:var(--gold); }
+.quick-card .ico.parents { background:var(--terra-bg); color:var(--terra); }
+.quick-card .ico.students { background:var(--green-bg); color:var(--green); }
+.quick-card .ico.grades { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+.quick-card .ico.comms { background:var(--warn-bg); color:var(--warn); }
+.quick-card .format-tags { display:flex; gap:4px; }
+.quick-card .format-tag { padding:1px 7px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.quick-card .name { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; }
+.quick-card .name em { font-style:italic; color:var(--gold); }
+.quick-card .desc { font-size:11px; color:var(--navy-3); line-height:1.5; }
+.quick-card .desc b { color:var(--navy-2); font-weight:600; }
+.quick-card .meta-row { display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px dashed var(--border); margin-top:auto; }
+.quick-card .meta-row .last { font-size:10px; color:var(--navy-3); font-style:italic; }
+.quick-card .meta-row .last b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.quick-card .meta-row .download { font-size:10px; color:var(--gold); font-weight:700; letter-spacing:0.04em; }
+
+/* Custom builder */
+.builder { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; overflow:hidden; }
+.builder-head { background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); padding:18px 24px; }
+.builder-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.builder-head h3 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.01em; }
+.builder-head h3 em { font-style:italic; color:var(--gold); }
+.builder-head .desc { font-size:12px; color:var(--navy-3); margin-top:4px; }
+.builder-head .desc b { color:var(--navy-2); font-weight:600; }
+
+.builder-step { padding:18px 24px; border-bottom:1px solid var(--border); }
+.builder-step:last-child { border-bottom:none; }
+.step-row { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; }
+.step-num { width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; flex-shrink:0; }
+.step-title { font-family:'Fraunces',serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; }
+.step-title em { font-style:italic; color:var(--gold); }
+.step-meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.step-meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+.entity-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.entity-card { background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:11px 13px; cursor:pointer; }
+.entity-card.selected { border-color:var(--gold); background:var(--gold-bg); }
+.entity-card .check-row { display:flex; align-items:center; gap:8px; }
+.entity-card .check { width:14px; height:14px; border-radius:4px; border:1.5px solid var(--border-2); flex-shrink:0; position:relative; }
+.entity-card.selected .check { background:var(--gold); border-color:var(--gold); }
+.entity-card.selected .check::after { content:"✓"; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); color:var(--navy); font-size:9px; font-weight:700; }
+.entity-card .ent-name { font-family:'Fraunces',serif; font-weight:600; font-size:12px; letter-spacing:-0.005em; }
+.entity-card .ent-meta { font-size:10px; color:var(--navy-3); margin-top:3px; padding-left:22px; line-height:1.4; }
+.entity-card .ent-meta b { color:var(--navy-2); font-weight:600; }
+
+/* Field selector */
+.field-list { display:grid; grid-template-columns:repeat(3,1fr); gap:6px 14px; }
+.field-row { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:11px; color:var(--navy-2); }
+.field-row .check { width:12px; height:12px; border-radius:3px; border:1.5px solid var(--border-2); flex-shrink:0; position:relative; }
+.field-row.checked .check { background:var(--gold); border-color:var(--gold); }
+.field-row.checked .check::after { content:"✓"; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); color:var(--navy); font-size:8px; font-weight:700; }
+.field-row.checked { color:var(--navy); font-weight:600; }
+.field-row .lock { font-size:9px; color:var(--gold); font-style:italic; margin-left:auto; }
+
+/* Format selector */
+.format-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.format-card { background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:14px 16px; cursor:pointer; }
+.format-card.selected { border-color:var(--gold); background:var(--gold-bg); }
+.format-card .fc-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.format-card .radio { width:14px; height:14px; border-radius:50%; border:2px solid var(--border-2); flex-shrink:0; position:relative; }
+.format-card.selected .radio { border-color:var(--gold); }
+.format-card.selected .radio::after { content:""; position:absolute; left:2px; top:2px; width:6px; height:6px; border-radius:50%; background:var(--gold); }
+.format-card .fc-name { font-family:'Fraunces',serif; font-weight:600; font-size:13px; letter-spacing:-0.005em; }
+.format-card .fc-name em { font-style:italic; color:var(--gold); }
+.format-card .fc-desc { font-size:10px; color:var(--navy-3); padding-left:22px; line-height:1.4; }
+.format-card .fc-desc b { color:var(--navy-2); font-weight:600; }
+
+/* Preview summary */
+.preview-card { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-top:14px; }
+.preview-card .heading { font-family:'Fraunces',serif; font-size:13px; font-weight:600; margin-bottom:8px; }
+.preview-card .heading em { font-style:italic; color:var(--gold); }
+.preview-card .row { display:grid; grid-template-columns:auto 1fr; gap:10px; padding:4px 0; font-size:11px; color:var(--navy-2); }
+.preview-card .row b { color:var(--navy); font-weight:600; }
+.preview-card .row em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+/* Save bar */
+.save-bar { background:var(--surface); border:1px solid var(--gold); border-radius:12px; padding:18px 24px; margin-top:18px; display:grid; grid-template-columns:1fr auto; gap:24px; align-items:center; }
+.save-bar .summary { font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
+.save-bar .summary em { font-style:italic; color:var(--gold); }
+.save-bar .meta { font-size:11px; color:var(--navy-3); margin-top:3px; }
+.save-bar .meta b { color:var(--navy-2); font-weight:600; }
+
+/* Archive card */
+.archive-card { background:var(--navy); color:var(--bg); border-radius:14px; padding:28px 32px; background-image:radial-gradient(circle at 95% 0%, rgba(200,151,91,0.18) 0%, transparent 55%); display:grid; grid-template-columns:1fr 320px; gap:32px; align-items:center; }
+.archive-card .left .lbl { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; margin-bottom:6px; }
+.archive-card .left h3 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; letter-spacing:-0.018em; line-height:1.2; }
+.archive-card .left h3 em { font-style:italic; color:var(--gold); }
+.archive-card .left .body-text { font-size:13px; color:rgba(232,212,184,0.85); margin-top:12px; line-height:1.6; max-width:560px; }
+.archive-card .left .body-text b { color:var(--bg); font-weight:600; }
+.archive-card .left .body-text em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+.archive-card .left .commitments { display:flex; gap:14px; margin-top:14px; flex-wrap:wrap; }
+.archive-card .left .commitment { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:rgba(232,212,184,0.85); }
+.archive-card .left .commitment .check { width:14px; height:14px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; }
+.archive-card .right { background:rgba(255,255,255,0.04); border:1px solid rgba(200,151,91,0.2); border-radius:10px; padding:18px; }
+.archive-card .right .stat { margin-bottom:12px; }
+.archive-card .right .stat:last-child { margin-bottom:0; }
+.archive-card .right .stat .lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; }
+.archive-card .right .stat .val { font-family:'Fraunces',serif; font-size:18px; font-weight:600; color:var(--gold); margin-top:2px; }
+.archive-card .right .stat .val em { font-style:italic; }
+.archive-card .right .request-btn { display:block; width:100%; padding:11px; background:var(--gold); color:var(--navy); border:none; border-radius:8px; font-family:inherit; font-size:12px; font-weight:700; letter-spacing:0.04em; cursor:pointer; margin-top:14px; }
+
+/* Recent exports table */
+.recent-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.recent-table { width:100%; border-collapse:collapse; }
+.recent-table thead th { background:var(--bg); border-bottom:1px solid var(--border); padding:10px 14px; text-align:left; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.recent-table thead th.right { text-align:right; }
+.recent-table tbody td { padding:11px 14px; border-bottom:1px solid var(--border); font-size:12px; color:var(--navy-2); vertical-align:middle; }
+.recent-table tbody tr:last-child td { border-bottom:none; }
+.recent-table .name b { color:var(--navy); font-weight:600; }
+.recent-table .name .meta { display:block; font-size:10px; color:var(--navy-3); margin-top:1px; font-style:italic; }
+.recent-table .file-tag { display:inline-flex; align-items:center; padding:1px 7px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; background:var(--bg); border:1px solid var(--border); color:var(--navy-3); }
+.recent-table .actor-pill { display:inline-flex; align-items:center; padding:1px 7px; border-radius:100px; background:var(--bg); border:1px solid var(--border); font-size:10px; font-weight:600; color:var(--navy-2); }
+.recent-table .when { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.recent-table .size { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); font-weight:600; }
+.recent-table .download-link { font-size:10px; color:var(--gold); font-weight:700; letter-spacing:0.04em; cursor:pointer; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .quick-grid { grid-template-columns:1fr 1fr; }
+  .entity-grid { grid-template-columns:1fr 1fr; }
+  .field-list { grid-template-columns:1fr 1fr; }
+  .format-row { grid-template-columns:1fr 1fr; }
+  .archive-card { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 4 · Operational parity</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Your <em>data</em>, your school's</h1>
+  <div class="gold-rule"></div>
+  <p>Schools should be able to walk away with all their data — that's table stakes for any SaaS, but particularly important when the MoE asks "what happens if Omnischools shuts down?" Three flavours of export: <b>quick one-tap downloads</b> for routine reporting (this month's attendance, this term's billing), a <b>custom builder</b> for ad-hoc queries, and a <b>full data archive</b> for portability. The archive flow is the trust signal — encrypted ZIP, server-compiled, emailed when ready.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Data export · three flavours, one surface</div>
+    <div class="section-meta">Florence · Settings → Data export · 312 students · 47 invoices · 5 years of data</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / data-export</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="nav-item sub">School info</div>
+          <div class="nav-item sub">Term &amp; calendar</div>
+          <div class="nav-item sub">Fee structure</div>
+          <div class="nav-item sub">Users &amp; roles</div>
+          <div class="nav-item sub">Communications</div>
+          <div class="nav-item sub">Bookkeeping</div>
+          <div class="nav-item sub">Retention policy</div>
+          <div class="nav-item sub">Audit log</div>
+          <div class="nav-item sub active">Data export</div>
+          <div class="nav-item sub">Security &amp; 2FA</div>
+          <div class="sidebar-footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Settings</a> / Data export</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Data <em>export</em></h1>
+                <div class="lede">Your school's data is <b>your school's data</b> · download routine reports anytime · build custom slices for inspections · request a full archive when you need everything in one file</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Recent exports →</button>
+                <button class="btn primary">+ Custom export</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <!-- Trust banner -->
+            <div class="trust-banner">
+              <div class="ic">✓</div>
+              <div class="text">
+                <b>Your data is portable by design.</b> Every export is generated fresh from your live records — no stale snapshots · matches Ghana DPA 2012 subject access standards · suitable for <em>MoE inspections</em>, GES returns, GRA audits, and provider transitions · never billed extra for export.
+              </div>
+            </div>
+
+            <!-- Quick exports -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display"><em>Quick</em> exports · one-tap downloads</h2>
+                <div class="meta">Pre-shaped for the most common reporting needs · <b>generated instantly</b></div>
+              </div>
+
+              <div class="quick-grid">
+
+                <div class="quick-card">
+                  <div class="ico-row">
+                    <div class="ico attendance">A</div>
+                    <div class="format-tags"><span class="format-tag">CSV</span><span class="format-tag">PDF</span></div>
+                  </div>
+                  <div class="name display">This month's <em>attendance</em></div>
+                  <div class="desc">Daily attendance for <b>all classes</b> · Oct 2025 to date · 312 students × 17 school days · headers per class</div>
+                  <div class="meta-row">
+                    <span class="last">Last downloaded · <b>3 days ago</b></span>
+                    <span class="download">DOWNLOAD ↓</span>
+                  </div>
+                </div>
+
+                <div class="quick-card">
+                  <div class="ico-row">
+                    <div class="ico billing">B</div>
+                    <div class="format-tags"><span class="format-tag">CSV</span><span class="format-tag">PDF</span></div>
+                  </div>
+                  <div class="name display">This term's <em>billing</em></div>
+                  <div class="desc">All Term 1 invoices, payments, balances · 312 student rows · status as of today · totals row footer</div>
+                  <div class="meta-row">
+                    <span class="last">Last downloaded · <b>yesterday</b></span>
+                    <span class="download">DOWNLOAD ↓</span>
+                  </div>
+                </div>
+
+                <div class="quick-card">
+                  <div class="ico-row">
+                    <div class="ico parents">P</div>
+                    <div class="format-tags"><span class="format-tag">CSV</span></div>
+                  </div>
+                  <div class="name display">All <em>parent contacts</em></div>
+                  <div class="desc">Phone, WhatsApp opt-in, email, language, preferred channel · <b>312 records</b> · for emergency comms or backup</div>
+                  <div class="meta-row">
+                    <span class="last">Never downloaded</span>
+                    <span class="download">DOWNLOAD ↓</span>
+                  </div>
+                </div>
+
+                <div class="quick-card">
+                  <div class="ico-row">
+                    <div class="ico students">S</div>
+                    <div class="format-tags"><span class="format-tag">CSV</span><span class="format-tag">PDF</span></div>
+                  </div>
+                  <div class="name display">Active <em>student roster</em></div>
+                  <div class="desc">Name, class, age, parent, enrolment date, status · <b>312 active</b> students · sorted by class</div>
+                  <div class="meta-row">
+                    <span class="last">Last downloaded · <b>2 weeks ago</b></span>
+                    <span class="download">DOWNLOAD ↓</span>
+                  </div>
+                </div>
+
+                <div class="quick-card">
+                  <div class="ico-row">
+                    <div class="ico grades">G</div>
+                    <div class="format-tags"><span class="format-tag">CSV</span><span class="format-tag">PDF</span></div>
+                  </div>
+                  <div class="name display">Term 1 <em>gradebook</em></div>
+                  <div class="desc">All assessments by class · raw scores + weighted totals · <b>9 classes</b> · suitable for report card prep</div>
+                  <div class="meta-row">
+                    <span class="last">Never downloaded</span>
+                    <span class="download">DOWNLOAD ↓</span>
+                  </div>
+                </div>
+
+                <div class="quick-card">
+                  <div class="ico-row">
+                    <div class="ico comms">C</div>
+                    <div class="format-tags"><span class="format-tag">CSV</span></div>
+                  </div>
+                  <div class="name display">SMS &amp; WhatsApp <em>logs</em></div>
+                  <div class="desc">Last 30 days of outbound messages · channel, recipient, delivery state, cost · <b>respects retention policy</b></div>
+                  <div class="meta-row">
+                    <span class="last">Last downloaded · <b>1 month ago</b></span>
+                    <span class="download">DOWNLOAD ↓</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Custom export builder -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display"><em>Custom</em> export · build your own slice</h2>
+                <div class="meta">For ad-hoc queries · <b>3 steps</b> · save as a quick export for reuse</div>
+              </div>
+
+              <div class="builder">
+                <div class="builder-head">
+                  <div class="eb">Custom export builder · in progress</div>
+                  <h3 class="display">JHS 2 <em>students with low attendance</em></h3>
+                  <div class="desc">For Florence's parent-teacher review meeting · 3 steps · <b>save as a saved query</b> when done so it can be re-run</div>
+                </div>
+
+                <!-- Step 1: Entities -->
+                <div class="builder-step">
+                  <div class="step-row">
+                    <div class="step-num">1</div>
+                    <div class="step-title display">Pick the <em>entities</em></div>
+                    <div class="step-meta">Multiple selectable · they'll be <b>joined automatically</b></div>
+                  </div>
+                  <div class="entity-grid">
+                    <div class="entity-card selected">
+                      <div class="check-row"><div class="check"></div><div class="ent-name display">Students</div></div>
+                      <div class="ent-meta"><b>312 records</b> · 23 fields including class, parent, enrolment</div>
+                    </div>
+                    <div class="entity-card selected">
+                      <div class="check-row"><div class="check"></div><div class="ent-name display">Attendance</div></div>
+                      <div class="ent-meta"><b>26,520 records</b> this term · 1 row per student per school day</div>
+                    </div>
+                    <div class="entity-card">
+                      <div class="check-row"><div class="check"></div><div class="ent-name display">Parents</div></div>
+                      <div class="ent-meta"><b>278 records</b> · contact prefs, opt-in status</div>
+                    </div>
+                    <div class="entity-card">
+                      <div class="check-row"><div class="check"></div><div class="ent-name display">Invoices</div></div>
+                      <div class="ent-meta"><b>312 records</b> this term · billing &amp; payment</div>
+                    </div>
+                    <div class="entity-card">
+                      <div class="check-row"><div class="check"></div><div class="ent-name display">Grades</div></div>
+                      <div class="ent-meta"><b>3,400+ records</b> · per-assessment scores</div>
+                    </div>
+                    <div class="entity-card">
+                      <div class="check-row"><div class="check"></div><div class="ent-name display">Communications</div></div>
+                      <div class="ent-meta"><b>5,200 records</b> · SMS, WA, email logs</div>
+                    </div>
+                    <div class="entity-card">
+                      <div class="check-row"><div class="check"></div><div class="ent-name display">Audit log</div></div>
+                      <div class="ent-meta"><b>1,287 events</b> · last 30 days · admin-only</div>
+                    </div>
+                    <div class="entity-card">
+                      <div class="check-row"><div class="check"></div><div class="ent-name display">Bookkeeping</div></div>
+                      <div class="ent-meta"><b>140 entries</b> · expenses + income · since activation</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Step 2: Fields -->
+                <div class="builder-step">
+                  <div class="step-row">
+                    <div class="step-num">2</div>
+                    <div class="step-title display">Pick <em>fields</em> &amp; filters</div>
+                    <div class="step-meta">PII fields require <b>elevated permission</b> to export</div>
+                  </div>
+                  <div style="margin-bottom:14px;font-size:12px;color:var(--navy-2)"><b>From Students:</b></div>
+                  <div class="field-list" style="margin-bottom:14px">
+                    <div class="field-row checked"><div class="check"></div>Student name</div>
+                    <div class="field-row checked"><div class="check"></div>Class</div>
+                    <div class="field-row checked"><div class="check"></div>Date of birth</div>
+                    <div class="field-row"><div class="check"></div>Home address <span class="lock">PII · approval needed</span></div>
+                    <div class="field-row checked"><div class="check"></div>Parent name</div>
+                    <div class="field-row"><div class="check"></div>Parent phone <span class="lock">PII · approval needed</span></div>
+                    <div class="field-row checked"><div class="check"></div>Enrolment date</div>
+                    <div class="field-row"><div class="check"></div>Gender</div>
+                    <div class="field-row"><div class="check"></div>Religion</div>
+                  </div>
+                  <div style="margin-bottom:14px;font-size:12px;color:var(--navy-2)"><b>From Attendance · with filter:</b></div>
+                  <div class="field-list">
+                    <div class="field-row checked"><div class="check"></div>Days present</div>
+                    <div class="field-row checked"><div class="check"></div>Days absent</div>
+                    <div class="field-row checked"><div class="check"></div>Attendance %</div>
+                    <div class="field-row"><div class="check"></div>Absence reasons</div>
+                    <div class="field-row checked"><div class="check"></div><b style="color:var(--gold);font-weight:600">Filter: %  &lt; 80</b></div>
+                    <div class="field-row checked"><div class="check"></div><b style="color:var(--gold);font-weight:600">Filter: class = JHS 2A/B/C</b></div>
+                  </div>
+                </div>
+
+                <!-- Step 3: Format -->
+                <div class="builder-step">
+                  <div class="step-row">
+                    <div class="step-num">3</div>
+                    <div class="step-title display">Pick <em>format</em></div>
+                    <div class="step-meta">Format affects what's possible · <b>CSV most flexible</b></div>
+                  </div>
+                  <div class="format-row">
+                    <div class="format-card selected">
+                      <div class="fc-row"><div class="radio"></div><span class="fc-name display"><em>CSV</em></span></div>
+                      <div class="fc-desc">Spreadsheet-ready · opens in Excel · <b>most flexible</b></div>
+                    </div>
+                    <div class="format-card">
+                      <div class="fc-row"><div class="radio"></div><span class="fc-name display">Excel</span></div>
+                      <div class="fc-desc">Multi-sheet · entity per sheet · totals rows</div>
+                    </div>
+                    <div class="format-card">
+                      <div class="fc-row"><div class="radio"></div><span class="fc-name display">PDF</span></div>
+                      <div class="fc-desc">Formatted report · <b>good for printing</b></div>
+                    </div>
+                    <div class="format-card">
+                      <div class="fc-row"><div class="radio"></div><span class="fc-name display">JSON</span></div>
+                      <div class="fc-desc">Machine-readable · for technical reuse</div>
+                    </div>
+                  </div>
+
+                  <div class="preview-card">
+                    <div class="heading display">Custom export <em>preview</em></div>
+                    <div class="row"><b>Result:</b><span><em>~14 rows</em> · JHS 2 students with attendance below 80% · 9 fields per row</span></div>
+                    <div class="row"><b>Format:</b><span>CSV · ~3KB · downloads instantly</span></div>
+                    <div class="row"><b>Includes:</b><span>Student name, class, DOB, parent name, enrolment date, days present/absent, attendance %</span></div>
+                    <div class="row"><b>Excludes:</b><span>Phone numbers, home address (PII · would require approval)</span></div>
+                  </div>
+
+                </div>
+              </div>
+
+              <div class="save-bar">
+                <div>
+                  <div class="summary display">Build &amp; download <em>JHS 2 low attendance</em>?</div>
+                  <div class="meta">Generates fresh from your data · saves as <b>"My low-attendance query"</b> for re-running · audit trail recorded</div>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn">Save query only</button>
+                  <button class="btn gold">Generate &amp; download →</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Full archive -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">03</div>
+                <h2 class="display"><em>Full archive</em> · everything in one file</h2>
+                <div class="meta">For provider transitions · disaster recovery · DPA subject access requests</div>
+              </div>
+
+              <div class="archive-card">
+                <div class="left">
+                  <div class="lbl">Full data archive · encrypted</div>
+                  <h3 class="display">All your school's data — <em>in one encrypted ZIP</em></h3>
+                  <div class="body-text">Generated server-side · takes <b>15—30 minutes</b> for a school your size · sent as a <em>secure download link</em> to your verified email · expires in 7 days · <b>password-protected</b> with a key you choose at request time</div>
+                  <div class="commitments">
+                    <div class="commitment"><div class="check">✓</div>Open formats only — CSV, JSON, PDF</div>
+                    <div class="commitment"><div class="check">✓</div>Includes audit trail</div>
+                    <div class="commitment"><div class="check">✓</div>No Omnischools lock-in</div>
+                  </div>
+                </div>
+                <div class="right">
+                  <div class="stat">
+                    <div class="lbl">Estimated size</div>
+                    <div class="val display"><em>~38 MB</em></div>
+                  </div>
+                  <div class="stat">
+                    <div class="lbl">Records included</div>
+                    <div class="val display"><em>~36,200</em></div>
+                  </div>
+                  <div class="stat">
+                    <div class="lbl">Last requested</div>
+                    <div class="val display">Never</div>
+                  </div>
+                  <button class="request-btn">REQUEST FULL ARCHIVE →</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent exports -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">04</div>
+                <h2 class="display"><em>Recent</em> exports</h2>
+                <div class="meta">Last 30 days · all admins · <b>logged in audit</b></div>
+              </div>
+
+              <div class="recent-card">
+                <table class="recent-table">
+                  <thead>
+                    <tr>
+                      <th>Export</th>
+                      <th>Format</th>
+                      <th>Actor</th>
+                      <th>When</th>
+                      <th>Size</th>
+                      <th class="right">Re-download</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="name"><b>This term's billing</b><span class="meta">Quick export · pre-shaped</span></td>
+                      <td><span class="file-tag">CSV</span></td>
+                      <td><span class="actor-pill">Florence</span></td>
+                      <td><span class="when">Yesterday · 4:14 PM</span></td>
+                      <td><span class="size">142 KB</span></td>
+                      <td style="text-align:right"><span class="download-link">DOWNLOAD AGAIN ↓</span></td>
+                    </tr>
+                    <tr>
+                      <td class="name"><b>This month's attendance</b><span class="meta">Quick export</span></td>
+                      <td><span class="file-tag">PDF</span></td>
+                      <td><span class="actor-pill">Florence</span></td>
+                      <td><span class="when">3 days ago · 9:02 AM</span></td>
+                      <td><span class="size">2.1 MB</span></td>
+                      <td style="text-align:right"><span class="download-link">DOWNLOAD AGAIN ↓</span></td>
+                    </tr>
+                    <tr>
+                      <td class="name"><b>JHS 3 transcripts batch</b><span class="meta">Bulk transcript generation · 33 students</span></td>
+                      <td><span class="file-tag">PDF · ZIP</span></td>
+                      <td><span class="actor-pill">Florence</span></td>
+                      <td><span class="when">Mon 20 Oct · 2:00 PM</span></td>
+                      <td><span class="size">8.4 MB</span></td>
+                      <td style="text-align:right"><span class="download-link">DOWNLOAD AGAIN ↓</span></td>
+                    </tr>
+                    <tr>
+                      <td class="name"><b>SMS &amp; WhatsApp logs · 30d</b><span class="meta">Quick export</span></td>
+                      <td><span class="file-tag">CSV</span></td>
+                      <td><span class="actor-pill">Joyce</span></td>
+                      <td><span class="when">1 month ago</span></td>
+                      <td><span class="size">68 KB</span></td>
+                      <td style="text-align:right"><span class="download-link">DOWNLOAD AGAIN ↓</span></td>
+                    </tr>
+                    <tr>
+                      <td class="name"><b>GES annual return data</b><span class="meta">Statutory export · for inspection</span></td>
+                      <td><span class="file-tag">PDF + CSV</span></td>
+                      <td><span class="actor-pill">Florence</span></td>
+                      <td><span class="when">2 months ago</span></td>
+                      <td><span class="size">512 KB</span></td>
+                      <td style="text-align:right"><span class="download-link">DOWNLOAD AGAIN ↓</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Three flavours of export, one surface</b>: quick exports (one-tap pre-shaped) / custom builder (3-step wizard) / full archive (encrypted ZIP, slow, server-compiled). <b>Different cognitive modes</b>: quick is "I know what I want, give it to me" · custom is "I want a slice that doesn't exist as a preset" · archive is "I want everything." Three regions on one page so admin doesn't have to learn three different surfaces.</li>
+        <li><b>Trust banner in gold-tinted card at the top</b>: "<b>Your data is portable by design.</b> Every export is generated fresh from your live records — no stale snapshots · matches Ghana DPA 2012 subject access standards · suitable for <em>MoE inspections</em>, GES returns, GRA audits, and provider transitions · <b>never billed extra for export</b>." <b>Establishes the four guarantees upfront</b>: freshness, regulatory adequacy, multi-purpose, no paywall.</li>
+        <li><b>"Never billed extra for export" is the key trust phrase</b> · many SaaS providers gate exports behind premium tiers or per-export fees. <b>Omnischools's commitment is structural</b>: data export is free regardless of plan · this is how MoE pitch credibility is built.</li>
+        <li><b>Quick exports as 6-card grid with consistent shape</b>: ico (module-coloured) + format tags (CSV/PDF) + name in italic Fraunces + descriptive line + meta row with last-downloaded + DOWNLOAD link. <b>Same card shape for every quick export</b>; admin learns the pattern once.</li>
+        <li><b>"Last downloaded · 3 days ago" / "Never downloaded"</b> shown on every quick export · <b>signals freshness expectation</b>. If the same export was downloaded yesterday it's the daily routine; if never, admin discovers the option.</li>
+        <li><b>6 quick exports cover the most common needs</b>: attendance / billing / parent contacts / student roster / gradebook / SMS+WA logs. <b>Each is a distinct operational moment</b> for the admin: monthly reporting, term-end billing review, emergency contact backup, roster verification, report card prep, communication audit.</li>
+        <li><b>Custom builder card with gold border</b> lives in the same screen as quick exports · 3 steps: entities / fields &amp; filters / format. <b>Same builder pattern as reminder series</b>; admin already knows how this works · no new mental model.</li>
+        <li><b>Builder example is "JHS 2 students with low attendance"</b> — a real ad-hoc query Florence might build for a parent-teacher review meeting. <b>Concrete enough to demonstrate the value</b>; the kind of query no preset would cover.</li>
+        <li><b>Entity grid shows record counts</b>: "Students <b>312 records</b>" / "Attendance <b>26,520 records</b>" / "Audit log <b>1,287 events</b>." <b>Admin sees the scale of what they're querying</b> before committing · prevents accidental million-row queries.</li>
+        <li><b>Field list groups by entity</b> with checkboxes · PII fields (home address, parent phone) are visible but flagged "PII · approval needed" in italic gold. <b>Sensitive data is gated</b>; can be selected but requires elevated permission to actually export · audit-logged when used.</li>
+        <li><b>Filter rows in field list shown as gold-bold rows</b>: "Filter: % &lt; 80" and "Filter: class = JHS 2A/B/C". <b>Filters are first-class fields</b>; admin sees them in the same list as the columns being included · the query is one cohesive object.</li>
+        <li><b>Format selector with 4 options</b>: CSV (selected, "most flexible") / Excel (multi-sheet) / PDF (printable) / JSON (machine-readable). <b>Each format has a 1-line characterisation</b> · CSV is the safest default but Excel is offered for users who want multi-sheet structure without exporting and re-importing.</li>
+        <li><b>Preview card narrates the result before commit</b>: "<b>Result:</b> <em>~14 rows</em> · JHS 2 students with attendance below 80% · 9 fields per row." <b>Admin sees what they're going to get</b> before generating · same preview-before-commit principle as bulk operations.</li>
+        <li><b>"Excludes: Phone numbers, home address (PII · would require approval)"</b> visible on the preview · <b>privacy-by-default is shown as deliberate</b>, not hidden · admin sees that they could request approval if they really needed PII.</li>
+        <li><b>Save query option in the save bar</b> · "<b>Save query only</b>" lets admin define a custom export shape without running it · gets added to the quick exports grid for one-tap re-use later. <b>Custom queries become quick exports over time</b>; the system gets smarter as the school works with it.</li>
+        <li><b>Full archive card in dramatic navy/gold</b> · the visual emphasis matches the operational gravity. <b>"All your school's data — <em>in one encrypted ZIP</em>"</b> · meta narrates: server-side, 15—30 min compile, secure download link, expires in 7 days, password-protected with admin-chosen key.</li>
+        <li><b>Three commitments shown as gold-checkmark pills on the archive card</b>: "Open formats only — CSV, JSON, PDF" / "Includes audit trail" / "<b>No Omnischools lock-in</b>." <b>Anti-lock-in stated explicitly</b>; this is a competitive/regulatory differentiator and Omnischools owns it loudly.</li>
+        <li><b>Right side stats panel</b>: estimated size (~38 MB) / records included (~36,200) / last requested (Never). <b>Concrete scale before committing</b>; admin knows what they're asking for · "Never" reinforces that this is a rare/significant request.</li>
+        <li><b>Request flow is async with email delivery</b>: not an instant download. <b>Acknowledges archive generation is slow</b>; better to wait 15 min for a complete archive than to hang the browser. The email link with 7-day expiry + password protection is the secure-handoff pattern.</li>
+        <li><b>Recent exports table</b> in section 04 · 6 columns: Export name / Format / Actor / When / Size / Re-download. <b>Every export is logged in audit</b> · table is filterable surface of those audit entries · admin can see who downloaded what when · cross-references with audit log file 1.</li>
+        <li><b>Bulk transcript generation appears in the recent exports table</b> · cross-file linkage with bulk operations file. <b>Bulk ops that produce files automatically appear here</b>; export and bulk are connected, not separate worlds.</li>
+        <li><b>"Re-download" link for past exports rather than regenerate</b> · the original file is preserved for a configurable retention window (90 days default) so admin can re-fetch without rebuilding. <b>Saves time + cost</b>; especially useful for the slow archive flow.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

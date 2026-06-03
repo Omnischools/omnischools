@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Bulk undo</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; }
+.brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar-footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar-footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar-footer .meta-name { font-weight:600; }
+.sidebar-footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:680px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.terra { background:var(--terra); color:var(--bg); border-color:var(--terra); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.body { padding:28px 36px 60px; }
+
+/* Region structure */
+.region { margin-bottom:36px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Hero card */
+.hero-card { background:linear-gradient(135deg, var(--navy) 0%, #243652 100%); color:var(--bg); border-radius:14px; padding:28px 32px; margin-bottom:24px; display:grid; grid-template-columns:1fr 320px; gap:32px; align-items:center; }
+.hero-card .hero-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.hero-card h2 { font-family:'Fraunces',serif; font-size:26px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; max-width:520px; margin-bottom:10px; }
+.hero-card h2 em { font-style:italic; color:var(--gold); }
+.hero-card p { font-size:13px; color:rgba(250,247,242,0.75); line-height:1.6; max-width:520px; }
+.hero-card p b { color:var(--bg); font-weight:600; }
+.hero-stat { background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.3); border-radius:10px; padding:18px 20px; }
+.hero-stat .label { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.hero-stat .value { font-family:'Fraunces',serif; font-size:30px; font-weight:500; letter-spacing:-0.02em; line-height:1.05; margin-bottom:4px; }
+.hero-stat .value em { font-style:italic; color:var(--gold); }
+.hero-stat .desc { font-size:11px; color:rgba(250,247,242,0.65); line-height:1.4; }
+
+/* Reversibility table */
+.rev-table { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.rev-row { display:grid; grid-template-columns:280px 200px 1fr; gap:24px; padding:16px 22px; border-bottom:1px solid var(--border); align-items:start; }
+.rev-row:last-child { border-bottom:none; }
+.rev-row.head { background:var(--bg); padding:12px 22px; }
+.rev-row.head div { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.rev-row.section-divider { background:var(--gold-bg); padding:10px 22px; border-bottom:1px solid var(--gold-soft); }
+.rev-row.section-divider .div-label { font-family:'Fraunces',serif; font-size:13px; font-weight:600; color:var(--gold); font-style:italic; grid-column:1/-1; display:flex; align-items:baseline; gap:10px; }
+.rev-row.section-divider .div-label b { color:var(--navy); font-style:normal; font-weight:700; }
+.rev-op { font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
+.rev-op .sub { display:block; font-family:'Manrope',sans-serif; font-size:11px; color:var(--navy-3); font-weight:400; margin-top:3px; line-height:1.4; }
+.rev-status { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:100px; font-size:11px; font-weight:700; letter-spacing:0.02em; }
+.rev-status.green { background:var(--green-bg); color:var(--green); }
+.rev-status.warn { background:var(--warn-bg); color:var(--warn); }
+.rev-status.terra { background:var(--terra-bg); color:var(--terra); }
+.rev-status .dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.rev-correct { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.rev-correct b { color:var(--navy); font-weight:600; }
+.rev-correct em { font-style:italic; color:var(--gold); }
+
+/* Recent ops list */
+.ops-list { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.ops-row { display:grid; grid-template-columns:90px 1fr 180px 200px 130px; gap:18px; padding:16px 22px; border-bottom:1px solid var(--border); align-items:center; }
+.ops-row:last-child { border-bottom:none; }
+.ops-row.head { background:var(--bg); padding:11px 22px; }
+.ops-row.head div { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.ops-row.focused { background:var(--gold-bg); border-left:3px solid var(--gold); padding-left:19px; }
+.ops-time { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-3); font-weight:500; }
+.ops-time b { display:block; color:var(--navy); font-weight:600; font-size:12px; margin-bottom:1px; }
+.ops-desc { font-size:13px; color:var(--navy-2); line-height:1.4; }
+.ops-desc b { color:var(--navy); font-family:'Fraunces',serif; font-size:14px; font-weight:600; display:block; margin-bottom:2px; letter-spacing:-0.005em; }
+.ops-actor { font-size:11px; color:var(--navy-3); display:flex; align-items:center; gap:7px; }
+.ops-actor .av { width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:10px; }
+.ops-actor b { color:var(--navy-2); font-weight:600; }
+.ops-window { font-size:11px; }
+.ops-window .timer { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.ops-window .timer.green { background:var(--green-bg); color:var(--green); }
+.ops-window .timer.warn { background:var(--warn-bg); color:var(--warn); }
+.ops-window .timer.terra { background:var(--terra-bg); color:var(--terra); }
+.ops-window .timer .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.ops-window .desc { display:block; margin-top:4px; color:var(--navy-3); font-style:italic; font-size:10px; }
+.ops-action button { font-size:11px; font-weight:700; letter-spacing:0.02em; }
+.ops-action button.disabled { color:var(--navy-3); border-color:var(--border); cursor:not-allowed; background:var(--bg); }
+.ops-action .none { font-size:11px; color:var(--navy-3); font-style:italic; }
+
+/* Confirm modal */
+.modal-overlay { background:rgba(26,43,71,0.6); padding:40px 32px; }
+.modal { background:var(--surface); border-radius:14px; max-width:580px; margin:0 auto; box-shadow:0 30px 80px -20px rgba(26,43,71,0.5); border:1px solid var(--border); overflow:hidden; }
+.modal-head { background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); padding:18px 24px; }
+.modal-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.modal-head h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; }
+.modal-head h3 em { font-style:italic; color:var(--gold); }
+.modal-body { padding:22px 24px; }
+.modal-section { margin-bottom:18px; }
+.modal-section:last-child { margin-bottom:0; }
+.modal-section h4 { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; }
+.modal-preview { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px; font-size:12px; color:var(--navy-2); line-height:1.6; }
+.modal-preview b { color:var(--navy); font-weight:600; }
+.modal-preview em { font-style:italic; color:var(--gold); }
+.modal-preview .cell-flow { display:flex; align-items:center; gap:8px; margin:6px 0; }
+.modal-preview .cell-flow .from { color:var(--navy-3); text-decoration:line-through; }
+.modal-preview .cell-flow .arrow { color:var(--gold); font-weight:700; }
+.modal-preview .cell-flow .to { color:var(--green); font-weight:600; }
+.modal-foot { padding:16px 24px; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.modal-foot .left { font-size:11px; color:var(--navy-3); font-style:italic; }
+.modal-foot .right { display:flex; gap:8px; }
+
+/* Result card */
+.result-card { background:var(--surface); border:1px solid var(--green); border-left:4px solid var(--green); border-radius:12px; padding:22px 26px; }
+.result-card .head { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+.result-card .check { width:36px; height:36px; border-radius:50%; background:var(--green-bg); color:var(--green); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:18px; }
+.result-card h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; }
+.result-card h3 em { font-style:italic; color:var(--gold); }
+.result-card .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-family:'JetBrains Mono',monospace; }
+.result-card .meta b { color:var(--navy); }
+.result-card .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:14px 0; padding:14px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+.result-card .stat .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:4px; }
+.result-card .stat .val { font-family:'Fraunces',serif; font-size:22px; font-weight:500; letter-spacing:-0.018em; color:var(--navy); }
+.result-card .stat .val em { font-style:italic; color:var(--gold); }
+.result-card .stat .sub { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.result-card .audit-link { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:8px; padding:11px 14px; display:flex; align-items:center; gap:10px; font-size:12px; color:var(--navy-2); }
+.result-card .audit-link .ic { width:18px; height:18px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; }
+.result-card .audit-link b { color:var(--navy); font-weight:600; }
+.result-card .audit-link a { color:var(--gold); font-weight:700; margin-left:auto; text-decoration:none; }
+
+/* Correction path cards */
+.correction-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+.correction-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.correction-card .head { padding:16px 20px 12px; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:start; }
+.correction-card .head .ic { width:32px; height:32px; border-radius:8px; background:var(--terra-bg); color:var(--terra); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; flex-shrink:0; }
+.correction-card .head .txt h4 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; margin-bottom:3px; }
+.correction-card .head .txt h4 em { font-style:italic; color:var(--gold); }
+.correction-card .head .txt .sub { font-size:11px; color:var(--navy-3); }
+.correction-card .body { padding:14px 20px 18px; }
+.correction-card .scenario { background:var(--bg); border-left:2px solid var(--terra); padding:10px 14px; border-radius:0 6px 6px 0; font-size:12px; color:var(--navy-2); line-height:1.5; margin-bottom:12px; }
+.correction-card .scenario b { color:var(--navy); font-weight:600; }
+.correction-card .answer { font-size:12px; color:var(--navy-2); line-height:1.6; }
+.correction-card .answer b { color:var(--navy); font-weight:600; }
+.correction-card .answer em { font-style:italic; color:var(--gold); }
+.correction-card .step-list { list-style:none; counter-reset:step; margin-top:8px; }
+.correction-card .step-list li { counter-increment:step; padding:5px 0 5px 22px; position:relative; font-size:12px; color:var(--navy-2); line-height:1.5; }
+.correction-card .step-list li::before { content:counter(step); position:absolute; left:0; top:5px; width:16px; height:16px; border-radius:50%; background:var(--gold-bg); color:var(--gold); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; }
+.correction-card .step-list li b { color:var(--navy); font-weight:600; }
+
+/* Editorial principle card */
+.principle-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:20px; }
+.principle-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.principle-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.principle-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.principle-card p b { color:var(--navy); font-weight:600; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 4 · Sub-decision</div>
+  <span class="mvp-tag">MVP 1 · launch-ready</span>
+  <span class="related-tag">Pairs with bulk-operations</span>
+  <h1 class="display">Undo is not a <em>magic word</em></h1>
+  <div class="gold-rule"></div>
+  <p>The right answer to "can I undo this?" depends on what was done. Bulk class transfers — yes, one click. Bulk SMS sends — no, the message is gone. Bulk receipts issued — no, the financial record is append-only. The honest design <b>tells admin which is which before they commit</b>, then provides one-click undo for the reversible category and clear correction paths for the rest. No false promises, no buried disclaimers.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The reversibility map · know before you commit</div>
+    <div class="section-meta">9 bulk operations · 3 reversibility tiers</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="hero-card">
+        <div>
+          <div class="hero-eyebrow">The principle</div>
+          <h2 class="display">Some bulk ops can be <em>undone</em>. Others can only be <em>corrected</em>.</h2>
+          <p>This page is the rule book. Before clicking commit on any bulk action, the action sheet shows which row of this table applies — so admin always knows whether they're <b>three seconds away from a one-click reversal</b> or <b>signing into the audit log permanently</b>.</p>
+        </div>
+        <div class="hero-stat">
+          <div class="label">Undo window</div>
+          <div class="value display"><em>24h</em></div>
+          <div class="desc">From commit to expiry · for reversible categories only · timer visible on every recent bulk op</div>
+        </div>
+      </div>
+
+      <div class="rev-table">
+        <div class="rev-row head">
+          <div>Bulk operation</div>
+          <div>Reversibility</div>
+          <div>How to correct after the window</div>
+        </div>
+
+        <div class="rev-row section-divider">
+          <div class="div-label"><b>Tier A</b> · Fully reversible · 24-hour undo button available</div>
+        </div>
+
+        <div class="rev-row">
+          <div class="rev-op">Bulk class transfer<span class="sub">e.g. promote JHS 1 cohort to JHS 2 at term start</span></div>
+          <div><span class="rev-status green"><span class="dot"></span>One-click undo</span></div>
+          <div class="rev-correct">After 24h: <b>manually transfer each student back</b> via student detail page. No financial impact, no comms triggered.</div>
+        </div>
+
+        <div class="rev-row">
+          <div class="rev-op">Bulk fee adjustment <span class="sub">discount or charge applied to selection · only on unpaid invoices</span></div>
+          <div><span class="rev-status green"><span class="dot"></span>One-click undo</span></div>
+          <div class="rev-correct">After 24h: <b>issue corrective adjustment</b> per invoice. Forward-only — original adjustment stays on record, new line item reverses it.</div>
+        </div>
+
+        <div class="rev-row">
+          <div class="rev-op">Bulk reminder schedule<span class="sub">queue reminder series for cohort · before any send fires</span></div>
+          <div><span class="rev-status green"><span class="dot"></span>One-click undo</span></div>
+          <div class="rev-correct">After 24h: <b>cancel scheduled jobs individually</b> from comms queue. If first message has fired, that one is gone — only future messages cancellable.</div>
+        </div>
+
+        <div class="rev-row">
+          <div class="rev-op">Bulk segment edit<span class="sub">add or remove students from saved segment</span></div>
+          <div><span class="rev-status green"><span class="dot"></span>One-click undo</span></div>
+          <div class="rev-correct">After 24h: <b>re-edit the segment</b> with the inverse selection. Segments are mutable lists, no audit-grade reversal needed.</div>
+        </div>
+
+        <div class="rev-row section-divider">
+          <div class="div-label"><b>Tier B</b> · Partially reversible · cascade depends on what's already happened</div>
+        </div>
+
+        <div class="rev-row">
+          <div class="rev-op">Bulk admission decision<span class="sub">accept or reject pending applications · before parent comms fired</span></div>
+          <div><span class="rev-status warn"><span class="dot"></span>Undo if uncommunicated</span></div>
+          <div class="rev-correct">If parent SMS already sent: <b>send correction message + manually reverse decision</b>. Omnischools tracks "communicated" state — once true, undo button greys out.</div>
+        </div>
+
+        <div class="rev-row">
+          <div class="rev-op">Bulk withdrawal<span class="sub">mark cohort as withdrawn · pauses billing, suppresses comms</span></div>
+          <div><span class="rev-status warn"><span class="dot"></span>Undo within 24h</span></div>
+          <div class="rev-correct">After 24h: <b>reactivate students individually</b>. Billing pause must be manually unwound per invoice. Audit log shows the cascade.</div>
+        </div>
+
+        <div class="rev-row section-divider">
+          <div class="div-label"><b>Tier C</b> · Irreversible · forward-only correction only</div>
+        </div>
+
+        <div class="rev-row">
+          <div class="rev-op">Bulk SMS / WhatsApp send<span class="sub">message broadcast to cohort · MNO has accepted the payload</span></div>
+          <div><span class="rev-status terra"><span class="dot"></span>Permanently sent</span></div>
+          <div class="rev-correct"><b>Send a correction message</b> to the same recipients. Omnischools pre-populates the recipient list and prefixes the message with <em>"Correction:"</em> — admin only writes the new content.</div>
+        </div>
+
+        <div class="rev-row">
+          <div class="rev-op">Bulk receipt issue<span class="sub">payment confirmations · receipt numbers consumed · GRA-relevant</span></div>
+          <div><span class="rev-status terra"><span class="dot"></span>Append-only</span></div>
+          <div class="rev-correct"><b>Issue void receipts</b> for the affected records. Each void is a new financial event referencing the original — bookkeeping stays auditable, no records erased.</div>
+        </div>
+
+        <div class="rev-row">
+          <div class="rev-op">Bulk transcript generate<span class="sub">PDF transcripts batched for graduating cohort · printed and signed</span></div>
+          <div><span class="rev-status terra"><span class="dot"></span>Append-only</span></div>
+          <div class="rev-correct"><b>Reissue with reissue stamp</b>. Original transcript number remains on record. Reissue carries a "Replaces transcript GHA-2024-0142" footer — university registrars know to use the latest.</div>
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Editorial principle</div>
+        <p>Honesty about reversibility is more valuable than universal-undo-that-doesn't-actually-work. Admins build trust in the system when <em>"can I undo this?"</em> has a <b>knowable answer at commit time</b>, not a hopeful answer they discover later.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The reversibility tier <b>shows up in the bulk-operations confirm dialog</b>, before commit — so admin sees the green/warn/terra badge alongside the preview. Surface the table once, link to it everywhere it matters.</li>
+        <li>Tier B is the editorial fork: <b>"undone if uncommunicated"</b> is a specific contract. The button greys out the second Omnischools records the cascade event (SMS sent, parent notification fired).</li>
+        <li>Tier C correction paths are <b>not failures</b> — they're the right answer. Void receipts are how bookkeeping has worked for centuries. Omnischools implements the centuries-old answer cleanly.</li>
+        <li>Correction SMS prefix <em>"Correction:"</em> is not enforced — admin can edit. But it pre-populates because clarity to parents matters more than admin's freedom to phrase.</li>
+        <li>Bulk transcript reissue stamp follows the same model as <b>void/refund receipts</b> — original reference preserved, replacement explicit. Same pattern across the system.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">The 24-hour undo window · Florence's view</div>
+    <div class="section-meta">Settings → Recent bulk ops · 12 operations in window</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / bulk-operations / recent</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Comms</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="nav-item sub">Audit log</div>
+          <div class="nav-item sub">Data export</div>
+          <div class="nav-item sub">Retention policy</div>
+          <div class="nav-item sub active">Bulk operations</div>
+          <div class="nav-item sub">Security &amp; 2FA</div>
+          <div class="sidebar-footer">
+            <div class="av">FA</div>
+            <div>
+              <div class="meta-name">Florence A.</div>
+              <div class="meta-role">Admin · 2FA on</div>
+            </div>
+          </div>
+          <div class="powered-by">Powered by <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Settings</a> · <a href="#">Bulk operations</a> · Recent</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Recent <em>bulk operations</em></h1>
+                <div class="lede"><b>12 bulk operations</b> in the last 7 days · 4 still within the 24-hour undo window · oldest reversible op expires <b>3h 22m</b> from now</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Filter by module</button>
+                <button class="btn">Export list</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+            <div class="region">
+              <div class="region-head">
+                <div class="num">i.</div>
+                <h2 class="display">Within the <em>undo window</em></h2>
+                <div class="meta">4 operations · countdown timer per row</div>
+              </div>
+
+              <div class="ops-list">
+                <div class="ops-row head">
+                  <div>When</div>
+                  <div>Operation</div>
+                  <div>Actor</div>
+                  <div>Reversibility</div>
+                  <div>Action</div>
+                </div>
+
+                <div class="ops-row focused">
+                  <div class="ops-time"><b>17:42</b>2 May · 15m ago</div>
+                  <div class="ops-desc"><b>Bulk class transfer · 47 students</b>JHS 1A → JHS 2A · "End-of-term promotion"</div>
+                  <div class="ops-actor"><div class="av">FA</div><b>Florence</b> · Admin</div>
+                  <div class="ops-window">
+                    <span class="timer green"><span class="dot"></span>23h 45m left</span>
+                    <span class="desc">Tier A · fully reversible</span>
+                  </div>
+                  <div class="ops-action"><button class="btn gold">Undo this batch →</button></div>
+                </div>
+
+                <div class="ops-row">
+                  <div class="ops-time"><b>14:08</b>2 May · 3h 49m ago</div>
+                  <div class="ops-desc"><b>Bulk fee adjustment · 23 invoices</b>5% discount · "Early-payment Q1 incentive"</div>
+                  <div class="ops-actor"><div class="av">JO</div><b>Joyce</b> · Admin</div>
+                  <div class="ops-window">
+                    <span class="timer green"><span class="dot"></span>20h 11m left</span>
+                    <span class="desc">Tier A · fully reversible</span>
+                  </div>
+                  <div class="ops-action"><button class="btn">Undo →</button></div>
+                </div>
+
+                <div class="ops-row">
+                  <div class="ops-time"><b>11:23</b>2 May · 6h 34m ago</div>
+                  <div class="ops-desc"><b>Bulk admission decision · 18 applications</b>Accepted · communicated to parents at 11:31</div>
+                  <div class="ops-actor"><div class="av">FA</div><b>Florence</b> · Admin</div>
+                  <div class="ops-window">
+                    <span class="timer warn"><span class="dot"></span>17h 26m left · communicated</span>
+                    <span class="desc">Tier B · undo blocked, parent SMS already fired</span>
+                  </div>
+                  <div class="ops-action"><button class="btn disabled" disabled>Undo blocked</button></div>
+                </div>
+
+                <div class="ops-row">
+                  <div class="ops-time"><b>09:17</b>2 May · 8h 40m ago</div>
+                  <div class="ops-desc"><b>Bulk segment edit · 12 students</b>Added to "Outstanding Term 2 fees" segment</div>
+                  <div class="ops-actor"><div class="av">JO</div><b>Joyce</b> · Admin</div>
+                  <div class="ops-window">
+                    <span class="timer green"><span class="dot"></span>15h 20m left</span>
+                    <span class="desc">Tier A · fully reversible</span>
+                  </div>
+                  <div class="ops-action"><button class="btn">Undo →</button></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="region">
+              <div class="region-head">
+                <div class="num">ii.</div>
+                <h2 class="display">Beyond the <em>undo window</em></h2>
+                <div class="meta">8 operations · correction path only</div>
+              </div>
+
+              <div class="ops-list">
+                <div class="ops-row">
+                  <div class="ops-time"><b>30 Apr</b>16:04 · 2 days</div>
+                  <div class="ops-desc"><b>Bulk SMS · 312 parents</b>"Term 2 fees due 5 May" reminder</div>
+                  <div class="ops-actor"><div class="av">FA</div><b>Florence</b> · Admin</div>
+                  <div class="ops-window">
+                    <span class="timer terra"><span class="dot"></span>Permanently sent</span>
+                    <span class="desc">Tier C · message delivered to MNO</span>
+                  </div>
+                  <div class="ops-action"><button class="btn">Send correction →</button></div>
+                </div>
+
+                <div class="ops-row">
+                  <div class="ops-time"><b>29 Apr</b>11:30 · 3 days</div>
+                  <div class="ops-desc"><b>Bulk receipt issue · 47 receipts</b>Term 2 first instalment · GHS 32,520.00 total</div>
+                  <div class="ops-actor"><div class="av">JO</div><b>Joyce</b> · Admin</div>
+                  <div class="ops-window">
+                    <span class="timer terra"><span class="dot"></span>Append-only</span>
+                    <span class="desc">Tier C · GRA-relevant financial record</span>
+                  </div>
+                  <div class="ops-action"><span class="none">Issue void per receipt</span></div>
+                </div>
+
+                <div class="ops-row">
+                  <div class="ops-time"><b>28 Apr</b>09:15 · 4 days</div>
+                  <div class="ops-desc"><b>Bulk reminder schedule · 14 students</b>3-message series · first message fired</div>
+                  <div class="ops-actor"><div class="av">JO</div><b>Joyce</b> · Admin</div>
+                  <div class="ops-window">
+                    <span class="timer warn"><span class="dot"></span>Beyond window · 1 of 3 sent</span>
+                    <span class="desc">Tier A · expired</span>
+                  </div>
+                  <div class="ops-action"><button class="btn">Cancel remaining →</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The <b>focused row</b> (gold-tinted) is the most recent op — admin lands here when navigating from the success card of the original bulk action. <em>"You just did this. Did you mean to?"</em></li>
+        <li>Countdown timer shows <b>hours and minutes left</b>, not seconds. The 24h window is generous enough that minute-level precision adds anxiety without value.</li>
+        <li>The 11:23 row — admission decision — is interesting: <b>physically still in the 24h window</b> but <b>parents already received the SMS</b>. Tier B logic correctly disables undo because the cascade has fired. The "communicated" tag tells admin why.</li>
+        <li>For Tier C ops (SMS/receipts), the action column shows <b>"Send correction"</b> not "Undo" — different verbs for different operations. Vocabulary matters.</li>
+        <li>The 28 Apr reminder schedule shows the partial-cascade case: <b>first message fired, two pending</b>. Admin can cancel the pending ones, the fired one is gone. Honest about scope.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Confirm before undo · the same pattern, in reverse</div>
+    <div class="section-meta">Florence clicks "Undo this batch" on the 17:42 op</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="modal-overlay" style="border-radius:12px;">
+        <div class="modal">
+          <div class="modal-head">
+            <div class="eb">Undo confirmation · Tier A · fully reversible</div>
+            <h3 class="display">Undo bulk class transfer · <em>47 students</em></h3>
+          </div>
+          <div class="modal-body">
+            <div class="modal-section">
+              <h4>What will happen</h4>
+              <div class="modal-preview">
+                <b>47 students</b> will return to their previous class assignment.
+                <div class="cell-flow"><span class="from">JHS 2A</span><span class="arrow">→</span><span class="to">JHS 1A</span></div>
+                Class roster, attendance roster, and timetable will revert. <b>No comms triggered.</b> No financial impact.
+              </div>
+            </div>
+            <div class="modal-section">
+              <h4>What stays on record</h4>
+              <div class="modal-preview">
+                The original transfer event (commit at <b>17:42</b>) and this undo event (now) <em>both stay in the audit log</em>. Future audits will show that 47 students were transferred and then transferred back, with both timestamps and reasoning.
+              </div>
+            </div>
+            <div class="modal-section">
+              <h4>Reason for undo <span style="color:var(--navy-3); font-weight:400; text-transform:none; letter-spacing:0; font-size:11px;">· optional but recommended</span></h4>
+              <div class="modal-preview" style="background:var(--surface); border:1px dashed var(--border-2);">
+                <em style="color:var(--navy-3);">"Promoted wrong cohort — should have been JHS 2 to JHS 3, not JHS 1 to JHS 2."</em>
+              </div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <div class="left">Audit entry will be created · undo cannot itself be undone</div>
+            <div class="right">
+              <button class="btn ghost">Cancel</button>
+              <button class="btn gold">Undo 47 transfers →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;">
+        <div class="result-card">
+          <div class="head">
+            <div class="check">✓</div>
+            <h3 class="display">Undone · <em>47 transfers reversed</em></h3>
+            <div class="meta"><b>17:48</b> · 6m after original commit</div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="lab">Records restored</div>
+              <div class="val display"><em>47</em></div>
+              <div class="sub">all 47 students returned to JHS 1A</div>
+            </div>
+            <div class="stat">
+              <div class="lab">Side-effects rolled back</div>
+              <div class="val display">3<em>·0</em></div>
+              <div class="sub">timetable, roster, attendance unwound</div>
+            </div>
+            <div class="stat">
+              <div class="lab">Comms triggered</div>
+              <div class="val display"><em>—</em></div>
+              <div class="sub">no parent SMS, no notifications</div>
+            </div>
+          </div>
+          <div class="audit-link">
+            <div class="ic">A</div>
+            <div><b>Audit entries created.</b> Original transfer (17:42) and this undo (17:48) both visible in the audit log feed.</div>
+            <a href="#">Open audit log →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">The pattern, mirrored</div>
+        <p>The bulk-operations file established the four-step pattern: <b>selection → confirm → result → audit</b>. Undo follows the same four steps in reverse — admin sees a preview, commits with reasoning, gets a result card, and the action lands in the audit log alongside the original. <em>The system stays predictable.</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>"Reason for undo" is <b>optional but recommended</b> — same pattern as voids and refunds. Florence isn't <em>required</em> to explain herself, but the field is there because reasoning is the most valuable part of an audit trail.</li>
+        <li>The placeholder text in the reason field is <b>a concrete example</b> ("Promoted wrong cohort — should have been..."), not lorem ipsum. Admin sees what a good reason looks like.</li>
+        <li>"Undo cannot itself be undone" is small text in the modal foot — once you click Undo, you can't un-undo. To revert again, you'd have to <b>redo the original bulk action manually</b>. This is intentional friction.</li>
+        <li>Result card shows <b>three stats, not one</b>: records restored, side-effects rolled back, comms triggered (em-dash because nothing fired). Demonstrates the rollback was complete.</li>
+        <li>The audit log link is the closing loop. Florence can verify <b>the undo is recorded</b>, not just promised.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">When undo isn't possible · the correction paths</div>
+    <div class="section-meta">Tier C operations · forward-only correction</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="correction-grid">
+
+        <div class="correction-card">
+          <div class="head">
+            <div class="ic">SMS</div>
+            <div class="txt">
+              <h4 class="display">Bulk SMS / WhatsApp · <em>send correction</em></h4>
+              <div class="sub">The message has reached the MNO. There is no recall.</div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="scenario">
+              <b>Scenario:</b> Florence sent a fee reminder to 312 parents at 16:04 yesterday. She just realised the amount in the message was wrong (GHS 340 not GHS 380).
+            </div>
+            <div class="answer">
+              <b>The correction path:</b>
+              <ol class="step-list">
+                <li>Click <b>"Send correction"</b> on the original op in Recent.</li>
+                <li>Omnischools opens compose with <b>recipient list pre-populated</b> (same 312 parents).</li>
+                <li>Message is pre-prefixed with <em>"Correction:"</em> — Florence writes the new content below.</li>
+                <li>Send. Both messages stay on record · <b>parents see two messages, the second supersedes the first</b>.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <div class="correction-card">
+          <div class="head">
+            <div class="ic">RC</div>
+            <div class="txt">
+              <h4 class="display">Bulk receipts · <em>issue void</em></h4>
+              <div class="sub">Receipts consume sequential numbers · GRA needs the chain unbroken.</div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="scenario">
+              <b>Scenario:</b> Joyce ran bulk receipt issuance for 47 students three days ago, but five of those payments turned out to be duplicates that had been recorded twice.
+            </div>
+            <div class="answer">
+              <b>The correction path:</b>
+              <ol class="step-list">
+                <li>Open each affected receipt individually.</li>
+                <li>Click <b>"Void this receipt"</b> — issues a new void record referencing the original.</li>
+                <li>If money was actually moved, <b>issue a refund</b> via the same drawer (next file in the existing void/refund flow).</li>
+                <li>Original receipt stays · void receipt links to it · GRA-ready chain intact.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <div class="correction-card">
+          <div class="head">
+            <div class="ic">TR</div>
+            <div class="txt">
+              <h4 class="display">Bulk transcripts · <em>reissue with stamp</em></h4>
+              <div class="sub">University registrars rely on the latest issued transcript.</div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="scenario">
+              <b>Scenario:</b> Florence batched 28 graduating-cohort transcripts last term. Three students had grade corrections after the batch was already printed and signed.
+            </div>
+            <div class="answer">
+              <b>The correction path:</b>
+              <ol class="step-list">
+                <li>Open each affected transcript record.</li>
+                <li>Click <b>"Reissue"</b> — generates new transcript with corrected grades.</li>
+                <li>New transcript carries footer: <em>"Replaces transcript GHA-2024-0142, issued 12 Apr 2024."</em></li>
+                <li>Original number stays on record. Reissue carries new number with <b>cross-reference</b> · registrar always uses the latest.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <div class="correction-card">
+          <div class="head">
+            <div class="ic">AD</div>
+            <div class="txt">
+              <h4 class="display">Bulk admission decisions · <em>manual reversal</em></h4>
+              <div class="sub">Once parents are told, the message is in the world.</div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="scenario">
+              <b>Scenario:</b> Florence accepted 18 applications and SMS confirmations went out within minutes. She then realised the cohort was over-filled — three of those acceptances need to be withdrawn.
+            </div>
+            <div class="answer">
+              <b>The correction path:</b>
+              <ol class="step-list">
+                <li>Open each affected application individually.</li>
+                <li>Click <b>"Reverse decision"</b> — opens compose drawer for parent comms (this is not optional; parents must be told).</li>
+                <li>Omnischools pre-populates a <em>"We sincerely regret..."</em> template · admin edits and personalises.</li>
+                <li>Application status returns to "Pending" · audit log records both the original decision and the reversal with reasoning.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Why this matters</div>
+        <p>Every correction path follows the same pattern: <b>the original event stays</b>, a new event references it, the new event is forward-only. This is how <em>banking, accounting, and medical records</em> have worked for decades — Omnischools implements the established answer rather than inventing a new one. Auditors, GRA, and university registrars all expect this shape.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The four cards cover the four Tier C operations from Section 01. Each scenario is <b>concrete, named, and grounded in a plausible mistake</b> — not abstract "what if" prompts.</li>
+        <li>SMS correction prefix <em>"Correction:"</em> is <b>editable but pre-populated</b>. Different vocabularies might suit different schools (a private school might prefer <em>"Update:"</em>) — the prefill is the recommended default.</li>
+        <li>Void receipt + refund flow already exists in MVP1 (see schoolup-void-refund.html). This file just shows where bulk leads to it.</li>
+        <li>Transcript reissue footer text is <b>not customisable</b> — the wording matters for university registrars and should be consistent across the platform. One vocabulary, learned once.</li>
+        <li>"Reverse decision" for admissions <b>requires parent comms</b> — there's no silent reversal path. Omnischools enforces this because reversing an admission silently is a <em>worse</em> outcome than reversing it visibly.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,288 @@
+/* ============================================================
+ * Omnischools · Design Tokens
+ * ============================================================
+ *
+ * Canonical design tokens extracted from 62 design surfaces.
+ * All tokens are stable across the design system. Two domain
+ * extensions are documented separately (WhatsApp, Receipt PDF).
+ *
+ * Usage:
+ *   @import "./design-tokens.css";
+ *   .my-component { color: var(--navy); background: var(--bg); }
+ *
+ * Or via Tailwind: see design-tokens.json + Tailwind config.
+ * ============================================================ */
+
+:root {
+
+  /* ----------------------------------------------------------
+   * COLOR · Navy (primary brand)
+   * ----------------------------------------------------------
+   * Used for: app shell, sidebar, primary CTAs, body text,
+   * headings, dark surfaces in hero cards.
+   * --------------------------------------------------------*/
+  --color-navy:        #1A2B47;  /* primary · body text · CTAs */
+  --color-navy-2:      #2D3F5C;  /* secondary text · hover states */
+  --color-navy-3:      #5C6675;  /* muted text · meta · captions */
+
+  /* ----------------------------------------------------------
+   * COLOR · Brass gold (accent)
+   * ----------------------------------------------------------
+   * Used for: emphasis (italic em tags), highlights, gold
+   * CTAs, eyebrows, "selected" states, narrative annotations.
+   * --------------------------------------------------------*/
+  --color-gold:        #C8975B;  /* accent · italics · highlights */
+  --color-gold-soft:   #E8D4B8;  /* gold borders · subtle accents */
+  --color-gold-bg:     #F5EBDC;  /* gold-tinted surfaces · cards */
+
+  /* ----------------------------------------------------------
+   * COLOR · Backgrounds
+   * --------------------------------------------------------*/
+  --color-bg:          #FAF7F2;  /* page background · off-white */
+  --color-surface:     #FFFFFF;  /* cards · panels · drawers */
+
+  /* ----------------------------------------------------------
+   * COLOR · Forest green (positive · success)
+   * --------------------------------------------------------*/
+  --color-green:       #2F6B47;  /* success · paid · returned · operational */
+  --color-green-bg:    #E5EFE8;  /* success-tinted surfaces */
+
+  /* ----------------------------------------------------------
+   * COLOR · Terracotta (negative · destructive · failure)
+   * --------------------------------------------------------*/
+  --color-terra:       #B84A39;  /* error · lost · failed · destructive */
+  --color-terra-bg:    #F5E1DC;  /* error-tinted surfaces */
+
+  /* ----------------------------------------------------------
+   * COLOR · Warn (amber · attention without alarm)
+   * --------------------------------------------------------*/
+  --color-warn:        #C58A2E;  /* warning · pending · low stock · partial */
+  --color-warn-bg:     #F5E9D0;  /* warn-tinted surfaces */
+
+  /* ----------------------------------------------------------
+   * COLOR · Borders
+   * --------------------------------------------------------*/
+  --color-border:      #E5DFD3;  /* default border · cards, rows, separators */
+  --color-border-2:    #D4CCBA;  /* stronger border · buttons, inputs */
+
+  /* ----------------------------------------------------------
+   * TYPOGRAPHY · font families
+   * ----------------------------------------------------------
+   * Display: Fraunces (serif, italic-capable for em emphasis)
+   * Body: Manrope (sans-serif, rounded humanist)
+   * Mono: JetBrains Mono (technical · receipt numbers · IDs)
+   *
+   * Load from Google Fonts:
+   *   Fraunces:opsz,ital,wght@9..144,0,400..700;9..144,1,400..500
+   *   Manrope:wght@400..700
+   *   JetBrains+Mono:wght@400..600
+   * --------------------------------------------------------*/
+  --font-display:      'Fraunces', Georgia, serif;
+  --font-body:         'Manrope', system-ui, -apple-system, sans-serif;
+  --font-mono:         'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* ----------------------------------------------------------
+   * TYPOGRAPHY · type scale
+   * ----------------------------------------------------------
+   * Calibrated from 14px body. Display sizes step up on a
+   * minor third for hierarchy.
+   * --------------------------------------------------------*/
+  --text-xs:           11px;     /* eyebrows · labels · meta */
+  --text-sm:           12px;     /* secondary body · captions */
+  --text-base:         13px;     /* body · table cells · default */
+  --text-md:           14px;     /* primary body · stat labels */
+  --text-lg:           16px;     /* lede · hero descriptions */
+  --text-xl:           18px;     /* section subheadings */
+  --text-2xl:          20px;     /* card titles */
+  --text-3xl:          22px;     /* section heads */
+  --text-4xl:          28px;     /* page-head h1 */
+  --text-5xl:          32px;     /* hero stats · section nums */
+  --text-6xl:          56px;     /* page-header h1 (top-level) */
+
+  /* ----------------------------------------------------------
+   * TYPOGRAPHY · weights
+   * --------------------------------------------------------*/
+  --weight-normal:     400;
+  --weight-medium:     500;
+  --weight-semibold:   600;
+  --weight-bold:       700;
+
+  /* ----------------------------------------------------------
+   * TYPOGRAPHY · letter-spacing
+   * --------------------------------------------------------*/
+  --tracking-tight:    -0.02em;  /* large display · h1 */
+  --tracking-display:  -0.01em;  /* default display */
+  --tracking-normal:   0;        /* body */
+  --tracking-wide:     0.04em;   /* button text · status pills */
+  --tracking-wider:    0.12em;   /* eyebrows · uppercase labels */
+  --tracking-widest:   0.18em;   /* page-header eyebrow */
+
+  /* ----------------------------------------------------------
+   * SPACING · scale
+   * ----------------------------------------------------------
+   * 4px base · used for padding, gap, margin throughout.
+   * --------------------------------------------------------*/
+  --space-1:           4px;
+  --space-2:           8px;
+  --space-3:           12px;
+  --space-4:           16px;
+  --space-5:           20px;
+  --space-6:           24px;
+  --space-8:           32px;
+  --space-10:          40px;
+  --space-12:          48px;
+  --space-14:          56px;
+  --space-16:          64px;
+  --space-20:          80px;
+  --space-24:          96px;
+
+  /* ----------------------------------------------------------
+   * RADIUS · border radius scale
+   * --------------------------------------------------------*/
+  --radius-xs:         3px;      /* tiny tags · inline highlights */
+  --radius-sm:         6px;      /* buttons · form fields */
+  --radius-md:         8px;      /* embeds · inner cards */
+  --radius-lg:         10px;     /* notification cards · alerts */
+  --radius-xl:         12px;     /* main cards · panels */
+  --radius-2xl:        14px;     /* hero cards · drawers */
+  --radius-pill:       100px;    /* pills · status badges */
+  --radius-full:       50%;      /* avatars · dots · circles */
+
+  /* ----------------------------------------------------------
+   * SHADOWS
+   * --------------------------------------------------------*/
+  --shadow-sm:         0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md:         0 4px 12px rgba(26,43,71,0.08);
+  --shadow-lg:         0 24px 60px -20px rgba(26,43,71,0.25);
+  --shadow-xl:         0 30px 80px -20px rgba(26,43,71,0.5);
+
+  /* ----------------------------------------------------------
+   * BORDERS · widths
+   * --------------------------------------------------------*/
+  --border-width:      1px;      /* default */
+  --border-width-2:    1.5px;    /* emphasised cards · selected state */
+  --border-width-3:    2px;      /* gold rule · accent dividers */
+  --border-width-4:    4px;      /* card left-border accent */
+
+  /* ----------------------------------------------------------
+   * LAYOUT · max widths
+   * --------------------------------------------------------*/
+  --max-width-page:    1480px;   /* design surface page wrapper */
+  --max-width-prose:   740px;    /* long-form text width */
+  --max-width-content: 680px;    /* lede paragraph width */
+
+  /* ----------------------------------------------------------
+   * Z-INDEX · stacking scale
+   * --------------------------------------------------------*/
+  --z-base:            0;
+  --z-dropdown:        100;
+  --z-sticky:          200;
+  --z-modal-bg:        900;
+  --z-modal:           1000;
+  --z-toast:           2000;
+
+  /* ----------------------------------------------------------
+   * MOTION · timings (use sparingly · calm UX)
+   * --------------------------------------------------------*/
+  --duration-fast:     0.15s;    /* hover · interactive */
+  --duration-base:     0.25s;    /* default transitions */
+  --duration-slow:     0.4s;     /* page-level transitions */
+  --easing-default:    ease;
+  --easing-out:        cubic-bezier(0.16, 1, 0.3, 1);
+
+}
+
+
+/* ============================================================
+ * Domain extensions
+ * ============================================================
+ *
+ * These tokens are scoped to specific surfaces and not part
+ * of the global token set. Apply only where relevant.
+ * ============================================================ */
+
+/* ------------------------------------------------------------
+ * WhatsApp surfaces (schoolup-whatsapp-inbox.html,
+ * schoolup-whatsapp-template-authoring.html)
+ * Brand-aligned with WhatsApp's own colors for inbox parity.
+ * ----------------------------------------------------------*/
+.surface-whatsapp {
+  --color-wa-green:    #25A859;  /* WhatsApp brand green */
+  --color-wa-bg:       #E7F8EE;  /* WhatsApp message bubble bg */
+}
+
+/* ------------------------------------------------------------
+ * Receipt PDF surface (schoolup-receipt-pdf.html)
+ * Off-white paper texture for printable artefacts.
+ * ----------------------------------------------------------*/
+.surface-receipt {
+  --color-paper:       #FBFAF6;  /* receipt paper */
+  --color-paper-line:  #C9C2B0;  /* receipt rule line */
+}
+
+
+/* ============================================================
+ * Backwards compatibility aliases
+ * ============================================================
+ *
+ * The original 16 tokens used short names (--navy, --gold).
+ * If you're porting existing HTML files into a build system
+ * without renaming variables, these aliases keep them working.
+ *
+ * For new code: prefer the --color-* names above.
+ * ============================================================ */
+
+:root {
+  --navy:        var(--color-navy);
+  --navy-2:      var(--color-navy-2);
+  --navy-3:      var(--color-navy-3);
+  --gold:        var(--color-gold);
+  --gold-soft:   var(--color-gold-soft);
+  --gold-bg:     var(--color-gold-bg);
+  --bg:          var(--color-bg);
+  --surface:     var(--color-surface);
+  --green:       var(--color-green);
+  --green-bg:    var(--color-green-bg);
+  --terra:       var(--color-terra);
+  --terra-bg:    var(--color-terra-bg);
+  --warn:        var(--color-warn);
+  --warn-bg:     var(--color-warn-bg);
+  --border:      var(--color-border);
+  --border-2:    var(--color-border-2);
+}
+
+
+/* ============================================================
+ * Locked design conventions (not tokens, but design rules)
+ * ============================================================
+ *
+ * Documented here for build-time enforcement. These are
+ * conventions every surface in the system follows.
+ *
+ *   1. Currency format: "GHS 340.00" — always two decimals,
+ *      single space between unit and number, never "GH₵" or "Ghc".
+ *
+ *   2. Empty cells: em-dash "—" not zero "0", not "N/A".
+ *
+ *   3. Italic emphasis: <em> within display headings carries
+ *      the gold accent. Body italics stay neutral (no color).
+ *
+ *   4. Audit principle: append-only. Voids and refunds are
+ *      new events that reference the original; original is
+ *      never erased.
+ *
+ *   5. Forward-only adjustments: discounts, fee changes, and
+ *      corrections create new line items rather than editing
+ *      historical ones.
+ *
+ *   6. SMS sign-off: school short name only (e.g. "CTKJHS"),
+ *      never full school name. Strip "School / Basic School /
+ *      JHS / SHS" suffixes.
+ *
+ *   7. OTP terminology: "OTP" always, never "code", "PIN",
+ *      "verification number".
+ *
+ *   8. Status pill placement: top-right of nav bar, never as
+ *      full-width banner. Calm signal, not alarm.
+ *
+ * ============================================================ */

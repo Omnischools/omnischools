@@ -1,0 +1,192 @@
+{
+  "$schema": "https://schemas.style-dictionary.com/v3.json",
+  "name": "schoolup-design-tokens",
+  "version": "1.0.0",
+  "description": "Design tokens for Omnischools · extracted from 62 design surfaces",
+
+  "color": {
+    "navy": {
+      "DEFAULT": { "value": "#1A2B47", "comment": "primary brand · body text · CTAs" },
+      "2":       { "value": "#2D3F5C", "comment": "secondary text · hover states" },
+      "3":       { "value": "#5C6675", "comment": "muted text · meta · captions" }
+    },
+    "gold": {
+      "DEFAULT": { "value": "#C8975B", "comment": "accent · italics · highlights" },
+      "soft":    { "value": "#E8D4B8", "comment": "gold borders · subtle accents" },
+      "bg":      { "value": "#F5EBDC", "comment": "gold-tinted surfaces · cards" }
+    },
+    "bg":      { "value": "#FAF7F2", "comment": "page background · off-white" },
+    "surface": { "value": "#FFFFFF", "comment": "cards · panels · drawers" },
+    "green": {
+      "DEFAULT": { "value": "#2F6B47", "comment": "success · paid · returned · operational" },
+      "bg":      { "value": "#E5EFE8", "comment": "success-tinted surfaces" }
+    },
+    "terra": {
+      "DEFAULT": { "value": "#B84A39", "comment": "error · lost · failed · destructive" },
+      "bg":      { "value": "#F5E1DC", "comment": "error-tinted surfaces" }
+    },
+    "warn": {
+      "DEFAULT": { "value": "#C58A2E", "comment": "warning · pending · low stock · partial" },
+      "bg":      { "value": "#F5E9D0", "comment": "warn-tinted surfaces" }
+    },
+    "border": {
+      "DEFAULT": { "value": "#E5DFD3", "comment": "default border" },
+      "2":       { "value": "#D4CCBA", "comment": "stronger border · buttons, inputs" }
+    },
+    "_extensions": {
+      "wa-green":   { "value": "#25A859", "comment": "WhatsApp surfaces only" },
+      "wa-bg":      { "value": "#E7F8EE", "comment": "WhatsApp surfaces only" },
+      "paper":      { "value": "#FBFAF6", "comment": "receipt PDF only" },
+      "paper-line": { "value": "#C9C2B0", "comment": "receipt PDF only" }
+    }
+  },
+
+  "font": {
+    "family": {
+      "display": { "value": ["Fraunces", "Georgia", "serif"] },
+      "body":    { "value": ["Manrope", "system-ui", "-apple-system", "sans-serif"] },
+      "mono":    { "value": ["JetBrains Mono", "SF Mono", "Consolas", "monospace"] }
+    },
+    "size": {
+      "xs":   { "value": "11px", "comment": "eyebrows · labels · meta" },
+      "sm":   { "value": "12px", "comment": "secondary body · captions" },
+      "base": { "value": "13px", "comment": "body · table cells · default" },
+      "md":   { "value": "14px", "comment": "primary body · stat labels" },
+      "lg":   { "value": "16px", "comment": "lede · hero descriptions" },
+      "xl":   { "value": "18px", "comment": "section subheadings" },
+      "2xl":  { "value": "20px", "comment": "card titles" },
+      "3xl":  { "value": "22px", "comment": "section heads" },
+      "4xl":  { "value": "28px", "comment": "page-head h1" },
+      "5xl":  { "value": "32px", "comment": "hero stats · section nums" },
+      "6xl":  { "value": "56px", "comment": "page-header h1 (top-level)" }
+    },
+    "weight": {
+      "normal":    { "value": "400" },
+      "medium":    { "value": "500" },
+      "semibold":  { "value": "600" },
+      "bold":      { "value": "700" }
+    },
+    "tracking": {
+      "tight":   { "value": "-0.02em",  "comment": "large display · h1" },
+      "display": { "value": "-0.01em",  "comment": "default display" },
+      "normal":  { "value": "0" },
+      "wide":    { "value": "0.04em",   "comment": "button text · status pills" },
+      "wider":   { "value": "0.12em",   "comment": "eyebrows · uppercase labels" },
+      "widest":  { "value": "0.18em",   "comment": "page-header eyebrow" }
+    }
+  },
+
+  "spacing": {
+    "1":  { "value": "4px"  },
+    "2":  { "value": "8px"  },
+    "3":  { "value": "12px" },
+    "4":  { "value": "16px" },
+    "5":  { "value": "20px" },
+    "6":  { "value": "24px" },
+    "8":  { "value": "32px" },
+    "10": { "value": "40px" },
+    "12": { "value": "48px" },
+    "14": { "value": "56px" },
+    "16": { "value": "64px" },
+    "20": { "value": "80px" },
+    "24": { "value": "96px" }
+  },
+
+  "radius": {
+    "xs":   { "value": "3px"   },
+    "sm":   { "value": "6px"   },
+    "md":   { "value": "8px"   },
+    "lg":   { "value": "10px"  },
+    "xl":   { "value": "12px"  },
+    "2xl":  { "value": "14px"  },
+    "pill": { "value": "100px" },
+    "full": { "value": "50%"   }
+  },
+
+  "shadow": {
+    "sm": { "value": "0 1px 3px rgba(0,0,0,0.06)" },
+    "md": { "value": "0 4px 12px rgba(26,43,71,0.08)" },
+    "lg": { "value": "0 24px 60px -20px rgba(26,43,71,0.25)" },
+    "xl": { "value": "0 30px 80px -20px rgba(26,43,71,0.5)" }
+  },
+
+  "border-width": {
+    "1": { "value": "1px"   },
+    "2": { "value": "1.5px" },
+    "3": { "value": "2px"   },
+    "4": { "value": "4px"   }
+  },
+
+  "max-width": {
+    "page":    { "value": "1480px" },
+    "prose":   { "value": "740px"  },
+    "content": { "value": "680px"  }
+  },
+
+  "z-index": {
+    "base":     { "value": 0    },
+    "dropdown": { "value": 100  },
+    "sticky":   { "value": 200  },
+    "modal-bg": { "value": 900  },
+    "modal":    { "value": 1000 },
+    "toast":    { "value": 2000 }
+  },
+
+  "duration": {
+    "fast": { "value": "0.15s" },
+    "base": { "value": "0.25s" },
+    "slow": { "value": "0.4s"  }
+  },
+
+  "easing": {
+    "default": { "value": "ease" },
+    "out":     { "value": "cubic-bezier(0.16, 1, 0.3, 1)" }
+  },
+
+  "_conventions": {
+    "currency": {
+      "format": "GHS 340.00",
+      "rules": [
+        "Always two decimals, never abbreviated",
+        "Single space between unit and number",
+        "Never 'GH₵' or 'Ghc'"
+      ]
+    },
+    "empty-cells": {
+      "format": "—",
+      "rules": [
+        "Em-dash for missing values, not zero",
+        "Never 'N/A' or 'null' or '0'"
+      ]
+    },
+    "audit": {
+      "principle": "append-only",
+      "rules": [
+        "Voids and refunds are new events that reference the original",
+        "Original records are never erased",
+        "Forward-only adjustments: discounts, fees, corrections create new line items"
+      ]
+    },
+    "sms-signoff": {
+      "format": "school short name only",
+      "examples": ["CTKJHS", "ABCSCH"],
+      "rules": [
+        "Strip 'School', 'Basic School', 'JHS', 'SHS' suffixes",
+        "Use uppercase abbreviation"
+      ]
+    },
+    "terminology": {
+      "otp": "OTP",
+      "rules": [
+        "Always 'OTP' — never 'code', 'PIN', 'verification number'"
+      ]
+    },
+    "connection-status": {
+      "placement": "top-right of nav bar",
+      "rules": [
+        "Pill, not full-width banner",
+        "Calm signal, not alarm"
+      ]
+    }
+  }
+}

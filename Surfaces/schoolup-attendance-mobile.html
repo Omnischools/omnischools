@@ -1,0 +1,2158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Attendance · mobile teacher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --green-bg-2: #D4E5DA;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+/* Phone frame container — multiple phones side by side */
+.phone-row {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: linear-gradient(180deg, #E8E1D2 0%, #DDD5C2 100%);
+  padding: 48px 32px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+}
+
+.phone {
+  width: 380px;
+  height: 780px;
+  background: var(--navy);
+  border-radius: 38px;
+  padding: 12px;
+  position: relative;
+  box-shadow: 0 30px 60px -12px rgba(26,43,71,0.45), 0 12px 24px -8px rgba(26,43,71,0.25);
+  flex-shrink: 0;
+}
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  border-radius: 28px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.phone-notch {
+  position: absolute;
+  top: 12px; left: 50%;
+  transform: translateX(-50%);
+  width: 110px; height: 24px;
+  background: var(--navy);
+  border-radius: 0 0 14px 14px;
+  z-index: 100;
+}
+
+/* Phone status bar */
+.status-bar {
+  height: 28px;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 22px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.status-bar .left { font-family: 'Fraunces', serif; }
+.status-bar .right {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px;
+}
+.status-bar .right .ic { font-size: 9px; opacity: 0.7; }
+
+/* Phone label */
+.phone-label {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.phone-label em {
+  display: block;
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--navy-2);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* App header — orange of warm */
+.app-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px 14px;
+  flex-shrink: 0;
+}
+.app-header .top-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.app-header .back-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  color: var(--navy);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+.app-header .menu-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+}
+.app-header .header-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.app-header h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+.app-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.app-header .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 3px;
+}
+.app-header .sub b { color: var(--navy-2); font-weight: 600; }
+
+/* Date strip */
+.date-strip {
+  background: var(--gold-bg);
+  border-bottom: 1px solid var(--gold-soft);
+  padding: 10px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-shrink: 0;
+}
+.date-strip .day {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+}
+.date-strip .day em { font-style: italic; color: var(--gold); }
+.date-strip .date-meta {
+  font-size: 11px;
+  color: var(--navy-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+/* Summary chips */
+.summary-strip {
+  padding: 14px 16px 6px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.summary-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.summary-chip.present { border-color: var(--green); background: var(--green-bg); }
+.summary-chip.late { border-color: var(--gold); background: var(--gold-bg); }
+.summary-chip.excused { border-color: var(--warn); background: var(--warn-bg); }
+.summary-chip.absent { border-color: var(--terra); background: var(--terra-bg); }
+
+.summary-chip .num {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.summary-chip.present .num { color: var(--green); }
+.summary-chip.late .num { color: var(--gold); }
+.summary-chip.excused .num { color: var(--warn); }
+.summary-chip.absent .num { color: var(--terra); }
+
+.summary-chip .lbl {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 4px;
+  color: var(--navy-2);
+}
+
+/* Quick action bar (bulk mark) */
+.bulk-bar {
+  padding: 8px 16px 12px;
+  background: var(--bg);
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.bulk-btn {
+  flex: 1;
+  padding: 8px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-2);
+  cursor: pointer;
+  font-family: inherit;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.bulk-btn.primary {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.bulk-btn .ic {
+  font-size: 12px;
+}
+
+/* Roster list */
+.roster {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.roster-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  position: relative;
+}
+.roster-row .av {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.roster-row .body { min-width: 0; }
+.roster-row .body .name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+}
+.roster-row .body .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+  display: flex; gap: 6px; align-items: center;
+}
+.roster-row .body .meta b { color: var(--navy-2); font-weight: 600; }
+.roster-row .body .meta .stat-tag {
+  display: inline-flex;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 100px;
+}
+.roster-row .body .meta .stat-tag.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.roster-row .body .meta .stat-tag.terra {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+
+/* Status segmented control */
+.status-seg {
+  display: flex;
+  background: var(--bg);
+  border-radius: 100px;
+  padding: 2px;
+  gap: 2px;
+}
+.status-tile {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--navy-3);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.status-tile.selected.present {
+  background: var(--green);
+  color: white;
+}
+.status-tile.selected.late {
+  background: var(--gold);
+  color: var(--navy);
+}
+.status-tile.selected.excused {
+  background: var(--warn);
+  color: white;
+}
+.status-tile.selected.absent {
+  background: var(--terra);
+  color: white;
+}
+
+/* Roster row state coloring */
+.roster-row.is-late { background: rgba(200,151,91,0.05); }
+.roster-row.is-excused { background: rgba(197,138,46,0.05); }
+.roster-row.is-absent { background: rgba(184,74,57,0.05); }
+
+.roster-row .reason-stripe {
+  font-size: 10px;
+  margin-top: 4px;
+  font-style: italic;
+  color: var(--navy-2);
+  display: flex; align-items: center; gap: 4px;
+}
+.roster-row .reason-stripe b { color: var(--navy); font-weight: 600; font-style: normal; }
+
+/* Submit / save bar at bottom */
+.submit-bar {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px 18px;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.submit-bar .progress {
+  font-size: 11px;
+}
+.submit-bar .progress .progress-num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+}
+.submit-bar .progress .progress-meta {
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.submit-bar .submit-btn {
+  padding: 12px 22px;
+  background: var(--navy);
+  color: var(--bg);
+  border: none;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+}
+.submit-bar .submit-btn.disabled {
+  background: var(--navy-3);
+  cursor: not-allowed;
+}
+.submit-bar .submit-btn.success {
+  background: var(--green);
+}
+
+/* ============ STATE 2 — bulk-marked ============ */
+
+/* ============ STATE 3 — exception drawer (bottom sheet) ============ */
+.bottom-sheet-bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(26,43,71,0.45);
+  backdrop-filter: blur(2px);
+  z-index: 50;
+  display: flex; align-items: flex-end;
+}
+.bottom-sheet {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  padding: 8px 18px 22px;
+  z-index: 51;
+  max-height: 75%;
+  overflow-y: auto;
+}
+.bottom-sheet .handle {
+  width: 36px; height: 4px;
+  background: var(--border-2);
+  border-radius: 2px;
+  margin: 0 auto 14px;
+}
+.bottom-sheet .sheet-head {
+  display: flex; align-items: center; gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.bottom-sheet .sheet-head .av-large {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.bottom-sheet .sheet-head .info { flex: 1; }
+.bottom-sheet .sheet-head .name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.005em;
+}
+.bottom-sheet .sheet-head .meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.bottom-sheet .sheet-head .close-btn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.sheet-status-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.sheet-status-tile {
+  padding: 10px 6px;
+  border: 1.5px solid var(--border-2);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: center;
+}
+.sheet-status-tile.selected.late {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.sheet-status-tile.selected.excused {
+  border-color: var(--warn);
+  background: var(--warn-bg);
+}
+.sheet-status-tile.selected.absent {
+  border-color: var(--terra);
+  background: var(--terra-bg);
+}
+.sheet-status-tile .ic {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 3px;
+}
+.sheet-status-tile.selected.late .ic { color: var(--gold); }
+.sheet-status-tile.selected.excused .ic { color: var(--warn); }
+.sheet-status-tile.selected.absent .ic { color: var(--terra); }
+.sheet-status-tile.selected .ic {}
+.sheet-status-tile .lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--navy-2);
+}
+
+/* Reason picker */
+.reason-section { margin-bottom: 14px; }
+.reason-section .sec-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.reason-list {
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+.reason-row {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
+  padding: 11px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  align-items: center;
+  cursor: pointer;
+}
+.reason-row.selected {
+  background: var(--warn-bg);
+  border-color: var(--warn);
+}
+.reason-row .radio {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-2);
+  background: var(--surface);
+  position: relative;
+}
+.reason-row.selected .radio {
+  border-color: var(--warn);
+  background: var(--warn);
+}
+.reason-row.selected .radio::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: white;
+}
+.reason-row .reason-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.reason-row .reason-detail {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+
+.note-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--navy);
+  resize: none;
+  min-height: 60px;
+}
+.note-input::placeholder { color: var(--navy-3); font-style: italic; }
+.note-input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+/* SMS notice */
+.sms-notice {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.sms-notice .ic {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.sms-notice .body {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.sms-notice .body b { color: var(--navy); font-weight: 600; }
+
+.sheet-footer {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.sheet-footer .btn-cancel {
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+}
+.sheet-footer .btn-save {
+  padding: 12px;
+  background: var(--navy);
+  color: var(--bg);
+  border: none;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ============ STATE 4 — excursion mode ============ */
+.excursion-banner {
+  background: var(--green-bg);
+  border-bottom: 1px solid var(--green);
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.excursion-banner .ic {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.excursion-banner .body {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.excursion-banner .body b {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--green);
+  font-size: 13px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* ============ STATE 5 — read-only after edit window ============ */
+.locked-banner {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.locked-banner .ic {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--navy-3);
+  color: white;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.locked-banner .body {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.45;
+}
+.locked-banner .body b { color: var(--navy); font-weight: 600; }
+.locked-banner .req-btn {
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--gold);
+  color: var(--navy);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 100px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.roster-row.locked { opacity: 0.7; }
+.roster-row.locked .status-seg { pointer-events: none; opacity: 0.6; }
+
+/* ============ SYNC STATES ============ */
+.sync-strip {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+  border-bottom: 1px solid;
+}
+.sync-strip.offline {
+  background: var(--bg);
+  border-bottom-color: var(--border);
+  color: var(--navy-2);
+}
+.sync-strip.pending {
+  background: var(--warn-bg);
+  border-bottom-color: rgba(197,138,46,0.3);
+  color: var(--warn);
+}
+.sync-strip.synced {
+  background: var(--green-bg);
+  border-bottom-color: rgba(47,107,71,0.3);
+  color: var(--green);
+}
+.sync-strip.conflict {
+  background: var(--terra-bg);
+  border-bottom-color: rgba(184,74,57,0.3);
+  color: var(--terra);
+}
+.sync-strip .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sync-strip.offline .dot { background: var(--navy-3); }
+.sync-strip.pending .dot { background: var(--warn); animation: pulse 1.5s ease-in-out infinite; }
+.sync-strip.synced .dot { background: var(--green); }
+.sync-strip.conflict .dot { background: var(--terra); }
+.sync-strip b { font-family: 'Fraunces', serif; font-weight: 600; }
+.sync-strip a {
+  margin-left: auto;
+  font-size: 11px;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Conflict resolution sheet */
+.conflict-card {
+  background: var(--surface);
+  border: 1px solid var(--terra);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 12px 16px;
+}
+.conflict-card .head {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--terra);
+  margin-bottom: 4px;
+}
+.conflict-card .body {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.conflict-card .body b { color: var(--navy); font-weight: 600; }
+.conflict-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.conflict-option {
+  padding: 10px 12px;
+  border: 1.5px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+}
+.conflict-option.selected {
+  border-color: var(--terra);
+  background: var(--terra-bg);
+}
+.conflict-option .opt-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+.conflict-option .opt-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Bottom nav */
+.bottom-nav {
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 8px 6px 24px;
+  flex-shrink: 0;
+}
+.nav-tab {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--navy-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.nav-tab .ic {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  background: currentColor;
+  opacity: 0.7;
+}
+.nav-tab.active {
+  color: var(--gold);
+}
+.nav-tab.active .ic {
+  background: var(--gold);
+  opacity: 1;
+}
+
+/* Toast */
+.toast {
+  position: absolute;
+  top: 80px; left: 16px; right: 16px;
+  background: var(--green);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 12px;
+  display: flex; align-items: center; gap: 10px;
+  z-index: 60;
+  box-shadow: 0 12px 28px -8px rgba(26,43,71,0.4);
+}
+.toast .ic {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+}
+.toast .msg {
+  font-size: 13px;
+  font-weight: 600;
+}
+.toast .msg b { font-weight: 700; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Attendance</div>
+  <h1 class="display">The <em>register</em>, in your pocket</h1>
+  <div class="gold-rule"></div>
+  <p>Form teachers mark thirty-five students in under a minute. Bulk-mark "everyone present" with one tap, toggle the few exceptions, send the day's record. Works offline, syncs when network returns, fires absence SMS to parents at end of day. The same flow runs on a phone in the classroom or on the staff-room desktop.</p>
+</header>
+
+<!-- ============ 01 PRIMARY MARKING FLOW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Primary marking flow</div>
+    <div class="section-meta">Teacher · 8:02 AM · JHS 2A register</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="phone-row">
+
+        <!-- PHONE 1: Empty register, just opened -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">8:02</div>
+                <div class="right"><span class="ic">●</span><span class="ic">5G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="app-header">
+                <div class="top-row">
+                  <button class="back-btn">‹</button>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="header-eyebrow">Take attendance</div>
+                <h1 class="display">JHS <em>2A</em> register</h1>
+                <div class="sub">36 students · class teacher <b>Mr. Mensah</b></div>
+              </div>
+
+              <div class="date-strip">
+                <div class="day display">Friday <em>2 May</em></div>
+                <div class="date-meta">Term 1 · Day 47</div>
+              </div>
+
+              <div class="summary-strip">
+                <div class="summary-chip">
+                  <div class="num">—</div>
+                  <div class="lbl">Present</div>
+                </div>
+                <div class="summary-chip">
+                  <div class="num">—</div>
+                  <div class="lbl">Late</div>
+                </div>
+                <div class="summary-chip">
+                  <div class="num">—</div>
+                  <div class="lbl">Excused</div>
+                </div>
+                <div class="summary-chip">
+                  <div class="num">—</div>
+                  <div class="lbl">Absent</div>
+                </div>
+              </div>
+
+              <div class="bulk-bar">
+                <button class="bulk-btn primary"><span class="ic">✓</span>All present</button>
+                <button class="bulk-btn"><span class="ic">⛺</span>Excursion</button>
+              </div>
+
+              <div class="roster">
+                <div class="roster-row">
+                  <div class="av">AB</div>
+                  <div class="body">
+                    <div class="name">Akosua Boateng</div>
+                    <div class="meta"><b>96%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row">
+                  <div class="av">DA</div>
+                  <div class="body">
+                    <div class="name">Daniel Adjei</div>
+                    <div class="meta"><b>89%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row">
+                  <div class="av">EA</div>
+                  <div class="body">
+                    <div class="name">Esi Asante</div>
+                    <div class="meta">
+                      <b>72%</b> term attendance
+                      <span class="stat-tag warn">Pattern · Fri</span>
+                    </div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row">
+                  <div class="av">FO</div>
+                  <div class="body">
+                    <div class="name">Florence Owusu</div>
+                    <div class="meta"><b>98%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row">
+                  <div class="av">JM</div>
+                  <div class="body">
+                    <div class="name">James Mensah</div>
+                    <div class="meta">
+                      <b>61%</b> term attendance
+                      <span class="stat-tag terra">Below 70%</span>
+                    </div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row">
+                  <div class="av">KA</div>
+                  <div class="body">
+                    <div class="name">Kwame Adu</div>
+                    <div class="meta"><b>94%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row">
+                  <div class="av">YB</div>
+                  <div class="body">
+                    <div class="name">Yaa Boakye</div>
+                    <div class="meta"><b>91%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="submit-bar">
+                <div class="progress">
+                  <div class="progress-num">0 of 36 marked</div>
+                  <div class="progress-meta">Tap "All present" to start fast</div>
+                </div>
+                <button class="submit-btn disabled">Submit</button>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State A<em>Empty register · just opened</em></div>
+        </div>
+
+        <!-- PHONE 2: After "All present" tapped, exceptions being toggled -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">8:04</div>
+                <div class="right"><span class="ic">●</span><span class="ic">5G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="app-header">
+                <div class="top-row">
+                  <button class="back-btn">‹</button>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="header-eyebrow">Take attendance</div>
+                <h1 class="display">JHS <em>2A</em> register</h1>
+                <div class="sub">36 students · class teacher <b>Mr. Mensah</b></div>
+              </div>
+
+              <div class="date-strip">
+                <div class="day display">Friday <em>2 May</em></div>
+                <div class="date-meta">Term 1 · Day 47</div>
+              </div>
+
+              <div class="summary-strip">
+                <div class="summary-chip present">
+                  <div class="num">33</div>
+                  <div class="lbl">Present</div>
+                </div>
+                <div class="summary-chip late">
+                  <div class="num">1</div>
+                  <div class="lbl">Late</div>
+                </div>
+                <div class="summary-chip excused">
+                  <div class="num">1</div>
+                  <div class="lbl">Excused</div>
+                </div>
+                <div class="summary-chip absent">
+                  <div class="num">1</div>
+                  <div class="lbl">Absent</div>
+                </div>
+              </div>
+
+              <div class="bulk-bar">
+                <button class="bulk-btn"><span class="ic">↺</span>Reset</button>
+                <button class="bulk-btn"><span class="ic">⛺</span>Excursion</button>
+              </div>
+
+              <div class="roster">
+                <div class="roster-row">
+                  <div class="av">AB</div>
+                  <div class="body">
+                    <div class="name">Akosua Boateng</div>
+                    <div class="meta"><b>96%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile selected present">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row">
+                  <div class="av">DA</div>
+                  <div class="body">
+                    <div class="name">Daniel Adjei</div>
+                    <div class="meta"><b>89%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile selected present">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row is-excused">
+                  <div class="av">EA</div>
+                  <div class="body">
+                    <div class="name">Esi Asante</div>
+                    <div class="meta">
+                      <b>72%</b> term attendance
+                      <span class="stat-tag warn">Pattern · Fri</span>
+                    </div>
+                    <div class="reason-stripe">
+                      <span style="color:var(--warn);font-weight:700">!</span>
+                      <b>Excused</b> · mother called · medical appointment
+                    </div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile selected excused">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row">
+                  <div class="av">FO</div>
+                  <div class="body">
+                    <div class="name">Florence Owusu</div>
+                    <div class="meta"><b>98%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile selected present">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row is-absent">
+                  <div class="av">JM</div>
+                  <div class="body">
+                    <div class="name">James Mensah</div>
+                    <div class="meta">
+                      <b>61%</b> term attendance
+                      <span class="stat-tag terra">Below 70%</span>
+                    </div>
+                    <div class="reason-stripe">
+                      <span style="color:var(--terra);font-weight:700">!</span>
+                      <b>Absent</b> · no contact from home · 3rd consecutive day
+                    </div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile selected absent">A</button>
+                  </div>
+                </div>
+                <div class="roster-row is-late">
+                  <div class="av">KA</div>
+                  <div class="body">
+                    <div class="name">Kwame Adu</div>
+                    <div class="meta"><b>94%</b> term attendance</div>
+                    <div class="reason-stripe">
+                      <span style="color:var(--gold);font-weight:700">!</span>
+                      <b>Late</b> · arrived 8:23 AM
+                    </div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile selected late">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row">
+                  <div class="av">YB</div>
+                  <div class="body">
+                    <div class="name">Yaa Boakye</div>
+                    <div class="meta"><b>91%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile selected present">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="submit-bar">
+                <div class="progress">
+                  <div class="progress-num">36 of 36 marked</div>
+                  <div class="progress-meta">2 absence SMS will go out at 3 PM</div>
+                </div>
+                <button class="submit-btn">Submit →</button>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State B<em>Bulk-marked, exceptions toggled</em></div>
+        </div>
+
+        <!-- PHONE 3: Submitted, success state -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">8:05</div>
+                <div class="right"><span class="ic">●</span><span class="ic">5G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="app-header">
+                <div class="top-row">
+                  <button class="back-btn">‹</button>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="header-eyebrow">Take attendance</div>
+                <h1 class="display">JHS <em>2A</em> register</h1>
+                <div class="sub">Submitted at <b>8:05 AM</b> · editable until tomorrow</div>
+              </div>
+
+              <div class="toast">
+                <div class="ic">✓</div>
+                <div class="msg"><b>Submitted.</b> 33 present · 1 late · 1 excused · 1 absent</div>
+              </div>
+
+              <div class="date-strip">
+                <div class="day display">Friday <em>2 May</em></div>
+                <div class="date-meta">Term 1 · Day 47</div>
+              </div>
+
+              <div class="summary-strip">
+                <div class="summary-chip present">
+                  <div class="num">33</div>
+                  <div class="lbl">Present</div>
+                </div>
+                <div class="summary-chip late">
+                  <div class="num">1</div>
+                  <div class="lbl">Late</div>
+                </div>
+                <div class="summary-chip excused">
+                  <div class="num">1</div>
+                  <div class="lbl">Excused</div>
+                </div>
+                <div class="summary-chip absent">
+                  <div class="num">1</div>
+                  <div class="lbl">Absent</div>
+                </div>
+              </div>
+
+              <div style="background:var(--green-bg);border-bottom:1px solid var(--green);padding:14px 16px;flex-shrink:0">
+                <div style="display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:start">
+                  <div style="width:28px;height:28px;border-radius:50%;background:var(--green);color:white;font-family:'Fraunces',serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">✓</div>
+                  <div>
+                    <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px;color:var(--green);margin-bottom:3px">Register submitted</div>
+                    <div style="font-size:11px;color:var(--navy-2);line-height:1.5">Akosua's mum and Yaa's dad will get an SMS at <b style="color:var(--navy)">3:00 PM</b> confirming their child is at school today. James's parents will get an absence SMS at the same time.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:16px;flex:1;overflow-y:auto">
+                <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:10px">What's next</div>
+
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px;display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:center">
+                  <div style="width:30px;height:30px;border-radius:8px;background:var(--terra-bg);color:var(--terra);font-family:'Fraunces',serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">!</div>
+                  <div>
+                    <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px">Follow up on James</div>
+                    <div style="font-size:11px;color:var(--navy-3);margin-top:1px">3rd consecutive absence · admin alert sent</div>
+                  </div>
+                </div>
+
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px;display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:center">
+                  <div style="width:30px;height:30px;border-radius:8px;background:var(--gold-bg);color:var(--gold);font-family:'Fraunces',serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">M</div>
+                  <div>
+                    <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px">Maths · 8:30 AM</div>
+                    <div style="font-size:11px;color:var(--navy-3);margin-top:1px">Period 1 · today's lesson plan</div>
+                  </div>
+                </div>
+
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:center">
+                  <div style="width:30px;height:30px;border-radius:8px;background:var(--bg);color:var(--navy-3);font-family:'Fraunces',serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">↻</div>
+                  <div>
+                    <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px">Edit register</div>
+                    <div style="font-size:11px;color:var(--navy-3);margin-top:1px">Editable until 8:05 AM tomorrow</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bottom-nav">
+                <div class="nav-tab"><div class="ic"></div>Home</div>
+                <div class="nav-tab active"><div class="ic"></div>Register</div>
+                <div class="nav-tab"><div class="ic"></div>Classes</div>
+                <div class="nav-tab"><div class="ic"></div>More</div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State C<em>Submitted · success</em></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Three states left to right</b> — empty register, mid-marking, submitted. Reads as a 60-second journey: open, bulk-mark all present, toggle 3 exceptions, submit. The whole pattern is "everyone's here, except…"</li>
+        <li><b>Header gives the class identity in Fraunces</b> — "JHS <em>2A</em> register" with the class number italic gold. Same brand language as everywhere else; the register feels of-a-piece with student profiles, billing, achievements.</li>
+        <li><b>Date strip in gold-tinted band</b> separates the static class info from the daily-changing date. "Friday 2 May" with "Term 1 · Day 47" beneath. Day 47 is the school day count — useful because attendance percentage denominators are days-attended, not calendar days.</li>
+        <li><b>Four summary chips at the top: Present / Late / Excused / Absent.</b> In State A all show em-dashes (nothing marked yet). In State B they show running counts that update as teacher marks. The colour coding (green / gold / warn / terra) repeats in every status pill across the rest of the system.</li>
+        <li><b>Two bulk action buttons.</b> "All present" is the primary action and uses navy primary styling — that's what 95% of teachers will tap first. "Excursion" is the alternative — whole class is on a field trip and counts as on-school-business, not absent. <b>The "Reset" button replaces "All present" once the teacher has started marking</b> — same position, different meaning, contextual.</li>
+        <li><b>Roster rows show running attendance percentage</b> ("96%", "72%", "61%") so teacher sees context as they mark. The student with 61% gets a terra "Below 70%" pill — silent flag to teacher that this student's attendance needs attention. The student with 72% gets a warn "Pattern · Fri" pill — they miss every Friday, and today is Friday.</li>
+        <li><b>Pattern detection is not just observation, it's prompt.</b> When teacher sees "Esi Asante · 72% · Pattern · Fri" before marking, they're more likely to chase it down — call the parent, write a note, do something. The system isn't running the school; it's giving the teacher the information they need to do their job.</li>
+        <li><b>P / L / E / A status segmented control</b> on the right of each row. Single-letter codes are the universal teacher shorthand (used in paper registers since forever). Round buttons in a pill — taps are easy on a phone; the colour fills in as teacher selects.</li>
+        <li><b>Reason stripe appears below the name when status is non-present.</b> "Excused · mother called · medical appointment" / "Absent · no contact from home · 3rd consecutive day" / "Late · arrived 8:23 AM". Auto-populated when teacher selects the status in the bottom-sheet (next section). Visible in the row so teacher can verify their work without re-opening.</li>
+        <li><b>Row backgrounds tint by status</b> — soft green for present (no tint, default), soft gold for late, soft warn for excused, soft terra for absent. <b>Subtle but clear at a glance</b> — teacher scrolling through the list sees colour bands not just text.</li>
+        <li><b>Submit bar at the bottom is sticky.</b> Progress on the left ("36 of 36 marked"), Submit button on the right. <b>The progress copy adapts</b> — "0 of 36 marked · Tap All present to start fast" → "36 of 36 marked · 2 absence SMS will go out at 3 PM". Telling the teacher what their action will trigger before they tap.</li>
+        <li><b>Submit button disabled until all marked.</b> Even if teacher only taps "All present" without toggling exceptions, all 36 are marked. The progress count guards against accidental partial submission. <b>Teacher who taps "All present" and submits has marked everyone present — that's a real record, not an empty form.</b></li>
+        <li><b>State C — the success state</b> shows a green confirmation banner, summary chips locked in their final values, and three "What's next" cards: follow-up on James, next class, edit register. <b>The system doesn't dump the teacher back to a homepage</b> — it points them at what they should do next.</li>
+        <li><b>The SMS notice copy is specific</b> — "Akosua's mum and Yaa's dad will get an SMS at 3:00 PM confirming their child is at school today. James's parents will get an absence SMS at the same time." Teachers sometimes worry "did I just spam every parent?" — the explicit copy answers that. <b>Only absence/late SMS go out by default</b>; the "child is at school" reassurance SMS is opt-in per parent.</li>
+        <li><b>"Edit register" card noting "editable until 8:05 AM tomorrow"</b> establishes the 24-hour edit window without lecturing. Teacher knows they have time to fix mistakes; they also know there's a deadline.</li>
+        <li><b>Bottom nav with Home / Register / Classes / More</b> — Register is its own first-class tab in the teacher app. Not nested under Classes, not nested under any other module — it's the most-used screen and gets the address.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 EDGE STATES ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Edge states · exception drawer, excursion mode, locked register</div>
+    <div class="section-meta">Teacher · less common but real situations</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="phone-row">
+
+        <!-- PHONE 4: Exception bottom sheet — picking reason for excused absence -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">8:03</div>
+                <div class="right"><span class="ic">●</span><span class="ic">5G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="app-header">
+                <div class="top-row">
+                  <button class="back-btn">‹</button>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="header-eyebrow">Take attendance</div>
+                <h1 class="display">JHS <em>2A</em> register</h1>
+                <div class="sub">36 students · class teacher <b>Mr. Mensah</b></div>
+              </div>
+
+              <div class="date-strip">
+                <div class="day display">Friday <em>2 May</em></div>
+                <div class="date-meta">Term 1 · Day 47</div>
+              </div>
+
+              <div style="flex:1;background:var(--bg);overflow:hidden"></div>
+
+              <div class="bottom-sheet-bg">
+                <div class="bottom-sheet">
+                  <div class="handle"></div>
+                  <div class="sheet-head">
+                    <div class="av-large">EA</div>
+                    <div class="info">
+                      <div class="name">Esi Asante</div>
+                      <div class="meta">JHS 2A · 72% term attendance</div>
+                    </div>
+                    <button class="close-btn">×</button>
+                  </div>
+
+                  <div class="sheet-status-row">
+                    <div class="sheet-status-tile">
+                      <div class="ic">P</div>
+                      <div class="lbl">Present</div>
+                    </div>
+                    <div class="sheet-status-tile">
+                      <div class="ic">L</div>
+                      <div class="lbl">Late</div>
+                    </div>
+                    <div class="sheet-status-tile selected excused">
+                      <div class="ic">E</div>
+                      <div class="lbl">Excused</div>
+                    </div>
+                    <div class="sheet-status-tile">
+                      <div class="ic">A</div>
+                      <div class="lbl">Absent</div>
+                    </div>
+                  </div>
+
+                  <div class="reason-section">
+                    <div class="sec-label">Reason</div>
+                    <div class="reason-list">
+                      <div class="reason-row">
+                        <div class="radio"></div>
+                        <div>
+                          <div class="reason-name">Sick</div>
+                          <div class="reason-detail">Medical illness, doctor's note may follow</div>
+                        </div>
+                      </div>
+                      <div class="reason-row selected">
+                        <div class="radio"></div>
+                        <div>
+                          <div class="reason-name">Medical appointment</div>
+                          <div class="reason-detail">Hospital, dental, optometrist visit</div>
+                        </div>
+                      </div>
+                      <div class="reason-row">
+                        <div class="radio"></div>
+                        <div>
+                          <div class="reason-name">Family event</div>
+                          <div class="reason-detail">Funeral, wedding, religious observance</div>
+                        </div>
+                      </div>
+                      <div class="reason-row">
+                        <div class="radio"></div>
+                        <div>
+                          <div class="reason-name">Travel</div>
+                          <div class="reason-detail">Out of town with family</div>
+                        </div>
+                      </div>
+                      <div class="reason-row">
+                        <div class="radio"></div>
+                        <div>
+                          <div class="reason-name">Other (specify)</div>
+                          <div class="reason-detail">Anything not listed above</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="reason-section">
+                    <div class="sec-label">Note (optional)</div>
+                    <textarea class="note-input" placeholder="e.g. mother called this morning, will return tomorrow">Mother called at 7:40 AM — dental appointment</textarea>
+                  </div>
+
+                  <div class="sms-notice">
+                    <div class="ic">i</div>
+                    <div class="body"><b>No SMS will go out</b> for this student today — excused absences with a noted reason are not flagged to the parent.</div>
+                  </div>
+
+                  <div class="sheet-footer">
+                    <button class="btn-cancel">Cancel</button>
+                    <button class="btn-save">Save</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State D<em>Exception bottom sheet · excused with reason</em></div>
+        </div>
+
+        <!-- PHONE 5: Excursion mode -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">8:00</div>
+                <div class="right"><span class="ic">●</span><span class="ic">5G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="app-header">
+                <div class="top-row">
+                  <button class="back-btn">‹</button>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="header-eyebrow">Take attendance</div>
+                <h1 class="display">JHS <em>2A</em> register</h1>
+                <div class="sub">36 students · class teacher <b>Mr. Mensah</b></div>
+              </div>
+
+              <div class="date-strip">
+                <div class="day display">Friday <em>2 May</em></div>
+                <div class="date-meta">Term 1 · Day 47</div>
+              </div>
+
+              <div class="excursion-banner">
+                <div class="ic">⛺</div>
+                <div class="body">
+                  <b>Excursion mode</b>
+                  Whole class is at the National Museum today. No student counts as absent; the day still counts toward term attendance. Add students who didn't join the trip below.
+                </div>
+              </div>
+
+              <div style="padding:14px 16px;background:var(--bg);flex-shrink:0">
+                <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:8px">Trip details</div>
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+                    <div>
+                      <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:2px">Destination</div>
+                      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px">National Museum</div>
+                    </div>
+                    <div>
+                      <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:2px">Returns</div>
+                      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px">3:30 PM today</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:0 16px 8px;background:var(--bg);flex-shrink:0">
+                <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:8px">Students not on the trip <span style="color:var(--navy-3);font-weight:500;letter-spacing:0;text-transform:none;font-style:italic;font-size:10px">— optional, add only if any</span></div>
+              </div>
+
+              <div class="roster">
+                <div class="roster-row is-absent">
+                  <div class="av">JM</div>
+                  <div class="body">
+                    <div class="name">James Mensah</div>
+                    <div class="meta">
+                      <b>61%</b> term attendance
+                      <span class="stat-tag terra">Below 70%</span>
+                    </div>
+                    <div class="reason-stripe">
+                      <span style="color:var(--terra);font-weight:700">!</span>
+                      <b>Absent</b> · did not join the trip · no contact
+                    </div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile selected absent">A</button>
+                  </div>
+                </div>
+
+                <div style="padding:18px 16px;text-align:center;color:var(--navy-3);font-size:11px;font-style:italic">All other students are on the trip and counted as present</div>
+
+                <div style="padding:0 16px">
+                  <button style="width:100%;padding:10px;background:var(--bg);border:1.5px dashed var(--border-2);border-radius:10px;color:var(--navy-3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">+ Add student not on trip</button>
+                </div>
+              </div>
+
+              <div class="submit-bar">
+                <div class="progress">
+                  <div class="progress-num">35 on trip · 1 absent</div>
+                  <div class="progress-meta">1 absence SMS at 3 PM</div>
+                </div>
+                <button class="submit-btn">Submit →</button>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State E<em>Excursion mode · whole-class trip</em></div>
+        </div>
+
+        <!-- PHONE 6: Read-only after edit window -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">10:42</div>
+                <div class="right"><span class="ic">●</span><span class="ic">5G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="app-header">
+                <div class="top-row">
+                  <button class="back-btn">‹</button>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="header-eyebrow">Past register · Wed 30 Apr</div>
+                <h1 class="display">JHS <em>2A</em> register</h1>
+                <div class="sub">Submitted <b>Wed 30 Apr · 8:11 AM</b> by Mr. Mensah</div>
+              </div>
+
+              <div class="locked-banner">
+                <div class="ic">🔒</div>
+                <div class="body">
+                  <b>Edit window closed</b> 36 hours ago. Changes need head's approval.
+                </div>
+                <button class="req-btn">Request edit</button>
+              </div>
+
+              <div class="summary-strip">
+                <div class="summary-chip present">
+                  <div class="num">34</div>
+                  <div class="lbl">Present</div>
+                </div>
+                <div class="summary-chip late">
+                  <div class="num">0</div>
+                  <div class="lbl">Late</div>
+                </div>
+                <div class="summary-chip excused">
+                  <div class="num">1</div>
+                  <div class="lbl">Excused</div>
+                </div>
+                <div class="summary-chip absent">
+                  <div class="num">1</div>
+                  <div class="lbl">Absent</div>
+                </div>
+              </div>
+
+              <div class="roster">
+                <div class="roster-row locked">
+                  <div class="av">AB</div>
+                  <div class="body">
+                    <div class="name">Akosua Boateng</div>
+                    <div class="meta"><b>96%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile selected present">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row locked">
+                  <div class="av">DA</div>
+                  <div class="body">
+                    <div class="name">Daniel Adjei</div>
+                    <div class="meta"><b>89%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile selected present">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row locked is-excused">
+                  <div class="av">EA</div>
+                  <div class="body">
+                    <div class="name">Esi Asante</div>
+                    <div class="meta">
+                      <b>72%</b> term attendance
+                    </div>
+                    <div class="reason-stripe">
+                      <span style="color:var(--warn);font-weight:700">!</span>
+                      <b>Excused</b> · sick
+                    </div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile selected excused">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row locked is-absent">
+                  <div class="av">JM</div>
+                  <div class="body">
+                    <div class="name">James Mensah</div>
+                    <div class="meta"><b>61%</b> term attendance</div>
+                    <div class="reason-stripe">
+                      <span style="color:var(--terra);font-weight:700">!</span>
+                      <b>Absent</b> · no contact
+                    </div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile selected absent">A</button>
+                  </div>
+                </div>
+                <div class="roster-row locked">
+                  <div class="av">FO</div>
+                  <div class="body">
+                    <div class="name">Florence Owusu</div>
+                    <div class="meta"><b>98%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile selected present">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:14px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0">
+                <div style="font-size:10px;color:var(--navy-3);font-style:italic;line-height:1.5">This register was finalised at <b style="color:var(--navy);font-style:normal;font-weight:600">8:11 AM Wed 30 Apr</b>. Any changes after this point are tracked in the audit log and require head's approval.</div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State F<em>Past register · edit window closed</em></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>State D — Exception bottom sheet</b> is the deeper flow when teacher taps a non-Present status. Bottom sheet pattern (not full-screen modal) because the underlying register stays in view; teacher can see context. Slides up over the dimmed register.</li>
+        <li><b>Sheet header shows the student in detail.</b> Avatar, name, class, term attendance percentage. <b>Same student data the teacher just looked at</b> in the row, but bigger so they're sure they're editing the right person. Close button on the right.</li>
+        <li><b>Four status tiles at the top of the sheet</b> — same options as the inline segmented control but bigger, with labels. The selected status is pre-highlighted in its colour. Teacher can change their mind here without backing out.</li>
+        <li><b>Reason picker uses radio rows, not chips.</b> Five reasons cover 95% of cases (Sick / Medical appointment / Family event / Travel / Other). Each has a one-line explanation. <b>"Other (specify)" is the escape hatch</b> — when none of the categories fit, teacher writes their own reason.</li>
+        <li><b>Note field below reason</b> for free-text — "Mother called at 7:40 AM — dental appointment." Optional but encouraged. This text shows up in the inline reason stripe and in the parent-facing record. <b>Teacher's handwriting moved into the system</b>.</li>
+        <li><b>SMS notice in gold-tint card</b> — explicit about what the system will or won't do. "No SMS will go out for this student today — excused absences with a noted reason are not flagged to the parent." Teacher knows they don't need to also call the parent; the excuse has been logged.</li>
+        <li><b>Sheet footer with Cancel + Save</b>. Save is the wider button (2fr) because the dominant action is finalising the entry. Cancel is narrower because backing out is the less common path.</li>
+        <li><b>State E — Excursion mode</b> tells a different story. <b>"Whole class is at the National Museum today. No student counts as absent."</b> The default is now flipped — everyone is on the trip, exceptions are students who didn't join. Trip details card (destination + return time) is metadata that lives on the register row.</li>
+        <li><b>"Students not on the trip"</b> section header with italic explanatory text "optional, add only if any." Most excursions will have zero exceptions; the register submits with all-on-trip and the teacher's done in 30 seconds. The exception path (add a student who didn't join) is preserved for the rare case.</li>
+        <li><b>Excursion absent rows show "did not join the trip"</b> in the reason stripe — different language from regular absence ("no contact from home"). The system distinguishes between "didn't show up to school" and "showed up but didn't join the excursion" because they mean different things to the parent and the register.</li>
+        <li><b>State F — Past register, locked</b> shows a 36-hour-old register that's outside the edit window. Header says "Past register · Wed 30 Apr"; sub-header says "Submitted Wed 30 Apr · 8:11 AM by Mr. Mensah" — provenance always visible.</li>
+        <li><b>Locked banner</b> in grey with lock icon: "Edit window closed 36 hours ago. Changes need head's approval." Right-aligned "Request edit" button is the path forward — teacher can still propose changes, but they go to admin for approval, not directly into the record.</li>
+        <li><b>Roster rows are 70% opacity with disabled status segments</b> — visual signal that this is read-only. Teacher can scroll through, see what was marked, but can't change anything inline. The friction is appropriate: <b>changing a 36-hour-old register is a real event, not a quick edit</b>, and the audit trail demands attention.</li>
+        <li><b>Footer disclosure</b>: "This register was finalised at 8:11 AM Wed 30 Apr. Any changes after this point are tracked in the audit log and require head's approval." Clean, formal, terminal. The teacher knows where they stand.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 SYNC STATES ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Sync states · offline-first marking</div>
+    <div class="section-meta">No-network classroom · sync states across the day</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="phone-row">
+
+        <!-- PHONE 7: Marking offline -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">8:01</div>
+                <div class="right"><span class="ic">⚠</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="app-header">
+                <div class="top-row">
+                  <button class="back-btn">‹</button>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="header-eyebrow">Take attendance</div>
+                <h1 class="display">JHS <em>2A</em> register</h1>
+                <div class="sub">36 students · class teacher <b>Mr. Mensah</b></div>
+              </div>
+
+              <div class="sync-strip offline">
+                <div class="dot"></div>
+                <div>You're <b>offline.</b> Marking will save to this device and sync when network returns.</div>
+              </div>
+
+              <div class="date-strip">
+                <div class="day display">Friday <em>2 May</em></div>
+                <div class="date-meta">Term 1 · Day 47</div>
+              </div>
+
+              <div class="summary-strip">
+                <div class="summary-chip present">
+                  <div class="num">33</div>
+                  <div class="lbl">Present</div>
+                </div>
+                <div class="summary-chip late">
+                  <div class="num">1</div>
+                  <div class="lbl">Late</div>
+                </div>
+                <div class="summary-chip excused">
+                  <div class="num">1</div>
+                  <div class="lbl">Excused</div>
+                </div>
+                <div class="summary-chip absent">
+                  <div class="num">1</div>
+                  <div class="lbl">Absent</div>
+                </div>
+              </div>
+
+              <div class="bulk-bar">
+                <button class="bulk-btn"><span class="ic">↺</span>Reset</button>
+                <button class="bulk-btn"><span class="ic">⛺</span>Excursion</button>
+              </div>
+
+              <div class="roster">
+                <div class="roster-row">
+                  <div class="av">AB</div>
+                  <div class="body">
+                    <div class="name">Akosua Boateng</div>
+                    <div class="meta"><b>96%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile selected present">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row is-late">
+                  <div class="av">KA</div>
+                  <div class="body">
+                    <div class="name">Kwame Adu</div>
+                    <div class="meta"><b>94%</b> term attendance</div>
+                    <div class="reason-stripe">
+                      <span style="color:var(--gold);font-weight:700">!</span>
+                      <b>Late</b> · arrived 8:23 AM
+                    </div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile selected late">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+                <div class="roster-row is-absent">
+                  <div class="av">JM</div>
+                  <div class="body">
+                    <div class="name">James Mensah</div>
+                    <div class="meta"><b>61%</b> term attendance</div>
+                    <div class="reason-stripe">
+                      <span style="color:var(--terra);font-weight:700">!</span>
+                      <b>Absent</b> · no contact
+                    </div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile selected absent">A</button>
+                  </div>
+                </div>
+                <div class="roster-row">
+                  <div class="av">YB</div>
+                  <div class="body">
+                    <div class="name">Yaa Boakye</div>
+                    <div class="meta"><b>91%</b> term attendance</div>
+                  </div>
+                  <div class="status-seg">
+                    <button class="status-tile selected present">P</button>
+                    <button class="status-tile">L</button>
+                    <button class="status-tile">E</button>
+                    <button class="status-tile">A</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="submit-bar">
+                <div class="progress">
+                  <div class="progress-num">36 of 36 marked</div>
+                  <div class="progress-meta">Will sync when online · SMS queued</div>
+                </div>
+                <button class="submit-btn">Save offline</button>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State G<em>Offline · marking continues</em></div>
+        </div>
+
+        <!-- PHONE 8: Pending sync -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">11:14</div>
+                <div class="right"><span class="ic">●</span><span class="ic">3G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="app-header">
+                <div class="top-row">
+                  <button class="back-btn">‹</button>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="header-eyebrow">Take attendance</div>
+                <h1 class="display">JHS <em>2A</em> register</h1>
+                <div class="sub">Saved offline at <b>8:01 AM</b> · syncing now</div>
+              </div>
+
+              <div class="sync-strip pending">
+                <div class="dot"></div>
+                <div>Syncing <b>3 registers</b> from this device · <b>2 of 3</b> uploaded</div>
+              </div>
+
+              <div style="padding:16px;flex:1;background:var(--bg);overflow-y:auto">
+                <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:12px">Pending uploads</div>
+
+                <div style="background:var(--surface);border:1px solid var(--green);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center">
+                  <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:white;font-family:'Fraunces',serif;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center">✓</div>
+                  <div>
+                    <div style="font-size:12px;font-weight:600;font-family:'Fraunces',serif">JHS 2A · Wed 30 Apr</div>
+                    <div style="font-size:10px;color:var(--navy-3);margin-top:1px">Marked 8:00 AM · synced 11:13 AM</div>
+                  </div>
+                  <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:100px">Synced</div>
+                </div>
+
+                <div style="background:var(--surface);border:1px solid var(--green);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center">
+                  <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:white;font-family:'Fraunces',serif;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center">✓</div>
+                  <div>
+                    <div style="font-size:12px;font-weight:600;font-family:'Fraunces',serif">JHS 2A · Thu 1 May</div>
+                    <div style="font-size:10px;color:var(--navy-3);margin-top:1px">Marked 8:08 AM · synced 11:14 AM</div>
+                  </div>
+                  <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:100px">Synced</div>
+                </div>
+
+                <div style="background:var(--surface);border:1.5px solid var(--warn);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center">
+                  <div style="width:26px;height:26px;border-radius:50%;background:var(--warn);color:white;font-family:'Fraunces',serif;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;animation:pulse 1.5s ease-in-out infinite">↻</div>
+                  <div>
+                    <div style="font-size:12px;font-weight:600;font-family:'Fraunces',serif">JHS 2A · Fri 2 May</div>
+                    <div style="font-size:10px;color:var(--navy-3);margin-top:1px">Marked 8:01 AM · uploading…</div>
+                  </div>
+                  <div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;color:var(--warn);background:var(--warn-bg);padding:3px 8px;border-radius:100px">Uploading</div>
+                </div>
+
+                <div style="background:var(--gold-bg);border:1px solid var(--gold-soft);border-radius:10px;padding:12px 14px;margin-top:14px;display:grid;grid-template-columns:24px 1fr;gap:10px;align-items:start">
+                  <div style="width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--navy);font-family:'Fraunces',serif;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">i</div>
+                  <div style="font-size:11px;color:var(--navy-2);line-height:1.55">
+                    <b style="color:var(--navy);font-weight:600">Absence SMS will go out at 3 PM</b> as scheduled — 2 SMS queued for Fri 2 May, 1 each for the earlier days.
+                  </div>
+                </div>
+              </div>
+
+              <div class="bottom-nav">
+                <div class="nav-tab"><div class="ic"></div>Home</div>
+                <div class="nav-tab active"><div class="ic"></div>Register</div>
+                <div class="nav-tab"><div class="ic"></div>Classes</div>
+                <div class="nav-tab"><div class="ic"></div>More</div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State H<em>Network back · syncing pending</em></div>
+        </div>
+
+        <!-- PHONE 9: Conflict resolution -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">11:18</div>
+                <div class="right"><span class="ic">●</span><span class="ic">3G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="app-header">
+                <div class="top-row">
+                  <button class="back-btn">‹</button>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="header-eyebrow">Sync conflict</div>
+                <h1 class="display">Two <em>versions</em> of this register</h1>
+                <div class="sub">JHS 2A · Fri 2 May · pick which to keep</div>
+              </div>
+
+              <div class="sync-strip conflict">
+                <div class="dot"></div>
+                <div><b>Conflict.</b> Someone else marked this register while you were offline.</div>
+              </div>
+
+              <div class="conflict-card">
+                <div class="head">What happened?</div>
+                <div class="body">You saved this register offline at <b>8:01 AM</b>. The head office staff marked the same class register at <b>8:14 AM</b> from the desktop. Both versions exist — you need to choose which to keep.</div>
+
+                <div class="conflict-options">
+                  <div class="conflict-option selected">
+                    <div class="opt-name">Keep my version</div>
+                    <div class="opt-meta">marked 8:01 AM · 33P 1L 1E 1A</div>
+                  </div>
+                  <div class="conflict-option">
+                    <div class="opt-name">Keep theirs</div>
+                    <div class="opt-meta">marked 8:14 AM · 34P 0L 1E 1A</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:0 16px;flex:1;overflow-y:auto">
+                <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:8px">Differences</div>
+
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                    <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px">Kwame Adu</div>
+                    <div style="font-size:10px;color:var(--navy-3)">94% term</div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 24px 1fr;gap:8px;align-items:center;font-size:11px">
+                    <div style="text-align:center;padding:6px;background:var(--gold-bg);border:1px solid var(--gold-soft);border-radius:6px">
+                      <div style="font-family:'Fraunces',serif;font-weight:700;font-size:13px;color:var(--gold)">L</div>
+                      <div style="font-size:9px;font-weight:600;color:var(--navy-3);margin-top:1px">Yours</div>
+                    </div>
+                    <div style="text-align:center;color:var(--navy-3);font-weight:700">vs</div>
+                    <div style="text-align:center;padding:6px;background:var(--green-bg);border:1px solid rgba(47,107,71,0.3);border-radius:6px">
+                      <div style="font-family:'Fraunces',serif;font-weight:700;font-size:13px;color:var(--green)">P</div>
+                      <div style="font-size:9px;font-weight:600;color:var(--navy-3);margin-top:1px">Theirs</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--navy-2);line-height:1.55">
+                  <b style="color:var(--navy);font-weight:600">35 students match.</b> The only difference is Kwame Adu — you marked him late, the desktop entry says present.
+                </div>
+              </div>
+
+              <div class="submit-bar">
+                <div class="progress">
+                  <div class="progress-num">Keep my version</div>
+                  <div class="progress-meta">Audit log will record both</div>
+                </div>
+                <button class="submit-btn">Resolve →</button>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State I<em>Conflict · two versions of one register</em></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>State G — Offline marking</b> is just regular marking with one new element: the offline strip below the header. The teacher's flow doesn't change. Same buttons, same progress count, same exception handling. <b>Marking attendance offline must be indistinguishable from marking online</b> — connectivity is a backend concern, not a teacher concern.</li>
+        <li><b>Offline strip in soft grey</b> with a navy dot — informational, not alarming. "You're offline. Marking will save to this device and sync when network returns." Calm reassurance; the system has a plan.</li>
+        <li><b>Submit button copy changes</b> — "Save offline" instead of "Submit." Honest about what's happening: the register isn't reaching the server yet, but it is being saved durably on the device. <b>Same primary navy styling</b> because the action is still confidently committable; just locally-committed.</li>
+        <li><b>Progress meta line: "Will sync when online · SMS queued"</b> tells teacher the SMS pipeline is preserved across the offline gap. Parents will still get the absence notification — just sent when the device reconnects, not in real time.</li>
+        <li><b>State H — Pending sync</b> is the in-between state. Network came back, the device is uploading the queued registers. <b>Yellow pulsing dot</b> in the sync strip signals active work; the upload list shows progress per register.</li>
+        <li><b>Pending uploads list with three rows</b>: two days already synced (green checks), one currently uploading (warn icon, pulsing). <b>Time stamps are in the meta line</b> — "Marked 8:00 AM · synced 11:13 AM" — so teacher sees the gap between when they did the work and when it persisted to the cloud.</li>
+        <li><b>SMS notice card</b> reassures teacher about the parent-facing consequences: "Absence SMS will go out at 3 PM as scheduled — 2 SMS queued for Fri 2 May, 1 each for the earlier days." <b>The SMS pipeline catches up automatically</b>; teacher doesn't have to manually re-trigger anything.</li>
+        <li><b>State I — Sync conflict</b> is the hardest case. Two staff members marked the same register from different devices. <b>This will happen rarely but real</b> — head's office staff sometimes mark for an absent class teacher; teacher comes back, marks the same register from their phone.</li>
+        <li><b>Header acknowledges it directly</b> — "Two versions of this register" with the eyebrow "Sync conflict." Not hiding the problem; presenting it as a decision the teacher needs to make.</li>
+        <li><b>"What happened?" card explains in plain language</b> — "You saved this register offline at 8:01 AM. The head office staff marked the same class register at 8:14 AM from the desktop. Both versions exist — you need to choose which to keep." Two specific timestamps, two specific actors. Teacher knows exactly what overlapped.</li>
+        <li><b>Two conflict options as tiles</b>: "Keep my version" with summary "marked 8:01 AM · 33P 1L 1E 1A" and "Keep theirs" with "marked 8:14 AM · 34P 0L 1E 1A." <b>Counts in mono so the difference is scannable</b> — 33 vs 34 present, 1 vs 0 late.</li>
+        <li><b>Differences list shows only what diverges</b> — "35 students match. The only difference is Kwame Adu." For each diverging student, a side-by-side card: "Yours: L (gold)" vs "Theirs: P (green)." <b>The teacher's job is now small</b>: decide on one student, not 36.</li>
+        <li><b>"Audit log will record both"</b> in the progress meta line. Whichever version teacher picks, the other version is preserved in the audit trail. <b>Nothing gets silently overwritten</b>. Admin can later review the conflict and the resolution.</li>
+        <li><b>Resolve button is the primary action.</b> Same navy styling as Submit. The conflict is treated like any other marking action — make a decision, commit it, move on. <b>Conflict is not a special-case modal; it's a register state</b>.</li>
+        <li><b>Why "last write wins" isn't the default.</b> Easier to implement, harder for users — teacher who marked offline at 8 AM would silently lose to admin who marked at 8:14 from the staff room, with no way to recover the offline data. Conflict resolution preserves both, asks the teacher who knows the room.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

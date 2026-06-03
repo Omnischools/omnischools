@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Attendance · edit-request approval</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.drawer-stage {
+  background: linear-gradient(180deg, #E8E1D2 0%, #DDD5C2 100%);
+  padding: 36px 28px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.drawer-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.drawer-frame {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 18px 40px -10px rgba(26,43,71,0.3);
+  display: flex; flex-direction: column;
+  min-height: 1080px;
+}
+
+/* ============ DRAWER HEADER ============ */
+.drawer-head {
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.drawer-head .top-line {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.drawer-head .eyebrow-tag {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.drawer-head .close-btn {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+/* Teacher card */
+.teacher-card {
+  display: flex; gap: 14px; align-items: center;
+  margin-bottom: 14px;
+}
+.teacher-card .av-teacher {
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.teacher-card .info { flex: 1; min-width: 0; }
+.teacher-card .request-line {
+  font-size: 12px;
+  color: var(--navy-3);
+  margin-bottom: 2px;
+}
+.teacher-card .name {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.teacher-card .name em { font-style: italic; color: var(--gold); font-weight: 400; }
+.teacher-card .meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+.teacher-card .meta b { color: var(--navy-2); font-weight: 600; }
+
+/* Request meta strip */
+.request-meta-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+.request-meta-strip .meta-item .lbl {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.request-meta-strip .meta-item .val {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+  color: var(--navy);
+}
+.request-meta-strip .meta-item .val em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+}
+
+/* ============ DRAWER BODY ============ */
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.drawer-section {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-section:last-child { border-bottom: none; }
+.drawer-section .section-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.drawer-section .section-eyebrow .step-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.drawer-section .section-eyebrow .num-circle {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.drawer-section .section-eyebrow .view-link {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+/* ============ DIFF: BEFORE / AFTER ============ */
+.diff-row {
+  display: grid;
+  grid-template-columns: 1fr 28px 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.diff-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px 12px;
+  background: var(--surface);
+  position: relative;
+  display: flex; flex-direction: column;
+}
+.diff-card.before {
+  background: var(--bg);
+}
+.diff-card.after.green {
+  background: var(--green-bg);
+  border-color: rgba(47,107,71,0.3);
+}
+.diff-card.after.gold {
+  background: var(--gold-bg);
+  border-color: var(--gold-soft);
+}
+.diff-card.after.warn {
+  background: var(--warn-bg);
+  border-color: rgba(197,138,46,0.3);
+}
+.diff-card.after.terra {
+  background: var(--terra-bg);
+  border-color: rgba(184,74,57,0.3);
+}
+
+.diff-card .label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.diff-card .status-line {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.diff-card .status-pill-big {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.diff-card .status-pill-big.present { background: var(--green); color: white; }
+.diff-card .status-pill-big.late { background: var(--gold); color: var(--navy); }
+.diff-card .status-pill-big.excused { background: var(--warn); color: white; }
+.diff-card .status-pill-big.absent { background: var(--terra); color: white; }
+
+.diff-card .status-text {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.005em;
+}
+.diff-card .status-text em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--gold);
+}
+.diff-card.before .status-text em { color: var(--navy-3); }
+
+.diff-card .detail {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.diff-card .detail b { color: var(--navy); font-weight: 600; }
+
+.diff-arrow {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* Student card under diff */
+.student-context-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.student-context-card .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+}
+.student-context-card .info { min-width: 0; }
+.student-context-card .name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.student-context-card .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.student-context-card .meta b { color: var(--navy-2); font-weight: 600; }
+.student-context-card .pct-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 100px;
+}
+.student-context-card .pct-tag.high {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.student-context-card .pct-tag.mid {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.student-context-card .pct-tag.low {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+
+/* ============ REQUEST REASON ============ */
+.reason-block {
+  background: var(--bg);
+  border-left: 3px solid var(--gold);
+  padding: 12px 16px;
+  border-radius: 0 8px 8px 0;
+}
+.reason-block .reason-text {
+  font-size: 13px;
+  color: var(--navy);
+  line-height: 1.6;
+  font-style: italic;
+}
+.reason-block .reason-text b {
+  font-style: normal;
+  font-weight: 600;
+}
+.reason-block .reason-attribution {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 8px;
+  font-style: normal;
+}
+.reason-block .reason-attribution b {
+  color: var(--navy-2);
+  font-weight: 600;
+}
+
+/* ============ ATTACHMENT ============ */
+.attachment-card {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 12px;
+}
+.attachment-thumb {
+  width: 120px;
+  height: 150px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+/* Doctor's note styling — looks like a piece of paper with handwriting */
+.attachment-thumb .doc-paper {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 18px,
+      rgba(26,43,71,0.06) 18px,
+      rgba(26,43,71,0.06) 19px
+    ),
+    linear-gradient(180deg, #FDFCF7 0%, #F5EFE0 100%);
+  padding: 14px 10px 10px;
+}
+.attachment-thumb .doc-letterhead {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 8px;
+  text-align: center;
+  color: var(--navy);
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--navy-3);
+  line-height: 1.2;
+}
+.attachment-thumb .doc-letterhead-sub {
+  font-size: 6px;
+  font-weight: 500;
+  color: var(--navy-3);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+.attachment-thumb .doc-line {
+  height: 4px;
+  background: rgba(26,43,71,0.6);
+  border-radius: 1px;
+  margin-bottom: 6px;
+}
+.attachment-thumb .doc-line.short { width: 70%; }
+.attachment-thumb .doc-line.med { width: 90%; }
+.attachment-thumb .doc-line.handwritten {
+  height: 5px;
+  background: rgba(184,74,57,0.4);
+  border-radius: 1px;
+  margin-top: 8px;
+}
+.attachment-thumb .doc-line.handwritten.short { width: 50%; }
+.attachment-thumb .doc-line.handwritten.med { width: 75%; }
+.attachment-thumb .doc-stamp {
+  position: absolute;
+  bottom: 12px;
+  right: 8px;
+  width: 28px; height: 28px;
+  border: 1.5px solid var(--terra);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--terra);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  transform: rotate(-12deg);
+  opacity: 0.85;
+  background: rgba(184,74,57,0.06);
+}
+.attachment-thumb:hover .doc-paper { filter: brightness(1.04); }
+.attachment-thumb .expand-overlay {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: var(--navy);
+  color: var(--gold);
+  font-size: 9px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.04em;
+}
+
+.attachment-info {
+  display: flex; flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+.attachment-info .att-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+}
+.attachment-info .att-meta {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.attachment-info .att-meta b { color: var(--navy-2); font-weight: 600; }
+.attachment-info .att-meta .filemeta {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.attachment-info .att-actions {
+  display: flex; gap: 6px;
+  margin-top: 4px;
+}
+.attachment-info .att-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+  padding: 5px 10px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.attachment-info .att-btn.primary {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+
+/* ============ CONTEXT GRID ============ */
+.context-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.context-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.context-card .ctx-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+}
+.context-card .ctx-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.context-card .ctx-num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+}
+.context-card .ctx-num.green { color: var(--green); }
+.context-card .ctx-num.warn { color: var(--warn); }
+.context-card .ctx-num.terra { color: var(--terra); }
+
+/* Mini sparkline for student context */
+.ctx-sparkline {
+  display: flex;
+  gap: 2px;
+  height: 18px;
+  align-items: flex-end;
+  margin-bottom: 6px;
+}
+.ctx-sparkline .day {
+  flex: 1;
+  border-radius: 2px;
+  height: 90%;
+}
+.ctx-sparkline .day.present { background: var(--green); }
+.ctx-sparkline .day.late { background: var(--gold); }
+.ctx-sparkline .day.excused { background: var(--warn); height: 70%; }
+.ctx-sparkline .day.absent { background: var(--terra); height: 80%; }
+.ctx-sparkline .day.weekend {
+  background: var(--border-2);
+  height: 4px;
+}
+.context-card .ctx-detail {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* Teacher edit history bars */
+.teacher-edit-bar {
+  display: flex;
+  height: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  gap: 1px;
+  margin-bottom: 6px;
+}
+.teacher-edit-bar .month-seg {
+  flex: 1;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  position: relative;
+}
+.teacher-edit-bar .month-seg .count-tile {
+  width: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  height: 30%;
+}
+.teacher-edit-bar .month-seg.med .count-tile { background: var(--gold); height: 60%; }
+.teacher-edit-bar .month-seg.high .count-tile { background: var(--warn); height: 90%; }
+.teacher-edit-bar .month-seg .month-label {
+  position: absolute;
+  bottom: 1px;
+  font-size: 7px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--surface);
+  letter-spacing: 0.04em;
+}
+
+/* ============ CONSEQUENCE PANEL ============ */
+.consequence-card {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.consequence-card .conseq-head {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+}
+.consequence-card .conseq-icon {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+}
+.consequence-card .conseq-title {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  color: var(--navy);
+}
+.consequence-card .conseq-text {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.consequence-card .conseq-text b { color: var(--navy); font-weight: 600; }
+
+.conseq-options-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.conseq-option-tile {
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.conseq-option-tile.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.conseq-option-tile .opt-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+  margin-bottom: 2px;
+}
+.conseq-option-tile.selected .opt-label { color: var(--gold); }
+.conseq-option-tile .opt-detail {
+  font-size: 10px;
+  color: var(--navy-3);
+  line-height: 1.4;
+}
+
+/* ============ AUDIT NOTE ============ */
+.note-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--navy);
+  resize: vertical;
+  min-height: 70px;
+  line-height: 1.5;
+}
+.note-input::placeholder { color: var(--navy-3); font-style: italic; }
+.note-input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+.audit-help {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 6px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* ============ DRAWER FOOTER ============ */
+.drawer-footer {
+  padding: 16px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.drawer-footer .left-info {
+  font-size: 11px;
+  color: var(--navy-3);
+  flex-shrink: 0;
+}
+.drawer-footer .left-info b {
+  font-family: 'Fraunces', serif;
+  color: var(--navy);
+  font-weight: 600;
+  font-size: 12px;
+  display: block;
+  margin-bottom: 2px;
+  letter-spacing: -0.005em;
+}
+.drawer-footer .actions {
+  display: flex; gap: 6px;
+  align-items: center;
+}
+.btn {
+  padding: 9px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn.subtle {
+  background: transparent;
+  border-color: transparent;
+  color: var(--navy-3);
+}
+.btn.reject {
+  background: var(--surface);
+  color: var(--terra);
+  border-color: var(--terra);
+}
+.btn.approve {
+  background: var(--green);
+  color: white;
+  border: 1px solid var(--green);
+  font-weight: 700;
+  padding: 9px 18px;
+}
+.btn.request-info {
+  background: var(--gold);
+  color: var(--navy);
+  border: 1px solid var(--gold);
+}
+
+/* Drawer label */
+.drawer-label {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.drawer-label em {
+  display: block;
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--navy-2);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .drawer-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Attendance · Edit-request approval</div>
+  <h1 class="display">Approving the <em>change</em></h1>
+  <div class="gold-rule"></div>
+  <p>Most edit requests are simple — admin reads the dashboard line and clicks approve. But some need verification, sometimes there's an attached doctor's note, sometimes a correction SMS needs to go out. The deeper drawer is for the careful cases — diff before and after, the teacher's full reason, attachments inline, the consequences spelled out, an audit note for the record.</p>
+</header>
+
+<!-- ============ EDIT-REQUEST APPROVAL DRAWER · TWO STATES ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Approval drawer · two states</div>
+    <div class="section-meta">Simple verification · attached evidence with consequence</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="drawer-stage">
+        <div class="drawer-row">
+
+          <!-- ============ STATE A: SIMPLE VERIFICATION ============ -->
+          <div>
+            <div class="drawer-frame">
+              <div class="drawer-head">
+                <div class="top-line">
+                  <div class="eyebrow-tag">Edit request · review</div>
+                  <button class="close-btn">×</button>
+                </div>
+                <div class="teacher-card">
+                  <div class="av-teacher">SM</div>
+                  <div class="info">
+                    <div class="request-line">Request from</div>
+                    <div class="name display">Samuel <em>Mensah</em></div>
+                    <div class="meta">Class teacher · JHS 2A · <b>3 edit requests</b> this term</div>
+                  </div>
+                </div>
+                <div class="request-meta-strip">
+                  <div class="meta-item">
+                    <div class="lbl">Register</div>
+                    <div class="val">JHS 2A · <em>Wed 30 Apr</em></div>
+                  </div>
+                  <div class="meta-item">
+                    <div class="lbl">Submitted</div>
+                    <div class="val">8:11 AM <em>same day</em></div>
+                  </div>
+                  <div class="meta-item">
+                    <div class="lbl">Requested</div>
+                    <div class="val">2 May · <em>52h late</em></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="drawer-body">
+
+                <!-- DIFF -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">1</span>The change</div>
+                    <button class="view-link">View register →</button>
+                  </div>
+
+                  <div class="diff-row">
+                    <div class="diff-card before">
+                      <div class="label">Currently marked</div>
+                      <div class="status-line">
+                        <div class="status-pill-big present">P</div>
+                        <div class="status-text display">Present</div>
+                      </div>
+                      <div class="detail">Marked at <b>8:11 AM</b> by Mr. Mensah · no reason logged</div>
+                    </div>
+                    <div class="diff-arrow">→</div>
+                    <div class="diff-card after gold">
+                      <div class="label">Proposed change</div>
+                      <div class="status-line">
+                        <div class="status-pill-big late">L</div>
+                        <div class="status-text display">Late</div>
+                      </div>
+                      <div class="detail">Arrived at <b>8:31 AM</b> · 23 min after start</div>
+                    </div>
+                  </div>
+
+                  <div class="student-context-card">
+                    <div class="av">KA</div>
+                    <div class="info">
+                      <div class="name display">Kwame Adu</div>
+                      <div class="meta">CTK-2024-049 · JHS 2A · guardian <b>Felix Adu</b></div>
+                    </div>
+                    <div class="pct-tag high">94%</div>
+                  </div>
+                </div>
+
+                <!-- TEACHER REASON -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">2</span>Teacher's reason</div>
+                  </div>
+
+                  <div class="reason-block">
+                    <div class="reason-text">
+                      "Kwame arrived at <b>8:31 AM</b> but I had already marked him Present from the morning rush. I noticed when reviewing the late book this evening. He should be marked Late."
+                    </div>
+                    <div class="reason-attribution">— <b>Mr. Mensah</b> · 9:18 AM, Friday 2 May</div>
+                  </div>
+                </div>
+
+                <!-- CONTEXT -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">3</span>Context</div>
+                  </div>
+
+                  <div class="context-grid">
+                    <div class="context-card">
+                      <div class="ctx-head">
+                        <div class="ctx-label">Kwame's term</div>
+                        <div class="ctx-num green">94%</div>
+                      </div>
+                      <div class="ctx-sparkline">
+                        <div class="day present"></div>
+                        <div class="day present"></div>
+                        <div class="day late"></div>
+                        <div class="day present"></div>
+                        <div class="day present"></div>
+                        <div class="day weekend"></div>
+                        <div class="day weekend"></div>
+                        <div class="day present"></div>
+                        <div class="day present"></div>
+                        <div class="day present"></div>
+                        <div class="day present"></div>
+                        <div class="day late"></div>
+                        <div class="day weekend"></div>
+                        <div class="day weekend"></div>
+                      </div>
+                      <div class="ctx-detail">2 late arrivals last 14 days · no flags</div>
+                    </div>
+
+                    <div class="context-card">
+                      <div class="ctx-head">
+                        <div class="ctx-label">Mr. Mensah's edits</div>
+                        <div class="ctx-num">3 / term</div>
+                      </div>
+                      <div class="teacher-edit-bar">
+                        <div class="month-seg"><div class="count-tile"></div><div class="month-label">JAN</div></div>
+                        <div class="month-seg"><div class="count-tile"></div><div class="month-label">FEB</div></div>
+                        <div class="month-seg"><div class="count-tile"></div><div class="month-label">MAR</div></div>
+                        <div class="month-seg"><div class="count-tile"></div><div class="month-label">APR</div></div>
+                        <div class="month-seg med"><div class="count-tile"></div><div class="month-label">MAY</div></div>
+                      </div>
+                      <div class="ctx-detail">All approved · normal volume</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CONSEQUENCE -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">4</span>If you approve</div>
+                  </div>
+
+                  <div class="consequence-card">
+                    <div class="conseq-head">
+                      <div class="conseq-icon">i</div>
+                      <div class="conseq-title">No SMS impact</div>
+                    </div>
+                    <div class="conseq-text">
+                      Kwame was Present, not Absent — <b>no absence SMS was sent</b> to Felix Adu on Wednesday. Marking him as Late instead is a register correction with no message consequence. Term attendance unchanged.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- AUDIT NOTE -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">5</span>Note for the record <span style="color:var(--navy-3);font-weight:500;font-style:italic;letter-spacing:0;text-transform:none">· optional</span></div>
+                  </div>
+
+                  <textarea class="note-input" placeholder="e.g. 'Verified late entry against the late book' · helps audit later"></textarea>
+                  <div class="audit-help">Stored on the register's audit trail · visible to admins reviewing this register later</div>
+                </div>
+
+              </div>
+
+              <div class="drawer-footer">
+                <div class="left-info">
+                  <b>Edit window closed</b>
+                  Tue 30 Apr · 8:11 AM
+                </div>
+                <div class="actions">
+                  <button class="btn reject">Reject</button>
+                  <button class="btn approve">Approve change ✓</button>
+                </div>
+              </div>
+            </div>
+            <div class="drawer-label">State A<em>Simple verification · no SMS impact</em></div>
+          </div>
+
+          <!-- ============ STATE B: ATTACHED DOCTOR'S NOTE ============ -->
+          <div>
+            <div class="drawer-frame">
+              <div class="drawer-head">
+                <div class="top-line">
+                  <div class="eyebrow-tag">Edit request · review</div>
+                  <button class="close-btn">×</button>
+                </div>
+                <div class="teacher-card">
+                  <div class="av-teacher">MA</div>
+                  <div class="info">
+                    <div class="request-line">Request from</div>
+                    <div class="name display">Margaret <em>Adjei</em></div>
+                    <div class="meta">Class teacher · JHS 2C · <b>1 edit request</b> this term</div>
+                  </div>
+                </div>
+                <div class="request-meta-strip">
+                  <div class="meta-item">
+                    <div class="lbl">Register</div>
+                    <div class="val">JHS 2C · <em>Tue 29 Apr</em></div>
+                  </div>
+                  <div class="meta-item">
+                    <div class="lbl">Submitted</div>
+                    <div class="val">8:18 AM <em>same day</em></div>
+                  </div>
+                  <div class="meta-item">
+                    <div class="lbl">Requested</div>
+                    <div class="val">2 May · <em>72h late</em></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="drawer-body">
+
+                <!-- DIFF -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">1</span>The change</div>
+                    <button class="view-link">View register →</button>
+                  </div>
+
+                  <div class="diff-row">
+                    <div class="diff-card before">
+                      <div class="label">Currently marked</div>
+                      <div class="status-line">
+                        <div class="status-pill-big absent">A</div>
+                        <div class="status-text display">Absent</div>
+                      </div>
+                      <div class="detail">Marked at <b>8:18 AM</b> by Ms. Adjei · no contact from home that day</div>
+                    </div>
+                    <div class="diff-arrow">→</div>
+                    <div class="diff-card after warn">
+                      <div class="label">Proposed change</div>
+                      <div class="status-line">
+                        <div class="status-pill-big excused">E</div>
+                        <div class="status-text display">Excused</div>
+                      </div>
+                      <div class="detail">Hospital admission · doctor's note attached</div>
+                    </div>
+                  </div>
+
+                  <div class="student-context-card">
+                    <div class="av">YA</div>
+                    <div class="info">
+                      <div class="name display">Yaa Amponsah</div>
+                      <div class="meta">CTK-2024-112 · JHS 2C · guardian <b>Cynthia Amponsah</b></div>
+                    </div>
+                    <div class="pct-tag mid">78%</div>
+                  </div>
+                </div>
+
+                <!-- TEACHER REASON + ATTACHMENT -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">2</span>Teacher's reason &amp; evidence</div>
+                  </div>
+
+                  <div class="reason-block">
+                    <div class="reason-text">
+                      "Mrs. Amponsah brought a doctor's note this morning. Yaa was admitted to <b>Korle Bu</b> on Monday evening with malaria — discharged Wednesday afternoon. Mrs. Amponsah didn't contact us on Tuesday because she was at the hospital with Yaa overnight. <b>Asking that the absence be marked Excused</b> instead of Absent."
+                    </div>
+                    <div class="reason-attribution">— <b>Ms. Adjei</b> · 8:42 AM, Friday 2 May</div>
+                  </div>
+
+                  <div class="attachment-card">
+                    <div class="attachment-thumb">
+                      <div class="doc-paper">
+                        <div class="doc-letterhead">KORLE BU TEACHING HOSPITAL
+                          <div class="doc-letterhead-sub">Department of Paediatrics</div>
+                        </div>
+                        <div class="doc-line short"></div>
+                        <div class="doc-line med"></div>
+                        <div class="doc-line"></div>
+                        <div class="doc-line short"></div>
+                        <div class="doc-line handwritten med"></div>
+                        <div class="doc-line handwritten short"></div>
+                        <div class="doc-stamp">SEAL</div>
+                      </div>
+                      <div class="expand-overlay">⤢ open</div>
+                    </div>
+                    <div class="attachment-info">
+                      <div class="att-name display">Doctor's note · Korle Bu</div>
+                      <div class="att-meta">
+                        Uploaded by <b>Ms. Adjei</b> · photographed in person
+                        <span class="filemeta">photo.jpg · 2.4 MB · taken today 8:38 AM</span>
+                      </div>
+                      <div class="att-actions">
+                        <button class="att-btn primary">Open full size</button>
+                        <button class="att-btn">Save copy</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CONTEXT -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">3</span>Context</div>
+                  </div>
+
+                  <div class="context-grid">
+                    <div class="context-card">
+                      <div class="ctx-head">
+                        <div class="ctx-label">Yaa's term</div>
+                        <div class="ctx-num warn">78%</div>
+                      </div>
+                      <div class="ctx-sparkline">
+                        <div class="day present"></div>
+                        <div class="day present"></div>
+                        <div class="day present"></div>
+                        <div class="day present"></div>
+                        <div class="day present"></div>
+                        <div class="day weekend"></div>
+                        <div class="day weekend"></div>
+                        <div class="day excused"></div>
+                        <div class="day excused"></div>
+                        <div class="day excused"></div>
+                        <div class="day excused"></div>
+                        <div class="day excused"></div>
+                        <div class="day weekend"></div>
+                        <div class="day weekend"></div>
+                      </div>
+                      <div class="ctx-detail">5-day excused streak this week · long-absence flag active</div>
+                    </div>
+
+                    <div class="context-card">
+                      <div class="ctx-head">
+                        <div class="ctx-label">Ms. Adjei's edits</div>
+                        <div class="ctx-num">1 / term</div>
+                      </div>
+                      <div class="teacher-edit-bar">
+                        <div class="month-seg"><div class="count-tile"></div><div class="month-label">JAN</div></div>
+                        <div class="month-seg"><div class="count-tile"></div><div class="month-label">FEB</div></div>
+                        <div class="month-seg"><div class="count-tile"></div><div class="month-label">MAR</div></div>
+                        <div class="month-seg"><div class="count-tile"></div><div class="month-label">APR</div></div>
+                        <div class="month-seg"><div class="count-tile"></div><div class="month-label">MAY</div></div>
+                      </div>
+                      <div class="ctx-detail">First request this term · low edit volume</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CONSEQUENCE -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">4</span>If you approve</div>
+                  </div>
+
+                  <div class="consequence-card">
+                    <div class="conseq-head">
+                      <div class="conseq-icon">!</div>
+                      <div class="conseq-title">An SMS already went out</div>
+                    </div>
+                    <div class="conseq-text">
+                      The auto-absence SMS was sent to Cynthia at <b>3:00 PM Tuesday</b>. Approving this change will reclassify the absence as Excused. Yaa's term attendance percentage stays at <b>78%</b> (excused days count toward attendance). You can choose whether to send a brief correction SMS:
+                    </div>
+
+                    <div class="conseq-options-row">
+                      <div class="conseq-option-tile selected">
+                        <div class="opt-label">Send correction SMS</div>
+                        <div class="opt-detail">"Yaa's Tuesday absence has been marked excused. Wishing her a speedy recovery."</div>
+                      </div>
+                      <div class="conseq-option-tile">
+                        <div class="opt-label">No correction needed</div>
+                        <div class="opt-detail">Cynthia already knows the situation · skip SMS</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- AUDIT NOTE -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">5</span>Note for the record <span style="color:var(--navy-3);font-weight:500;font-style:italic;letter-spacing:0;text-transform:none">· recommended for medical changes</span></div>
+                  </div>
+
+                  <textarea class="note-input" placeholder="e.g. 'Verified Korle Bu doctor's note from 30 Apr'">Verified Korle Bu doctor's note dated 30 Apr — paediatric ward discharge slip with hospital stamp visible. Admission and discharge dates match Ms. Adjei's account.</textarea>
+                  <div class="audit-help">Stored on the register's audit trail · also linked to Yaa's medical record on her student profile</div>
+                </div>
+
+              </div>
+
+              <div class="drawer-footer">
+                <div class="left-info">
+                  <b>Will trigger SMS</b>
+                  Cynthia · +233 24 555 0312
+                </div>
+                <div class="actions">
+                  <button class="btn subtle">Request more info</button>
+                  <button class="btn reject">Reject</button>
+                  <button class="btn approve">Approve &amp; send SMS ✓</button>
+                </div>
+              </div>
+            </div>
+            <div class="drawer-label">State B<em>Verified attachment · correction SMS will go out</em></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Two states show the spectrum of edit-request complexity.</b> State A is the simple case — short reason, no attachment, no SMS impact. State B is the complex case — long reason, attached doctor's note, an SMS already went out, audit-worthy decision. Most real edit requests fall closer to State A; State B is the careful 1-in-5 that earns the deeper drawer.</li>
+        <li><b>Drawer head carries teacher identity, not student identity.</b> The avatar is for the requesting teacher (Mr. Mensah, Ms. Adjei), not the affected student. <b>This is fundamentally a request from one staff member to another</b> — student is referenced but isn't the subject. Switches the mental frame from "fix this student's record" to "evaluate this colleague's request."</li>
+        <li><b>Teacher meta line shows their edit-request volume:</b> "3 edit requests this term" / "1 edit request this term." Visible at the top so admin instinctively notices high-frequency requesters before reading the request itself. Mr. Mensah's 3 isn't unusual; Ms. Adjei's 1 is normal. <b>The volume is context, not judgement</b> — the system shows it without commentary.</li>
+        <li><b>Three-cell request meta strip in gold-tinted bg:</b> Register · Submitted · Requested. Three timestamps that matter: which register's data is being changed, when the original mark was made, when the edit was requested. <b>"52h late" / "72h late" in italic gold</b> tells admin how stale the request is — was it caught quickly or has it been sitting?</li>
+        <li><b>The diff is the centrepiece.</b> Two cards side by side: "Currently marked" (left, neutral bg) → arrow → "Proposed change" (right, coloured by target state — gold for Late, warn for Excused). <b>Same colour vocabulary as the rest of attendance</b>; admin instantly reads the change without parsing the words.</li>
+        <li><b>Status pill big in each diff card</b> uses the saturated 38px square with letter (P, L, E, A) — consistent with the segmented control in the teacher marking flow. <b>The visual progression: green → gold</b> in State A, terra → warn in State B. The colour itself communicates the direction of the change before reading.</li>
+        <li><b>Detail line under the diff explains the original timestamp + reason:</b> "Marked at 8:11 AM by Mr. Mensah · no reason logged" / "Marked at 8:18 AM by Ms. Adjei · no contact from home that day." <b>Holds the original marking auditable</b>; the after-state shows what's being proposed.</li>
+        <li><b>Student context card under the diff</b> with avatar, name in display Fraunces, ID + class + guardian, and a colour-coded percentage tag on the right. Kwame at <b>94% (high green)</b> is a normal student; Yaa at <b>78% (mid warn)</b> is mid-range. Admin sees in one row how the change affects this specific student.</li>
+        <li><b>Reason block uses gold-bordered italic blockquote.</b> Same pattern as the dashboard's edit-request preview. Admin already saw a snippet on the dashboard; the drawer shows the full text. Direct teacher voice — no editing or paraphrasing by the system. <b>Attribution line below confirms who and when</b>: "— Mr. Mensah · 9:18 AM, Friday 2 May."</li>
+        <li><b>Attachment card is the State B differentiator.</b> Doctor's note rendered as a recognisable thumbnail — letterhead at the top ("KORLE BU TEACHING HOSPITAL"), printed lines, handwritten lines in terra ink, a circular stamp in the corner. <b>The thumbnail looks like a real document</b>, not just an icon — admin scanning the drawer immediately recognises that yes, there's a doctor's note here.</li>
+        <li><b>"⤢ open" overlay in the bottom corner</b> in mono caps — clicks to expand. <b>Two attachment-info buttons: "Open full size" (primary) and "Save copy"</b>. Admin can verify by inspecting the document; admin can keep a copy if the case is sensitive. Both flows respect that the attachment is a real piece of evidence, not just a UI element.</li>
+        <li><b>Attachment metadata is precise</b>: "Uploaded by Ms. Adjei · photographed in person · photo.jpg · 2.4 MB · taken today 8:38 AM." <b>Provenance matters</b> — admin can see this was photographed today (not pulled from elsewhere), by the requesting teacher, of the original document. Reduces the chance of fabricated attachments.</li>
+        <li><b>Context grid: two cards, side by side.</b> Student context (this student's recent attendance) and teacher context (this teacher's edit volume). <b>Same canvas serves two questions</b> — "Is this student's situation consistent with the request?" and "Is this teacher's request pattern normal?"</li>
+        <li><b>Student sparkline shows last 14 school days</b>, colour-coded by status. Kwame's row is mostly green with two gold late-arrival bars; Yaa's row shows last week green then this week's 5-day excused warn streak. <b>The sparkline corroborates or contradicts the request</b> — Yaa's excused streak is consistent with Tuesday being a hospital day.</li>
+        <li><b>Teacher edit history bar shows 5 monthly tiles (Jan-May).</b> Each tile's height = number of edit requests that month. Mr. Mensah has a small May spike (3 requests); Ms. Adjei has just one this whole term. <b>Visualises whether the requester is a frequent editor</b> without needing a number-heavy table. Anomaly detection without alarmism.</li>
+        <li><b>Consequence panel in gold-tinted card with icon.</b> State A's icon is "i" (informational) — "No SMS impact." State B's icon is "!" (attention) — "An SMS already went out." Different icons signal the weight of the decision before admin reads the text.</li>
+        <li><b>Consequence text is operational, not legal.</b> "The auto-absence SMS was sent to Cynthia at 3:00 PM Tuesday. Approving this change will reclassify the absence as Excused. Yaa's term attendance percentage stays at 78% (excused days count toward attendance)." <b>Tells admin exactly what changes and what doesn't</b> — no buried surprises after approval.</li>
+        <li><b>SMS-correction options as two tiles.</b> "Send correction SMS" (selected, with example text) vs "No correction needed" (not selected, with reason). <b>The example correction SMS is shown verbatim</b>: "Yaa's Tuesday absence has been marked excused. Wishing her a speedy recovery." Brand-voice, warm, useful — admin can approve confidently knowing what the parent will receive.</li>
+        <li><b>"Wishing her a speedy recovery" is the kind of detail brands miss.</b> Most systems would send: "Attendance correction: Yaa Amponsah's absence on Tue 29 Apr has been updated to Excused." Functional but cold. The system's brand voice extends to corrections — every parent contact is a relationship moment.</li>
+        <li><b>Audit note label shifts by stakes.</b> State A: "Note for the record · optional." State B: "Note for the record · recommended for medical changes." <b>The system gently nudges</b> admin to write a note when stakes warrant it, without forcing. State B's note is pre-populated with a suggested format: "Verified Korle Bu doctor's note dated 30 Apr — paediatric ward discharge slip with hospital stamp visible. Admission and discharge dates match Ms. Adjei's account." Admin can edit or accept.</li>
+        <li><b>Audit-help line under the note</b> tells admin where the note will live. State A: "Stored on the register's audit trail." State B: adds "also linked to Yaa's medical record on her student profile." <b>Different consequences for different note types</b> — medical notes propagate to the medical record; routine corrections only appear on the register's audit log.</li>
+        <li><b>Drawer footer carries the consequence summary on the left + actions on the right.</b> State A: "Edit window closed · Tue 30 Apr · 8:11 AM" — admin sees the audit fact (the change is being made retroactively). State B: "Will trigger SMS · Cynthia · +233 24 555 0312" — the consequence is named with the actual phone number, so admin knows precisely whose phone the SMS will hit.</li>
+        <li><b>Three buttons in State B vs two in State A.</b> State A: Reject + Approve. State B: "Request more info" (gold) + Reject + Approve. <b>"Request more info" is a third path</b> for cases where admin wants more from the teacher before deciding (e.g., the doctor's note is unclear, or the dates don't match). Sends back to teacher with admin's note as a question.</li>
+        <li><b>Approve button styling: green-bg, white text, ✓ icon, slightly fatter padding.</b> Visual weight matches its consequence — approving is the affirmative action. <b>Reject is white-with-terra-border</b>, not solid red — rejection is a path, not a punishment. Both are equal-weight actions, but visually distinct.</li>
+        <li><b>State B's approve button: "Approve &amp; send SMS ✓"</b> instead of "Approve change ✓." <b>The button label changes based on what it actually does</b> — admin clicking knows they're approving the register change AND sending a correction SMS in one action, because the SMS option is part of the approve flow.</li>
+        <li><b>What's not here:</b> No "compare with similar past requests" tool, no "ask another admin" path, no "request additional documents" workflow. Single-admin schools handle this themselves; multi-admin escalation is a future iteration. The drawer is built for the common case of "one person reviews, one decision made."</li>
+        <li><b>What's also not here:</b> No risk scoring, no AI-suggested approve/reject, no fraud detection. The system surfaces facts; admin makes judgement. <b>Trust is delegated to the human</b>, not to an algorithm.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

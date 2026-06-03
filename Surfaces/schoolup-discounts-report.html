@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Discounts given report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head .crumb a { color: var(--gold); text-decoration: none; }
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+
+/* Period bar */
+.period-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 22px;
+}
+.period-bar .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-right: 4px;
+}
+.period-bar .period-pill {
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+}
+.period-bar .period-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.period-bar .period-pill .sub {
+  font-size: 9px;
+  margin-left: 4px;
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+/* KPI strip */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.kpi.featured {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.kpi .l {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-bottom: 6px;
+}
+.kpi.featured .l { color: var(--gold-soft); }
+.kpi .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.025em;
+  color: var(--navy);
+  line-height: 1;
+}
+.kpi.featured .v { color: var(--bg); }
+.kpi .change {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 8px;
+  display: flex; align-items: center; gap: 4px;
+}
+.kpi.featured .change { color: var(--gold-soft); }
+.kpi .change .arrow {
+  display: inline-flex;
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  background: var(--green-bg);
+  color: var(--green);
+  font-weight: 700;
+  font-size: 11px;
+  align-items: center; justify-content: center;
+}
+.kpi .change .arrow.down {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.kpi.featured .change .arrow {
+  background: rgba(255,255,255,0.15);
+  color: var(--gold);
+}
+.kpi .change b { color: var(--navy); font-weight: 600; }
+.kpi.featured .change b { color: var(--bg); font-weight: 600; }
+
+/* Section card wrapper */
+.report-card-big {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.rcb-head {
+  padding: 16px 22px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.rcb-head .label {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 3px;
+}
+.rcb-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.rcb-head .ctx {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.rcb-head .ctx b { color: var(--navy); font-weight: 600; }
+.rcb-body { padding: 20px 22px 22px; }
+
+/* ============ TIER BREAKDOWN ============ */
+.tier-breakdown {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.tier-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 18px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.tier-stat::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--gold);
+}
+.tier-stat.staff::before { background: var(--green); }
+.tier-stat.bursary::before { background: var(--terra); }
+.tier-stat.scholarship::before { background: var(--navy); }
+
+.tier-stat .ts-head {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 14px;
+}
+.tier-stat .ts-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.tier-stat.staff .ts-icon { background: var(--green-bg); color: var(--green); }
+.tier-stat.bursary .ts-icon { background: var(--terra-bg); color: var(--terra); }
+.tier-stat.scholarship .ts-icon { background: rgba(26,43,71,0.08); color: var(--navy); }
+.tier-stat .ts-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.tier-stat .ts-amount {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.tier-stat .ts-meta {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.tier-stat .ts-meta b {
+  color: var(--navy); font-weight: 600;
+}
+.tier-stat .ts-bar-wrap {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+.tier-stat .ts-bar-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 4px;
+  display: flex; justify-content: space-between;
+}
+.tier-stat .ts-bar-label .pct {
+  color: var(--navy);
+}
+.tier-stat .ts-bar {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.tier-stat .ts-bar-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 100px;
+}
+.tier-stat.staff .ts-bar-fill { background: var(--green); }
+.tier-stat.bursary .ts-bar-fill { background: var(--terra); }
+.tier-stat.scholarship .ts-bar-fill { background: var(--navy); }
+
+/* ============ TIMELINE / TWO-COLUMN ============ */
+.report-body {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+/* Bar chart */
+.bar-chart {
+  height: 220px;
+  display: flex; align-items: flex-end;
+  gap: 6px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.bar-chart .grid-line {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 1px dashed var(--border);
+}
+.bar-chart .grid-line .label {
+  position: absolute;
+  left: -8px;
+  top: -7px;
+  transform: translateX(-100%);
+  font-size: 9px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+}
+.bar-col {
+  flex: 1;
+  display: flex; flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  position: relative;
+  gap: 0;
+}
+.bar-col .stack-seg {
+  width: 70%;
+  margin: 0 auto;
+  background: var(--gold);
+  position: relative;
+}
+.bar-col .stack-seg.sibling { background: var(--gold); }
+.bar-col .stack-seg.staff { background: var(--green); }
+.bar-col .stack-seg.bursary { background: var(--terra); }
+.bar-col .stack-seg.scholarship { background: var(--navy); }
+.bar-col .stack-seg:last-child { border-radius: 3px 3px 0 0; }
+.bar-col .x-label {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+}
+.chart-legend {
+  display: flex; gap: 14px; margin-top: 14px;
+  font-size: 10px;
+  flex-wrap: wrap;
+}
+.chart-legend .li {
+  display: flex; gap: 6px; align-items: center;
+}
+.chart-legend .swatch {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+}
+.chart-legend .swatch.sib { background: var(--gold); }
+.chart-legend .swatch.staff { background: var(--green); }
+.chart-legend .swatch.bursary { background: var(--terra); }
+.chart-legend .swatch.sch { background: var(--navy); }
+.chart-legend .li b { color: var(--navy); font-weight: 600; }
+.chart-legend .li span { color: var(--navy-3); }
+
+/* Right rail — top recipients */
+.recipient-list {
+  display: flex; flex-direction: column;
+  gap: 0;
+}
+.recipient-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.recipient-row:last-child { border-bottom: none; padding-bottom: 0; }
+.recipient-row .rank {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--gold);
+  font-size: 14px;
+  font-style: italic;
+}
+.recipient-row .name {
+  font-weight: 600;
+  font-size: 12px;
+}
+.recipient-row .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.recipient-row .amt {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  text-align: right;
+  font-size: 13px;
+}
+
+/* ============ APPLICATIONS TABLE ============ */
+.app-table-head {
+  display: grid;
+  grid-template-columns: 1fr 130px 90px 110px 130px 110px;
+  gap: 14px;
+  padding: 12px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.app-table-head .right { text-align: right; }
+.app-row {
+  display: grid;
+  grid-template-columns: 1fr 130px 90px 110px 130px 110px;
+  gap: 14px;
+  padding: 13px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+}
+.app-row:last-child { border-bottom: none; }
+.app-row:hover { background: var(--bg); }
+
+.app-row .student-cell {
+  display: flex; gap: 10px; align-items: center;
+}
+.app-row .student-cell .av {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.app-row .student-cell .body .name {
+  font-weight: 600;
+  font-size: 13px;
+}
+.app-row .student-cell .body .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.tier-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 9px; letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+.tier-tag.sibling { background: var(--gold-bg); color: var(--gold); }
+.tier-tag.staff { background: var(--green-bg); color: var(--green); }
+.tier-tag.bursary { background: var(--terra-bg); color: var(--terra); }
+.tier-tag.scholarship { background: rgba(26,43,71,0.08); color: var(--navy); }
+
+.app-row .pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.app-row .amount {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  text-align: right;
+}
+.app-row .amount.discount { color: var(--terra); }
+.app-row .when {
+  font-size: 11px;
+}
+.app-row .when .date {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  display: block;
+}
+.app-row .when .by {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.app-row .actions { text-align: right; }
+.app-row .ghost-btn {
+  font-size: 9px; letter-spacing: 0.04em;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  padding: 4px 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.app-row .ghost-btn:hover { color: var(--gold); border-color: var(--gold-soft); }
+
+/* Filter strip */
+.filter-strip {
+  display: flex; gap: 8px;
+  margin-bottom: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filter-pill {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.filter-pill .count {
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+.filter-divider {
+  height: 18px;
+  width: 1px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.filter-search {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-family: inherit;
+  width: 240px;
+  color: var(--navy);
+}
+.filter-search::placeholder { color: var(--navy-3); font-style: italic; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .kpi-strip, .tier-breakdown { grid-template-columns: 1fr 1fr; }
+  .report-body { grid-template-columns: 1fr; }
+  .app-table-head, .app-row { grid-template-columns: 1fr; gap: 6px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Reports</div>
+  <h1 class="display">Discounts <em>given</em></h1>
+  <div class="gold-rule"></div>
+  <p>The fees you chose not to collect — by tier, by trend, by recipient. Headmistresses use this report to verify policy is operating; accountants cite the total on monthly P&amp;Ls; boards review bursary and scholarship spending against budget.</p>
+</header>
+
+<!-- ============ DISCOUNTS GIVEN REPORT ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Discounts given · detail</div>
+    <div class="section-meta">Admin / accountant · Reports &gt; Discounts</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / discounts</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Reports</a> / Discounts given</div>
+              <h2 class="display">Discounts <em>given</em> · Term 1 · 2026</h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export CSV</button>
+              <button class="btn">Export PDF</button>
+            </div>
+          </div>
+
+          <!-- Period bar -->
+          <div class="period-bar">
+            <div class="label">Period</div>
+            <div class="period-pill">This week</div>
+            <div class="period-pill">This month</div>
+            <div class="period-pill active">Term 1 · 2026 <span class="sub">11 weeks</span></div>
+            <div class="period-pill">Academic year</div>
+            <div class="period-pill">Custom...</div>
+          </div>
+
+          <!-- KPI strip -->
+          <div class="kpi-strip">
+            <div class="kpi featured">
+              <div class="l">Total discounted this term</div>
+              <div class="v">GHS 8,420.00</div>
+              <div class="change">
+                <span class="arrow">↑</span>
+                <b>5.5%</b> of total billed · vs 4.8% last term
+              </div>
+            </div>
+            <div class="kpi">
+              <div class="l">Active applications</div>
+              <div class="v">43</div>
+              <div class="change">38 students · 5 stack 2 tiers</div>
+            </div>
+            <div class="kpi">
+              <div class="l">Most-used tier</div>
+              <div class="v" style="font-size:18px">Sibling</div>
+              <div class="change">23 applications · 53% of total</div>
+            </div>
+            <div class="kpi">
+              <div class="l">New this term</div>
+              <div class="v">7</div>
+              <div class="change">5 bursary · 2 scholarship</div>
+            </div>
+          </div>
+
+          <!-- Tier breakdown -->
+          <div class="tier-breakdown">
+            <div class="tier-stat">
+              <div class="ts-head">
+                <div class="ts-icon">2nd</div>
+                <div class="ts-name">Sibling</div>
+              </div>
+              <div class="ts-amount">GHS 4,380.00</div>
+              <div class="ts-meta"><b>23 applications</b> · 21 students</div>
+              <div class="ts-bar-wrap">
+                <div class="ts-bar-label"><span>SHARE OF DISCOUNTS</span><span class="pct">52%</span></div>
+                <div class="ts-bar"><div class="ts-bar-fill" style="width:52%"></div></div>
+              </div>
+            </div>
+
+            <div class="tier-stat staff">
+              <div class="ts-head">
+                <div class="ts-icon">SC</div>
+                <div class="ts-name">Staff children</div>
+              </div>
+              <div class="ts-amount">GHS 1,600.00</div>
+              <div class="ts-meta"><b>4 applications</b> · 4 students</div>
+              <div class="ts-bar-wrap">
+                <div class="ts-bar-label"><span>SHARE OF DISCOUNTS</span><span class="pct">19%</span></div>
+                <div class="ts-bar"><div class="ts-bar-fill" style="width:19%"></div></div>
+              </div>
+            </div>
+
+            <div class="tier-stat bursary">
+              <div class="ts-head">
+                <div class="ts-icon">B</div>
+                <div class="ts-name">Bursary</div>
+              </div>
+              <div class="ts-amount">GHS 1,540.00</div>
+              <div class="ts-meta"><b>7 applications</b> · 7 students</div>
+              <div class="ts-bar-wrap">
+                <div class="ts-bar-label"><span>SHARE OF DISCOUNTS</span><span class="pct">18%</span></div>
+                <div class="ts-bar"><div class="ts-bar-fill" style="width:18%"></div></div>
+              </div>
+            </div>
+
+            <div class="tier-stat scholarship">
+              <div class="ts-head">
+                <div class="ts-icon">$</div>
+                <div class="ts-name">Scholarship</div>
+              </div>
+              <div class="ts-amount">GHS 900.00</div>
+              <div class="ts-meta"><b>9 applications</b> · 9 students</div>
+              <div class="ts-bar-wrap">
+                <div class="ts-bar-label"><span>SHARE OF DISCOUNTS</span><span class="pct">11%</span></div>
+                <div class="ts-bar"><div class="ts-bar-fill" style="width:11%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Two-column body: timeline + top recipients -->
+          <div class="report-body">
+            <div class="report-card-big" style="margin-bottom:0">
+              <div class="rcb-head">
+                <div>
+                  <div class="label">Application timeline</div>
+                  <h3>When discounts got applied</h3>
+                </div>
+                <div class="ctx">Most apply in <b>Week 1</b> when invoices first issue</div>
+              </div>
+              <div class="rcb-body">
+                <div class="bar-chart">
+                  <div class="grid-line" style="bottom:75%"><div class="label">3.5k</div></div>
+                  <div class="grid-line" style="bottom:50%"><div class="label">2k</div></div>
+                  <div class="grid-line" style="bottom:25%"><div class="label">1k</div></div>
+                  <div class="grid-line" style="bottom:0%"><div class="label">0</div></div>
+
+                  <div class="bar-col">
+                    <div class="stack-seg sibling" style="height:90px"></div>
+                    <div class="stack-seg staff" style="height:32px"></div>
+                    <div class="stack-seg bursary" style="height:14px"></div>
+                    <div class="stack-seg scholarship" style="height:18px"></div>
+                    <div class="x-label">W1</div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="stack-seg sibling" style="height:14px"></div>
+                    <div class="stack-seg bursary" style="height:8px"></div>
+                    <div class="x-label">W2</div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="stack-seg bursary" style="height:18px"></div>
+                    <div class="x-label">W3</div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="stack-seg sibling" style="height:6px"></div>
+                    <div class="x-label">W4</div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="x-label">W5</div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="stack-seg bursary" style="height:14px"></div>
+                    <div class="x-label">W6</div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="x-label">W7</div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="stack-seg bursary" style="height:8px"></div>
+                    <div class="x-label">W8</div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="stack-seg scholarship" style="height:6px"></div>
+                    <div class="x-label">W9</div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="x-label">W10</div>
+                  </div>
+                  <div class="bar-col">
+                    <div class="stack-seg bursary" style="height:10px"></div>
+                    <div class="x-label">W11</div>
+                  </div>
+                </div>
+                <div class="chart-legend">
+                  <div class="li"><div class="swatch sib"></div><b>Sibling</b><span>· auto</span></div>
+                  <div class="li"><div class="swatch staff"></div><b>Staff children</b><span>· year</span></div>
+                  <div class="li"><div class="swatch bursary"></div><b>Bursary</b><span>· case-by-case</span></div>
+                  <div class="li"><div class="swatch sch"></div><b>Scholarship</b><span>· merit</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="report-card-big" style="margin-bottom:0">
+              <div class="rcb-head">
+                <div>
+                  <div class="label">Top recipients</div>
+                  <h3>Largest amounts</h3>
+                </div>
+              </div>
+              <div class="rcb-body">
+                <div class="recipient-list">
+                  <div class="recipient-row">
+                    <div class="rank">1</div>
+                    <div>
+                      <div class="name">Daniel Mensah</div>
+                      <div class="meta">JHS 1A · Staff child (100%)</div>
+                    </div>
+                    <div class="amt">GHS 400.00</div>
+                  </div>
+                  <div class="recipient-row">
+                    <div class="rank">2</div>
+                    <div>
+                      <div class="name">Esther Mensah</div>
+                      <div class="meta">JHS 2B · Staff child (100%)</div>
+                    </div>
+                    <div class="amt">GHS 400.00</div>
+                  </div>
+                  <div class="recipient-row">
+                    <div class="rank">3</div>
+                    <div>
+                      <div class="name">Akosua Boateng</div>
+                      <div class="meta">JHS 2A · Sibling + Bursary</div>
+                    </div>
+                    <div class="amt">GHS 212.00</div>
+                  </div>
+                  <div class="recipient-row">
+                    <div class="rank">4</div>
+                    <div>
+                      <div class="name">Kofi Boateng</div>
+                      <div class="meta">JHS 1B · Sibling (50%)</div>
+                    </div>
+                    <div class="amt">GHS 200.00</div>
+                  </div>
+                  <div class="recipient-row">
+                    <div class="rank">5</div>
+                    <div>
+                      <div class="name">Kwame Adjei</div>
+                      <div class="meta">JHS 3B · Bursary (50%)</div>
+                    </div>
+                    <div class="amt">GHS 200.00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- All applications -->
+          <div style="margin-top:22px">
+            <!-- Filter strip -->
+            <div class="filter-strip">
+              <div class="filter-pill active">All applications <span class="count">43</span></div>
+              <div class="filter-divider"></div>
+              <div class="filter-pill">Sibling <span class="count">23</span></div>
+              <div class="filter-pill">Staff <span class="count">4</span></div>
+              <div class="filter-pill">Bursary <span class="count">7</span></div>
+              <div class="filter-pill">Scholarship <span class="count">9</span></div>
+              <div class="filter-divider"></div>
+              <input class="filter-search" placeholder="Search by student or guardian..." />
+            </div>
+
+            <div class="report-card-big">
+              <div class="rcb-head">
+                <div>
+                  <div class="label">Active applications</div>
+                  <h3>Every discount in effect this term</h3>
+                </div>
+                <div class="ctx">Click a row to see the application history and audit trail</div>
+              </div>
+              <div class="app-table-head">
+                <div>Student</div>
+                <div>Tier</div>
+                <div class="right">Rate</div>
+                <div class="right">Term value</div>
+                <div>Applied</div>
+                <div></div>
+              </div>
+
+              <div class="app-row">
+                <div class="student-cell">
+                  <div class="av">DM</div>
+                  <div class="body">
+                    <div class="name">Daniel Mensah</div>
+                    <div class="meta">JHS 1A · CTK-2024-031</div>
+                  </div>
+                </div>
+                <div><span class="tier-tag staff">Staff child</span></div>
+                <div class="pct" style="text-align:right;color:var(--green)">100%</div>
+                <div class="amount discount">−GHS 400.00</div>
+                <div class="when">
+                  <span class="date">15 Jan 2026</span>
+                  <div class="by">Florence Addo</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">View</button></div>
+              </div>
+
+              <div class="app-row">
+                <div class="student-cell">
+                  <div class="av">EM</div>
+                  <div class="body">
+                    <div class="name">Esther Mensah</div>
+                    <div class="meta">JHS 2B · CTK-2024-072</div>
+                  </div>
+                </div>
+                <div><span class="tier-tag staff">Staff child</span></div>
+                <div class="pct" style="text-align:right;color:var(--green)">100%</div>
+                <div class="amount discount">−GHS 400.00</div>
+                <div class="when">
+                  <span class="date">15 Jan 2026</span>
+                  <div class="by">Florence Addo</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">View</button></div>
+              </div>
+
+              <div class="app-row">
+                <div class="student-cell">
+                  <div class="av">AB</div>
+                  <div class="body">
+                    <div class="name">Akosua Boateng</div>
+                    <div class="meta">JHS 2A · CTK-2024-018 · stacked</div>
+                  </div>
+                </div>
+                <div><span class="tier-tag sibling">Sibling</span></div>
+                <div class="pct" style="text-align:right">−50%</div>
+                <div class="amount discount">−GHS 140.00</div>
+                <div class="when">
+                  <span class="date">15 Jan 2026</span>
+                  <div class="by">auto · sibling rule</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">View</button></div>
+              </div>
+
+              <div class="app-row">
+                <div class="student-cell">
+                  <div class="av">AB</div>
+                  <div class="body">
+                    <div class="name">Akosua Boateng</div>
+                    <div class="meta">JHS 2A · CTK-2024-018 · stacked</div>
+                  </div>
+                </div>
+                <div><span class="tier-tag bursary">Bursary</span></div>
+                <div class="pct" style="text-align:right;color:var(--terra)">−40%</div>
+                <div class="amount discount">−GHS 72.00</div>
+                <div class="when">
+                  <span class="date">30 Apr 2026</span>
+                  <div class="by">Florence Addo</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">View</button></div>
+              </div>
+
+              <div class="app-row">
+                <div class="student-cell">
+                  <div class="av">KB</div>
+                  <div class="body">
+                    <div class="name">Kofi Boateng</div>
+                    <div class="meta">JHS 1B · CTK-2024-029</div>
+                  </div>
+                </div>
+                <div><span class="tier-tag sibling">Sibling</span></div>
+                <div class="pct" style="text-align:right">−50%</div>
+                <div class="amount discount">−GHS 200.00</div>
+                <div class="when">
+                  <span class="date">15 Jan 2026</span>
+                  <div class="by">auto · sibling rule</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">View</button></div>
+              </div>
+
+              <div class="app-row">
+                <div class="student-cell">
+                  <div class="av">KA</div>
+                  <div class="body">
+                    <div class="name">Kwame Adjei</div>
+                    <div class="meta">JHS 3B · CTK-2023-008</div>
+                  </div>
+                </div>
+                <div><span class="tier-tag bursary">Bursary</span></div>
+                <div class="pct" style="text-align:right;color:var(--terra)">−50%</div>
+                <div class="amount discount">−GHS 200.00</div>
+                <div class="when">
+                  <span class="date">22 Jan 2026</span>
+                  <div class="by">Florence Addo</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">View</button></div>
+              </div>
+
+              <div class="app-row">
+                <div class="student-cell">
+                  <div class="av">EO</div>
+                  <div class="body">
+                    <div class="name">Esi Odoom</div>
+                    <div class="meta">JHS 2A · CTK-2023-022</div>
+                  </div>
+                </div>
+                <div><span class="tier-tag scholarship">Scholarship</span></div>
+                <div class="pct" style="text-align:right">−25%</div>
+                <div class="amount discount">−GHS 100.00</div>
+                <div class="when">
+                  <span class="date">15 Jan 2026</span>
+                  <div class="by">Florence Addo</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">View</button></div>
+              </div>
+
+              <div class="app-row">
+                <div class="student-cell">
+                  <div class="av">FK</div>
+                  <div class="body">
+                    <div class="name">Fafa Kuma</div>
+                    <div class="meta">JHS 1B · CTK-2024-044</div>
+                  </div>
+                </div>
+                <div><span class="tier-tag sibling">Sibling</span></div>
+                <div class="pct" style="text-align:right">−50%</div>
+                <div class="amount discount">−GHS 190.00</div>
+                <div class="when">
+                  <span class="date">15 Jan 2026</span>
+                  <div class="by">auto · sibling rule</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">View</button></div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Page anchors on the total in the featured KPI:</b> GHS 8,420.00 discounted this term, 5.5% of total billed, +0.7 points vs last term. The accountant gets the headline number and the trend in one card; the rest of the page is breakdowns and detail.</li>
+        <li><b>Four-tier breakdown row</b> with colored top-bars per tier (gold for sibling, green for staff, terra for bursary, navy for scholarship). Each tier shows total amount, application count, and share-of-discounts bar. <b>Sibling at 52% confirms it operating as designed</b> — the largest tier is the auto-applied rule, not a manual policy.</li>
+        <li><b>Application timeline as a stacked bar chart.</b> Stacked because each week's bar shows all four tiers contributing. <b>Week 1 dominates</b> — that's when invoices first issue and sibling auto-applies; subsequent weeks show case-by-case bursary trickling in. The shape tells the policy story without a written summary.</li>
+        <li><b>Top recipients list on the right</b> ranked by amount. Staff children at 100% lead because their full fee is waived; Akosua appears at #3 with stacked discounts noted ("Sibling + Bursary"). Useful for board review — "who's getting the most help, are they the cases we intended?"</li>
+        <li><b>"Active applications" table</b> as the load-bearing list. Every discount currently affecting Term 1 invoices, one row per application. Stacked discounts appear as separate rows (Akosua appears twice — sibling row and bursary row) because each is a distinct policy decision and audit subject.</li>
+        <li><b>"Term value" column</b> shows the actual cedi amount that was discounted from this term's invoice — not the percentage in the abstract. A 50% discount on Akosua's GHS 280 tuition is GHS 140; that's the number the accountant copies into the P&amp;L.</li>
+        <li><b>Applied date + by-whom</b> in the same column. "auto · sibling rule" for system-applied; named admin for manual ones. Auditor reads the column and immediately sees governance — system rules vs human decisions.</li>
+        <li><b>Filter pills mirror the tier breakdown.</b> Sibling 23 / Staff 4 / Bursary 7 / Scholarship 9. Click one to filter the table to just that tier — board members reviewing bursary applications click "Bursary" and see the seven cases with their applied dates.</li>
+        <li><b>"Stacked" tag in student meta</b> when a student has multiple discounts. Discreet visual signal that this isn't a single-tier case; clicking through shows the full picture.</li>
+        <li><b>Forward-only model preserved.</b> The report shows discounts that affected Term 1 invoices. A discount applied in Term 1 but configured for "this term only" won't appear in the Term 2 report. Period filter at the top governs scope.</li>
+        <li><b>Export CSV is the accountant's primary action.</b> The accountant copies the totals into spreadsheet reconciliation; the application list is the supporting detail. Export PDF is for board meetings — same data formatted for paper.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Attendance · parent view</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --green-bg-2: #D4E5DA;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+/* ============ PHONE FRAMES ============ */
+.phone-row {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: linear-gradient(180deg, #E8E1D2 0%, #DDD5C2 100%);
+  padding: 48px 32px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+}
+
+.phone {
+  width: 380px;
+  height: 800px;
+  background: var(--navy);
+  border-radius: 38px;
+  padding: 12px;
+  position: relative;
+  box-shadow: 0 30px 60px -12px rgba(26,43,71,0.45), 0 12px 24px -8px rgba(26,43,71,0.25);
+  flex-shrink: 0;
+}
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  border-radius: 28px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.phone-notch {
+  position: absolute;
+  top: 12px; left: 50%;
+  transform: translateX(-50%);
+  width: 110px; height: 24px;
+  background: var(--navy);
+  border-radius: 0 0 14px 14px;
+  z-index: 100;
+}
+
+.status-bar {
+  height: 28px;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 22px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.status-bar .left { font-family: 'Fraunces', serif; }
+.status-bar .right {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px;
+}
+.status-bar .right .ic { font-size: 9px; opacity: 0.7; }
+
+.phone-label {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.phone-label em {
+  display: block;
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--navy-2);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* App header */
+.parent-app-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 18px 14px;
+  flex-shrink: 0;
+}
+.parent-app-header .top-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.app-tag {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.parent-app-header .menu-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+.parent-app-header .greeting {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+.parent-app-header .greeting em { font-style: italic; color: var(--gold); font-weight: 400; }
+.parent-app-header .sub {
+  font-size: 12px;
+  color: var(--navy-3);
+}
+.parent-app-header .sub b { color: var(--navy-2); font-weight: 600; }
+
+/* Child switcher */
+.child-switcher {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 18px;
+  display: flex; gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.child-tile {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  cursor: pointer;
+}
+.child-tile.active {
+  background: var(--gold-bg);
+  border-color: var(--gold);
+}
+.child-tile .av {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 10px;
+}
+.child-tile.active .av {
+  background: var(--gold);
+  color: var(--navy);
+}
+.child-tile .info {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+  line-height: 1.2;
+}
+.child-tile .info .name { font-weight: 700; }
+.child-tile .info .class {
+  font-size: 9px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+/* Tab strip */
+.parent-tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 14px;
+  gap: 2px;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.parent-tab {
+  padding: 12px 12px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.parent-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--gold);
+}
+
+/* Scroll body */
+.scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+/* ============ TODAY HERO CARD ============ */
+.today-card {
+  margin: 16px 14px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex; flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.today-card.green {
+  background: linear-gradient(180deg, var(--green-bg) 0%, var(--surface) 60%);
+  border-color: rgba(47,107,71,0.25);
+}
+.today-card.terra {
+  background: linear-gradient(180deg, var(--terra-bg) 0%, var(--surface) 60%);
+  border-color: rgba(184,74,57,0.25);
+}
+.today-card .day-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.today-card .headline {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+.today-card.green .headline em { color: var(--green); font-style: italic; }
+.today-card.terra .headline em { color: var(--terra); font-style: italic; }
+.today-card.terra .headline em.muted {
+  color: var(--terra);
+  opacity: 0.85;
+}
+.today-card .detail {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.today-card .detail b { color: var(--navy); font-weight: 600; }
+
+.today-status-line {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 4px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.today-status-line .status-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.today-status-line .status-dot.green { background: var(--green); }
+.today-status-line .status-dot.terra { background: var(--terra); }
+.today-status-line .status-dot.gold { background: var(--gold); }
+.today-status-line .status-dot.warn { background: var(--warn); }
+.today-status-line .status-text {
+  font-size: 12px;
+  color: var(--navy-2);
+  flex: 1;
+}
+.today-status-line .status-text b { color: var(--navy); font-weight: 600; }
+
+/* ============ THIS WEEK ROW ============ */
+.section-block {
+  margin: 18px 14px 0;
+}
+.section-block .label-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 0 4px;
+  margin-bottom: 8px;
+}
+.section-block .label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.section-block .label-meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+
+.week-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 12px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.day-tile-parent {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 4px 8px;
+  text-align: center;
+  position: relative;
+  cursor: pointer;
+}
+.day-tile-parent.present {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+}
+.day-tile-parent.late {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+}
+.day-tile-parent.excused {
+  background: var(--warn);
+  border-color: var(--warn);
+  color: white;
+}
+.day-tile-parent.absent {
+  background: var(--terra);
+  border-color: var(--terra);
+  color: white;
+}
+.day-tile-parent.future {
+  background: var(--surface);
+  border: 1px dashed var(--border-2);
+  color: var(--border-2);
+  cursor: default;
+}
+.day-tile-parent.today {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.day-tile-parent .day-letter {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 2px;
+  opacity: 0.85;
+}
+.day-tile-parent .day-num {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1;
+}
+.day-tile-parent .day-meta {
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+/* ============ TERM SUMMARY CARD ============ */
+.term-summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+.term-summary-card.terra-tinted {
+  background: linear-gradient(180deg, var(--terra-bg-soft) 0%, var(--surface) 70%);
+  border-color: rgba(184,74,57,0.2);
+}
+.term-summary-card .row-1 {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 4px;
+}
+.term-summary-card .pct-big {
+  font-family: 'Fraunces', serif;
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.term-summary-card .pct-big.green { color: var(--green); }
+.term-summary-card .pct-big.warn { color: var(--warn); }
+.term-summary-card .pct-big.terra { color: var(--terra); }
+.term-summary-card .pct-frac {
+  font-size: 12px;
+  color: var(--navy-3);
+  font-weight: 500;
+}
+.term-summary-card .pct-frac b {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-2);
+  font-weight: 600;
+}
+.term-summary-card .term-name {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+.term-summary-card .breakdown-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 100px;
+  overflow: hidden;
+  background: var(--bg);
+  margin-top: 12px;
+}
+.term-summary-card .breakdown-bar .seg.present { background: var(--green); }
+.term-summary-card .breakdown-bar .seg.late { background: var(--gold); }
+.term-summary-card .breakdown-bar .seg.excused { background: var(--warn); }
+.term-summary-card .breakdown-bar .seg.absent { background: var(--terra); }
+
+.term-summary-card .breakdown-legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 10px;
+}
+.term-summary-card .breakdown-legend .item {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--navy-3);
+}
+.term-summary-card .breakdown-legend .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+}
+.term-summary-card .breakdown-legend .dot.present { background: var(--green); }
+.term-summary-card .breakdown-legend .dot.late { background: var(--gold); }
+.term-summary-card .breakdown-legend .dot.excused { background: var(--warn); }
+.term-summary-card .breakdown-legend .dot.absent { background: var(--terra); }
+.term-summary-card .breakdown-legend b {
+  color: var(--navy-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+}
+
+.last-term-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 14px;
+  background: var(--bg);
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.last-term-row .left {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+}
+.last-term-row b {
+  color: var(--navy-2);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  font-style: normal;
+}
+
+/* ============ SCHOOL CONTACT CARD (terra state) ============ */
+.school-contact-card {
+  background: var(--surface);
+  border: 1.5px solid var(--terra);
+  border-radius: 14px;
+  padding: 16px 18px;
+  position: relative;
+}
+.school-contact-card .heading-row {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 8px;
+}
+.school-contact-card .ic-circle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--terra);
+  color: white;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.school-contact-card .heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  color: var(--terra);
+}
+.school-contact-card .body-text {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+.school-contact-card .body-text b { color: var(--navy); font-weight: 600; }
+
+.contact-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.contact-action-btn {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.contact-action-btn.primary {
+  background: var(--navy);
+  color: var(--bg);
+  border: 1px solid var(--navy);
+}
+.contact-action-btn.wa {
+  background: var(--wa-green);
+  color: white;
+  border: 1px solid var(--wa-green);
+}
+.contact-action-btn .ic-tile {
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+}
+
+/* ============ PLANNED ABSENCE CARD ============ */
+.action-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  cursor: pointer;
+}
+.action-card:hover {
+  border-color: var(--gold);
+}
+.action-card .ac-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 16px;
+}
+.action-card .ac-text .ac-title {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  margin-bottom: 1px;
+}
+.action-card .ac-text .ac-sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  line-height: 1.4;
+}
+.action-card .ac-arrow {
+  color: var(--navy-3);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* ============ RECENT ABSENCE LIST ============ */
+.absence-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+.absence-row .top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 6px;
+}
+.absence-row .date {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.absence-row .date em { font-style: italic; color: var(--gold); }
+.absence-row .status-pill-mini {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.absence-row .status-pill-mini.absent {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.absence-row .status-pill-mini.excused {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.absence-row .reason-line {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.absence-row .reason-line b { color: var(--navy); font-weight: 600; }
+.absence-row .correction-link {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+  margin-top: 6px;
+  display: inline-block;
+}
+
+/* ============ FORM (state C) ============ */
+.form-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 18px 14px;
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.form-header .back-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  color: var(--navy);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+.form-header .info { flex: 1; }
+.form-header h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.form-header h1 em { font-style: italic; color: var(--gold); }
+.form-header .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+
+.form-body {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 16px 14px;
+}
+.form-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.form-section .section-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.form-section .num-circle {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-2);
+  margin-bottom: 4px;
+}
+.field-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--navy);
+}
+.field-input.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 12px;
+}
+.field-input::placeholder { color: var(--navy-3); font-style: italic; }
+.field-input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+.field-help {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Date range selector */
+.date-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.date-tile {
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1.5px solid var(--border-2);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+.date-tile.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.date-tile .date-day {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.date-tile.selected .date-day { color: var(--gold); }
+.date-tile .date-name {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+
+.range-selector {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.range-selector .range-half {
+  display: flex; flex-direction: column;
+}
+.range-selector .range-label {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.range-selector .range-value {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.range-selector .range-arrow {
+  color: var(--gold);
+  font-weight: 700;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Reason picker */
+.reason-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.reason-tile-parent {
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1.5px solid var(--border-2);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+.reason-tile-parent.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.reason-tile-parent .rt-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+}
+.reason-tile-parent.selected .rt-name { color: var(--gold); }
+.reason-tile-parent .rt-detail {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+
+.note-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--navy);
+  resize: none;
+  min-height: 80px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+.note-textarea::placeholder { color: var(--navy-3); font-style: italic; }
+.note-textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+/* Form summary card */
+.form-summary {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.form-summary .summary-line {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.form-summary .summary-line b {
+  color: var(--navy);
+  font-weight: 600;
+}
+.form-summary .summary-line em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* Submit footer */
+.submit-footer-parent {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px 22px;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+}
+.submit-footer-parent .btn-cancel {
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+}
+.submit-footer-parent .btn-submit {
+  padding: 12px;
+  background: var(--navy);
+  color: var(--bg);
+  border: none;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Bottom nav */
+.parent-bottom-nav {
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 8px 6px 24px;
+  flex-shrink: 0;
+}
+.parent-nav-tab {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--navy-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.parent-nav-tab .ic {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  background: currentColor;
+  opacity: 0.7;
+}
+.parent-nav-tab.active {
+  color: var(--gold);
+}
+.parent-nav-tab.active .ic {
+  background: var(--gold);
+  opacity: 1;
+}
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Attendance · Parent</div>
+  <h1 class="display">What the parent <em>actually sees</em></h1>
+  <div class="gold-rule"></div>
+  <p>Mary opens the parent app on her phone in the evening. She wants to know how James's day went, whether anything needs her attention, and how to tell the school he'll be at the doctor on Tuesday. The parent surface is calmer than the admin dashboard — no class rankings, no pattern detection labels, no flag severity tags. Just the school day, in her own voice.</p>
+</header>
+
+<!-- ============ PARENT VIEW — 3 PHONE STATES ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Parent attendance · three states</div>
+    <div class="section-meta">Phone-first · normal week · active issue · planned absence form</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="phone-row">
+
+        <!-- ============ PHONE A: NORMAL WEEK ============ -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">7:42</div>
+                <div class="right"><span class="ic">●</span><span class="ic">5G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="parent-app-header">
+                <div class="top-row">
+                  <div class="app-tag">Omnischools · Christ the King JHS</div>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="greeting display">Good evening, <em>Patricia</em></div>
+                <div class="sub">Friday <b>2 May</b> · school is now closed for the weekend</div>
+              </div>
+
+              <div class="child-switcher">
+                <div class="child-tile active">
+                  <div class="av">AB</div>
+                  <div class="info">
+                    <div class="name">Akosua</div>
+                    <div class="class">JHS 2A</div>
+                  </div>
+                </div>
+                <div class="child-tile">
+                  <div class="av">KB</div>
+                  <div class="info">
+                    <div class="name">Kofi</div>
+                    <div class="class">JHS 1B</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="parent-tabs">
+                <div class="parent-tab">Home</div>
+                <div class="parent-tab active">Attendance</div>
+                <div class="parent-tab">Grades</div>
+                <div class="parent-tab">Fees</div>
+                <div class="parent-tab">Inbox</div>
+              </div>
+
+              <div class="scroll-body">
+
+                <!-- TODAY HERO -->
+                <div class="today-card green">
+                  <div class="day-label">Today</div>
+                  <div class="headline display">Akosua was at school <em>all day</em></div>
+                  <div class="detail">She arrived on time, <b>before 8 AM</b>, and stayed through to dismissal at 3 PM.</div>
+                  <div class="today-status-line">
+                    <div class="status-dot green"></div>
+                    <div class="status-text">Marked present at <b>8:05 AM</b> by Mr. Mensah</div>
+                  </div>
+                </div>
+
+                <!-- THIS WEEK -->
+                <div class="section-block">
+                  <div class="label-row">
+                    <div class="label">This week</div>
+                    <div class="label-meta">All 5 days present</div>
+                  </div>
+                  <div class="week-row">
+                    <div class="day-tile-parent present">
+                      <div class="day-letter">M</div>
+                      <div class="day-num">28</div>
+                      <div class="day-meta">Present</div>
+                    </div>
+                    <div class="day-tile-parent present">
+                      <div class="day-letter">T</div>
+                      <div class="day-num">29</div>
+                      <div class="day-meta">Present</div>
+                    </div>
+                    <div class="day-tile-parent present">
+                      <div class="day-letter">W</div>
+                      <div class="day-num">30</div>
+                      <div class="day-meta">Present</div>
+                    </div>
+                    <div class="day-tile-parent present">
+                      <div class="day-letter">T</div>
+                      <div class="day-num">1</div>
+                      <div class="day-meta">Present</div>
+                    </div>
+                    <div class="day-tile-parent present today">
+                      <div class="day-letter">F</div>
+                      <div class="day-num">2</div>
+                      <div class="day-meta">Today</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- TERM SUMMARY -->
+                <div class="section-block">
+                  <div class="label-row">
+                    <div class="label">This term</div>
+                    <div class="label-meta">Term 1 · 2025/26</div>
+                  </div>
+                  <div class="term-summary-card">
+                    <div class="row-1">
+                      <div class="pct-big green">96%</div>
+                      <div class="pct-frac">at school <b>45 of 47</b> days</div>
+                    </div>
+                    <div class="term-name">15 Sep 2025 — today</div>
+
+                    <div class="breakdown-bar">
+                      <div class="seg present" style="flex:45"></div>
+                      <div class="seg absent" style="flex:2"></div>
+                    </div>
+                    <div class="breakdown-legend">
+                      <div class="item"><div class="dot present"></div>Present <b>45</b></div>
+                      <div class="item"><div class="dot absent"></div>Absent <b>2</b></div>
+                    </div>
+
+                    <div class="last-term-row">
+                      <div class="left">Last term</div>
+                      <div><b>94%</b> · 56 of 60 days</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- PLANNED ABSENCE CTA -->
+                <div class="section-block" style="margin-bottom:18px">
+                  <div class="action-card">
+                    <div class="ac-icon">+</div>
+                    <div class="ac-text">
+                      <div class="ac-title display">Tell the school about an upcoming absence</div>
+                      <div class="ac-sub">Doctor's appointment, family event, anything we should know about</div>
+                    </div>
+                    <div class="ac-arrow">›</div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="parent-bottom-nav">
+                <div class="parent-nav-tab"><div class="ic"></div>Home</div>
+                <div class="parent-nav-tab active"><div class="ic"></div>Attend.</div>
+                <div class="parent-nav-tab"><div class="ic"></div>Grades</div>
+                <div class="parent-nav-tab"><div class="ic"></div>Fees</div>
+                <div class="parent-nav-tab"><div class="ic"></div>Inbox</div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State A<em>Normal week · everything fine</em></div>
+        </div>
+
+        <!-- ============ PHONE B: ACTIVE ISSUE ============ -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">7:42</div>
+                <div class="right"><span class="ic">●</span><span class="ic">5G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="parent-app-header">
+                <div class="top-row">
+                  <div class="app-tag">Omnischools · Christ the King JHS</div>
+                  <button class="menu-btn">⋯</button>
+                </div>
+                <div class="greeting display">Good evening, <em>Mary</em></div>
+                <div class="sub">Friday <b>2 May</b> · school is now closed for the weekend</div>
+              </div>
+
+              <div class="child-switcher">
+                <div class="child-tile active">
+                  <div class="av">JM</div>
+                  <div class="info">
+                    <div class="name">James</div>
+                    <div class="class">JHS 2A</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="parent-tabs">
+                <div class="parent-tab">Home</div>
+                <div class="parent-tab active">Attendance</div>
+                <div class="parent-tab">Grades</div>
+                <div class="parent-tab">Fees</div>
+                <div class="parent-tab">Inbox</div>
+              </div>
+
+              <div class="scroll-body">
+
+                <!-- TODAY HERO — terra -->
+                <div class="today-card terra">
+                  <div class="day-label">Today</div>
+                  <div class="headline display">James was <em>not at school</em> today</div>
+                  <div class="detail">He has been absent for <b>5 school days</b> in a row, since Tuesday last week. The school hasn't received a reason for these absences yet.</div>
+                  <div class="today-status-line">
+                    <div class="status-dot terra"></div>
+                    <div class="status-text">Marked absent at <b>8:05 AM</b> by Mr. Mensah</div>
+                  </div>
+                </div>
+
+                <!-- SCHOOL CONTACT CARD -->
+                <div class="section-block" style="margin-top:12px">
+                  <div class="school-contact-card">
+                    <div class="heading-row">
+                      <div class="ic-circle">!</div>
+                      <div class="heading display">The school has been trying to reach you</div>
+                    </div>
+                    <div class="body-text">
+                      <b>Florence Addo</b> (Headmistress) sent a WhatsApp message yesterday afternoon and tried to call this morning. Please get in touch when you can — it doesn't have to be formal, even a brief message helps.
+                    </div>
+                    <div class="contact-actions">
+                      <button class="contact-action-btn primary"><span class="ic-tile">📞</span>Call school</button>
+                      <button class="contact-action-btn wa"><span class="ic-tile">W</span>WhatsApp</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- THIS WEEK — terra -->
+                <div class="section-block">
+                  <div class="label-row">
+                    <div class="label">This week</div>
+                    <div class="label-meta" style="color:var(--terra);font-weight:600;font-style:normal">5 days absent</div>
+                  </div>
+                  <div class="week-row">
+                    <div class="day-tile-parent absent">
+                      <div class="day-letter">M</div>
+                      <div class="day-num">28</div>
+                      <div class="day-meta">Present</div>
+                    </div>
+                    <div class="day-tile-parent absent" style="background:var(--green);border-color:var(--green)">
+                      <!-- Mon 28 was actually present — fix -->
+                    </div>
+                    <div class="day-tile-parent absent">
+                      <div class="day-letter">T</div>
+                      <div class="day-num">29</div>
+                      <div class="day-meta">Absent</div>
+                    </div>
+                    <div class="day-tile-parent absent">
+                      <div class="day-letter">W</div>
+                      <div class="day-num">30</div>
+                      <div class="day-meta">Absent</div>
+                    </div>
+                    <div class="day-tile-parent absent">
+                      <div class="day-letter">T</div>
+                      <div class="day-num">1</div>
+                      <div class="day-meta">Absent</div>
+                    </div>
+                    <div class="day-tile-parent absent today">
+                      <div class="day-letter">F</div>
+                      <div class="day-num">2</div>
+                      <div class="day-meta">Today</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- RECENT ABSENCES with corrections -->
+                <div class="section-block">
+                  <div class="label-row">
+                    <div class="label">What the school has noted</div>
+                  </div>
+
+                  <div class="absence-row">
+                    <div class="top">
+                      <div class="date display">Today · <em>Friday 2 May</em></div>
+                      <div class="status-pill-mini absent">Absent</div>
+                    </div>
+                    <div class="reason-line"><b>Reason:</b> Not yet provided · marked as no contact from home</div>
+                    <a class="correction-link">Tell the school what happened →</a>
+                  </div>
+
+                  <div class="absence-row">
+                    <div class="top">
+                      <div class="date display">Thu 1 May</div>
+                      <div class="status-pill-mini absent">Absent</div>
+                    </div>
+                    <div class="reason-line"><b>Reason:</b> Not yet provided</div>
+                    <a class="correction-link">Tell the school what happened →</a>
+                  </div>
+
+                  <div class="absence-row">
+                    <div class="top">
+                      <div class="date display">Wed 30 Apr</div>
+                      <div class="status-pill-mini absent">Absent</div>
+                    </div>
+                    <div class="reason-line"><b>Reason:</b> Not yet provided</div>
+                    <a class="correction-link">Tell the school what happened →</a>
+                  </div>
+
+                  <div style="text-align:center;font-size:11px;color:var(--navy-3);font-style:italic;padding:8px 0">+ 2 earlier absences this week</div>
+                </div>
+
+                <!-- TERM SUMMARY -->
+                <div class="section-block">
+                  <div class="label-row">
+                    <div class="label">This term</div>
+                    <div class="label-meta">Term 1 · 2025/26</div>
+                  </div>
+                  <div class="term-summary-card terra-tinted">
+                    <div class="row-1">
+                      <div class="pct-big terra">61%</div>
+                      <div class="pct-frac">at school <b>29 of 47</b> days</div>
+                    </div>
+                    <div class="term-name">15 Sep 2025 — today</div>
+
+                    <div class="breakdown-bar">
+                      <div class="seg present" style="flex:29"></div>
+                      <div class="seg late" style="flex:1"></div>
+                      <div class="seg absent" style="flex:17"></div>
+                    </div>
+                    <div class="breakdown-legend">
+                      <div class="item"><div class="dot present"></div>Present <b>29</b></div>
+                      <div class="item"><div class="dot late"></div>Late <b>1</b></div>
+                      <div class="item"><div class="dot absent"></div>Absent <b>17</b></div>
+                    </div>
+
+                    <div class="last-term-row">
+                      <div class="left">Last term</div>
+                      <div><b>79%</b> · 47 of 60 days</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- PLANNED ABSENCE CTA -->
+                <div class="section-block" style="margin-bottom:18px">
+                  <div class="action-card">
+                    <div class="ac-icon">+</div>
+                    <div class="ac-text">
+                      <div class="ac-title display">Tell the school about an upcoming absence</div>
+                      <div class="ac-sub">If James has a doctor's appointment or family event coming up</div>
+                    </div>
+                    <div class="ac-arrow">›</div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="parent-bottom-nav">
+                <div class="parent-nav-tab"><div class="ic"></div>Home</div>
+                <div class="parent-nav-tab active"><div class="ic"></div>Attend.</div>
+                <div class="parent-nav-tab"><div class="ic"></div>Grades</div>
+                <div class="parent-nav-tab"><div class="ic"></div>Fees</div>
+                <div class="parent-nav-tab"><div class="ic"></div>Inbox</div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State B<em>Active issue · school has tried to reach you</em></div>
+        </div>
+
+        <!-- ============ PHONE C: PLANNED ABSENCE FORM ============ -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">7:54</div>
+                <div class="right"><span class="ic">●</span><span class="ic">5G</span><span class="ic">▮</span></div>
+              </div>
+
+              <div class="form-header">
+                <button class="back-btn">‹</button>
+                <div class="info">
+                  <h1 class="display">Upcoming <em>absence</em></h1>
+                  <div class="sub">Let the school know in advance</div>
+                </div>
+              </div>
+
+              <div class="form-body">
+
+                <!-- Step 1: Which child -->
+                <div class="form-section">
+                  <div class="section-eyebrow">
+                    <span class="num-circle">1</span>
+                    Which child
+                  </div>
+                  <div class="reason-grid">
+                    <div class="reason-tile-parent selected">
+                      <div class="rt-name">James Mensah</div>
+                      <div class="rt-detail">JHS 2A</div>
+                    </div>
+                    <div class="reason-tile-parent" style="opacity:0.5">
+                      <div class="rt-name">+ Add another</div>
+                      <div class="rt-detail">if it affects multiple</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Step 2: When -->
+                <div class="form-section">
+                  <div class="section-eyebrow">
+                    <span class="num-circle">2</span>
+                    When
+                  </div>
+
+                  <div style="margin-bottom:10px">
+                    <div class="field-label">How long?</div>
+                    <div class="reason-grid">
+                      <div class="reason-tile-parent selected">
+                        <div class="rt-name">One day</div>
+                        <div class="rt-detail">single day off</div>
+                      </div>
+                      <div class="reason-tile-parent">
+                        <div class="rt-name">Several days</div>
+                        <div class="rt-detail">range of dates</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="field-label">Date</div>
+                    <input class="field-input mono" value="Tuesday · 6 May 2026" />
+                    <div class="field-help">School day · Term 1 will continue normally</div>
+                  </div>
+                </div>
+
+                <!-- Step 3: Reason -->
+                <div class="form-section">
+                  <div class="section-eyebrow">
+                    <span class="num-circle">3</span>
+                    Reason
+                  </div>
+
+                  <div class="reason-grid">
+                    <div class="reason-tile-parent selected">
+                      <div class="rt-name">Doctor / hospital</div>
+                      <div class="rt-detail">medical visit</div>
+                    </div>
+                    <div class="reason-tile-parent">
+                      <div class="rt-name">Sick at home</div>
+                      <div class="rt-detail">unwell, resting</div>
+                    </div>
+                    <div class="reason-tile-parent">
+                      <div class="rt-name">Family event</div>
+                      <div class="rt-detail">funeral, wedding</div>
+                    </div>
+                    <div class="reason-tile-parent">
+                      <div class="rt-name">Travel</div>
+                      <div class="rt-detail">out of town</div>
+                    </div>
+                    <div class="reason-tile-parent">
+                      <div class="rt-name">Religious</div>
+                      <div class="rt-detail">observance</div>
+                    </div>
+                    <div class="reason-tile-parent">
+                      <div class="rt-name">Other</div>
+                      <div class="rt-detail">tell us below</div>
+                    </div>
+                  </div>
+
+                  <div class="field-label" style="margin-top:12px">Anything you want the school to know?</div>
+                  <textarea class="note-textarea" placeholder="Optional · we'll share this with James's class teacher">Booked appointment for routine check-up at Korle Bu. James will be back at school Wednesday morning.</textarea>
+                </div>
+
+                <!-- Summary -->
+                <div class="form-summary">
+                  <div class="summary-line">
+                    You're letting the school know that <b>James</b> will be absent <em>Tuesday 6 May</em> for a <b>doctor's appointment</b>. The school will mark the day as excused and won't send the usual absence SMS that afternoon.
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="submit-footer-parent">
+                <button class="btn-cancel">Cancel</button>
+                <button class="btn-submit">Send to school →</button>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">State C<em>Reporting a planned absence</em></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>The parent surface is fundamentally different in voice.</b> No flag severity tags, no class rankings, no pattern detection labels, no audit trails. The same data the admin dashboard surfaces for diagnosis is here surfaced for daily life — calmer, warmer, written in the parent's own way of talking about their child.</li>
+        <li><b>"Omnischools · Christ the King JHS" app tag at the top</b> reminds the parent which school's app this is. Some parents have children at multiple schools and use multiple Omnischools apps; the tag helps disambiguate. <b>The school's identity is more prominent than Omnischools's</b> — it's the school's relationship with the parent, with Omnischools underneath as plumbing.</li>
+        <li><b>Greeting addresses the parent by name in big italic Fraunces:</b> "Good evening, <em>Patricia</em>" / "Good evening, <em>Mary</em>." Same warm voice as the morning digest sent to admin. Personal, not corporate.</li>
+        <li><b>Date sub-line gives operational context:</b> "Friday 2 May · school is now closed for the weekend." The parent who opens the app at 7 PM doesn't have to wonder if there are pending registers or live updates — the school day is over, this is the after-hours view.</li>
+        <li><b>Child switcher pills below the greeting.</b> Patricia has two kids (Akosua + Kofi); both are visible, Akosua active. Mary has only James, so only one pill shows. <b>Multi-child families are first-class</b>, not an afterthought; the switcher is always present.</li>
+        <li><b>Five tabs: Home / Attendance / Grades / Fees / Inbox.</b> Attendance is its own tab, not buried under "Academic" or "Records." Same first-class status as Fees because both are daily concerns.</li>
+        <li><b>State A — Today hero in green-tinted card.</b> "Akosua was at school <em>all day</em>" with the headline in italic Fraunces. The green wash is reassurance; the parent reading "she was at school" + "she arrived on time" + status confirmation can close the app and feel informed in 5 seconds.</li>
+        <li><b>"Marked present at 8:05 AM by Mr. Mensah"</b> in the status line. The teacher's name humanises the system; "marked present by the system" would feel cold. <b>The parent feels Akosua was seen by a real person</b>, not just logged.</li>
+        <li><b>This-week row uses 5 day tiles (Mon-Fri only).</b> Weekends are not shown — the parent doesn't need them on a weekday/school view. Saves space; matches the parent's mental model of "the school week."</li>
+        <li><b>Day tile for today has gold ring outline + "Today" label.</b> Same convention as the desktop teacher view. Visual continuity across surfaces; same Friday tile means the same thing whether you're a teacher or a parent.</li>
+        <li><b>Term summary shows percentage + days fraction + breakdown bar + last term comparison.</b> Three pieces of context that answer different questions: "How is she doing?" (96%) · "Out of how many?" (45 of 47) · "Better or worse than before?" (last term was 94%). <b>Honest comparison, no commentary</b>.</li>
+        <li><b>"Last term: 94% · 56 of 60 days"</b> grounded in mono. Not "improving" or "trending up" — just the number. Parent draws their own conclusion. The system doesn't editorialise.</li>
+        <li><b>Planned-absence CTA is a card, not a button.</b> Action card with gold "+" icon, Fraunces title, supporting copy explaining when to use it. <b>The card is part of the page's information architecture</b>, not a floating action that interrupts.</li>
+        <li><b>State B's hero is terra-tinted with pointed language.</b> "James was <em>not at school</em> today." Not euphemistic ("had a school day off") and not punitive ("absent without permission") — direct factual. The italic gold "not at school" softens the edge slightly with brand voice.</li>
+        <li><b>Detail line on State B: "He has been absent for 5 school days in a row, since Tuesday last week."</b> Specific, memory-helping. Mary may not have realised it had been five days — the system tells her honestly. <b>"The school hasn't received a reason for these absences yet"</b> sets up the school-contact card below.</li>
+        <li><b>School-contact card is the most important addition in State B.</b> Terra border, "!" icon, named attribution: "Florence Addo (Headmistress) sent a WhatsApp message yesterday afternoon and tried to call this morning." <b>Tells Mary what the school has done</b> so she's not surprised when she sees Florence's WhatsApp; reassures her that the school is being thoughtful, not just sending automated SMS.</li>
+        <li><b>"Please get in touch when you can — it doesn't have to be formal, even a brief message helps."</b> The voice the school would use to a friend. <b>Lowers the threshold</b> for Mary to reach out. Many parents avoid contacting the school because they think it has to be a formal explanation; this language says "we just want to hear from you."</li>
+        <li><b>Two contact buttons: Call school (navy) + WhatsApp (WA-green).</b> No SMS option in this state because Mary is the one who needs to initiate; SMS is broadcast-shaped, not conversation-shaped. Phone or WhatsApp are the two real bidirectional channels.</li>
+        <li><b>"What the school has noted" section in State B shows recent absences with reasons.</b> "Reason: Not yet provided · marked as no contact from home" — neutral phrasing that names the school's data state without blame. <b>"Tell the school what happened →"</b> link gives Mary a path to retroactively explain past absences.</li>
+        <li><b>The corrective link uses second-person verb.</b> "Tell the school what happened" — Mary is the agent, the school is the recipient. Not "Provide a reason" (passive) or "Update record" (system-speak).</li>
+        <li><b>Term summary in terra-tinted variant for State B.</b> The 61% is rendered in terra Fraunces — same colour vocabulary as everywhere else, but no "Below threshold" label. The colour conveys the state; the parent doesn't need a verbal verdict.</li>
+        <li><b>State C — Planned absence form is three sections: Which child / When / Reason.</b> Numbered gold circles match the system's existing form pattern (Record Payment, Send Reminders). Familiar architecture; nothing new to learn.</li>
+        <li><b>Child selector as tile picker</b> rather than dropdown. Mary sees James's tile selected; "+ Add another" tile suggests she could include Kofi if both kids are off (e.g., they're both attending the same family event).</li>
+        <li><b>"How long?" toggle: One day vs Several days.</b> Most planned absences are single-day (doctor visits, small family events). Multi-day support exists but is the secondary path. <b>Optimising for the common case</b> without hiding the alternative.</li>
+        <li><b>Date input rendered in Fraunces serif:</b> "Tuesday · 6 May 2026" — clear and human. Not "06/05/2026" or "2026-05-06." The day of the week matters; parents think in days, not date strings.</li>
+        <li><b>Field help line: "School day · Term 1 will continue normally."</b> Confirms that Tuesday is in fact a school day (not a public holiday or term break) so Mary knows the absence will be recorded. If she'd accidentally picked a weekend or a holiday, the help would say so.</li>
+        <li><b>Six reason tiles in a 2-column grid: Doctor, Sick, Family event, Travel, Religious, Other.</b> Same options as the teacher's exception drawer, in parent voice. <b>"Doctor / hospital · medical visit"</b> and "Sick at home · unwell, resting" are distinguished because they're operationally different (doctor visit = excused with reason; home illness = excused with note).</li>
+        <li><b>Optional note field: "Anything you want the school to know?"</b> Pre-filled with example: "Booked appointment for routine check-up at Korle Bu. James will be back at school Wednesday morning." <b>The example shows the right level of detail</b> — practical, conversational, not over-explained.</li>
+        <li><b>Form summary card at the bottom in gold-tinted card.</b> "You're letting the school know that <b>James</b> will be absent <em>Tuesday 6 May</em> for a <b>doctor's appointment</b>. The school will mark the day as excused and won't send the usual absence SMS that afternoon." <b>Plain English summary of what submitting will do</b> — including the operational consequence (no auto-SMS). Parent submits with informed confidence.</li>
+        <li><b>"Send to school" button instead of "Submit."</b> The verb matches the mental model — Mary is sending information to the school, not submitting a form to a system. Same data, gentler framing.</li>
+        <li><b>What's not here:</b> No flag explanations, no pattern descriptions, no auto-prompts to "improve attendance," no predictive language ("if this continues..."), no comparisons to other students. <b>The parent surface is information, not coaching</b>. Coaching, if needed, comes from a human at the school.</li>
+        <li><b>Last term comparison and historical absences are deliberately summarised, not detailed.</b> The full term register exists in the admin/teacher views; the parent view abstracts. Mary can see "47 of 60 days last term" but doesn't get a 60-day grid she didn't ask for. <b>The right level of detail for the right reader</b>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

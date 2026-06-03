@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Reminder series · saved segments &amp; schedules</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; --wa-green:#25A859; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:700px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1480px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.nav-item .new-tag { margin-left:auto; background:var(--gold); color:var(--navy); font-size:8px; font-weight:700; letter-spacing:0.06em; padding:1px 5px; border-radius:100px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; margin-bottom:14px; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:700px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.body { padding:28px 36px 60px; }
+
+/* List view tabs */
+.view-tabs { display:flex; gap:6px; margin-top:6px; }
+.view-tab { padding:7px 14px; background:transparent; border:1px solid transparent; border-radius:100px; font-family:'Fraunces',serif; font-size:13px; font-weight:600; color:var(--navy-3); cursor:pointer; }
+.view-tab.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.view-tab.active em { font-style:italic; color:var(--gold); font-weight:500; }
+.view-tab .count { font-family:'Manrope',sans-serif; font-size:10px; font-weight:700; opacity:0.6; margin-left:4px; }
+
+/* Hero / overview row */
+.hero-row { display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr; gap:14px; margin-bottom:24px; }
+.hero-main { background:var(--navy); color:var(--bg); border-radius:14px; padding:22px 26px; background-image:radial-gradient(circle at 90% 0%, rgba(200,151,91,0.16) 0%, transparent 55%); }
+.hero-main .lbl { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; margin-bottom:6px; }
+.hero-main .val { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.2; color:var(--bg); }
+.hero-main .val em { font-style:italic; color:var(--gold); font-weight:500; }
+.hero-main .val b { font-weight:600; }
+.hero-main .meta { margin-top:10px; font-size:11px; color:rgba(232,212,184,0.85); line-height:1.5; }
+.hero-main .meta b { color:var(--bg); font-weight:600; }
+.hero-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; }
+.hero-tile .lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.hero-tile .val { font-family:'Fraunces',serif; font-size:22px; font-weight:600; letter-spacing:-0.018em; line-height:1.05; margin-top:4px; }
+.hero-tile .val em { font-style:italic; color:var(--gold); }
+.hero-tile .sub { font-size:11px; color:var(--navy-3); margin-top:4px; }
+.hero-tile .sub b { color:var(--navy-2); font-weight:600; }
+
+/* Series cards */
+.region { margin-bottom:32px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.005em; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+.series-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+.series-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.series-card.paused { background:var(--bg); border-style:dashed; }
+.series-card.draft { background:var(--gold-bg); border-color:var(--gold-soft); }
+
+.series-head { padding:16px 20px 14px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:1fr auto; gap:10px; align-items:start; }
+.series-card.paused .series-head { border-bottom-style:dashed; }
+.series-card.draft .series-head { border-bottom-color:var(--gold-soft); }
+.series-head .left .name { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; }
+.series-head .left .name em { font-style:italic; color:var(--gold); }
+.series-head .left .desc { font-size:11px; color:var(--navy-3); margin-top:3px; line-height:1.5; }
+.series-head .left .desc b { color:var(--navy-2); font-weight:600; }
+.series-head .right .status-tag { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; }
+.series-head .right .status-tag.active { background:var(--green-bg); color:var(--green); }
+.series-head .right .status-tag.paused { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.series-head .right .status-tag.draft { background:var(--gold); color:var(--navy); }
+
+.series-body { padding:14px 20px; }
+.series-body .label-row { display:grid; grid-template-columns:90px 1fr; gap:12px; padding:8px 0; font-size:11px; align-items:start; border-bottom:1px dashed var(--border); }
+.series-body .label-row:last-child { border-bottom:none; }
+.series-body .label-row .lbl { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; padding-top:1px; }
+.series-body .label-row .val { color:var(--navy-2); line-height:1.5; }
+.series-body .label-row .val b { color:var(--navy); font-weight:600; }
+.series-body .label-row .val em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+.series-body .label-row .val .pill { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:100px; background:var(--bg); border:1px solid var(--border); font-size:10px; font-weight:600; color:var(--navy-2); margin-right:4px; }
+.series-body .label-row .val .pill .ch { width:6px; height:6px; border-radius:50%; }
+.series-body .label-row .val .pill .ch.wa { background:var(--wa-green); }
+.series-body .label-row .val .pill .ch.sms { background:var(--gold); }
+
+.series-foot { padding:12px 20px; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:11px; }
+.series-card.paused .series-foot { border-top-style:dashed; }
+.series-card.draft .series-foot { background:rgba(255,255,255,0.6); border-top-color:var(--gold-soft); }
+.series-foot .next-send { color:var(--navy-2); }
+.series-foot .next-send b { color:var(--navy); font-weight:600; }
+.series-foot .next-send em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+.series-foot .actions-mini { display:flex; gap:4px; }
+.series-foot .action-mini { width:26px; height:26px; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--navy-3); font-size:11px; cursor:pointer; font-family:inherit; font-weight:600; display:flex; align-items:center; justify-content:center; }
+
+/* Series builder card (the editor) */
+.builder-card { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; overflow:hidden; box-shadow:0 8px 24px -8px rgba(200,151,91,0.3); }
+.builder-head { background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); padding:18px 24px; }
+.builder-head .builder-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.builder-head h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.018em; line-height:1.1; }
+.builder-head h3 em { font-style:italic; color:var(--gold); }
+.builder-head .builder-lede { font-size:12px; color:var(--navy-3); margin-top:4px; }
+.builder-head .builder-lede b { color:var(--navy-2); font-weight:600; }
+
+.builder-body { padding:0; }
+.builder-step { padding:18px 24px; border-bottom:1px solid var(--border); }
+.builder-step:last-child { border-bottom:none; }
+.builder-step .step-num-row { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; }
+.builder-step .step-num { width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.builder-step .step-title { font-family:'Fraunces',serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; }
+.builder-step .step-title em { font-style:italic; color:var(--gold); }
+.builder-step .step-meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.builder-step .step-meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Audience picker */
+.audience-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.audience-card { background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:12px 16px; cursor:pointer; }
+.audience-card.selected { border-color:var(--gold); background:var(--gold-bg); box-shadow:0 0 0 3px var(--gold-soft); }
+.audience-card .top { display:flex; align-items:center; gap:10px; }
+.audience-card .radio { width:16px; height:16px; border-radius:50%; border:2px solid var(--border-2); flex-shrink:0; position:relative; }
+.audience-card.selected .radio { border-color:var(--gold); }
+.audience-card.selected .radio::after { content:""; position:absolute; top:2px; left:2px; width:8px; height:8px; border-radius:50%; background:var(--gold); }
+.audience-card .seg-name { font-family:'Fraunces',serif; font-weight:600; font-size:13px; letter-spacing:-0.005em; }
+.audience-card .seg-name em { font-style:italic; color:var(--gold); }
+.audience-card .desc { font-size:11px; color:var(--navy-3); margin-top:4px; line-height:1.5; padding-left:24px; }
+.audience-card .desc b { color:var(--navy-2); font-weight:600; }
+.audience-card .desc .recipients { font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--navy); }
+
+/* Schedule picker */
+.schedule-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:14px; }
+.input-group { display:flex; flex-direction:column; gap:5px; }
+.input-group .input-lbl { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.input-group .input-pills { display:flex; gap:4px; flex-wrap:wrap; }
+.input-pill { padding:6px 12px; background:var(--surface); border:1px solid var(--border-2); border-radius:100px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.input-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.input-pill.active em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.input-display { padding:8px 12px; background:var(--surface); border:1.5px solid var(--gold); border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:var(--navy); }
+
+.schedule-summary { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 16px; font-size:12px; color:var(--navy-2); line-height:1.55; }
+.schedule-summary b { color:var(--navy); font-weight:600; }
+.schedule-summary em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+/* Template picker */
+.template-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.template-card { background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:12px 16px; cursor:pointer; }
+.template-card.selected { border-color:var(--gold); background:var(--gold-bg); }
+.template-card .top { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.template-card .ch-pill { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; }
+.template-card .ch-pill.wa { background:#E7F8EE; color:var(--wa-green); }
+.template-card .ch-pill.sms { background:var(--gold-bg); color:var(--gold); }
+.template-card .name { font-family:'Fraunces',serif; font-size:13px; font-weight:600; letter-spacing:-0.005em; }
+.template-card .preview { font-size:11px; color:var(--navy-2); line-height:1.5; padding:8px 0 0; font-family:'JetBrains Mono',monospace; background:var(--bg); padding:8px 10px; border-radius:6px; margin-top:6px; border:1px dashed var(--border); }
+.template-card .vars { font-size:10px; color:var(--navy-3); margin-top:6px; font-style:italic; }
+.template-card .vars b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Confirmation summary card */
+.confirm-card { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-top:14px; }
+.confirm-card .heading { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; margin-bottom:10px; }
+.confirm-card .heading em { font-style:italic; color:var(--gold); }
+.confirm-card .summary-row { display:grid; grid-template-columns:auto 1fr; gap:10px; padding:5px 0; font-size:12px; color:var(--navy-2); }
+.confirm-card .summary-row b { color:var(--navy); font-weight:600; }
+.confirm-card .summary-row em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+/* Save bar */
+.save-bar { background:var(--surface); border:1px solid var(--gold); border-radius:12px; padding:18px 24px; margin-top:22px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 8px 20px -8px rgba(200,151,91,0.3); }
+.save-bar .left .summary { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.save-bar .left .summary em { font-style:italic; color:var(--gold); }
+.save-bar .left .meta { font-size:11px; color:var(--navy-3); margin-top:3px; }
+.save-bar .actions { display:flex; gap:8px; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .hero-row { grid-template-columns:1fr 1fr; }
+  .series-grid { grid-template-columns:1fr; }
+  .audience-row, .template-options, .schedule-row { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 3 · Reminder series</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Saved <em>segments</em>, scheduled <em>sends</em></h1>
+  <div class="gold-rule"></div>
+  <p>Two MVP1 features that need each other to be useful — saved segments are infrastructure for repeat sends, scheduled sends need a recurring audience to be defined. Combined here as "reminder series": admin defines an audience (segment with filter logic), schedule (frequency + time + end), and template (one of the established message blueprints), then the system fires the series automatically until paused or end-dated.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Reminder series · list view</div>
+    <div class="section-meta">3 active · 1 paused · 1 draft · feeds the inbox audit trail per parent</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / announcements / series</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item active"><div class="ic"></div>Announcements</div>
+          <div class="nav-item sub">All sends</div>
+          <div class="nav-item sub">Templates</div>
+          <div class="nav-item sub active">Reminder series<span class="new-tag">NEW</span></div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Announcements</a> / Reminder series</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Reminder <em>series</em></h1>
+                <div class="lede">Recurring sends that fire automatically · the audience is re-evaluated <b>before each send</b> so the right people get the right reminder · pause or edit any time</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Saved segments →</button>
+                <button class="btn primary">+ New series</button>
+              </div>
+            </div>
+            <div class="view-tabs">
+              <div class="view-tab active">All<span class="count">5</span></div>
+              <div class="view-tab"><em>Active</em><span class="count">3</span></div>
+              <div class="view-tab">Paused<span class="count">1</span></div>
+              <div class="view-tab">Drafts<span class="count">1</span></div>
+              <div class="view-tab">Ended</div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <div class="hero-row">
+              <div class="hero-main">
+                <div class="lbl">This term · automated reminder activity</div>
+                <div class="val display"><em>3 series</em> sending to <em>208 unique parents</em></div>
+                <div class="meta"><b>14 sends</b> fired so far this term · <b>0 manual sends</b> required for routine reminders · <b>GHS 4.20</b> in SMS costs · WhatsApp bundled</div>
+              </div>
+              <div class="hero-tile">
+                <div class="lbl">Next send</div>
+                <div class="val display"><em>Friday</em></div>
+                <div class="sub">9:00 AM · <b>47 parents</b> · overdue reminder</div>
+              </div>
+              <div class="hero-tile">
+                <div class="lbl">Saved segments</div>
+                <div class="val display"><em>6</em> defined</div>
+                <div class="sub">Used by 3 series · 3 unused</div>
+              </div>
+              <div class="hero-tile">
+                <div class="lbl">Avg response rate</div>
+                <div class="val display"><em>22%</em></div>
+                <div class="sub">Parents reply within 48h · <b>healthy</b></div>
+              </div>
+            </div>
+
+            <!-- Series list -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">Active &amp; <em>paused</em> series</h2>
+                <div class="meta">Click any card to open the series editor</div>
+              </div>
+
+              <div class="series-grid">
+
+                <!-- Series 1: Weekly overdue reminder -->
+                <div class="series-card">
+                  <div class="series-head">
+                    <div class="left">
+                      <div class="name display">Weekly <em>overdue reminder</em></div>
+                      <div class="desc">Friday nudges to families with <b>overdue Term 1 fees</b> · started <b>3 weeks ago</b></div>
+                    </div>
+                    <div class="right">
+                      <div class="status-tag active">● Active</div>
+                    </div>
+                  </div>
+                  <div class="series-body">
+                    <div class="label-row">
+                      <div class="lbl">Audience</div>
+                      <div class="val"><b>Overdue families</b> <em>· segment auto-recomputes weekly</em><br><span style="color:var(--navy-3);font-size:10px">Currently: <b>47 parents</b> · was 52 last week, 61 the week before</span></div>
+                    </div>
+                    <div class="label-row">
+                      <div class="lbl">Schedule</div>
+                      <div class="val">Every <b>Friday</b> at <b>9:00 AM</b> · respects each parent's quiet hours · until <em>Term 1 ends</em></div>
+                    </div>
+                    <div class="label-row">
+                      <div class="lbl">Channels</div>
+                      <div class="val"><span class="pill"><span class="ch wa"></span>WhatsApp where opted in</span><span class="pill"><span class="ch sms"></span>SMS fallback</span></div>
+                    </div>
+                    <div class="label-row">
+                      <div class="lbl">Template</div>
+                      <div class="val"><b>Overdue fee · soft tone</b> · personalised with student name &amp; balance</div>
+                    </div>
+                  </div>
+                  <div class="series-foot">
+                    <div class="next-send">Next: <b>Fri 24 Oct · 9:00 AM</b> · <em>47 recipients</em></div>
+                    <div class="actions-mini">
+                      <button class="action-mini">⏸</button>
+                      <button class="action-mini">✎</button>
+                      <button class="action-mini">⋯</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Series 2: BECE registration reminder -->
+                <div class="series-card">
+                  <div class="series-head">
+                    <div class="left">
+                      <div class="name display">BECE <em>registration reminder</em></div>
+                      <div class="desc">Twice-weekly reminders to JHS 3 families <b>not yet registered</b> for BECE · ends 31 Oct</div>
+                    </div>
+                    <div class="right">
+                      <div class="status-tag active">● Active</div>
+                    </div>
+                  </div>
+                  <div class="series-body">
+                    <div class="label-row">
+                      <div class="lbl">Audience</div>
+                      <div class="val"><b>JHS 3 unregistered for BECE</b> · segment shrinks as parents register<br><span style="color:var(--navy-3);font-size:10px">Currently: <b>5 of 33</b> · was 11 last week</span></div>
+                    </div>
+                    <div class="label-row">
+                      <div class="lbl">Schedule</div>
+                      <div class="val">Every <b>Tuesday &amp; Friday</b> at <b>4:00 PM</b> · until <em>31 October</em> (BECE deadline)</div>
+                    </div>
+                    <div class="label-row">
+                      <div class="lbl">Channels</div>
+                      <div class="val"><span class="pill"><span class="ch wa"></span>WhatsApp</span><span class="pill"><span class="ch sms"></span>SMS for non-WA users</span></div>
+                    </div>
+                    <div class="label-row">
+                      <div class="lbl">Template</div>
+                      <div class="val"><b>BECE registration · firm tone</b> · includes payment link</div>
+                    </div>
+                  </div>
+                  <div class="series-foot">
+                    <div class="next-send">Next: <b>Tue 21 Oct · 4:00 PM</b> · <em>5 recipients</em></div>
+                    <div class="actions-mini">
+                      <button class="action-mini">⏸</button>
+                      <button class="action-mini">✎</button>
+                      <button class="action-mini">⋯</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Series 3: Daily attendance digest -->
+                <div class="series-card">
+                  <div class="series-head">
+                    <div class="left">
+                      <div class="name display">Daily <em>attendance SMS</em></div>
+                      <div class="desc">Already exists · 3 PM auto-SMS to parents of absent students · <b>day-by-day</b></div>
+                    </div>
+                    <div class="right">
+                      <div class="status-tag active">● Active</div>
+                    </div>
+                  </div>
+                  <div class="series-body">
+                    <div class="label-row">
+                      <div class="lbl">Audience</div>
+                      <div class="val"><b>Parents of students absent today</b> · re-evaluated <em>each school day</em><br><span style="color:var(--navy-3);font-size:10px">Today: <b>11 absent</b> · yesterday: 14 · 7-day avg: 12</span></div>
+                    </div>
+                    <div class="label-row">
+                      <div class="lbl">Schedule</div>
+                      <div class="val">Every <b>school day</b> at <b>3:00 PM</b> · pauses on weekends &amp; holidays · <em>indefinite</em></div>
+                    </div>
+                    <div class="label-row">
+                      <div class="lbl">Channels</div>
+                      <div class="val"><span class="pill"><span class="ch sms"></span>SMS only · time-sensitive</span></div>
+                    </div>
+                    <div class="label-row">
+                      <div class="lbl">Template</div>
+                      <div class="val"><b>Absence notification</b> · "Your child wasn't in school today"</div>
+                    </div>
+                  </div>
+                  <div class="series-foot">
+                    <div class="next-send">Next: <b>Today · 3:00 PM</b> · <em>11 recipients</em></div>
+                    <div class="actions-mini">
+                      <button class="action-mini">⏸</button>
+                      <button class="action-mini">✎</button>
+                      <button class="action-mini">⋯</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Series 4: Paused -->
+                <div class="series-card paused">
+                  <div class="series-head">
+                    <div class="left">
+                      <div class="name display">Term-end <em>parent meeting</em> RSVP</div>
+                      <div class="desc">Paused 2 weeks ago · meeting was held · <b>schedule preserved for next term</b></div>
+                    </div>
+                    <div class="right">
+                      <div class="status-tag paused">Paused</div>
+                    </div>
+                  </div>
+                  <div class="series-body">
+                    <div class="label-row">
+                      <div class="lbl">Audience</div>
+                      <div class="val">All families · <b>312 parents</b></div>
+                    </div>
+                    <div class="label-row">
+                      <div class="lbl">Last fired</div>
+                      <div class="val"><b>5 Oct</b> · 312 sent · 187 RSVPed before meeting</div>
+                    </div>
+                  </div>
+                  <div class="series-foot">
+                    <div class="next-send">Paused · <b>resume to use again</b></div>
+                    <div class="actions-mini">
+                      <button class="action-mini">▶</button>
+                      <button class="action-mini">✎</button>
+                      <button class="action-mini">⋯</button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Series builder (state B - inline) -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display">Building a <em>new series</em></h2>
+                <div class="meta">From the <b>+ New series</b> button · 4 steps</div>
+              </div>
+
+              <div class="builder-card">
+                <div class="builder-head">
+                  <div class="builder-eyebrow">New reminder series · in progress</div>
+                  <h3 class="display">Outstanding <em>balance · soft reminder</em></h3>
+                  <div class="builder-lede">A weekly Friday nudge to families still owing fees · auto-pauses when balance reaches zero</div>
+                </div>
+
+                <div class="builder-body">
+
+                  <!-- Step 1: Audience -->
+                  <div class="builder-step">
+                    <div class="step-num-row">
+                      <div class="step-num">1</div>
+                      <div class="step-title display">Choose <em>audience</em></div>
+                      <div class="step-meta"><b>Segment auto-recomputes</b> before each send</div>
+                    </div>
+                    <div class="audience-row">
+                      <div class="audience-card selected">
+                        <div class="top">
+                          <div class="radio"></div>
+                          <div class="seg-name display">Overdue <em>families</em> · saved segment</div>
+                        </div>
+                        <div class="desc"><b>47 parents</b> currently · families with any invoice past due date · auto-recomputes daily · <span class="recipients">used by 1 series</span></div>
+                      </div>
+                      <div class="audience-card">
+                        <div class="top">
+                          <div class="radio"></div>
+                          <div class="seg-name display">JHS 3 <em>BECE-relevant</em> · saved</div>
+                        </div>
+                        <div class="desc"><b>33 families</b> · all JHS 3 parents · <span class="recipients">used by 1 series</span></div>
+                      </div>
+                      <div class="audience-card">
+                        <div class="top">
+                          <div class="radio"></div>
+                          <div class="seg-name display">All <em>active families</em> · saved</div>
+                        </div>
+                        <div class="desc"><b>312 families</b> · everyone with an enrolled student · <span class="recipients">used by 0 series</span></div>
+                      </div>
+                      <div class="audience-card" style="border-style:dashed;background:var(--bg)">
+                        <div class="top">
+                          <div class="radio"></div>
+                          <div class="seg-name display">+ Build a <em>custom segment</em></div>
+                        </div>
+                        <div class="desc">Define filters fresh · save for reuse if useful · <b>opens segment builder</b></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Step 2: Schedule -->
+                  <div class="builder-step">
+                    <div class="step-num-row">
+                      <div class="step-num">2</div>
+                      <div class="step-title display">Set <em>schedule</em></div>
+                      <div class="step-meta">Respects each parent's <b>quiet hours</b></div>
+                    </div>
+                    <div class="schedule-row">
+                      <div class="input-group">
+                        <div class="input-lbl">Frequency</div>
+                        <div class="input-pills">
+                          <div class="input-pill">Daily</div>
+                          <div class="input-pill active"><em>Weekly</em></div>
+                          <div class="input-pill">2× weekly</div>
+                          <div class="input-pill">Monthly</div>
+                        </div>
+                      </div>
+                      <div class="input-group">
+                        <div class="input-lbl">Day &amp; time</div>
+                        <div class="input-display">Fridays · 9:00 AM</div>
+                      </div>
+                      <div class="input-group">
+                        <div class="input-lbl">End condition</div>
+                        <div class="input-pills">
+                          <div class="input-pill active"><em>End of term</em></div>
+                          <div class="input-pill">After N sends</div>
+                          <div class="input-pill">Specific date</div>
+                          <div class="input-pill">Indefinite</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="schedule-summary">
+                      Will fire every <b>Friday at 9:00 AM</b> · first send <em>this Friday 24 Oct</em> · last send <em>Friday 19 Dec</em> (end of Term 1) · estimated <b>9 sends</b> total over the term
+                    </div>
+                  </div>
+
+                  <!-- Step 3: Template -->
+                  <div class="builder-step">
+                    <div class="step-num-row">
+                      <div class="step-num">3</div>
+                      <div class="step-title display">Pick <em>message template</em></div>
+                      <div class="step-meta">Personalised per recipient with <b>name + balance</b></div>
+                    </div>
+                    <div class="template-options">
+                      <div class="template-card selected">
+                        <div class="top">
+                          <span class="ch-pill wa">WA</span>
+                          <span class="ch-pill sms">SMS</span>
+                          <span class="name display">Overdue fee · <em>soft tone</em></span>
+                        </div>
+                        <div class="preview">CHRIST KING: Hi {parent_name}, gentle reminder · {student_name}'s Term 1 fee balance is GHS {balance}. Pay via MoMo 0244 555 0140 or at office. Reply for help.</div>
+                        <div class="vars">Variables: <b>{parent_name}</b> · <b>{student_name}</b> · <b>{balance}</b></div>
+                      </div>
+                      <div class="template-card">
+                        <div class="top">
+                          <span class="ch-pill wa">WA</span>
+                          <span class="ch-pill sms">SMS</span>
+                          <span class="name display">Overdue fee · <em>firm tone</em></span>
+                        </div>
+                        <div class="preview">CHRIST KING: {parent_name}, Term 1 fee balance for {student_name} is GHS {balance} · payment due. Settle by Fri to avoid disruption to studies.</div>
+                        <div class="vars">Variables: <b>{parent_name}</b> · <b>{student_name}</b> · <b>{balance}</b></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Step 4: Confirm -->
+                  <div class="builder-step">
+                    <div class="step-num-row">
+                      <div class="step-num">4</div>
+                      <div class="step-title display">Review &amp; <em>activate</em></div>
+                    </div>
+                    <div class="confirm-card">
+                      <div class="heading display"><em>Outstanding balance · soft reminder</em></div>
+                      <div class="summary-row"><b>Sends to:</b><span><em>47 parents</em> in the "Overdue families" segment · auto-recomputed before each send</span></div>
+                      <div class="summary-row"><b>When:</b><span>Every <em>Friday at 9:00 AM</em> · respecting parents' quiet hours · until <em>Friday 19 Dec</em></span></div>
+                      <div class="summary-row"><b>How:</b><span>WhatsApp where opted in (38 parents) · SMS fallback (9 parents)</span></div>
+                      <div class="summary-row"><b>Estimated cost:</b><span><em>GHS 4.05</em> over the term · 9 weekly fires × ~9 SMS · WA bundled</span></div>
+                      <div class="summary-row"><b>Stops automatically:</b><span>For each parent the moment their balance reaches zero · they won't get another reminder unless balance returns</span></div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <div class="save-bar">
+                <div class="left">
+                  <div class="summary display">Activate this <em>reminder series</em>?</div>
+                  <div class="meta">First send fires <b>Friday 24 Oct at 9:00 AM</b> · you'll get a notification 1 hour before · pause any time</div>
+                </div>
+                <div class="actions">
+                  <button class="btn">Save as draft</button>
+                  <button class="btn gold">Activate series →</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Bundled saved-segments + scheduled-sends as "reminder series."</b> The two features only become useful together — saved segments without scheduling are a list-builder; scheduling without saved segments is a manual one-shot. <b>The combined surface treats them as one feature</b> with two halves.</li>
+        <li><b>Sidebar adds Reminder series as a sub-nav under Announcements</b> with gold "NEW" tag · sister to "All sends" and "Templates" that exist in MVP1. <b>Communications hierarchy stays flat</b> — three siblings, not nested.</li>
+        <li><b>Hero pillar in editorial Fraunces:</b> "<em>3 series</em> sending to <em>208 unique parents</em>." Then meta line: "<b>14 sends</b> fired so far this term · <b>0 manual sends</b> required for routine reminders · <b>GHS 4.20</b> in SMS costs." <b>Tells Florence the value</b>: zero manual sends required because the system handles them.</li>
+        <li><b>4 series cards visible:</b> 3 active + 1 paused. Each shows audience (with current count + recent trend), schedule, channels, template, next send time, and three small actions (pause/edit/more). <b>The card answers "what is this series doing?" without opening it</b>.</li>
+        <li><b>Audience trend lines on each card:</b> "Currently: <b>47 parents</b> · was 52 last week, 61 the week before." <b>Shows segment dynamism over time</b> — the BECE segment shrinks as parents register, the overdue segment shrinks as parents pay. Florence sees the system working.</li>
+        <li><b>Daily attendance SMS shown as a series too</b>, even though it predates Tier 3. <b>Existing automation gets retroactively framed as a series</b> so admin has one place to see all recurring sends, not separate UI for "the daily SMS we always had" vs "the new ones I made."</li>
+        <li><b>Paused series visible with dashed border + neutral status.</b> Term-end parent meeting RSVP series shown as paused — meeting happened, but the schedule is preserved for next term so admin doesn't have to rebuild it. <b>Pause ≠ delete</b>; reversible state.</li>
+        <li><b>Builder card with gold border + shadow</b> sits below the active list, demonstrating the editor flow. 4 steps: audience / schedule / template / review. <b>Builder is in the same screen as the list</b> — no modal, no separate page. Admin sees her existing series and the new one being built side by side.</li>
+        <li><b>Audience step has 4 cards:</b> 3 saved segments (Overdue families selected, JHS 3 BECE-relevant, All active families) + "+ Build a custom segment" dashed card. <b>Saved segments are first-class</b> · custom segments are an escape hatch that opens a segment builder (own future surface).</li>
+        <li><b>Schedule step uses pill-based pickers</b>: frequency (Daily/Weekly/2×Weekly/Monthly), end condition (End of term/After N sends/Specific date/Indefinite). The day &amp; time gets a gold-bordered display field. <b>Schedule summary at the bottom narrates the choices</b>: "Will fire every <b>Friday at 9:00 AM</b> · first send <em>this Friday 24 Oct</em> · last send <em>Friday 19 Dec</em> · estimated <b>9 sends</b> total over the term."</li>
+        <li><b>Template step shows 2 message variants</b> (Overdue · soft tone selected, Overdue · firm tone alternative) with full preview text including variables. <b>Variables shown explicitly</b>: "{parent_name}", "{student_name}", "{balance}" — admin sees what gets personalised per recipient.</li>
+        <li><b>Confirm card narrates the series in plain English</b>: "Sends to 47 parents · When: Every Friday at 9:00 AM · How: WhatsApp where opted in (38 parents) · SMS fallback (9 parents) · Cost: GHS 4.05 over the term · Stops automatically: when balance reaches zero." <b>Italic gold on every user-tunable value</b>; admin reads aloud and approves.</li>
+        <li><b>"Stops automatically: For each parent the moment their balance reaches zero"</b> is the most important sentence on the confirm card. <b>The series respects the audience semantics</b>: a paid parent stops getting reminded immediately, not at end of term. This is what saved-segment auto-recomputation enables.</li>
+        <li><b>Save bar in gold-bordered card with editorial summary</b>: "Activate this reminder series? First send fires <b>Friday 24 Oct at 9:00 AM</b> · you'll get a notification 1 hour before · pause any time." <b>Two-step pattern</b>: save draft now, activate when ready · same as bookkeeping settings activation.</li>
+        <li><b>Notification 1 hour before each send</b> — admin gets a heads-up before automated sends fire. <b>Last chance to intervene</b>; if something has changed in the school's situation (a tragedy, a fee waiver decision), admin can pause before the message goes out.</li>
+        <li><b>Cost is itemised honestly</b>: "GHS 4.05 over the term · 9 weekly fires × ~9 SMS · WA bundled". <b>Same SMS cost vocabulary as send-reminders flow</b>; admin sees marginal cost of automation as a small finite number, not a mystery operational expense.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
