@@ -9,3 +9,4 @@ export * from "./identity";
 export * from "./periods";
 export * from "./audit";
 export * from "./anomaly";
+export * from "./marketing";
