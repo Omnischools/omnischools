@@ -10,10 +10,11 @@ const NAV = [
   { href: "/fees", label: "Fees", icon: "F" },
   { href: "/attendance", label: "Attendance", icon: "T" },
   { href: "/gradebook", label: "Gradebook", icon: "G" },
+  { href: "/communication", label: "Communication", icon: "C" },
 ];
 
-// Roadmap items (later Phase 3 slices) — shown disabled to convey the shape.
-const SOON = [{ label: "Communication", icon: "C" }];
+// Roadmap items (later phases) — shown disabled to convey the shape.
+const SOON: { label: string; icon: string }[] = [];
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -49,20 +50,24 @@ export function AppSidebar() {
             </Link>
           );
         })}
-        <div className="px-3 pb-1 pt-5 text-[10px] font-semibold uppercase tracking-[0.12em] text-navy-3">
-          Coming soon
-        </div>
-        {SOON.map((item) => (
-          <span
-            key={item.label}
-            className="text-navy-3/60 flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm font-medium"
-          >
-            <span className="bg-bg text-navy-3/60 flex h-6 w-6 items-center justify-center rounded font-display text-xs italic">
-              {item.icon}
-            </span>
-            {item.label}
-          </span>
-        ))}
+        {SOON.length > 0 && (
+          <>
+            <div className="px-3 pb-1 pt-5 text-[10px] font-semibold uppercase tracking-[0.12em] text-navy-3">
+              Coming soon
+            </div>
+            {SOON.map((item) => (
+              <span
+                key={item.label}
+                className="text-navy-3/60 flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm font-medium"
+              >
+                <span className="bg-bg text-navy-3/60 flex h-6 w-6 items-center justify-center rounded font-display text-xs italic">
+                  {item.icon}
+                </span>
+                {item.label}
+              </span>
+            ))}
+          </>
+        )}
       </nav>
     </aside>
   );
