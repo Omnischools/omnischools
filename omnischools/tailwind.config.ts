@@ -20,6 +20,7 @@ const config: Config = {
           DEFAULT: "var(--navy)",
           2: "var(--navy-2)",
           3: "var(--navy-3)",
+          deep: "var(--navy-deep)",
         },
         gold: {
           DEFAULT: "var(--gold)",

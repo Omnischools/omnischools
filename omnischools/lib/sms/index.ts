@@ -1,4 +1,3 @@
-import "server-only";
 import { env } from "@/lib/env";
 import { normalizeGhanaPhone } from "@/lib/auth";
 

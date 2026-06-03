@@ -31,6 +31,16 @@ export const metadata: Metadata = {
     "Omnischools is a multi-tenant school-management system built for Ghanaian schools — admissions, fees, attendance, gradebook, and parent communication.",
   manifest: "/manifest.webmanifest",
   applicationName: "Omnischools",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://omnischools.gh"),
+  openGraph: {
+    type: "website",
+    siteName: "Omnischools",
+    locale: "en_GH",
+    title: "Omnischools — School management for Ghana",
+    description:
+      "Admissions, fees, attendance, gradebook, and parent communication for Ghanaian schools.",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

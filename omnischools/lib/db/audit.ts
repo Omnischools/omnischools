@@ -1,4 +1,3 @@
-import "server-only";
 import { auditLog } from "@/db/schema";
 import type { Tx } from "@/lib/db";
 
