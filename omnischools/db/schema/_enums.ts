@@ -114,3 +114,17 @@ export const paymentActorTypeEnum = pgEnum("payment_actor_type", [
   "WEBHOOK",
   "RECONCILIATION_JOB",
 ]);
+
+// Attendance
+export const attendanceStatusEnum = pgEnum("attendance_status", [
+  "PRESENT",
+  "ABSENT",
+  "LATE",
+  "EXCUSED",
+  "MEDICAL",
+]);
+export const correctionStatusEnum = pgEnum("correction_status", [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+]);

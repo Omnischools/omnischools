@@ -22,6 +22,7 @@
     "db:verify-onboarding": "tsx scripts/verify-onboarding.ts",
     "db:verify-admissions": "tsx scripts/verify-admissions.ts",
     "db:verify-payments": "tsx scripts/verify-payments.ts",
+    "db:verify-attendance": "tsx scripts/verify-attendance.ts",
     "db:setup": "drizzle-kit migrate && tsx scripts/apply-policies.ts && tsx db/seed/asankrangwa.ts"
   },
   "dependencies": {

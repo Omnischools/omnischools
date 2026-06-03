@@ -11,10 +11,26 @@ import {
 import { sexEnum, studentStatusEnum, guardianRelationEnum } from "./_enums";
 import { schools } from "./tenancy";
 
+/** A class/form students belong to (e.g. "JHS 1A"). Attendance is taken per class. */
+export const classes = pgTable(
+  "class",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    level: text("level"), // e.g. "JHS 1"
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ uniqName: unique("uniq_class_per_school").on(t.schoolId, t.name) }),
+);
+
 /**
  * The student is the central object — the single source of truth every module reads.
- * SHS-specific columns (programme/house/residency) are added in Phase 4; Basic leaves
- * `current_class_label` as free text until the classes table lands with attendance.
+ * SHS-specific columns (programme/house/residency) are added in Phase 4.
+ * `current_class_label` is kept as a display fallback alongside the class_id FK.
  */
 export const students = pgTable(
   "students",
@@ -30,7 +46,8 @@ export const students = pgTable(
     sex: sexEnum("sex").notNull(),
     dateOfBirth: date("date_of_birth"),
     status: studentStatusEnum("status").notNull().default("ACTIVE"),
-    currentClassLabel: text("current_class_label"), // placeholder until classes table
+    currentClassLabel: text("current_class_label"), // display fallback
+    classId: uuid("class_id").references(() => classes.id),
     enrolledOn: date("enrolled_on"),
     admissionApplicationId: uuid("admission_application_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

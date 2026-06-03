@@ -57,7 +57,10 @@ BEGIN
     'payment',
     'payment_allocation',
     'receipt',
-    'payment_audit_log'
+    'payment_audit_log',
+    'class',
+    'attendance_record',
+    'attendance_correction'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);
