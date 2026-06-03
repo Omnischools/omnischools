@@ -50,7 +50,14 @@ BEGIN
     'students',
     'student_guardian',
     'admission_application',
-    'admission_document'
+    'admission_document',
+    'fee_category',
+    'invoice',
+    'invoice_line_item',
+    'payment',
+    'payment_allocation',
+    'receipt',
+    'payment_audit_log'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);

@@ -7,11 +7,11 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "D" },
   { href: "/students", label: "Students", icon: "S" },
   { href: "/admissions", label: "Admissions", icon: "A" },
+  { href: "/fees", label: "Fees", icon: "F" },
 ];
 
 // Roadmap items (later Phase 3 slices) — shown disabled to convey the shape.
 const SOON = [
-  { label: "Fees", icon: "F" },
   { label: "Attendance", icon: "T" },
   { label: "Gradebook", icon: "G" },
   { label: "Communication", icon: "C" },

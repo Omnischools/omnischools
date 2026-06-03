@@ -12,3 +12,4 @@ export * from "./anomaly";
 export * from "./marketing";
 export * from "./students";
 export * from "./admissions";
+export * from "./fees";

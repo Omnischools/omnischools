@@ -60,3 +60,57 @@ export const admissionStatusEnum = pgEnum("admission_status", [
   "REJECTED",
   "WAITLISTED",
 ]);
+
+// Fees & payments (schoolup-payment-data-model)
+export const invoiceStatusEnum = pgEnum("invoice_status", [
+  "DRAFT",
+  "ISSUED",
+  "PARTIAL",
+  "PAID",
+  "OVERDUE",
+  "EXEMPT",
+  "VOIDED",
+]);
+export const paymentMethodEnum = pgEnum("payment_method", [
+  "MTN_MOMO",
+  "TELECEL_CASH",
+  "AIRTELTIGO_MONEY",
+  "BANK_TRANSFER",
+  "CASH",
+  "CHEQUE",
+  "OTHER",
+]);
+export const settlementStatusEnum = pgEnum("settlement_status", [
+  "PENDING",
+  "CONFIRMED",
+  "SETTLED",
+  "RECONCILED",
+  "DISPUTED",
+]);
+export const allocationTypeEnum = pgEnum("allocation_type", [
+  "INVOICE",
+  "CREDIT",
+  "REFUND",
+]);
+export const allocationMethodEnum = pgEnum("allocation_method", [
+  "MANUAL",
+  "AUTO_OLDEST_FIRST",
+  "AUTO_NEWEST_FIRST",
+]);
+export const paymentEventTypeEnum = pgEnum("payment_event_type", [
+  "CREATED",
+  "ALLOCATION_ADDED",
+  "ALLOCATION_VOIDED",
+  "SETTLED",
+  "VOIDED",
+  "SMS_SENT",
+  "SMS_FAILED",
+  "REFUNDED",
+  "DISCOUNT_OVERRIDDEN",
+]);
+export const paymentActorTypeEnum = pgEnum("payment_actor_type", [
+  "ADMIN",
+  "SYSTEM",
+  "WEBHOOK",
+  "RECONCILIATION_JOB",
+]);
