@@ -1,0 +1,24 @@
+# Local development Postgres for Omnischools.
+# Production uses Supabase Postgres (EU-West-2). This mirrors it locally so Drizzle
+# migrations + RLS behave the same. Start with:  docker compose up -d
+services:
+  postgres:
+    image: postgres:16
+    container_name: omnischools-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: omnischools
+      POSTGRES_PASSWORD: omnischools
+      POSTGRES_DB: omnischools_dev
+    ports:
+      - "55432:5432"
+    volumes:
+      - omnischools_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omnischools -d omnischools_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  omnischools_pgdata:

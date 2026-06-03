@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Attendance · settings &amp; calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+  min-height: 1880px;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main {
+  padding: 0;
+  background: var(--bg);
+}
+
+/* Settings sub-nav */
+.settings-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 36px 0;
+}
+.settings-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 8px;
+}
+.settings-head .crumb a { color: var(--gold); text-decoration: none; }
+.settings-head .head-row {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 18px;
+}
+.settings-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.settings-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.settings-head .lede {
+  font-size: 13px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.settings-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.settings-tabs {
+  display: flex;
+  gap: 0;
+  margin-top: 6px;
+}
+.settings-tab {
+  padding: 12px 16px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.settings-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--gold);
+}
+
+/* Term selector */
+.term-selector-row {
+  display: flex; align-items: center; gap: 14px;
+}
+.term-pill {
+  padding: 6px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--navy-3);
+  cursor: pointer;
+}
+.term-pill.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--bg);
+}
+.term-pill em { font-style: italic; color: var(--gold); }
+.term-pill.active em { color: var(--gold); }
+.term-pill .term-state {
+  font-size: 9px;
+  font-family: 'Manrope', sans-serif;
+  font-style: normal;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-left: 6px;
+  font-weight: 700;
+}
+.term-pill.active .term-state { color: rgba(232,212,184,0.7); }
+
+/* Default notice */
+.default-notice {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.default-notice .icon {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.default-notice .text {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.default-notice .text b { color: var(--navy); font-weight: 600; }
+.default-notice .text em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--gold);
+}
+.default-notice .reset-link {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+/* Settings content */
+.settings-body {
+  padding: 24px 36px 100px;
+}
+
+.region {
+  margin-bottom: 36px;
+}
+.region-head {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 16px;
+}
+.region-head .num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.region-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.region-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.region-head .meta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.region-head .meta b { color: var(--navy-2); }
+
+/* ============ REGION 1: SCHOOL CALENDAR ============ */
+.calendar-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Term boundaries strip */
+.term-boundary-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 14px;
+  padding: 18px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.boundary-cell .lbl {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.boundary-cell .val-row {
+  display: flex; align-items: baseline; gap: 6px;
+  margin-bottom: 2px;
+}
+.boundary-cell .val {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+}
+.boundary-cell .val.gold {
+  color: var(--gold);
+  font-style: italic;
+}
+.boundary-cell .progress {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy-3);
+}
+.boundary-cell .edit-link {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+/* Term visual strip */
+.calendar-strip-wrap {
+  padding: 22px 22px 18px;
+}
+.calendar-strip-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.calendar-strip-head .label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.calendar-strip-head .legend {
+  display: flex; gap: 14px;
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.legend-mini { display: inline-flex; align-items: center; gap: 5px; }
+.legend-swatch {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+.legend-swatch.school { background: var(--green); }
+.legend-swatch.weekend { background: var(--bg); border-color: var(--border-2); }
+.legend-swatch.holiday {
+  background-image: repeating-linear-gradient(45deg, var(--bg), var(--bg) 3px, var(--border-2) 3px, var(--border-2) 4px);
+  border-color: var(--border-2);
+}
+.legend-swatch.exam {
+  background: var(--gold);
+}
+.legend-swatch.future {
+  background: var(--surface);
+  border-style: dashed;
+  border-color: var(--border-2);
+}
+.legend-swatch.today {
+  background: var(--surface);
+  border: 2px solid var(--gold);
+}
+
+.calendar-strip {
+  display: flex; flex-direction: column;
+  gap: 4px;
+}
+.cal-week-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.cal-week-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: -0.005em;
+  color: var(--navy-2);
+  text-align: right;
+  padding-right: 8px;
+}
+.cal-week-label .week-num {
+  font-weight: 700;
+  color: var(--navy);
+}
+.cal-week-label .week-dates {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 1px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.cal-week-row.banner-row .cal-week-label {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.cal-days-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.cal-day {
+  height: 30px;
+  border-radius: 4px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  background: var(--green);
+  color: white;
+  cursor: pointer;
+  position: relative;
+}
+.cal-day.weekend {
+  background: var(--bg);
+  color: var(--navy-3);
+  font-weight: 500;
+  cursor: default;
+  border: 1px solid var(--border-2);
+}
+.cal-day.holiday {
+  background-image: repeating-linear-gradient(45deg, var(--bg), var(--bg) 3px, var(--border-2) 3px, var(--border-2) 4px);
+  color: var(--navy-3);
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  cursor: pointer;
+}
+.cal-day.exam {
+  background: var(--gold);
+  color: var(--navy);
+}
+.cal-day.future {
+  background: var(--surface);
+  border: 1px dashed var(--border-2);
+  color: var(--border-2);
+}
+.cal-day.today {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  z-index: 1;
+}
+
+.holiday-banner {
+  background: var(--bg);
+  border: 1px dashed var(--border-2);
+  border-radius: 4px;
+  padding: 5px 14px;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--navy-2);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 30px;
+}
+.holiday-banner .banner-name {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.exam-banner {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 4px;
+  padding: 5px 14px;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 30px;
+}
+.exam-banner .banner-name {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gold);
+  font-weight: 500;
+}
+
+/* Add holiday/exam button */
+.calendar-actions {
+  display: flex; gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.cal-action-btn {
+  padding: 7px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.cal-action-btn .ic {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--gold);
+}
+
+/* Holidays list */
+.holidays-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-top: 16px;
+  overflow: hidden;
+}
+.holidays-list-head {
+  padding: 12px 18px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-2);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.holidays-list-head b { color: var(--navy); }
+.holiday-row {
+  display: grid;
+  grid-template-columns: 80px 1fr auto auto;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.holiday-row:last-child { border-bottom: none; }
+.holiday-row .h-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy-2);
+}
+.holiday-row .h-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.holiday-row .h-name em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+}
+.holiday-row .h-type-tag {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 100px;
+}
+.holiday-row .h-type-tag.public {
+  background: var(--bg);
+  color: var(--navy-2);
+  border: 1px solid var(--border-2);
+}
+.holiday-row .h-type-tag.school {
+  background: var(--gold-bg);
+  color: var(--gold);
+}
+.holiday-row .h-type-tag.exam {
+  background: var(--gold);
+  color: var(--navy);
+}
+.holiday-row .h-actions {
+  display: flex; gap: 4px;
+}
+.h-act-btn {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+/* ============ REGION 2: DAILY SCHEDULE & MARKING ============ */
+.schedule-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 24px;
+}
+.schedule-card .schedule-headline {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  margin-bottom: 4px;
+}
+.schedule-card .schedule-headline em { font-style: italic; color: var(--gold); }
+.schedule-card .schedule-sub {
+  font-size: 12px;
+  color: var(--navy-3);
+  margin-bottom: 18px;
+}
+
+/* Time bar */
+.time-bar-wrap {
+  position: relative;
+  padding: 36px 8px 22px;
+  margin-bottom: 22px;
+}
+.time-bar {
+  height: 12px;
+  background: linear-gradient(90deg,
+    var(--bg) 0%,
+    var(--bg) 5%,
+    var(--green-bg) 15%,
+    var(--green) 22%,
+    var(--green) 92%,
+    var(--bg) 98%);
+  border-radius: 100px;
+  position: relative;
+  border: 1px solid var(--border);
+}
+.time-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 22px; height: 22px;
+  background: var(--surface);
+  border: 2.5px solid var(--navy);
+  border-radius: 50%;
+  z-index: 2;
+  cursor: pointer;
+}
+.time-marker.gold { border-color: var(--gold); }
+.time-marker.green { border-color: var(--green); }
+.time-marker.terra { border-color: var(--terra); }
+
+.time-marker-label {
+  position: absolute;
+  top: -38px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--navy);
+  white-space: nowrap;
+  background: var(--surface);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  z-index: 2;
+}
+.time-marker-sublabel {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Hour labels under bar */
+.time-bar-axis {
+  position: absolute;
+  left: 8px; right: 8px;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+
+/* Schedule controls grid */
+.schedule-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+.control-group {
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.control-group .ctl-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.control-group .ctl-help {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-style: italic;
+  line-height: 1.45;
+}
+.time-input {
+  padding: 10px 14px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.time-input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+/* Edit window stepper */
+.edit-window-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-top: 14px;
+}
+.edit-window-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+.edit-window-info .ew-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  margin-bottom: 3px;
+}
+.edit-window-info .ew-desc {
+  font-size: 12px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+.edit-window-info .ew-desc b { color: var(--navy-2); font-weight: 600; }
+
+.stepper {
+  display: flex;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-radius: 100px;
+  padding: 4px;
+  gap: 4px;
+}
+.stepper .step-btn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--navy);
+  cursor: pointer;
+}
+.stepper .step-val {
+  min-width: 100px;
+  text-align: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  padding: 0 8px;
+}
+.stepper .step-val em { font-style: italic; color: var(--gold); }
+
+/* ============ REGION 3: NOTIFICATIONS & ALERTS ============ */
+.alerts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.alert-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 22px;
+}
+.alert-card .ac-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.alert-card h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-bottom: 6px;
+}
+.alert-card h3 em { font-style: italic; color: var(--gold); }
+.alert-card .ac-desc {
+  font-size: 12px;
+  color: var(--navy-3);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+/* Toggle row */
+.toggle-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+.toggle-row:first-of-type { border-top: none; }
+.toggle-row .t-info .t-name {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 2px;
+  color: var(--navy);
+}
+.toggle-row .t-info .t-desc {
+  font-size: 11px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+.toggle-row .t-info .t-desc b { color: var(--navy-2); font-weight: 600; }
+
+.toggle-pill {
+  width: 44px; height: 24px;
+  background: var(--border-2);
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+.toggle-pill.on {
+  background: var(--green);
+}
+.toggle-pill::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px; height: 18px;
+  background: var(--surface);
+  border-radius: 50%;
+  transition: left 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.toggle-pill.on::after { left: 23px; }
+
+.toggle-row .t-cost {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.toggle-row .t-cost b { color: var(--navy-2); }
+
+/* Threshold rules - similar to alerts file */
+.threshold-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.threshold-block .tb-title {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.threshold-block .tb-title .icon {
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+  color: white;
+}
+.threshold-block .tb-title .icon.long { background: var(--terra); }
+.threshold-block .tb-title .icon.below { background: var(--warn); }
+.threshold-block .tb-title .icon.pattern { background: var(--gold); color: var(--navy); }
+
+.threshold-rule-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--surface);
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+.threshold-rule-row:last-child { margin-bottom: 0; }
+.threshold-rule-row .r-severity-pill {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.threshold-rule-row .r-severity-pill.watching {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.threshold-rule-row .r-severity-pill.critical {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.threshold-rule-row .r-text {
+  font-size: 11px;
+  color: var(--navy-2);
+}
+.threshold-rule-row .r-text b { color: var(--navy); font-weight: 600; }
+
+/* Mini stepper */
+.mini-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+}
+.mini-stepper .mini-btn {
+  width: 22px; height: 22px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: none;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--navy);
+  cursor: pointer;
+}
+.mini-stepper .mini-val {
+  min-width: 50px;
+  text-align: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 0 4px;
+  color: var(--gold);
+  font-style: italic;
+}
+
+/* Digest preferences */
+.digest-prefs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.channel-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+.channel-row:first-of-type { border-top: none; }
+.channel-row .ch-icon {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.channel-row .ch-icon.email {
+  background: var(--bg);
+  color: var(--navy);
+  border: 1.5px solid var(--border-2);
+}
+.channel-row .ch-icon.wa {
+  background: var(--wa-green);
+  color: white;
+}
+.channel-row .ch-icon.in-app {
+  background: var(--navy);
+  color: var(--gold);
+}
+.channel-row .ch-info .ch-name {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--navy);
+}
+.channel-row .ch-info .ch-detail {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.channel-row .ch-info .ch-detail b { color: var(--navy-2); font-weight: 600; }
+
+/* Time picker mini */
+.time-input-mini {
+  padding: 6px 10px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  width: 80px;
+  text-align: center;
+}
+
+/* ============ FOOTER (sticky save bar) ============ */
+.save-bar {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 16px 36px;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 14px;
+  margin: 0 -36px -100px;
+  box-shadow: 0 -8px 24px -8px rgba(26,43,71,0.12);
+}
+.save-bar .left-info {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.save-bar .left-info .changes {
+  display: inline-block;
+  background: var(--terra-bg);
+  color: var(--terra);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-right: 6px;
+}
+.save-bar .left-info b {
+  font-family: 'Fraunces', serif;
+  color: var(--navy);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+}
+.save-bar .actions {
+  display: flex; gap: 8px;
+}
+.btn {
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); font-weight: 700; }
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .alerts-grid { grid-template-columns: 1fr; }
+  .schedule-controls { grid-template-columns: 1fr; }
+  .term-boundary-strip { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Attendance · Settings &amp; calendar</div>
+  <h1 class="display">The runtime, <em>configured</em></h1>
+  <div class="gold-rule"></div>
+  <p>Every default in the attendance system traces back here. The 3 PM SMS, the 24-hour edit window, the 70% threshold for the Below 70% flag, the 7:30 AM digest — all of these are values the headmistress sets once at the start of the term. Three regions in priority of how often they get touched: school calendar at the top, daily schedule in the middle, notifications and alert rules at the bottom.</p>
+</header>
+
+<!-- ============ SETTINGS + CALENDAR ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Attendance settings · admin configuration</div>
+    <div class="section-meta">Florence Addo · Term 1 · Day 47 of 62</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / attendance</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+
+          <!-- HEAD -->
+          <div class="settings-head">
+            <div class="crumb"><a href="#">Settings</a> / Attendance</div>
+            <div class="head-row">
+              <div>
+                <h1 class="display">Attendance <em>settings</em></h1>
+                <div class="lede">School calendar, daily schedule, and the rules that drive flags &amp; SMS · last edited <b>3 weeks ago</b> by Florence</div>
+              </div>
+              <div class="term-selector-row">
+                <div class="term-pill">Term 3 <em>2024/25</em><span class="term-state">read-only</span></div>
+                <div class="term-pill active">Term 1 <em>2025/26</em><span class="term-state">current</span></div>
+                <div class="term-pill">Term 2 <em>2025/26</em><span class="term-state">draft</span></div>
+              </div>
+            </div>
+            <div class="settings-tabs">
+              <div class="settings-tab">School info</div>
+              <div class="settings-tab">Branding</div>
+              <div class="settings-tab">Billing</div>
+              <div class="settings-tab active">Attendance</div>
+              <div class="settings-tab">Notifications</div>
+              <div class="settings-tab">Roles &amp; access</div>
+              <div class="settings-tab">SMS &amp; WhatsApp</div>
+              <div class="settings-tab">Integrations</div>
+            </div>
+          </div>
+
+          <!-- BODY -->
+          <div class="settings-body">
+
+            <div class="default-notice">
+              <div class="icon">i</div>
+              <div class="text">
+                <b>These are the Omnischools recommended defaults.</b> We've calibrated them for typical Ghanaian basic schools — change them only if you have a reason. Hover any setting for an explainer of what it controls. <em>Defaults are auditable</em>; admins reviewing later can see what's been changed.
+              </div>
+              <button class="reset-link">Reset to defaults</button>
+            </div>
+
+            <!-- ============ REGION 1 — SCHOOL CALENDAR ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">School <em>calendar</em></h2>
+                <div class="meta">Term 1 · <b>15 Sep 2025 — 19 Dec 2025</b></div>
+              </div>
+
+              <div class="calendar-card">
+
+                <!-- Term boundaries -->
+                <div class="term-boundary-strip">
+                  <div class="boundary-cell">
+                    <div class="lbl">Term begins</div>
+                    <div class="val-row">
+                      <div class="val">Mon <span class="gold">15 Sep 2025</span></div>
+                    </div>
+                    <div class="progress">school days <b>started</b></div>
+                    <a class="edit-link">Edit →</a>
+                  </div>
+                  <div class="boundary-cell">
+                    <div class="lbl">Term ends</div>
+                    <div class="val-row">
+                      <div class="val">Fri <span class="gold">19 Dec 2025</span></div>
+                    </div>
+                    <div class="progress">15 weeks · 62 school days</div>
+                    <a class="edit-link">Edit →</a>
+                  </div>
+                  <div class="boundary-cell">
+                    <div class="lbl">Days marked so far</div>
+                    <div class="val-row">
+                      <div class="val">47 <span class="gold">of 62</span></div>
+                    </div>
+                    <div class="progress">76% through term</div>
+                  </div>
+                  <div class="boundary-cell">
+                    <div class="lbl">Holidays &amp; closures</div>
+                    <div class="val-row">
+                      <div class="val">5 <span class="gold">noted</span></div>
+                    </div>
+                    <div class="progress">3 public · 1 mid-term · 1 sports</div>
+                  </div>
+                </div>
+
+                <!-- Calendar visual -->
+                <div class="calendar-strip-wrap">
+                  <div class="calendar-strip-head">
+                    <div class="label">Term at a glance</div>
+                    <div class="legend">
+                      <div class="legend-mini"><div class="legend-swatch school"></div>School day</div>
+                      <div class="legend-mini"><div class="legend-swatch weekend"></div>Weekend</div>
+                      <div class="legend-mini"><div class="legend-swatch holiday"></div>Holiday</div>
+                      <div class="legend-mini"><div class="legend-swatch exam"></div>Exam week</div>
+                      <div class="legend-mini"><div class="legend-swatch future"></div>Future</div>
+                      <div class="legend-mini"><div class="legend-swatch today"></div>Today</div>
+                    </div>
+                  </div>
+
+                  <div class="calendar-strip">
+
+                    <!-- Week 1: 15-21 Sep -->
+                    <div class="cal-week-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Wk 1</div>
+                        <div class="week-dates">15 Sep</div>
+                      </div>
+                      <div class="cal-days-row">
+                        <div class="cal-day">M</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day">W</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day">F</div>
+                        <div class="cal-day weekend">S</div>
+                        <div class="cal-day weekend">S</div>
+                      </div>
+                    </div>
+
+                    <!-- Week 2-3 collapsed -->
+                    <div class="cal-week-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Wk 2</div>
+                        <div class="week-dates">22 Sep</div>
+                      </div>
+                      <div class="cal-days-row">
+                        <div class="cal-day">M</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day">W</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day">F</div>
+                        <div class="cal-day weekend">S</div>
+                        <div class="cal-day weekend">S</div>
+                      </div>
+                    </div>
+
+                    <!-- Week 3: with public holiday Wed -->
+                    <div class="cal-week-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Wk 3</div>
+                        <div class="week-dates">29 Sep</div>
+                      </div>
+                      <div class="cal-days-row">
+                        <div class="cal-day">M</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day">W</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day">F</div>
+                        <div class="cal-day weekend">S</div>
+                        <div class="cal-day weekend">S</div>
+                      </div>
+                    </div>
+
+                    <!-- Holiday banner: Founders' Day -->
+                    <div class="cal-week-row banner-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Tue</div>
+                        <div class="week-dates">21 Oct</div>
+                      </div>
+                      <div class="holiday-banner">
+                        <div class="banner-name">Founders' Day</div>
+                        · public holiday · school closed
+                      </div>
+                    </div>
+
+                    <!-- Week 6 -->
+                    <div class="cal-week-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Wk 6</div>
+                        <div class="week-dates">20 Oct</div>
+                      </div>
+                      <div class="cal-days-row">
+                        <div class="cal-day">M</div>
+                        <div class="cal-day holiday">21</div>
+                        <div class="cal-day">W</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day">F</div>
+                        <div class="cal-day weekend">S</div>
+                        <div class="cal-day weekend">S</div>
+                      </div>
+                    </div>
+
+                    <!-- Mid-term break banner -->
+                    <div class="cal-week-row banner-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Mid</div>
+                        <div class="week-dates">3-7 Nov</div>
+                      </div>
+                      <div class="holiday-banner">
+                        <div class="banner-name">Mid-term break</div>
+                        · 5 school days · whole week off
+                      </div>
+                    </div>
+
+                    <!-- Week 9-10: normal -->
+                    <div class="cal-week-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Wk 9</div>
+                        <div class="week-dates">10 Nov</div>
+                      </div>
+                      <div class="cal-days-row">
+                        <div class="cal-day">M</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day">W</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day">F</div>
+                        <div class="cal-day weekend">S</div>
+                        <div class="cal-day weekend">S</div>
+                      </div>
+                    </div>
+
+                    <!-- Sports day banner -->
+                    <div class="cal-week-row banner-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Fri</div>
+                        <div class="week-dates">21 Nov</div>
+                      </div>
+                      <div class="holiday-banner">
+                        <div class="banner-name">Sports Day</div>
+                        · school event · attendance auto-marked
+                      </div>
+                    </div>
+
+                    <!-- Week 11 with Sports day Friday -->
+                    <div class="cal-week-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Wk 11</div>
+                        <div class="week-dates">17 Nov</div>
+                      </div>
+                      <div class="cal-days-row">
+                        <div class="cal-day">M</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day">W</div>
+                        <div class="cal-day">T</div>
+                        <div class="cal-day holiday">21</div>
+                        <div class="cal-day weekend">S</div>
+                        <div class="cal-day weekend">S</div>
+                      </div>
+                    </div>
+
+                    <!-- Exam week banner -->
+                    <div class="cal-week-row banner-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Wk 13</div>
+                        <div class="week-dates">1-5 Dec</div>
+                      </div>
+                      <div class="exam-banner">
+                        <div class="banner-name">End-of-term exams</div>
+                        · 5 days · attendance still tracked
+                      </div>
+                    </div>
+
+                    <!-- Week 13: exam -->
+                    <div class="cal-week-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Wk 13</div>
+                        <div class="week-dates">1 Dec</div>
+                      </div>
+                      <div class="cal-days-row">
+                        <div class="cal-day exam">M</div>
+                        <div class="cal-day exam">T</div>
+                        <div class="cal-day exam">W</div>
+                        <div class="cal-day exam">T</div>
+                        <div class="cal-day exam">F</div>
+                        <div class="cal-day weekend">S</div>
+                        <div class="cal-day weekend">S</div>
+                      </div>
+                    </div>
+
+                    <!-- Week 14: future -->
+                    <div class="cal-week-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Wk 14</div>
+                        <div class="week-dates">8 Dec</div>
+                      </div>
+                      <div class="cal-days-row">
+                        <div class="cal-day future">M</div>
+                        <div class="cal-day future">T</div>
+                        <div class="cal-day future">W</div>
+                        <div class="cal-day future">T</div>
+                        <div class="cal-day future">F</div>
+                        <div class="cal-day weekend">S</div>
+                        <div class="cal-day weekend">S</div>
+                      </div>
+                    </div>
+
+                    <!-- Week 15: future, term ends -->
+                    <div class="cal-week-row">
+                      <div class="cal-week-label">
+                        <div class="week-num">Wk 15</div>
+                        <div class="week-dates">15 Dec</div>
+                      </div>
+                      <div class="cal-days-row">
+                        <div class="cal-day future">M</div>
+                        <div class="cal-day future">T</div>
+                        <div class="cal-day future">W</div>
+                        <div class="cal-day future">T</div>
+                        <div class="cal-day future">19</div>
+                        <div class="cal-day weekend">S</div>
+                        <div class="cal-day weekend">S</div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                <!-- Calendar actions -->
+                <div class="calendar-actions">
+                  <button class="cal-action-btn"><span class="ic">+</span>Add holiday</button>
+                  <button class="cal-action-btn"><span class="ic">+</span>Add school event</button>
+                  <button class="cal-action-btn"><span class="ic">+</span>Add exam week</button>
+                  <button class="cal-action-btn" style="margin-left:auto"><span class="ic">↓</span>Import GES public holidays</button>
+                </div>
+              </div>
+
+              <!-- Holidays list -->
+              <div class="holidays-list">
+                <div class="holidays-list-head">
+                  <div><b>5 holidays &amp; events</b> in Term 1</div>
+                  <div style="font-size:10px;color:var(--navy-3);font-style:italic">Sorted by date</div>
+                </div>
+
+                <div class="holiday-row">
+                  <div class="h-date">21 OCT</div>
+                  <div class="h-name display">Founders' <em>Day</em></div>
+                  <div class="h-type-tag public">Public holiday</div>
+                  <div class="h-actions">
+                    <button class="h-act-btn">✎</button>
+                    <button class="h-act-btn">×</button>
+                  </div>
+                </div>
+
+                <div class="holiday-row">
+                  <div class="h-date">3—7 NOV</div>
+                  <div class="h-name display">Mid-term <em>break</em></div>
+                  <div class="h-type-tag school">School-set</div>
+                  <div class="h-actions">
+                    <button class="h-act-btn">✎</button>
+                    <button class="h-act-btn">×</button>
+                  </div>
+                </div>
+
+                <div class="holiday-row">
+                  <div class="h-date">21 NOV</div>
+                  <div class="h-name display">Sports <em>Day</em></div>
+                  <div class="h-type-tag school">School event</div>
+                  <div class="h-actions">
+                    <button class="h-act-btn">✎</button>
+                    <button class="h-act-btn">×</button>
+                  </div>
+                </div>
+
+                <div class="holiday-row">
+                  <div class="h-date">1—5 DEC</div>
+                  <div class="h-name display">End-of-term <em>exams</em></div>
+                  <div class="h-type-tag exam">Exam week</div>
+                  <div class="h-actions">
+                    <button class="h-act-btn">✎</button>
+                    <button class="h-act-btn">×</button>
+                  </div>
+                </div>
+
+                <div class="holiday-row">
+                  <div class="h-date">25 DEC</div>
+                  <div class="h-name display">Christmas <em>Day</em></div>
+                  <div class="h-type-tag public">Public holiday</div>
+                  <div class="h-actions">
+                    <button class="h-act-btn">✎</button>
+                    <button class="h-act-btn">×</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 2 — DAILY SCHEDULE & MARKING ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display">Daily schedule &amp; <em>marking</em></h2>
+                <div class="meta">When the school day starts and ends · how late is "late"</div>
+              </div>
+
+              <div class="schedule-card">
+                <div class="schedule-headline display">A <em>typical</em> day at Christ the King</div>
+                <div class="schedule-sub">Drag the markers to adjust, or edit times directly below</div>
+
+                <!-- Time bar with markers -->
+                <div class="time-bar-wrap">
+                  <div class="time-bar"></div>
+
+                  <!-- 8:00 AM start -->
+                  <div class="time-marker green" style="left:22%">
+                    <div class="time-marker-label">8:00 AM</div>
+                    <div class="time-marker-sublabel">Day starts</div>
+                  </div>
+
+                  <!-- 8:15 AM late threshold -->
+                  <div class="time-marker gold" style="left:30%">
+                    <div class="time-marker-label">8:15 AM</div>
+                    <div class="time-marker-sublabel">Late after</div>
+                  </div>
+
+                  <!-- 3:00 PM dismissal -->
+                  <div class="time-marker terra" style="left:88%">
+                    <div class="time-marker-label">3:00 PM</div>
+                    <div class="time-marker-sublabel">Day ends</div>
+                  </div>
+
+                  <!-- Hour axis -->
+                  <div class="time-bar-axis">
+                    <div>6 AM</div>
+                    <div>8 AM</div>
+                    <div>10 AM</div>
+                    <div>12 PM</div>
+                    <div>2 PM</div>
+                    <div>4 PM</div>
+                    <div>6 PM</div>
+                  </div>
+                </div>
+
+                <!-- Schedule controls -->
+                <div class="schedule-controls">
+                  <div class="control-group">
+                    <div class="ctl-label">School day starts</div>
+                    <input type="text" class="time-input" value="08:00 AM" />
+                    <div class="ctl-help">Time before which students must arrive to be marked Present.</div>
+                  </div>
+                  <div class="control-group">
+                    <div class="ctl-label">Late threshold</div>
+                    <input type="text" class="time-input" value="08:15 AM" />
+                    <div class="ctl-help">Students arriving after this are marked Late instead of Present. <b>15 minutes</b> grace period from start.</div>
+                  </div>
+                  <div class="control-group">
+                    <div class="ctl-label">School day ends</div>
+                    <input type="text" class="time-input" value="03:00 PM" />
+                    <div class="ctl-help">Used for the daily 3 PM auto-SMS that goes to absent students' guardians.</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Edit window -->
+              <div class="edit-window-card">
+                <div class="edit-window-row">
+                  <div class="edit-window-info">
+                    <div class="ew-label display">Register edit <em>window</em></div>
+                    <div class="ew-desc">After a register is submitted, teachers can edit it freely for this long. After the window closes, edits require <b>your approval</b> through the edit-request flow.</div>
+                  </div>
+                  <div class="stepper">
+                    <button class="step-btn">−</button>
+                    <div class="step-val display">24 <em>hours</em></div>
+                    <button class="step-btn">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 3 — NOTIFICATIONS & ALERTS ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">03</div>
+                <h2 class="display">Notifications &amp; <em>alert rules</em></h2>
+                <div class="meta">What the system says to whom, when</div>
+              </div>
+
+              <div class="alerts-grid">
+
+                <!-- LEFT: SMS to parents -->
+                <div class="alert-card">
+                  <div class="ac-eyebrow">SMS to parents</div>
+                  <h3 class="display">When to <em>auto-message</em> guardians</h3>
+                  <div class="ac-desc">Short SMS that go automatically to a guardian's phone when their child's attendance changes. Each costs <b>GHS 0.05</b> per recipient · sent through your school's SMS account.</div>
+
+                  <div class="toggle-row">
+                    <div class="t-info">
+                      <div class="t-name">Absence SMS · 3:00 PM same day</div>
+                      <div class="t-desc">"James was absent today. Please contact the school if there is a reason." Sent to all guardians of absent students at end of day.</div>
+                      <div class="t-cost">~<b>20 students/day</b> on average · GHS 1 / day</div>
+                    </div>
+                    <div class="toggle-pill on"></div>
+                  </div>
+
+                  <div class="toggle-row">
+                    <div class="t-info">
+                      <div class="t-name">Late-arrival SMS</div>
+                      <div class="t-desc">"James arrived at 8:31 AM today (15 min late)." Most schools leave this <b>off</b> — late arrivals are usually known by guardians.</div>
+                      <div class="t-cost">would add ~<b>3 students/day</b> · GHS 0.15 / day</div>
+                    </div>
+                    <div class="toggle-pill"></div>
+                  </div>
+
+                  <div class="toggle-row">
+                    <div class="t-info">
+                      <div class="t-name">Reassurance SMS</div>
+                      <div class="t-desc">"James was at school today and on time." Sent daily to all guardians whose child was present. <b>High SMS cost</b> — most schools leave off.</div>
+                      <div class="t-cost">would add ~<b>290 students/day</b> · GHS 14.50 / day</div>
+                    </div>
+                    <div class="toggle-pill"></div>
+                  </div>
+
+                  <div class="toggle-row">
+                    <div class="t-info">
+                      <div class="t-name">Auto-correction SMS on retroactive changes</div>
+                      <div class="t-desc">When admin approves an edit request that changes a recorded absence, send a brief correction SMS to the guardian.</div>
+                    </div>
+                    <div class="toggle-pill on"></div>
+                  </div>
+                </div>
+
+                <!-- RIGHT: Flag thresholds -->
+                <div class="alert-card">
+                  <div class="ac-eyebrow">Pattern detection</div>
+                  <h3 class="display">When the system <em>flags</em> a student</h3>
+                  <div class="ac-desc">Three categories of flags. The system evaluates them at end of day, after registers close. New flags appear next morning in your dashboard and digest.</div>
+
+                  <div class="threshold-block">
+                    <div class="tb-title"><div class="icon long">L</div>Long absence</div>
+                    <div class="threshold-rule-row">
+                      <div class="r-severity-pill watching">Watching</div>
+                      <div class="r-text">at <b>3+</b> consecutive absent days</div>
+                      <div class="mini-stepper">
+                        <button class="mini-btn">−</button>
+                        <div class="mini-val">3 d</div>
+                        <button class="mini-btn">+</button>
+                      </div>
+                    </div>
+                    <div class="threshold-rule-row">
+                      <div class="r-severity-pill critical">Critical</div>
+                      <div class="r-text">at <b>5+</b> consecutive absent days</div>
+                      <div class="mini-stepper">
+                        <button class="mini-btn">−</button>
+                        <div class="mini-val">5 d</div>
+                        <button class="mini-btn">+</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="threshold-block">
+                    <div class="tb-title"><div class="icon below">B</div>Below threshold</div>
+                    <div class="threshold-rule-row">
+                      <div class="r-severity-pill watching">Watching</div>
+                      <div class="r-text">term attendance drops below <b>70%</b></div>
+                      <div class="mini-stepper">
+                        <button class="mini-btn">−</button>
+                        <div class="mini-val">70%</div>
+                        <button class="mini-btn">+</button>
+                      </div>
+                    </div>
+                    <div class="threshold-rule-row">
+                      <div class="r-severity-pill critical">Critical</div>
+                      <div class="r-text">term attendance drops below <b>60%</b></div>
+                      <div class="mini-stepper">
+                        <button class="mini-btn">−</button>
+                        <div class="mini-val">60%</div>
+                        <button class="mini-btn">+</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="threshold-block">
+                    <div class="tb-title"><div class="icon pattern">P</div>Pattern shift</div>
+                    <div class="threshold-rule-row">
+                      <div class="r-severity-pill watching">Watching</div>
+                      <div class="r-text">drop of <b>30%+</b> over rolling 14 days</div>
+                      <div class="mini-stepper">
+                        <button class="mini-btn">−</button>
+                        <div class="mini-val">30%</div>
+                        <button class="mini-btn">+</button>
+                      </div>
+                    </div>
+                    <div class="threshold-rule-row">
+                      <div class="r-severity-pill watching">Watching</div>
+                      <div class="r-text">same-day-of-week pattern · <b>4 of 6</b></div>
+                      <div class="mini-stepper">
+                        <button class="mini-btn">−</button>
+                        <div class="mini-val">4/6</div>
+                        <button class="mini-btn">+</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Digest preferences (full-width) -->
+              <div class="alert-card" style="margin-top:14px">
+                <div class="ac-eyebrow">Daily digest · for you</div>
+                <h3 class="display">When and where you'll get the <em>morning briefing</em></h3>
+                <div class="ac-desc">A summary of yesterday's attendance, new flags, and anything still being watched. Delivered before students arrive.</div>
+
+                <div class="digest-prefs">
+                  <div class="channel-row">
+                    <div class="ch-icon email">@</div>
+                    <div class="ch-info">
+                      <div class="ch-name">Email digest</div>
+                      <div class="ch-detail">Sent to <b>florence.addo@christtheking.edu.gh</b></div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                      <input type="text" class="time-input-mini" value="07:30 AM" />
+                      <div class="toggle-pill on"></div>
+                    </div>
+                  </div>
+                  <div class="channel-row">
+                    <div class="ch-icon wa">W</div>
+                    <div class="ch-info">
+                      <div class="ch-name">WhatsApp digest</div>
+                      <div class="ch-detail">Sent to <b>+233 24 555 0100</b> · counts as 1 conversation per day</div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                      <input type="text" class="time-input-mini" value="07:30 AM" />
+                      <div class="toggle-pill"></div>
+                    </div>
+                  </div>
+                  <div class="channel-row">
+                    <div class="ch-icon in-app">↪</div>
+                    <div class="ch-info">
+                      <div class="ch-name">In-app notification feed</div>
+                      <div class="ch-detail">Bell icon in the header · <b>always on</b></div>
+                    </div>
+                    <div class="toggle-pill on" style="opacity:0.5;cursor:not-allowed"></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- SAVE BAR -->
+          <div class="save-bar">
+            <div class="left-info">
+              <span class="changes">3 unsaved changes</span>
+              <b>Edit window: 24h → 48h · Late SMS: off → on · Below 70% threshold: 70% → 75%</b>
+            </div>
+            <div class="actions">
+              <button class="btn">Discard</button>
+              <button class="btn primary">Save changes</button>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Three regions, vertically stacked, in priority of how often they get touched.</b> Calendar at the top because it changes every term; daily schedule in the middle because it's set once per school; alert rules at the bottom because they're the policy decisions that ripple through everything else but rarely change. <b>The page architecture itself reflects how often each region needs attention</b>.</li>
+        <li><b>Term selector at the top: 3 pills.</b> "Term 3 2024/25 · read-only" / "Term 1 2025/26 · current" (active) / "Term 2 2025/26 · draft." Past terms are auditable but not editable; current is editable; future term is a draft. <b>Schools plan ahead</b> — the headmistress draws up Term 2's calendar in November, knowing she'll switch to it on Day 1 of January.</li>
+        <li><b>Default notice in gold-tinted card at the top of the body.</b> "These are the Omnischools recommended defaults. We've calibrated them for typical Ghanaian basic schools — change them only if you have a reason." <b>Permission to leave things alone</b>. A non-confident admin can read this, decide they don't need to change anything, and close the page. The "Reset to defaults" button on the right gives admins who've broken something a way back.</li>
+        <li><b>Region 1 — Term boundary strip in 4 cells</b>: Term begins / Term ends / Days marked / Holidays noted. The first two are editable date fields; the last two are computed read-only. <b>Boundaries vs progress vs config</b> all visible on the same horizontal strip — admin sees the term as a temporal whole.</li>
+        <li><b>"Days marked: 47 of 62 · 76% through term"</b> isn't editable but contextualises the calendar. Admin reading this knows the term is 76% done and 15 school days remain. Helps with planning ("can I add a sports day in week 13?" — well, that's exam week, so no).</li>
+        <li><b>Calendar visual is the centrepiece of Region 1</b> — week strips with day cells. Same vocabulary as the term grid in the desktop teacher view: green school days, dashed weekend tiles, hatched holiday days, gold exam days, dashed-border future days. <b>Visual continuity</b> means admin already knows how to read this; it's the same drawing they see everywhere else.</li>
+        <li><b>Holidays/events appear as full-width banners between week rows.</b> "Founders' Day · public holiday · school closed" / "Mid-term break · 5 school days · whole week off" / "Sports Day · school event · attendance auto-marked" / "End-of-term exams · 5 days · attendance still tracked." <b>Each banner has a name in italic Fraunces gold</b> + a one-line plain English explanation of what it means operationally.</li>
+        <li><b>Banner text answers "what does this mean for attendance?"</b> Founders' Day → school closed (no register). Mid-term break → no register, no SMS. Sports Day → register is auto-marked Present for everyone (excursion mode). End-of-term exams → registers continue as normal. The banners aren't decorative; they're operational guidance.</li>
+        <li><b>Calendar action bar at the bottom: 4 buttons.</b> Add holiday / Add school event / Add exam week / Import GES public holidays. <b>The fourth button is the most important</b> — most public holidays are gazetted nationally, so importing from GES saves the headmistress from typing them in by hand. The system pulls them and she just confirms.</li>
+        <li><b>Holidays list below the calendar visual</b> in chronological order. Each row: date in mono caps / name in display Fraunces / type tag (Public holiday / School-set / School event / Exam week) / edit + delete actions. <b>The list is the editable record</b>; the visual above is the readable rendering. Both views of the same data.</li>
+        <li><b>Type tag colour-coding:</b> Public holiday in neutral grey (not changeable, set by national government), School-set in gold-tinted (school decision), School event in gold-bg (operational), Exam week in saturated gold (special). <b>Visual hierarchy</b> matches editorial control — public holidays are external authority, others are school choices.</li>
+        <li><b>Region 2 — "A typical day at Christ the King" headline</b> in display Fraunces. Personalises the configuration. Admin reading this isn't editing abstract settings; she's describing how her school works.</li>
+        <li><b>Time bar with three markers: 8:00 AM (green), 8:15 AM (gold), 3:00 PM (terra).</b> Same colour logic as the rest of the system — green for "all good," gold for "late," terra for "ended." Admin can drag markers or edit time inputs below. <b>The visual is teaching</b>: the colours show that "late" is in the gold zone (between school-start and end-of-school), not before or after.</li>
+        <li><b>Hour axis at the bottom (6 AM → 6 PM)</b> in mono. Admin who wants to add a new marker (e.g., "afternoon registration at 1 PM") can position it. The axis shows the temporal scale clearly.</li>
+        <li><b>Three time inputs below the bar</b> with each one paired to a help text. "Time before which students must arrive to be marked Present" / "Students arriving after this are marked Late instead of Present. 15 minutes grace period from start" / "Used for the daily 3 PM auto-SMS that goes to absent students' guardians." <b>Each setting explains its consequence</b>, not just its value.</li>
+        <li><b>Edit window stepper</b> in its own card. "Register edit window · 24 hours" with stepper buttons. <b>The stepper is gold</b> for the value (24 hours) — same convention as the threshold rules, same visual idiom of "this is the tunable thing." The card stands alone because edit window is conceptually separate from time-of-day settings.</li>
+        <li><b>Region 3 — Notifications &amp; alerts split into 3 cards.</b> SMS to parents (left) / Pattern detection (right) / Daily digest (full-width below). Each card has an eyebrow + display headline + descriptive lede + the actual controls. <b>Headlines tell the story</b>: "When to auto-message guardians" / "When the system flags a student" / "When and where you'll get the morning briefing."</li>
+        <li><b>SMS toggles show real cost figures inline</b>: "~20 students/day on average · GHS 1 / day" / "would add ~3 students/day · GHS 0.15 / day" / "would add ~290 students/day · GHS 14.50 / day." <b>Cost transparency for honest decision-making</b> — admin considering reassurance SMS sees the GHS 14.50/day figure (~ GHS 90/week, ~ GHS 1,200/term) and can decide if it's worth it.</li>
+        <li><b>Description language acknowledges convention.</b> "Most schools leave this off — late arrivals are usually known by guardians." <b>Soft guidance</b> rather than hard "we recommend off." Admin who has a reason to enable it isn't being lectured; admin who's unsure has a default to fall back on.</li>
+        <li><b>Toggle pills are simple on/off, not multi-state.</b> Green when on, grey when off, with the dot sliding. <b>No tri-state, no "send only on weekdays," no "send to specific parents."</b> Complexity is in the rules, not the toggles. If admins need conditional SMS, that's a future feature.</li>
+        <li><b>Pattern detection card replays the threshold rules from the alerts file</b> but with steppers. Each rule is a row: severity pill / plain-text rule / stepper for the threshold. <b>Same rules everyone has seen, now editable</b>. Admin can lower "Long absence: Watching" from 3 days to 2 days if their school wants tighter detection.</li>
+        <li><b>Mini-stepper with gold italic value</b> ("3 d", "70%", "4/6"). Same Fraunces italic gold as everywhere else for the user-tunable parameter. Visual signature: italic gold = "this is the lever you can pull."</li>
+        <li><b>Digest preferences card with three channels: Email / WhatsApp / In-app feed.</b> Each row has icon + channel name + detail (recipient address, cost note) + time input + toggle. <b>Email is on by default</b> at 07:30 AM; WhatsApp is off (extra cost); in-app feed is forced-on (greyed toggle, "always on"). The forced-on state is honest — bell-icon notifications are core, not optional.</li>
+        <li><b>"Counts as 1 conversation per day" on WhatsApp digest</b> reminds admin that WhatsApp Business has conversation pricing. Enabling daily WhatsApp digest = ~30 conversations/month. Headmistress sees the operational consequence, not just the toggle.</li>
+        <li><b>Sticky save bar at the bottom</b> with "3 unsaved changes" terra pill + a summary of the changes ("Edit window: 24h → 48h · Late SMS: off → on · Below 70% threshold: 70% → 75%"). <b>The summary is precise</b> — admin sees exactly what's about to change before clicking Save. Discard reverts. <b>No silent auto-save</b> on settings this consequential.</li>
+        <li><b>The summary line uses arrows (→) to show before-after.</b> "Edit window: 24h → 48h" reads as "was 24, will become 48." Same pattern as the diff in the edit-request approval drawer. <b>Visual consistency</b> across the system: anywhere a value is changing, it shows old → new.</li>
+        <li><b>What's not on this page:</b> staff role configuration (separate Settings tab), branding/logo/stamp upload (separate tab), billing settings (separate tab), SMS account credentials (separate tab), GES integration (separate tab). <b>This page is about attendance only</b>; the broader Settings has its own architecture. The tabs at the top of the head section show the full Settings landscape.</li>
+        <li><b>What's also not here:</b> no "schedule different days for different classes." All classes share the term calendar. No "different SMS rules for different classes" — school-wide policy. No "vary thresholds by year group" — uniform application. <b>MVP1 keeps configuration simple</b>; differentiation is a future iteration.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

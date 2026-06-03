@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Conversation history per parent</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; --wa-green:#25A859; --wa-bg:#E7F8EE; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:700px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1480px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:20px 36px 16px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+
+/* Parent header card */
+.parent-card { display:grid; grid-template-columns:auto 1fr auto; gap:20px; align-items:center; padding-bottom:14px; border-bottom:1px solid var(--border); margin-bottom:16px; }
+.parent-card .av-large { width:56px; height:56px; border-radius:50%; background:var(--gold-bg); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:20px; flex-shrink:0; }
+.parent-card .info .name { font-family:'Fraunces',serif; font-size:24px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.parent-card .info .name em { font-style:italic; color:var(--gold); font-weight:400; }
+.parent-card .info .meta { font-size:12px; color:var(--navy-3); margin-top:4px; line-height:1.5; }
+.parent-card .info .meta b { color:var(--navy-2); font-weight:600; }
+.parent-card .info .meta .channel-badge { display:inline-flex; align-items:center; gap:4px; padding:1px 7px; border-radius:100px; background:var(--green-bg); color:var(--green); font-size:9px; font-weight:700; letter-spacing:0.04em; margin-left:6px; }
+.parent-card .info .meta .channel-badge.warn { background:var(--warn-bg); color:var(--warn); }
+.parent-card .actions { display:flex; gap:8px; }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+
+/* Sub-tabs (Patricia's record sections) */
+.sub-tabs { display:flex; gap:0; }
+.sub-tab { padding:10px 16px 9px; font-size:12px; font-weight:600; color:var(--navy-3); border-bottom:2px solid transparent; cursor:pointer; }
+.sub-tab.active { color:var(--navy); border-bottom-color:var(--gold); }
+.sub-tab .count { font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; opacity:0.6; margin-left:4px; }
+
+/* Body */
+.body { padding:24px 36px 60px; display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; }
+
+/* LEFT: Timeline */
+.timeline-col { min-width:0; }
+
+/* Tone summary card */
+.tone-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; margin-bottom:18px; }
+.tone-card .tone-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.tone-card .tone-summary { font-family:'Fraunces',serif; font-size:18px; font-weight:500; letter-spacing:-0.012em; line-height:1.3; }
+.tone-card .tone-summary em { font-style:italic; color:var(--gold); font-weight:500; }
+.tone-card .tone-summary b { font-weight:600; }
+.tone-card .tone-summary .terra { color:var(--terra); font-weight:600; }
+.tone-card .tone-summary .green { color:var(--green); font-weight:600; }
+.tone-card .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; padding-top:14px; margin-top:14px; border-top:1px solid var(--border); }
+.tone-card .stat-cell .stat-lbl { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.tone-card .stat-cell .stat-val { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.018em; margin-top:3px; line-height:1; }
+.tone-card .stat-cell .stat-val em { font-style:italic; color:var(--gold); }
+.tone-card .stat-cell .stat-meta { font-size:10px; color:var(--navy-3); margin-top:3px; }
+.tone-card .stat-cell .stat-meta b { color:var(--navy-2); font-weight:600; }
+
+/* Filter pills */
+.filter-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+.filter-pill { padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.filter-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill .count { font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; opacity:0.6; }
+.filter-pill.active .count { opacity:0.85; }
+.filter-pill .ch-dot { width:6px; height:6px; border-radius:50%; }
+.filter-pill .ch-dot.wa { background:var(--wa-green); }
+.filter-pill .ch-dot.sms { background:var(--gold); }
+.filter-pill .ch-dot.email { background:var(--navy-2); }
+
+/* Timeline */
+.timeline { position:relative; padding-left:34px; }
+.timeline::before { content:""; position:absolute; left:14px; top:14px; bottom:14px; width:2px; background:var(--border); }
+
+.timeline-day-marker { position:relative; margin:24px 0 12px; padding-left:0; }
+.timeline-day-marker::before { content:""; position:absolute; left:-26px; top:50%; transform:translateY(-50%); width:14px; height:14px; border-radius:50%; background:var(--bg); border:2px solid var(--border-2); }
+.timeline-day-marker .day-name { font-family:'Fraunces',serif; font-size:13px; font-weight:600; color:var(--navy); letter-spacing:-0.005em; display:inline-block; padding:3px 10px; background:var(--bg); border:1px solid var(--border); border-radius:100px; }
+.timeline-day-marker .day-name em { font-style:italic; color:var(--gold); }
+
+.timeline-event { position:relative; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+.timeline-event::before { content:""; position:absolute; left:-26px; top:18px; width:14px; height:14px; border-radius:50%; background:var(--surface); border:2px solid var(--gold); z-index:1; }
+.timeline-event.outbound::before { background:var(--gold); }
+.timeline-event.inbound::before { background:var(--green); }
+.timeline-event.system::before { background:var(--bg); border-color:var(--border-2); }
+.timeline-event.failed::before { background:var(--terra); border-color:var(--terra); }
+
+.timeline-event .event-head { display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; margin-bottom:6px; }
+.timeline-event .channel-badge { display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; }
+.timeline-event .channel-badge.wa { background:var(--wa-bg); color:var(--wa-green); }
+.timeline-event .channel-badge.sms { background:var(--gold-bg); color:var(--gold); }
+.timeline-event .channel-badge.email { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+.timeline-event .channel-badge.system { background:var(--bg); color:var(--navy-3); border:1px dashed var(--border-2); }
+.timeline-event .channel-badge.note { background:var(--gold-bg); color:var(--gold); border:1px dashed var(--gold); }
+.timeline-event .event-meta { font-size:11px; color:var(--navy-3); }
+.timeline-event .event-meta b { color:var(--navy-2); font-weight:600; }
+.timeline-event .event-time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+
+.timeline-event .event-content { font-size:12.5px; color:var(--navy-2); line-height:1.5; padding-left:0; }
+.timeline-event.outbound .event-content { color:var(--navy-2); }
+.timeline-event.inbound .event-content { background:var(--bg); padding:8px 12px; border-radius:8px; border-left:2px solid var(--green); margin-top:4px; }
+.timeline-event.system .event-content { font-size:11px; color:var(--navy-3); font-style:italic; }
+.timeline-event.note .event-content { background:var(--gold-bg); padding:8px 12px; border-radius:8px; border-left:2px solid var(--gold); }
+
+.timeline-event .event-foot { display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:7px; border-top:1px dashed var(--border); font-size:10px; color:var(--navy-3); }
+.timeline-event .event-foot .delivery-tag { display:inline-flex; align-items:center; gap:4px; padding:1px 7px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; }
+.timeline-event .event-foot .delivery-tag.delivered { background:var(--green-bg); color:var(--green); }
+.timeline-event .event-foot .delivery-tag.read { background:var(--green); color:white; }
+.timeline-event .event-foot .delivery-tag.failed { background:var(--terra-bg); color:var(--terra); }
+.timeline-event .event-foot .delivery-tag.pending { background:var(--warn-bg); color:var(--warn); }
+.timeline-event .event-foot .author { font-style:italic; }
+.timeline-event .event-foot .author b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+.timeline-month-marker { display:flex; align-items:center; gap:14px; margin:32px 0 16px; }
+.timeline-month-marker .line { flex:1; height:1px; background:var(--border); }
+.timeline-month-marker .label { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; padding:0 8px; }
+.timeline-month-marker .label em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; text-transform:none; letter-spacing:0; font-size:13px; }
+
+/* RIGHT: Sidebar with parent context */
+.right-col { position:sticky; top:24px; }
+
+.context-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:14px; }
+.context-card .head { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:10px; }
+.context-card .child-row { display:grid; grid-template-columns:32px 1fr; gap:10px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed var(--border); align-items:center; }
+.context-card .child-row:last-child { border-bottom:none; padding-bottom:0; margin-bottom:0; }
+.context-card .child-av { width:30px; height:30px; border-radius:50%; background:var(--gold-bg); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:11px; }
+.context-card .child-info .child-name { font-weight:600; color:var(--navy); font-size:12px; }
+.context-card .child-info .child-meta { font-size:10px; color:var(--navy-3); margin-top:1px; font-style:italic; }
+
+.context-card .stat-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.context-card .stat-pair .item .lbl { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:2px; }
+.context-card .stat-pair .item .val { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.context-card .stat-pair .item .val em { font-style:italic; color:var(--gold); }
+.context-card .stat-pair .item .val.terra { color:var(--terra); }
+.context-card .stat-pair .item .val.green { color:var(--green); }
+.context-card .stat-pair .item .val .currency { font-size:9px; color:var(--navy-3); font-weight:500; margin-right:2px; }
+.context-card .stat-pair .item .meta { font-size:10px; color:var(--navy-3); margin-top:2px; }
+
+.context-card .pref-row { display:grid; grid-template-columns:1fr auto; gap:8px; padding:6px 0; align-items:center; font-size:11px; }
+.context-card .pref-row:not(:last-child) { border-bottom:1px dashed var(--border); }
+.context-card .pref-row .pref-label { color:var(--navy-2); }
+.context-card .pref-row .pref-val { font-weight:600; color:var(--navy); }
+.context-card .pref-row .pref-val.green { color:var(--green); }
+.context-card .pref-row .pref-val.warn { color:var(--warn); }
+.context-card .pref-row .pref-val em { font-style:italic; color:var(--gold); }
+
+.context-card .quick-action { display:block; margin-top:12px; padding:9px 12px; background:var(--bg); border:1px dashed var(--border-2); border-radius:8px; font-size:11px; color:var(--gold); font-weight:700; letter-spacing:0.04em; text-align:center; cursor:pointer; }
+.context-card .quick-action:hover { background:var(--gold-bg); border-color:var(--gold); }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .body { grid-template-columns:1fr; }
+  .right-col { position:static; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 3 · Communications maturity</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Every <em>conversation</em>, in one place</h1>
+  <div class="gold-rule"></div>
+  <p>The relationship view of a parent. SMS reminders, WhatsApp threads, announcement deliveries, manual notes — all collapsed into one chronological stream. Solves the "have we been bothering Patricia too much this term?" question that no current screen answers. Florence opens Patricia Boateng's record and sees every communication touched on her family across every channel.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Parent record · communications timeline</div>
+    <div class="section-meta">Patricia Boateng · Term 1 · 18 events across 3 channels</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / parents / patricia-boateng / conversations</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item active"><div class="ic"></div>Students &amp; parents</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Students &amp; parents</a> / Patricia Boateng / Conversations</div>
+
+            <div class="parent-card">
+              <div class="av-large">PB</div>
+              <div class="info">
+                <div class="name display">Patricia <em>Boateng</em></div>
+                <div class="meta">
+                  Guardian of <b>Akosua Boateng</b> · JHS 2A · WhatsApp <b>+233 24 555 0421</b><span class="channel-badge">WA opted in</span><span class="channel-badge">SMS reachable</span><span class="channel-badge warn">Email not on file</span>
+                </div>
+              </div>
+              <div class="actions">
+                <button class="btn">View student record →</button>
+                <button class="btn primary">Send a message</button>
+              </div>
+            </div>
+
+            <div class="sub-tabs">
+              <div class="sub-tab">Profile</div>
+              <div class="sub-tab">Children<span class="count">1</span></div>
+              <div class="sub-tab">Billing<span class="count">3</span></div>
+              <div class="sub-tab active">Conversations<span class="count">18</span></div>
+              <div class="sub-tab">Notes &amp; flags</div>
+              <div class="sub-tab">Audit log</div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <!-- LEFT: Timeline -->
+            <div class="timeline-col">
+
+              <!-- Tone summary -->
+              <div class="tone-card">
+                <div class="tone-eyebrow">This term, with Patricia</div>
+                <div class="tone-summary display">
+                  <em>18 events</em> across 3 channels — <b>11 outbound from school</b>, <span class="green">5 inbound from Patricia</span>, 2 system. Last contact <b>2 hours ago</b>. Communication is <span class="green">healthy</span> — within expected frequency for an active parent.
+                </div>
+                <div class="stats-row">
+                  <div class="stat-cell">
+                    <div class="stat-lbl">Outbound · term</div>
+                    <div class="stat-val display"><em>11</em></div>
+                    <div class="stat-meta"><b>3 SMS</b> · 7 WhatsApp · 1 email</div>
+                  </div>
+                  <div class="stat-cell">
+                    <div class="stat-lbl">Inbound · term</div>
+                    <div class="stat-val display green"><em>5</em></div>
+                    <div class="stat-meta">All via WhatsApp · responsive</div>
+                  </div>
+                  <div class="stat-cell">
+                    <div class="stat-lbl">Avg response time</div>
+                    <div class="stat-val display"><em>2h 14m</em></div>
+                    <div class="stat-meta">From Patricia · <b>fast</b></div>
+                  </div>
+                  <div class="stat-cell">
+                    <div class="stat-lbl">SMS cost · term</div>
+                    <div class="stat-val display"><span class="currency">GHS</span>0.15</div>
+                    <div class="stat-meta">3 SMS sent · WA bundled</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filter pills -->
+              <div class="filter-row">
+                <div class="filter-pill active">All<span class="count">18</span></div>
+                <div class="filter-pill"><div class="ch-dot wa"></div>WhatsApp<span class="count">12</span></div>
+                <div class="filter-pill"><div class="ch-dot sms"></div>SMS<span class="count">3</span></div>
+                <div class="filter-pill"><div class="ch-dot email"></div>Email<span class="count">1</span></div>
+                <div class="filter-pill">System events<span class="count">2</span></div>
+                <div class="filter-pill">Internal notes<span class="count">2</span></div>
+              </div>
+
+              <!-- Today -->
+              <div class="timeline">
+                <div class="timeline-day-marker">
+                  <span class="day-name display">Today · <em>Wed 22 Oct</em></span>
+                </div>
+
+                <div class="timeline-event inbound">
+                  <div class="event-head">
+                    <span class="channel-badge wa">WhatsApp · in</span>
+                    <span class="event-meta">From Patricia · <b>thread</b> with Joyce</span>
+                    <span class="event-time">12:08 PM</span>
+                  </div>
+                  <div class="event-content">When can I come to clear the balance? I have GHS 200 ready · my husband sends the rest Friday</div>
+                  <div class="event-foot">
+                    <span class="author"><b>Open in inbox →</b></span>
+                    <span>Latest message in thread #4218</span>
+                  </div>
+                </div>
+
+                <div class="timeline-event outbound">
+                  <div class="event-head">
+                    <span class="channel-badge wa">WhatsApp · out</span>
+                    <span class="event-meta">From <b>Joyce</b> · template-free reply</span>
+                    <span class="event-time">9:52 AM</span>
+                  </div>
+                  <div class="event-content">You can pay via MoMo on <b>0244 555 0140</b> (school's number) or come to the office between 8 AM and 3 PM.</div>
+                  <div class="event-foot">
+                    <span><span class="delivery-tag read">✓✓ Read</span> at 9:54 AM</span>
+                    <span class="author">Sent by <b>Joyce Owusu-Ansah</b></span>
+                  </div>
+                </div>
+
+                <div class="timeline-event outbound">
+                  <div class="event-head">
+                    <span class="channel-badge wa">WhatsApp · out</span>
+                    <span class="event-meta">From <b>Joyce</b> · billing topic</span>
+                    <span class="event-time">9:51 AM</span>
+                  </div>
+                  <div class="event-content">Good morning Patricia. Yes, that arrangement is fine. The current balance is GHS 340. If you pay GHS 200 today, the remaining GHS 140 should clear by Friday end of day.</div>
+                  <div class="event-foot">
+                    <span><span class="delivery-tag read">✓✓ Read</span> at 9:54 AM</span>
+                    <span class="author">Sent by <b>Joyce Owusu-Ansah</b></span>
+                  </div>
+                </div>
+
+                <div class="timeline-event note">
+                  <div class="event-head">
+                    <span class="channel-badge note">Internal note</span>
+                    <span class="event-meta">By <b>Florence</b> · attached to thread</span>
+                    <span class="event-time">10:03 AM</span>
+                  </div>
+                  <div class="event-content">Patricia is reliable — last term she also paid in 2 instalments, both on time. <b>No follow-up needed</b> unless Friday passes without payment.</div>
+                  <div class="event-foot">
+                    <span class="author">Visible to admins only · not sent to Patricia</span>
+                    <span>Edited 0 times</span>
+                  </div>
+                </div>
+
+                <div class="timeline-event system">
+                  <div class="event-head">
+                    <span class="channel-badge system">System · auto-route</span>
+                    <span class="event-meta">Routing rule fired</span>
+                    <span class="event-time">9:43 AM</span>
+                  </div>
+                  <div class="event-content">Auto-routed to <b>Joyce Owusu-Ansah</b> · billing topic detected by inbox routing rules</div>
+                  <div class="event-foot">
+                    <span class="author">Rule: "Billing topics → Joyce"</span>
+                    <span></span>
+                  </div>
+                </div>
+
+                <div class="timeline-event inbound">
+                  <div class="event-head">
+                    <span class="channel-badge wa">WhatsApp · in</span>
+                    <span class="event-meta">From Patricia · thread initiated</span>
+                    <span class="event-time">9:42 AM</span>
+                  </div>
+                  <div class="event-content">Good morning. I want to discuss Akosua's outstanding balance. Can I pay 200 today and the rest on Friday?</div>
+                  <div class="event-foot">
+                    <span><b>Started thread #4218</b></span>
+                    <span class="author">Auto-routed → Joyce in 1 min</span>
+                  </div>
+                </div>
+
+                <!-- Last week -->
+                <div class="timeline-day-marker">
+                  <span class="day-name display">Last week · <em>Fri 17 Oct</em></span>
+                </div>
+
+                <div class="timeline-event outbound">
+                  <div class="event-head">
+                    <span class="channel-badge sms">SMS · out</span>
+                    <span class="event-meta">Fee reminder · <b>auto from billing</b></span>
+                    <span class="event-time">9:00 AM</span>
+                  </div>
+                  <div class="event-content">CHRIST KING: Reminder · Term 1 fee balance for Akosua: GHS 340. Due 15 Oct. Pay via MoMo 0244 555 0140 or at office. Reply for help.</div>
+                  <div class="event-foot">
+                    <span><span class="delivery-tag delivered">✓ Delivered</span> · 156 chars · <b>1 SMS</b></span>
+                    <span class="author">Triggered by reminder rule · part of bulk send to 47 families</span>
+                  </div>
+                </div>
+
+                <!-- Earlier this term -->
+                <div class="timeline-month-marker">
+                  <div class="line"></div>
+                  <span class="label">Earlier this term · <em>October 1—15</em> · 6 events</span>
+                  <div class="line"></div>
+                </div>
+
+                <div class="timeline-day-marker">
+                  <span class="day-name display">Mon 13 Oct</span>
+                </div>
+
+                <div class="timeline-event outbound">
+                  <div class="event-head">
+                    <span class="channel-badge wa">WhatsApp · out</span>
+                    <span class="event-meta">Announcement broadcast · <b>Mid-term holiday</b></span>
+                    <span class="event-time">2:30 PM</span>
+                  </div>
+                  <div class="event-content">CHRIST KING: Mid-term holiday from Wed 22 Oct to Sun 26 Oct. School resumes Mon 27 Oct. Have a restful break! · Florence Addo, Headmistress</div>
+                  <div class="event-foot">
+                    <span><span class="delivery-tag read">✓✓ Read</span> at 3:14 PM</span>
+                    <span class="author">Part of broadcast to <b>312 families</b> · open to view <b>parent received</b></span>
+                  </div>
+                </div>
+
+                <div class="timeline-day-marker">
+                  <span class="day-name display">Wed 8 Oct</span>
+                </div>
+
+                <div class="timeline-event outbound">
+                  <div class="event-head">
+                    <span class="channel-badge sms">SMS · out</span>
+                    <span class="event-meta">Receipt confirmation · <b>auto from billing</b></span>
+                    <span class="event-time">11:18 AM</span>
+                  </div>
+                  <div class="event-content">CHRIST KING: Received GHS 410 from you · Akosua's Term 1 fee partially paid · balance now GHS 340 · receipt #2218 emailed.</div>
+                  <div class="event-foot">
+                    <span><span class="delivery-tag delivered">✓ Delivered</span></span>
+                    <span class="author">Triggered by payment recorded by <b>Joyce</b></span>
+                  </div>
+                </div>
+
+                <div class="timeline-event note">
+                  <div class="event-head">
+                    <span class="channel-badge note">Internal note</span>
+                    <span class="event-meta">By <b>Joyce</b> · added to billing record</span>
+                    <span class="event-time">11:14 AM</span>
+                  </div>
+                  <div class="event-content">Mrs. Boateng paid GHS 410 in cash at the office. Asked about installment plan for the remaining balance — said she'd send WhatsApp to confirm.</div>
+                  <div class="event-foot">
+                    <span class="author">Visible to admins only</span>
+                    <span></span>
+                  </div>
+                </div>
+
+                <div class="timeline-day-marker">
+                  <span class="day-name display">Mon 6 Oct</span>
+                </div>
+
+                <div class="timeline-event outbound">
+                  <div class="event-head">
+                    <span class="channel-badge email">Email · out</span>
+                    <span class="event-meta">Term 1 invoice · <b>auto from billing</b></span>
+                    <span class="event-time">8:00 AM</span>
+                  </div>
+                  <div class="event-content">Term 1 invoice for Akosua Boateng (JHS 2A) · GHS 750 total · due 15 Oct · PDF attached</div>
+                  <div class="event-foot">
+                    <span><span class="delivery-tag failed">⚠ Bounced</span> · invalid email</span>
+                    <span class="author">Email not on file · <b>fell back to SMS at 8:01 AM</b></span>
+                  </div>
+                </div>
+
+                <div class="timeline-event outbound">
+                  <div class="event-head">
+                    <span class="channel-badge sms">SMS · out</span>
+                    <span class="event-meta">Term 1 invoice · <b>SMS fallback</b></span>
+                    <span class="event-time">8:01 AM</span>
+                  </div>
+                  <div class="event-content">CHRIST KING: Term 1 invoice for Akosua: GHS 750 · due 15 Oct · pay by MoMo 0244 555 0140 or at office · reply for help.</div>
+                  <div class="event-foot">
+                    <span><span class="delivery-tag delivered">✓ Delivered</span> · 142 chars · 1 SMS</span>
+                    <span class="author">Auto-fallback after email bounce</span>
+                  </div>
+                </div>
+
+                <!-- September -->
+                <div class="timeline-month-marker">
+                  <div class="line"></div>
+                  <span class="label"><em>September</em> · 5 events · scroll to expand</span>
+                  <div class="line"></div>
+                </div>
+
+                <div class="timeline-day-marker">
+                  <span class="day-name display">Sun 28 Sep</span>
+                </div>
+
+                <div class="timeline-event inbound">
+                  <div class="event-head">
+                    <span class="channel-badge wa">WhatsApp · in</span>
+                    <span class="event-meta">From Patricia · <b>thread closed</b></span>
+                    <span class="event-time">7:42 PM</span>
+                  </div>
+                  <div class="event-content">Thank you Florence! Akosua is so proud. Will share this with the family 😊</div>
+                  <div class="event-foot">
+                    <span>Closing reply · <b>thread #4189</b></span>
+                    <span class="author">Replied to congratulations message</span>
+                  </div>
+                </div>
+
+                <div class="timeline-day-marker">
+                  <span class="day-name display">Sat 27 Sep</span>
+                </div>
+
+                <div class="timeline-event outbound">
+                  <div class="event-head">
+                    <span class="channel-badge wa">WhatsApp · out</span>
+                    <span class="event-meta">From <b>Florence</b> · personal message</span>
+                    <span class="event-time">2:15 PM</span>
+                  </div>
+                  <div class="event-content">Mrs. Boateng — wanted to let you know Akosua scored top in her Math test this week. Wonderful effort, please pass on our congratulations 🎉</div>
+                  <div class="event-foot">
+                    <span><span class="delivery-tag read">✓✓ Read</span> at 2:31 PM</span>
+                    <span class="author">Started by <b>Florence Addo</b></span>
+                  </div>
+                </div>
+
+                <div style="text-align:center;padding:20px;font-size:11px;color:var(--navy-3);font-style:italic">8 more events earlier in September · scroll to load</div>
+
+              </div>
+            </div>
+
+            <!-- RIGHT: Context sidebar -->
+            <div class="right-col">
+
+              <!-- Children -->
+              <div class="context-card">
+                <div class="head">Family · 1 child</div>
+                <div class="child-row">
+                  <div class="child-av">AB</div>
+                  <div class="child-info">
+                    <div class="child-name">Akosua Boateng</div>
+                    <div class="child-meta">JHS 2A · age 13 · enrolled Sep 2024</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Billing snapshot -->
+              <div class="context-card">
+                <div class="head">Billing · this term</div>
+                <div class="stat-pair">
+                  <div class="item">
+                    <div class="lbl">Balance</div>
+                    <div class="val terra"><span class="currency">GHS</span><em>340</em></div>
+                    <div class="meta">15d overdue</div>
+                  </div>
+                  <div class="item">
+                    <div class="lbl">Paid this term</div>
+                    <div class="val green"><span class="currency">GHS</span>410</div>
+                    <div class="meta">on 8 Oct</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Communication preferences -->
+              <div class="context-card">
+                <div class="head">Communication preferences</div>
+                <div class="pref-row"><span class="pref-label">Preferred channel</span><span class="pref-val"><em>WhatsApp</em></span></div>
+                <div class="pref-row"><span class="pref-label">Language</span><span class="pref-val">English</span></div>
+                <div class="pref-row"><span class="pref-label">Quiet hours</span><span class="pref-val">After 8 PM</span></div>
+                <div class="pref-row"><span class="pref-label">SMS opt-in</span><span class="pref-val green">✓ Yes</span></div>
+                <div class="pref-row"><span class="pref-label">WhatsApp opt-in</span><span class="pref-val green">✓ Yes</span></div>
+                <div class="pref-row"><span class="pref-label">Email on file</span><span class="pref-val warn">Missing</span></div>
+              </div>
+
+              <!-- Frequency check -->
+              <div class="context-card">
+                <div class="head">Communication frequency</div>
+                <div style="font-size:11px;color:var(--navy-2);line-height:1.55;margin-bottom:8px">Patricia received <b>11 outbound</b> messages this term — <em style="font-family:'Fraunces',serif;font-style:italic;color:var(--gold);font-weight:500">within healthy range</em> for an active billing case (typical: 8—15).</div>
+                <div style="height:6px;background:var(--bg);border-radius:100px;border:1px solid var(--border);overflow:hidden;margin:8px 0">
+                  <div style="height:100%;width:55%;background:var(--green);border-radius:100px"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--navy-3);font-family:'JetBrains Mono',monospace;font-weight:600">
+                  <span>0</span><span>15 (max healthy)</span><span>20+</span>
+                </div>
+              </div>
+
+              <!-- Quick actions -->
+              <div class="context-card">
+                <div class="head">Send a message</div>
+                <div class="quick-action">+ NEW WHATSAPP MESSAGE</div>
+                <div class="quick-action">+ NEW SMS</div>
+                <div class="quick-action">+ INTERNAL NOTE</div>
+              </div>
+
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Sub-tabs across the parent record:</b> Profile / Children / Billing / <b>Conversations</b> / Notes &amp; flags / Audit log. <b>Conversations is one tab among six</b> — the parent record has many facets; communications is the new MVP2 addition.</li>
+        <li><b>Tone summary card at the top of the timeline</b> in editorial Fraunces: "<em>18 events</em> across 3 channels — <b>11 outbound from school</b>, 5 inbound from Patricia, 2 system. Last contact <b>2 hours ago</b>. Communication is <span style="color:var(--green);font-weight:600">healthy</span>." <b>Tells Florence the story before the data</b>; same editorial framing as the collection trend report.</li>
+        <li><b>4-stat strip beneath the tone summary:</b> Outbound (11) / Inbound (5, gold-italic, green) / Avg response time (2h 14m) / SMS cost (GHS 0.15). <b>"Avg response time from Patricia · fast"</b> is the operationally interesting metric — responsive parents are different from unresponsive ones, and that distinction matters when deciding who to lean on for fee collection.</li>
+        <li><b>6 filter pills:</b> All / WhatsApp (12) / SMS (3) / Email (1) / System events (2) / Internal notes (2). <b>Channel-coloured dots</b> match the locked vocabulary (WA green, SMS gold, email neutral). Florence can isolate just SMS to see what bills/reminders went out, or just WhatsApp to see the conversational layer.</li>
+        <li><b>Vertical timeline with 4 event types</b> distinguished by left-anchored circle colour: gold (outbound from school), green (inbound from parent), neutral (system events), terra (failed delivery). <b>Visual narrative of who's saying what</b> at a glance.</li>
+        <li><b>Day markers as pill-style chips</b> ("Today · <em>Wed 22 Oct</em>") with the day name in italic gold. <b>Month markers with horizontal lines</b> ("<em>September</em> · 5 events · scroll to expand") for chunking time visually. Schools think in days within a term and in terms across a year.</li>
+        <li><b>Each event has 3 parts:</b> head (channel badge + meta + timestamp) / content (the actual message) / foot (delivery state + author/source). <b>Inbound messages get a green-bordered content block</b> visually distinguishing parent voice from school voice — same convention as the WhatsApp inbox.</li>
+        <li><b>System events visible inline:</b> "Auto-routed to <b>Joyce Owusu-Ansah</b> · billing topic detected by inbox routing rules". <b>The conversation history shows automation, not just human messages</b>; if a parent later complains "you ignored my message," the audit trail proves the routing fired.</li>
+        <li><b>Internal notes preserved in timeline</b> with gold dashed border + "Visible to admins only · not sent to Patricia" footer. <b>Notes contextualise the conversation for the next admin</b> who picks it up — Patricia's reliability note from Florence becomes part of the institutional memory.</li>
+        <li><b>Failed email + SMS fallback shown as paired events</b>: "⚠ Bounced · invalid email" then 1 minute later "SMS fallback · ✓ Delivered". <b>System resilience visible</b>; admin sees that even when one channel fails, communication actually reached the parent. This is reassurance more than action.</li>
+        <li><b>"Part of broadcast to 312 families · open to view parent received"</b> footer on the announcement event — connects this individual record to the cross-module delivery detail (file 3). One click drills from Patricia's view into the full broadcast's delivery report.</li>
+        <li><b>Right sidebar is sticky</b> and shows Patricia's full context: 1 child (Akosua Boateng JHS 2A), billing snapshot (terra GHS 340 balance, green GHS 410 paid), communication preferences (preferred channel WhatsApp, English, quiet after 8 PM, SMS+WA opt-in, email missing), frequency check ("within healthy range · 11 of typical 8—15"), quick action buttons.</li>
+        <li><b>Communication frequency progress bar</b> showing 11 of 15 (55%) in green. <b>Visualises the "are we bothering them?" question</b>: green range 0—15, yellow 15—20, red 20+. Florence knows at a glance whether Patricia is over- or under-contacted.</li>
+        <li><b>Communication preferences are loaded from billing module + onboarding</b>: "Quiet hours · After 8 PM" means scheduled sends would respect that. <b>Cross-module integrity</b>; preferences set once apply everywhere.</li>
+        <li><b>"Email on file · Missing" in warn red</b> tells Florence why the 6 Oct email bounced and why all subsequent communication has gone via SMS. <b>Diagnostic context</b> embedded in the relationship view.</li>
+        <li><b>Quick actions in dashed gold buttons:</b> "+ NEW WHATSAPP MESSAGE / + NEW SMS / + INTERNAL NOTE". <b>Three actions, three different scopes</b>: outbound to parent on preferred channel, outbound on alternate channel, internal-only. The choice is intentional, not buried in a menu.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

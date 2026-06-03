@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Activation co-signing</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:720px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.deferred-tag { display:inline-block; background:var(--terra); color:white; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1000px; }
+.sidebar.tall { min-height:1200px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:720px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.body { padding:28px 36px 60px; }
+
+.btn { padding:10px 16px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; padding:10px 22px; }
+.btn.terra { background:var(--terra); color:white; border-color:var(--terra); font-weight:700; }
+
+/* Step indicator at top of body */
+.step-indicator { display:flex; align-items:center; gap:0; margin-bottom:22px; padding:16px 22px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+.step-cell { display:flex; align-items:center; gap:8px; flex:1; }
+.step-cell .step-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:12px; flex-shrink:0; }
+.step-cell .step-num.done { background:var(--green-bg); color:var(--green); border:1.5px solid var(--green); }
+.step-cell .step-num.current { background:var(--gold); color:var(--navy); }
+.step-cell .step-num.upcoming { background:var(--bg); color:var(--navy-3); border:1.5px solid var(--border-2); }
+.step-cell .step-info .step-name { font-family:'Fraunces',serif; font-size:12px; font-weight:600; letter-spacing:-0.005em; color:var(--navy); }
+.step-cell .step-info .step-name.current em { font-style:italic; color:var(--gold); }
+.step-cell .step-info .step-name.upcoming { color:var(--navy-3); }
+.step-cell .step-info .step-meta { font-size:9px; color:var(--navy-3); margin-top:1px; letter-spacing:0.06em; text-transform:uppercase; font-weight:600; }
+.step-connector { width:24px; height:1.5px; background:var(--border-2); margin:0 6px; }
+.step-connector.done { background:var(--green); }
+
+/* Co-signing region */
+.region { margin-bottom:32px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.005em; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Why-co-sign explainer */
+.why-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:12px; padding:18px 22px; margin-bottom:18px; display:grid; grid-template-columns:32px 1fr; gap:14px; align-items:start; }
+.why-card .ic { width:30px; height:30px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; }
+.why-card .heading { font-family:'Fraunces',serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; margin-bottom:6px; }
+.why-card .heading em { font-style:italic; color:var(--gold); }
+.why-card .text { font-size:12.5px; color:var(--navy-2); line-height:1.6; }
+.why-card .text b { color:var(--navy); font-weight:600; }
+
+/* Co-signer chooser cards */
+.signer-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:20px; }
+.signer-card { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:16px 18px; cursor:pointer; }
+.signer-card.selected { border-color:var(--gold); background:var(--gold-bg); box-shadow:0 0 0 3px var(--gold-soft); }
+.signer-card.unavailable { background:var(--bg); border-style:dashed; opacity:0.7; cursor:not-allowed; }
+.signer-card .top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.signer-card .av { width:40px; height:40px; border-radius:50%; background:var(--gold-bg); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:13px; flex-shrink:0; }
+.signer-card.selected .av { background:var(--gold); }
+.signer-card .name { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.signer-card .name em { font-style:italic; color:var(--gold); }
+.signer-card .role { font-size:10px; color:var(--navy-3); margin-top:1px; font-style:italic; }
+.signer-card .reach-row { display:flex; flex-direction:column; gap:4px; padding-top:10px; border-top:1px dashed var(--border); }
+.signer-card .reach-row .reach-line { font-size:11px; color:var(--navy-2); display:flex; justify-content:space-between; }
+.signer-card .reach-row .reach-line b { color:var(--navy); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:10px; }
+.signer-card .why-pick { margin-top:10px; padding:8px 10px; background:var(--bg); border-radius:6px; font-size:10px; color:var(--navy-3); line-height:1.5; }
+.signer-card.selected .why-pick { background:rgba(255,255,255,0.6); }
+.signer-card .why-pick b { color:var(--navy-2); font-weight:600; }
+.signer-card .checked-badge { position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11px; }
+.signer-card { position:relative; }
+
+/* Approver wrapper card (state B) */
+.approver-frame { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; overflow:hidden; box-shadow:0 12px 32px -12px rgba(200,151,91,0.3); }
+.approver-frame-head { background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); padding:18px 24px; display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:center; }
+.approver-frame-head .ic-wrap { width:42px; height:42px; border-radius:10px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:18px; }
+.approver-frame-head .info .pre-line { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:2px; }
+.approver-frame-head .info h3 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.01em; line-height:1.1; }
+.approver-frame-head .info h3 em { font-style:italic; color:var(--gold); }
+.approver-frame-head .info .lede { font-size:12px; color:var(--navy-3); margin-top:3px; }
+.approver-frame-head .info .lede b { color:var(--navy-2); font-weight:600; }
+.approver-frame-head .timestamp { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-2); font-weight:600; text-align:right; }
+.approver-frame-head .timestamp .lbl { font-family:'Manrope',sans-serif; font-size:9px; color:var(--navy-3); letter-spacing:0.1em; text-transform:uppercase; font-weight:700; margin-bottom:2px; }
+
+.approver-summary { padding:0; }
+.approver-summary .summary-row { display:grid; grid-template-columns:140px 1fr; gap:16px; padding:12px 24px; border-bottom:1px solid var(--border); align-items:start; }
+.approver-summary .summary-row:last-of-type { border-bottom:none; }
+.approver-summary .summary-row .lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; padding-top:1px; }
+.approver-summary .summary-row .val { font-size:13px; color:var(--navy-2); line-height:1.55; }
+.approver-summary .summary-row .val b { color:var(--navy); font-weight:600; }
+.approver-summary .summary-row .val em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+.approver-summary .summary-row .val .nb { display:block; font-size:11px; color:var(--navy-3); margin-top:4px; font-style:italic; }
+
+.locked-tag { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:100px; background:var(--bg); color:var(--navy-3); border:1px solid var(--border); font-size:9px; font-weight:700; letter-spacing:0.04em; margin-left:6px; }
+
+.approver-actions { padding:18px 24px; background:var(--bg); border-top:1px solid var(--border); display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; }
+.approver-actions .reminder { font-size:11px; color:var(--navy-3); line-height:1.5; }
+.approver-actions .reminder b { color:var(--navy-2); font-weight:600; }
+.approver-actions .actions-group { display:flex; gap:8px; }
+
+/* Initiator save bar */
+.cosign-save-bar { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; padding:18px 24px; margin-top:22px; display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; box-shadow:0 12px 32px -12px rgba(200,151,91,0.3); }
+.cosign-save-bar .left .summary { font-family:'Fraunces',serif; font-size:14.5px; font-weight:600; letter-spacing:-0.005em; line-height:1.4; }
+.cosign-save-bar .left .summary em { font-style:italic; color:var(--gold); }
+.cosign-save-bar .left .meta { font-size:11px; color:var(--navy-3); margin-top:5px; line-height:1.5; }
+.cosign-save-bar .left .meta b { color:var(--navy-2); font-weight:600; }
+.cosign-save-bar .actions { display:flex; gap:8px; }
+
+/* Solo admin card */
+.solo-card { background:var(--warn-bg); border:1.5px solid var(--warn); border-radius:14px; padding:20px 24px; margin-bottom:18px; }
+.solo-card .top { display:flex; align-items:start; gap:14px; }
+.solo-card .ic { width:32px; height:32px; border-radius:8px; background:var(--warn); color:white; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:15px; flex-shrink:0; }
+.solo-card .heading { font-family:'Fraunces',serif; font-size:17px; font-weight:600; letter-spacing:-0.012em; line-height:1.2; }
+.solo-card .heading em { font-style:italic; color:var(--warn); }
+.solo-card .body-text { font-size:12.5px; color:var(--navy-2); margin-top:6px; line-height:1.6; }
+.solo-card .body-text b { color:var(--navy); font-weight:600; }
+.solo-card .ack-row { margin-top:14px; padding:12px 14px; background:rgba(255,255,255,0.6); border:1px solid rgba(197,138,46,0.3); border-radius:8px; display:flex; gap:10px; align-items:start; cursor:pointer; }
+.solo-card .ack-row .check { width:18px; height:18px; border-radius:4px; background:var(--warn); color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; font-weight:700; }
+.solo-card .ack-row .ack-text { font-size:11.5px; color:var(--navy-2); line-height:1.55; }
+.solo-card .ack-row .ack-text b { color:var(--navy); font-weight:600; }
+
+/* Pending-state pill on initiator side */
+.pending-banner { background:linear-gradient(180deg,var(--gold-bg) 0%,var(--surface) 100%); border:1px solid var(--gold); border-radius:12px; padding:18px 22px; margin-bottom:18px; }
+.pending-banner .top { display:flex; align-items:center; gap:14px; margin-bottom:8px; }
+.pending-banner .pulse { width:12px; height:12px; border-radius:50%; background:var(--gold); animation:pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(0.85); } }
+.pending-banner .heading { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.012em; }
+.pending-banner .heading em { font-style:italic; color:var(--gold); }
+.pending-banner .meta { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.pending-banner .meta b { color:var(--navy); font-weight:600; }
+.pending-banner .meta em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .signer-grid { grid-template-columns:1fr; }
+  .approver-summary .summary-row { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 2 deferred · Activation co-signing</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <span class="deferred-tag">Deferred decision · resolved</span>
+  <h1 class="display">Two <em>signatures</em>, one activation</h1>
+  <div class="gold-rule"></div>
+  <p>Bookkeeping activation determines what figures appear on bank-ready PDFs and loan applications — too consequential for a single admin to set alone if the school has more than one. This file adds segregation of duties: the headmistress configures, a chosen co-signer reviews and approves. For solo-admin schools the path stays open with an explicit acknowledgement card; the system never blocks activation, it just documents who decided what.</p>
+</header>
+
+<!-- ============ STATE A: INITIATOR'S CO-SIGNING STEP ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Initiator's view · choosing a co-signer</div>
+    <div class="section-meta">Florence has filled the form · about to send for approval</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / books / activation</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar tall">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Settings</a> / Books / Activation</div>
+            <h1 class="display">Final step · <em>co-signing</em></h1>
+            <div class="lede">You've configured the bookkeeping module · because Christ the King has <b>2 admins</b>, activation requires a second signature · choose who reviews your configuration before books go live</div>
+          </div>
+
+          <div class="body">
+
+            <!-- Step indicator -->
+            <div class="step-indicator">
+              <div class="step-cell">
+                <div class="step-num done">✓</div>
+                <div class="step-info">
+                  <div class="step-name">Mode</div>
+                  <div class="step-meta">Aggregate</div>
+                </div>
+              </div>
+              <div class="step-connector done"></div>
+              <div class="step-cell">
+                <div class="step-num done">✓</div>
+                <div class="step-info">
+                  <div class="step-name">Backfill</div>
+                  <div class="step-meta">From 1 Sep</div>
+                </div>
+              </div>
+              <div class="step-connector done"></div>
+              <div class="step-cell">
+                <div class="step-num done">✓</div>
+                <div class="step-info">
+                  <div class="step-name">Categories</div>
+                  <div class="step-meta">9 expense + 5 income</div>
+                </div>
+              </div>
+              <div class="step-connector done"></div>
+              <div class="step-cell">
+                <div class="step-num done">✓</div>
+                <div class="step-info">
+                  <div class="step-name">Preferences</div>
+                  <div class="step-meta">5 settings</div>
+                </div>
+              </div>
+              <div class="step-connector"></div>
+              <div class="step-cell">
+                <div class="step-num current">5</div>
+                <div class="step-info">
+                  <div class="step-name current">Co-<em>sign</em></div>
+                  <div class="step-meta">In progress</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Why co-sign explainer -->
+            <div class="why-card">
+              <div class="ic">i</div>
+              <div>
+                <div class="heading display">Why a <em>second signature</em>?</div>
+                <div class="text">Activating books determines what figures appear on your <b>bank-ready PDFs</b>, your <b>P&amp;L statements</b>, your <b>loan applications</b>. The mode you chose, the backfill range, the depreciation method, the chart of accounts — these affect <b>every financial report</b> for years to come. A second admin reviewing your choices catches mistakes before they become permanent. <b>This step is required because your school has 2+ admins</b>; smaller schools with one admin can activate solo with an acknowledgement.</div>
+              </div>
+            </div>
+
+            <!-- Co-signer chooser -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">Choose your <em>co-signer</em></h2>
+                <div class="meta">Currently <b>1 admin</b> available · request goes to them by SMS + email</div>
+              </div>
+
+              <div class="signer-grid">
+
+                <div class="signer-card selected">
+                  <div class="checked-badge">✓</div>
+                  <div class="top">
+                    <div class="av">JO</div>
+                    <div>
+                      <div class="name display"><em>Joyce</em> Owusu-Ansah</div>
+                      <div class="role">Accountant · admin · 4 years tenure</div>
+                    </div>
+                  </div>
+                  <div class="reach-row">
+                    <div class="reach-line"><span>Email</span><b>joyce@christk-jhs.gh</b></div>
+                    <div class="reach-line"><span>SMS</span><b>+233 24 555 0140</b></div>
+                    <div class="reach-line"><span>Last active</span><b>2 hrs ago</b></div>
+                  </div>
+                  <div class="why-pick">
+                    <b>Recommended:</b> Joyce is the school accountant — best placed to review bookkeeping configuration choices.
+                  </div>
+                </div>
+
+                <div class="signer-card unavailable">
+                  <div class="top">
+                    <div class="av" style="background:var(--bg);color:var(--navy-3)">+</div>
+                    <div>
+                      <div class="name display">Add another <em>admin</em></div>
+                      <div class="role">From staff register</div>
+                    </div>
+                  </div>
+                  <div class="reach-row">
+                    <div class="reach-line" style="font-style:italic;color:var(--navy-3)">No other admins currently configured</div>
+                  </div>
+                  <div class="why-pick">
+                    Promote a staff member to admin in <b>Staff → Permissions</b> · then return here to nominate them.
+                  </div>
+                </div>
+
+                <div class="signer-card unavailable">
+                  <div class="top">
+                    <div class="av" style="background:var(--bg);color:var(--navy-3)">⚖</div>
+                    <div>
+                      <div class="name display">External <em>auditor</em></div>
+                      <div class="role">Future capability</div>
+                    </div>
+                  </div>
+                  <div class="reach-row">
+                    <div class="reach-line" style="font-style:italic;color:var(--navy-3)">Available in MVP3 · invite an external accountant by email</div>
+                  </div>
+                  <div class="why-pick">
+                    Some schools prefer their <b>external auditor</b> co-sign material configuration changes · planned for MVP3.
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Save bar -->
+            <div class="cosign-save-bar">
+              <div class="left">
+                <div class="summary display">Send your activation to <em>Joyce Owusu-Ansah</em> for review?</div>
+                <div class="meta">She'll receive an <b>SMS + email</b> with a link to review your configuration · most approvers respond <em>within 4 hours</em> · you can withdraw or edit until she approves · if she requests changes, the form returns to you with her notes</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Save as draft</button>
+                <button class="btn gold">Send for co-signing →</button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Initiator state</h4>
+      <ul>
+        <li><b>5-step indicator with 4 done + current "Co-<em>sign</em>" step</b>: Mode (Aggregate) / Backfill (From 1 Sep) / Categories (9+5) / Preferences (5 settings) / Co-sign (current). <b>Reframes co-signing as a regular step</b>, not as an interruption — it's part of the activation flow, not a wall around it.</li>
+        <li><b>"Why a <em>second signature</em>?" gold-bordered explainer card</b> uses plain-English reasoning: activating books determines what appears on bank-ready PDFs, P&amp;L, loan applications. <b>Educates rather than asserts</b>; admin learns why this matters before being asked to comply.</li>
+        <li><b>Three signer cards in a 3-up grid:</b> Joyce (real admin, selected) / Add another admin (escape hatch — creates a path back to staff permissions) / External auditor (future MVP3 capability shown to indicate the system anticipates broader signoff). <b>Two real options + one future</b> sets the right expectation about what's possible.</li>
+        <li><b>Joyce's card has full operational metadata:</b> avatar, name in italic gold, "Accountant · admin · 4 years tenure", email, SMS, last active "2 hrs ago." <b>"Why pick: Joyce is the school accountant — best placed to review bookkeeping configuration"</b> editorial recommendation. <b>The system makes a suggestion</b>; admin can override but the default is sensible.</li>
+        <li><b>"Add another admin" card is dashed-bordered + describes the escape</b>: "Promote a staff member to admin in Staff → Permissions · then return here." <b>Discoverable workaround</b> — admin doesn't need to abandon the activation flow if she wants someone other than Joyce to co-sign.</li>
+        <li><b>External auditor card flagged as MVP3</b>: "Available in MVP3 · invite an external accountant by email." <b>Sets the long-term direction</b> — accountant-as-co-signer is a recognised pattern; the system will extend that way without breaking the current model.</li>
+        <li><b>Save bar in gold-bordered card</b> with editorial summary: "Send your activation to <em>Joyce Owusu-Ansah</em> for review?" Then meta-line covers the four most likely concerns: how she's notified (SMS + email), expected timing (within 4 hours), withdrawal allowed, request-changes path. <b>Anticipates Florence's questions inline</b>.</li>
+        <li><b>"Send for co-signing →" replaces "Activate"</b> as the gold CTA. <b>Words matter</b>: this isn't activation, this is initiating the approval flow. Activation happens after Joyce signs.</li>
+        <li><b>"Save as draft" still available</b> alongside the send action. <b>Florence can pause</b> if she wants to refine her configuration before involving Joyce; she's not forced to commit just because she reached this step.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE B: APPROVER'S REVIEW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Approver's view · Joyce reviewing &amp; signing</div>
+    <div class="section-meta">Joyce arrives via SMS link · sees Florence's choices read-only</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / approvals / books-activation-218</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books</div>
+          <div class="nav-item active"><div class="ic"></div>Approvals<span style="margin-left:auto;background:var(--gold);color:var(--navy);font-size:8px;font-weight:700;letter-spacing:0.06em;padding:1px 5px;border-radius:100px">1</span></div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">JO</div>
+            <div><div class="meta-name">Joyce Owusu-Ansah</div><div class="meta-role">Accountant</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Approvals</a> / Books activation #218</div>
+            <h1 class="display">Florence sent you a <em>configuration to review</em></h1>
+            <div class="lede">Bookkeeping module activation · please verify the choices below match the school's intent · approving makes books go live and starts the financial reporting clock</div>
+          </div>
+
+          <div class="body">
+
+            <div class="approver-frame">
+              <div class="approver-frame-head">
+                <div class="ic-wrap">B</div>
+                <div class="info">
+                  <div class="pre-line">Activation request · awaiting your signature</div>
+                  <h3 class="display">Books activation · <em>Christ the King JHS</em></h3>
+                  <div class="lede">From <b>Florence Addo</b> · Headmistress · sent <b>2 hours ago</b></div>
+                </div>
+                <div class="timestamp">
+                  <div class="lbl">Submitted</div>
+                  <div>22 Oct 2025</div>
+                  <div>2:08 PM GMT</div>
+                </div>
+              </div>
+
+              <div class="approver-summary">
+
+                <div class="summary-row">
+                  <div class="lbl">Recording mode</div>
+                  <div class="val"><b>Aggregate</b> — monthly totals per category <span class="locked-tag">Read-only</span><span class="nb">Florence chose this over Detailed because the school doesn't have a dedicated transaction-level bookkeeper. She can switch to Detailed later without losing what she's recorded.</span></div>
+                </div>
+
+                <div class="summary-row">
+                  <div class="lbl">Backfill</div>
+                  <div class="val"><b>Backfill from 1 September 2025</b> · Term 1 to date <span class="locked-tag">Read-only</span><span class="nb">Backfilled entries will be tagged <em>"backfilled · admin estimate"</em> in audit trails. This produces a complete Term 1 P&amp;L from day one.</span></div>
+                </div>
+
+                <div class="summary-row">
+                  <div class="lbl">Chart of accounts</div>
+                  <div class="val"><b>9 expense categories</b> + <b>5 income categories</b> <span class="locked-tag">Read-only</span><span class="nb">8 standard expense categories + 1 custom ("Examination expenses" for BECE invigilator stipends &amp; supplies). 5 standard income categories. <em>4 custom expense slots remaining.</em></span></div>
+                </div>
+
+                <div class="summary-row">
+                  <div class="lbl">Fiscal year</div>
+                  <div class="val"><b>Academic</b> · September — August <span class="locked-tag">Read-only</span></div>
+                </div>
+
+                <div class="summary-row">
+                  <div class="lbl">Depreciation</div>
+                  <div class="val"><b>Straight-line</b> over each asset category's useful life <span class="locked-tag">Read-only</span></div>
+                </div>
+
+                <div class="summary-row">
+                  <div class="lbl">Audit trail</div>
+                  <div class="val"><b>Append-only</b> — every change creates a new entry <span class="locked-tag">Forced on</span><span class="nb">This is non-negotiable; all Omnischools accounts have it enabled.</span></div>
+                </div>
+
+                <div class="summary-row">
+                  <div class="lbl">Anomaly alerts</div>
+                  <div class="val"><b>On</b> · flag unusual entries on the dashboard <span class="locked-tag">Read-only</span></div>
+                </div>
+
+                <div class="summary-row">
+                  <div class="lbl">Auto-categorise</div>
+                  <div class="val"><b>On</b> · billing &amp; staff modules auto-create matching ledger entries <span class="locked-tag">Read-only</span></div>
+                </div>
+
+                <div class="summary-row">
+                  <div class="lbl">Effective date</div>
+                  <div class="val">If you approve now: books go live <em>immediately</em> · backfill from 1 Sep 2025 · first reporting period closes <b>30 Nov 2025</b> (end of Term 1)</div>
+                </div>
+
+              </div>
+
+              <div class="approver-actions">
+                <div class="reminder">
+                  <b>What approving means:</b> books become live, the bookkeeping dashboard appears for all admins, the financial-reports module activates, the GES annual census infrastructure section starts auto-filling. <b>You can still edit any individual entry afterwards</b> — the configuration itself can be changed by future co-signed proposals.
+                </div>
+                <div class="actions-group">
+                  <button class="btn">Request changes</button>
+                  <button class="btn gold">Approve &amp; activate →</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pending banner showing initiator's perspective for context -->
+            <div class="pending-banner" style="margin-top:24px">
+              <div class="top">
+                <div class="pulse"></div>
+                <div>
+                  <div class="heading display">Florence sees this on her end · <em>"Awaiting Joyce's review"</em></div>
+                </div>
+              </div>
+              <div class="meta">A pending banner replaces the activation form for Florence until Joyce decides · she sees a <em>read-only summary</em> of what she sent + a Withdraw button + a Resend reminder action <em>(if 24h pass without response)</em> · once Joyce approves, books go live and Florence sees a confirmation; if Joyce requests changes, the form returns to Florence with <b>Joyce's notes inline</b></div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Approver state</h4>
+      <ul>
+        <li><b>Sidebar shows "Approvals" with gold count badge "1"</b> — Joyce sees the pending request as a top-level navigation item, not buried in settings. <b>Approvals are first-class</b>; the system anticipates more co-signed flows in future (payroll, voids, refunds — MVP3+).</li>
+        <li><b>Page heading uses Florence's voice</b>: "Florence sent you a <em>configuration to review</em>." <b>Names the requester</b>, frames this as a person-to-person handoff rather than a system task.</li>
+        <li><b>Gold-bordered approver frame</b> with structured 8-row summary: mode / backfill / chart of accounts / fiscal year / depreciation / audit trail / anomaly alerts / auto-categorise / effective date. <b>Same fields admin saw when configuring</b> — Joyce reviews the exact decisions Florence made, in the same vocabulary.</li>
+        <li><b>"Read-only" locked tags on every editable field</b> visually distinguish "Joyce can't change these" from "Joyce can interrogate these." If she wants changes, she uses Request changes — she doesn't edit directly. <b>Maintains the segregation principle</b>: initiator owns the proposal; approver accepts, rejects, or returns.</li>
+        <li><b>"Audit trail · Forced on"</b> uses a different locked-tag because it's not just read-only — it's not configurable by anyone. <b>Honest about which constraints come from the user vs the system</b>.</li>
+        <li><b>Italic-grey "nb" notes on each row carry Florence's reasoning</b>: "Florence chose Aggregate over Detailed because the school doesn't have a dedicated transaction-level bookkeeper." <b>Captures intent, not just state</b> — Joyce reviews not just what Florence chose but why.</li>
+        <li><b>Effective date row narrates the consequence in plain language</b>: "If you approve now: books go live <em>immediately</em> · backfill from 1 Sep 2025 · first reporting period closes <b>30 Nov 2025</b>." <b>Timeline of what happens after approval</b>; eliminates the question "what does pressing this button actually do?"</li>
+        <li><b>Approver actions in two-row layout</b>: explanatory text on the left ("books become live, the dashboard appears for all admins, etc."), action buttons on the right (Request changes neutral / Approve &amp; activate gold). <b>The text is what Joyce reads before deciding</b>.</li>
+        <li><b>"You can still edit any individual entry afterwards"</b> reassurance language — approving doesn't lock the school out of operational flexibility. <b>Configuration vs entries</b> distinction made explicit.</li>
+        <li><b>Pending banner at the bottom shows what Florence sees on her end</b> while Joyce decides. <b>Educational</b>: the system documents both sides of the handoff so admin understands what the other party experiences. The banner mentions Florence's available actions: read-only summary + Withdraw + Resend reminder after 24h.</li>
+        <li><b>"If Joyce requests changes, the form returns to Florence with Joyce's notes inline"</b> — closes the loop on the rejection path. <b>This isn't approve-or-die</b>; back-and-forth iteration is expected and supported.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE C: SOLO-ADMIN PATH ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Solo-admin path · acknowledged self-activation</div>
+    <div class="section-meta">No second admin available · activation proceeds with explicit acknowledgement</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / books / activation</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar" style="min-height:880px">
+          <div class="brand">
+            <div class="logo-mini">SK</div>
+            <div>
+              <div class="school-name">Sunrise Basic School</div>
+              <div class="school-meta">JHS · Tema</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">EM</div>
+            <div><div class="meta-name">Esther Mensah</div><div class="meta-role">Headteacher · solo admin</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Settings</a> / Books / Activation</div>
+            <h1 class="display">Final step · <em>self-activation</em></h1>
+            <div class="lede">Sunrise Basic School has <b>1 admin</b> (you) · the system can't require a second signature it doesn't have · activation proceeds with an acknowledgement card that documents the absence of segregation</div>
+          </div>
+
+          <div class="body">
+
+            <!-- Solo card -->
+            <div class="solo-card">
+              <div class="top">
+                <div class="ic">!</div>
+                <div>
+                  <div class="heading display">You are the <em>only admin</em> at this school</div>
+                  <div class="body-text">Most schools using Omnischools have a headteacher + accountant or assistant who jointly approve material configuration changes like books activation. Your school currently doesn't — that's <b>fine and common</b> for smaller schools, but the system records this as part of your audit trail. <b>If you ever apply for a bank loan</b>, the auditor may ask whether your books configuration was reviewed by a second person; this acknowledgement is what they'll see.</div>
+                </div>
+              </div>
+              <div class="ack-row">
+                <div class="check">✓</div>
+                <div class="ack-text">
+                  <b>I understand and acknowledge:</b> I am activating the bookkeeping module without a second admin's review · the configuration choices recorded here will be attributed to me alone · this acknowledgement is timestamped and stored in the audit trail · I can <b>add a co-signer to future proposals</b> by promoting a staff member to admin in <em>Staff → Permissions</em>.
+                </div>
+              </div>
+            </div>
+
+            <!-- Save bar -->
+            <div class="cosign-save-bar">
+              <div class="left">
+                <div class="summary display">Activate books at <em>Sunrise Basic School</em>?</div>
+                <div class="meta">Books go live <b>immediately</b> · backfill from 1 Sep 2025 · this acknowledgement is logged with timestamp <em>22 Oct 2025 · 2:14 PM GMT</em> and your name <em>Esther Mensah</em> · audit trail entry is permanent</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Save as draft</button>
+                <button class="btn gold">Acknowledge &amp; activate →</button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Solo-admin path</h4>
+      <ul>
+        <li><b>Different school in the example: Sunrise Basic School in Tema</b>, with Esther Mensah as the only admin. <b>Avoids confusion with the Christ the King example</b> from State A — the dual-admin and solo paths are clearly different scenarios, not states of the same school.</li>
+        <li><b>Warn-tinted card (not gold)</b> distinguishes solo-activation from the standard co-signed path. The warning isn't "you're doing something wrong" — it's "the system is documenting that segregation isn't possible here." <b>Honest acknowledgement, not gatekeeping</b>.</li>
+        <li><b>Heading: "You are the <em>only admin</em> at this school"</b> states the fact without judgement. Body text explains: most schools have two admins; smaller schools commonly don't; <b>"that's fine and common"</b> reassurance.</li>
+        <li><b>The "if you ever apply for a bank loan" framing</b> connects the acknowledgement to a real future scenario — banks asking auditors to verify books configuration. <b>Concrete consequence</b> rather than abstract policy.</li>
+        <li><b>Acknowledgement row with checkbox in warn-tinted card</b> contains explicit language: "I am activating the bookkeeping module without a second admin's review · the configuration choices recorded here will be attributed to me alone · this acknowledgement is timestamped and stored in the audit trail." <b>Esther understands what she's accepting</b> by ticking it.</li>
+        <li><b>Workaround visible in the acknowledgement</b>: "I can add a co-signer to future proposals by promoting a staff member to admin in Staff → Permissions." <b>The solo path isn't a one-way door</b>; if Esther later hires an assistant, she can switch to dual-control for future configuration changes.</li>
+        <li><b>Save bar shows the timestamp + signature being recorded</b>: "logged with timestamp <em>22 Oct 2025 · 2:14 PM GMT</em> and your name <em>Esther Mensah</em>." <b>The audit record is shown before it's created</b>, not after. Esther sees exactly what gets stored.</li>
+        <li><b>Gold CTA changes wording: "Acknowledge &amp; activate →"</b> instead of "Activate" or "Send for co-signing." <b>The verb matches the act</b>; she's both acknowledging the absence of segregation and activating in the same press.</li>
+        <li><b>What this design deliberately doesn't do:</b> doesn't refuse activation when only one admin exists, doesn't auto-promote a non-admin staff member to admin to satisfy the rule, doesn't fall back to a "lite" mode without proper P&amp;L. <b>Solo schools deserve the full system</b>; the design just documents the trade-off.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AUDIT TRAIL DOCUMENTATION ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">What lands in the audit trail</div>
+    <div class="section-meta">For all three paths · permanent record · visible to bank reviewers</div>
+  </div>
+
+  <div class="layout">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 28px">
+
+      <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:600;letter-spacing:-0.012em;margin-bottom:16px">Audit-trail entries · <em style="font-style:italic;color:var(--gold)">three configurations, three records</em></div>
+
+      <div style="border-left:3px solid var(--gold);padding:12px 16px;background:var(--gold-bg);margin-bottom:14px">
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:4px">Co-signed activation · standard path</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--navy-2);line-height:1.7">
+22 Oct 2025 · 2:08 PM · <b style="color:var(--navy)">Florence Addo</b> initiated books activation #218<br>
+22 Oct 2025 · 2:11 PM · <b style="color:var(--navy)">Joyce Owusu-Ansah</b> notified by SMS + email<br>
+22 Oct 2025 · 4:42 PM · <b style="color:var(--navy)">Joyce Owusu-Ansah</b> approved activation #218<br>
+22 Oct 2025 · 4:42 PM · <span style="color:var(--green);font-weight:700">books activated · 2-of-2 signatures captured</span>
+        </div>
+      </div>
+
+      <div style="border-left:3px solid var(--green);padding:12px 16px;background:var(--green-bg);margin-bottom:14px">
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:4px">Co-signed with changes requested · iteration path</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--navy-2);line-height:1.7">
+22 Oct 2025 · 2:08 PM · <b style="color:var(--navy)">Florence Addo</b> initiated books activation #218<br>
+22 Oct 2025 · 4:42 PM · <b style="color:var(--navy)">Joyce Owusu-Ansah</b> requested changes · note: <em style="font-style:italic">"Examination expenses should split BECE costs separately from termly tests"</em><br>
+22 Oct 2025 · 6:18 PM · <b style="color:var(--navy)">Florence Addo</b> revised proposal · added new custom category<br>
+22 Oct 2025 · 6:21 PM · <b style="color:var(--navy)">Joyce Owusu-Ansah</b> approved revised activation #218<br>
+22 Oct 2025 · 6:21 PM · <span style="color:var(--green);font-weight:700">books activated · 2-of-2 signatures captured · 1 revision cycle</span>
+        </div>
+      </div>
+
+      <div style="border-left:3px solid var(--warn);padding:12px 16px;background:var(--warn-bg)">
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--warn);font-weight:700;margin-bottom:4px">Solo-admin self-activation · acknowledged path</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--navy-2);line-height:1.7">
+22 Oct 2025 · 2:14 PM · <b style="color:var(--navy)">Esther Mensah</b> (sole admin) initiated books activation #042<br>
+22 Oct 2025 · 2:14 PM · <b style="color:var(--navy)">Esther Mensah</b> acknowledged absence of segregation · checkbox confirmed<br>
+22 Oct 2025 · 2:14 PM · <span style="color:var(--warn);font-weight:700">books activated · 1-of-1 signature · solo-admin acknowledgement on file</span>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;padding:14px 18px;background:var(--bg);border:1px dashed var(--border-2);border-radius:10px;font-size:12px;color:var(--navy-3);line-height:1.6">
+        <b style="color:var(--navy);font-weight:600">All three records appear identically in the bank-ready PDF declaration page.</b> The signature block on page 4 of the financial statements PDF will read either <em style="font-family:'Fraunces',serif;font-style:italic;color:var(--gold);font-weight:500">"Activated &amp; reviewed by [Name 1] and [Name 2]"</em> for co-signed paths, or <em style="font-family:'Fraunces',serif;font-style:italic;color:var(--gold);font-weight:500">"Activated by [Name] · sole admin · acknowledgement on file"</em> for the solo path. Bank reviewers can distinguish at a glance which schools have dual-control and which don't.
+      </div>
+
+    </div>
+
+    <div class="notes">
+      <h4>Audit trail</h4>
+      <ul>
+        <li><b>Three audit records shown side-by-side</b> in their visual states: gold for standard co-signed, green for co-signed-with-iteration, warn for solo. <b>The system records all three faithfully</b>; none is hidden, none is privileged.</li>
+        <li><b>Iteration path captures Joyce's note inline</b>: "Examination expenses should split BECE costs separately from termly tests." <b>Real back-and-forth captured</b>; future auditors see not just the final config but how it was arrived at.</li>
+        <li><b>Solo path entry says "1-of-1 signature · solo-admin acknowledgement on file"</b> in the audit trail. <b>Honest about the difference</b> from co-signed records.</li>
+        <li><b>Bank-ready PDF declaration page reflects this</b>: "Activated &amp; reviewed by [Name 1] and [Name 2]" for co-signed schools vs "Activated by [Name] · sole admin" for solo. <b>Bank reviewers see the dual-control state</b> in the document they're already reading; no separate disclosure needed.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

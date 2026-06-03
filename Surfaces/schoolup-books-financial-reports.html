@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Financial reports</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; --paper:#FBFAF6; --paper-line:#C9C2B0; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:700px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1480px; }
+.sidebar.tall { min-height:1880px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.nav-item .new-tag { margin-left:auto; background:var(--gold); color:var(--navy); font-size:8px; font-weight:700; letter-spacing:0.06em; padding:1px 5px; border-radius:100px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; margin-bottom:14px; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:700px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+
+/* Period + report tabs */
+.report-tabs { display:flex; gap:6px; margin-top:6px; }
+.report-tab { padding:8px 16px; background:transparent; border:1px solid transparent; border-radius:100px; font-family:'Fraunces',serif; font-size:13px; font-weight:600; color:var(--navy-3); cursor:pointer; }
+.report-tab.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.report-tab.active em { font-style:italic; color:var(--gold); font-weight:500; }
+
+.body { padding:28px 36px 60px; }
+
+/* Two-up grid for P&L + BS view */
+.report-twoup { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:24px; }
+
+.report-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.report-card .rc-head { padding:18px 24px 14px; border-bottom:1px solid var(--border); }
+.report-card .rc-head .rc-eyebrow { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.report-card .rc-head .rc-title { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.018em; line-height:1.1; }
+.report-card .rc-head .rc-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.report-card .rc-head .rc-meta { font-size:11px; color:var(--navy-3); margin-top:4px; }
+.report-card .rc-head .rc-meta b { color:var(--navy-2); font-weight:600; }
+
+.rc-body { padding:6px 24px 18px; }
+
+.rc-line { display:grid; grid-template-columns:18px 1fr auto; gap:12px; align-items:center; padding:7px 0; font-size:12px; border-bottom:1px solid var(--border); }
+.rc-line:last-child { border-bottom:none; }
+.rc-line .swatch { width:10px; height:10px; border-radius:3px; background:var(--gold); }
+.rc-line.subhead { padding:14px 0 6px; border-bottom:1.5px solid var(--paper-line); }
+.rc-line.subhead .swatch { background:transparent; }
+.rc-line.subhead .name { font-family:'Fraunces',serif; font-size:13px; font-weight:600; color:var(--navy); letter-spacing:-0.005em; }
+.rc-line.subhead .amt { font-family:'Fraunces',serif; font-size:13px; font-weight:600; }
+.rc-line .name { color:var(--navy-2); font-weight:500; }
+.rc-line .name b { color:var(--navy); font-weight:600; }
+.rc-line .name .sub { display:block; font-size:10px; color:var(--navy-3); font-style:italic; margin-top:1px; }
+.rc-line .amt { font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--navy); font-size:12px; text-align:right; }
+.rc-line.total { padding:12px 0; border-top:2px solid var(--navy); border-bottom:none; margin-top:6px; }
+.rc-line.total .name { font-family:'Fraunces',serif; font-size:14px; font-weight:700; color:var(--navy); }
+.rc-line.total .amt { font-family:'Fraunces',serif; font-size:18px; font-weight:700; color:var(--navy); }
+.rc-line.surplus { background:var(--green-bg); padding:14px 14px; margin:6px -14px -6px; border-radius:8px; border:1px solid rgba(47,107,71,0.3); border-bottom:none !important; }
+.rc-line.surplus .name { font-family:'Fraunces',serif; font-size:14px; font-weight:700; color:var(--green); }
+.rc-line.surplus .amt { font-family:'Fraunces',serif; font-size:20px; font-weight:700; color:var(--green); }
+.rc-line.surplus .amt em { font-style:italic; }
+
+.rc-line .gh { font-size:10px; color:var(--navy-3); font-weight:500; margin-right:2px; }
+
+/* Equity check row */
+.balance-check { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:8px; padding:10px 14px; margin:14px 24px 18px; display:flex; justify-content:space-between; align-items:center; font-size:11px; }
+.balance-check .lbl { font-family:'Fraunces',serif; font-style:italic; color:var(--navy-2); font-size:12px; font-weight:500; }
+.balance-check .lbl b { color:var(--navy); font-weight:600; font-style:normal; font-family:inherit; }
+.balance-check .check { font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--green); font-size:12px; }
+.balance-check .check::before { content:"✓ "; }
+
+/* PDF preview */
+.preview-stage { background:linear-gradient(180deg,#E8E1D2 0%,#DDD5C2 100%); padding:36px; display:flex; flex-direction:column; align-items:center; gap:18px; }
+.pdf-page { width:760px; background:var(--paper); box-shadow:0 8px 24px -8px rgba(26,43,71,0.3); border-radius:2px; position:relative; overflow:hidden; }
+.pdf-band { background:var(--navy); color:var(--gold-soft); padding:8px 28px; display:grid; grid-template-columns:22px 1fr auto auto; gap:10px; align-items:center; font-size:9px; letter-spacing:0.06em; }
+.pdf-band .crest { width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:9px; }
+.pdf-band .school-name-pdf { font-family:'Fraunces',serif; font-size:12px; font-weight:500; color:white; }
+.pdf-band .return-type { font-size:8px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; }
+.pdf-band .gen-stamp { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--gold); }
+
+.pdf-content { padding:28px 36px 32px; }
+.pdf-title-block { text-align:center; margin-bottom:22px; padding-bottom:14px; border-bottom:1.5px solid var(--paper-line); }
+.pdf-title-block h1 { font-family:'Fraunces',serif; font-size:26px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; margin-bottom:4px; }
+.pdf-title-block h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.pdf-title-block .period { font-family:'Fraunces',serif; font-style:italic; color:var(--navy-3); font-size:13px; font-weight:500; }
+.pdf-title-block .school-id { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); margin-top:6px; font-weight:600; }
+
+.pdf-section-head { display:grid; grid-template-columns:24px 1fr; gap:12px; align-items:baseline; margin:18px 0 8px; padding-bottom:5px; border-bottom:1.5px solid var(--paper-line); }
+.pdf-section-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:16px; color:var(--gold); }
+.pdf-section-head .title { font-family:'Fraunces',serif; font-size:13px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; }
+
+.pdf-line { display:grid; grid-template-columns:1fr auto auto; gap:24px; padding:5px 0; font-size:11px; align-items:baseline; }
+.pdf-line .name { color:var(--navy-2); }
+.pdf-line .name.indent { padding-left:14px; color:var(--navy-3); }
+.pdf-line .amt { font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--navy); text-align:right; min-width:90px; }
+.pdf-line .py-amt { font-family:'JetBrains Mono',monospace; font-weight:500; color:var(--navy-3); text-align:right; min-width:90px; font-size:10px; }
+.pdf-line.subtotal { border-top:1px solid var(--paper-line); padding-top:7px; margin-top:5px; font-weight:600; }
+.pdf-line.subtotal .name { color:var(--navy); font-weight:600; }
+.pdf-line.total { border-top:2px solid var(--navy); padding-top:8px; margin-top:8px; font-weight:700; }
+.pdf-line.total .name { font-family:'Fraunces',serif; font-size:13px; color:var(--navy); }
+.pdf-line.total .amt { font-family:'Fraunces',serif; font-size:14px; }
+
+.pdf-py-header { display:grid; grid-template-columns:1fr auto auto; gap:24px; padding:5px 0 3px; font-size:8px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; border-bottom:1px solid var(--paper-line); }
+.pdf-py-header .yr { text-align:right; min-width:90px; }
+
+.pdf-foot { background:var(--bg); border-top:1px solid var(--paper-line); padding:8px 28px; display:grid; grid-template-columns:1fr 2fr 1fr; gap:10px; align-items:center; font-size:9px; color:var(--navy-3); letter-spacing:0.04em; }
+.pdf-foot .powered { text-align:right; font-style:italic; }
+.pdf-foot .powered em { font-family:'Fraunces',serif; font-weight:700; color:var(--gold); font-style:italic; }
+.pdf-foot .footer-mid { text-align:center; font-family:'JetBrains Mono',monospace; color:var(--navy-2); font-weight:600; }
+.pdf-page-num { position:absolute; bottom:6px; left:0; right:0; text-align:center; font-family:'Fraunces',serif; font-style:italic; font-size:9px; color:var(--navy-3); }
+.pdf-page-num span { font-family:'JetBrains Mono',monospace; font-style:normal; font-weight:600; }
+
+.pdf-narrative { background:var(--bg); border-left:2px solid var(--gold); padding:10px 14px; margin-top:14px; font-size:10px; color:var(--navy-2); line-height:1.6; font-style:italic; }
+.pdf-narrative b { color:var(--navy); font-weight:600; font-style:normal; }
+
+@media (max-width:1280px) { .layout { grid-template-columns:1fr; } .report-twoup { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Books · Financial reports</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">P&amp;L &amp; the <em>balance sheet</em></h1>
+  <div class="gold-rule"></div>
+  <p>Two states: the in-app reports view (interactive, with prior-year comparisons and editorial framing) and the bank-ready PDF preview (formal, statement-grade, what banks expect to see for loan applications). Both produced from the same underlying data — the P&amp;L composes from expense entries + income entries, the balance sheet composes from fixed assets + outstanding fees + bank balance + retained earnings.</p>
+</header>
+
+<!-- ============ STATE A: IN-APP REPORTS ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">In-app reports · interactive view</div>
+    <div class="section-meta">P&amp;L + balance sheet · Term 1 2025/26 · click any line for drill-through</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / books / reports</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Books<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub">Dashboard</div>
+          <div class="nav-item sub">Expenses</div>
+          <div class="nav-item sub">Income</div>
+          <div class="nav-item sub">Fixed assets</div>
+          <div class="nav-item sub active">Reports</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Books</a> / Reports</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Financial <em>reports</em></h1>
+                <div class="lede">P&amp;L and balance sheet · composed from your expense entries + income entries + fixed assets + outstanding fees · <b>bank-ready PDF</b> exportable from any view</div>
+              </div>
+              <div class="actions">
+                <button class="btn">CSV export →</button>
+                <button class="btn gold">Export bank-ready PDF →</button>
+              </div>
+            </div>
+            <div class="report-tabs">
+              <button class="report-tab active"><em>P&amp;L</em> + balance sheet</button>
+              <button class="report-tab">P&amp;L only</button>
+              <button class="report-tab">Balance sheet only</button>
+              <button class="report-tab">Cash flow · MVP3</button>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <div class="report-twoup">
+
+              <!-- P&L card -->
+              <div class="report-card">
+                <div class="rc-head">
+                  <div class="rc-eyebrow">Statement of operations</div>
+                  <div class="rc-title display">Income <em>statement</em></div>
+                  <div class="rc-meta">Term 1 · <b>1 Sep — 22 Oct 2025</b> · vs Term 1 last year</div>
+                </div>
+                <div class="rc-body">
+
+                  <div class="rc-line subhead">
+                    <div class="swatch"></div>
+                    <div class="name display">Income</div>
+                    <div class="amt">GHS</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--green)"></div>
+                    <div class="name"><b>School fees</b><span class="sub">tuition · transport · books</span></div>
+                    <div class="amt">246,400.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:#5C8B6B"></div>
+                    <div class="name">BECE registration <span class="sub">JHS 3 · 28 of 33 paid</span></div>
+                    <div class="amt">4,200.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:#88AB95"></div>
+                    <div class="name">PTA contributions</div>
+                    <div class="amt">2,400.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:#B5CCBE"></div>
+                    <div class="name">Donations &amp; misc</div>
+                    <div class="amt">1,240.00</div>
+                  </div>
+                  <div class="rc-line total">
+                    <div></div>
+                    <div class="name display">Total income</div>
+                    <div class="amt">254,240.00</div>
+                  </div>
+
+                  <div class="rc-line subhead">
+                    <div class="swatch"></div>
+                    <div class="name display">Expenses</div>
+                    <div class="amt">GHS</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--navy)"></div>
+                    <div class="name"><b>Salaries &amp; wages</b><span class="sub">17 staff · gross before deductions</span></div>
+                    <div class="amt">170,500.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--gold)"></div>
+                    <div class="name">Utilities <span class="sub">ECG · GWCL · internet</span></div>
+                    <div class="amt">12,400.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--green)"></div>
+                    <div class="name">Supplies &amp; materials</div>
+                    <div class="amt">8,200.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--warn)"></div>
+                    <div class="name">Feeding programme</div>
+                    <div class="amt">6,400.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--terra)"></div>
+                    <div class="name">Repairs &amp; maintenance</div>
+                    <div class="amt">4,600.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--navy-3)"></div>
+                    <div class="name">Transport &amp; events</div>
+                    <div class="amt">3,800.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--gold-soft)"></div>
+                    <div class="name">Bank &amp; payment fees <span class="sub">Hubtel + bank charges</span></div>
+                    <div class="amt">2,068.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--border-2)"></div>
+                    <div class="name">Depreciation expense <span class="sub">apportioned across asset categories</span></div>
+                    <div class="amt">10,500.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:#E5DFD3"></div>
+                    <div class="name">Other</div>
+                    <div class="amt">3,700.00</div>
+                  </div>
+                  <div class="rc-line total">
+                    <div></div>
+                    <div class="name display">Total expenses</div>
+                    <div class="amt">222,168.00</div>
+                  </div>
+
+                  <div class="rc-line surplus">
+                    <div></div>
+                    <div class="name display"><em>Net surplus</em> · before tax</div>
+                    <div class="amt"><em>32,072</em>.00</div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Balance sheet card -->
+              <div class="report-card">
+                <div class="rc-head">
+                  <div class="rc-eyebrow">Statement of financial position</div>
+                  <div class="rc-title display">Balance <em>sheet</em></div>
+                  <div class="rc-meta">As of <b>22 Oct 2025</b> · vs 31 Aug 2025 (year-end)</div>
+                </div>
+                <div class="rc-body">
+
+                  <div class="rc-line subhead">
+                    <div class="swatch"></div>
+                    <div class="name display">Assets</div>
+                    <div class="amt">GHS</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--gold)"></div>
+                    <div class="name"><b>Cash &amp; bank</b><span class="sub">GCB current + savings</span></div>
+                    <div class="amt">84,200.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--gold-soft)"></div>
+                    <div class="name">Outstanding fees receivable</div>
+                    <div class="amt">67,980.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:#F5EBDC"></div>
+                    <div class="name">Inventory <span class="sub">stationery · cleaning</span></div>
+                    <div class="amt">4,400.00</div>
+                  </div>
+                  <div class="rc-line subtotal" style="border-top:1px solid var(--border)">
+                    <div></div>
+                    <div class="name">Current assets</div>
+                    <div class="amt">156,580.00</div>
+                  </div>
+
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--navy)"></div>
+                    <div class="name"><b>Buildings</b><span class="sub">3 buildings · net of depreciation</span></div>
+                    <div class="amt">880,000.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--navy-2)"></div>
+                    <div class="name">Vehicles <span class="sub">school bus</span></div>
+                    <div class="amt">64,000.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--navy-3)"></div>
+                    <div class="name">Furniture &amp; equipment</div>
+                    <div class="amt">42,400.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:#5C6675"></div>
+                    <div class="name">ICT equipment</div>
+                    <div class="amt">18,200.00</div>
+                  </div>
+                  <div class="rc-line subtotal" style="border-top:1px solid var(--border)">
+                    <div></div>
+                    <div class="name">Fixed assets · net</div>
+                    <div class="amt">1,004,600.00</div>
+                  </div>
+
+                  <div class="rc-line total">
+                    <div></div>
+                    <div class="name display">Total assets</div>
+                    <div class="amt">1,161,180.00</div>
+                  </div>
+
+                  <div class="rc-line subhead">
+                    <div class="swatch"></div>
+                    <div class="name display">Liabilities &amp; equity</div>
+                    <div class="amt">GHS</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--terra)"></div>
+                    <div class="name">Accrued salaries <span class="sub">end-of-month due</span></div>
+                    <div class="amt">4,200.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--warn)"></div>
+                    <div class="name">Suppliers payable</div>
+                    <div class="amt">1,800.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:#B84A39"></div>
+                    <div class="name"><b>Bank loan</b><span class="sub">GCB · classroom block · 2018</span></div>
+                    <div class="amt">82,000.00</div>
+                  </div>
+                  <div class="rc-line subtotal" style="border-top:1px solid var(--border)">
+                    <div></div>
+                    <div class="name">Total liabilities</div>
+                    <div class="amt">88,000.00</div>
+                  </div>
+
+                  <div class="rc-line">
+                    <div class="swatch" style="background:var(--green)"></div>
+                    <div class="name"><b>Proprietor's capital</b></div>
+                    <div class="amt">1,041,108.00</div>
+                  </div>
+                  <div class="rc-line">
+                    <div class="swatch" style="background:#5C8B6B"></div>
+                    <div class="name">Term 1 retained surplus</div>
+                    <div class="amt">32,072.00</div>
+                  </div>
+                  <div class="rc-line subtotal" style="border-top:1px solid var(--border)">
+                    <div></div>
+                    <div class="name">Total equity</div>
+                    <div class="amt">1,073,180.00</div>
+                  </div>
+
+                  <div class="rc-line total">
+                    <div></div>
+                    <div class="name display">Total liabilities &amp; equity</div>
+                    <div class="amt">1,161,180.00</div>
+                  </div>
+
+                </div>
+                <div class="balance-check">
+                  <div class="lbl">Balance sheet <b>balances</b> · assets = liabilities + equity</div>
+                  <div class="check">GHS 1,161,180.00 = 1,161,180.00</div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>In-app reports</h4>
+      <ul>
+        <li><b>Two-up grid: P&amp;L on left, balance sheet on right.</b> Side-by-side because they're two views of the same data — admin can scan both without scrolling. <b>One report shows performance over time</b> (P&amp;L, the term), <b>the other shows position at a moment</b> (balance sheet, today).</li>
+        <li><b>P&amp;L surplus highlighted in green-tinted card with italic gold "32,072"</b> — the most important number on the page. <b>Same italic gold convention</b> as user-tunable values; here it signifies "this is the answer."</li>
+        <li><b>Depreciation expense as its own line</b> on the P&amp;L (GHS 10,500). <b>Schools rarely think to record depreciation</b> as an expense, but it's required for an honest P&amp;L and a properly-balancing balance sheet. The line connects to fixed assets register.</li>
+        <li><b>Surplus shifted from GHS 42,072 (dashboard) to GHS 32,072 (P&amp;L)</b> because depreciation hit the income statement. <b>Honest accounting</b>: the dashboard view shows operational surplus; the formal P&amp;L includes depreciation. Both are "right" depending on what you're asking.</li>
+        <li><b>Balance sheet balances</b>: GHS 1,161,180 = 1,161,180 (assets = liabilities + equity). <b>Visible balance check in gold-tinted card</b> at the bottom of the BS — admin sees the accounting identity hold. If it didn't balance, the system would surface an error.</li>
+        <li><b>"Bank loan · GCB · classroom block · 2018"</b> as a line item. <b>Real Ghanaian school finance pattern</b>: schools take out loans for capital improvements and pay them down over years. The 2018 loan for the annex block (recorded as a CTK-BLD-002 building asset) is the matched liability.</li>
+        <li><b>"Proprietor's capital + retained surplus" structure</b> matches private school accounting. For public schools the structure flips to "Capital (PTA + government) + Reserves + Term surplus." <b>Same data model adapts to school type</b>.</li>
+        <li><b>4 report tabs:</b> P&amp;L + BS / P&amp;L only / Balance sheet only / Cash flow · MVP3. <b>Cash flow statement deferred to MVP3</b> with explicit tag — banks ask for it eventually but it's harder to build correctly.</li>
+        <li><b>"Export bank-ready PDF" gold CTA</b> in the page header takes admin to the formal PDF view (state B). <b>Two output formats from same data</b>: interactive in-app vs formal PDF.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE B: BANK-READY PDF PREVIEW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Bank-ready PDF preview · for loan applications</div>
+    <div class="section-meta">A4 portrait · 4 pages · Christ the King JHS · Term 1 2025/26</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / books / reports / preview · CTK_Financial_Statements_Term1_2025-26.pdf</div>
+      </div>
+
+      <div class="preview-stage">
+
+        <!-- Cover page -->
+        <div class="pdf-page">
+          <div class="pdf-band">
+            <div class="crest">CK</div>
+            <div class="school-name-pdf">Christ the King JHS</div>
+            <div class="return-type">Financial statements · Term 1 2025/26</div>
+            <div class="gen-stamp">Gen 22 Oct 2025</div>
+          </div>
+          <div class="pdf-content">
+            <div class="pdf-title-block">
+              <h1 class="display">Financial <em>statements</em></h1>
+              <div class="period">For the period 1 September — 22 October 2025</div>
+              <div class="school-id">CHRIST THE KING JHS · GES 4-2305-018 · ACCRA</div>
+            </div>
+
+            <div class="pdf-section-head">
+              <div class="num">A</div>
+              <div class="title">School identification</div>
+            </div>
+            <div class="pdf-line"><div class="name">School name</div><div class="amt" style="font-family:'Fraunces',serif;font-style:italic;color:var(--navy);font-weight:500">Christ the King Junior High School</div><div></div></div>
+            <div class="pdf-line"><div class="name">School type · ownership</div><div class="amt" style="font-family:'Fraunces',serif;color:var(--navy);font-weight:500">JHS · Private</div><div></div></div>
+            <div class="pdf-line"><div class="name">Location</div><div class="amt" style="font-family:'Fraunces',serif;color:var(--navy);font-weight:400">Korle Klottey, Accra</div><div></div></div>
+            <div class="pdf-line"><div class="name">GES School ID</div><div class="amt">4-2305-018</div><div></div></div>
+            <div class="pdf-line"><div class="name">Year established</div><div class="amt">1962</div><div></div></div>
+            <div class="pdf-line"><div class="name">Headteacher · signatory</div><div class="amt" style="font-family:'Fraunces',serif;color:var(--navy);font-weight:500">Florence Addo</div><div></div></div>
+            <div class="pdf-line"><div class="name">Reporting period</div><div class="amt">1 Sep — 22 Oct 2025</div><div></div></div>
+            <div class="pdf-line"><div class="name">Comparative period</div><div class="amt">1 Sep — 22 Oct 2024</div><div></div></div>
+
+            <div class="pdf-section-head">
+              <div class="num">B</div>
+              <div class="title">Basis of preparation</div>
+            </div>
+            <div style="font-size:11px;color:var(--navy-2);line-height:1.6;padding:6px 0">
+              These statements have been prepared on the <b>accruals basis</b> from the books of account maintained in Omnischools. <b>Income</b> is recognised when earned (fee invoices issued, donations received). <b>Expenses</b> include cash payments and accrued obligations. <b>Fixed assets</b> are stated at cost less accumulated depreciation. Depreciation is computed on the <b>straight-line method</b> over the useful life of each asset category. All amounts are in <b>Ghana Cedis (GHS)</b>.
+            </div>
+
+            <div class="pdf-narrative">
+              <b>For the bank reviewer:</b> these statements cover one academic term (Sept—Oct 2025). For loan applications, banks typically require trailing 12 months. A <b>full-year statement is available</b> from August 2025 covering the 2024/25 academic year — request it from the school.
+            </div>
+
+          </div>
+          <div class="pdf-foot">
+            <div style="font-family:'JetBrains Mono',monospace;font-weight:600">CTK · Term 1 2025/26</div>
+            <div class="footer-mid">Christ the King JHS · GES 4-2305-018</div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>1</span> of 4</div>
+        </div>
+
+        <!-- P&L page -->
+        <div class="pdf-page">
+          <div class="pdf-band">
+            <div class="crest">CK</div>
+            <div class="school-name-pdf">Christ the King JHS</div>
+            <div class="return-type">Financial statements · Term 1 2025/26</div>
+            <div class="gen-stamp">Gen 22 Oct 2025</div>
+          </div>
+          <div class="pdf-content">
+            <div class="pdf-title-block">
+              <h1 class="display" style="font-size:22px">Income <em>statement</em></h1>
+              <div class="period">For the term ended 22 October 2025</div>
+            </div>
+
+            <div class="pdf-py-header">
+              <div></div>
+              <div class="yr">Term 1 2025/26 · GHS</div>
+              <div class="yr">Term 1 2024/25 · GHS</div>
+            </div>
+
+            <div class="pdf-section-head">
+              <div class="num">1</div>
+              <div class="title">Income</div>
+            </div>
+            <div class="pdf-line"><div class="name">School fees · tuition, transport, books</div><div class="amt">246,400.00</div><div class="py-amt">237,200.00</div></div>
+            <div class="pdf-line"><div class="name">BECE registration fees</div><div class="amt">4,200.00</div><div class="py-amt">3,840.00</div></div>
+            <div class="pdf-line"><div class="name">PTA contributions</div><div class="amt">2,400.00</div><div class="py-amt">2,100.00</div></div>
+            <div class="pdf-line"><div class="name">Donations &amp; miscellaneous</div><div class="amt">1,240.00</div><div class="py-amt">680.00</div></div>
+            <div class="pdf-line subtotal"><div class="name">Total income</div><div class="amt">254,240.00</div><div class="py-amt">243,820.00</div></div>
+
+            <div class="pdf-section-head">
+              <div class="num">2</div>
+              <div class="title">Expenses</div>
+            </div>
+            <div class="pdf-line"><div class="name">Salaries &amp; wages · 17 staff</div><div class="amt">170,500.00</div><div class="py-amt">162,800.00</div></div>
+            <div class="pdf-line"><div class="name">Utilities · ECG, GWCL, internet</div><div class="amt">12,400.00</div><div class="py-amt">11,200.00</div></div>
+            <div class="pdf-line"><div class="name">Supplies &amp; materials</div><div class="amt">8,200.00</div><div class="py-amt">7,400.00</div></div>
+            <div class="pdf-line"><div class="name">Feeding programme</div><div class="amt">6,400.00</div><div class="py-amt">5,800.00</div></div>
+            <div class="pdf-line"><div class="name">Repairs &amp; maintenance</div><div class="amt">4,600.00</div><div class="py-amt">8,200.00</div></div>
+            <div class="pdf-line"><div class="name">Transport &amp; events</div><div class="amt">3,800.00</div><div class="py-amt">4,100.00</div></div>
+            <div class="pdf-line"><div class="name">Bank &amp; payment fees</div><div class="amt">2,068.00</div><div class="py-amt">1,840.00</div></div>
+            <div class="pdf-line"><div class="name">Depreciation expense</div><div class="amt">10,500.00</div><div class="py-amt">10,500.00</div></div>
+            <div class="pdf-line"><div class="name">Other operating expenses</div><div class="amt">3,700.00</div><div class="py-amt">2,940.00</div></div>
+            <div class="pdf-line subtotal"><div class="name">Total expenses</div><div class="amt">222,168.00</div><div class="py-amt">214,780.00</div></div>
+
+            <div class="pdf-line total" style="border-top:2px solid var(--navy);margin-top:12px"><div class="name">Net surplus before tax</div><div class="amt">32,072.00</div><div class="py-amt">29,040.00</div></div>
+
+            <div class="pdf-narrative">
+              <b>Period commentary:</b> Term 1 surplus increased by <b>GHS 3,032</b> (10.4%) over the prior year, driven primarily by lower repairs &amp; maintenance (the 2024 roof replacement reduced ongoing costs) and higher BECE fee income from a slightly larger JHS 3 cohort.
+            </div>
+          </div>
+          <div class="pdf-foot">
+            <div style="font-family:'JetBrains Mono',monospace;font-weight:600">CTK · Term 1 2025/26</div>
+            <div class="footer-mid">Christ the King JHS · GES 4-2305-018</div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>2</span> of 4</div>
+        </div>
+
+        <!-- Balance sheet page -->
+        <div class="pdf-page">
+          <div class="pdf-band">
+            <div class="crest">CK</div>
+            <div class="school-name-pdf">Christ the King JHS</div>
+            <div class="return-type">Financial statements · Term 1 2025/26</div>
+            <div class="gen-stamp">Gen 22 Oct 2025</div>
+          </div>
+          <div class="pdf-content">
+            <div class="pdf-title-block">
+              <h1 class="display" style="font-size:22px">Balance <em>sheet</em></h1>
+              <div class="period">As of 22 October 2025</div>
+            </div>
+
+            <div class="pdf-py-header">
+              <div></div>
+              <div class="yr">22 Oct 2025 · GHS</div>
+              <div class="yr">31 Aug 2025 · GHS</div>
+            </div>
+
+            <div class="pdf-section-head">
+              <div class="num">3</div>
+              <div class="title">Current assets</div>
+            </div>
+            <div class="pdf-line"><div class="name">Cash &amp; bank balances</div><div class="amt">84,200.00</div><div class="py-amt">62,400.00</div></div>
+            <div class="pdf-line"><div class="name">Outstanding fees receivable</div><div class="amt">67,980.00</div><div class="py-amt">12,400.00</div></div>
+            <div class="pdf-line"><div class="name">Inventory · stationery, cleaning</div><div class="amt">4,400.00</div><div class="py-amt">3,800.00</div></div>
+            <div class="pdf-line subtotal"><div class="name">Total current assets</div><div class="amt">156,580.00</div><div class="py-amt">78,600.00</div></div>
+
+            <div class="pdf-section-head">
+              <div class="num">4</div>
+              <div class="title">Fixed assets · net of depreciation</div>
+            </div>
+            <div class="pdf-line"><div class="name">Buildings · 3 buildings</div><div class="amt">880,000.00</div><div class="py-amt">887,000.00</div></div>
+            <div class="pdf-line"><div class="name">Vehicles · 1 school bus</div><div class="amt">64,000.00</div><div class="py-amt">68,000.00</div></div>
+            <div class="pdf-line"><div class="name">Furniture &amp; equipment</div><div class="amt">42,400.00</div><div class="py-amt">44,000.00</div></div>
+            <div class="pdf-line"><div class="name">ICT equipment</div><div class="amt">18,200.00</div><div class="py-amt">21,000.00</div></div>
+            <div class="pdf-line subtotal"><div class="name">Total fixed assets</div><div class="amt">1,004,600.00</div><div class="py-amt">1,020,000.00</div></div>
+
+            <div class="pdf-line total" style="border-top:2px solid var(--navy)"><div class="name">Total assets</div><div class="amt">1,161,180.00</div><div class="py-amt">1,098,600.00</div></div>
+
+            <div class="pdf-section-head">
+              <div class="num">5</div>
+              <div class="title">Liabilities</div>
+            </div>
+            <div class="pdf-line"><div class="name">Accrued salaries</div><div class="amt">4,200.00</div><div class="py-amt">3,800.00</div></div>
+            <div class="pdf-line"><div class="name">Suppliers payable</div><div class="amt">1,800.00</div><div class="py-amt">2,400.00</div></div>
+            <div class="pdf-line"><div class="name">Bank loan · GCB · classroom block</div><div class="amt">82,000.00</div><div class="py-amt">88,000.00</div></div>
+            <div class="pdf-line subtotal"><div class="name">Total liabilities</div><div class="amt">88,000.00</div><div class="py-amt">94,200.00</div></div>
+
+            <div class="pdf-section-head">
+              <div class="num">6</div>
+              <div class="title">Equity</div>
+            </div>
+            <div class="pdf-line"><div class="name">Proprietor's capital · brought forward</div><div class="amt">1,041,108.00</div><div class="py-amt">982,400.00</div></div>
+            <div class="pdf-line"><div class="name">Term retained surplus</div><div class="amt">32,072.00</div><div class="py-amt">22,000.00</div></div>
+            <div class="pdf-line subtotal"><div class="name">Total equity</div><div class="amt">1,073,180.00</div><div class="py-amt">1,004,400.00</div></div>
+
+            <div class="pdf-line total" style="border-top:2px solid var(--navy)"><div class="name">Total liabilities &amp; equity</div><div class="amt">1,161,180.00</div><div class="py-amt">1,098,600.00</div></div>
+
+            <div class="pdf-narrative">
+              <b>Note on outstanding fees:</b> The Term 1 receivable balance of <b>GHS 67,980</b> reflects fees invoiced but not yet collected as of statement date. Term 1 fee collection cycle typically completes by mid-Term 2; this balance is expected to reduce to <b>under GHS 12,000</b> by 31 January 2026 based on prior year patterns.
+            </div>
+          </div>
+          <div class="pdf-foot">
+            <div style="font-family:'JetBrains Mono',monospace;font-weight:600">CTK · Term 1 2025/26</div>
+            <div class="footer-mid">Christ the King JHS · GES 4-2305-018</div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>3</span> of 4</div>
+        </div>
+
+        <!-- Declaration -->
+        <div class="pdf-page">
+          <div class="pdf-band">
+            <div class="crest">CK</div>
+            <div class="school-name-pdf">Christ the King JHS</div>
+            <div class="return-type">Financial statements · Term 1 2025/26</div>
+            <div class="gen-stamp">Gen 22 Oct 2025</div>
+          </div>
+          <div class="pdf-content">
+
+            <div class="pdf-section-head">
+              <div class="num">7</div>
+              <div class="title">Declaration by the headteacher</div>
+            </div>
+            <div style="font-size:11px;color:var(--navy-2);line-height:1.65;padding:8px 0 16px">
+              I, <b>Florence Addo</b>, headteacher of Christ the King Junior High School (GES School ID 4-2305-018), declare that these financial statements for the period <b>1 September 2025 to 22 October 2025</b> have been prepared from the books of account maintained by the school in the Omnischools platform. I confirm that, to the best of my knowledge, the figures presented are accurate and the methods of preparation conform to ordinary accounting practice for Ghanaian basic schools. I acknowledge that these statements are <b>not externally audited</b> and that any party relying on them for credit, investment, or other decisions should request external verification if appropriate.
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:36px">
+              <div style="border-top:1px solid var(--navy-3);padding-top:6px;position:relative">
+                <div style="font-family:'Fraunces',serif;font-style:italic;font-size:22px;color:var(--navy);position:absolute;top:-22px;left:8px;font-weight:500;transform:rotate(-3deg)">Florence Addo</div>
+                <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy-3);font-weight:700">Headteacher · signatory</div>
+                <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;margin-top:12px">Florence Addo</div>
+                <div style="font-size:10px;color:var(--navy-3);margin-top:4px">Signed: <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--navy-2)">22 October 2025</span></div>
+                <!-- School stamp -->
+                <div style="position:absolute;top:6px;right:8px;width:78px;height:78px;border:2.5px solid var(--terra);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(184,74,57,0.06);transform:rotate(-8deg);padding:4px">
+                  <div style="font-family:'Fraunces',serif;font-size:7.5px;letter-spacing:0.04em;text-transform:uppercase;font-weight:700;color:var(--terra);line-height:1.1">Christ the King</div>
+                  <div style="font-family:'Fraunces',serif;font-size:6px;font-style:italic;color:var(--terra);margin-top:2px;line-height:1.1">Junior High School</div>
+                  <div style="font-size:5.5px;color:var(--terra);margin-top:2px;font-weight:600;letter-spacing:0.06em">ACCRA · 1962</div>
+                </div>
+              </div>
+              <div style="border-top:1px solid var(--navy-3);padding-top:6px">
+                <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy-3);font-weight:700">Receiving party · for bank use</div>
+                <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:500;margin-top:12px;color:var(--navy-3);font-style:italic">To be filled at submission</div>
+                <div style="font-size:10px;color:var(--navy-3);margin-top:4px">Officer: ____________________</div>
+                <div style="font-size:10px;color:var(--navy-3);margin-top:4px">Date received: ___________________</div>
+              </div>
+            </div>
+
+            <div style="margin-top:32px;padding:14px 18px;background:var(--bg);border:1px solid var(--paper-line);font-size:10px;color:var(--navy-3);line-height:1.6">
+              <div style="font-family:'Fraunces',serif;font-weight:600;font-size:11px;color:var(--navy);margin-bottom:6px">Notes for the recipient</div>
+              <ol style="padding-left:18px">
+                <li style="margin-bottom:4px">These statements are <b>internally prepared</b> from the school's bookkeeping records and are <b>not externally audited</b>.</li>
+                <li style="margin-bottom:4px">Comparative period figures are drawn from the <b>same module's records</b> for the prior year; if the school's earlier records pre-date the bookkeeping module, comparative columns will be marked "—".</li>
+                <li style="margin-bottom:4px">The school's CSV transaction-level export is available on request and recommended for any party needing transaction-level verification.</li>
+                <li style="margin-bottom:4px">Generated by <b>Omnischools</b> · this PDF carries no claim of audit, only that it was produced from the school's recorded bookkeeping data.</li>
+              </ol>
+            </div>
+
+          </div>
+          <div class="pdf-foot">
+            <div style="font-family:'JetBrains Mono',monospace;font-weight:600">CTK · Term 1 2025/26</div>
+            <div class="footer-mid">Christ the King JHS · GES 4-2305-018</div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>4</span> of 4</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Bank-ready PDF</h4>
+      <ul>
+        <li><b>4-page structure: cover + identification / income statement / balance sheet / declaration.</b> Same pattern as the GES termly return and annual census — schools learn the document format once. <b>Same masthead, same identification block, same declaration with stamp + signature.</b></li>
+        <li><b>Comparative columns showing prior year on every figure.</b> Banks expect this — they want to see trend, not just snapshot. <b>Same period last year</b> (Term 1 2024/25) for the P&amp;L; year-end (31 Aug 2025) for the balance sheet.</li>
+        <li><b>"Basis of preparation" section</b> on the cover page using accounting language: accruals basis, cost less depreciation, straight-line, GHS. <b>Tells the bank reviewer the framework</b> in their own vocabulary; positions Omnischools's output as serious.</li>
+        <li><b>"For the bank reviewer" narrative box</b> on the cover acknowledges that one term of statements isn't enough for most loan applications and points to the full-year availability. <b>Honest about the limitation</b>; positions the school as understanding what banks need.</li>
+        <li><b>Period commentary on the P&amp;L:</b> "Surplus increased by GHS 3,032 (10.4%) over the prior year, driven primarily by lower repairs &amp; maintenance..." <b>The system narrates the variance</b> so the reviewer doesn't have to compute it.</li>
+        <li><b>Note on outstanding fees</b> in the BS section: "expected to reduce to under GHS 12,000 by 31 January 2026 based on prior year patterns." <b>The receivable balance looks scary in isolation</b> (GHS 67,980 vs GHS 12,400 prior year-end); the note explains why — Term 1 receivables are normal mid-term, they collect through the year.</li>
+        <li><b>Declaration explicit about "not externally audited."</b> Omnischools's output is internal management quality; banks will sometimes accept it, sometimes require external auditor sign-off depending on loan size. <b>Honest about scope</b> rather than implying audit-grade.</li>
+        <li><b>Notes for the recipient</b> include CSV transaction-level export availability — banks that want to verify can ask the school for the underlying data. <b>Drill-down available on request</b>.</li>
+        <li><b>Same school stamp and Florence Addo signature</b> as on GES return / annual census. <b>Visual consistency across all formal Omnischools PDFs</b>; the school's identity is recognisable everywhere.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

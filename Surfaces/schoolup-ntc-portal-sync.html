@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — NTC portal sync</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+/* NTC connection banner */
+.ntc-banner { padding:22px 36px; background:var(--navy); color:var(--bg); display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; border-bottom:1px solid var(--navy-2); }
+.ntc-banner .ntc-logo { width:60px; height:60px; border-radius:12px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:18px; }
+.ntc-banner .ntc-info .lab { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.ntc-banner .ntc-info h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:500; margin-bottom:4px; }
+.ntc-banner .ntc-info h3 em { font-style:italic; color:var(--gold); }
+.ntc-banner .ntc-info .submeta { font-size:11px; color:rgba(250,247,242,0.7); display:flex; gap:14px; flex-wrap:wrap; }
+.ntc-banner .ntc-info .submeta b { color:var(--bg); font-weight:700; }
+.ntc-banner .ntc-info .submeta .sep { color:rgba(250,247,242,0.3); }
+.ntc-banner .status-cluster { text-align:right; }
+.ntc-banner .status-cluster .api-pill { display:inline-flex; align-items:center; gap:7px; padding:7px 14px; background:rgba(47,107,71,0.2); color:var(--green-bg); border:1px solid var(--green); border-radius:100px; font-size:11px; font-weight:700; letter-spacing:0.06em; }
+.ntc-banner .status-cluster .api-pill .pulse { width:7px; height:7px; border-radius:50%; background:var(--green-bg); }
+.ntc-banner .status-cluster .last-check { font-size:10px; color:rgba(250,247,242,0.55); margin-top:6px; letter-spacing:0.04em; }
+
+/* Summary strip */
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(4, 1fr); gap:18px; }
+.sum-tile { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+.sum-tile.pending { border-left:3px solid var(--gold); }
+.sum-tile.synced { border-left:3px solid var(--green); }
+.sum-tile.failed { border-left:3px solid var(--terra); background:var(--terra-bg); }
+.sum-tile .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-tile.failed .lab { color:var(--terra); }
+.sum-tile .big { font-family:'Fraunces',serif; font-size:30px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-tile .big em { font-style:italic; color:var(--gold); }
+.sum-tile.failed .big { color:var(--terra); }
+.sum-tile.synced .big em { color:var(--green); }
+.sum-tile .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-tile .sub b { color:var(--navy-2); font-weight:600; }
+
+.body-shell { padding:32px 36px 40px; }
+
+/* Pending queue */
+.section-block { margin-bottom:36px; }
+.section-block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.section-block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.section-block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.section-block-head h3 em { font-style:italic; color:var(--gold); }
+.section-block-head .meta { font-size:11px; color:var(--navy-3); }
+.section-block-head .meta b { color:var(--navy-2); font-weight:700; }
+.section-block-head .actions { display:flex; gap:8px; }
+
+.pending-batch { background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-radius:12px; padding:22px 26px; }
+.pending-batch .pb-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--gold-soft); }
+.pending-batch .pb-head .left .ic-pb { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.pending-batch .pb-head .left h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.pending-batch .pb-head .left h4 em { font-style:italic; color:var(--gold); }
+.pending-batch .pb-head .right { display:flex; gap:14px; align-items:center; }
+.pending-batch .pb-head .right .stat { text-align:right; }
+.pending-batch .pb-head .right .stat .num { font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
+.pending-batch .pb-head .right .stat .num em { font-style:italic; color:var(--gold); }
+.pending-batch .pb-head .right .stat .lab { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.pending-batch .pb-head .right .sep-vert { width:1px; height:30px; background:var(--gold-soft); }
+.pending-batch .pending-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+.pending-batch .pending-row { background:var(--surface); border:1px solid var(--gold-soft); border-radius:8px; padding:12px 14px; }
+.pending-batch .pending-row .pr-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed var(--gold-soft); }
+.pending-batch .pending-row .pr-head .staff-mini { display:flex; align-items:center; gap:7px; }
+.pending-batch .pending-row .pr-head .staff-mini .av-tiny { width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:9px; }
+.pending-batch .pending-row .pr-head .staff-mini .name { font-size:11px; font-weight:600; color:var(--navy); }
+.pending-batch .pending-row .pr-head .pts-pill { padding:2px 8px; background:var(--navy); color:var(--gold); border-radius:100px; font-size:10px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.pending-batch .pending-row .pr-source { font-size:10px; color:var(--navy-2); line-height:1.5; margin-bottom:5px; }
+.pending-batch .pending-row .pr-source b { color:var(--navy); font-weight:600; }
+.pending-batch .pending-row .pr-meta { font-size:9px; color:var(--navy-3); display:flex; justify-content:space-between; }
+.pending-batch .pending-row .pr-meta .left { font-family:'JetBrains Mono',monospace; }
+.pending-batch .pending-row .pr-meta .right { letter-spacing:0.04em; text-transform:uppercase; font-weight:700; }
+.pending-batch .show-more-row { background:var(--surface); border:1px dashed var(--gold-soft); border-radius:8px; padding:14px; text-align:center; font-size:11px; color:var(--navy-3); font-style:italic; }
+.pending-batch .show-more-row b { color:var(--navy-2); font-style:normal; font-weight:600; }
+
+/* Failed/blocked entries */
+.failed-block { background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:12px; padding:22px 26px; }
+.failed-block .fb-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--terra); }
+.failed-block .fb-head .left .eb { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--terra); font-weight:700; margin-bottom:3px; }
+.failed-block .fb-head .left h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.failed-block .fb-head .left h4 em { font-style:italic; color:var(--terra); }
+.failed-block .failed-row { background:var(--surface); border:1px solid var(--terra); border-radius:8px; padding:14px 16px; margin-bottom:8px; }
+.failed-block .failed-row:last-child { margin-bottom:0; }
+.failed-block .failed-row .fr-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--terra-bg); }
+.failed-block .failed-row .fr-top .staff-info { display:flex; align-items:center; gap:10px; }
+.failed-block .failed-row .fr-top .staff-info .av-mini { width:28px; height:28px; border-radius:50%; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.failed-block .failed-row .fr-top .staff-info .nm { font-weight:600; color:var(--navy); font-size:12px; }
+.failed-block .failed-row .fr-top .staff-info .role { font-size:10px; color:var(--navy-3); }
+.failed-block .failed-row .fr-top .attempt { font-size:10px; color:var(--terra); font-weight:700; letter-spacing:0.04em; }
+.failed-block .failed-row .fr-source { font-size:12px; color:var(--navy-2); line-height:1.55; margin-bottom:8px; }
+.failed-block .failed-row .fr-source b { color:var(--navy); font-weight:600; }
+.failed-block .failed-row .fr-error { background:var(--terra-bg); padding:10px 12px; border-radius:7px; font-size:11px; color:var(--navy); line-height:1.55; margin-bottom:10px; }
+.failed-block .failed-row .fr-error b { color:var(--terra); font-weight:700; }
+.failed-block .failed-row .fr-error code { background:var(--surface); padding:1px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--terra); font-weight:600; }
+.failed-block .failed-row .fr-actions { display:flex; gap:6px; }
+.failed-block .failed-row .fr-actions button { padding:6px 12px; font-size:10px; font-weight:700; border-radius:6px; cursor:pointer; letter-spacing:0.04em; text-transform:uppercase; }
+.failed-block .failed-row .fr-actions button.retry { background:var(--terra); color:var(--bg); border:none; }
+.failed-block .failed-row .fr-actions button.manual { background:var(--surface); color:var(--terra); border:1px solid var(--terra); }
+.failed-block .failed-row .fr-actions button.skip { background:transparent; color:var(--navy-3); border:1px solid var(--border-2); }
+
+/* Sync history timeline */
+.history-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0; overflow:hidden; }
+.history-row { padding:16px 22px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:140px 1fr auto auto; gap:18px; align-items:center; }
+.history-row:last-child { border-bottom:none; }
+.history-row .ts-block { font-family:'JetBrains Mono',monospace; font-size:11px; }
+.history-row .ts-block .date { font-weight:700; color:var(--navy); }
+.history-row .ts-block .time { color:var(--navy-3); margin-top:2px; }
+.history-row .body-block .summary { font-size:12px; color:var(--navy); font-weight:500; line-height:1.5; }
+.history-row .body-block .summary b { font-weight:700; }
+.history-row .body-block .summary em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+.history-row .body-block .summary .err-code { color:var(--terra); }
+.history-row .body-block .meta { font-size:10px; color:var(--navy-3); margin-top:3px; letter-spacing:0.04em; }
+.history-row .pts-block { font-family:'Fraunces',serif; font-size:16px; font-weight:600; color:var(--navy); }
+.history-row .pts-block em { font-style:italic; color:var(--gold); }
+.history-row .status-block { padding:5px 11px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; display:inline-flex; gap:5px; align-items:center; }
+.history-row .status-block.success { background:var(--green-bg); color:var(--green); }
+.history-row .status-block.partial { background:var(--warn-bg); color:var(--warn); }
+.history-row .status-block.failed { background:var(--terra-bg); color:var(--terra); }
+.history-row .status-block .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+
+/* Reconciliation card */
+.recon-card { background:var(--surface); border:1.5px solid var(--gold-soft); border-radius:14px; padding:28px 32px; }
+.recon-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.recon-card h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; margin-bottom:14px; line-height:1.25; }
+.recon-card h3 em { font-style:italic; color:var(--gold); }
+.recon-grid { display:grid; grid-template-columns:1fr auto 1fr; gap:24px; align-items:center; }
+.recon-side { padding:22px 26px; border-radius:10px; }
+.recon-side.school { background:var(--navy); color:var(--bg); }
+.recon-side.ntc { background:var(--gold); color:var(--navy); }
+.recon-side .side-lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; opacity:0.7; margin-bottom:5px; }
+.recon-side .side-big { font-family:'Fraunces',serif; font-size:32px; font-weight:500; letter-spacing:-0.015em; line-height:1; margin-bottom:4px; }
+.recon-side .side-detail { font-size:11px; opacity:0.8; line-height:1.5; }
+.recon-side .side-detail b { font-weight:700; opacity:1; }
+.recon-vs { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--navy-3); padding:0 8px; }
+.recon-delta { margin-top:18px; padding:14px 18px; background:var(--warn-bg); border-left:3px solid var(--warn); border-radius:0 8px 8px 0; font-size:12px; color:var(--navy-2); line-height:1.55; }
+.recon-delta b { color:var(--warn); font-weight:700; }
+.recon-delta em { color:var(--navy); font-style:italic; font-weight:500; }
+
+/* Editorial · NTC integration */
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · PLC/CPD batch · 05 of 06</div>
+  <span class="mvp-tag">SHS · admin integration</span>
+  <span class="related-tag">External system · NTC portal</span>
+  <h1 class="display">Sync to the <em>regulator</em></h1>
+  <div class="gold-rule"></div>
+  <p>The National Teaching Council's portal is the official record of CPD points · the school keeps its own ledger, but at the end of the month every entry needs to flow to the NTC where licence renewals will be assessed. <b>This surface is the pipe between Omnischools's ledger and the NTC portal.</b> Pending queue, sync history, error queue with retry logic, manual override for entries the portal rejects, and reconciliation between what Omnischools says and what NTC says. <em>If the NTC portal disagrees with Omnischools, Omnischools is wrong by definition — the portal is the regulator.</em> The reconciliation view is how the school catches drift early.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The sync surface · admin oversight, monthly cadence</div>
+    <div class="section-meta">Teacher Development → CPD → NTC integration</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / teacher-development / cpd / ntc-sync</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Teacher development · CPD · NTC sync</div>
+          <h2 class="display">NTC <em>portal sync</em></h2>
+          <div class="lede">Connection live · API healthy · 47 active teachers · last sync 12 May 2026 at 04:00 AM (automated) · 41 pending entries queued for next scheduled push tonight</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">View NTC portal →</button>
+          <button class="btn gold">Sync now (manual)</button>
+        </div>
+      </div>
+
+      <div class="ntc-banner">
+        <div class="ntc-logo">NTC</div>
+        <div class="ntc-info">
+          <div class="lab">External integration · Ghana NTC portal</div>
+          <h3 class="display">National Teaching Council <em>· portal v2.4</em></h3>
+          <div class="submeta">
+            <span>School code <b>GH-CKSHS-04472</b></span>
+            <span class="sep">·</span>
+            <span>API endpoint <b>ntc.gov.gh/api/v2</b></span>
+            <span class="sep">·</span>
+            <span>Connected since <b>12 Oct 2024</b></span>
+            <span class="sep">·</span>
+            <span>Auth method <b>OAuth + school PIN</b></span>
+          </div>
+        </div>
+        <div class="status-cluster">
+          <div class="api-pill"><div class="pulse"></div>API HEALTHY</div>
+          <div class="last-check">Last health check 23 sec ago · 99.2% uptime 30 days</div>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-tile pending">
+          <div class="lab">Queued · awaiting sync</div>
+          <div class="big display"><em>41</em></div>
+          <div class="sub">Across <b>23 teachers</b> · next push 02:00 AM</div>
+        </div>
+        <div class="sum-tile synced">
+          <div class="lab">Synced this month</div>
+          <div class="big display"><em>187</em></div>
+          <div class="sub"><b>100% acceptance rate</b> · 0 reversals</div>
+        </div>
+        <div class="sum-tile failed">
+          <div class="lab">Failed · needs review</div>
+          <div class="big display"><em>3</em></div>
+          <div class="sub"><b>3 entries</b> · evidence mismatch · 1 schema</div>
+        </div>
+        <div class="sum-tile">
+          <div class="lab">Cumulative synced · this cycle</div>
+          <div class="big display"><em>1,247</em></div>
+          <div class="sub">Since Oct 2024 · across <b>47 staff</b></div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- Pending queue -->
+        <div class="section-block">
+          <div class="section-block-head">
+            <div>
+              <div class="eb">Tonight's push · auto-scheduled 02:00 AM</div>
+              <h3 class="display">Pending <em>queue</em> · 41 entries · 23 teachers</h3>
+            </div>
+            <div class="actions">
+              <button class="btn ghost">Download as CSV</button>
+              <button class="btn primary">Push now manually</button>
+            </div>
+          </div>
+
+          <div class="pending-batch">
+            <div class="pb-head">
+              <div class="left">
+                <div class="ic-pb">Batch 2026-05-S07</div>
+                <h4 class="display">Friday <em>16 May 2026</em> · scheduled push</h4>
+              </div>
+              <div class="right">
+                <div class="stat">
+                  <div class="num display"><em>41</em></div>
+                  <div class="lab">Entries</div>
+                </div>
+                <div class="sep-vert"></div>
+                <div class="stat">
+                  <div class="num display"><em>23</em></div>
+                  <div class="lab">Teachers</div>
+                </div>
+                <div class="sep-vert"></div>
+                <div class="stat">
+                  <div class="num display"><em>34.5</em> pts</div>
+                  <div class="lab">Total pts</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pending-grid">
+
+              <div class="pending-row">
+                <div class="pr-head">
+                  <div class="staff-mini">
+                    <div class="av-tiny">EA</div>
+                    <div class="name">Mr E. Adusei</div>
+                  </div>
+                  <div class="pts-pill">+1.0</div>
+                </div>
+                <div class="pr-source"><b>PLC facilitator</b> · Maths PLC session 9 · 16 May</div>
+                <div class="pr-meta">
+                  <div class="left">PLC_FACILITATE</div>
+                  <div class="right">QUEUED</div>
+                </div>
+              </div>
+
+              <div class="pending-row">
+                <div class="pr-head">
+                  <div class="staff-mini">
+                    <div class="av-tiny">AM</div>
+                    <div class="name">Mr A. Mensah</div>
+                  </div>
+                  <div class="pts-pill">+1.0</div>
+                </div>
+                <div class="pr-source"><b>PLC attendance + reflection</b> · Maths PLC session 9</div>
+                <div class="pr-meta">
+                  <div class="left">PLC_ATTEND + REFLECT</div>
+                  <div class="right">QUEUED</div>
+                </div>
+              </div>
+
+              <div class="pending-row">
+                <div class="pr-head">
+                  <div class="staff-mini">
+                    <div class="av-tiny">SK</div>
+                    <div class="name">Mr S. Kpodo</div>
+                  </div>
+                  <div class="pts-pill">+1.0</div>
+                </div>
+                <div class="pr-source"><b>PLC + NTC induction milestone 4</b> · year-2 teacher</div>
+                <div class="pr-meta">
+                  <div class="left">PLC_ATTEND + INDUCTION</div>
+                  <div class="right">QUEUED</div>
+                </div>
+              </div>
+
+              <div class="pending-row">
+                <div class="pr-head">
+                  <div class="staff-mini">
+                    <div class="av-tiny">DT</div>
+                    <div class="name">Mr D. Twum</div>
+                  </div>
+                  <div class="pts-pill">+1.0</div>
+                </div>
+                <div class="pr-source"><b>PLC attendance + reflection</b> · Maths PLC session 9</div>
+                <div class="pr-meta">
+                  <div class="left">PLC_ATTEND + REFLECT</div>
+                  <div class="right">QUEUED</div>
+                </div>
+              </div>
+
+              <div class="pending-row">
+                <div class="pr-head">
+                  <div class="staff-mini">
+                    <div class="av-tiny">PB</div>
+                    <div class="name">Mrs P. Bonsu</div>
+                  </div>
+                  <div class="pts-pill">+0.5</div>
+                </div>
+                <div class="pr-source"><b>PLC attended only</b> · reflection pending · counted as partial</div>
+                <div class="pr-meta">
+                  <div class="left">PLC_ATTEND</div>
+                  <div class="right">QUEUED</div>
+                </div>
+              </div>
+
+              <div class="pending-row">
+                <div class="pr-head">
+                  <div class="staff-mini">
+                    <div class="av-tiny">JM</div>
+                    <div class="name">Mr J. Mensah</div>
+                  </div>
+                  <div class="pts-pill">+1.0</div>
+                </div>
+                <div class="pr-source"><b>PLC attendance + reflection</b> · Maths PLC session 9</div>
+                <div class="pr-meta">
+                  <div class="left">PLC_ATTEND + REFLECT</div>
+                  <div class="right">QUEUED</div>
+                </div>
+              </div>
+
+              <div class="pending-row">
+                <div class="pr-head">
+                  <div class="staff-mini">
+                    <div class="av-tiny">RA</div>
+                    <div class="name">Mrs R. Asomaning</div>
+                  </div>
+                  <div class="pts-pill">+1.0</div>
+                </div>
+                <div class="pr-source"><b>PLC attendance + reflection</b> · Maths PLC session 9</div>
+                <div class="pr-meta">
+                  <div class="left">PLC_ATTEND + REFLECT</div>
+                  <div class="right">QUEUED · SECONDED</div>
+                </div>
+              </div>
+
+              <div class="pending-row">
+                <div class="pr-head">
+                  <div class="staff-mini">
+                    <div class="av-tiny">FY</div>
+                    <div class="name">Mr F. Yeboah</div>
+                  </div>
+                  <div class="pts-pill">+1.0</div>
+                </div>
+                <div class="pr-source"><b>PLC + NTC induction milestone 4</b> · year-1 teacher</div>
+                <div class="pr-meta">
+                  <div class="left">PLC_ATTEND + INDUCTION</div>
+                  <div class="right">QUEUED</div>
+                </div>
+              </div>
+
+              <div class="pending-row">
+                <div class="pr-head">
+                  <div class="staff-mini">
+                    <div class="av-tiny">GA</div>
+                    <div class="name">Mrs G. Asante</div>
+                  </div>
+                  <div class="pts-pill">+1.0</div>
+                </div>
+                <div class="pr-source"><b>English PLC facilitator</b> · session 9 · 16 May</div>
+                <div class="pr-meta">
+                  <div class="left">PLC_FACILITATE</div>
+                  <div class="right">QUEUED</div>
+                </div>
+              </div>
+
+              <div class="show-more-row" style="grid-column:span 3;"><b>32 more entries</b> in this batch from English PLC, Sciences PLC, Humanities PLC, ICT-in-Pedagogy PLC, and New Teacher PLC sessions · click to expand the full list</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Failed entries -->
+        <div class="section-block">
+          <div class="section-block-head">
+            <div>
+              <div class="eb">Failed sync · NTC rejected entries</div>
+              <h3 class="display">Needs <em>review</em> · 3 entries blocked</h3>
+            </div>
+            <div class="actions">
+              <button class="btn ghost">View error history</button>
+              <button class="btn primary">Retry all 3</button>
+            </div>
+          </div>
+
+          <div class="failed-block">
+            <div class="fb-head">
+              <div class="left">
+                <div class="eb">Each failure requires manual review · then retry or skip</div>
+                <h4 class="display">Three <em>blocked entries</em> · from this week's pushes</h4>
+              </div>
+            </div>
+
+            <div class="failed-row">
+              <div class="fr-top">
+                <div class="staff-info">
+                  <div class="av-mini">RA</div>
+                  <div>
+                    <div class="nm">Mrs Rebecca Asomaning</div>
+                    <div class="role">Elective Maths · GES-seconded</div>
+                  </div>
+                </div>
+                <div class="attempt">ATTEMPT 3 OF 3 · MAX RETRIES</div>
+              </div>
+              <div class="fr-source"><b>Coursera "Differentiated Instruction" online course</b> · +2.0 pts · submitted 28 Apr 2026</div>
+              <div class="fr-error"><b>NTC error <code>NTC-ERR-2247</code> · DUPLICATE ENTRY</b> — This certificate has already been credited to this teacher by another school (Achimota SHS, her seconding school). NTC enforces unique-entry-per-evidence; the same certificate cannot earn points at two schools. <em>Resolution path: confirm with GES district whether the points belong here or at Achimota; if here, request transfer via NTC support ticket.</em></div>
+              <div class="fr-actions">
+                <button class="manual">Manual: open NTC ticket</button>
+                <button class="retry">Retry with override flag</button>
+                <button class="skip">Skip · keep in Omnischools only</button>
+              </div>
+            </div>
+
+            <div class="failed-row">
+              <div class="fr-top">
+                <div class="staff-info">
+                  <div class="av-mini">DM</div>
+                  <div>
+                    <div class="nm">Mr David Mensah</div>
+                    <div class="role">Maths · new teacher · year 1</div>
+                  </div>
+                </div>
+                <div class="attempt">ATTEMPT 1 OF 3 · WILL AUTO-RETRY</div>
+              </div>
+              <div class="fr-source"><b>NTC induction milestone 3 · classroom observation completed</b> · +1.5 pts · submitted 10 May 2026</div>
+              <div class="fr-error"><b>NTC error <code>NTC-ERR-1108</code> · EVIDENCE NOT ATTACHED</b> — Induction milestones require the observer's signature scan. Omnischools tried to attach <code>observation-dm-2026-05-10.pdf</code> but the file is corrupted (0 bytes). <em>Resolution path: re-upload the observation form, then this entry will retry automatically on tonight's push.</em></div>
+              <div class="fr-actions">
+                <button class="retry">Re-upload &amp; retry</button>
+                <button class="manual">Mark as evidence-pending</button>
+              </div>
+            </div>
+
+            <div class="failed-row">
+              <div class="fr-top">
+                <div class="staff-info">
+                  <div class="av-mini">FY</div>
+                  <div>
+                    <div class="nm">Mr Felix Yeboah</div>
+                    <div class="role">Maths · new teacher · year 1</div>
+                  </div>
+                </div>
+                <div class="attempt">ATTEMPT 2 OF 3 · WILL AUTO-RETRY</div>
+              </div>
+              <div class="fr-source"><b>PLC + NTC induction milestone 2</b> · +1.0 pt + induction credit · submitted 9 May 2026</div>
+              <div class="fr-error"><b>NTC error <code>NTC-ERR-3018</code> · SCHEMA VERSION MISMATCH</b> — NTC portal updated to schema v2.4.1 on 7 May 2026. Omnischools is sending v2.4.0 payload. <em>Resolution path: Omnischools auto-detected the mismatch and is rolling out a patch · ETA 18 May. No admin action needed — entry will retry once Omnischools updates.</em></div>
+              <div class="fr-actions">
+                <button class="manual">Acknowledge · auto-fix in progress</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sync history -->
+        <div class="section-block">
+          <div class="section-block-head">
+            <div>
+              <div class="eb">Last 30 days · automated and manual pushes</div>
+              <h3 class="display">Sync <em>history</em></h3>
+            </div>
+            <div class="actions">
+              <button class="btn ghost">Full audit log →</button>
+            </div>
+          </div>
+
+          <div class="history-card">
+            <div class="history-row">
+              <div class="ts-block">
+                <div class="date">12 May 2026</div>
+                <div class="time">04:00 AM · auto</div>
+              </div>
+              <div class="body-block">
+                <div class="summary"><b>Batch 2026-05-S05</b> · pushed <em>52 entries</em> across <em>34 teachers</em> · 51 accepted, 1 deferred for evidence</div>
+                <div class="meta">Duration 28 sec · response time avg 540ms</div>
+              </div>
+              <div class="pts-block display"><em>43.5</em> pts</div>
+              <div class="status-block partial"><span class="dot"></span>PARTIAL</div>
+            </div>
+
+            <div class="history-row">
+              <div class="ts-block">
+                <div class="date">05 May 2026</div>
+                <div class="time">04:00 AM · auto</div>
+              </div>
+              <div class="body-block">
+                <div class="summary"><b>Batch 2026-05-S04</b> · pushed <em>48 entries</em> across <em>33 teachers</em> · all accepted</div>
+                <div class="meta">Duration 24 sec · response time avg 480ms</div>
+              </div>
+              <div class="pts-block display"><em>41.0</em> pts</div>
+              <div class="status-block success"><span class="dot"></span>SUCCESS</div>
+            </div>
+
+            <div class="history-row">
+              <div class="ts-block">
+                <div class="date">02 May 2026</div>
+                <div class="time">11:14 AM · manual</div>
+              </div>
+              <div class="body-block">
+                <div class="summary"><b>Manual push by Mrs Mireku</b> · Cambridge IGCSE workshop certificates · <em>3 entries</em> across <em>3 teachers</em></div>
+                <div class="meta">Triggered after batch certificates received from British Council</div>
+              </div>
+              <div class="pts-block display"><em>6.0</em> pts</div>
+              <div class="status-block success"><span class="dot"></span>SUCCESS</div>
+            </div>
+
+            <div class="history-row">
+              <div class="ts-block">
+                <div class="date">28 Apr 2026</div>
+                <div class="time">04:00 AM · auto</div>
+              </div>
+              <div class="body-block">
+                <div class="summary"><b>Batch 2026-04-S03</b> · pushed <em>49 entries</em> · 47 accepted, 2 rejected (<span class="err-code">NTC-ERR-2247 duplicates</span>)</div>
+                <div class="meta">2 GES-seconded teacher dupes flagged · resolved in failed queue</div>
+              </div>
+              <div class="pts-block display"><em>40.0</em> pts</div>
+              <div class="status-block partial"><span class="dot"></span>PARTIAL</div>
+            </div>
+
+            <div class="history-row">
+              <div class="ts-block">
+                <div class="date">21 Apr 2026</div>
+                <div class="time">04:00 AM · auto</div>
+              </div>
+              <div class="body-block">
+                <div class="summary"><b>Batch 2026-04-S02</b> · pushed <em>50 entries</em> across <em>35 teachers</em> · all accepted</div>
+                <div class="meta">Includes Coursera completions from term break · 4 teachers</div>
+              </div>
+              <div class="pts-block display"><em>54.0</em> pts</div>
+              <div class="status-block success"><span class="dot"></span>SUCCESS</div>
+            </div>
+
+            <div class="history-row">
+              <div class="ts-block">
+                <div class="date">14 Apr 2026</div>
+                <div class="time">04:00 AM · auto</div>
+              </div>
+              <div class="body-block">
+                <div class="summary"><b>Batch 2026-04-S01</b> · push <em>FAILED</em> · NTC portal returned <span class="err-code">NTC-ERR-5000 SERVICE_UNAVAILABLE</span></div>
+                <div class="meta">NTC portal maintenance window · 03:30-05:30 AM · 47 entries auto-retried 09:00 AM, all accepted</div>
+              </div>
+              <div class="pts-block display">—</div>
+              <div class="status-block failed"><span class="dot"></span>FAILED · RETRIED</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reconciliation -->
+        <div class="section-block">
+          <div class="section-block-head">
+            <div>
+              <div class="eb">Source-of-truth check · monthly</div>
+              <h3 class="display">Reconciliation <em>· Omnischools vs NTC</em></h3>
+            </div>
+            <div class="actions">
+              <button class="btn ghost">View last month's reconciliation</button>
+              <button class="btn primary">Run reconciliation now</button>
+            </div>
+          </div>
+
+          <div class="recon-card">
+            <div class="eb">As of 12 May 2026 04:30 AM · post-sync</div>
+            <h3 class="display">Cycle-to-date · cumulative <em>cycle points</em> · 47 teachers</h3>
+
+            <div class="recon-grid">
+              <div class="recon-side school">
+                <div class="side-lab">Omnischools ledger</div>
+                <div class="side-big display">1,247.5 pts</div>
+                <div class="side-detail">Across <b>47 active teachers</b> · auto-tallied · includes 41 queued for tonight</div>
+              </div>
+              <div class="recon-vs">vs.</div>
+              <div class="recon-side ntc">
+                <div class="side-lab">NTC portal record</div>
+                <div class="side-big display">1,206.5 pts</div>
+                <div class="side-detail">Confirmed by NTC API · last refresh <b>04:25 AM today</b></div>
+              </div>
+            </div>
+
+            <div class="recon-delta">
+              <b>Delta: +41 pts in Omnischools not yet at NTC</b> — this is expected and matches the 41 entries queued for tonight's 02:00 AM push. <em>If the delta were unexplained (e.g. NTC showing fewer than expected even after sync), reconciliation would flag specific entries to investigate.</em> No action needed.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The sync architecture</h4>
+      <ul>
+        <li><b>Daily automated push at 02:00 AM.</b> Off-hours, low contention. The batch ships every queued entry. Sync state on each ledger entry flips QUEUED → SYNCED.</li>
+        <li><b>Manual push for urgency.</b> When a workshop certificate arrives or a teacher is about to renew, the admin can trigger an out-of-cycle push. Audit-logged.</li>
+        <li><b>Failed entries don't block the batch.</b> One bad entry doesn't fail the whole push. Successes commit, failures move to the failed queue with retry counters.</li>
+        <li><b>3-strikes on retry.</b> Each failed entry gets 2 auto-retries (overnight). After 3 attempts the entry is locked for manual intervention. Prevents infinite loops on schema errors.</li>
+        <li><b>The reconciliation step is monthly.</b> Pulls NTC's view of cumulative points back and diffs against Omnischools. Catches drift early. Most months the delta is just "pending tonight's push" and there's nothing to do.</li>
+        <li><b>Schema versioning is brittle but visible.</b> When NTC updates their API (rare but real, ~2x per year), Omnischools will catch the mismatch on first failed entry and flag the version. Auto-patch deployed within days, retry resumes.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Schema this drives</h4>
+      <ul>
+        <li><b>ntc_sync_batches</b> · per push · batch_id, scheduled_at, completed_at, status, entry_count, success_count, failure_count, duration_ms</li>
+        <li><b>cpd_points_ledger.ntc_sync_status</b> · enum: QUEUED, SYNCED, FAILED · plus ntc_sync_batch_id and ntc_response_code</li>
+        <li><b>ntc_sync_failures</b> · per-failed-entry · ledger_entry_id, error_code, error_message, attempt_count, resolution_status</li>
+        <li><b>ntc_api_health</b> · 5-minute health checks · timestamp, response_ms, status_code · drives the API HEALTHY pill</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why this exists · the NTC is the regulator</div>
+    <div class="section-meta">Editorial · the integration boundary</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The integration boundary</div>
+        <h3 class="display">Omnischools's ledger is operationally useful. The <em>NTC portal</em> is what the regulator looks at.</h3>
+        <p>The teacher's licence renewal isn't decided by Omnischools. It's decided by the NTC, looking at whatever's in their portal at the moment of renewal application. <b>If Omnischools shows 20 points and NTC shows 18, the licence renewal proceeds with 18.</b> This is the architectural reality: Omnischools is the operational ledger, the NTC portal is the regulatory truth. The job of this surface is to keep the two in sync continuously rather than scrambling at year-end.</p>
+        <p>The NTC's portal API didn't exist at the time we designed the first version of Omnischools. <em>This surface is built against an assumed API</em> — the schemas, error codes, and batch model match what the NTC has publicly described in their 2024 digital licence renewal roadmap. When the real API ships, Omnischools will adapt. Until then, the fallback is the same one schools use today: monthly PDF export from Omnischools, manual upload to the NTC portal by the Headmaster.</p>
+        <p>The reconciliation step is the most important part. Most integrations fail silently — entries don't make it across, but no one notices until renewal time. <b>Active reconciliation</b> (Omnischools pulls NTC's current state and diffs against its own) means drift is caught within a month, not within a year. The admin sees "we have 1,247, they have 1,206" and either understands why (queued batch) or investigates (something's wrong). <em>The diff is the alarm.</em></p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The integration policy</h4>
+      <ul>
+        <li><b>NTC portal is source of truth for licence decisions.</b> Omnischools's ledger is operational; the portal record is what counts.</li>
+        <li><b>Daily push, monthly reconciliation, yearly audit.</b> Three rhythms, each catching different categories of drift.</li>
+        <li><b>Fallback is manual PDF.</b> If the API is down or unavailable, monthly PDF export → manual upload preserves the workflow.</li>
+        <li><b>Audit-logged everywhere.</b> Every entry's sync state is audit-tracked. Every manual override has an actor and a reason. Every failed entry has an error code and resolution path.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

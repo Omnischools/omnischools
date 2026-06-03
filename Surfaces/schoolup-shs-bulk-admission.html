@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — SHS bulk admission · CSSPS intake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:780px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1180px; }
+.sidebar.tall { min-height:1480px; }
+.sidebar.taller { min-height:1740px; }
+.sidebar.tallest { min-height:2080px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces', serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; background:var(--navy); border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:780px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Status strip · the operational heartbeat at the top of the bulk surface */
+.status-strip { display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:14px; margin-bottom:26px; }
+.status-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.status-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.status-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:130px; height:130px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.status-card .s-lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.status-card .s-val { font-family:'Fraunces', serif; font-size:34px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.status-card .s-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.status-card .s-val .unit { font-size:14px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:5px; font-style:normal; }
+.status-card .s-val .total { font-size:18px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; }
+.status-card .s-trend { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.status-card .s-trend b { color:var(--navy-2); font-weight:700; }
+.status-card.warn .s-val { color:var(--warn); }
+.status-card.terra .s-val { color:var(--terra); }
+.status-card.green .s-val { color:var(--green); }
+
+/* The countdown card */
+.countdown { background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 100%); border:1.5px solid var(--terra); border-radius:14px; padding:20px 24px; margin-bottom:24px; display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; }
+.countdown .cd-icon { width:54px; height:54px; border-radius:50%; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:22px; }
+.countdown .cd-body { }
+.countdown .cd-title { font-family:'Fraunces', serif; font-size:20px; font-weight:500; margin-bottom:4px; }
+.countdown .cd-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.countdown .cd-meta { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.countdown .cd-meta b { color:var(--navy); font-weight:600; }
+.countdown .cd-action { display:flex; gap:8px; }
+
+/* Three-card input picker */
+.input-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; margin-bottom:26px; }
+.input-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; cursor:pointer; transition:all 0.2s; position:relative; }
+.input-card:hover { border-color:var(--gold-soft); }
+.input-card.selected { border:2px solid var(--gold); padding:21px 23px; background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); }
+.input-card.selected::before { content:"✓"; position:absolute; top:14px; right:16px; width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+.input-card .ic-num { font-family:'Fraunces', serif; font-style:italic; font-size:24px; color:var(--gold); font-weight:500; margin-bottom:10px; }
+.input-card .ic-title { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:6px; }
+.input-card .ic-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.input-card .ic-body { font-size:12px; color:var(--navy-2); line-height:1.5; margin-bottom:14px; }
+.input-card .ic-body b { color:var(--navy); font-weight:600; }
+.input-card .ic-tag { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 9px; border-radius:100px; display:inline-block; }
+.input-card .ic-tag.recommended { background:var(--gold); color:var(--navy); }
+.input-card .ic-tag.fallback { background:var(--bg); color:var(--navy-3); border:1px solid var(--border-2); }
+
+/* Portal walkthrough card */
+.portal-card { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:24px 28px; margin-bottom:26px; position:relative; overflow:hidden; }
+.portal-card::before { content:""; position:absolute; top:-40px; right:-40px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.07); }
+.portal-card .pc-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; position:relative; }
+.portal-card .pc-title { font-family:'Fraunces', serif; font-size:22px; font-weight:500; margin-bottom:14px; position:relative; line-height:1.2; }
+.portal-card .pc-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.portal-card .pc-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; position:relative; }
+.portal-card .pc-step { padding:10px 12px; background:rgba(255,255,255,0.04); border-radius:8px; border:1px solid rgba(200,151,91,0.18); }
+.portal-card .pc-step .pc-num { font-family:'Fraunces', serif; font-style:italic; font-size:16px; color:var(--gold); font-weight:500; margin-bottom:4px; }
+.portal-card .pc-step .pc-text { font-size:11px; color:var(--gold-soft); line-height:1.45; }
+.portal-card .pc-step .pc-text b { color:var(--bg); font-weight:600; }
+.portal-card .pc-foot { margin-top:14px; padding-top:14px; border-top:1px solid rgba(200,151,91,0.18); font-size:11px; color:var(--gold-soft); position:relative; line-height:1.5; }
+.portal-card .pc-foot a { color:var(--gold); font-family:'JetBrains Mono', monospace; font-weight:600; text-decoration:none; border-bottom:1px dotted var(--gold-soft); }
+
+/* Paste-from-portal active state · the textarea with overlay */
+.paste-zone { background:var(--surface); border:2px dashed var(--gold-soft); border-radius:14px; padding:0; margin-bottom:18px; position:relative; overflow:hidden; }
+.paste-zone .pz-head { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.paste-zone .pz-head .pz-title { font-family:'Fraunces', serif; font-size:15px; font-weight:600; }
+.paste-zone .pz-head .pz-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.paste-zone .pz-head .pz-meta { font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.06em; }
+.paste-zone .pz-body { padding:18px 20px; min-height:160px; background:var(--bg); font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-2); line-height:1.65; white-space:pre; overflow-x:auto; }
+.paste-zone .pz-body.empty { color:var(--navy-3); font-style:italic; font-family:'Manrope', sans-serif; padding:50px 20px; text-align:center; }
+.paste-zone .pz-foot { padding:12px 20px; background:var(--gold-bg); border-top:1px solid var(--gold-soft); display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--navy-2); }
+.paste-zone .pz-foot b { color:var(--navy); font-weight:700; }
+
+/* Walk-through helper · ad-hoc cross link */
+.adhoc-link { display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:center; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-bottom:18px; }
+.adhoc-link .al-icon { width:36px; height:36px; border-radius:8px; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:14px; }
+.adhoc-link .al-body { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.adhoc-link .al-body b { color:var(--navy); font-weight:600; }
+.adhoc-link .al-body .al-title { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--navy); margin-bottom:2px; }
+.adhoc-link .al-action { background:var(--surface); border:1px solid var(--border-2); padding:7px 12px; border-radius:6px; font-size:11px; font-weight:600; color:var(--navy); text-decoration:none; }
+
+/* Review & match table */
+.review-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.review-toolbar .rt-lbl { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-right:2px; }
+.filter-pill { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:6px 12px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.filter-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill .ct { background:rgba(200,151,91,0.18); color:var(--gold); padding:1px 6px; border-radius:100px; margin-left:5px; font-family:'JetBrains Mono', monospace; font-size:10px; }
+.filter-pill.active .ct { background:rgba(200,151,91,0.25); color:var(--gold-soft); }
+.filter-pill.terra { color:var(--terra); border-color:var(--terra); }
+.filter-pill.terra .ct { background:var(--terra-bg); color:var(--terra); }
+.filter-pill.warn { color:var(--warn); border-color:var(--warn); }
+.filter-pill.warn .ct { background:var(--warn-bg); color:var(--warn); }
+.filter-pill.green { color:var(--green); border-color:var(--green); }
+.filter-pill.green .ct { background:var(--green-bg); color:var(--green); }
+
+.review-table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.review-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.review-table th.c { text-align:center; }
+.review-table th.r { text-align:right; }
+.review-table td { padding:13px 12px; font-size:11.5px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.review-table tr:last-child td { border-bottom:none; }
+.review-table tr.flag-terra td:first-child { border-left:3px solid var(--terra); }
+.review-table tr.flag-warn td:first-child { border-left:3px solid var(--warn); }
+.review-table tr.flag-clean td:first-child { border-left:3px solid var(--green); }
+.review-table td .r-idx { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy); font-weight:600; }
+.review-table td .r-stu { display:flex; gap:9px; align-items:center; }
+.review-table td .r-stu .r-av { width:28px; height:28px; border-radius:50%; background:var(--gold-soft); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.review-table td .r-stu .r-av.terra { background:var(--terra-bg); color:var(--terra); }
+.review-table td .r-stu .r-av.warn { background:var(--warn-bg); color:var(--warn); }
+.review-table td .r-stu .r-av.green { background:var(--green-bg); color:var(--green); }
+.review-table td .r-stu .r-name { font-family:'Fraunces', serif; font-size:12.5px; font-weight:600; color:var(--navy); }
+.review-table td .r-stu .r-sub { font-size:9.5px; color:var(--navy-3); margin-top:1px; }
+.review-table td .r-prog { font-size:11px; color:var(--navy-2); }
+.review-table td .r-prog b { color:var(--navy); font-weight:600; }
+.review-table td .r-prog .sub { display:block; font-size:9px; color:var(--navy-3); margin-top:1px; }
+.review-table td .r-agg { font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--navy); font-weight:600; text-align:center; }
+.review-table td .r-jhs { font-size:11px; color:var(--navy-2); }
+.review-table td .r-res { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:100px; display:inline-block; }
+.review-table td .r-res.boarding { background:var(--gold-bg); color:var(--gold); }
+.review-table td .r-res.day { background:var(--green-bg); color:var(--green); }
+.review-table td .r-flag { font-size:10px; color:var(--navy-3); }
+.review-table td .r-flag .flag-pill { display:inline-block; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:100px; }
+.review-table td .r-flag .flag-pill.dup { background:var(--terra-bg); color:var(--terra); }
+.review-table td .r-flag .flag-pill.miss { background:var(--warn-bg); color:var(--warn); }
+.review-table td .r-flag .flag-pill.clean { background:var(--green-bg); color:var(--green); }
+.review-table td .r-flag .flag-pill.adj { background:var(--gold-bg); color:var(--gold); }
+.review-table td .r-flag .flag-note { display:block; font-size:9.5px; color:var(--navy-3); margin-top:3px; font-style:italic; }
+.review-table td .r-action { font-size:10px; font-weight:600; color:var(--gold); padding:5px 9px; background:var(--gold-bg); border-radius:5px; border:1px solid var(--gold-soft); cursor:pointer; }
+
+/* Programme + House + Residency · the assignment trio */
+.trio { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; }
+.trio-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.trio-card .tc-head { padding:14px 18px 12px; border-bottom:1px solid var(--border); }
+.trio-card .tc-head .tc-num { font-family:'Fraunces', serif; font-style:italic; font-size:14px; color:var(--gold); font-weight:500; margin-bottom:2px; }
+.trio-card .tc-head .tc-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.trio-card .tc-head .tc-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.trio-card .tc-head .tc-sub { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.trio-card .tc-body { padding:16px 18px; }
+.trio-card .tc-row { display:grid; grid-template-columns:1fr auto auto; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); align-items:center; }
+.trio-card .tc-row:last-child { border-bottom:none; }
+.trio-card .tc-row .tc-name { font-size:12px; color:var(--navy); font-weight:600; }
+.trio-card .tc-row .tc-name .tc-meta { display:block; font-size:9.5px; color:var(--navy-3); font-weight:500; margin-top:1px; }
+.trio-card .tc-row .tc-count { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.trio-card .tc-row .tc-cap { font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--navy-3); font-weight:500; }
+.trio-card .tc-row .tc-bar { grid-column:1 / -1; height:6px; background:var(--bg); border-radius:100px; overflow:hidden; margin-top:6px; position:relative; }
+.trio-card .tc-row .tc-bar-fill { height:100%; background:var(--gold); border-radius:100px; }
+.trio-card .tc-row .tc-bar-fill.green { background:var(--green); }
+.trio-card .tc-row .tc-bar-fill.warn { background:var(--warn); }
+.trio-card .tc-row .tc-bar-fill.terra { background:var(--terra); }
+.trio-card .tc-foot { background:var(--bg); padding:12px 18px; border-top:1px solid var(--border); font-size:11px; color:var(--navy-2); line-height:1.5; }
+.trio-card .tc-foot b { color:var(--navy); font-weight:600; }
+
+/* Algorithm explainer panel */
+.algo-panel { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:14px 18px; margin-bottom:18px; display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:center; }
+.algo-panel .ap-icon { width:36px; height:36px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:14px; }
+.algo-panel .ap-body { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.algo-panel .ap-body .ap-title { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--navy); margin-bottom:2px; }
+.algo-panel .ap-body b { color:var(--navy); font-weight:600; }
+.algo-panel .ap-action { background:var(--surface); border:1px solid var(--gold-soft); padding:7px 12px; border-radius:6px; font-size:11px; font-weight:600; color:var(--navy); cursor:pointer; }
+
+/* Commit confirmation card · the big moment */
+.commit-card { background:linear-gradient(135deg, var(--green-bg) 0%, var(--surface) 100%); border:2px solid var(--green); border-radius:16px; padding:32px 36px; margin-bottom:24px; display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:center; }
+.commit-card .cc-icon { width:72px; height:72px; border-radius:50%; background:var(--green); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:500; font-size:34px; }
+.commit-card .cc-body h2 { font-family:'Fraunces', serif; font-size:30px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; margin-bottom:8px; }
+.commit-card .cc-body h2 em { font-style:italic; color:var(--gold); font-weight:400; }
+.commit-card .cc-body .cc-meta { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.commit-card .cc-body .cc-meta b { color:var(--navy); font-weight:700; }
+
+/* Side effects strip · what just happened */
+.effects-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:24px; }
+.effect-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.effect-card .ef-lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.effect-card .ef-val { font-family:'Fraunces', serif; font-size:24px; font-weight:500; letter-spacing:-0.02em; line-height:1; }
+.effect-card .ef-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.effect-card .ef-val .unit { font-size:12px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.effect-card .ef-meta { font-size:10px; color:var(--navy-3); margin-top:5px; font-weight:500; }
+.effect-card .ef-meta b { color:var(--navy-2); font-weight:700; }
+
+/* Reconciliation surface · 2 weeks later */
+.recon-strip { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:22px; }
+.recon-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; }
+.recon-card.green { background:linear-gradient(135deg, var(--green-bg) 0%, var(--surface) 100%); border-color:var(--green); }
+.recon-card.terra { background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 100%); border-color:var(--terra); }
+.recon-card.gold { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.recon-card .rc-lbl { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; }
+.recon-card .rc-val { font-family:'Fraunces', serif; font-size:32px; font-weight:500; letter-spacing:-0.02em; line-height:1; }
+.recon-card .rc-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.recon-card .rc-val .total { font-size:16px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; }
+.recon-card.green .rc-val { color:var(--green); }
+.recon-card.terra .rc-val { color:var(--terra); }
+.recon-card .rc-trend { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; }
+.recon-card .rc-trend b { color:var(--navy-2); font-weight:700; }
+
+/* Gap list · placed but no-show / walked in but not placed */
+.gap-list { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px; }
+.gap-head { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:baseline; }
+.gap-head .gh-title { font-family:'Fraunces', serif; font-size:16px; font-weight:600; }
+.gap-head .gh-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.gap-head .gh-meta { font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.06em; }
+.gap-row { padding:14px 20px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:auto 1fr auto auto; gap:16px; align-items:center; }
+.gap-row:last-child { border-bottom:none; }
+.gap-row .gr-av { width:36px; height:36px; border-radius:50%; background:var(--gold-soft); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:11px; }
+.gap-row .gr-av.terra { background:var(--terra-bg); color:var(--terra); }
+.gap-row .gr-av.warn { background:var(--warn-bg); color:var(--warn); }
+.gap-row .gr-av.green { background:var(--green-bg); color:var(--green); }
+.gap-row .gr-body .gr-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.gap-row .gr-body .gr-line { font-size:11px; color:var(--navy-3); margin-top:3px; line-height:1.45; }
+.gap-row .gr-body .gr-line b { color:var(--navy-2); font-weight:600; }
+.gap-row .gr-status { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; padding:4px 10px; border-radius:100px; }
+.gap-row .gr-status.contact { background:var(--warn-bg); color:var(--warn); }
+.gap-row .gr-status.elsewhere { background:var(--bg); color:var(--navy-3); }
+.gap-row .gr-status.added { background:var(--green-bg); color:var(--green); }
+.gap-row .gr-action { background:var(--surface); border:1px solid var(--border-2); padding:7px 12px; border-radius:6px; font-size:10px; font-weight:600; color:var(--navy); cursor:pointer; }
+.gap-row .gr-action.primary { background:var(--gold); color:var(--navy); border-color:var(--gold); }
+
+/* Cross-module xmod */
+.xmod-strip { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:24px; }
+.xmod-card { background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--bg); border-radius:10px; padding:14px 18px; position:relative; overflow:hidden; }
+.xmod-card::before { content:""; position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; background:rgba(200,151,91,0.06); }
+.xmod-card .xm-lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; position:relative; }
+.xmod-card .xm-title { font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:5px; position:relative; line-height:1.3; }
+.xmod-card .xm-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.xmod-card .xm-body { font-size:11px; color:var(--gold-soft); line-height:1.5; position:relative; }
+.xmod-card .xm-body b { color:var(--bg); font-weight:600; }
+
+/* Stage progress · top of page */
+.stage-progress { display:flex; gap:8px; margin-bottom:24px; padding:14px 18px; background:var(--surface); border:1px solid var(--border); border-radius:12px; align-items:center; }
+.stage-progress .sp-step { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:600; color:var(--navy-3); }
+.stage-progress .sp-step .sp-dot { width:22px; height:22px; border-radius:50%; background:var(--bg); border:1.5px solid var(--border-2); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:600; color:var(--navy-3); }
+.stage-progress .sp-step.done .sp-dot { background:var(--green); border-color:var(--green); color:var(--bg); }
+.stage-progress .sp-step.done { color:var(--green); }
+.stage-progress .sp-step.active .sp-dot { background:var(--navy); border-color:var(--navy); color:var(--bg); }
+.stage-progress .sp-step.active { color:var(--navy); font-weight:700; }
+.stage-progress .sp-arrow { color:var(--navy-3); font-size:10px; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .status-strip { grid-template-columns:repeat(2,1fr); }
+  .input-grid { grid-template-columns:1fr; }
+  .trio { grid-template-columns:1fr; }
+  .effects-strip { grid-template-columns:repeat(2,1fr); }
+  .recon-strip { grid-template-columns:1fr; }
+  .xmod-strip { grid-template-columns:1fr; }
+  .portal-card .pc-grid { grid-template-columns:1fr 1fr; }
+  .countdown { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">MVP2 · SHS · Admissions · bulk intake · new default surface</div>
+<div class="eyebrow">Omnischools Senior · CSSPS placement intake · the September moment</div>
+<h1>Two hundred and forty students <em>at once</em>.</h1>
+<div class="gold-rule"></div>
+<p>Every September, GES's Computerised School Selection and Placement System (CSSPS) auto-places ~447,000 BECE candidates into the country's SHS, SHTS, and TVET institutions. For each receiving school, that's a list of incoming Form 1s arriving over the next four weeks — often two hundred or more. Heads access the list via <span class="mono">hm.cssps.gov.gh</span>, print it, and an admissions clerk re-types it into the school's records. Omnischools's prior per-student admission surface was a poor default for this moment. This bulk surface is the new default: paste the portal list (or upload CSV / PDF), review and resolve flags, confirm programmes, assign Houses, commit in one transaction. The per-student flow remains for self-placement students, walk-in transfers, and late arrivals.</p>
+</div>
+
+<!-- ============================================ SECTION 1 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">The empty state · 240 placed, 0 admitted, 17 days to admit</div>
+<div class="section-meta">Wed 23 Sep 2026 · 6 days post-release</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">sttheresas.omnischools.gh / admissions / 2026-bulk</div></div>
+
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">T</div><div><div class="school-name">St. Theresa's SHS</div><div class="school-meta">Sunyani · founded 1965</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item active"><div class="ic"></div>Admissions</div>
+<div class="nav-item sub active"><div class="ic"></div>2026 bulk intake</div>
+<div class="nav-item sub"><div class="ic"></div>Add individual student</div>
+<div class="nav-item sub"><div class="ic"></div>Transfers in/out</div>
+<div class="nav-item sub"><div class="ic"></div>Withdrawals</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Programmes &amp; classes</div>
+<div class="nav-item"><div class="ic"></div>Houses</div>
+<div class="nav-item"><div class="ic"></div>Staff</div>
+<div class="nav-item"><div class="ic"></div>Fees</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">KO</div><div><div class="meta-name">K. Owusu-Frempong</div><div class="meta-role">Headmaster</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Admissions</a> · 2026 bulk intake</div>
+<div class="top-row">
+<div>
+<h1>The 2026 <em>bulk intake.</em></h1>
+<div class="lede">CSSPS released placements on <b>Wed 17 Sep 2026</b>. Your school code <b>ST-0741</b> shows <b>240 placed Form 1 candidates</b> across SCI/BUS/GA/HE. Admission window closes <b>Sat 10 Oct 2026 — 17 days from today</b>. Start by sourcing the placement list below.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">View 2025 intake</button>
+<button class="btn">Settings</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="countdown">
+<div class="cd-icon">17</div>
+<div class="cd-body">
+<div class="cd-title">Admission window <em>closes Sat 10 October</em></div>
+<div class="cd-meta"><b>0 of 240 students admitted.</b> Free SHS reporting deadline is the same day. After this date, placed-but-unadmitted students become a regional directorate reconciliation case. Most schools complete bulk intake within the first 7 days; reconciliation runs through week 3.</div>
+</div>
+<div class="cd-action"><button class="btn gold lg">Start sourcing list →</button></div>
+</div>
+
+<div class="status-strip">
+<div class="status-card lead">
+<div class="s-lbl">Placed by CSSPS</div>
+<div class="s-val"><em>240</em><span class="unit">students</span></div>
+<div class="s-trend">SCI <b>60</b> · BUS <b>60</b> · GA <b>80</b> · HE <b>40</b><br>From CSSPS school code <b>ST-0741</b></div>
+</div>
+<div class="status-card warn">
+<div class="s-lbl">Admitted so far</div>
+<div class="s-val">0<span class="total"> / 240</span></div>
+<div class="s-trend">Bulk source not yet pulled<br>Per-student also at <b>0</b></div>
+</div>
+<div class="status-card terra">
+<div class="s-lbl">Days remaining</div>
+<div class="s-val">17<span class="unit">days</span></div>
+<div class="s-trend">Window closes Sat 10 Oct<br>GES Free SHS deadline aligned</div>
+</div>
+<div class="status-card green">
+<div class="s-lbl">Boarding capacity</div>
+<div class="s-val">192<span class="total"> / 200</span></div>
+<div class="s-trend">CSSPS preference splits<br>192 boarding · 48 day</div>
+</div>
+</div>
+
+<div class="stage-progress">
+<div class="sp-step active"><div class="sp-dot">1</div>Source list</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">2</div>Review &amp; match</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">3</div>Programmes</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">4</div>Houses &amp; residency</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">5</div>Commit</div>
+</div>
+
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; text-align:center;">
+<div style="font-family:'Fraunces', serif; font-size:22px; font-weight:500; margin-bottom:8px;">Source the placement list <em style="font-style:italic; color:var(--gold); font-weight:400;">to begin.</em></div>
+<div style="font-size:13px; color:var(--navy-3); max-width:540px; margin:0 auto 24px; line-height:1.55;">GES does not provide an API or direct download. You'll either paste the table from the portal, upload a CSV you've built from it, or scan the printed list. Pick one to begin — the rest of the flow is the same.</div>
+<button class="btn gold lg" style="font-size:14px; padding:13px 28px;">Choose an input method →</button>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The opening moment</h4>
+<ul>
+<li><b>17-day countdown is the most operationally important number.</b> Heads who miss it lose Free SHS reimbursement for late-admitted students; placed students who fail to enrol become regional directorate cases. The terra-tinted countdown card sits above the stats strip for a reason — this is what makes the admission month different from any other.</li>
+<li><b>Lead status card uses the gold gradient.</b> 240 placed is the input number; 0 admitted is the gap to close. Programme breakdown is presented inline because the head will reference it constantly across the next four weeks.</li>
+<li><b>Stage progress lives at body level, not as wizard chrome.</b> Unlike the unified onboarding wizard (one-time, vertical nav, never revisited), the bulk admission flow is worked over weeks — the head opens it, leaves, comes back, picks up where they left off. Horizontal step progress mirrors that pacing better than a vertical sidebar.</li>
+<li><b>"Add individual student" sits as a sub-nav item.</b> The per-student surface is not gone, just demoted from default. From day one the head can see it's the second option, available for self-placement walk-ins.</li>
+<li><b>Wed 23 September 2026 · six days after CSSPS release.</b> The realistic moment heads start processing. Most heads wait 2–3 days for the portal congestion to subside; by day 6 the list is stable, parents have started arriving with paperwork, and the school needs Omnischools to be ready.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 2 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">Source the list · three input paths, no GES API exists</div>
+<div class="section-meta">Paste-from-portal selected · live parse</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">sttheresas.omnischools.gh / admissions / 2026-bulk / source</div></div>
+
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="brand"><div class="logo-mini">T</div><div><div class="school-name">St. Theresa's SHS</div><div class="school-meta">Sunyani · founded 1965</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item active"><div class="ic"></div>Admissions</div>
+<div class="nav-item sub active"><div class="ic"></div>2026 bulk intake</div>
+<div class="nav-item sub"><div class="ic"></div>Add individual student</div>
+<div class="nav-item sub"><div class="ic"></div>Transfers in/out</div>
+<div class="nav-item sub"><div class="ic"></div>Withdrawals</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Programmes &amp; classes</div>
+<div class="nav-item"><div class="ic"></div>Houses</div>
+<div class="nav-item"><div class="ic"></div>Staff</div>
+<div class="nav-item"><div class="ic"></div>Fees</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">KO</div><div><div class="meta-name">K. Owusu-Frempong</div><div class="meta-role">Headmaster</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Admissions</a> · <a href="#">2026 bulk intake</a> · Source the list</div>
+<div class="top-row">
+<div>
+<h1>Source the <em>placement list.</em></h1>
+<div class="lede">CSSPS has no public API and no direct download. Three realistic paths exist — pick the one that matches what you have. Most heads use <b>paste-from-portal</b>: log into <span class="mono">hm.cssps.gov.gh</span>, select the placement table, copy, paste below. Omnischools parses it.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">← Back to overview</button>
+<button class="btn">Save draft</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="stage-progress">
+<div class="sp-step active"><div class="sp-dot">1</div>Source list</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">2</div>Review &amp; match</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">3</div>Programmes</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">4</div>Houses &amp; residency</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">5</div>Commit</div>
+</div>
+
+<div class="portal-card">
+<div class="pc-eyebrow">Before you start · how to get your list from CSSPS</div>
+<div class="pc-title">Four steps at <em>hm.cssps.gov.gh.</em></div>
+<div class="pc-grid">
+<div class="pc-step"><div class="pc-num">1.</div><div class="pc-text">Log in with your <b>CSSPS school code</b> (ST-0741) and password.</div></div>
+<div class="pc-step"><div class="pc-num">2.</div><div class="pc-text">Open <b>Placement List</b> · select your 2026 cohort.</div></div>
+<div class="pc-step"><div class="pc-num">3.</div><div class="pc-text">Select the full table on screen · copy (Ctrl+C).</div></div>
+<div class="pc-step"><div class="pc-num">4.</div><div class="pc-text">Paste into the box below. Omnischools does the rest.</div></div>
+</div>
+<div class="pc-foot">If your portal access is broken or the table copy fails, the CSV and PDF paths below also work. Direct link · <a href="#">hm.cssps.gov.gh ↗</a></div>
+</div>
+
+<div class="input-grid">
+
+<div class="input-card selected">
+<div class="ic-num">1.</div>
+<div class="ic-title">Paste from <em>portal</em></div>
+<div class="ic-body">Copy the placement table directly from <b>hm.cssps.gov.gh</b> · Omnischools parses 50+ rows per second. <b>Most reliable</b>: portal data is structured, parser is purpose-built for the CSSPS format.</div>
+<span class="ic-tag recommended">Recommended</span>
+</div>
+
+<div class="input-card">
+<div class="ic-num">2.</div>
+<div class="ic-title">Upload <em>CSV</em></div>
+<div class="ic-body">If you've already built a spreadsheet from the portal data, or your district office distributed one. Template available · 8 required columns matched on header names.</div>
+<span class="ic-tag fallback">Fallback</span>
+</div>
+
+<div class="input-card">
+<div class="ic-num">3.</div>
+<div class="ic-title">Upload <em>printed list</em></div>
+<div class="ic-body">For schools whose head printed the portal page (paper copy from district directorate, scanned in). PDF or image, OCR'd and parsed · expect to spend 10–15 minutes verifying rows after upload.</div>
+<span class="ic-tag fallback">Last resort</span>
+</div>
+
+</div>
+
+<div class="paste-zone">
+<div class="pz-head">
+<div class="pz-title">Paste the placement table <em>here</em></div>
+<div class="pz-meta">Parsing begins automatically · ~3 sec for 240 rows</div>
+</div>
+<div class="pz-body">252618-0001	ABBEY, KOFI AMOAH	M	2010-03-14	06	General Science	1st	Bishop Herman College JHS	Sunyani · Bono	Boarding
+252618-0002	ACHEAMPONG, GIFTY	F	2010-07-22	08	Business	1st	Notre Dame Girls JHS	Sunyani · Bono	Boarding
+252618-0003	ADJEI, MICHAEL KOFI	M	2009-11-30	10	General Arts	2nd	St. James Seminary JHS	Sunyani · Bono	Boarding
+252618-0004	AGYEMANG, ABENA	F	2010-01-08	09	Home Economics	1st	Methodist JHS Sunyani	Sunyani · Bono	Day
+252618-0005	AMOAH, KWAME ASARE	M	2010-04-15	12	General Arts	1st	Berekum Presby JHS	Berekum · Bono	Boarding
+252618-0006	ANSAH, AKOSUA	F	2010-09-02	07	General Science	1st	St. Mary's JHS Berekum	Berekum · Bono	Boarding
+252618-0007	APPIAH-KUBI, YAW	M	2009-08-18	11	Business	1st	Wenchi Methodist JHS	Wenchi · Bono	Boarding
+...
+234 more rows parsed · scrolling truncated for display</div>
+<div class="pz-foot">
+<div><b>240 rows detected.</b> Format validated · all required columns present · ready for review.</div>
+<div><b>Parse confidence · 99.6%</b></div>
+</div>
+</div>
+
+<div class="adhoc-link">
+<div class="al-icon">+1</div>
+<div class="al-body">
+<div class="al-title">Need to admit a self-placement student or a walk-in transfer?</div>
+<div>The per-student flow handles students <b>not on the CSSPS list</b> — self-placement entries from <span class="mono">sp.cssps.gov.gh</span>, transfers from other SHS, and late arrivals. Use it after bulk commit, or right now if a parent is at the gate.</div>
+</div>
+<a href="#" class="al-action">Open Add individual student →</a>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; padding:18px 22px; background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-radius:12px; margin-top:8px;">
+<div>
+<div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600; color:var(--navy); margin-bottom:4px;">240 students parsed · 0 errors · ready to review.</div>
+<div style="font-size:12px; color:var(--navy-2); line-height:1.5;">All required fields present in every row. Omnischools will now check each row against existing student records to flag <b>duplicates</b> (returning students, siblings already enrolled) and <b>missing parent contact info</b>. This takes about 20 seconds for 240 rows.</div>
+</div>
+<div><button class="btn gold lg">Continue to review →</button></div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The three-path reality of CSSPS intake</h4>
+<ul>
+<li><b>GES gives no API and no download.</b> The heads portal exposes view and print only. Every input path Omnischools offers is downstream of the head having physically interacted with hm.cssps.gov.gh — there is no shortcut around that fact, only adapters for what comes out.</li>
+<li><b>Paste-from-portal is recommended because the data shape is consistent.</b> CSSPS renders the same column order every year: index, name, sex, DOB, aggregate, programme, choice number, JHS, district, residency. The parser is purpose-built for this exact layout.</li>
+<li><b>CSV is fallback for the district-office workflow.</b> Some districts distribute spreadsheets to schools in their catchment; the head doesn't have to log into the portal at all. Template enforcement on column headers prevents misalignment.</li>
+<li><b>PDF/printed list is last resort.</b> OCR on Ghanaian names (especially with diacritics) is imperfect; the head will need to verify 10–20% of rows by hand. We surface this honestly: "expect to spend 10–15 minutes verifying."</li>
+<li><b>Walkthrough card up top is operational, not marketing.</b> A real head sees this on day one of using Omnischools; if we don't tell them the four-step portal procedure they'll get stuck. Treating it as part of the surface, not external help, respects that this is genuinely a multi-system workflow.</li>
+<li><b>Ad-hoc cross-link sits beneath the main flow, not above.</b> Bulk is default; per-student is the second option, available but not promoted. A parent at the gate today before bulk is sourced is a real edge case — the link is there so the head doesn't have to navigate away.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 3 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">Review &amp; match · 8 flags to resolve before continuing</div>
+<div class="section-meta">232 clean · 3 duplicate · 5 missing field</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">sttheresas.omnischools.gh / admissions / 2026-bulk / review</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="brand"><div class="logo-mini">T</div><div><div class="school-name">St. Theresa's SHS</div><div class="school-meta">Sunyani · founded 1965</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item active"><div class="ic"></div>Admissions</div>
+<div class="nav-item sub active"><div class="ic"></div>2026 bulk intake</div>
+<div class="nav-item sub"><div class="ic"></div>Add individual student</div>
+<div class="nav-item sub"><div class="ic"></div>Transfers in/out</div>
+<div class="nav-item sub"><div class="ic"></div>Withdrawals</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Programmes &amp; classes</div>
+<div class="nav-item"><div class="ic"></div>Houses</div>
+<div class="nav-item"><div class="ic"></div>Staff</div>
+<div class="nav-item"><div class="ic"></div>Fees</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">KO</div><div><div class="meta-name">K. Owusu-Frempong</div><div class="meta-role">Headmaster</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Admissions</a> · <a href="#">2026 bulk intake</a> · Review &amp; match</div>
+<div class="top-row">
+<div>
+<h1>Review the <em>parsed list.</em></h1>
+<div class="lede"><b>240 rows parsed · 232 clean · 8 flagged.</b> Three students match siblings already enrolled (likely returning families — confirm). Five rows have missing parent phone. Resolve every flag before continuing — Omnischools will not commit a partially-bad batch.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">← Re-source list</button>
+<button class="btn">Export flags as CSV</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="stage-progress">
+<div class="sp-step done"><div class="sp-dot">✓</div>Source list</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step active"><div class="sp-dot">2</div>Review &amp; match</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">3</div>Programmes</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">4</div>Houses &amp; residency</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">5</div>Commit</div>
+</div>
+
+<div class="status-strip">
+<div class="status-card lead">
+<div class="s-lbl">Parsed</div>
+<div class="s-val"><em>240</em><span class="unit">rows</span></div>
+<div class="s-trend">All required fields populated<br>Parse confidence <b>99.6%</b></div>
+</div>
+<div class="status-card green">
+<div class="s-lbl">Clean rows</div>
+<div class="s-val">232<span class="total"> / 240</span></div>
+<div class="s-trend">No flags · ready to admit<br><b>97% pass rate</b> on first parse</div>
+</div>
+<div class="status-card terra">
+<div class="s-lbl">Duplicate matches</div>
+<div class="s-val">3<span class="unit">rows</span></div>
+<div class="s-trend">Likely siblings of existing students<br>Confirm or merge</div>
+</div>
+<div class="status-card warn">
+<div class="s-lbl">Missing fields</div>
+<div class="s-val">5<span class="unit">rows</span></div>
+<div class="s-trend">All missing parent phone<br>Resolve by hand or skip</div>
+</div>
+</div>
+
+<div class="review-toolbar">
+<span class="rt-lbl">Filter</span>
+<button class="filter-pill">All <span class="ct">240</span></button>
+<button class="filter-pill active terra">Flagged <span class="ct">8</span></button>
+<button class="filter-pill green">Clean <span class="ct">232</span></button>
+<span class="rt-lbl" style="margin-left:18px;">By flag</span>
+<button class="filter-pill terra">Duplicate <span class="ct">3</span></button>
+<button class="filter-pill warn">Missing field <span class="ct">5</span></button>
+<button class="filter-pill" style="margin-left:auto;">Search…</button>
+</div>
+
+<table class="review-table">
+<thead><tr>
+<th>BECE index</th>
+<th>Student</th>
+<th>Programme</th>
+<th class="c">Agg</th>
+<th>JHS attended</th>
+<th>Residency</th>
+<th>Flag</th>
+<th></th>
+</tr></thead>
+<tbody>
+
+<tr class="flag-terra">
+<td><span class="r-idx">252618-0042</span></td>
+<td><div class="r-stu"><div class="r-av terra">AS</div><div><div class="r-name">ASANTE, KWABENA</div><div class="r-sub">Male · 13 Apr 2010</div></div></div></td>
+<td class="r-prog"><b>General Science</b><span class="sub">1st choice</span></td>
+<td class="r-agg">07</td>
+<td class="r-jhs">Notre Dame Boys JHS<span style="display:block; font-size:9px; color:var(--navy-3); margin-top:1px;">Sunyani · Bono</span></td>
+<td><span class="r-res boarding">Boarding</span></td>
+<td class="r-flag"><span class="flag-pill dup">Duplicate match</span><span class="flag-note">Sibling <b>P. Asante</b> already enrolled (F2 SCI · 2024)</span></td>
+<td><button class="r-action">Confirm sibling →</button></td>
+</tr>
+
+<tr class="flag-terra">
+<td><span class="r-idx">252618-0089</span></td>
+<td><div class="r-stu"><div class="r-av terra">MO</div><div><div class="r-name">MENSAH, OBED</div><div class="r-sub">Male · 22 Aug 2010</div></div></div></td>
+<td class="r-prog"><b>General Arts</b><span class="sub">2nd choice</span></td>
+<td class="r-agg">10</td>
+<td class="r-jhs">St. Mary's JHS Berekum<span style="display:block; font-size:9px; color:var(--navy-3); margin-top:1px;">Berekum · Bono</span></td>
+<td><span class="r-res boarding">Boarding</span></td>
+<td class="r-flag"><span class="flag-pill dup">Duplicate match</span><span class="flag-note">Sibling <b>E. Mensah</b> already enrolled (F3 GA · 2023)</span></td>
+<td><button class="r-action">Confirm sibling →</button></td>
+</tr>
+
+<tr class="flag-terra">
+<td><span class="r-idx">252618-0157</span></td>
+<td><div class="r-stu"><div class="r-av terra">YA</div><div><div class="r-name">YEBOAH, ABENA</div><div class="r-sub">Female · 04 Feb 2010</div></div></div></td>
+<td class="r-prog"><b>Home Economics</b><span class="sub">1st choice</span></td>
+<td class="r-agg">12</td>
+<td class="r-jhs">Wenchi Methodist JHS<span style="display:block; font-size:9px; color:var(--navy-3); margin-top:1px;">Wenchi · Bono</span></td>
+<td><span class="r-res day">Day</span></td>
+<td class="r-flag"><span class="flag-pill dup">Duplicate match</span><span class="flag-note">Same BECE index as <b>2024 withdrawal</b> · returning?</span></td>
+<td><button class="r-action">Review history →</button></td>
+</tr>
+
+<tr class="flag-warn">
+<td><span class="r-idx">252618-0023</span></td>
+<td><div class="r-stu"><div class="r-av warn">BD</div><div><div class="r-name">BOATENG, DANIEL</div><div class="r-sub">Male · 17 Jun 2010</div></div></div></td>
+<td class="r-prog"><b>Business</b><span class="sub">1st choice</span></td>
+<td class="r-agg">08</td>
+<td class="r-jhs">Bishop Herman College JHS<span style="display:block; font-size:9px; color:var(--navy-3); margin-top:1px;">Sunyani · Bono</span></td>
+<td><span class="r-res boarding">Boarding</span></td>
+<td class="r-flag"><span class="flag-pill miss">Missing parent phone</span><span class="flag-note">Portal export had blank · capture before commit</span></td>
+<td><button class="r-action">Add phone →</button></td>
+</tr>
+
+<tr class="flag-warn">
+<td><span class="r-idx">252618-0118</span></td>
+<td><div class="r-stu"><div class="r-av warn">OE</div><div><div class="r-name">OWUSU, EMMANUEL</div><div class="r-sub">Male · 09 Oct 2010</div></div></div></td>
+<td class="r-prog"><b>General Science</b><span class="sub">1st choice</span></td>
+<td class="r-agg">06</td>
+<td class="r-jhs">Berekum Presby JHS<span style="display:block; font-size:9px; color:var(--navy-3); margin-top:1px;">Berekum · Bono</span></td>
+<td><span class="r-res boarding">Boarding</span></td>
+<td class="r-flag"><span class="flag-pill miss">Missing parent phone</span><span class="flag-note">Portal export had blank · capture before commit</span></td>
+<td><button class="r-action">Add phone →</button></td>
+</tr>
+
+<tr class="flag-warn">
+<td><span class="r-idx">252618-0164</span></td>
+<td><div class="r-stu"><div class="r-av warn">AS</div><div><div class="r-name">ANTWI, SARAH</div><div class="r-sub">Female · 27 Mar 2010</div></div></div></td>
+<td class="r-prog"><b>General Arts</b><span class="sub">1st choice</span></td>
+<td class="r-agg">11</td>
+<td class="r-jhs">Methodist JHS Sunyani<span style="display:block; font-size:9px; color:var(--navy-3); margin-top:1px;">Sunyani · Bono</span></td>
+<td><span class="r-res day">Day</span></td>
+<td class="r-flag"><span class="flag-pill miss">Missing parent phone</span><span class="flag-note">Portal export had blank · capture before commit</span></td>
+<td><button class="r-action">Add phone →</button></td>
+</tr>
+
+<tr class="flag-warn">
+<td><span class="r-idx">252618-0201</span></td>
+<td><div class="r-stu"><div class="r-av warn">FE</div><div><div class="r-name">FRIMPONG, ESTHER</div><div class="r-sub">Female · 14 Dec 2010</div></div></div></td>
+<td class="r-prog"><b>Home Economics</b><span class="sub">1st choice</span></td>
+<td class="r-agg">14</td>
+<td class="r-jhs">St. James Seminary JHS<span style="display:block; font-size:9px; color:var(--navy-3); margin-top:1px;">Sunyani · Bono</span></td>
+<td><span class="r-res boarding">Boarding</span></td>
+<td class="r-flag"><span class="flag-pill miss">Missing parent phone</span><span class="flag-note">Portal export had blank · capture before commit</span></td>
+<td><button class="r-action">Add phone →</button></td>
+</tr>
+
+<tr class="flag-warn">
+<td><span class="r-idx">252618-0228</span></td>
+<td><div class="r-stu"><div class="r-av warn">TJ</div><div><div class="r-name">TETTEH, JOSHUA</div><div class="r-sub">Male · 03 May 2010</div></div></div></td>
+<td class="r-prog"><b>Business</b><span class="sub">3rd choice</span></td>
+<td class="r-agg">13</td>
+<td class="r-jhs">Sunyani Senior JHS<span style="display:block; font-size:9px; color:var(--navy-3); margin-top:1px;">Sunyani · Bono</span></td>
+<td><span class="r-res boarding">Boarding</span></td>
+<td class="r-flag"><span class="flag-pill miss">Missing parent phone</span><span class="flag-note">Portal export had blank · capture before commit</span></td>
+<td><button class="r-action">Add phone →</button></td>
+</tr>
+
+<tr class="flag-clean">
+<td><span class="r-idx">252618-0001</span></td>
+<td><div class="r-stu"><div class="r-av green">AK</div><div><div class="r-name">ABBEY, KOFI AMOAH</div><div class="r-sub">Male · 14 Mar 2010</div></div></div></td>
+<td class="r-prog"><b>General Science</b><span class="sub">1st choice</span></td>
+<td class="r-agg">06</td>
+<td class="r-jhs">Bishop Herman College JHS<span style="display:block; font-size:9px; color:var(--navy-3); margin-top:1px;">Sunyani · Bono</span></td>
+<td><span class="r-res boarding">Boarding</span></td>
+<td class="r-flag"><span class="flag-pill clean">Clean</span><span class="flag-note">No flags · ready to admit</span></td>
+<td><button class="r-action" style="background:var(--bg); color:var(--navy-3); border-color:var(--border);">View row</button></td>
+</tr>
+
+<tr class="flag-clean">
+<td><span class="r-idx">252618-0002</span></td>
+<td><div class="r-stu"><div class="r-av green">AG</div><div><div class="r-name">ACHEAMPONG, GIFTY</div><div class="r-sub">Female · 22 Jul 2010</div></div></div></td>
+<td class="r-prog"><b>Business</b><span class="sub">1st choice</span></td>
+<td class="r-agg">08</td>
+<td class="r-jhs">Notre Dame Girls JHS<span style="display:block; font-size:9px; color:var(--navy-3); margin-top:1px;">Sunyani · Bono</span></td>
+<td><span class="r-res boarding">Boarding</span></td>
+<td class="r-flag"><span class="flag-pill clean">Clean</span><span class="flag-note">No flags · ready to admit</span></td>
+<td><button class="r-action" style="background:var(--bg); color:var(--navy-3); border-color:var(--border);">View row</button></td>
+</tr>
+
+</tbody>
+</table>
+
+<div style="text-align:center; padding:16px; font-size:11px; color:var(--navy-3); font-style:italic; background:var(--surface); border:1px solid var(--border); border-top:none; border-radius:0 0 12px 12px; margin-top:-12px;">
+230 more clean rows hidden · showing flagged + 2 examples · <b>scroll the actual surface to see all 240</b>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; padding:18px 22px; background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:12px; margin-top:24px;">
+<div>
+<div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600; color:var(--navy); margin-bottom:4px;">Cannot continue until 8 flags are resolved.</div>
+<div style="font-size:12px; color:var(--navy-2); line-height:1.5;">A partially-bad batch creates more cleanup work than the time saved. Resolve each flag — confirm siblings (or mark as new families with name coincidence), supply missing parent phones (call the parent if needed; this is the one piece of contact info Omnischools will not commit without). Three of the duplicate matches are likely <b>confirmed sibling links</b> based on surname + JHS region; one is a <b>true returning student</b> whose 2024 withdrawal needs review.</div>
+</div>
+<div><button class="btn ghost" style="border-color:var(--terra); color:var(--terra);">Resolve all flags now →</button></div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The review discipline</h4>
+<ul>
+<li><b>97% first-parse clean rate is the realistic target.</b> CSSPS portal data is mostly structured; the ~3% flagged are predictable categories — siblings with the same surname (most common), missing parent phone (portal exports drop this fairly often), and returning students who withdrew and re-placed (rare but real).</li>
+<li><b>Duplicate match is not auto-merge.</b> The head confirms whether the match is a sibling (link both records under one family), a returning student (merge records, restore history), or a coincidence (same surname, different family — admit as new). Three flag types fold into one column with sub-text explaining the specific match reason.</li>
+<li><b>Missing parent phone is a hard stop.</b> Of all the fields the portal export drops, parent phone is the one Omnischools refuses to commit without. Every downstream surface (fees, sickbay, comms) depends on it; a student with no parent phone is operationally a ghost. Calling the parent to capture it is the head's clerk's job — not avoidable.</li>
+<li><b>Filter pills drop to "Flagged" by default.</b> The head doesn't need to see 232 clean rows; they need to work on the 8 that need attention. Pills carry counts in mono so the operational state is always visible.</li>
+<li><b>"Cannot continue until flags resolved" is structural, not advisory.</b> No partial commit. The bulk operation either succeeds as a clean 240-row insert or it doesn't run. Tier B undo (24-hour window with diff modal) applies to the batch as one undo unit, per the bulk-undo decision.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 4 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">Programme · House · Residency · the assignment trio</div>
+<div class="section-meta">Step 3 / Step 4 combined view</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">sttheresas.omnischools.gh / admissions / 2026-bulk / assign</div></div>
+
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="brand"><div class="logo-mini">T</div><div><div class="school-name">St. Theresa's SHS</div><div class="school-meta">Sunyani · founded 1965</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item active"><div class="ic"></div>Admissions</div>
+<div class="nav-item sub active"><div class="ic"></div>2026 bulk intake</div>
+<div class="nav-item sub"><div class="ic"></div>Add individual student</div>
+<div class="nav-item sub"><div class="ic"></div>Transfers in/out</div>
+<div class="nav-item sub"><div class="ic"></div>Withdrawals</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Programmes &amp; classes</div>
+<div class="nav-item"><div class="ic"></div>Houses</div>
+<div class="nav-item"><div class="ic"></div>Staff</div>
+<div class="nav-item"><div class="ic"></div>Fees</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">KO</div><div><div class="meta-name">K. Owusu-Frempong</div><div class="meta-role">Headmaster</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Admissions</a> · <a href="#">2026 bulk intake</a> · Assign</div>
+<div class="top-row">
+<div>
+<h1>Programme, House, <em>residency.</em></h1>
+<div class="lede"><b>Three decisions, mostly already made.</b> CSSPS chose each student's programme and residency preference; Omnischools's House algorithm proposes balanced assignments. Confirm the trio in one screen — override any individual student via the per-row link.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">← Back to review</button>
+<button class="btn">Save draft</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="stage-progress">
+<div class="sp-step done"><div class="sp-dot">✓</div>Source list</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step done"><div class="sp-dot">✓</div>Review &amp; match</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step active"><div class="sp-dot">3</div>Programmes</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step active"><div class="sp-dot">4</div>Houses &amp; residency</div>
+<div class="sp-arrow">→</div>
+<div class="sp-step"><div class="sp-dot">5</div>Commit</div>
+</div>
+
+<div class="trio">
+
+<div class="trio-card">
+<div class="tc-head">
+<div class="tc-num">Step 3.</div>
+<div class="tc-title">Programme <em>allocation</em></div>
+<div class="tc-sub">CSSPS-assigned · school capacity check</div>
+</div>
+<div class="tc-body">
+<div class="tc-row">
+<div class="tc-name">General Science <span class="tc-meta">Cap 60 · Form 1 SCI A/B</span></div>
+<div class="tc-count">60</div>
+<div class="tc-cap">/ 60</div>
+<div class="tc-bar"><div class="tc-bar-fill" style="width:100%;"></div></div>
+</div>
+<div class="tc-row">
+<div class="tc-name">Business <span class="tc-meta">Cap 60 · Form 1 BUS A/B</span></div>
+<div class="tc-count">60</div>
+<div class="tc-cap">/ 60</div>
+<div class="tc-bar"><div class="tc-bar-fill" style="width:100%;"></div></div>
+</div>
+<div class="tc-row">
+<div class="tc-name">General Arts <span class="tc-meta">Cap 80 · Form 1 GA A/B/C</span></div>
+<div class="tc-count">80</div>
+<div class="tc-cap">/ 80</div>
+<div class="tc-bar"><div class="tc-bar-fill green" style="width:100%;"></div></div>
+</div>
+<div class="tc-row">
+<div class="tc-name">Home Economics <span class="tc-meta">Cap 40 · Form 1 HE A</span></div>
+<div class="tc-count">40</div>
+<div class="tc-cap">/ 40</div>
+<div class="tc-bar"><div class="tc-bar-fill green" style="width:100%;"></div></div>
+</div>
+</div>
+<div class="tc-foot"><b>Capacity matches placement exactly.</b> CSSPS used the school's declared 240 vacancy split. No reallocation needed; confirm and move on.</div>
+</div>
+
+<div class="trio-card">
+<div class="tc-head">
+<div class="tc-num">Step 4a.</div>
+<div class="tc-title">House <em>assignment</em></div>
+<div class="tc-sub">Algorithm-proposed · 60 per House</div>
+</div>
+<div class="tc-body">
+<div class="tc-row">
+<div class="tc-name">Theresa House <span class="tc-meta">Cap 65 · HM Mrs A. Adjei</span></div>
+<div class="tc-count">60</div>
+<div class="tc-cap">/ 65</div>
+<div class="tc-bar"><div class="tc-bar-fill" style="width:92%;"></div></div>
+</div>
+<div class="tc-row">
+<div class="tc-name">Joseph House <span class="tc-meta">Cap 65 · HM Mr K. Boateng</span></div>
+<div class="tc-count">60</div>
+<div class="tc-cap">/ 65</div>
+<div class="tc-bar"><div class="tc-bar-fill" style="width:92%;"></div></div>
+</div>
+<div class="tc-row">
+<div class="tc-name">Augustine House <span class="tc-meta">Cap 65 · HM Mr E. Owusu</span></div>
+<div class="tc-count">60</div>
+<div class="tc-cap">/ 65</div>
+<div class="tc-bar"><div class="tc-bar-fill" style="width:92%;"></div></div>
+</div>
+<div class="tc-row">
+<div class="tc-name">Cecilia House <span class="tc-meta">Cap 65 · HM Mrs M. Frimpong</span></div>
+<div class="tc-count">60</div>
+<div class="tc-cap">/ 65</div>
+<div class="tc-bar"><div class="tc-bar-fill" style="width:92%;"></div></div>
+</div>
+</div>
+<div class="tc-foot"><b>Balanced split · 60 students each.</b> Algorithm honoured sibling continuity (3 confirmed siblings) and gender balance (30M / 30F per House). 5-bed headroom per House for late arrivals.</div>
+</div>
+
+<div class="trio-card">
+<div class="tc-head">
+<div class="tc-num">Step 4b.</div>
+<div class="tc-title">Residency <em>confirm</em></div>
+<div class="tc-sub">CSSPS preference · boarding capacity</div>
+</div>
+<div class="tc-body">
+<div class="tc-row">
+<div class="tc-name">Boarding · Form 1 <span class="tc-meta">Boys + girls dorms</span></div>
+<div class="tc-count">192</div>
+<div class="tc-cap">/ 200</div>
+<div class="tc-bar"><div class="tc-bar-fill" style="width:96%;"></div></div>
+</div>
+<div class="tc-row">
+<div class="tc-name">Day · Form 1 <span class="tc-meta">Sunyani municipal area</span></div>
+<div class="tc-count">48</div>
+<div class="tc-cap">no cap</div>
+<div class="tc-bar"><div class="tc-bar-fill green" style="width:48%;"></div></div>
+</div>
+<div class="tc-row" style="border-top:1px solid var(--border); padding-top:14px; margin-top:6px;">
+<div class="tc-name">Of 192 boarders<span class="tc-meta">CSSPS preference data</span></div>
+<div class="tc-count">192</div>
+<div class="tc-cap">/ 192</div>
+<div class="tc-bar"><div class="tc-bar-fill green" style="width:100%;"></div></div>
+</div>
+<div class="tc-row">
+<div class="tc-name">Of 48 day students<span class="tc-meta">From Sunyani + nearby</span></div>
+<div class="tc-count">48</div>
+<div class="tc-cap">/ 48</div>
+<div class="tc-bar"><div class="tc-bar-fill green" style="width:100%;"></div></div>
+</div>
+</div>
+<div class="tc-foot"><b>96% boarding capacity used · 8 beds in reserve.</b> 8 beds carried forward to absorb late boarding upgrades (a day student switching to boarding mid-term) and reconciliation walk-ins. Capacity rules locked from setup wizard step 7.</div>
+</div>
+
+</div>
+
+<div class="algo-panel" style="margin-top:24px;">
+<div class="ap-icon">A</div>
+<div class="ap-body">
+<div class="ap-title">How the House algorithm works</div>
+<b>Rules in order of precedence</b> — (1) sibling continuity · place students with already-enrolled siblings in the same House; (2) gender balance · keep each House within ±2 of equal gender split; (3) JHS diversity · avoid clustering more than 8 students from the same JHS in one House; (4) alphabetical alternation as tiebreaker. <b>Override any individual student</b> via the review table; the algorithm rebalances automatically.
+</div>
+<div><button class="ap-action">View algorithm settings →</button></div>
+</div>
+
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px 28px; margin-top:24px;">
+<div style="display:grid; grid-template-columns:1fr auto; gap:18px; align-items:start; margin-bottom:18px;">
+<div>
+<div style="font-family:'Fraunces', serif; font-size:18px; font-weight:600; margin-bottom:4px;">Override individual <em style="font-style:italic; color:var(--gold); font-weight:400;">assignments</em></div>
+<div style="font-size:12px; color:var(--navy-3); line-height:1.5;">The trio above is the bulk default. For individual students whose House or residency needs to change (parent request, sibling-in-different-House preference, medical-board recommendation), open the per-student override.</div>
+</div>
+<button class="btn">Open student-by-student view →</button>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px;">
+<div style="background:var(--bg); padding:12px 14px; border-radius:8px; border:1px solid var(--border);">
+<div style="font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px;">Programme overrides</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:18px; font-weight:600; color:var(--navy);">0 / 240</div>
+<div style="font-size:10px; color:var(--navy-3); margin-top:3px;">No CSSPS programme changes requested</div>
+</div>
+<div style="background:var(--bg); padding:12px 14px; border-radius:8px; border:1px solid var(--border);">
+<div style="font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px;">House overrides</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:18px; font-weight:600; color:var(--gold);">3 / 240</div>
+<div style="font-size:10px; color:var(--navy-3); margin-top:3px;">Sibling continuity overrides applied</div>
+</div>
+<div style="background:var(--bg); padding:12px 14px; border-radius:8px; border:1px solid var(--border);">
+<div style="font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px;">Residency overrides</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:18px; font-weight:600; color:var(--navy);">0 / 240</div>
+<div style="font-size:10px; color:var(--navy-3); margin-top:3px;">CSSPS preferences accepted as-is</div>
+</div>
+</div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; padding:18px 22px; background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-radius:12px; margin-top:24px;">
+<div>
+<div style="font-family:'Fraunces', serif; font-size:16px; font-weight:600; color:var(--navy); margin-bottom:4px;">All assignments accepted · ready to commit.</div>
+<div style="font-size:12px; color:var(--navy-2); line-height:1.5;">240 students will be admitted in one atomic batch — Form 1 class rosters populate, House rosters populate, parent records auto-created and queued for SMS welcome, Free SHS claim drafts queued for GES filing, audit log entry. Bulk operation classified as <b>Tier B · 24-hour undo window</b> with diff modal — you can reverse the entire batch tomorrow if needed.</div>
+</div>
+<div><button class="btn gold lg">Review &amp; commit →</button></div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>One screen, three decisions, mostly auto</h4>
+<ul>
+<li><b>Programme allocation is almost always identity-mapped.</b> CSSPS uses the school's declared vacancy split to drive placement; the head declared 60/60/80/40 to GES at the start of the cycle, and CSSPS placed exactly 60/60/80/40 students. Confirmation is a formality but it's an audit moment — if the head had declared different numbers, the gap surfaces here before commit.</li>
+<li><b>House algorithm respects sibling continuity first.</b> Of all the rules, "place a student in the same House as their already-enrolled sibling" is the one parents notice and complain about if violated. The algorithm makes this Rule 1; the override count card shows 3 / 240 because three of the duplicate-match flags from review were confirmed as siblings and routed accordingly.</li>
+<li><b>Residency is 100% CSSPS-preference-driven by default.</b> Students chose Day or Boarding when they made their CSSPS selections; Omnischools does not second-guess that. Override is per-student (e.g., medical board recommends day for a chronic-condition student), not bulk.</li>
+<li><b>The trio is one screen on purpose.</b> Splitting into three separate screens would mean three commit decisions; combining them is faster because the inter-dependencies are visible (House capacity tracks programme split tracks residency demand). A head can confirm the whole trio in 90 seconds if the algorithm got it right.</li>
+<li><b>Tier B undo classification appears here.</b> Bulk admission settles into reports (class rosters, House rosters, Free SHS claim) but no external state changes yet — SMS hasn't fired, GES claim hasn't filed. 24-hour window with diff modal lets the head reverse if a mistake surfaces overnight. Matches the bulk-undo tier model locked in BUILD_STACK.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 5 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">05</div>
+<div class="section-title display">Commit · then two weeks later, reconciliation</div>
+<div class="section-meta">240 admitted Wed 24 Sep · reconcile Wed 8 Oct</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">sttheresas.omnischools.gh / admissions / 2026-bulk / reconciliation</div></div>
+
+<div class="app-shell">
+<div class="sidebar tallest">
+<div class="brand"><div class="logo-mini">T</div><div><div class="school-name">St. Theresa's SHS</div><div class="school-meta">Sunyani · founded 1965</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item active"><div class="ic"></div>Admissions</div>
+<div class="nav-item sub active"><div class="ic"></div>2026 bulk intake</div>
+<div class="nav-item sub"><div class="ic"></div>Add individual student</div>
+<div class="nav-item sub"><div class="ic"></div>Transfers in/out</div>
+<div class="nav-item sub"><div class="ic"></div>Withdrawals</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Programmes &amp; classes</div>
+<div class="nav-item"><div class="ic"></div>Houses</div>
+<div class="nav-item"><div class="ic"></div>Staff</div>
+<div class="nav-item"><div class="ic"></div>Fees</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">KO</div><div><div class="meta-name">K. Owusu-Frempong</div><div class="meta-role">Headmaster</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a href="#">Admissions</a> · <a href="#">2026 bulk intake</a> · Reconciliation</div>
+<div class="top-row">
+<div>
+<h1>The <em>reconciliation</em> view.</h1>
+<div class="lede"><b>Two weeks after commit.</b> 228 of 240 placed students physically arrived and were enrolled. 12 placed students did not show up (the regional gap). 14 additional students walked in or transferred and were admitted via the per-student flow. Net Form 1 cohort: <b>242 students</b>, +2 against CSSPS projection.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">View commit log</button>
+<button class="btn">Export reconciliation report</button>
+<button class="btn primary">File GES return →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="commit-card">
+<div class="cc-icon">✓</div>
+<div class="cc-body">
+<h2>240 students admitted · <em>Wed 24 September 2026, 14:32.</em></h2>
+<div class="cc-meta">Atomic batch commit by <b>K. Owusu-Frempong</b> · all rosters populated · 240 parent records created · 240 SMS welcome messages queued · Free SHS claim batch drafted for GES filing · bulk operation ID <span class="mono">BULK-2026-09-24-001</span> · Tier B 24-hour undo window expired Thu 25 Sep 14:32. The admissions team can now stop using Omnischools's bulk surface and start using students, classes, fees, and communications. <b>Setup → wizard → bulk intake. The school is operational.</b></div>
+</div>
+</div>
+
+<div class="effects-strip">
+<div class="effect-card">
+<div class="ef-lbl">Class rosters populated</div>
+<div class="ef-val"><em>9</em><span class="unit">classes</span></div>
+<div class="ef-meta">SCI A/B · BUS A/B · GA A/B/C · HE A · <b>plus mixed F1 streams</b></div>
+</div>
+<div class="effect-card">
+<div class="ef-lbl">House rosters populated</div>
+<div class="ef-val"><em>4</em><span class="unit">Houses</span></div>
+<div class="ef-meta">60 per House · 30M / 30F balanced · <b>3 sibling-continuity links</b></div>
+</div>
+<div class="effect-card">
+<div class="ef-lbl">Parent SMS queued</div>
+<div class="ef-val"><em>240</em><span class="unit">messages</span></div>
+<div class="ef-meta">Welcome + parent-app invite link · <b>fires Thu 25 Sep 08:00</b></div>
+</div>
+<div class="effect-card">
+<div class="ef-lbl">Free SHS claims</div>
+<div class="ef-val"><em>240</em><span class="unit">drafts</span></div>
+<div class="ef-meta">Queued for GES filing · <b>auto-submits Sat 10 Oct</b></div>
+</div>
+</div>
+
+<div style="height:2px; background:var(--border); margin:32px 0; position:relative;">
+<div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--bg); padding:0 18px; font-family:'Fraunces', serif; font-style:italic; font-size:14px; color:var(--navy-3); font-weight:500;">Two weeks pass · students arrive · parents intake</div>
+</div>
+
+<h2 style="font-family:'Fraunces', serif; font-size:24px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px;">Where things <em style="font-style:italic; color:var(--gold); font-weight:400;">stand.</em></h2>
+<div style="font-size:13px; color:var(--navy-3); margin-bottom:24px; max-width:760px; line-height:1.55;">The admission window closes Saturday at midnight. Today is Wednesday 8 October. The bulk intake worked — 228 of 240 placed students physically arrived and confirmed enrolment. The 12 gaps need attention. The 14 walk-ins (self-placement + transfers + late) have been processed via the per-student flow and are in the cohort.</div>
+
+<div class="recon-strip">
+<div class="recon-card green">
+<div class="rc-lbl">Enrolled · physically arrived</div>
+<div class="rc-val"><em>228</em><span class="total"> / 240</span></div>
+<div class="rc-trend"><b>95% turn-up rate.</b> Slightly above national average of 92% · suggests strong CSSPS-school fit</div>
+</div>
+<div class="recon-card terra">
+<div class="rc-lbl">Placed but not arrived</div>
+<div class="rc-val"><em>12</em><span class="total"> students</span></div>
+<div class="rc-trend"><b>3 self-placed elsewhere</b> (confirmed via parent calls)<br><b>9 contact attempts pending</b> · GES escalation pathway</div>
+</div>
+<div class="recon-card gold">
+<div class="rc-lbl">Walked in · added ad-hoc</div>
+<div class="rc-val"><em>14</em><span class="total"> students</span></div>
+<div class="rc-trend"><b>11 self-placement</b> from sp.cssps.gov.gh · <b>3 transfers</b> from other SHS · all on per-student flow</div>
+</div>
+</div>
+
+<div class="gap-list">
+<div class="gap-head">
+<div class="gh-title">Placed but did not arrive · <em>12 cases</em></div>
+<div class="gh-meta">As of Wed 8 Oct · admission window closes Sat 10 Oct</div>
+</div>
+
+<div class="gap-row">
+<div class="gr-av terra">YN</div>
+<div class="gr-body">
+<div class="gr-name">YEBOAH, NANA</div>
+<div class="gr-line"><b>SCI</b> · agg 7 · 252618-0034 · placed Boarding · parent phone <span class="mono">+233 24 887 4419</span> · <b>3 unsuccessful call attempts</b> · last attempt 6 Oct 11:30</div>
+</div>
+<div class="gr-status contact">Contact pending</div>
+<button class="gr-action primary">Try again →</button>
+</div>
+
+<div class="gap-row">
+<div class="gr-av terra">OA</div>
+<div class="gr-body">
+<div class="gr-name">OWUSU, ABIGAIL</div>
+<div class="gr-line"><b>HE</b> · agg 14 · 252618-0091 · placed Boarding · parent <b>confirmed self-placement at Mim SHS</b> via phone 2 Oct · placement-checker shows status updated · <b>safe to mark as did-not-enrol</b></div>
+</div>
+<div class="gr-status elsewhere">Self-placed elsewhere</div>
+<button class="gr-action">Mark non-enrol →</button>
+</div>
+
+<div class="gap-row">
+<div class="gr-av terra">MK</div>
+<div class="gr-body">
+<div class="gr-name">MENSAH, KWAKU</div>
+<div class="gr-line"><b>BUS</b> · agg 11 · 252618-0107 · placed Boarding · parent phone unreachable · <b>JHS confirms student withdrew from BECE prep</b> · likely deferring to 2027</div>
+</div>
+<div class="gr-status contact">Contact pending</div>
+<button class="gr-action primary">Try again →</button>
+</div>
+
+<div class="gap-row">
+<div class="gr-av terra">AD</div>
+<div class="gr-body">
+<div class="gr-name">ADJEI, DORCAS</div>
+<div class="gr-line"><b>GA</b> · agg 13 · 252618-0143 · placed Day · parent <b>confirmed self-placement at Twene Amanfo SHTS</b> · sp.cssps.gov.gh status verified · <b>safe to mark as did-not-enrol</b></div>
+</div>
+<div class="gr-status elsewhere">Self-placed elsewhere</div>
+<button class="gr-action">Mark non-enrol →</button>
+</div>
+
+<div class="gap-row">
+<div class="gr-av terra">PA</div>
+<div class="gr-body">
+<div class="gr-name">+8 more contact-pending cases</div>
+<div class="gr-line">2 SCI · 3 BUS · 2 GA · 1 HE · all in the contact-pending state · clerk has scheduled follow-up calls for Thu 9 Oct · expecting roughly 6 of 8 will resolve as <b>self-placed elsewhere</b> by window close · 2 likely <b>genuine no-shows</b> reportable to regional directorate</div>
+</div>
+<div class="gr-status contact">In progress</div>
+<button class="gr-action">View all →</button>
+</div>
+
+</div>
+
+<div class="gap-list" style="margin-top:18px;">
+<div class="gap-head">
+<div class="gh-title">Walked in · added via per-student flow · <em>14 cases</em></div>
+<div class="gh-meta">11 self-placement · 3 transfers · all in cohort</div>
+</div>
+
+<div class="gap-row">
+<div class="gr-av green">DK</div>
+<div class="gr-body">
+<div class="gr-name">DARKO, KOFI</div>
+<div class="gr-line"><b>SCI</b> · agg 9 · self-placement from sp.cssps.gov.gh · admitted via per-student flow <span class="mono">25 Sep 09:14</span> · Joseph House · Boarding · parent intake complete</div>
+</div>
+<div class="gr-status added">Added</div>
+<button class="gr-action">View record →</button>
+</div>
+
+<div class="gap-row">
+<div class="gr-av green">AT</div>
+<div class="gr-body">
+<div class="gr-name">ANTWI, THEODORA</div>
+<div class="gr-line"><b>HE</b> · agg 12 · self-placement · admitted <span class="mono">26 Sep 11:42</span> · Cecilia House · Day · sibling continuity flagged with <b>R. Antwi (F3 HE)</b></div>
+</div>
+<div class="gr-status added">Added</div>
+<button class="gr-action">View record →</button>
+</div>
+
+<div class="gap-row">
+<div class="gr-av green">BS</div>
+<div class="gr-body">
+<div class="gr-name">BOAKYE, SIMON</div>
+<div class="gr-line"><b>BUS</b> · agg 8 · <b>transfer from Berekum Presby SHS</b> · admitted <span class="mono">2 Oct 14:18</span> · Augustine House · Boarding · transfer letter on file · GES form-T submitted</div>
+</div>
+<div class="gr-status added">Added</div>
+<button class="gr-action">View record →</button>
+</div>
+
+<div class="gap-row">
+<div class="gr-av green">PA</div>
+<div class="gr-body">
+<div class="gr-name">+11 more cases</div>
+<div class="gr-line">8 self-placement · 2 transfers from other SHS · 1 returning student (F1 retake) · all on per-student flow · all currently in cohort · per-student admission averages <b>4–6 minutes</b> per record</div>
+</div>
+<div class="gr-status added">All added</div>
+<button class="gr-action">View all →</button>
+</div>
+
+</div>
+
+<div class="xmod-strip">
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Students</div>
+<div class="xm-title">242 active <em>Form 1 records</em></div>
+<div class="xm-body">228 from bulk + 14 from ad-hoc. The students module sees one unified cohort with provenance flags showing <b>BULK_INTAKE / SELF_PLACED / TRANSFER_IN / RETURNING</b> per record. Source path is queryable.</div>
+</div>
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · Fees</div>
+<div class="xm-title">242 fee accounts <em>opened</em></div>
+<div class="xm-body">Free SHS coverage applied to all public-school placements. Day students get reduced fee structure (no boarding charges). Parent-billed components billed at next semester boundary. Bursar inherits clean ledger.</div>
+</div>
+<div class="xmod-card">
+<div class="xm-lbl">Cross-module · GES filing</div>
+<div class="xm-title">228 + 14 <em>on the return</em></div>
+<div class="xm-body">Free SHS claims auto-batched · 228 from CSSPS placement (clean) · 14 ad-hoc (3 self-placement + 11 walk-in) flagged for separate justification on return form. 12 placed-no-shows reported as <b>non-enrolled</b> per GES convention.</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The story this surface tells</h4>
+<ul>
+<li><b>240 commit shifts to 242 net within two weeks.</b> Every SHS goes through this. The bulk number is what GES placed; the actual cohort is bulk minus no-shows plus walk-ins. The reconciliation surface makes both sides of that math visible — heads don't have to keep mental ledgers across paper lists and spreadsheets.</li>
+<li><b>"Self-placed elsewhere" is a real category, not an exception.</b> A student auto-placed at St. Theresa's may decline and self-place at a school closer to home or with better fit for their aggregate. Omnischools shouldn't pretend this is fraud or a system failure — it's how Ghanaian families actually navigate placement. The status pill ("Self-placed elsewhere") reads operationally, not judgmentally.</li>
+<li><b>The per-student flow is the secondary pipeline, not a fallback for the bulk's mistakes.</b> 14 walk-ins is normal volume for a 240-student intake — about 6%. The bulk surface explicitly links to per-student as the right tool for that volume, not as an "if bulk fails" path. Both pipelines feed one cohort, with provenance preserved.</li>
+<li><b>The 24-hour Tier B undo window expired the day after commit.</b> Reconciliation is not undo — it's the natural multi-week aftermath. A correction at this stage is a per-student withdrawal or a per-student admission, not a bulk reversal. The tier model from BUILD_STACK plays out exactly as designed: bulk gets one undo window, then everything is per-record from there.</li>
+<li><b>"File GES return →" is the surface's terminal action.</b> Once reconciliation closes (10 October), the head files the official Free SHS return with 228 bulk + 14 ad-hoc enrolled, 12 placed-non-enrolled. That filing is the moment the admission cycle officially ends. Until then, this surface keeps showing the gap.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

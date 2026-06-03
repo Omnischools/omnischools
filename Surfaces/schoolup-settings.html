@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Settings · landing &amp; school info</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+  --hubtel-blue: #2F4DAC;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  background: var(--bg);
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar.tall { min-height: 1500px; }
+.sidebar.taller { min-height: 1880px; }
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main {
+  padding: 0;
+  background: var(--bg);
+}
+
+/* ============ STATE A: SETTINGS LANDING ============ */
+
+.landing-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 32px 36px 26px;
+}
+.landing-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 8px;
+}
+.landing-head .top-row {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 18px;
+}
+.landing-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: -0.022em;
+  line-height: 1.05;
+  margin-bottom: 6px;
+}
+.landing-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.landing-head .lede {
+  font-size: 14px;
+  color: var(--navy-3);
+  max-width: 600px;
+  line-height: 1.55;
+}
+.landing-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.health-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.health-tile {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.health-tile.warn {
+  background: var(--warn-bg);
+  border-color: rgba(197,138,46,0.25);
+}
+.health-tile .ic {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: white;
+}
+.health-tile.complete .ic { background: var(--green); }
+.health-tile.warn .ic { background: var(--warn); }
+.health-tile .info .h-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.health-tile .info .h-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+
+.landing-body {
+  padding: 32px 36px 80px;
+}
+
+.settings-group {
+  margin-bottom: 36px;
+}
+.settings-group .group-head {
+  display: flex; align-items: baseline; gap: 14px;
+  margin-bottom: 16px;
+}
+.settings-group .group-num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.settings-group .group-title {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.settings-group .group-title em { font-style: italic; color: var(--gold); }
+.settings-group .group-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.settings-group .group-meta {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.cards-grid.two-up {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  position: relative;
+  min-height: 178px;
+}
+.settings-card:hover {
+  border-color: var(--gold);
+  box-shadow: 0 8px 20px -8px rgba(26,43,71,0.15);
+}
+.settings-card.warn {
+  border-color: rgba(197,138,46,0.35);
+}
+.settings-card.warn::before {
+  content: "";
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+
+.settings-card .card-head {
+  display: flex; align-items: center; gap: 10px;
+}
+.settings-card .card-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.settings-card .card-icon.navy {
+  background: var(--navy);
+  color: var(--gold);
+}
+.settings-card .card-icon.green {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.settings-card .card-icon.terra {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.settings-card .card-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.005em;
+}
+.settings-card .card-name em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+}
+.settings-card .card-desc {
+  font-size: 12px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+
+.card-state-row {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.card-state-row .state-text {
+  font-size: 11px;
+  color: var(--navy-2);
+  font-weight: 600;
+}
+.card-state-row .state-text b {
+  font-weight: 700;
+  color: var(--navy);
+}
+.card-state-row .state-text em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+}
+.card-state-row .last-edit {
+  font-size: 9px;
+  color: var(--navy-3);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+.warn-card-state {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px;
+  color: var(--warn);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.warn-card-state::before {
+  content: "!";
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--warn);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+/* Set status pill */
+.complete-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--green);
+}
+.complete-tag::before {
+  content: "✓";
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ============ STATE B: SCHOOL INFO + BRANDING DEEP PAGE ============ */
+
+.deep-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 36px 0;
+}
+.deep-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 8px;
+}
+.deep-head .crumb a { color: var(--gold); text-decoration: none; }
+.deep-head .head-row {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 18px;
+}
+.deep-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.deep-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.deep-head .lede {
+  font-size: 13px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.deep-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.deep-tabs {
+  display: flex;
+  gap: 0;
+  margin-top: 6px;
+}
+.deep-tab {
+  padding: 12px 16px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.deep-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--gold);
+}
+
+.deep-body {
+  padding: 28px 36px 100px;
+}
+
+.region {
+  margin-bottom: 36px;
+}
+.region-head {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 16px;
+}
+.region-head .num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.region-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.region-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.region-head .meta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+
+/* School identity card */
+.identity-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.field-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+.field-card .f-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.field-card .f-value {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+}
+.field-card .f-value em { font-style: italic; color: var(--gold); }
+.field-card .f-value.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 14px;
+}
+.field-card .f-meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 4px;
+  font-style: italic;
+}
+.field-card .f-meta b { color: var(--navy-2); font-weight: 600; font-style: normal; }
+.field-card .edit-mini {
+  margin-top: 6px;
+  display: inline-block;
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+/* Branding cards (logo, stamp) */
+.branding-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.brand-asset-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 24px;
+}
+.brand-asset-card .asset-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.brand-asset-card h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.brand-asset-card h3 em { font-style: italic; color: var(--gold); }
+.brand-asset-card .asset-desc {
+  font-size: 12px;
+  color: var(--navy-3);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.brand-asset-card .asset-desc b { color: var(--navy-2); font-weight: 600; }
+
+.asset-preview-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  margin-bottom: 14px;
+  position: relative;
+}
+
+/* Logo preview — actual school logo aesthetic */
+.logo-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.logo-preview .logo-icon {
+  width: 70px; height: 70px;
+  background: var(--navy);
+  color: var(--gold);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 26px;
+}
+.logo-preview .logo-text-block .l-name {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.logo-preview .logo-text-block .l-name em {
+  font-style: italic;
+  color: var(--gold);
+}
+.logo-preview .logo-text-block .l-tagline {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+
+/* Stamp preview */
+.stamp-preview {
+  width: 130px; height: 130px;
+  border: 3px solid var(--terra);
+  border-radius: 50%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  background: rgba(184,74,57,0.06);
+  transform: rotate(-6deg);
+  padding: 8px;
+}
+.stamp-preview .stamp-l1 {
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--terra);
+  line-height: 1.1;
+}
+.stamp-preview .stamp-l2 {
+  font-family: 'Fraunces', serif;
+  font-size: 9px;
+  font-style: italic;
+  color: var(--terra);
+  margin-top: 4px;
+  line-height: 1.1;
+}
+.stamp-preview .stamp-l3 {
+  font-size: 7.5px;
+  color: var(--terra);
+  margin-top: 6px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* Asset details + actions */
+.asset-details {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.asset-details .file-info .f-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-2);
+}
+.asset-details .file-info .f-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+.asset-details .file-info .f-meta b { color: var(--navy-2); font-weight: 600; }
+.asset-details .file-actions {
+  display: flex; gap: 4px;
+}
+
+/* Format guidance */
+.format-guidance {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 12px;
+}
+.format-guidance .fg-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.format-guidance .fg-bullet {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.6;
+  display: flex; gap: 8px;
+}
+.format-guidance .fg-bullet::before {
+  content: "·";
+  color: var(--gold);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.format-guidance .fg-bullet b { color: var(--navy); font-weight: 600; }
+
+.usage-list {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 10px;
+}
+.usage-list .ul-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.usage-list .ul-items {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.usage-list .ul-items b { color: var(--navy); font-weight: 600; }
+
+/* Academic structure */
+.academic-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 26px;
+}
+.academic-card .ac-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 24px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+.academic-card .ac-row:first-of-type { border-top: none; padding-top: 4px; }
+
+.academic-card .ac-row .ac-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.academic-card .ac-row .ac-label .ac-sub {
+  font-family: 'Manrope', sans-serif;
+  display: block;
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-top: 2px;
+  font-style: italic;
+}
+.academic-card .ac-row .ac-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.academic-card .ac-row .ac-value em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+
+.term-bar-row {
+  display: flex; gap: 4px;
+  flex: 1;
+  align-items: center;
+}
+.term-bar {
+  flex: 1;
+  height: 28px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy-3);
+  position: relative;
+}
+.term-bar.current {
+  background: var(--gold-bg);
+  border-color: var(--gold);
+  color: var(--gold);
+  font-weight: 700;
+}
+.term-bar.current::before {
+  content: "TERM IN PROGRESS";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7px;
+  letter-spacing: 0.1em;
+  background: var(--gold);
+  color: var(--navy);
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+.term-bar .term-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: -0.005em;
+}
+.term-bar .term-name em { font-style: italic; }
+.term-bar .term-dates {
+  font-size: 8px;
+  color: inherit;
+  opacity: 0.7;
+  font-family: 'JetBrains Mono', monospace;
+  margin-left: 4px;
+}
+
+/* Save bar */
+.save-bar {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 14px 36px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 0 -36px -100px;
+  box-shadow: 0 -8px 24px -8px rgba(26,43,71,0.12);
+}
+.save-bar .left-info {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.save-bar .left-info .changes {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  margin-right: 6px;
+}
+.save-bar .actions {
+  display: flex; gap: 8px;
+}
+.btn {
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); font-weight: 700; }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); font-weight: 700; }
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .cards-grid, .cards-grid.two-up { grid-template-columns: 1fr 1fr; }
+  .health-strip { grid-template-columns: 1fr 1fr; }
+  .branding-row { grid-template-columns: 1fr; }
+  .identity-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Settings</div>
+  <h1 class="display">The <em>configuration</em> hub</h1>
+  <div class="gold-rule"></div>
+  <p>Two states: the Settings landing page (where the headmistress lands when she clicks Settings in the sidebar), and one of the deeper pages (School info &amp; branding) demonstrating the pattern beyond the attendance settings already designed. The landing page acts as a directory; each card opens a deeper configuration surface.</p>
+</header>
+
+<!-- ============ STATE A: SETTINGS LANDING ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Settings landing · the directory</div>
+    <div class="section-meta">10 sections · 2 need attention</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar tall">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+
+          <!-- Landing head -->
+          <div class="landing-head">
+            <div class="crumb">Settings</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">School <em>settings</em></h1>
+                <div class="lede">Everything you can configure about how Omnischools works for <b>Christ the King JHS</b>. Some sections need attention; most are set and forgotten.</div>
+              </div>
+            </div>
+
+            <!-- Health strip -->
+            <div class="health-strip">
+              <div class="health-tile complete">
+                <div class="ic">✓</div>
+                <div class="info">
+                  <div class="h-label display">School info</div>
+                  <div class="h-meta">Complete · last edited 14 days ago</div>
+                </div>
+              </div>
+              <div class="health-tile warn">
+                <div class="ic">!</div>
+                <div class="info">
+                  <div class="h-label display">2 need attention</div>
+                  <div class="h-meta">Stamp · Roles &amp; access</div>
+                </div>
+              </div>
+              <div class="health-tile complete">
+                <div class="ic">✓</div>
+                <div class="info">
+                  <div class="h-label display">3 connected</div>
+                  <div class="h-meta">Hubtel · WhatsApp · SMS</div>
+                </div>
+              </div>
+              <div class="health-tile complete">
+                <div class="ic">✓</div>
+                <div class="info">
+                  <div class="h-label display">8 active users</div>
+                  <div class="h-meta">3 admins · 14 teachers · 1 accountant</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div class="landing-body">
+
+            <!-- GROUP 01: SCHOOL -->
+            <div class="settings-group">
+              <div class="group-head">
+                <div class="group-num">01</div>
+                <div class="group-title display">The <em>school</em></div>
+                <div class="group-rule"></div>
+                <div class="group-meta">Set once · rarely changes</div>
+              </div>
+
+              <div class="cards-grid">
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon navy">i</div>
+                    <div class="card-name display">School <em>info</em></div>
+                  </div>
+                  <div class="card-desc">Name, address, contact details, GES School ID, year established. Used on every receipt and statutory form.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><span class="complete-tag">Complete</span></div>
+                    <div class="last-edit">Edited 14d ago</div>
+                  </div>
+                </div>
+
+                <div class="settings-card warn">
+                  <div class="card-head">
+                    <div class="card-icon">B</div>
+                    <div class="card-name display">Branding &amp; <em>identity</em></div>
+                  </div>
+                  <div class="card-desc">School logo, official stamp, brand colours. The stamp appears on every PDF; logo appears on receipts and announcements.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><span class="warn-card-state">Stamp missing</span></div>
+                    <div class="last-edit">Logo: 2 mo ago</div>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon">A</div>
+                    <div class="card-name display">Academic <em>structure</em></div>
+                  </div>
+                  <div class="card-desc">Term dates, school year boundaries, levels offered (JHS 1—3), assessment scale (BECE 1-9).</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><span class="complete-tag">Term 1 active</span></div>
+                    <div class="last-edit">3 terms set · 2025/26</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- GROUP 02: OPERATIONS -->
+            <div class="settings-group">
+              <div class="group-head">
+                <div class="group-num">02</div>
+                <div class="group-title display">Daily <em>operations</em></div>
+                <div class="group-rule"></div>
+                <div class="group-meta">Touched each term · per cadence</div>
+              </div>
+
+              <div class="cards-grid">
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon navy">A</div>
+                    <div class="card-name display">Attendance <em>rules</em></div>
+                  </div>
+                  <div class="card-desc">School calendar, daily schedule, late thresholds, flag rules, and the daily 3 PM auto-SMS. Drives the attendance module's behaviour.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><b>3 flag rules</b> · <em>SMS on</em></div>
+                    <div class="last-edit">Edited 3 wk ago</div>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon green">$</div>
+                    <div class="card-name display">Billing &amp; <em>fees</em></div>
+                  </div>
+                  <div class="card-desc">Fee structure by class, late fee policy, receipt template, payment methods. Determines what each parent owes each term.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><b>9 fee structures</b> · GHS 340—485</div>
+                    <div class="last-edit">Edited at term start</div>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon">G</div>
+                    <div class="card-name display">Grading &amp; <em>assessment</em></div>
+                  </div>
+                  <div class="card-desc">Subjects per class, grade scales (BECE 1—9 and percentage), report card template, weighting between continuous and end-of-term.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><b>10 subjects</b> · BECE scale</div>
+                    <div class="last-edit">Edited 6 mo ago</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- GROUP 03: COMMUNICATIONS -->
+            <div class="settings-group">
+              <div class="group-head">
+                <div class="group-num">03</div>
+                <div class="group-title display">How the school <em>speaks</em></div>
+                <div class="group-rule"></div>
+                <div class="group-meta">Voice · channels · privacy</div>
+              </div>
+
+              <div class="cards-grid">
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon">SM</div>
+                    <div class="card-name display">SMS &amp; <em>WhatsApp</em></div>
+                  </div>
+                  <div class="card-desc">Sender ID, account credentials, default channels for different message types, language preference.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><b>"CHRIST KING"</b> · 2 channels live</div>
+                    <div class="last-edit">Edited 4 mo ago</div>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon">T</div>
+                    <div class="card-name display">Message <em>templates</em></div>
+                  </div>
+                  <div class="card-desc">Reusable message blueprints (fee reminder, welcome, exam notice). Edit copy, manage variants for SMS vs WhatsApp.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><b>14 templates</b> · 11 active</div>
+                    <div class="last-edit">Edited 2 wk ago</div>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon">C</div>
+                    <div class="card-name display">Comments &amp; <em>engagement</em></div>
+                  </div>
+                  <div class="card-desc">Whether parents can reply to announcements, whether students can post, moderation queue, profanity filter.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><b>Replies on</b> · moderation auto</div>
+                    <div class="last-edit">Edited 1 mo ago</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- GROUP 04: ACCESS -->
+            <div class="settings-group">
+              <div class="group-head">
+                <div class="group-num">04</div>
+                <div class="group-title display">Access &amp; <em>security</em></div>
+                <div class="group-rule"></div>
+                <div class="group-meta">Who can do what</div>
+              </div>
+
+              <div class="cards-grid two-up">
+
+                <div class="settings-card warn">
+                  <div class="card-head">
+                    <div class="card-icon terra">R</div>
+                    <div class="card-name display">Roles &amp; <em>access</em></div>
+                  </div>
+                  <div class="card-desc">User accounts for headteacher, accountant, teachers. Define who can record payments, view financial data, send announcements, see student records.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><span class="warn-card-state">1 inactive user</span></div>
+                    <div class="last-edit">Mr. Yeboah · left May</div>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon navy">L</div>
+                    <div class="card-name display">Login &amp; <em>password</em></div>
+                  </div>
+                  <div class="card-desc">Password policy, session length, 2FA for admins, login activity log. Standard security controls.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><b>2FA: optional</b> · 8h session</div>
+                    <div class="last-edit">Edited 6 mo ago</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- GROUP 05: INTEGRATIONS -->
+            <div class="settings-group">
+              <div class="group-head">
+                <div class="group-num">05</div>
+                <div class="group-title display">External <em>integrations</em></div>
+                <div class="group-rule"></div>
+                <div class="group-meta">Third parties &amp; data sharing</div>
+              </div>
+
+              <div class="cards-grid two-up">
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon" style="background:#EEF1F9;color:var(--hubtel-blue)">H</div>
+                    <div class="card-name display">Hubtel <em>integration</em></div>
+                  </div>
+                  <div class="card-desc">Online payment aggregator. Routes parent payments to your bank. Reconciliation feed for auto-matched payments.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><span class="complete-tag">Live</span> · weekly payouts</div>
+                    <div class="last-edit">Connected 14 Mar 2025</div>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="card-head">
+                    <div class="card-icon">G</div>
+                    <div class="card-name display">GES &amp; ministry <em>data sharing</em></div>
+                  </div>
+                  <div class="card-desc">What aggregate data Omnischools may share with Ministry of Education for unified performance monitoring. Anonymised by default.</div>
+                  <div class="card-state-row">
+                    <div class="state-text"><b>Aggregate stats only</b> · monthly</div>
+                    <div class="last-edit">Reviewed at sign-up</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Two-level architecture:</b> a directory landing page (this state) and individual deep pages for each section (next state + the attendance settings already designed). <b>The landing page is a wayfinder</b>, not a kitchen sink. Most admins land here, scan, click into one section, do their thing, leave.</li>
+        <li><b>"School <em>settings</em>" headline</b> with personalised "Christ the King JHS" in the lede line. The lede sets honest expectations: "<b>some sections need attention</b>; most are set and forgotten." <b>Settings is mostly maintenance</b>; this isn't a daily-driver surface.</li>
+        <li><b>Health strip with 4 tiles at the top.</b> Dense at-a-glance summary: School info complete · 2 need attention (stamp + roles) · 3 connected services (Hubtel/WhatsApp/SMS) · 8 active users. <b>Admin sees the configuration health in one glance</b>; she clicks into "2 need attention" if she wants to triage.</li>
+        <li><b>Health-tile colour vocabulary uses the locked palette</b> — green-bg + green icon for complete, warn-bg + warn icon for problems. <b>Same convention as everywhere else</b> in the system; admin knows what each colour means without instruction.</li>
+        <li><b>5 grouped sections numbered 01—05 with display Fraunces titles.</b> The school / Daily operations / How the school speaks / Access &amp; security / External integrations. <b>Group order roughly follows frequency of access</b> — school basics rarely change, daily operations change each term, communications and access mid-frequency, integrations rarely.</li>
+        <li><b>Group titles are evocative not bureaucratic.</b> "How the school speaks" not "Communications settings"; "Daily operations" not "Operational configuration." <b>Settings UI doesn't have to be sterile</b> — display Fraunces with italic gold makes the group titles feel intentional rather than autogenerated.</li>
+        <li><b>Group-meta in tracked-out caps</b> ("Set once · rarely changes" / "Touched each term · per cadence" / "Voice · channels · privacy" / "Who can do what" / "Third parties &amp; data sharing"). <b>Tells admin how often each group needs attention</b>; she can mentally bucket "do this now" vs "set up and forget."</li>
+        <li><b>Each card: icon + name + description + state row.</b> Consistent layout means admin learns the pattern once. The state row at the bottom shows current configuration status (complete / warn / specific count) on the left and "last edited" on the right. <b>Last-edited dates anchor the cards in time</b> — admin sees what's recent vs stale.</li>
+        <li><b>Card icons in coloured tiles.</b> Navy/gold for school/access/login (institutional weight), gold-bg for branding/structure (configuration), green-bg for billing (financial), terra-bg for roles (security boundary), Hubtel-blue for the Hubtel card. <b>Functional colour-coding</b> rather than purely decorative.</li>
+        <li><b>Branding card has terra-shifted border + warn dot in top-right corner</b> because stamp is missing. <b>The visual signal precedes the text</b> — admin scanning the grid sees the warn dot and the terra border, knows where to focus, then reads "Stamp missing" in the state row.</li>
+        <li><b>Roles &amp; access card</b> in the same warn state because there's an inactive user (Mr. Yeboah, who left in May, still has an account). <b>Stale accounts are a real security issue</b> — the warn state surfaces the housekeeping rather than letting it accumulate silently.</li>
+        <li><b>State row text mixes plain English and specific values:</b> "Complete" / "<b>14 templates</b> · 11 active" / "Mr. Yeboah · left May" / "<b>"CHRIST KING"</b> · 2 channels live". <b>Each state line tells admin what's set without making her open the page</b> to find out. She can decide "do I need to drill in?" from the card alone.</li>
+        <li><b>"3 connected" health tile</b> shows Hubtel + WhatsApp + SMS as the live integrations. The integration cards in Group 05 echo this with their own state. <b>Connected services have authority on the page</b> — they're the lifelines that keep operations running.</li>
+        <li><b>Group 05 shows two cards (Hubtel + GES data sharing) in two-up grid</b>, not three-up like other groups. <b>Card density adapts to content</b>; integrations card is a different shape than configuration cards because the meta data is denser.</li>
+        <li><b>"GES &amp; ministry data sharing" card</b> is genuinely about MoE pitch context — schools sharing aggregate stats for unified performance monitoring (the original product vision). The card sits in Settings because the school controls what's shared. <b>"Anonymised by default"</b> in the description sets the privacy posture before admin opens the deeper page.</li>
+        <li><b>Settings landing has no save bar</b> because nothing is being edited here — it's a directory. The save bar appears on the deeper pages where editing happens. <b>Visual rhythm matters</b>: directory → no save bar; configuration → save bar at bottom.</li>
+        <li><b>What's not on the landing:</b> No global search ("find a setting") — 10 cards is scannable enough. No favourites or pins (admins don't have favourite settings). No "recently changed" timeline (last-edited dates per card serve that purpose).</li>
+        <li><b>What's also not here:</b> No system status, no usage analytics, no billing for Omnischools itself. This is school-configuration; Omnischools account billing would live elsewhere if it existed at all (likely as a separate page accessible from the user menu, not Settings).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE B: SCHOOL INFO + BRANDING DEEP PAGE ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Deep page · school info &amp; branding</div>
+    <div class="section-meta">Pattern beyond the attendance settings · stamp upload + identity</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / school-info</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar taller">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <!-- Deep head -->
+          <div class="deep-head">
+            <div class="crumb"><a href="#">Settings</a> / School info</div>
+            <div class="head-row">
+              <div>
+                <h1 class="display">School info <em>&amp; branding</em></h1>
+                <div class="lede">The fundamentals · used on receipts, statutory PDFs, announcements, and parent-facing surfaces · last edited <b>14 days ago</b></div>
+              </div>
+            </div>
+
+            <div class="deep-tabs">
+              <div class="deep-tab active">School info</div>
+              <div class="deep-tab">Branding</div>
+              <div class="deep-tab">Billing</div>
+              <div class="deep-tab">Attendance</div>
+              <div class="deep-tab">Notifications</div>
+              <div class="deep-tab">Roles &amp; access</div>
+              <div class="deep-tab">SMS &amp; WhatsApp</div>
+              <div class="deep-tab">Integrations</div>
+            </div>
+          </div>
+
+          <div class="deep-body">
+
+            <!-- REGION 1 — School identity -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">School <em>identity</em></h2>
+                <div class="meta">Used on every receipt &amp; statutory form</div>
+              </div>
+
+              <div class="identity-grid">
+                <div class="field-card">
+                  <div class="f-label">School name · full</div>
+                  <div class="f-value display">Christ the King <em>Junior High School</em></div>
+                  <div class="f-meta">Used on receipts, certificates, statutory PDFs.</div>
+                  <div class="edit-mini">Edit →</div>
+                </div>
+                <div class="field-card">
+                  <div class="f-label">Short name · for SMS &amp; UI</div>
+                  <div class="f-value display">Christ the King <em>JHS</em></div>
+                  <div class="f-meta">Truncated to <b>"CHRIST KING"</b> in SMS sender ID.</div>
+                  <div class="edit-mini">Edit →</div>
+                </div>
+                <div class="field-card">
+                  <div class="f-label">GES School ID</div>
+                  <div class="f-value mono">4-2305-018</div>
+                  <div class="f-meta">Format: District-Region-Sequence. <b>Cannot be edited</b> after registration.</div>
+                </div>
+                <div class="field-card">
+                  <div class="f-label">School type</div>
+                  <div class="f-value display">Junior <em>High School</em></div>
+                  <div class="f-meta">Public · co-educational · Basic Education stage.</div>
+                  <div class="edit-mini">Edit →</div>
+                </div>
+                <div class="field-card">
+                  <div class="f-label">Year established</div>
+                  <div class="f-value mono">1962</div>
+                  <div class="f-meta">63 years of continuous operation.</div>
+                  <div class="edit-mini">Edit →</div>
+                </div>
+                <div class="field-card">
+                  <div class="f-label">Address</div>
+                  <div class="f-value display" style="font-size:14px;font-weight:500">High Street, Korle Klottey<br>Accra, Greater Accra</div>
+                  <div class="f-meta">Appears on receipts, statutory forms, and parent communications.</div>
+                  <div class="edit-mini">Edit →</div>
+                </div>
+                <div class="field-card">
+                  <div class="f-label">Phone</div>
+                  <div class="f-value mono">+233 30 222 0140</div>
+                  <div class="f-meta">Office line · used on receipts &amp; "reply for help" SMS.</div>
+                  <div class="edit-mini">Edit →</div>
+                </div>
+                <div class="field-card">
+                  <div class="f-label">Email</div>
+                  <div class="f-value mono" style="font-size:13px">office@christtheking.edu.gh</div>
+                  <div class="f-meta">Used on statutory forms; not auto-shared with parents.</div>
+                  <div class="edit-mini">Edit →</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- REGION 2 — Logo & stamp -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display">Logo &amp; <em>stamp</em></h2>
+                <div class="meta">The visual identity that appears on every PDF</div>
+              </div>
+
+              <div class="branding-row">
+
+                <!-- Logo card -->
+                <div class="brand-asset-card">
+                  <div class="asset-eyebrow">Asset 1 of 2</div>
+                  <h3 class="display">School <em>logo</em></h3>
+                  <div class="asset-desc">Appears on receipts, announcements, and the parent app header. The system also generates a <b>"CK" monogram tile</b> automatically — the logo upload replaces it.</div>
+
+                  <div class="asset-preview-block">
+                    <div class="logo-preview">
+                      <div class="logo-icon">CK</div>
+                      <div class="logo-text-block">
+                        <div class="l-name display">Christ the King <em>JHS</em></div>
+                        <div class="l-tagline">EST. 1962 · ACCRA</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="asset-details">
+                    <div class="file-info">
+                      <div class="f-name">christ-king-logo.png</div>
+                      <div class="f-meta"><b>312 × 312 px</b> · 28 KB · uploaded 2 mo ago</div>
+                    </div>
+                    <div class="file-actions">
+                      <button class="btn">Replace</button>
+                      <button class="btn" style="color:var(--terra);border-color:var(--terra)">Remove</button>
+                    </div>
+                  </div>
+
+                  <div class="format-guidance">
+                    <div class="fg-label">Format guidance</div>
+                    <div class="fg-bullet"><b>Square aspect</b>, ideally 512×512 px or larger</div>
+                    <div class="fg-bullet"><b>PNG with transparency</b> preferred · JPG accepted</div>
+                    <div class="fg-bullet">Plain background or transparent · busy backgrounds reduce legibility at small sizes</div>
+                  </div>
+
+                  <div class="usage-list">
+                    <div class="ul-label">Where this appears</div>
+                    <div class="ul-items">Receipt PDFs · the parent app · announcement headers · <b>browser tab favicon</b></div>
+                  </div>
+                </div>
+
+                <!-- Stamp card -->
+                <div class="brand-asset-card">
+                  <div class="asset-eyebrow">Asset 2 of 2 · attention</div>
+                  <h3 class="display">Official <em>stamp</em></h3>
+                  <div class="asset-desc">Required on statutory PDFs (GES termly return, annual census). Without a stamp uploaded, the system generates a <b>placeholder stamp</b> from your school name — usable but less professional than the real thing.</div>
+
+                  <div class="asset-preview-block">
+                    <div class="stamp-preview">
+                      <div class="stamp-l1">Christ the King</div>
+                      <div class="stamp-l2">Junior High School</div>
+                      <div class="stamp-l3">ACCRA · 1962</div>
+                    </div>
+                  </div>
+
+                  <div class="asset-details">
+                    <div class="file-info">
+                      <div class="f-name" style="color:var(--warn)">No stamp uploaded</div>
+                      <div class="f-meta"><b>Placeholder generated</b> from school name</div>
+                    </div>
+                    <div class="file-actions">
+                      <button class="btn gold">Upload stamp</button>
+                    </div>
+                  </div>
+
+                  <div class="format-guidance">
+                    <div class="fg-label">Format guidance · stamp upload</div>
+                    <div class="fg-bullet"><b>Photograph or scan</b> the school's official rubber stamp on plain white paper</div>
+                    <div class="fg-bullet"><b>PNG with transparency</b> preferred so the stamp lands correctly on signed PDFs</div>
+                    <div class="fg-bullet"><b>500×500 px or larger</b> · system will downscale for receipts</div>
+                    <div class="fg-bullet">If you don't have a digital scan, the placeholder is acceptable for most filings</div>
+                  </div>
+
+                  <div class="usage-list">
+                    <div class="ul-label">Where this appears</div>
+                    <div class="ul-items">GES termly return · <b>annual census</b> · transcripts · official letters · slight rotation applied to look natural</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- REGION 3 — Academic structure -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">03</div>
+                <h2 class="display">Academic <em>structure</em></h2>
+                <div class="meta">Term boundaries · year structure</div>
+              </div>
+
+              <div class="academic-card">
+
+                <div class="ac-row">
+                  <div class="ac-label">
+                    Levels offered
+                    <span class="ac-sub">Year groups taught at this school</span>
+                  </div>
+                  <div class="ac-value">JHS 1 · JHS 2 · <em>JHS 3</em> &nbsp;<span style="color:var(--navy-3);font-style:italic;font-family:'Fraunces',serif">three year groups</span></div>
+                </div>
+
+                <div class="ac-row">
+                  <div class="ac-label">
+                    Terms per year
+                    <span class="ac-sub">Following the GES standard structure</span>
+                  </div>
+                  <div class="ac-value"><em>3 terms</em> &nbsp;<span style="color:var(--navy-3);font-style:italic;font-family:'Fraunces',serif">187 school days · September to August</span></div>
+                </div>
+
+                <div class="ac-row">
+                  <div class="ac-label">
+                    Current academic year
+                    <span class="ac-sub">Click to view term-by-term calendar</span>
+                  </div>
+                  <div class="term-bar-row">
+                    <div class="term-bar current">
+                      <div>
+                        <div class="term-name display">Term <em>1</em></div>
+                        <div class="term-dates">15 Sep — 19 Dec</div>
+                      </div>
+                    </div>
+                    <div class="term-bar">
+                      <div>
+                        <div class="term-name display">Term <em>2</em></div>
+                        <div class="term-dates">12 Jan — 27 Mar</div>
+                      </div>
+                    </div>
+                    <div class="term-bar">
+                      <div>
+                        <div class="term-name display">Term <em>3</em></div>
+                        <div class="term-dates">20 Apr — 17 Jul</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ac-row">
+                  <div class="ac-label">
+                    Academic year naming
+                    <span class="ac-sub">Convention used throughout the system</span>
+                  </div>
+                  <div class="ac-value">2025/26 &nbsp;<span style="color:var(--navy-3);font-style:italic;font-family:'Fraunces',serif">slash format · GES standard</span></div>
+                </div>
+
+                <div class="ac-row">
+                  <div class="ac-label">
+                    Assessment scale
+                    <span class="ac-sub">Grading convention for report cards &amp; transcripts</span>
+                  </div>
+                  <div class="ac-value">BECE 1—9 + percentage &nbsp;<span style="color:var(--navy-3);font-style:italic;font-family:'Fraunces',serif">1 highest · 6 pass · 9 lowest</span></div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Save bar -->
+            <div class="save-bar">
+              <div class="left-info">
+                <span class="changes">No unsaved changes</span>
+                <b>Last edited 14 days ago by Florence</b>
+              </div>
+              <div class="actions">
+                <button class="btn">View change log</button>
+                <button class="btn primary">Edit fields</button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Same head architecture as attendance settings:</b> crumb + headline + lede + tabs + body. Admin who's been to attendance settings already knows this layout. <b>Settings is a family of pages</b>, not bespoke designs per section.</li>
+        <li><b>Eight tabs across the top</b> — School info / Branding / Billing / Attendance / Notifications / Roles &amp; access / SMS &amp; WhatsApp / Integrations. <b>The tabs are the same set everywhere in Settings</b>; clicking any switches the whole content area but keeps the tab strip stable.</li>
+        <li><b>Three regions stacked vertically:</b> School identity / Logo &amp; stamp / Academic structure. <b>Frequency of touch order</b>: identity changes are rare (a school renaming is a major event), branding can change occasionally (new logo design), academic structure changes once a year (new term dates). Most-stable to most-changing.</li>
+        <li><b>Region 1 — School identity uses 8 field cards in a 2×4 grid.</b> Each card: label / value / meta / edit link. The values are <b>Fraunces display for proper-noun fields</b> (school name, type) and JetBrains Mono for identifier fields (GES ID, phone, email). Visual distinction between human and machine values.</li>
+        <li><b>"Short name · for SMS &amp; UI" field with truncation note:</b> "Truncated to 'CHRIST KING' in SMS sender ID." <b>Connects this setting to its consequence elsewhere</b> — admin sees that the short name is what parents recognise in their SMS inboxes. The locked truncation rule we established earlier surfaces here.</li>
+        <li><b>"GES School ID · cannot be edited after registration" field</b> has no Edit link. <b>Some fields are immutable</b> by design — the GES ID is assigned by the government and changing it in Omnischools would create chaos. The card visually signals immutability by lacking the Edit affordance.</li>
+        <li><b>Region 2 — Logo &amp; stamp in side-by-side cards.</b> Each card has the same structure: eyebrow + headline + description + visual preview + file details + format guidance + usage list. <b>The stamp card has "attention" in its eyebrow</b> reflecting its warn state from the landing page.</li>
+        <li><b>Logo preview shows the actual logo treatment</b> — navy/gold "CK" tile + Christ the King JHS in display Fraunces with italic gold "JHS" + "EST. 1962 · ACCRA" tagline. <b>The preview IS the logo system</b>; admin sees how the logo will render across surfaces.</li>
+        <li><b>Stamp preview shows the actual generated stamp</b> — terra circular border at -6°, 3-line content (Christ the King / Junior High School / ACCRA · 1962). <b>Generated from school name when no stamp is uploaded</b>; the placeholder is functional, not decorative. Admin understands she can use this if she doesn't have a digital scan.</li>
+        <li><b>"Photograph or scan the school's official rubber stamp on plain white paper" guidance</b> tells admin exactly how to digitise. <b>Most schools don't have a designed digital stamp</b>; they have a physical rubber stamp. The guidance bridges the analog-to-digital gap honestly.</li>
+        <li><b>Format guidance has 3-4 specific bullets</b> per asset. PNG with transparency / minimum dimensions / what works visually / what to avoid. <b>The guidance is operationally specific</b> — "PNG with transparency preferred so the stamp lands correctly on signed PDFs" tells admin <i>why</i>, not just <i>what</i>.</li>
+        <li><b>"Where this appears" gold-tinted usage list</b> tells admin every surface the asset will show on. Logo: receipts, parent app, announcement headers, favicon. Stamp: GES return, annual census, transcripts, official letters. <b>Admin understands the consequences of getting this wrong</b> before uploading.</li>
+        <li><b>Stamp card has "Upload stamp" CTA in gold-primary</b> while logo card has "Replace / Remove" because the logo is already uploaded. <b>Different states get different action affordances</b>; the missing-asset case is more prominent than the asset-management case.</li>
+        <li><b>Region 3 — Academic structure as a 5-row card</b> with 200px label column + value column. Each row has a Fraunces label + italic gray sub-line + JetBrains Mono / Fraunces value. <b>Same row pattern as the GES return identification grid</b> — visual consistency.</li>
+        <li><b>Term bar row shows the 3 terms as horizontal pills</b> with current Term 1 in gold-tinted bg. The "TERM IN PROGRESS" tag floating above the current term gives temporal context. <b>The bars echo the calendar visual</b> from attendance settings — same vocabulary.</li>
+        <li><b>"Click to view term-by-term calendar" sub-line</b> on the current academic year row hints that drilling deeper opens the attendance calendar. <b>Cross-linking between settings sections</b> — the term calendar is configured in attendance settings but visible here as context.</li>
+        <li><b>"BECE 1—9 + percentage · 1 highest · 6 pass · 9 lowest" assessment scale row.</b> Same scale-reminder pattern as the GES return and school stats. Settings page tells admin what convention is locked in for this school. <b>Schools using BECE can't easily switch to a different scale mid-year</b>; this row makes the lock visible.</li>
+        <li><b>Save bar at the bottom shows "No unsaved changes · Last edited 14 days ago by Florence"</b> rather than the change-summary that appears when admin has draft edits. <b>The bar is bi-state</b> — clean state vs unsaved-changes state. Same save-bar pattern as attendance settings.</li>
+        <li><b>"View change log" CTA in the save bar</b> reveals an audit history of who changed what and when. <b>Settings changes are auditable</b> — important for accountability when a setting affects compliance (statutory PDFs, payment routing).</li>
+        <li><b>"Edit fields" primary CTA flips the page into edit mode</b>. Default state is read-only display; clicking Edit converts the field cards into editable inputs with Save / Discard. <b>Read-first, edit-on-demand</b> protects admin from accidental keypresses on consequential settings.</li>
+        <li><b>What's not on this page:</b> No school motto, no mission statement, no "About us" copy. <b>Operational settings only</b>; marketing copy lives elsewhere (probably the website outside Omnischools). No file size limits in the format guidance because they're system-handled; admin doesn't need to think about them.</li>
+        <li><b>What's also not here:</b> No "preview my stamp on a sample receipt" interaction. The stamp preview shows the asset; admin trusts that the system will apply it correctly to PDFs. Adding a preview-in-context flow would be useful but adds complexity for marginal gain.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

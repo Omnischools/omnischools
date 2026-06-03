@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — VLC session register</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+.btn.terra { background:var(--terra); color:var(--bg); border-color:var(--terra); font-weight:700; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.browser-bar .live-dot { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:10px; color:var(--terra); font-weight:700; letter-spacing:0.1em; }
+.browser-bar .live-dot::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--terra); animation:pulse 1.6s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+/* Facilitator stack */
+.facilitator-strip { padding:18px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:18px; }
+.facilitator-strip .lab { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.fac-list { display:flex; gap:12px; flex:1; }
+.fac-chip { display:flex; align-items:center; gap:8px; padding:6px 14px 6px 6px; border:1px solid var(--border); border-radius:100px; background:var(--surface); }
+.fac-chip.fm { border-color:var(--gold); background:var(--gold-bg); }
+.fac-chip.pg-b { border-color:var(--navy); }
+.fac-chip.pg-g { border-color:var(--terra); }
+.fac-chip .av { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:10px; }
+.fac-chip.fm .av { background:var(--gold); color:var(--navy); }
+.fac-chip.pg-b .av { background:var(--navy); color:var(--gold); }
+.fac-chip.pg-g .av { background:var(--terra); color:var(--bg); }
+.fac-chip .info { font-size:11px; line-height:1.2; }
+.fac-chip .info .nm { font-weight:700; color:var(--navy); }
+.fac-chip .info .role { font-size:9px; color:var(--navy-3); letter-spacing:0.06em; text-transform:uppercase; }
+
+/* Lifecycle bar */
+.lifecycle { padding:18px 36px; background:var(--surface); border-bottom:1px solid var(--border); }
+.lifecycle .lc-head { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:10px; }
+.lifecycle .lc-bar { display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; position:relative; }
+.lc-stage { padding:10px 12px; border-radius:8px; background:var(--bg); border:1px solid var(--border); position:relative; }
+.lc-stage.done { background:var(--green-bg); border-color:var(--green); }
+.lc-stage.active { background:var(--gold); border-color:var(--gold); }
+.lc-stage.pending { opacity:0.5; }
+.lc-stage .stage-num { font-family:'Fraunces',serif; font-style:italic; font-size:14px; color:var(--gold); font-weight:600; }
+.lc-stage.done .stage-num { color:var(--green); }
+.lc-stage.active .stage-num { color:var(--navy); }
+.lc-stage .stage-name { font-size:11px; font-weight:700; color:var(--navy); margin-top:2px; }
+.lc-stage.active .stage-name { color:var(--navy); }
+.lc-stage .stage-time { font-size:9px; color:var(--navy-3); font-family:'JetBrains Mono',monospace; margin-top:3px; letter-spacing:0.04em; }
+.lc-stage.done .stage-time { color:var(--green); }
+
+/* Focus banner */
+.focus-banner { background:var(--navy); color:var(--bg); padding:24px 36px; display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; }
+.focus-banner .v-num { width:64px; height:64px; border-radius:14px; background:var(--gold); color:var(--navy); display:flex; flex-direction:column; align-items:center; justify-content:center; flex-shrink:0; }
+.focus-banner .v-num .num { font-family:'Fraunces',serif; font-size:30px; font-weight:600; line-height:1; }
+.focus-banner .v-num .lab { font-size:8px; letter-spacing:0.1em; font-weight:700; margin-top:2px; }
+.focus-banner .info .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.focus-banner .info h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:4px; }
+.focus-banner .info h3 em { font-style:italic; color:var(--gold); }
+.focus-banner .info .frame { font-size:12px; color:rgba(232,212,184,0.8); line-height:1.5; }
+.focus-banner .info .frame b { color:var(--bg); font-weight:600; }
+.focus-banner .meta { text-align:right; }
+.focus-banner .meta .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,212,184,0.6); font-weight:700; margin-bottom:3px; }
+.focus-banner .meta .val { font-family:'Fraunces',serif; font-size:14px; color:var(--gold); font-weight:500; }
+
+.body-shell { padding:32px 36px 32px; }
+
+.block { margin-bottom:30px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+
+/* Small groups */
+.groups-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.group-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.group-card .gc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed var(--border); }
+.group-card .gc-head .info h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; line-height:1.2; }
+.group-card .gc-head .info h4 em { font-style:italic; color:var(--gold); }
+.group-card .gc-head .info .sub { font-size:10px; color:var(--navy-3); margin-top:2px; }
+.group-card .gc-head .lead-chip { display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:100px; background:var(--bg); }
+.group-card .gc-head .lead-chip.boy { background:var(--navy); color:var(--bg); }
+.group-card .gc-head .lead-chip.girl { background:var(--terra); color:var(--bg); }
+.group-card .gc-head .lead-chip .av { width:20px; height:20px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:8px; }
+.group-card .gc-head .lead-chip .nm { font-size:10px; font-weight:700; }
+.group-card .project-line { font-size:11px; color:var(--navy-2); line-height:1.5; margin-bottom:12px; }
+.group-card .project-line b { color:var(--navy); font-weight:700; }
+.group-card .project-line em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+.group-card .roster { display:grid; grid-template-columns:repeat(2, 1fr); gap:5px; font-size:10px; }
+.group-card .roster .mem { padding:5px 8px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--navy-2); font-weight:500; }
+.group-card .roster .mem.absent { background:var(--terra-bg); border-color:var(--terra); color:var(--terra); text-decoration:line-through; }
+.group-card .roster .mem.late { background:var(--warn-bg); border-color:var(--warn); color:var(--warn); }
+
+/* Attendance grid */
+.att-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; }
+.att-row { display:grid; grid-template-columns:repeat(8, 1fr); gap:6px; margin-bottom:6px; }
+.att-row:last-child { margin-bottom:0; }
+.att-cell { padding:7px 8px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:10px; color:var(--navy-2); display:flex; align-items:center; gap:5px; }
+.att-cell.pg { background:var(--gold-bg); border-color:var(--gold); }
+.att-cell.absent { background:var(--terra-bg); border-color:var(--terra); color:var(--terra); }
+.att-cell.late { background:var(--warn-bg); border-color:var(--warn); color:var(--warn); }
+.att-cell .dot { width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0; }
+.att-cell.absent .dot { background:var(--terra); }
+.att-cell.late .dot { background:var(--warn); }
+.att-cell.pg .dot { background:var(--gold); }
+.att-cell .nm { font-weight:600; }
+.att-summary { display:flex; gap:14px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); font-size:11px; }
+.att-summary .pill { padding:4px 10px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.att-summary .pill.present { background:var(--green-bg); color:var(--green); }
+.att-summary .pill.absent { background:var(--terra-bg); color:var(--terra); }
+.att-summary .pill.late { background:var(--warn-bg); color:var(--warn); }
+.att-summary .pill.pg { background:var(--gold-bg); color:var(--gold); }
+
+/* Agenda timeline */
+.agenda-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; }
+.agenda-row { display:grid; grid-template-columns:60px 100px 1fr 110px; gap:14px; align-items:center; padding:11px 0; border-bottom:1px dashed var(--border); }
+.agenda-row:last-child { border-bottom:none; }
+.agenda-row.done { opacity:0.6; }
+.agenda-row.active { background:var(--gold-bg); margin:0 -22px; padding:14px 22px; border-radius:8px; border-left:3px solid var(--gold); border-bottom-color:var(--gold-soft); }
+.agenda-row .time { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); font-weight:600; }
+.agenda-row.done .time { text-decoration:line-through; color:var(--navy-3); }
+.agenda-row .phase { font-family:'Fraunces',serif; font-size:13px; font-weight:600; }
+.agenda-row .phase em { font-style:italic; color:var(--gold); }
+.agenda-row .what { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.agenda-row .what b { color:var(--navy-2); font-weight:600; }
+.agenda-row .status { text-align:right; font-size:9px; font-weight:700; letter-spacing:0.08em; padding:4px 9px; border-radius:100px; }
+.agenda-row.done .status { background:var(--green-bg); color:var(--green); }
+.agenda-row.active .status { background:var(--gold); color:var(--navy); }
+.agenda-row.pending .status { background:var(--border); color:var(--navy-3); }
+
+/* Pastoral flag callout */
+.flag-callout { background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:12px; padding:18px 22px; }
+.flag-callout .fc-head { display:flex; align-items:flex-start; gap:14px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--terra); }
+.flag-callout .fc-head .ic { width:36px; height:36px; border-radius:8px; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:16px; flex-shrink:0; }
+.flag-callout .fc-head .info h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; margin-bottom:4px; }
+.flag-callout .fc-head .info h4 em { font-style:italic; color:var(--terra); }
+.flag-callout .fc-head .info .sub { font-size:11px; color:var(--navy-2); line-height:1.5; }
+.flag-callout .fc-head .info .sub b { color:var(--terra); font-weight:700; }
+.flag-callout .fc-body { font-size:12px; color:var(--navy-2); line-height:1.65; margin-bottom:14px; }
+.flag-callout .fc-body b { color:var(--navy); font-weight:600; }
+.flag-callout .fc-body em { color:var(--terra); font-family:'Fraunces',serif; font-style:italic; font-weight:500; }
+.flag-actions { display:flex; gap:8px; }
+
+/* Side panel */
+.side-stack { display:flex; flex-direction:column; gap:14px; }
+.side-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 18px; }
+.side-card.navy { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.side-card .eb { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.side-card h5 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; line-height:1.3; margin-bottom:8px; }
+.side-card h5 em { font-style:italic; color:var(--gold); }
+.side-card.navy h5 { color:var(--bg); }
+.side-card p { font-size:11px; line-height:1.5; color:var(--navy-2); margin-bottom:6px; }
+.side-card.navy p { color:rgba(232,212,184,0.8); }
+.prompt-list { list-style:none; padding:0; margin:0; }
+.prompt-list li { font-size:11px; padding:6px 0; color:var(--navy-2); border-top:1px dashed var(--border); display:flex; gap:6px; line-height:1.4; }
+.prompt-list li:first-child { border-top:none; padding-top:0; }
+.prompt-list li::before { content:counter(prompt-counter) "."; counter-increment:prompt-counter; font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:700; flex-shrink:0; }
+.prompt-list { counter-reset:prompt-counter; }
+.reflect-meter { display:flex; align-items:flex-end; gap:14px; }
+.reflect-meter .pct { font-family:'Fraunces',serif; font-size:28px; font-weight:600; line-height:1; }
+.reflect-meter .pct em { font-style:italic; color:var(--gold); }
+.reflect-meter .ctx { font-size:10px; color:var(--navy-3); line-height:1.4; }
+
+/* Foot bar */
+.foot-bar { padding:20px 36px; background:var(--navy); color:var(--bg); display:grid; grid-template-columns:repeat(4, 1fr) auto; gap:24px; align-items:center; }
+.foot-stat { }
+.foot-stat .lab { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,212,184,0.6); font-weight:700; margin-bottom:3px; }
+.foot-stat .val { font-family:'Fraunces',serif; font-size:18px; font-weight:600; line-height:1; }
+.foot-stat .val em { font-style:italic; color:var(--gold); }
+.foot-stat .sub { font-size:10px; color:rgba(232,212,184,0.6); margin-top:3px; }
+
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · VLC batch · 03 of 05</div>
+  <span class="mvp-tag">SHS · Form Master view · live session</span>
+  <span class="related-tag">The Wednesday surface · 60 minutes, every class</span>
+  <h1 class="display">The <em>live session</em> · Wednesday 2:33 PM</h1>
+  <div class="gold-rule"></div>
+  <p>This is what the Form Master sees during the VLC session itself. The class is Form 2 General Arts A, the value is Patriotism (Ɔman dɔ), session B — the applied session where the class plans a service project they will execute next week. The session started three minutes late at 2:33 PM. They are currently in <b>Phase 3 of 5 — Plenary</b>. Eighteen minutes remain. <em>One student has just been flagged for follow-up.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Session live · attendance, groups, flags, time remaining</div>
+    <div class="section-meta">Pastoral &amp; values → VLC → This Wednesday → Form 2 GA A</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / pastoral / vlc / session / form-2-ga-a / 2026-05-14</div>
+        <div class="live-dot">LIVE · 41 min in</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">VLC · Week 26 · Value 7 Patriotism · Session B</div>
+          <h2 class="display">Form 2 GA A <em>· 14 May 2026</em></h2>
+          <div class="lede">Started 2:33 PM (3 min late · sports prefect briefing ran long) · 36 of 40 present · 1 pastoral flag raised at 3:08 PM · 18 minutes remaining</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Open curriculum</button>
+          <button class="btn">Pause session</button>
+        </div>
+      </div>
+
+      <!-- Facilitator strip -->
+      <div class="facilitator-strip">
+        <div class="lab">FACILITATING TODAY</div>
+        <div class="fac-list">
+          <div class="fac-chip fm">
+            <div class="av">AM</div>
+            <div class="info"><div class="nm">Mr A. Mensah</div><div class="role">Form Master · GA A</div></div>
+          </div>
+          <div class="fac-chip pg-b">
+            <div class="av">PO</div>
+            <div class="info"><div class="nm">Prince Otoo</div><div class="role">Peer Guide · boys' rep</div></div>
+          </div>
+          <div class="fac-chip pg-g">
+            <div class="av">AG</div>
+            <div class="info"><div class="nm">Akua Gyamfi</div><div class="role">Peer Guide · girls' rep</div></div>
+          </div>
+        </div>
+        <div style="font-size:10px; color:var(--navy-3); letter-spacing:0.08em; text-transform:uppercase; font-weight:600;">Whole class attends</div>
+      </div>
+
+      <!-- Lifecycle bar -->
+      <div class="lifecycle">
+        <div class="lc-head">SESSION LIFECYCLE · 5 PHASES · 60 MIN</div>
+        <div class="lc-bar">
+          <div class="lc-stage done">
+            <div class="stage-num display">01</div>
+            <div class="stage-name">Opener</div>
+            <div class="stage-time">2:33 — 2:38</div>
+          </div>
+          <div class="lc-stage done">
+            <div class="stage-num display">02</div>
+            <div class="stage-name">Small groups</div>
+            <div class="stage-time">2:38 — 3:03</div>
+          </div>
+          <div class="lc-stage active">
+            <div class="stage-num display">03</div>
+            <div class="stage-name">Plenary · LIVE</div>
+            <div class="stage-time">3:03 — 3:18</div>
+          </div>
+          <div class="lc-stage pending">
+            <div class="stage-num display">04</div>
+            <div class="stage-name">Reflection</div>
+            <div class="stage-time">3:18 — 3:28</div>
+          </div>
+          <div class="lc-stage pending">
+            <div class="stage-num display">05</div>
+            <div class="stage-name">Close</div>
+            <div class="stage-time">3:28 — 3:33</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Focus banner -->
+      <div class="focus-banner">
+        <div class="v-num">
+          <div class="num">07</div>
+          <div class="lab">VALUE</div>
+        </div>
+        <div class="info">
+          <div class="eb">Today's value · Session B · applied</div>
+          <h3 class="display">Patriotism <em>· Ɔman dɔ</em> · Service project planning</h3>
+          <div class="frame"><b>Today's question:</b> <em>"What is one thing we, as a class, can do for our community in the next two weeks?"</em> · Today's outcome: a project brief, two volunteer leads, a date · paired with Value 9 Service session B in two weeks.</div>
+        </div>
+        <div class="meta">
+          <div class="lab">Time elapsed</div>
+          <div class="val">41 min · 18 to go</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- Small groups -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Phase 2 just closed · what the groups discussed</div>
+              <h3 class="display">Small groups <em>· two PG-led conversations</em></h3>
+            </div>
+            <div class="meta">FM walks between · monitors energy &amp; flags · doesn't intervene unless asked</div>
+          </div>
+
+          <div class="groups-grid">
+            <div class="group-card">
+              <div class="gc-head">
+                <div class="info">
+                  <h4 class="display">Group A <em>· led by Prince</em></h4>
+                  <div class="sub">10 students · 18 of 25 min talking time used</div>
+                </div>
+                <div class="lead-chip boy">
+                  <div class="av">PO</div>
+                  <div class="nm">Prince Otoo</div>
+                </div>
+              </div>
+              <div class="project-line"><b>Idea brought back:</b> <em>"Clean-up of the road from school gate to the JHS"</em> · 250m stretch · two Saturday mornings, May 24 &amp; 31 · partnership with the local JHS PTA</div>
+              <div class="roster">
+                <div class="mem">B. Adusei</div>
+                <div class="mem">C. Mensah</div>
+                <div class="mem">D. Aryeetey</div>
+                <div class="mem absent">E. Annan</div>
+                <div class="mem">F. Boateng</div>
+                <div class="mem">G. Owusu</div>
+                <div class="mem">H. Tetteh</div>
+                <div class="mem">I. Bediako</div>
+                <div class="mem">J. Asante</div>
+                <div class="mem late">K. Larbi</div>
+              </div>
+            </div>
+
+            <div class="group-card">
+              <div class="gc-head">
+                <div class="info">
+                  <h4 class="display">Group B <em>· led by Akua</em></h4>
+                  <div class="sub">10 students · 21 of 25 min talking time used</div>
+                </div>
+                <div class="lead-chip girl">
+                  <div class="av">AG</div>
+                  <div class="nm">Akua Gyamfi</div>
+                </div>
+              </div>
+              <div class="project-line"><b>Idea brought back:</b> <em>"Saturday morning maths tutoring at the local JHS"</em> · 8 Form 2 GA volunteers · 4 Saturdays in June · materials supplied by the school</div>
+              <div class="roster">
+                <div class="mem">L. Kpodo</div>
+                <div class="mem">M. Yiadom</div>
+                <div class="mem">N. Quartey</div>
+                <div class="mem">O. Sarpong</div>
+                <div class="mem">P. Adjei</div>
+                <div class="mem absent">Q. Mensah</div>
+                <div class="mem">R. Owusu</div>
+                <div class="mem late">S. Tetteh</div>
+                <div class="mem">T. Bonsu</div>
+                <div class="mem">U. Akoto</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attendance -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Class attendance · 36 of 40 present</div>
+              <h3 class="display">Marked at 2:35 PM <em>· auto-locked at 3:33 PM</em></h3>
+            </div>
+            <div class="meta">PGs marked first · roll-call took 4 min · 2 late entries reconciled</div>
+          </div>
+
+          <div class="att-card">
+            <div class="att-row">
+              <div class="att-cell pg"><span class="dot"></span><span class="nm">Prince Otoo</span></div>
+              <div class="att-cell pg"><span class="dot"></span><span class="nm">Akua Gyamfi</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">B. Adusei</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">C. Mensah</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">D. Aryeetey</span></div>
+              <div class="att-cell absent"><span class="dot"></span><span class="nm">E. Annan</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">F. Boateng</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">G. Owusu</span></div>
+            </div>
+            <div class="att-row">
+              <div class="att-cell"><span class="dot"></span><span class="nm">H. Tetteh</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">I. Bediako</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">J. Asante</span></div>
+              <div class="att-cell late"><span class="dot"></span><span class="nm">K. Larbi</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">L. Kpodo</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">M. Yiadom</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">N. Quartey</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">O. Sarpong</span></div>
+            </div>
+            <div class="att-row">
+              <div class="att-cell"><span class="dot"></span><span class="nm">P. Adjei</span></div>
+              <div class="att-cell absent"><span class="dot"></span><span class="nm">Q. Mensah</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">R. Owusu</span></div>
+              <div class="att-cell late"><span class="dot"></span><span class="nm">S. Tetteh</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">T. Bonsu</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">U. Akoto</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">V. Boateng</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">W. Ofori</span></div>
+            </div>
+            <div class="att-row">
+              <div class="att-cell"><span class="dot"></span><span class="nm">X. Kufuor</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">Y. Asare</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">Z. Boakye</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">AA. Kwapong</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">BB. Lartey</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">CC. Manu</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">DD. Nkrumah</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">EE. Osei</span></div>
+            </div>
+            <div class="att-row">
+              <div class="att-cell"><span class="dot"></span><span class="nm">FF. Pepra</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">GG. Quaye</span></div>
+              <div class="att-cell absent"><span class="dot"></span><span class="nm">HH. Roberts</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">II. Sasu</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">JJ. Tagoe</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">KK. Ulzen</span></div>
+              <div class="att-cell absent"><span class="dot"></span><span class="nm">LL. Vroom</span></div>
+              <div class="att-cell"><span class="dot"></span><span class="nm">MM. Wiredu</span></div>
+            </div>
+            <div class="att-summary">
+              <div class="pill present">36 PRESENT · 90%</div>
+              <div class="pill late">2 LATE · ARRIVED BY 2:45</div>
+              <div class="pill absent">4 ABSENT</div>
+              <div class="pill pg">2 PG (GOLD) FIRST</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Agenda timeline -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Session agenda · running by phase</div>
+              <h3 class="display">The <em>rhythm</em> · 5 phases × 60 min</h3>
+            </div>
+            <div class="meta">Auto-advances · FM can pause if needed</div>
+          </div>
+
+          <div class="agenda-card">
+            <div class="agenda-row done">
+              <div class="time">2:33 — 2:38</div>
+              <div class="phase display"><em>01.</em> Opener</div>
+              <div class="what">FM framed Value 7B · referenced last week's session A on belonging beyond family · posed today's focus question · <b>3 minutes over by sports prefect briefing</b></div>
+              <div class="status">DONE · 5 MIN</div>
+            </div>
+            <div class="agenda-row done">
+              <div class="time">2:38 — 3:03</div>
+              <div class="phase display"><em>02.</em> Small groups</div>
+              <div class="what">Two PG-led groups in opposite corners of room · Prince on the clean-up idea, Akua on the JHS tutoring idea · FM observed both, took two pastoral notes · <b>energy strong in both groups</b></div>
+              <div class="status">DONE · 25 MIN</div>
+            </div>
+            <div class="agenda-row active">
+              <div class="time">3:03 — 3:18</div>
+              <div class="phase display"><em>03.</em> Plenary <em>· LIVE NOW</em></div>
+              <div class="what">Both groups share back · class debates feasibility of both projects · <b>FM moderating</b> · J. Manu stepped out at 3:08 visibly upset · Akua handled it well, came back to plenary</div>
+              <div class="status">ACTIVE · 12 MIN IN</div>
+            </div>
+            <div class="agenda-row pending">
+              <div class="time">3:18 — 3:28</div>
+              <div class="phase display"><em>04.</em> Reflection</div>
+              <div class="what">Silent journal · students write privately in their reflection book · FM and PGs do not read · entries are append-only · today's prompt: <b>"What would I want to remember about today's discussion?"</b></div>
+              <div class="status">PENDING · 10 MIN</div>
+            </div>
+            <div class="agenda-row pending">
+              <div class="time">3:28 — 3:33</div>
+              <div class="phase display"><em>05.</em> Close</div>
+              <div class="what">FM previews next week (Value 7B continues with project execution prep) · acknowledges PG work · session formally closed · <b>FM holds back J. Manu for 1-on-1 check-in</b></div>
+              <div class="status">PENDING · 5 MIN</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pastoral flag -->
+        <div class="flag-callout">
+          <div class="fc-head">
+            <div class="ic">!</div>
+            <div class="info" style="flex:1;">
+              <h4 class="display">Pastoral flag raised <em>· 3:08 PM</em></h4>
+              <div class="sub">Raised by <b>Akua Gyamfi (PG)</b> · student: <b>J. Manu</b> · context: Group B plenary share-back · severity: <b>CONCERN</b> (intermediate level, not crisis)</div>
+            </div>
+            <div style="margin-left:auto;"><div style="background:var(--terra); color:var(--bg); padding:4px 11px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em;">FM + DEAN ONLY</div></div>
+          </div>
+          <div class="fc-body">
+            <p><b>What Akua noticed:</b> J. Manu became visibly upset (tearful, quiet) during the discussion of "what Ghana means to me" — specifically when another student mentioned a family member abroad sending money home. <em>J. Manu's father died in February</em>, the family has been struggling financially, and this is the first time the topic has come up in a group setting. He asked to step outside; Akua walked him out, sat with him for two minutes, then quietly told Mr Mensah on his way back to plenary. <b>Queued for FM check-in</b> at end of session (Phase 5 close).</p>
+          </div>
+          <div class="flag-actions">
+            <button class="btn terra">Open private case note</button>
+            <button class="btn">Add to FM check-in queue</button>
+            <button class="btn ghost">Escalate to Dean</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Foot bar -->
+      <div class="foot-bar">
+        <div class="foot-stat">
+          <div class="lab">Attendance</div>
+          <div class="val display"><em>36</em> / 40</div>
+          <div class="sub">90% present · 2 late · 4 absent</div>
+        </div>
+        <div class="foot-stat">
+          <div class="lab">Phases complete</div>
+          <div class="val display"><em>2</em> / 5</div>
+          <div class="sub">In plenary · 12 min in</div>
+        </div>
+        <div class="foot-stat">
+          <div class="lab">Pastoral flags</div>
+          <div class="val display"><em>1</em> raised</div>
+          <div class="sub">Concern · FM check-in queued</div>
+        </div>
+        <div class="foot-stat">
+          <div class="lab">Time remaining</div>
+          <div class="val display"><em>18</em> min</div>
+          <div class="sub">Closes 3:33 PM</div>
+        </div>
+        <div><button class="btn gold">Close session at 3:33</button></div>
+      </div>
+
+    </div>
+
+    <aside class="notes">
+      <h4>Phase 4 prompts · in 12 min</h4>
+      <ul class="prompt-list" style="border-top:1px solid var(--border); padding-top:10px;">
+        <li>What did I hear today that I did not expect?</li>
+        <li>What does patriotism look like in <em>my</em> family, my community, my Saturday?</li>
+        <li>Of the two project ideas — which one calls me, and why?</li>
+        <li>What is one thing I want to remember from today's discussion?</li>
+      </ul>
+      <h4 style="margin-top:24px;">Reflection submission · live</h4>
+      <div class="side-card" style="padding:14px 16px;">
+        <div class="reflect-meter">
+          <div class="pct display"><em>96%</em></div>
+          <div class="ctx">Avg this semester · Form 2 GA A · 35 of 36 expected today (1 absent had submission excused)</div>
+        </div>
+      </div>
+      <h4 style="margin-top:24px;">Curriculum library</h4>
+      <ul>
+        <li><b>Value 7 · Session B prompts</b> · service project planning toolkit · printable brief template</li>
+        <li><b>Pairing note · V9 Service Session B</b> · Value 9 session B (two weeks out) is when this project gets executed</li>
+        <li><b>Linked: Value 7 Session A reflections</b> · for FM context · read-only, anonymised summaries</li>
+      </ul>
+      <h4 style="margin-top:24px;">Peer Guide notes</h4>
+      <ul>
+        <li><b>Prince</b> · led firmly, kept time, managed quieter members well · <b>+1 facilitation point</b></li>
+        <li><b>Akua</b> · recognised J. Manu's distress, handled escalation correctly · <b>+2 pastoral judgement points</b> · note for next training</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why this rhythm · and not just one big conversation</div>
+    <div class="section-meta">Editorial · the 5-phase structure as scaffolding</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The rhythm is the design</div>
+        <h3 class="display">Five phases <em>· because the work is different in each</em></h3>
+        <p>It would be simpler to give the Form Master a single sixty-minute block and say "talk about Patriotism." Simpler, and worse. <em>The five-phase rhythm is doing several things at once</em>, and removing any one of them collapses the surface area of what students can do with the time.</p>
+        <p><b>Phase 1, Opener, is five minutes.</b> Not ten. The FM frames the value in a sentence and poses today's question. Any longer and the FM is teaching, not framing — and once it tips into teaching, the class settles into receive-mode and stays there. Five minutes forces the FM to set the table and step back.</p>
+        <p><b>Phase 2, Small groups, is twenty-five minutes.</b> This is the time that matters. Half the class with a Peer Guide, the other half with the other. Same value, same question, different conversation. <em>The small-group containment is what makes truth-telling possible</em> — a forty-person classroom is a stage; a ten-person group is a room. Students who would never speak up in plenary will sometimes say the thing they actually think when only nine peers and a PG are listening. The PG's job is not to lead the discussion to an answer; it's to keep the group on the question and keep time.</p>
+        <p><b>Phase 3, Plenary, is fifteen minutes.</b> Each group shares back. This is where the class hears the range of what their classmates think — including the things they didn't think themselves. The FM moderates the share-back, doesn't preach, doesn't summarise toward a conclusion. <b>The range is the conclusion.</b></p>
+        <p><b>Phase 4, Reflection, is ten minutes of silence.</b> No discussion, no group, no PG, no FM looking over shoulders. Each student writes in their reflection book. The entry is private to the student and to the Form Master who will read it later in the week. <em>The journal is append-only</em> — entries can be added to but not edited, not deleted. Across twenty-two sessions, the journal becomes the document.</p>
+        <p><b>Phase 5, Close, is five minutes.</b> FM closes formally — acknowledges the PGs by name, previews next week's value or the continuation, releases the class. Same five minutes every week. <em>The rhythm is the design.</em></p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What if a phase runs over?</h4>
+      <ul>
+        <li><b>The system absorbs ±3 min.</b> Phase end-times shift but Phase 5 still closes at 3:33. If you blow past 3:33, you've eaten next class's transition time.</li>
+        <li><b>The reflection phase is non-negotiable.</b> If anything has to be cut short, it should be the plenary, never the journal time. The silent ten minutes is where the work consolidates.</li>
+        <li><b>FM can pause if a flag arises mid-session.</b> The Pause button stops the clock; nothing advances until FM resumes. Pastoral takes precedence over schedule.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

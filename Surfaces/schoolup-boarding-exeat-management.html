@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Exeat management</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+.btn.terra { background:var(--terra); color:var(--bg); border-color:var(--terra); font-weight:700; }
+.btn.green { background:var(--green); color:var(--bg); border-color:var(--green); font-weight:700; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.browser-bar .ctx { margin-left:auto; font-size:10px; letter-spacing:0.12em; color:rgba(232,212,184,0.6); font-weight:600; text-transform:uppercase; }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.sum-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.sum-card.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-card.warn { background:var(--warn-bg); border-color:var(--warn); }
+.sum-card.terra { background:var(--terra-bg); border-color:var(--terra); }
+.sum-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-card.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-card.warn .lab { color:var(--warn); }
+.sum-card.terra .lab { color:var(--terra); }
+.sum-card .big { font-family:'Fraunces',serif; font-size:26px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-card .big em { font-style:italic; color:var(--gold); }
+.sum-card.warn .big em { color:var(--warn); }
+.sum-card.terra .big em { color:var(--terra); }
+.sum-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-card.featured .sub { color:rgba(232,212,184,0.6); }
+.sum-card .sub b { color:var(--navy-2); font-weight:600; }
+.sum-card.featured .sub b { color:var(--gold); }
+
+.body-shell { padding:32px 36px 36px; }
+
+.block { margin-bottom:32px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+.block-head .actions { display:flex; gap:8px; }
+
+/* Two-column layout for in-flight + card preview */
+.flight-row { display:grid; grid-template-columns:1.5fr 1fr; gap:18px; }
+
+/* Exeat in flight */
+.in-flight-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.in-flight-card .if-band { padding:14px 20px; background:var(--gold); color:var(--navy); display:flex; justify-content:space-between; align-items:center; }
+.in-flight-card .if-band .l { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; }
+.in-flight-card .if-band .t { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; }
+.in-flight-card .if-body { padding:18px 22px; }
+.in-flight-card .if-student { display:flex; align-items:center; gap:14px; margin-bottom:14px; padding-bottom:14px; border-bottom:1px dashed var(--border); }
+.in-flight-card .if-student .av { width:48px; height:48px; border-radius:12px; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:18px; font-weight:600; flex-shrink:0; }
+.in-flight-card .if-student .info h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; line-height:1.2; }
+.in-flight-card .if-student .info h4 em { font-style:italic; color:var(--gold); }
+.in-flight-card .if-student .info .sub { font-size:11px; color:var(--navy-3); margin-top:3px; }
+.in-flight-card .if-stages { display:flex; flex-direction:column; gap:8px; }
+.if-stage { display:grid; grid-template-columns:24px 1fr auto; gap:12px; padding:8px 0; align-items:center; font-size:11px; }
+.if-stage .dot { width:14px; height:14px; border-radius:50%; background:var(--border); }
+.if-stage.done .dot { background:var(--green); }
+.if-stage.active .dot { background:var(--gold); border:2px solid var(--gold-soft); }
+.if-stage .what { color:var(--navy-2); }
+.if-stage .what b { color:var(--navy); font-weight:700; }
+.if-stage.active .what b { color:var(--gold); }
+.if-stage .time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.if-stage.done .time { color:var(--green); }
+.in-flight-card .if-foot { padding:12px 16px; background:var(--bg); border-top:1px solid var(--border); display:flex; gap:10px; align-items:center; font-size:11px; }
+.in-flight-card .if-foot .quiet { flex:1; color:var(--navy-3); font-style:italic; }
+.in-flight-card .if-foot .quiet b { color:var(--navy-2); font-weight:700; font-style:normal; }
+
+/* Exeat card artefact (printable preview) */
+.card-art { background:linear-gradient(135deg, #FAF7F2 0%, #F5EBDC 100%); border:1.5px solid var(--gold); border-radius:14px; overflow:hidden; padding:0; }
+.card-art .ca-head { padding:14px 20px; background:var(--navy); color:var(--bg); display:flex; justify-content:space-between; align-items:flex-start; }
+.card-art .ca-head .l { font-size:9px; letter-spacing:0.16em; color:var(--gold); font-weight:700; }
+.card-art .ca-head h5 { font-family:'Fraunces',serif; font-size:15px; font-weight:500; line-height:1.2; margin-top:2px; }
+.card-art .ca-head h5 em { font-style:italic; color:var(--gold); }
+.card-art .ca-head .ref { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--gold-soft); }
+.card-art .ca-body { padding:18px 20px; }
+.card-art .ca-line { display:grid; grid-template-columns:90px 1fr; padding:6px 0; border-bottom:1px dashed var(--gold-soft); font-size:11px; align-items:center; gap:12px; }
+.card-art .ca-line:last-child { border-bottom:none; }
+.card-art .ca-line .l { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.card-art .ca-line .v { font-family:'Fraunces',serif; font-size:13px; font-weight:600; color:var(--navy); }
+.card-art .ca-line .v em { font-style:italic; color:var(--gold); }
+.card-art .ca-foot { padding:14px 20px; background:rgba(200,151,91,0.08); border-top:1px solid var(--gold-soft); display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--navy-2); }
+.card-art .ca-foot .sig { font-family:'Fraunces',serif; font-style:italic; font-size:13px; color:var(--navy); }
+.card-art .ca-foot .stamp { width:48px; height:48px; border-radius:50%; border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-style:italic; font-size:10px; color:var(--gold); font-weight:600; }
+
+/* Upcoming exeats / queue table */
+.queue-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.qc-head { padding:14px 22px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.qc-head .info h5 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; }
+.qc-head .info h5 em { font-style:italic; color:var(--gold); }
+.qc-head .info .sub { font-size:10px; color:var(--navy-3); margin-top:2px; }
+.qc-head .badge { padding:3px 10px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; background:var(--gold-bg); color:var(--gold); }
+.qc-row { display:grid; grid-template-columns:160px 1fr 110px 110px 90px 100px 100px; padding:11px 22px; gap:12px; border-bottom:1px solid var(--border); font-size:12px; align-items:center; }
+.qc-row:last-child { border-bottom:none; }
+.qc-row.header { background:var(--bg); padding:8px 22px; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.qc-row .student { display:flex; align-items:center; gap:8px; }
+.qc-row .student .av { width:26px; height:26px; border-radius:50%; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:9px; font-weight:700; }
+.qc-row .student .info { min-width:0; }
+.qc-row .student .info .nm { font-weight:700; font-size:12px; }
+.qc-row .student .info .sub { font-size:9px; color:var(--navy-3); }
+.qc-row .type { font-size:10px; padding:3px 8px; border-radius:100px; font-weight:700; letter-spacing:0.06em; text-align:center; }
+.qc-row .type.sched { background:var(--green-bg); color:var(--green); }
+.qc-row .type.special { background:var(--gold-bg); color:var(--gold); }
+.qc-row .type.fee { background:var(--warn-bg); color:var(--warn); }
+.qc-row .when { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; }
+.qc-row .reason { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.qc-row .reason b { color:var(--navy-2); font-weight:700; }
+.qc-row .fee-status { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; }
+.qc-row .fee-status.clear { color:var(--green); }
+.qc-row .fee-status.owed { color:var(--terra); }
+.qc-row .approval { font-size:10px; font-weight:700; }
+.qc-row .approval.pending { color:var(--warn); }
+.qc-row .approval.approved { color:var(--green); }
+.qc-row .approval.needs { color:var(--terra); }
+.qc-row .action button { padding:4px 8px; font-size:10px; }
+
+/* Late returns warning band */
+.late-card { background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:12px; padding:18px 22px; }
+.late-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed var(--terra); }
+.late-head .info h4 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; line-height:1.2; }
+.late-head .info h4 em { font-style:italic; color:var(--terra); }
+.late-head .info .sub { font-size:11px; color:var(--navy-2); margin-top:3px; }
+.late-head .badge { padding:3px 10px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; background:var(--terra); color:var(--bg); }
+.late-list { display:flex; flex-direction:column; gap:6px; }
+.late-row { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; display:grid; grid-template-columns:1fr 100px 110px 100px; gap:12px; align-items:center; font-size:11px; }
+.late-row .what b { color:var(--navy); font-weight:700; }
+.late-row .what { color:var(--navy-2); line-height:1.4; }
+.late-row .overdue { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--terra); }
+.late-row .sms { font-size:10px; color:var(--navy-3); font-weight:600; }
+.late-row .sms b { color:var(--green); }
+
+/* Recent returns */
+.return-card { background:var(--green-bg); border:1px solid var(--green); border-radius:12px; padding:18px 22px; }
+.return-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed var(--green); }
+.return-head .info h4 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; line-height:1.2; }
+.return-head .info h4 em { font-style:italic; color:var(--green); }
+.return-head .info .sub { font-size:11px; color:var(--navy-2); margin-top:3px; }
+.return-head .badge { padding:3px 10px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; background:var(--green); color:var(--bg); }
+.return-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }
+.return-row { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; display:flex; gap:10px; align-items:center; font-size:11px; }
+.return-row .av { width:26px; height:26px; border-radius:50%; background:var(--green); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:9px; font-weight:700; flex-shrink:0; }
+.return-row .info { flex:1; min-width:0; }
+.return-row .info .nm { font-weight:700; font-size:11px; }
+.return-row .info .sub { font-size:10px; color:var(--navy-3); }
+.return-row .time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--green); font-weight:700; }
+
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Boarding batch · 05 of 07</div>
+  <span class="mvp-tag">SHS · Housemaster + parents · cycle workflow</span>
+  <span class="related-tag">Request → review → card → depart → return · the gate crossing</span>
+  <h1 class="display">Exeat management <em>· the term's three legal exits</em></h1>
+  <div class="gold-rule"></div>
+  <p>The exeat is the formal contract by which a boarder leaves campus during the semester. <b>Three scheduled exeats per semester</b> (the school calendar dictates), plus special exeats parents can request for funerals, illness in the family, or church engagements. <em>Fee-owing students must take the scheduled exeat home and bring the money back</em> — built into the workflow. The exeat card is a printable artefact, the digital record is the contract. <b>The return-by 4 PM rule is enforced</b> — past that, a late-return SMS chain fires to the parent. Today, May 14, the next scheduled exeat is in 17 days (Sun 31 May).</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Exeat workflow · 1 in flight, 24 in queue, 8 returned today</div>
+    <div class="section-meta">Boarding → Operations → Exeats</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / boarding / operations / exeats</div>
+        <div class="ctx">WED 14 MAY · NEXT SCHED EXEAT SUN 31 MAY · 17 DAYS</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Boarding &amp; residential life · Operations · Exeat management</div>
+          <h2 class="display">Exeats <em>· in flight &amp; in queue</em></h2>
+          <div class="lede">Mr Mensah's view · Aggrey + delegated school-wide for special exeats · 1 special exeat currently in flight (B. Acheampong, F3, family illness) · 24 requests in queue for the May 31 scheduled exeat · 0 late returns at present</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Filter by House</button>
+          <button class="btn">New exeat</button>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-card featured">
+          <div class="lab">Exeats in flight</div>
+          <div class="big display"><em>1</em></div>
+          <div class="sub"><b>B. Acheampong</b> · F3 Aggrey · home since Mon · returns Fri 16 May</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">In queue · 31 May</div>
+          <div class="big display"><em>24</em></div>
+          <div class="sub">19 scheduled · 5 special · 3 fee-collection · 0 declined</div>
+        </div>
+        <div class="sum-card warn">
+          <div class="lab">Awaiting Senior HM</div>
+          <div class="big display"><em>3</em></div>
+          <div class="sub">Special exeats only · HM has approved, Senior HM signs</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Returns today</div>
+          <div class="big display"><em>8</em></div>
+          <div class="sub">All on time · 4 weekend church · 4 medical</div>
+        </div>
+        <div class="sum-card terra">
+          <div class="lab">Late returns</div>
+          <div class="big display"><em>0</em></div>
+          <div class="sub">Clean record · last late return 18 Mar (4 hr)</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- In flight + card artefact -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Currently in flight · 1 exeat · B. Acheampong</div>
+              <h3 class="display">The exeat in motion <em>· request → card → depart → return</em></h3>
+            </div>
+            <div class="meta">Each exeat moves through 5 stages · timestamped at each transition</div>
+          </div>
+
+          <div class="flight-row">
+
+            <!-- In flight detail -->
+            <div class="in-flight-card">
+              <div class="if-band">
+                <div class="l">SPECIAL EXEAT · IN FLIGHT · ASA-EX-2026-0341</div>
+                <div class="t">2D 4H ELAPSED</div>
+              </div>
+              <div class="if-body">
+                <div class="if-student">
+                  <div class="av">BA</div>
+                  <div class="info">
+                    <h4 class="display">B. Acheampong <em>· Form 3 GS · Aggrey · Dorm A bunk 02</em></h4>
+                    <div class="sub"><b>Reason</b> · grandmother hospitalised · parent-initiated 11 May · Senior HM Mrs Asare approved 11 May 10:14 AM</div>
+                  </div>
+                </div>
+
+                <div class="if-stages">
+                  <div class="if-stage done">
+                    <div class="dot"></div>
+                    <div class="what"><b>Requested</b> · by parent Mr P. Acheampong · phoned at 7:58 AM 11 May · written follow-up SMS at 8:14 AM</div>
+                    <div class="time">11 MAY · 07:58</div>
+                  </div>
+                  <div class="if-stage done">
+                    <div class="dot"></div>
+                    <div class="what"><b>HM approved</b> · Mr Mensah verified parent identity, reviewed last 3 exeats clean · forwarded to Senior HM</div>
+                    <div class="time">11 MAY · 09:42</div>
+                  </div>
+                  <div class="if-stage done">
+                    <div class="dot"></div>
+                    <div class="what"><b>Senior HM signed</b> · Mrs Asare approved · special exeats require Senior HM signature · exeat card generated &amp; printed</div>
+                    <div class="time">11 MAY · 10:14</div>
+                  </div>
+                  <div class="if-stage done">
+                    <div class="dot"></div>
+                    <div class="what"><b>Departed</b> · gate sign-out by HM at 11:30 AM · uniform · with father · SMS sent to parents "B. Acheampong departed safely"</div>
+                    <div class="time">11 MAY · 11:30</div>
+                  </div>
+                  <div class="if-stage active">
+                    <div class="dot"></div>
+                    <div class="what"><b>Expected return</b> · Fri 16 May by 16:00 · uniform or outing dress · parent to drop or STC bus · automatic reminder SMS at 14:00 day-of</div>
+                    <div class="time">16 MAY · 16:00</div>
+                  </div>
+                </div>
+
+              </div>
+              <div class="if-foot">
+                <div class="quiet"><b>Parent communication preference</b> · SMS only (not WhatsApp) · numbers verified 11 May · automatic reminder fires 14:00 Friday</div>
+                <button class="btn ghost">Open record</button>
+                <button class="btn">Edit return time</button>
+              </div>
+            </div>
+
+            <!-- Card artefact (printable) -->
+            <div class="card-art">
+              <div class="ca-head">
+                <div>
+                  <div class="l">EXEAT CARD · 2025/26</div>
+                  <h5 class="display">Asankrangwa SHS <em>· Aggrey House</em></h5>
+                </div>
+                <div class="ref">EX-2026-0341</div>
+              </div>
+              <div class="ca-body">
+                <div class="ca-line">
+                  <div class="l">Student</div>
+                  <div class="v display">B. Acheampong</div>
+                </div>
+                <div class="ca-line">
+                  <div class="l">Form &amp; House</div>
+                  <div class="v">Form 3 GS · Aggrey · D-A-02</div>
+                </div>
+                <div class="ca-line">
+                  <div class="l">Type</div>
+                  <div class="v display"><em>Special</em> · family</div>
+                </div>
+                <div class="ca-line">
+                  <div class="l">Date out</div>
+                  <div class="v">11 May 2026 · 11:30</div>
+                </div>
+                <div class="ca-line">
+                  <div class="l">Date in</div>
+                  <div class="v display"><em>16 May 2026 · 16:00</em></div>
+                </div>
+                <div class="ca-line">
+                  <div class="l">Dress</div>
+                  <div class="v">Uniform or outing</div>
+                </div>
+                <div class="ca-line">
+                  <div class="l">Fees</div>
+                  <div class="v">All clear · no collection</div>
+                </div>
+              </div>
+              <div class="ca-foot">
+                <div class="sig"><em>signed</em> · G. Asante (Sen HM)</div>
+                <div class="stamp">SCHOOL<br>STAMP</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Queue: upcoming exeats for May 31 -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">In queue · scheduled exeat Sun 31 May · 17 days out</div>
+              <h3 class="display">Queue for the next gate <em>· 24 requests</em></h3>
+            </div>
+            <div class="actions">
+              <button class="btn ghost">Bulk approve scheduled</button>
+              <button class="btn">Approve all clean (16)</button>
+            </div>
+          </div>
+
+          <div class="queue-card">
+            <div class="qc-head">
+              <div class="info">
+                <h5 class="display">May 31 exeat window <em>· depart Sat 30 May, return Sun 31 May 16:00</em></h5>
+                <div class="sub">19 scheduled (auto-approved if no flags) · 5 special (manual review)</div>
+              </div>
+              <div class="badge">SCHED 1 OF 3 · SEMESTER 2</div>
+            </div>
+
+            <div class="qc-row header">
+              <div>Type</div>
+              <div>Student</div>
+              <div>Reason</div>
+              <div>Out / In</div>
+              <div>Fees</div>
+              <div>Approval</div>
+              <div>Action</div>
+            </div>
+
+            <div class="qc-row">
+              <div class="type sched">SCHED</div>
+              <div class="student">
+                <div class="av">JM</div>
+                <div class="info"><div class="nm">J. Manu</div><div class="sub">F2 GA A · Aggrey · D-D-03</div></div>
+              </div>
+              <div class="reason"><b>Visit mother</b> · post-bereavement · home Kumasi · 4 hr STC</div>
+              <div class="when">30 MAY · 13:00<br>31 MAY · 16:00</div>
+              <div class="fee-status clear">CLEAR</div>
+              <div class="approval approved">AUTO-APPROVED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+            <div class="qc-row">
+              <div class="type sched">SCHED</div>
+              <div class="student">
+                <div class="av">PO</div>
+                <div class="info"><div class="nm">Prince Otoo</div><div class="sub">F2 GA A · Aggrey · D-D-10</div></div>
+              </div>
+              <div class="reason"><b>Routine</b> · home Sunyani · with parents</div>
+              <div class="when">30 MAY · 13:00<br>31 MAY · 16:00</div>
+              <div class="fee-status clear">CLEAR</div>
+              <div class="approval approved">AUTO-APPROVED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+            <div class="qc-row">
+              <div class="type fee">FEE</div>
+              <div class="student">
+                <div class="av">EA</div>
+                <div class="info"><div class="nm">E. Asare</div><div class="sub">F2 GS · Aryee · F-F-05</div></div>
+              </div>
+              <div class="reason"><b>Fee collection</b> · GHS 340.00 outstanding from resumption</div>
+              <div class="when">30 MAY · 13:00<br>31 MAY · 16:00</div>
+              <div class="fee-status owed">GHS 340.00</div>
+              <div class="approval approved">AUTO-APPROVED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+            <div class="qc-row">
+              <div class="type special">SPECIAL</div>
+              <div class="student">
+                <div class="av">DA</div>
+                <div class="info"><div class="nm">D. Adjei</div><div class="sub">F3 GS · Aggrey · D-A-01 · Head of House</div></div>
+              </div>
+              <div class="reason"><b>Sister's wedding</b> · Accra · request from parent in writing</div>
+              <div class="when">29 MAY · 16:00<br>1 JUN · 18:00</div>
+              <div class="fee-status clear">CLEAR</div>
+              <div class="approval pending">SR HM PENDING</div>
+              <div class="action"><button class="btn">Review</button></div>
+            </div>
+
+            <div class="qc-row">
+              <div class="type sched">SCHED</div>
+              <div class="student">
+                <div class="av">AG</div>
+                <div class="info"><div class="nm">Akua Gyamfi</div><div class="sub">F2 GA A · Slessor · B-04</div></div>
+              </div>
+              <div class="reason"><b>Routine</b> · home Tarkwa · STC bus</div>
+              <div class="when">30 MAY · 13:00<br>31 MAY · 16:00</div>
+              <div class="fee-status clear">CLEAR</div>
+              <div class="approval approved">AUTO-APPROVED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+            <div class="qc-row">
+              <div class="type special">SPECIAL</div>
+              <div class="student">
+                <div class="av">YA</div>
+                <div class="info"><div class="nm">Y. Asante</div><div class="sub">F2 GA · Kingsley · D-D-12</div></div>
+              </div>
+              <div class="reason"><b>Dental appointment</b> · Kumasi · parent-initiated · doctor's note attached</div>
+              <div class="when">30 MAY · 09:00<br>30 MAY · 18:00</div>
+              <div class="fee-status owed">GHS 215.00</div>
+              <div class="approval needs">HM REVIEW</div>
+              <div class="action"><button class="btn terra">Review</button></div>
+            </div>
+
+            <div class="qc-row">
+              <div class="type sched">SCHED</div>
+              <div class="student">
+                <div class="av">FT</div>
+                <div class="info"><div class="nm">F. Tetteh</div><div class="sub">F3 GS · Aggrey · F-01 · Sick Bay Prefect</div></div>
+              </div>
+              <div class="reason"><b>Routine</b> · home Wa · long trip · departs Friday early</div>
+              <div class="when">29 MAY · 13:00<br>31 MAY · 18:00</div>
+              <div class="fee-status clear">CLEAR</div>
+              <div class="approval pending">SR HM PENDING</div>
+              <div class="action"><button class="btn">Review</button></div>
+            </div>
+
+            <div class="qc-row">
+              <div class="type sched">SCHED</div>
+              <div class="student">
+                <div class="av">KB</div>
+                <div class="info"><div class="nm">K. Boateng</div><div class="sub">F3 BUS · Aggrey · C-01 · Sanitation</div></div>
+              </div>
+              <div class="reason"><b>Routine</b> · home Kumasi</div>
+              <div class="when">30 MAY · 13:00<br>31 MAY · 16:00</div>
+              <div class="fee-status clear">CLEAR</div>
+              <div class="approval approved">AUTO-APPROVED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Recent returns (today) -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Today's returns · 8 students back · all on time</div>
+              <h3 class="display">Returns logged this morning <em>· Sunday weekend exeat</em></h3>
+            </div>
+            <div class="meta">Returns yesterday (Tue 13 May) from weekend special exeats · all signed in by Mr Mensah · attended supper</div>
+          </div>
+
+          <div class="return-card">
+            <div class="return-head">
+              <div class="info">
+                <h4 class="display">8 returns Tuesday <em>· all on time, all in dorm by 16:00</em></h4>
+                <div class="sub">Weekend special exeats for church engagements (4) + medical follow-ups (3) + funeral (1) · all signed-in via HM</div>
+              </div>
+              <div class="badge">CLEAN DAY</div>
+            </div>
+            <div class="return-grid">
+              <div class="return-row">
+                <div class="av">CA</div>
+                <div class="info"><div class="nm">C. Asare</div><div class="sub">F3 GS · Aggrey · church anniversary</div></div>
+                <div class="time">15:38</div>
+              </div>
+              <div class="return-row">
+                <div class="av">EA</div>
+                <div class="info"><div class="nm">E. Adusei</div><div class="sub">F3 GA · Aggrey · medical follow-up</div></div>
+                <div class="time">15:42</div>
+              </div>
+              <div class="return-row">
+                <div class="av">FA</div>
+                <div class="info"><div class="nm">F. Amankwah</div><div class="sub">F3 GS · Aggrey · uncle's funeral</div></div>
+                <div class="time">15:51</div>
+              </div>
+              <div class="return-row">
+                <div class="av">GA</div>
+                <div class="info"><div class="nm">G. Aboagye</div><div class="sub">F3 GA · Aggrey · church engagement</div></div>
+                <div class="time">15:55</div>
+              </div>
+              <div class="return-row">
+                <div class="av">HA</div>
+                <div class="info"><div class="nm">H. Appiah</div><div class="sub">F3 GA · Aggrey · church engagement</div></div>
+                <div class="time">15:58</div>
+              </div>
+              <div class="return-row">
+                <div class="av">JA</div>
+                <div class="info"><div class="nm">J. Adomako</div><div class="sub">F3 GS · Aggrey · medical follow-up</div></div>
+                <div class="time">15:48</div>
+              </div>
+              <div class="return-row">
+                <div class="av">SO</div>
+                <div class="info"><div class="nm">S. Owusu</div><div class="sub">F3 GA · Aggrey · Dining Prefect · church</div></div>
+                <div class="time">15:30</div>
+              </div>
+              <div class="return-row">
+                <div class="av">EM</div>
+                <div class="info"><div class="nm">E. Mensah</div><div class="sub">F3 GS · Aggrey · Prep Prefect · medical</div></div>
+                <div class="time">15:46</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Late returns / enforcement -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Late return enforcement · the 16:00 line</div>
+              <h3 class="display">Currently no late returns <em>· but the chain is wired</em></h3>
+            </div>
+            <div class="meta">SMS chain: parent at 16:05, parent + Senior HM at 16:30, formal infraction logged at 17:00</div>
+          </div>
+
+          <div class="late-card">
+            <div class="late-head">
+              <div class="info">
+                <h4 class="display">Late return SMS chain <em>· three-stage escalation</em></h4>
+                <div class="sub">No active late returns · the chain shown below is the wiring · used 11 times in 2025/26 so far, longest a 4-hour late return on 18 Mar (resolved with parent SMS, no infraction)</div>
+              </div>
+              <div class="badge">CHAIN · NOT ACTIVE</div>
+            </div>
+            <div class="late-list">
+              <div class="late-row">
+                <div class="what"><b>Stage 1 · 16:05</b> · "Student is now overdue from exeat. Please confirm return ETA." · sent to parent SMS · Senior HM cc'd</div>
+                <div class="overdue">+5 MIN</div>
+                <div class="sms">Auto · parent only</div>
+                <div></div>
+              </div>
+              <div class="late-row">
+                <div class="what"><b>Stage 2 · 16:30</b> · "Student remains overdue. Senior HM has been notified. Please contact school immediately." · parent + Senior HM</div>
+                <div class="overdue">+30 MIN</div>
+                <div class="sms">Auto · escalation</div>
+                <div></div>
+              </div>
+              <div class="late-row">
+                <div class="what"><b>Stage 3 · 17:00</b> · Formal NOTE logged on student record (see surface 07). HM phones parent directly. <b>Penalty assessment</b> begins. Beyond 17:00 → infraction.</div>
+                <div class="overdue">+1 HR</div>
+                <div class="sms"><b>NOTE</b> logged</div>
+                <div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The three types of exeat</h4>
+      <ul>
+        <li><b>Scheduled</b> · on the school calendar · 3 per semester per student · auto-approved if no flags · parent-confirmed via SMS · most boarders take 2-3 a term</li>
+        <li><b>Special</b> · parent-initiated · for weddings, funerals, medical, family illness · Senior HM signs (HM alone cannot approve) · scrutinised against frequency</li>
+        <li><b>Fee-collection</b> · auto-triggered for fee-owing students at scheduled exeats · trip home is for fees · marked distinctly in records · invoice settled before return-by</li>
+      </ul>
+      <h4 style="margin-top:24px;">Why fee-owing matters</h4>
+      <ul>
+        <li><b>The school cannot detain a student</b> for unpaid fees. GES rule.</li>
+        <li><b>But it can require fee-collection</b> via exeat. Built into the workflow. The "FEE" type pre-fills the reason on the exeat card.</li>
+        <li><b>The parent SMS makes it explicit</b> · "Your ward will be home from [date] to [date]. Please clear outstanding fees of GHS 340.00 before return."</li>
+      </ul>
+      <h4 style="margin-top:24px;">Late return is a slow alarm</h4>
+      <ul>
+        <li>+5 min · auto-SMS to parent only · friendly</li>
+        <li>+30 min · Senior HM cc'd · stronger</li>
+        <li>+1 hour · formal NOTE on student record · phone call from HM</li>
+        <li>Beyond → discipline ladder (surface 07)</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why exeats deserve their own surface</div>
+    <div class="section-meta">Editorial · the gate-crossing contract</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The exeat as the boarding system's most legally consequential event</div>
+        <h3 class="display">When a boarder crosses the school gate, <em>the school owes accountability to itself, the parent, and the law.</em></h3>
+        <p>Until the moment a boarder steps out of the gate on Saturday morning of exeat weekend, the school is responsible for them — physically, legally, and pastorally. The instant they step through that gate, the school is no longer responsible — until the moment they step back through. <b>The exeat card is the legal record</b> of this transfer of responsibility. It says: at this time, with this approval, in this dress, to this destination, returning by this time. <em>That sentence is what makes the transfer auditable.</em></p>
+        <p>This is why the workflow has five distinct stages, each timestamped, each requiring a different actor. The parent <b>requests</b>. The Housemaster <b>reviews</b>, checking the student's record (last 3 exeats, fee status, discipline standing). The Senior HM <b>signs</b> if it's a special exeat. The gate <b>logs departure</b> with HM verification. The gate <b>logs return</b> with HM verification. Five stages, five signatures, five timestamps. The PDF card the student carries is a snapshot of this record at moment of departure. <em>If anything goes wrong</em> — the student is in an accident, the parent disputes the route, the dean asks who approved this — the chain is one query deep.</p>
+        <p>The fee-collection exeat type is small but consequential. Under Free SHS, schools cannot withhold education from fee-owing students. But operationally, fees still must be collected — the school still has to pay for what Free SHS doesn't cover. <b>The exeat workflow handles this elegantly:</b> a student with unpaid fees at the time of a scheduled exeat is automatically routed to take the trip home (the school cannot detain them), with the explicit purpose of fee collection written on the card and into the parent SMS. By the time they return, fees should be cleared. If not, the discipline ladder is informed. This is the kind of cross-module integration that day-school management systems don't need to model — billing and boarding meet at the exeat workflow.</p>
+        <p>One more design choice worth defending: <b>auto-approval for scheduled exeats with clean records.</b> A Form 3 student with no infractions, fees clear, three previous on-time returns this year — that student does not need a Housemaster to manually review their request for Sunday's exeat. The system can approve it, the parent gets the SMS, the card is generated. The Housemaster's eye goes only to the special exeats (5 of 24), the fee-flag exeats (3 of 24), and the discipline-flag exeats (0 of 24). <em>The system reserves the Housemaster's attention for the cases that need it.</em></p>
+        <p>The late-return chain is the part of this surface most likely to be invoked, and it is deliberately gentle at first. A five-minute lateness gets a single SMS to the parent — not the headmaster, not the dean, not yet. Most lateness is traffic. Half an hour late gets the Senior HM involved. An hour late is a formal NOTE on the student's record, which becomes the first rung of the discipline ladder if it recurs. <b>The escalation is designed to give the parent the chance to explain before it becomes a school-side problem.</b> Most lateness is resolved at stage 1; some at stage 2; rarely does it reach stage 3. The system is calibrated for what actually happens, not what theoretically could.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What the exeat card is and isn't</h4>
+      <ul>
+        <li><b>Is</b> · a legal artefact recording transfer of student responsibility from school to parent for a defined window</li>
+        <li><b>Is</b> · a printable PDF the student carries with them home</li>
+        <li><b>Is</b> · a digital record auditable by any of HM, Senior HM, dean, or headmaster</li>
+        <li><b>Isn't</b> · a permission slip · the school does not authorise the trip, the parent does</li>
+        <li><b>Isn't</b> · transferable · one card per exeat per student · refusable at gate if signature missing</li>
+      </ul>
+      <h4 style="margin-top:24px;">Cross-batch link</h4>
+      <ul>
+        <li><b>J. Manu has a scheduled exeat for May 31.</b> Mother's first visit-home request post-bereavement. <em>Auto-approved.</em> The boarding system holds him cleanly while the pastoral system continues to do its work in the background.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — SMS copy library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --bubble: #E5F1FB;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1200px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 680px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+/* Constraints panel */
+.constraints {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 56px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.constraint h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.constraint .v {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+  line-height: 1.05;
+}
+.constraint .v .unit {
+  font-size: 14px;
+  color: var(--navy-3);
+  margin-left: 4px;
+  font-weight: 400;
+}
+.constraint .meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* Group section */
+.group { margin-bottom: 80px; }
+.group-head {
+  display: flex; align-items: baseline; gap: 16px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+.group-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.group-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.group-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+.group-lede {
+  font-size: 14px; color: var(--navy-3);
+  max-width: 580px;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+/* Message card */
+.msg-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.msg-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.msg-head .left .ttl {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.msg-head .left .sub {
+  font-size: 12px;
+  color: var(--navy-3);
+}
+.msg-head .left .sub b { color: var(--navy); font-weight: 600; }
+.msg-meta-row {
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.tag {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.tag.transactional { background: var(--green-bg); color: var(--green); }
+.tag.pedagogical { background: var(--gold-bg); color: var(--gold); }
+.tag.broadcast { background: var(--terra-bg); color: var(--terra); }
+.tag.opt-in { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+
+/* Message body — phone bubble + template + meta */
+.msg-body {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+}
+.bubble-pane {
+  padding: 24px;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.bubble-sender {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin-bottom: 4px;
+  padding-left: 8px;
+}
+.bubble-sender b { color: var(--navy); font-weight: 700; }
+.bubble {
+  background: var(--bubble);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--navy);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  border-bottom-left-radius: 4px;
+  position: relative;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+.bubble.outgoing {
+  background: var(--green-bg);
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 4px;
+  align-self: flex-end;
+  max-width: 90%;
+}
+.bubble-time {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 6px;
+  padding-left: 8px;
+}
+
+.detail-pane {
+  padding: 22px 26px;
+}
+.detail-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.detail-row:last-of-type { border-bottom: none; }
+.detail-row .lbl {
+  color: var(--navy-3);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  text-transform: uppercase;
+  padding-top: 1px;
+}
+.detail-row .val {
+  color: var(--navy-2);
+}
+.detail-row .val .stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-right: 10px;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--navy);
+}
+.detail-row .val .stat .unit {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'Manrope', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.detail-row .val .stat.danger { color: var(--terra); }
+.detail-row .val .stat.warn { color: var(--gold); }
+.detail-row .val .stat.ok { color: var(--green); }
+
+.var-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  color: var(--gold);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  margin: 2px 4px 2px 0;
+}
+
+.template-block {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--navy);
+  color: var(--gold-soft);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.template-block .var-mono {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.rationale-block {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-left: 3px solid var(--gold);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.6;
+  font-style: italic;
+}
+.rationale-block b { color: var(--navy); font-style: normal; font-weight: 600; }
+
+/* Receivers row */
+.receivers {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.recv-chip {
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: 100px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.recv-chip.parent { background: var(--green-bg); border-color: rgba(47,107,71,0.2); color: var(--green); }
+.recv-chip.teacher { background: var(--gold-bg); border-color: var(--gold-soft); color: var(--gold); }
+.recv-chip.admin { background: rgba(26,43,71,0.06); border-color: rgba(26,43,71,0.2); color: var(--navy); }
+.recv-chip.student { background: rgba(184,74,57,0.08); border-color: rgba(184,74,57,0.2); color: var(--terra); }
+
+/* Section divider with intro */
+.principles {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 32px;
+  margin-bottom: 56px;
+}
+.principles h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  margin-bottom: 16px;
+}
+.principles h3 em { font-style: italic; color: var(--gold); }
+.principles ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: principle;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 32px;
+}
+.principles li {
+  counter-increment: principle;
+  padding: 10px 0 10px 32px;
+  position: relative;
+  font-size: 13px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.principles li::before {
+  content: counter(principle, lower-roman);
+  position: absolute;
+  left: 0; top: 10px;
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+  font-size: 13px;
+  width: 22px;
+}
+.principles li b { color: var(--navy); font-weight: 600; }
+
+@media (max-width: 1100px) {
+  .constraints { grid-template-columns: 1fr 1fr; }
+  .msg-body { grid-template-columns: 1fr; }
+  .bubble-pane { border-right: none; border-bottom: 1px solid var(--border); }
+  .principles ol { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · SMS copy library</div>
+  <h1 class="display">Every <em>message</em>, written tight</h1>
+  <div class="gold-rule"></div>
+  <p>SMS is the most expensive channel in the product and the most critical for reaching parents on feature phones. Every message in this library has been written to land in 1 SMS segment (160 characters) wherever possible, identify the school by name, give the parent a clear next step, and treat their attention as borrowed.</p>
+</header>
+
+<!-- Constraints -->
+<section class="constraints">
+  <div class="constraint">
+    <h4>Standard segment</h4>
+    <div class="v">160<span class="unit">chars</span></div>
+    <div class="meta">GSM-7 alphabet. Going over splits to 2 segments and doubles cost.</div>
+  </div>
+  <div class="constraint">
+    <h4>Per-message cost</h4>
+    <div class="v">~GHS 0.05<span class="unit">per send</span></div>
+    <div class="meta">Hubtel / mNotify pricing band, single recipient. Rate negotiable at scale.</div>
+  </div>
+  <div class="constraint">
+    <h4>School broadcast</h4>
+    <div class="v">~GHS 30.00<span class="unit">per send</span></div>
+    <div class="meta">School of 400 students × 1.5 guardians average = 600 recipients per blast.</div>
+  </div>
+  <div class="constraint">
+    <h4>Sender ID</h4>
+    <div class="v">CTK-JHS</div>
+    <div class="meta">Up to 11 chars, registered with the gateway. Built from school short-name.</div>
+  </div>
+</section>
+
+<!-- Principles -->
+<section class="principles">
+  <h3>The <em>seven principles</em> behind every message</h3>
+  <ol>
+    <li><b>Identify the school in the body</b>, not just the sender ID. Parents receive SMS from many sources; they need to know in the first three words.</li>
+    <li><b>Land the action in the first 50 characters.</b> Many feature phones truncate previews; the gist must arrive before the cut.</li>
+    <li><b>One SMS, one ask.</b> Mixing "fees due" with "PTA Saturday" creates a message that does neither well.</li>
+    <li><b>Use plain ASCII.</b> No emoji, no curly quotes, no special bullets. Some feature phones render them as garbage.</li>
+    <li><b>Always include a contact path.</b> A short URL, a callable number, or a person to ask. Never end with "contact the school" alone.</li>
+    <li><b>Refer to the student by first name.</b> "Akosua's fees" is warmer and more legible than "your child's fees" or "the student's fees".</li>
+    <li><b>Match urgency to channel.</b> An achievement endorsement doesn't need an SMS — that's an in-app notification. Reserve SMS for things that actually need a phone to vibrate.</li>
+  </ol>
+</section>
+
+<!-- ============ GROUP A: TRANSACTIONAL ============ -->
+<section class="group">
+  <div class="group-head">
+    <div class="group-num display">A</div>
+    <div class="group-title display">Transactional</div>
+    <div class="group-meta">System-triggered · individual</div>
+  </div>
+  <div class="group-lede">Sent automatically by the system in response to a specific user action. Recipient expects them, often within seconds. These prove that the system did what it said it would.</div>
+
+  <!-- A1: Parent invite -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">A1 · Parent invite</div>
+        <div class="sub">Sent when admin adds a guardian during student creation or import. Contains the magic link for first sign-up.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag transactional">Transactional</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 9:41 AM</div>
+        <div class="bubble">Akosua's school has added you as her guardian on Omnischools. Tap to confirm and see her grades, fees &amp; school updates: omnischools.gh/i/9k2jhQ
+- Christ the King JHS</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat warn">159<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">New parent</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{student_first}</span><span class="var-chip">{invite_token}</span><span class="var-chip">{school_short}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">{student_first}'s school has added you as her guardian on Omnischools. Tap to confirm and see her grades, fees &amp; school updates: omnischools.gh/i/{invite_token}
+- {school_short}</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">Leads with student's first name + "her/his school" — recognition before brand. Closes with school name in plain text because some feature phones don't render the sender ID prominently. Pronoun (her/his) varies by student record. <b>Do not use "your child"</b> — feels generic and sometimes is wrong (e.g. grandparent receiver).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A2: Teacher invite -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">A2 · Teacher invite</div>
+        <div class="sub">Sent when admin adds a teacher who provided a phone number. Email invite (richer) is the primary path; SMS is the fallback when email isn't available or hasn't been opened.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag transactional">Transactional</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 11:08 AM</div>
+        <div class="bubble">Mr. Mensah, Florence Addo at Christ the King JHS has invited you as a teacher on Omnischools. Tap to set your password: omnischools.gh/t/m4n2pX</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">137<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip teacher">New teacher</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{teacher_title_last}</span><span class="var-chip">{admin_full}</span><span class="var-chip">{school_full}</span><span class="var-chip">{invite_token}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">{teacher_title_last}, {admin_full} at {school_full} has invited you as a teacher on Omnischools. Tap to set your password: omnischools.gh/t/{invite_token}</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">Names the inviting admin (social proof). Uses the teacher's title + last name for professional register. Token URL is shorter (`/t/`) than parent invite to save characters since the school name is longer here.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A3: OTP / 2FA -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">A3 · One-time password</div>
+        <div class="sub">Sent when a user requests OTP — phone-based login, password reset, or sensitive action confirmation. Time-bound for security.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag transactional">Transactional</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 9:42 AM</div>
+        <div class="bubble">Your Omnischools OTP is 472918. It expires in 10 minutes. Don't share this OTP with anyone.</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">88<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">Any user</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{otp_code}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">Your Omnischools OTP is {otp_code}. It expires in 10 minutes. Don't share this OTP with anyone.</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">Deliberately generic — no school name, no user name. OTP messages are autofilled by phones; fewer variables = fewer autofill failures. <b>Says "OTP" explicitly, not "code"</b> — most Ghanaian banking and telco SMS use "OTP" as the term, so users recognise it instantly and don't hesitate. The "don't share" line is the standard security anti-phishing nudge required by most regulators.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A4: Payment confirmation -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">A4 · Payment confirmation</div>
+        <div class="sub">Sent to guardian when admin records a payment OR when an aggregator webhook confirms an automated payment. Crucial for trust.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag transactional">Transactional</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 10:24 AM</div>
+        <div class="bubble">Thank you. We received GHS 440.00 for Akosua. Term 1 fees are now fully paid. Receipt: omnischools.gh/r/RCT2026-0541
+- Christ the King JHS</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">135<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">Guardian</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{amount}</span><span class="var-chip">{student_first}</span><span class="var-chip">{status_line}</span><span class="var-chip">{receipt_token}</span><span class="var-chip">{school_short}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">Thank you. We received GHS {amount} for {student_first}. {status_line}. Receipt: omnischools.gh/r/{receipt_token}
+- {school_short}</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Status variants</div>
+          <div class="val">
+            <div class="rationale-block"><b>Fully paid:</b> "Term 1 fees are now fully paid"<br><b>Partial:</b> "Balance is GHS 100.00"<br><b>Multi-invoice:</b> "Term 3 2025 and Term 1 2026 are now both settled"<br>The status_line is computed by the system based on what the payment cleared.</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">Uses "GHS" — the standard convention across Omnischools's financial channels, and reliably rendered on all feature phones. "Thank you" first — this is a trust message, not a transaction log. Receipt link lets parent open the PDF in browser without needing the app. <b>This message has the highest priority delivery</b> — payment without confirmation generates support calls.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A5: Invoice issued -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">A5 · Invoice issued</div>
+        <div class="sub">Sent when admin clicks "Issue Term invoices" — every guardian gets one. The trigger that often makes this the first Omnischools message a parent receives after the invite.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag transactional">Transactional</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 7:00 AM</div>
+        <div class="bubble">Akosua's Term 1 fees of GHS 320.00 are due Sep 30. Pay via MoMo from the Omnischools app or visit omnischools.gh/p/inv0184
+- Christ the King JHS</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">138<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">Guardian</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{student_first}</span><span class="var-chip">{term_label}</span><span class="var-chip">{amount}</span><span class="var-chip">{due_date}</span><span class="var-chip">{invoice_token}</span><span class="var-chip">{school_short}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">{student_first}'s {term_label} fees of GHS {amount} are due {due_date}. Pay via MoMo from the Omnischools app or visit omnischools.gh/p/{invoice_token}
+- {school_short}</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">"Pay via MoMo" first because that's how 90%+ of payments will land. The web URL is the fallback for parents who don't have the app. Due date in short format ("Sep 30") not ISO format. <b>Issuing 400 of these costs the school ~GHS 20.00</b> — schools should know before clicking.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GROUP B: PEDAGOGICAL ============ -->
+<section class="group">
+  <div class="group-head">
+    <div class="group-num display">B</div>
+    <div class="group-title display">Pedagogical</div>
+    <div class="group-meta">School-triggered · individual</div>
+  </div>
+  <div class="group-lede">Sent at the school's discretion to keep guardians engaged in their child's progress. These are the messages most schools accidentally over-send. Default off; opt-in by category.</div>
+
+  <!-- B1: Fee reminder -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">B1 · Fee reminder</div>
+        <div class="sub">Sent automatically 7 days before due date and weekly after if unpaid. Admin can disable per school or per student.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag pedagogical">Pedagogical</span>
+        <span class="tag opt-in">Auto · weekly</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 9:00 AM</div>
+        <div class="bubble">Reminder: Akosua's Term 1 fees of GHS 320.00 are due in 5 days. Pay anytime via MoMo: omnischools.gh/p/inv0184
+- Christ the King JHS</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">129<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">Guardian · unpaid invoices only</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{student_first}</span><span class="var-chip">{term_label}</span><span class="var-chip">{amount_due}</span><span class="var-chip">{days_remaining}</span><span class="var-chip">{invoice_token}</span><span class="var-chip">{school_short}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">Reminder: {student_first}'s {term_label} fees of GHS {amount_due} are due in {days_remaining} days. Pay anytime via MoMo: omnischools.gh/p/{invoice_token}
+- {school_short}</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block"><b>amount_due is the outstanding balance, not the original invoice total.</b> A parent who paid half should see "GHS 160.00" in the reminder, not "GHS 320.00" again. After due date passes, the message changes to overdue variant — see B1b.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B1b: Overdue notice -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">B1b · Overdue notice</div>
+        <div class="sub">Variant of B1 once due date has passed. Tone shifts from "reminder" to slightly firmer "outstanding."</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag pedagogical">Pedagogical</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 9:00 AM</div>
+        <div class="bubble">Akosua's Term 1 fees (GHS 320.00) are 12 days overdue. Settle when you can: omnischools.gh/p/inv0184. Call the office if you need help.
+- Christ the King JHS</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat warn">154<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">Guardian · overdue invoices</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{student_first}</span><span class="var-chip">{term_label}</span><span class="var-chip">{amount_due}</span><span class="var-chip">{days_overdue}</span><span class="var-chip">{invoice_token}</span><span class="var-chip">{school_short}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">{student_first}'s {term_label} fees (GHS {amount_due}) are {days_overdue} days overdue. Settle when you can: omnischools.gh/p/{invoice_token}. Call the office if you need help.
+- {school_short}</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block"><b>"Call the office if you need help"</b> is critical for tone — opens a conversation rather than sounding accusatory. Many parents fall behind for real reasons. The school's compassion in the copy is part of the product. <b>Right at 160 chars.</b> Watch parameters: a 4-digit overdue amount or a longer school name will tip into 2 segments.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B2: Grade posted (digest) -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">B2 · Weekly grade digest</div>
+        <div class="sub">Sent once a week summarising newly-posted grades for a student. <b>Never one SMS per grade</b> — that's spam and burns budget.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag pedagogical">Pedagogical</span>
+        <span class="tag opt-in">Opt-in · weekly</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 5:00 PM</div>
+        <div class="bubble">This week 3 new grades were posted for Akosua. Term avg: 82% (up 4). See details: omnischools.gh/g/akosua
+- Christ the King JHS</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">124<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">Guardian · opted-in</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{new_grade_count}</span><span class="var-chip">{student_first}</span><span class="var-chip">{term_avg}</span><span class="var-chip">{trend_signed}</span><span class="var-chip">{student_token}</span><span class="var-chip">{school_short}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">This week {new_grade_count} new grades were posted for {student_first}. Term avg: {term_avg}% (up {trend_signed}). See details: omnischools.gh/g/{student_token}
+- {school_short}</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Trend variants</div>
+          <div class="val">
+            <div class="rationale-block"><b>up X:</b> "Term avg: 82% (up 4)"<br><b>down X:</b> "Term avg: 76% (down 3)"<br><b>flat:</b> "Term avg: 78%" (no parens)<br><b>first grades:</b> "Term avg: 82% (first this term)"<br>System computes from grade history.</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">Digest model is critical for cost — a school with 400 students posting an average of 8 grades per week per student would generate 3200 SMS without batching. The digest collapses this to 400 (one per family) per week. <b>Default off in production</b>; school enables in settings.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B3: Achievement endorsed -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">B3 · Achievement endorsed (parent's post)</div>
+        <div class="sub">Sent to a parent when an admin endorses their pending achievement post. Closes the loop on the request.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag pedagogical">Pedagogical</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 2:14 PM</div>
+        <div class="bubble">Your post about Esi's Grade 8 piano distinction was endorsed by Florence Addo. It's now visible to her class. View: omnischools.gh/a/87j2
+- Christ the King JHS</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat warn">156<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">Posting parent</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{post_summary}</span><span class="var-chip">{endorser_full}</span><span class="var-chip">{scope_label}</span><span class="var-chip">{post_token}</span><span class="var-chip">{school_short}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">Your post about {post_summary} was endorsed by {endorser_full}. It's now visible to {scope_label}. View: omnischools.gh/a/{post_token}
+- {school_short}</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">post_summary is a system-generated short phrase from the headline (≤30 chars), e.g. "Esi's Grade 8 piano distinction." Names the human endorser, not "the school" — feels personal. <b>Only sent if parent has SMS notifications on for their own posts</b> — default off. Most parents will see this in-app first.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B4: Pending endorsement (notify endorser) -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">B4 · Pending endorsement (to admin/teacher)</div>
+        <div class="sub">Sent to admins or relevant teachers when a parent submits a class- or school-scoped post that needs endorsement.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag pedagogical">Pedagogical</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 11:42 AM</div>
+        <div class="bubble">Mr. Odoom posted an achievement about Esi (Grade 8 piano) and asked you to endorse for class. Review: omnischools.gh/a/87j2
+- Omnischools</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">131<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip admin">Admin</span><span class="recv-chip teacher">Form teacher</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{poster_title_last}</span><span class="var-chip">{student_first}</span><span class="var-chip">{post_summary}</span><span class="var-chip">{requested_scope}</span><span class="var-chip">{post_token}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">{poster_title_last} posted an achievement about {student_first} ({post_summary}) and asked you to endorse for {requested_scope}. Review: omnischools.gh/a/{post_token}
+- Omnischools</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">Signed "Omnischools" not the school short-name because this is a system message about workflow, not a school communication. Prefers in-app notification; SMS only fires if endorser hasn't logged in within 24 hours of the post. <b>Avoids the cost of SMS-ing every endorser for every parent post.</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B5: Assignment due tomorrow -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">B5 · Assignment due tomorrow (digest)</div>
+        <div class="sub">Sent the evening before to parents whose child has assignments due tomorrow that haven't been submitted. One SMS per family per evening.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag pedagogical">Pedagogical</span>
+        <span class="tag opt-in">Opt-in</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 7:00 PM</div>
+        <div class="bubble">Akosua has 2 assignments due tomorrow that aren't submitted yet. See list: omnischools.gh/h/akosua
+- Christ the King JHS</div>
+        <div class="bubble-time">Delivered</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">117<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">Guardian · opted-in</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{student_first}</span><span class="var-chip">{count}</span><span class="var-chip">{student_token}</span><span class="var-chip">{school_short}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">{student_first} has {count} assignments due tomorrow that aren't submitted yet. See list: omnischools.gh/h/{student_token}
+- {school_short}</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variants</div>
+          <div class="val">
+            <div class="rationale-block"><b>1 assignment:</b> "Akosua has an assignment due tomorrow that isn't submitted yet"<br><b>2+:</b> uses count<br><b>All submitted:</b> no SMS sent — silence is the message</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block"><b>Default off, opt-in only.</b> Some parents want this hand-on-shoulder; some find it intrusive. Surfacing the choice in parent settings respects both.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GROUP C: BROADCAST ============ -->
+<section class="group">
+  <div class="group-head">
+    <div class="group-num display">C</div>
+    <div class="group-title display">Broadcast</div>
+    <div class="group-meta">School-triggered · mass</div>
+  </div>
+  <div class="group-lede">Sent to many or all guardians at once. Highest cost per send and highest scrutiny — the messages most likely to draw complaints if they feel like spam. The product surface should make schools think twice before sending these.</div>
+
+  <!-- C1: School-wide announcement -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">C1 · School-wide announcement</div>
+        <div class="sub">Admin-composed announcement broadcast to all guardians. The product caps message length and shows estimated cost before sending.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag broadcast">Broadcast</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 4:30 PM</div>
+        <div class="bubble">PTA meeting moved to Saturday Oct 5, 9 AM in the assembly hall. Please confirm attendance: omnischools.gh/n/pta-oct5
+- Christ the King JHS</div>
+        <div class="bubble-time">Delivered to 600</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">135<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">All guardians (~600)</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Cost</div>
+          <div class="val"><span class="stat warn">~GHS 30.00<span class="unit">per send</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Composition</div>
+          <div class="val">
+            <div class="rationale-block"><b>Free-form admin text</b> with appended school name footer. Admin types the body into the announcement composer; system enforces 140 char body limit (leaves room for "- {school_short}" footer to keep total under 160). Counter and cost estimate visible while typing.</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">Schools with announcement budget concerns can disable SMS broadcast and rely on in-app + email only. <b>Confirmation modal before send</b> shows: recipient count, estimated cost, character count. Admin must explicitly confirm. The product makes this slightly inconvenient by design.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C2: Class announcement -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">C2 · Class announcement (teacher)</div>
+        <div class="sub">Teacher posts to a specific class — only that class's parents get the SMS. Tighter scope, lower cost.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag broadcast">Broadcast</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 2:15 PM</div>
+        <div class="bubble">JHS 2A: please bring lab coats Thursday for our integrated science practical. No coat means no participation.
+- Mr. Mensah, CTK</div>
+        <div class="bubble-time">Delivered to 38</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">127<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">Class parents (~38)</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Cost</div>
+          <div class="val"><span class="stat ok">~GHS 2.00<span class="unit">per send</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Composition</div>
+          <div class="val">
+            <div class="rationale-block">Class label first ("JHS 2A:") so parents who get messages from multiple class teachers can pre-sort. Footer is teacher's title+last + school short — different from school-wide which is school only. Identifies the human author.</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">Class teachers can broadcast to their own classes without admin approval. Admin can audit all class broadcasts in a log. <b>Some schools turn this off</b> and require all SMS to flow through admin — depends on school culture.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C3: Emergency notice -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">C3 · Emergency notice</div>
+        <div class="sub">Reserved for genuine emergencies — early closure, weather, security incident. Bypasses normal opt-out preferences.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag broadcast">Broadcast</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 11:22 AM</div>
+        <div class="bubble">URGENT - Christ the King JHS will close at 12 noon today due to flooding. Please collect children by 12:30 PM. Stay safe.</div>
+        <div class="bubble-time">Delivered to 600</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">121<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">All guardians</span><span class="recv-chip teacher">All staff</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Behaviour</div>
+          <div class="val">
+            <div class="rationale-block"><b>Bypasses SMS opt-outs.</b> A parent who turned off all notifications still receives this — by signing up, they consented to emergency notices. The "URGENT - " prefix signals urgency in the preview. No URL — emergencies should be self-contained.</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">Triggering an emergency notice requires <b>two admin approvals</b> for schools larger than 200 students — prevents accidental fires. The compose UI is visually distinct (red treatment) so admins know they're in the high-stakes flow.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C4: Term start -->
+  <div class="msg-card">
+    <div class="msg-head">
+      <div class="left">
+        <div class="ttl">C4 · Term start reminder</div>
+        <div class="sub">Sent automatically the day before a new term begins. Useful for families returning from vacation; reduces "what time does school start?" calls.</div>
+      </div>
+      <div class="msg-meta-row">
+        <span class="tag broadcast">Broadcast</span>
+        <span class="tag opt-in">Auto</span>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="bubble-pane">
+        <div class="bubble-sender">From <b>CTK-JHS</b> · 6:00 PM</div>
+        <div class="bubble">Term 2 begins tomorrow Jan 12. School opens 7:30 AM. See term calendar: omnischools.gh/c/ctk
+- Christ the King JHS</div>
+        <div class="bubble-time">Delivered to 600</div>
+      </div>
+      <div class="detail-pane">
+        <div class="detail-row">
+          <div class="lbl">Length</div>
+          <div class="val"><span class="stat ok">111<span class="unit">chars</span></span><span class="stat">1<span class="unit">segment</span></span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Recipients</div>
+          <div class="val"><div class="receivers"><span class="recv-chip parent">All guardians</span><span class="recv-chip student">All students</span></div></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Variables</div>
+          <div class="val"><span class="var-chip">{term_label}</span><span class="var-chip">{term_start_short}</span><span class="var-chip">{open_time}</span><span class="var-chip">{school_token}</span><span class="var-chip">{school_short}</span></div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Template</div>
+          <div class="val">
+            <div class="template-block">{term_label} begins tomorrow {term_start_short}. School opens {open_time}. See term calendar: omnischools.gh/c/{school_token}
+- {school_short}</div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="lbl">Notes</div>
+          <div class="val">
+            <div class="rationale-block">Auto-fires from the school year configuration set in the onboarding wizard. Admin can disable per-school or per-term. Sent to students too (not just parents) because in JHS some students manage their own time.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

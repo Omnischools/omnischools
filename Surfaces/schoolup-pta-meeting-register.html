@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — PTA meeting & attendance register</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Lifecycle pills */
+.lifecycle-bar { background:var(--bg); padding:18px 36px; border-bottom:1px solid var(--border); display:flex; gap:6px; overflow-x:auto; }
+.lc-pill { display:flex; align-items:center; gap:10px; padding:10px 16px; background:var(--surface); border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:600; flex-shrink:0; }
+.lc-pill .num { width:22px; height:22px; border-radius:50%; background:var(--bg); color:var(--navy-3); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.lc-pill.done { background:var(--green-bg); border-color:var(--green); color:var(--green); }
+.lc-pill.done .num { background:var(--green); color:var(--bg); }
+.lc-pill.active { background:var(--navy); border-color:var(--navy); color:var(--bg); }
+.lc-pill.active .num { background:var(--gold); color:var(--navy); }
+.lc-pill .lab-detail { font-size:9px; font-weight:600; letter-spacing:0.04em; opacity:0.7; margin-top:1px; display:block; }
+
+/* Meeting context bar */
+.context-bar { padding:20px 36px; background:var(--surface); border-bottom:1px solid var(--border); display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; }
+.context-bar .icon-wrap { width:64px; height:64px; border-radius:12px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:24px; }
+.context-bar .icon-wrap.form { background:var(--navy); }
+.context-bar .icon-wrap.house { background:var(--gold); color:var(--navy); }
+.context-bar .icon-wrap.general { background:var(--green); }
+.context-bar .icon-wrap.emergency { background:var(--terra); }
+.context-bar .meta-cluster .crumb { font-size:10px; color:var(--navy-3); letter-spacing:0.12em; text-transform:uppercase; font-weight:700; margin-bottom:5px; }
+.context-bar .meta-cluster h2 { font-family:'Fraunces',serif; font-size:26px; font-weight:500; letter-spacing:-0.015em; margin-bottom:5px; line-height:1.15; }
+.context-bar .meta-cluster h2 em { font-style:italic; color:var(--gold); }
+.context-bar .meta-cluster .submeta { font-size:12px; color:var(--navy-2); display:flex; gap:14px; flex-wrap:wrap; }
+.context-bar .meta-cluster .submeta span { display:inline-flex; align-items:center; gap:6px; }
+.context-bar .meta-cluster .submeta span b { color:var(--navy); font-weight:700; }
+.context-bar .meta-cluster .submeta .sep { color:var(--navy-3); }
+.context-bar .status-pill { padding:8px 16px; background:var(--gold-bg); color:var(--gold); border:1px solid var(--gold); border-radius:100px; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; display:flex; align-items:center; gap:7px; }
+.context-bar .status-pill .pulse { width:7px; height:7px; border-radius:50%; background:var(--gold); }
+
+/* Dual register layout */
+.register-shell { padding:0; display:grid; grid-template-columns:1fr 1fr; gap:0; }
+.register-col { padding:24px 32px 32px; border-right:1px solid var(--border); }
+.register-col:last-child { border-right:none; }
+.register-col.teachers { background:var(--bg); }
+.register-col.parents { background:var(--surface); }
+.reg-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.reg-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; margin-bottom:4px; }
+.reg-head.teachers .eb { color:var(--navy); }
+.reg-head.parents .eb { color:var(--gold); }
+.reg-head h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.005em; }
+.reg-head h3 em { font-style:italic; }
+.reg-head.teachers h3 em { color:var(--navy-3); }
+.reg-head.parents h3 em { color:var(--gold); }
+.reg-head .count-stack { text-align:right; }
+.reg-head .count-stack .big { font-family:'Fraunces',serif; font-size:24px; font-weight:600; }
+.reg-head .count-stack .big em { font-style:italic; color:var(--gold); }
+.reg-head .count-stack .small { font-size:10px; color:var(--navy-3); letter-spacing:0.08em; text-transform:uppercase; font-weight:700; margin-top:2px; }
+
+.attendee-row { display:grid; grid-template-columns:36px 1fr 110px; gap:12px; padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; align-items:center; }
+.register-col.teachers .attendee-row { background:var(--surface); }
+.attendee-row.present { background:var(--green-bg); border-color:var(--green); }
+.attendee-row.absent { background:var(--terra-bg); border-color:var(--terra); }
+.attendee-row.late { background:var(--warn-bg); border-color:var(--warn); }
+.attendee-row.unmarked { background:var(--surface); }
+.attendee-row .av { width:36px; height:36px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; }
+.attendee-row .av.t { background:var(--navy); color:var(--gold); }
+.attendee-row .info .name { font-size:13px; font-weight:600; color:var(--navy); }
+.attendee-row .info .ctx { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.attendee-row .info .ctx b { color:var(--navy-2); font-weight:600; }
+.attendee-row .info .ctx .role-tag-mini { display:inline-block; padding:1px 6px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; margin-left:5px; background:var(--gold); color:var(--navy); vertical-align:middle; }
+.attendee-row .info .ctx .role-tag-mini.exofficio { background:var(--green); color:var(--bg); }
+.attendee-row .status-cluster { display:flex; gap:4px; }
+.attendee-row .status-btn { width:28px; height:28px; border-radius:6px; background:var(--surface); border:1px solid var(--border-2); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:var(--navy-3); }
+.attendee-row.present .status-btn.p { background:var(--green); color:var(--bg); border-color:var(--green); }
+.attendee-row.absent .status-btn.a { background:var(--terra); color:var(--bg); border-color:var(--terra); }
+.attendee-row.late .status-btn.l { background:var(--warn); color:var(--bg); border-color:var(--warn); }
+
+.reg-quick-actions { display:flex; gap:6px; padding:10px 14px; background:var(--gold-bg); border:1px dashed var(--gold-soft); border-radius:8px; margin-bottom:14px; font-size:11px; color:var(--navy-2); align-items:center; }
+.reg-quick-actions .lab { font-weight:700; color:var(--navy); }
+.reg-quick-actions button { padding:5px 11px; background:var(--surface); border:1px solid var(--gold-soft); border-radius:100px; font-size:10px; font-weight:600; cursor:pointer; color:var(--navy); }
+
+.foot-summary { padding:18px 36px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:space-between; }
+.foot-summary .summary-stack { display:flex; gap:36px; }
+.foot-summary .stat-item .num { font-family:'Fraunces',serif; font-size:24px; font-weight:600; }
+.foot-summary .stat-item .num em { font-style:italic; color:var(--gold); }
+.foot-summary .stat-item .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(250,247,242,0.7); font-weight:700; margin-top:2px; }
+.foot-summary .stat-item .lab b { color:var(--gold); font-weight:700; }
+.foot-summary .factions { display:flex; gap:10px; }
+.foot-summary .factions button { padding:11px 18px; border-radius:7px; font-size:12px; font-weight:700; cursor:pointer; border:none; }
+.foot-summary .factions button.secondary { background:rgba(255,255,255,0.08); color:var(--bg); border:1px solid rgba(255,255,255,0.2); }
+.foot-summary .factions button.primary { background:var(--gold); color:var(--navy); }
+
+/* Schedule state (state 1) */
+.schedule-shell { padding:32px 36px; }
+.schedule-grid { display:grid; grid-template-columns:1fr 320px; gap:32px; align-items:start; }
+.sched-form { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 28px; }
+.sched-form h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:500; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.sched-form h3 em { font-style:italic; color:var(--gold); }
+.sched-field { margin-bottom:16px; }
+.sched-field .fl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.sched-field input, .sched-field select, .sched-field textarea { width:100%; padding:10px 13px; border:1px solid var(--border); border-radius:7px; font-family:inherit; font-size:13px; background:var(--bg); }
+.sched-field textarea { min-height:70px; resize:vertical; }
+.sched-field .hint { font-size:11px; color:var(--navy-3); margin-top:5px; font-style:italic; }
+.sched-field .hint b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.sched-field-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+.expected-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:12px; padding:20px 22px; }
+.expected-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.expected-card h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.005em; margin-bottom:14px; }
+.expected-card h4 em { font-style:italic; color:var(--gold); }
+.expected-section { padding:12px 0; border-bottom:1px solid var(--gold-soft); }
+.expected-section:last-child { border-bottom:none; }
+.expected-section .row-e { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+.expected-section .row-e .lab { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.expected-section .row-e .num { font-family:'Fraunces',serif; font-size:18px; font-weight:600; color:var(--navy); }
+.expected-section .row-e .num em { font-style:italic; color:var(--gold); }
+.expected-section .detail { font-size:11px; color:var(--navy-2); line-height:1.4; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Forms/PTA batch · 03 of 06</div>
+  <span class="mvp-tag">SHS · PTA governance · daily use</span>
+  <span class="related-tag">Multi-state · schedule → register → live</span>
+  <h1 class="display">Two registers, <em>one meeting</em></h1>
+  <div class="gold-rule"></div>
+  <p>Mr Mensah is hosting the Form 2 General Arts A PTA meeting this Saturday. He needs to schedule it, send the SMS invites, generate the attendance register, and on the day mark off who actually showed up. The meeting needs <b>two parallel registers — one for teachers, one for parents</b> — because GES expects both. This is the highest-frequency PTA surface in Omnischools: Form Masters use it 3-4 times per year per class, House Masters use it 1-2 times per year per House, the General PTA Secretary uses it once a term plus AGM. <em>One surface, four lifecycle states, two registers running in parallel.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">State 1 · scheduling a Form PTA meeting</div>
+    <div class="section-meta">Before the meeting · 2 weeks out typically</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / pta / meeting / new</div>
+      </div>
+
+      <div class="lifecycle-bar">
+        <div class="lc-pill active">
+          <div class="num">1</div>
+          <div>Schedule<span class="lab-detail">2 weeks out</span></div>
+        </div>
+        <div class="lc-pill">
+          <div class="num">2</div>
+          <div>Generate register<span class="lab-detail">day before</span></div>
+        </div>
+        <div class="lc-pill">
+          <div class="num">3</div>
+          <div>Live attendance<span class="lab-detail">on the day</span></div>
+        </div>
+        <div class="lc-pill">
+          <div class="num">4</div>
+          <div>Close → minutes<span class="lab-detail">after meeting</span></div>
+        </div>
+      </div>
+
+      <div class="context-bar">
+        <div class="icon-wrap form">FP</div>
+        <div class="meta-cluster">
+          <div class="crumb">PTA · Meetings · New</div>
+          <h2 class="display">New <em>Form PTA meeting</em></h2>
+          <div class="submeta">
+            <span>Form 2 General Arts A <b>· 32 students</b></span>
+            <span class="sep">·</span>
+            <span>Form Master <b>Mr A. Mensah</b></span>
+            <span class="sep">·</span>
+            <span>Last meeting <b>14 weeks ago</b></span>
+          </div>
+        </div>
+        <div class="status-pill">
+          <div class="pulse"></div>
+          DRAFT
+        </div>
+      </div>
+
+      <div class="schedule-shell">
+        <div class="schedule-grid">
+          <div class="sched-form">
+            <h3 class="display">Meeting <em>details</em></h3>
+
+            <div class="sched-field">
+              <div class="fl">Meeting type</div>
+              <select>
+                <option>Regular Form PTA (default for Form Master)</option>
+                <option>End-of-term parent meeting</option>
+                <option>Pre-WASSCE briefing (Form 3 only)</option>
+                <option>Welcome meeting (Form 1, beginning of year)</option>
+              </select>
+              <div class="hint">Affects suggested agenda template · all types use the same attendance register</div>
+            </div>
+
+            <div class="sched-field-row">
+              <div class="sched-field">
+                <div class="fl">Date</div>
+                <input type="text" value="Saturday, 30 May 2026">
+              </div>
+              <div class="sched-field">
+                <div class="fl">Time</div>
+                <input type="text" value="10:00 AM – 12:00 PM">
+              </div>
+            </div>
+
+            <div class="sched-field">
+              <div class="fl">Location</div>
+              <select>
+                <option>Form 2 GA A classroom (block C, room 4) — default</option>
+                <option>Main hall</option>
+                <option>School library</option>
+                <option>Off-site (specify)</option>
+              </select>
+            </div>
+
+            <div class="sched-field">
+              <div class="fl">Agenda</div>
+              <textarea>1. Welcome and prayer (Form Master)
+2. Reading of last meeting minutes (Secretary)
+3. End-of-term-2 academic performance review
+4. Class trip to Cape Coast Castle — proposal &amp; funding
+5. Class Prefect leaving gift discussion
+6. AOB
+7. Closing prayer</textarea>
+              <div class="hint">Sent to parents 7 days before · revisions allowed up to 24h before meeting</div>
+            </div>
+
+            <div class="sched-field">
+              <div class="fl">SMS invite preview</div>
+              <textarea style="background:var(--gold-bg); border-color:var(--gold-soft); font-style:italic; color:var(--navy-2);">CTKSchool: Form 2 GA A PTA meeting Sat 30 May 10AM-12PM, classroom C4. Agenda: term 2 results, Cape Coast trip, prefect gift. RSVP: text Y or N. — Mr Mensah, Form Master.</textarea>
+              <div class="hint"><b>156 chars · single SMS</b> · sent to 32 parents · RSVPs feed expected-attendance count</div>
+            </div>
+
+            <div class="sched-field">
+              <div class="fl">Teachers to invite (beyond Form Master)</div>
+              <input type="text" value="Mrs G. Asante (English) · Mr P. Tetteh (Literature)">
+              <div class="hint">Subject teachers can be invited to discuss specific issues · optional</div>
+            </div>
+
+            <div class="sched-field">
+              <div class="fl">Dues collection at this meeting?</div>
+              <select>
+                <option>Yes — collect outstanding Form PTA dues</option>
+                <option>No — discussion only</option>
+              </select>
+              <div class="hint">If yes, the Treasurer's collection report opens alongside attendance · <b>currently 8 students with outstanding dues</b></div>
+            </div>
+          </div>
+
+          <div class="expected-card">
+            <div class="eb">Auto-derived from your PTA structure</div>
+            <h4 class="display">Expected <em>attendees</em></h4>
+
+            <div class="expected-section">
+              <div class="row-e">
+                <div class="lab">Parents (Form 2 GA A)</div>
+                <div class="num display"><em>32</em></div>
+              </div>
+              <div class="detail">One parent per student · membership basis configured in PTA structure · auto-imports from student records</div>
+            </div>
+
+            <div class="expected-section">
+              <div class="row-e">
+                <div class="lab">Teachers</div>
+                <div class="num display"><em>3</em></div>
+              </div>
+              <div class="detail">Form Master (Mr Mensah) + 2 subject teachers you've invited</div>
+            </div>
+
+            <div class="expected-section">
+              <div class="row-e">
+                <div class="lab">Form PTA officers</div>
+                <div class="num display"><em>4</em></div>
+              </div>
+              <div class="detail">Chair, Vice, Treasurer (parents) + Form Master as Secretary · already counted above</div>
+            </div>
+
+            <div class="expected-section" style="background:var(--surface); margin:14px -22px -20px; padding:14px 22px 20px; border-radius:0 0 12px 12px; border-bottom:none;">
+              <div class="row-e">
+                <div class="lab" style="color:var(--gold);">Quorum needed</div>
+                <div class="num display"><em>17</em> parents</div>
+              </div>
+              <div class="detail" style="color:var(--navy-2);"><b>50% of parents + Form Master</b> · per your PTA structure config · binding decisions require quorum</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot-summary">
+        <div class="summary-stack">
+          <div class="stat-item">
+            <div class="num display"><em>32</em></div>
+            <div class="lab">Parents to invite</div>
+          </div>
+          <div class="stat-item">
+            <div class="num display"><em>3</em></div>
+            <div class="lab">Teachers to invite</div>
+          </div>
+          <div class="stat-item">
+            <div class="num display"><em>16</em> days</div>
+            <div class="lab">Until meeting</div>
+          </div>
+          <div class="stat-item">
+            <div class="num display"><em>GHS 2.10</em></div>
+            <div class="lab">SMS cost · 35 messages</div>
+          </div>
+        </div>
+        <div class="factions">
+          <button class="secondary">Save as draft</button>
+          <button class="primary">Send invites &amp; schedule</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Schedule state</h4>
+      <ul>
+        <li><b>Auto-derived expected attendees.</b> System knows who should come from the PTA structure config + the class roster. No manual list-building.</li>
+        <li><b>SMS preview shows the exact 160-char message.</b> Cost is visible upfront · GHS 2.10 for this meeting. Bulk SMS is cheap but it's not free.</li>
+        <li><b>Agenda template seeds the discussion.</b> Form Master can edit freely · template just stops blank-meeting syndrome.</li>
+        <li><b>Quorum surfaces here, not later.</b> If you need 17 parents to pass binding decisions and only 9 RSVP yes, that's information you need at scheduling time, not on the day.</li>
+        <li><b>Dues collection optional at every meeting.</b> Treasurer's view opens alongside if you toggle yes · same screen, two workflows.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">State 3 · the meeting is happening · live attendance</div>
+    <div class="section-meta">Saturday morning · Mr Mensah marks off arrivals</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / pta / meeting / 2-ga-a / live</div>
+      </div>
+
+      <div class="lifecycle-bar">
+        <div class="lc-pill done">
+          <div class="num">✓</div>
+          <div>Schedule<span class="lab-detail">16 days ago</span></div>
+        </div>
+        <div class="lc-pill done">
+          <div class="num">✓</div>
+          <div>Generate register<span class="lab-detail">yesterday</span></div>
+        </div>
+        <div class="lc-pill active">
+          <div class="num">3</div>
+          <div>Live attendance<span class="lab-detail">in progress · 23 min</span></div>
+        </div>
+        <div class="lc-pill">
+          <div class="num">4</div>
+          <div>Close → minutes</div>
+        </div>
+      </div>
+
+      <div class="context-bar">
+        <div class="icon-wrap form">FP</div>
+        <div class="meta-cluster">
+          <div class="crumb">PTA · Live meeting</div>
+          <h2 class="display">Form 2 GA A <em>· Saturday 30 May</em></h2>
+          <div class="submeta">
+            <span>Started <b>10:23 AM</b> · 23 minutes in</span>
+            <span class="sep">·</span>
+            <span>RSVP yes <b>21</b> · turned up <b>17 so far</b></span>
+            <span class="sep">·</span>
+            <span>Quorum needed <b>17 parents</b></span>
+          </div>
+        </div>
+        <div class="status-pill"><div class="pulse"></div>LIVE · QUORUM JUST MET</div>
+      </div>
+
+      <div class="register-shell">
+
+        <div class="register-col teachers">
+          <div class="reg-head teachers">
+            <div>
+              <div class="eb">Register one of two</div>
+              <h3 class="display">Teachers <em>· 3 expected</em></h3>
+            </div>
+            <div class="count-stack">
+              <div class="big display"><em>3</em> / 3</div>
+              <div class="small">All present</div>
+            </div>
+          </div>
+
+          <div class="reg-quick-actions">
+            <div class="lab">Quick:</div>
+            <button>Mark all present</button>
+            <button>Reset register</button>
+          </div>
+
+          <div class="attendee-row present">
+            <div class="av t">AM</div>
+            <div class="info">
+              <div class="name">Mr Alexander Mensah</div>
+              <div class="ctx">Form Master · Maths<span class="role-tag-mini exofficio">SECRETARY (ex-officio)</span></div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn p">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div class="attendee-row present">
+            <div class="av t">GA</div>
+            <div class="info">
+              <div class="name">Mrs Grace Asante</div>
+              <div class="ctx">Subject teacher · <b>English</b></div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn p">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div class="attendee-row present">
+            <div class="av t">PT</div>
+            <div class="info">
+              <div class="name">Mr Patrick Tetteh</div>
+              <div class="ctx">Subject teacher · <b>Literature</b></div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn p">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div style="padding:16px; background:var(--surface); border:1px dashed var(--border-2); border-radius:8px; margin-top:16px; text-align:center; font-size:11px; color:var(--navy-3); font-style:italic;">
+            Want to add a walk-in teacher? <button style="margin-left:8px; padding:5px 11px; background:var(--gold); color:var(--navy); border:none; border-radius:5px; font-weight:700; font-size:10px; cursor:pointer;">+ Add teacher</button>
+          </div>
+        </div>
+
+        <div class="register-col parents">
+          <div class="reg-head parents">
+            <div>
+              <div class="eb">Register two of two</div>
+              <h3 class="display">Parents <em>· 32 expected</em></h3>
+            </div>
+            <div class="count-stack">
+              <div class="big display"><em>17</em> / 32</div>
+              <div class="small">Quorum met · 53%</div>
+            </div>
+          </div>
+
+          <div class="reg-quick-actions">
+            <div class="lab">Search:</div>
+            <input type="text" placeholder="Type parent or student name..." style="flex:1; padding:5px 11px; border:1px solid var(--gold-soft); border-radius:100px; font-size:11px; background:var(--surface);" value="">
+            <button>Show absent only</button>
+          </div>
+
+          <div class="attendee-row present">
+            <div class="av">SA</div>
+            <div class="info">
+              <div class="name">Mr Samuel Adjei</div>
+              <div class="ctx">Father of <b>Kwame Adjei</b><span class="role-tag-mini">FORM PTA CHAIR</span></div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn p">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div class="attendee-row present">
+            <div class="av">JB</div>
+            <div class="info">
+              <div class="name">Mrs Joana Boateng</div>
+              <div class="ctx">Mother of <b>Kofi Boateng</b><span class="role-tag-mini">VICE-CHAIR</span></div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn p">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div class="attendee-row late">
+            <div class="av">VA</div>
+            <div class="info">
+              <div class="name">Mrs Vivian Asare</div>
+              <div class="ctx">Mother of <b>Kojo Asare</b> · arrived 10:45</div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn">P</div>
+              <div class="status-btn l">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div class="attendee-row present">
+            <div class="av">OS</div>
+            <div class="info">
+              <div class="name">Mrs Olivia Sarpong</div>
+              <div class="ctx">Mother of <b>Esi Sarpong</b><span class="role-tag-mini">TREASURER</span></div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn p">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div class="attendee-row present">
+            <div class="av">EA</div>
+            <div class="info">
+              <div class="name">Mr Eric Annan</div>
+              <div class="ctx">Father of <b>Kweku Annan</b></div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn p">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div class="attendee-row present">
+            <div class="av">DF</div>
+            <div class="info">
+              <div class="name">Mrs Dorothy Frimpong</div>
+              <div class="ctx">Mother of <b>Adwoa Frimpong</b></div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn p">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div class="attendee-row absent">
+            <div class="av">PB</div>
+            <div class="info">
+              <div class="name">Mr Prince Bediako</div>
+              <div class="ctx">Father of <b>Akua Bediako</b> · RSVP yes · no-show so far</div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn a">A</div>
+            </div>
+          </div>
+
+          <div class="attendee-row unmarked">
+            <div class="av">FO</div>
+            <div class="info">
+              <div class="name">Mrs Felicia Okai</div>
+              <div class="ctx">Mother of <b>Yaw Okai</b> · RSVP yes · awaiting arrival</div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div class="attendee-row unmarked">
+            <div class="av">KO</div>
+            <div class="info">
+              <div class="name">Mr Kingsley Opoku</div>
+              <div class="ctx">Father of <b>Nana Opoku</b> · RSVP no · admin can override</div>
+            </div>
+            <div class="status-cluster">
+              <div class="status-btn">P</div>
+              <div class="status-btn">L</div>
+              <div class="status-btn">A</div>
+            </div>
+          </div>
+
+          <div style="padding:14px; text-align:center; font-size:11px; color:var(--navy-3); font-style:italic; background:var(--bg); border-radius:8px; margin-top:8px;">
+            <b>23 more parents</b> in this register · scroll to see · <button style="margin-left:8px; padding:5px 11px; background:var(--surface); border:1px solid var(--border-2); border-radius:5px; font-size:10px; font-weight:600; cursor:pointer;">Show all 32</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="foot-summary">
+        <div class="summary-stack">
+          <div class="stat-item">
+            <div class="num display"><em>17</em> + 3</div>
+            <div class="lab">Parents present · <b>+ teachers</b></div>
+          </div>
+          <div class="stat-item">
+            <div class="num display"><em>1</em></div>
+            <div class="lab">Late</div>
+          </div>
+          <div class="stat-item">
+            <div class="num display"><em>1</em></div>
+            <div class="lab">Marked absent</div>
+          </div>
+          <div class="stat-item">
+            <div class="num display"><em>13</em></div>
+            <div class="lab">Unmarked · still arriving</div>
+          </div>
+        </div>
+        <div class="factions">
+          <button class="secondary">SMS absent parents</button>
+          <button class="primary">Close attendance &amp; go to minutes</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Live attendance state</h4>
+      <ul>
+        <li><b>Two registers, side by side.</b> Teachers on the left (smaller, faster to mark). Parents on the right (longer list, search and filter helpful).</li>
+        <li><b>Three states per attendee.</b> Present · Late · Absent. The fourth state is "unmarked" (still expected, no signal yet). At meeting close, unmarked converts to Absent.</li>
+        <li><b>Officer tags surface in the register.</b> Mr Adjei's "Form PTA Chair" tag matters because his presence affects quorum and his attendance is reported up to the General PTA. Tags are pulled from the officer matrix.</li>
+        <li><b>RSVP context shows in the unmarked rows.</b> "RSVP yes · awaiting arrival" tells the secretary this person was expected and might still come. "RSVP no" tells them not to chase.</li>
+        <li><b>Quorum changes the action set.</b> Below quorum: "SMS the absent" suggested. At quorum: "Close attendance and proceed" enabled. Binding-resolution UI gates on quorum.</li>
+        <li><b>Walk-in flow.</b> A parent who didn't RSVP can still be added via "+ Add" at the bottom. Same for teachers who weren't invited but turned up to listen.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Why two registers, not one combined list</div>
+    <div class="section-meta">Editorial · the GES reporting requirement</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px;">
+        <div style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px;">The reason · GES reporting needs both</div>
+        <h3 class="display" style="font-size:24px; font-weight:500; margin-bottom:16px; line-height:1.25;">Teacher attendance at PTA meetings is <em style="font-style:italic; color:var(--gold);">a separate compliance metric</em> from parent attendance.</h3>
+        <p style="font-size:14px; color:var(--navy-2); line-height:1.7; margin-bottom:14px;">GES tracks parent engagement (parent attendance rate) <b>and</b> teacher participation (teacher attendance rate at PTA meetings) as two different signals. A school where 80% of parents show up but only the Form Master attends is a different school from one where 50% of parents show up alongside 4 subject teachers and the Headmaster. Combining them into one register would lose this distinction.</p>
+        <p style="font-size:14px; color:var(--navy-2); line-height:1.7;">There's also a <b>practical reason</b>: the secretary marking attendance treats teachers and parents differently. Teachers are a small, fixed list known in advance. Parents are a longer list with arrivals scattered across the meeting's opening 20 minutes. Different UI ergonomics. Two registers, displayed side by side, makes both fast.</p>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:24px;">
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:20px 22px;">
+          <div style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy); font-weight:700; margin-bottom:6px;">Teachers register</div>
+          <h4 class="display" style="font-size:17px; font-weight:600; margin-bottom:10px;">Small list, marked once</h4>
+          <p style="font-size:12px; color:var(--navy-2); line-height:1.6;">Typically 1-4 teachers per Form PTA meeting (Form Master + invited subject teachers). House PTA usually 1-2 (Housemaster + matron). General PTA can be 8+ if the full leadership team attends. <b>Small, fixed, known in advance</b> — secretary marks once at the start.</p>
+        </div>
+        <div style="background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:12px; padding:20px 22px;">
+          <div style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px;">Parents register</div>
+          <h4 class="display" style="font-size:17px; font-weight:600; margin-bottom:10px;">Long list, marked over time</h4>
+          <p style="font-size:12px; color:var(--navy-2); line-height:1.6;">Form PTA: 20-40 parents. House PTA: 100-300. General PTA: 500-2000. <b>Long lists, arrivals staggered</b>, search and filter become essential. The secretary marks throughout the first 20-30 minutes of the meeting. Late arrivals flagged distinctly so the minutes can note them.</p>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The two-register model</h4>
+      <ul>
+        <li><b>GES counts both.</b> Termly returns from Omnischools will populate both metrics into the GES district return.</li>
+        <li><b>The Oversight tier will surface both.</b> When the district director looks at PTA compliance, they want to see "school X · parent attendance 67% · teacher attendance 92%" — two numbers, not one blended one.</li>
+        <li><b>Different UI patterns for different lists.</b> Teachers: tap to mark. Parents: search + filter + tap. Same data model, different display.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

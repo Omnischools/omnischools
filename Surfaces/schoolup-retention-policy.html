@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Data retention policy</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.deferred-tag { display:inline-block; background:var(--terra); color:white; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1480px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:740px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.body { padding:28px 36px 60px; }
+
+.btn { padding:10px 16px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; padding:10px 22px; }
+
+/* Hero explainer */
+.hero-card { background:var(--navy); color:var(--bg); border-radius:14px; padding:24px 28px; margin-bottom:24px; background-image:radial-gradient(circle at 88% 12%,rgba(200,151,91,0.16) 0%,transparent 55%); }
+.hero-card .pre-line { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.hero-card h2 { font-family:'Fraunces',serif; font-size:26px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; max-width:580px; margin-bottom:10px; }
+.hero-card h2 em { font-style:italic; color:var(--gold); }
+.hero-card p { font-size:13px; color:rgba(232,212,184,0.85); line-height:1.55; max-width:600px; }
+.hero-card p b { color:var(--bg); font-weight:600; }
+.hero-card .ghana-tag { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:100px; background:rgba(47,107,71,0.4); color:#8FCBA0; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; margin-top:14px; }
+
+/* Layered explanation */
+.layers-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 26px; margin-bottom:24px; }
+.layers-card .head { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.012em; margin-bottom:6px; }
+.layers-card .head em { font-style:italic; color:var(--gold); }
+.layers-card .lede { font-size:12px; color:var(--navy-3); margin-bottom:18px; line-height:1.55; }
+.layers-card .lede b { color:var(--navy-2); font-weight:600; }
+
+.layer-row { display:grid; grid-template-columns:36px 1fr auto; gap:14px; padding:14px 0; border-bottom:1px solid var(--border); align-items:center; }
+.layer-row:last-child { border-bottom:none; }
+.layer-row .layer-ic { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; }
+.layer-row .layer-ic.statutory { background:var(--green-bg); color:var(--green); }
+.layer-row .layer-ic.financial { background:var(--gold-bg); color:var(--gold); }
+.layer-row .layer-ic.communications { background:var(--bg); color:var(--navy-2); border:1px solid var(--border); }
+.layer-row .layer-info .layer-name { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.layer-row .layer-info .layer-name em { font-style:italic; color:var(--gold); }
+.layer-row .layer-info .layer-desc { font-size:11px; color:var(--navy-3); margin-top:3px; line-height:1.5; }
+.layer-row .layer-info .layer-desc b { color:var(--navy-2); font-weight:600; }
+.layer-row .layer-policy { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+.layer-row .layer-policy .policy-tag { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; padding:3px 9px; border-radius:100px; }
+.layer-row .layer-policy .policy-tag.locked { background:var(--green-bg); color:var(--green); }
+.layer-row .layer-policy .policy-tag.minimum { background:var(--warn-bg); color:var(--warn); }
+.layer-row .layer-policy .policy-tag.configurable { background:var(--gold); color:var(--navy); }
+.layer-row .layer-policy .policy-detail { font-size:10px; color:var(--navy-3); font-style:italic; }
+.layer-row .layer-policy .policy-detail b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Region head */
+.region { margin-bottom:32px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.005em; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Retention option cards */
+.options-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+.option-card { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:18px 20px 16px; cursor:pointer; position:relative; }
+.option-card.selected { border-color:var(--gold); background:var(--gold-bg); box-shadow:0 0 0 3px var(--gold-soft); }
+.option-card.recommended::before { content:"Current default"; position:absolute; top:-9px; left:18px; background:var(--gold); color:var(--navy); font-size:9px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:2px 9px; border-radius:100px; }
+.option-card .top { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+.option-card .radio { width:18px; height:18px; border-radius:50%; border:2px solid var(--border-2); flex-shrink:0; position:relative; }
+.option-card.selected .radio { border-color:var(--gold); }
+.option-card.selected .radio::after { content:""; position:absolute; top:3px; left:3px; width:8px; height:8px; border-radius:50%; background:var(--gold); }
+.option-card .name { font-family:'Fraunces',serif; font-size:17px; font-weight:600; letter-spacing:-0.012em; line-height:1.1; }
+.option-card .name em { font-style:italic; color:var(--gold); }
+.option-card .duration { margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--navy-3); padding:3px 9px; background:var(--bg); border:1px solid var(--border); border-radius:100px; }
+.option-card.selected .duration { background:rgba(255,255,255,0.6); color:var(--gold); border-color:var(--gold); }
+.option-card .desc { font-size:12px; color:var(--navy-3); line-height:1.55; padding-left:30px; margin-bottom:12px; }
+.option-card .desc b { color:var(--navy-2); font-weight:600; }
+.option-card .what-happens { padding:10px 12px; background:var(--bg); border-radius:8px; font-size:11px; color:var(--navy-2); line-height:1.5; }
+.option-card.selected .what-happens { background:rgba(255,255,255,0.6); }
+.option-card .what-happens b { color:var(--navy); font-weight:600; }
+.option-card .what-happens em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+/* Custom date input */
+.custom-input { padding:10px 14px; background:var(--surface); border:1.5px solid var(--gold); border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:var(--navy); margin-top:8px; display:flex; align-items:center; gap:8px; }
+.custom-input .lbl { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.custom-input .val { font-size:13px; }
+.custom-input em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+/* Impact preview card */
+.impact-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 26px; margin-bottom:18px; }
+.impact-card .top { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.impact-card .head { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.012em; }
+.impact-card .head em { font-style:italic; color:var(--gold); }
+.impact-card .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.impact-card .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+.impact-summary { background:var(--terra-bg); border:1px solid rgba(184,74,57,0.3); border-radius:10px; padding:14px 18px; margin-bottom:14px; display:grid; grid-template-columns:30px 1fr; gap:12px; align-items:start; }
+.impact-summary .ic { width:28px; height:28px; border-radius:50%; background:var(--terra); color:white; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; }
+.impact-summary .text { font-size:12.5px; color:var(--navy-2); line-height:1.6; }
+.impact-summary .text b { color:var(--navy); font-weight:600; }
+.impact-summary .text em { font-family:'Fraunces',serif; font-style:italic; color:var(--terra); font-weight:600; }
+
+.purge-table { width:100%; border-collapse:collapse; }
+.purge-table thead th { background:var(--bg); border-bottom:1px solid var(--border); padding:10px 14px; text-align:left; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.purge-table thead th.right { text-align:right; }
+.purge-table tbody td { padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:12px; }
+.purge-table tbody tr:last-child td { border-bottom:none; }
+
+.cat-cell { display:flex; align-items:center; gap:8px; }
+.cat-cell .swatch { width:10px; height:10px; border-radius:3px; }
+.cat-cell .swatch.statutory { background:var(--green); }
+.cat-cell .swatch.financial { background:var(--gold); }
+.cat-cell .swatch.comms { background:var(--terra); }
+.cat-cell .name { font-weight:600; color:var(--navy); }
+
+.kept-cell, .purged-cell { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; text-align:right; }
+.kept-cell { color:var(--green); }
+.purged-cell { color:var(--terra); }
+.purged-cell.locked { color:var(--navy-3); font-weight:500; }
+
+.note-cell { font-size:11px; color:var(--navy-2); }
+.note-cell b { color:var(--navy); font-weight:600; }
+.note-cell em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+.purge-totals { background:var(--bg); padding:12px 14px !important; border-top:2px solid var(--navy); }
+.purge-totals .name { font-family:'Fraunces',serif; font-size:13px; font-weight:600; }
+
+/* Acknowledgement card */
+.ack-card { background:var(--warn-bg); border:1.5px solid var(--warn); border-radius:14px; padding:18px 22px; margin-bottom:18px; }
+.ack-card .heading { font-family:'Fraunces',serif; font-size:15px; font-weight:600; letter-spacing:-0.012em; margin-bottom:6px; }
+.ack-card .heading em { font-style:italic; color:var(--warn); }
+.ack-card .body-text { font-size:12px; color:var(--navy-2); line-height:1.6; margin-bottom:12px; }
+.ack-card .body-text b { color:var(--navy); font-weight:600; }
+.ack-card .ack-row { padding:11px 14px; background:rgba(255,255,255,0.6); border:1px solid rgba(197,138,46,0.3); border-radius:8px; display:flex; gap:10px; align-items:start; cursor:pointer; }
+.ack-card .ack-row .check { width:18px; height:18px; border-radius:4px; background:var(--warn); color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; font-weight:700; }
+.ack-card .ack-row .ack-text { font-size:11.5px; color:var(--navy-2); line-height:1.55; }
+.ack-card .ack-row .ack-text b { color:var(--navy); font-weight:600; }
+
+/* Save bar */
+.policy-save-bar { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; padding:18px 24px; margin-top:22px; display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; box-shadow:0 12px 32px -12px rgba(200,151,91,0.3); }
+.policy-save-bar .left .summary { font-family:'Fraunces',serif; font-size:14.5px; font-weight:600; letter-spacing:-0.005em; line-height:1.4; }
+.policy-save-bar .left .summary em { font-style:italic; color:var(--gold); }
+.policy-save-bar .left .meta { font-size:11px; color:var(--navy-3); margin-top:5px; line-height:1.5; }
+.policy-save-bar .left .meta b { color:var(--navy-2); font-weight:600; }
+.policy-save-bar .actions { display:flex; gap:8px; }
+
+/* History block */
+.history-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 22px; margin-top:14px; }
+.history-card .head { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; margin-bottom:10px; }
+.history-card .head em { font-style:italic; color:var(--gold); }
+.history-card .h-row { display:grid; grid-template-columns:auto 1fr auto; gap:14px; padding:8px 0; border-bottom:1px dashed var(--border); align-items:center; font-size:11px; }
+.history-card .h-row:last-child { border-bottom:none; }
+.history-card .h-row .h-date { font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--navy); }
+.history-card .h-row .h-action { color:var(--navy-2); }
+.history-card .h-row .h-action b { color:var(--navy); font-weight:600; }
+.history-card .h-row .h-by { color:var(--navy-3); font-style:italic; font-size:10px; }
+.history-card .h-row .h-by b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .options-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 3 deferred · Data retention policy</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <span class="deferred-tag">Deferred decision · resolved</span>
+  <h1 class="display">How long do we <em>keep your records?</em></h1>
+  <div class="gold-rule"></div>
+  <p>Retention isn't one decision — it's three layered ones. Statutory submissions to GES become permanent record once submitted (legal requirement, not configurable). Financial records have a 7-year regulatory floor (configurable above that, never below). General communications are configurable from forever down to a 3-year rolling window or any custom period. The settings panel separates the three so admins make informed choices rather than one global setting that misaligns with Ghanaian record-retention norms.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Retention policy · settings panel</div>
+    <div class="section-meta">3 layers · 1 configurable · 2 locked at floor</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / data-retention</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="nav-item sub">School info</div>
+          <div class="nav-item sub">Permissions</div>
+          <div class="nav-item sub">Communication</div>
+          <div class="nav-item sub">Books</div>
+          <div class="nav-item sub active">Data &amp; retention</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Settings</a> / Data &amp; retention</div>
+            <h1 class="display">Data <em>retention policy</em></h1>
+            <div class="lede">Configure how long Omnischools keeps your school's records · changes apply going forward · existing records older than the new threshold are <b>previewed before purge</b></div>
+          </div>
+
+          <div class="body">
+
+            <!-- Hero explainer -->
+            <div class="hero-card">
+              <div class="pre-line">Why this matters</div>
+              <h2 class="display">Three kinds of records, <em>three different rules</em></h2>
+              <p>Some of your school's data is permanent by law. Some has a regulatory floor. Some you can keep forever or discard early. <b>The policy below separates the three</b> so you make informed choices rather than one blanket setting that conflicts with Ghana's record-retention norms.</p>
+              <div class="ghana-tag">⚖ Aligned with Ghana Data Protection Act 2012 + GRA tax records guidance</div>
+            </div>
+
+            <!-- Layered explanation -->
+            <div class="layers-card">
+              <div class="head display">The <em>three layers</em></div>
+              <div class="lede">Each layer has its own retention rule. The first two are <b>locked at minimum</b> by law/regulation; the third is <b>fully configurable by you</b>.</div>
+
+              <div class="layer-row">
+                <div class="layer-ic statutory">S</div>
+                <div class="layer-info">
+                  <div class="layer-name display">Statutory <em>submissions</em></div>
+                  <div class="layer-desc">GES termly returns · annual census · BECE results · examination records · once submitted, these are <b>part of the school's permanent academic record</b></div>
+                </div>
+                <div class="layer-policy">
+                  <div class="policy-tag locked">Forever · locked</div>
+                  <div class="policy-detail"><b>Legal requirement</b> · cannot be changed</div>
+                </div>
+              </div>
+
+              <div class="layer-row">
+                <div class="layer-ic financial">F</div>
+                <div class="layer-info">
+                  <div class="layer-name display">Financial <em>records</em></div>
+                  <div class="layer-desc">Bookkeeping entries · payment receipts · invoices · staff payroll · fixed assets · these align with <b>GRA tax-records guidance and bank-loan audit norms</b></div>
+                </div>
+                <div class="layer-policy">
+                  <div class="policy-tag minimum">7 years · minimum</div>
+                  <div class="policy-detail">Locked floor · <b>can keep longer</b> if you choose</div>
+                </div>
+              </div>
+
+              <div class="layer-row">
+                <div class="layer-ic communications">C</div>
+                <div class="layer-info">
+                  <div class="layer-name display">General <em>communications</em></div>
+                  <div class="layer-desc">SMS reminders · WhatsApp threads · email broadcasts · announcements · internal admin notes · system events · <b>this is what you configure below</b></div>
+                </div>
+                <div class="layer-policy">
+                  <div class="policy-tag configurable">Configurable</div>
+                  <div class="policy-detail"><b>Choose</b> from the options below</div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Region 01: Communications retention chooser -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">Communications <em>retention</em></h2>
+                <div class="meta">Current setting · <b>Forever</b> · changing will preview the impact before any purge</div>
+              </div>
+
+              <div class="options-grid">
+
+                <div class="option-card recommended">
+                  <div class="top">
+                    <div class="radio"></div>
+                    <div class="name display">Keep <em>forever</em></div>
+                    <div class="duration">∞</div>
+                  </div>
+                  <div class="desc">Never automatically delete · communications stay searchable indefinitely · same as MVP1 default · <b>no parent or school data is ever purged</b> unless you manually delete a record.</div>
+                  <div class="what-happens">
+                    <b>What happens:</b> nothing changes from current behaviour · storage grows over time · best for schools that <em>value institutional memory</em> over storage cost or data minimisation.
+                  </div>
+                </div>
+
+                <div class="option-card selected">
+                  <div class="top">
+                    <div class="radio"></div>
+                    <div class="name display"><em>7 years</em> rolling</div>
+                    <div class="duration">7 yrs</div>
+                  </div>
+                  <div class="desc">Communications older than 7 years are auto-archived to a <b>redacted summary</b> (count + dates only, no content) and the original is purged · <b>aligns with the financial-records floor</b> so retention is uniform across modules.</div>
+                  <div class="what-happens">
+                    <b>What happens:</b> on the chosen rollover date each month, communications older than 7 years roll out · the summary stays · best for schools wanting <em>uniform retention</em> across all record types.
+                  </div>
+                </div>
+
+                <div class="option-card">
+                  <div class="top">
+                    <div class="radio"></div>
+                    <div class="name display"><em>3 years</em> rolling</div>
+                    <div class="duration">3 yrs</div>
+                  </div>
+                  <div class="desc">Aligns with the JHS cohort lifecycle (3 years) — communications from a graduated cohort roll out roughly when those students leave · stronger data-minimisation posture for privacy-conscious schools.</div>
+                  <div class="what-happens">
+                    <b>What happens:</b> ~127 messages older than <em>22 Oct 2022</em> would purge today · most of those are routine reminders &amp; receipts · best for schools <em>prioritising data minimisation</em>.
+                  </div>
+                </div>
+
+                <div class="option-card">
+                  <div class="top">
+                    <div class="radio"></div>
+                    <div class="name display">Custom <em>period</em></div>
+                    <div class="duration">N yrs</div>
+                  </div>
+                  <div class="desc">Define your own retention threshold · minimum 1 year · maximum 20 years · useful if your school has a specific data-protection policy or governing-body requirement.</div>
+                  <div class="custom-input">
+                    <span class="lbl">Years</span>
+                    <span class="val">5</span>
+                    <span style="margin-left:auto" class="lbl"><em>preview impact ↓</em></span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Region 02: Impact preview -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display">Impact <em>preview</em></h2>
+                <div class="meta">If you switch to <b>7 years rolling</b> · effective today</div>
+              </div>
+
+              <div class="impact-card">
+                <div class="top">
+                  <div class="head display">What would happen <em>today</em></div>
+                  <div class="meta">Calculated against your current record · <b>22 Oct 2025</b></div>
+                </div>
+
+                <div class="impact-summary">
+                  <div class="ic">!</div>
+                  <div class="text">
+                    Switching to 7-years-rolling today would purge <em>28 communications</em> from before <b>22 Oct 2018</b> · all are <b>routine SMS/WhatsApp reminders and receipts</b> from the school's first year on Omnischools · <em>no statutory submissions</em> and <em>no financial records</em> are affected.
+                  </div>
+                </div>
+
+                <table class="purge-table">
+                  <thead>
+                    <tr>
+                      <th>Record category</th>
+                      <th>Total in system</th>
+                      <th>Older than threshold</th>
+                      <th class="right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><div class="cat-cell"><div class="swatch statutory"></div><span class="name">Statutory submissions</span></div></td>
+                      <td>14 returns</td>
+                      <td>3 returns from 2018</td>
+                      <td><div class="note-cell"><b style="color:var(--green)">Kept · permanent</b><br><em style="font-size:10px">legal requirement</em></div></td>
+                    </tr>
+                    <tr>
+                      <td><div class="cat-cell"><div class="swatch financial"></div><span class="name">Financial records</span></div></td>
+                      <td>2,840 entries</td>
+                      <td>184 entries from 2017</td>
+                      <td><div class="note-cell"><b style="color:var(--green)">Kept · within 7-yr floor</b><br><em style="font-size:10px">7-year minimum</em></div></td>
+                    </tr>
+                    <tr>
+                      <td><div class="cat-cell"><div class="swatch comms"></div><span class="name">SMS &amp; WhatsApp messages</span></div></td>
+                      <td>3,128 messages</td>
+                      <td><span class="purged-cell" style="text-align:left">28 messages</span></td>
+                      <td><div class="note-cell"><b style="color:var(--terra)">Auto-purged</b><br><em style="font-size:10px">redacted summary kept</em></div></td>
+                    </tr>
+                    <tr>
+                      <td><div class="cat-cell"><div class="swatch comms"></div><span class="name">Internal admin notes</span></div></td>
+                      <td>184 notes</td>
+                      <td><span class="purged-cell" style="text-align:left">0 notes</span></td>
+                      <td><div class="note-cell">none qualify yet</div></td>
+                    </tr>
+                    <tr>
+                      <td><div class="cat-cell"><div class="swatch comms"></div><span class="name">Email broadcasts</span></div></td>
+                      <td>62 broadcasts</td>
+                      <td><span class="purged-cell" style="text-align:left">0 broadcasts</span></td>
+                      <td><div class="note-cell">none qualify yet</div></td>
+                    </tr>
+                    <tr class="purge-totals">
+                      <td><div class="cat-cell"><span class="name">Total · would purge today</span></div></td>
+                      <td>—</td>
+                      <td><span class="purged-cell" style="text-align:left;font-size:14px">28 records</span></td>
+                      <td><div class="note-cell"><b>Approx. 0.5%</b> of all communications</div></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Region 03: Acknowledgement + Save -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">03</div>
+                <h2 class="display">Acknowledge &amp; <em>save policy</em></h2>
+                <div class="meta">Policy changes are append-only · <b>previous policies remain in audit trail</b></div>
+              </div>
+
+              <div class="ack-card">
+                <div class="heading display">Before saving · <em>read this carefully</em></div>
+                <div class="body-text">
+                  Switching to <b>7-years-rolling</b> means Omnischools will <b>permanently delete</b> 28 communications older than 7 years · this is <em style="font-style:italic;color:var(--warn);font-weight:600">irreversible</em> · purged content cannot be recovered, only the summary count remains · <b>parents who request their data after a purge will see the same redacted summary</b> · this protects the school under data-minimisation principles but means you lose the ability to reconstruct old conversations in disputes.
+                </div>
+                <div class="ack-row">
+                  <div class="check">✓</div>
+                  <div class="ack-text">
+                    <b>I understand and acknowledge:</b> 28 communications will be permanently purged at next rollover · this is irreversible · the audit summary remains · my school's <b>statutory submissions and financial records are unaffected</b> · this acknowledgement is timestamped with my name in the audit trail · I can change the policy again later but past purges cannot be undone.
+                  </div>
+                </div>
+              </div>
+
+              <div class="policy-save-bar">
+                <div class="left">
+                  <div class="summary display">Save retention policy · <em>7 years rolling</em>?</div>
+                  <div class="meta">First rollover fires <b>1 November 2025</b> at 2 AM GMT · 28 records purge · monthly thereafter · <em>change is logged with timestamp + your signature</em> · email notification sent to all admins on rollover</div>
+                </div>
+                <div class="actions">
+                  <button class="btn">Cancel</button>
+                  <button class="btn gold">Acknowledge &amp; save policy →</button>
+                </div>
+              </div>
+
+              <!-- Policy history -->
+              <div class="history-card">
+                <div class="head display">Policy <em>history</em> · audit trail</div>
+                <div class="h-row">
+                  <span class="h-date">17 Oct 2022</span>
+                  <span class="h-action">Omnischools deployed at Christ the King · default policy: <b>Keep forever</b></span>
+                  <span class="h-by">by <b>system</b> · auto-init</span>
+                </div>
+                <div class="h-row">
+                  <span class="h-date">22 Oct 2025</span>
+                  <span class="h-action"><b>Pending change:</b> Keep forever → 7 years rolling</span>
+                  <span class="h-by">by <b>Florence Addo</b> · awaiting save</span>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Three layers shown explicitly before any chooser appears.</b> Statutory (Forever, locked) / Financial (7-year minimum, locked floor) / Communications (configurable). <b>Admin understands what is and isn't on the table</b> before deciding — no false sense that "retention" is one slider.</li>
+        <li><b>Layer policy tags use distinct colour vocabulary:</b> green "Forever · locked" for statutory, warn "7 years · minimum" for financial, gold "Configurable" for communications. <b>Visual encoding of authority</b>: green = legally fixed, warn = floor-locked, gold = your choice.</li>
+        <li><b>Hero card in navy/gold positions retention as a serious decision</b>: "Three kinds of records, <em>three different rules</em>." Then green "Aligned with Ghana Data Protection Act 2012 + GRA tax records guidance" tag. <b>Establishes legal grounding</b>; the policy isn't arbitrary, it tracks Ghanaian regulatory norms.</li>
+        <li><b>4 retention options as cards:</b> Forever (current default, gold tag) / 7 years rolling (selected, recommended for uniformity with financial floor) / 3 years rolling (data-minimisation framing) / Custom period (5 years example with input). <b>Each has plain-English "What happens" footer</b> in a tinted box explaining the practical consequence.</li>
+        <li><b>"3 years rolling" framed as JHS cohort lifecycle</b>: "communications from a graduated cohort roll out roughly when those students leave." <b>Concrete operational meaning</b> rather than abstract privacy rhetoric — admin connects the choice to the rhythm of the school.</li>
+        <li><b>"7 years rolling" framed as alignment with the financial-records floor</b>: "retention is uniform across modules." <b>Recommends the cohesive choice</b> — picking 7 years means everything purges on the same schedule rather than messages outliving receipts or vice versa.</li>
+        <li><b>Custom period card has an inline value input</b> with the "5" displayed and "preview impact ↓" link in italic gold. <b>Live preview encourages experimentation</b>; admin can scrub the value and see the impact table update before committing.</li>
+        <li><b>Impact preview region shows what would actually happen</b>: "Switching to 7-years-rolling today would purge <em>28 communications</em> from before <b>22 Oct 2018</b>." <b>Specific number, specific date, specific category</b> (routine SMS/WhatsApp reminders) — no surprises.</li>
+        <li><b>Purge table has 4 columns:</b> Record category / Total in system / Older than threshold / Action. <b>Statutory submissions row shows "Kept · permanent" in green</b> even though 3 returns from 2018 qualify by date — because they're locked. <b>Financial records row shows "Kept · within 7-yr floor"</b> for the 184 entries from 2017 — because financial records floor is 7 years. <b>Only the SMS/WhatsApp row shows actual purge action</b>.</li>
+        <li><b>Internal admin notes / email broadcasts rows show "none qualify yet"</b> because the school's earliest notes/emails fall within the 7-year window. <b>Honest about which categories will and won't be affected</b>; doesn't pretend everything purges uniformly.</li>
+        <li><b>Total row at the bottom of the purge table</b>: "28 records · Approx. <b>0.5%</b> of all communications." <b>Frames the magnitude</b>: this isn't a destructive policy, it's a small steady rollover.</li>
+        <li><b>Acknowledgement card in warn-tinted treatment</b> (same as activation segregation's solo-admin path) makes the irreversibility explicit: "permanently delete · this is <em>irreversible</em> · purged content cannot be recovered, only the summary count remains." <b>Doesn't soften the consequence</b>.</li>
+        <li><b>"Parents who request their data after a purge will see the same redacted summary"</b> — connects retention to the parent-portal view (file 2). <b>Cross-module integrity</b>: the parent view filter rules and the retention policy purge rules produce the same end-state for old records.</li>
+        <li><b>Acknowledgement checkbox lists specific consequences</b>: 28 records purged, irreversible, audit summary remains, statutory + financial untouched, timestamped with name, future changes don't undo past purges. <b>Admin agrees to specifics</b>, not to a vague "yes I understand."</li>
+        <li><b>Save bar mentions "First rollover fires <b>1 November 2025</b> at 2 AM GMT"</b> — gives admin a specific moment to remember when the first purge happens. <b>Email notification sent to all admins on rollover</b> ensures no one is surprised by missing data.</li>
+        <li><b>Policy history card at the bottom</b> shows the audit trail of policy changes themselves: "17 Oct 2022 · default policy: Keep forever / 22 Oct 2025 · pending change: Keep forever → 7 years rolling." <b>Policy changes are append-only</b>; the system records who changed what and when, in addition to the data they're governing.</li>
+        <li><b>What this design deliberately doesn't do:</b> doesn't allow disabling retention for statutory records (locked legally), doesn't allow shorter than 7 years for financial (locked at floor), doesn't auto-purge without admin acknowledgement (irreversible action requires explicit consent), doesn't conflate retention with deletion-on-graduation (those are separate decisions handled by student data lifecycle).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

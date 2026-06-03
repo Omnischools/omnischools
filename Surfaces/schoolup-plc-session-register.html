@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — PLC weekly session register</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Lifecycle pills */
+.lifecycle-bar { background:var(--bg); padding:18px 36px; border-bottom:1px solid var(--border); display:flex; gap:6px; overflow-x:auto; }
+.lc-pill { display:flex; align-items:center; gap:10px; padding:10px 16px; background:var(--surface); border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:600; flex-shrink:0; }
+.lc-pill .num { width:22px; height:22px; border-radius:50%; background:var(--bg); color:var(--navy-3); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.lc-pill.done { background:var(--green-bg); border-color:var(--green); color:var(--green); }
+.lc-pill.done .num { background:var(--green); color:var(--bg); }
+.lc-pill.active { background:var(--navy); border-color:var(--navy); color:var(--bg); }
+.lc-pill.active .num { background:var(--gold); color:var(--navy); }
+.lc-pill .lab-detail { font-size:9px; font-weight:600; letter-spacing:0.04em; opacity:0.7; margin-top:1px; display:block; }
+
+/* Context bar */
+.context-bar { padding:20px 36px; background:var(--surface); border-bottom:1px solid var(--border); display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; }
+.context-bar .icon-wrap { width:64px; height:64px; border-radius:12px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:18px; }
+.context-bar .meta-cluster .crumb { font-size:10px; color:var(--navy-3); letter-spacing:0.12em; text-transform:uppercase; font-weight:700; margin-bottom:5px; }
+.context-bar .meta-cluster h2 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; letter-spacing:-0.015em; margin-bottom:5px; line-height:1.15; }
+.context-bar .meta-cluster h2 em { font-style:italic; color:var(--gold); }
+.context-bar .meta-cluster .submeta { font-size:12px; color:var(--navy-2); display:flex; gap:14px; flex-wrap:wrap; }
+.context-bar .meta-cluster .submeta span b { color:var(--navy); font-weight:700; }
+.context-bar .meta-cluster .submeta .sep { color:var(--navy-3); }
+.context-bar .status-pill { padding:8px 16px; background:var(--gold-bg); color:var(--gold); border:1px solid var(--gold); border-radius:100px; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; display:flex; align-items:center; gap:7px; }
+.context-bar .status-pill .pulse { width:7px; height:7px; border-radius:50%; background:var(--gold); }
+
+/* Live session shell */
+.live-shell { padding:0; display:grid; grid-template-columns:1fr 360px; gap:0; }
+.live-main { padding:28px 32px 32px; border-right:1px solid var(--border); }
+.live-side { padding:28px 28px 32px; background:var(--bg); }
+
+/* Session focus banner */
+.focus-banner { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:12px; padding:20px 24px; margin-bottom:24px; }
+.focus-banner .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:5px; }
+.focus-banner h3 { font-family:'Fraunces',serif; font-size:19px; font-weight:600; letter-spacing:-0.005em; margin-bottom:8px; }
+.focus-banner h3 em { font-style:italic; color:var(--gold); }
+.focus-banner p { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.focus-banner p b { color:var(--navy); font-weight:600; }
+
+/* Attendance register */
+.section-block { margin-bottom:24px; }
+.section-block .block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+.section-block .block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.section-block .block-head h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
+.section-block .block-head h3 em { font-style:italic; color:var(--gold); }
+.section-block .block-head .count-stack { text-align:right; }
+.section-block .block-head .count-stack .big { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.section-block .block-head .count-stack .big em { font-style:italic; color:var(--gold); }
+.section-block .block-head .count-stack .small { font-size:10px; color:var(--navy-3); letter-spacing:0.08em; text-transform:uppercase; font-weight:700; margin-top:2px; }
+
+.reg-quick { display:flex; gap:6px; padding:10px 14px; background:var(--gold-bg); border:1px dashed var(--gold-soft); border-radius:8px; margin-bottom:14px; font-size:11px; color:var(--navy-2); align-items:center; }
+.reg-quick .lab { font-weight:700; color:var(--navy); }
+.reg-quick button { padding:5px 11px; background:var(--surface); border:1px solid var(--gold-soft); border-radius:100px; font-size:10px; font-weight:600; cursor:pointer; color:var(--navy); }
+
+.attendee-row { display:grid; grid-template-columns:36px 1fr auto 140px; gap:12px; padding:11px 14px; background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; align-items:center; }
+.attendee-row.present { background:var(--green-bg); border-color:var(--green); }
+.attendee-row.absent { background:var(--terra-bg); border-color:var(--terra); }
+.attendee-row.late { background:var(--warn-bg); border-color:var(--warn); }
+.attendee-row.unmarked { background:var(--surface); }
+.attendee-row .av { width:36px; height:36px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; }
+.attendee-row .av.facilitator { background:var(--navy); color:var(--gold); }
+.attendee-row .info .name { font-size:13px; font-weight:600; color:var(--navy); }
+.attendee-row .info .ctx { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.attendee-row .info .ctx b { color:var(--navy-2); font-weight:600; }
+.attendee-row .info .ctx .role-tag-mini { display:inline-block; padding:1px 6px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; margin-left:5px; vertical-align:middle; }
+.attendee-row .info .ctx .role-tag-mini.facilitator { background:var(--navy); color:var(--gold); }
+.attendee-row .info .ctx .role-tag-mini.hod { background:var(--gold); color:var(--navy); }
+.attendee-row .info .ctx .role-tag-mini.new { background:var(--green); color:var(--bg); }
+.attendee-row .reflection-state { font-size:10px; color:var(--navy-3); display:flex; align-items:center; gap:5px; }
+.attendee-row .reflection-state .dot { width:6px; height:6px; border-radius:50%; }
+.attendee-row .reflection-state.submitted { color:var(--green); }
+.attendee-row .reflection-state.submitted .dot { background:var(--green); }
+.attendee-row .reflection-state.pending { color:var(--warn); }
+.attendee-row .reflection-state.pending .dot { background:var(--warn); }
+.attendee-row .reflection-state.na { color:var(--navy-3); }
+.attendee-row .reflection-state.na .dot { background:var(--border-2); }
+.attendee-row .status-cluster { display:flex; gap:4px; }
+.attendee-row .status-btn { width:28px; height:28px; border-radius:6px; background:var(--surface); border:1px solid var(--border-2); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:var(--navy-3); }
+.attendee-row.present .status-btn.p { background:var(--green); color:var(--bg); border-color:var(--green); }
+.attendee-row.absent .status-btn.a { background:var(--terra); color:var(--bg); border-color:var(--terra); }
+.attendee-row.late .status-btn.l { background:var(--warn); color:var(--bg); border-color:var(--warn); }
+
+/* Agenda items checklist */
+.agenda-checklist { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 20px; }
+.agenda-item-row { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
+.agenda-item-row:last-child { border-bottom:none; }
+.agenda-item-row .checkbox-mock { width:18px; height:18px; border-radius:5px; border:1.5px solid var(--border-2); flex-shrink:0; margin-top:2px; display:flex; align-items:center; justify-content:center; }
+.agenda-item-row.done .checkbox-mock { background:var(--green); border-color:var(--green); color:var(--bg); font-size:11px; font-weight:700; }
+.agenda-item-row .body { flex:1; font-size:13px; color:var(--navy-2); line-height:1.55; }
+.agenda-item-row.done .body { color:var(--navy-3); text-decoration:line-through; text-decoration-color:var(--navy-3); }
+.agenda-item-row .body b { color:var(--navy); font-weight:600; }
+.agenda-item-row .duration { font-size:10px; color:var(--navy-3); font-family:'JetBrains Mono',monospace; flex-shrink:0; }
+
+/* Reflection prompt card */
+.reflection-prompt { background:var(--green-bg); border:1.5px solid var(--green); border-radius:12px; padding:20px 24px; margin-top:24px; }
+.reflection-prompt .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--green); font-weight:700; margin-bottom:5px; }
+.reflection-prompt h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:8px; }
+.reflection-prompt h4 em { font-style:italic; color:var(--green); }
+.reflection-prompt p { font-size:12px; color:var(--navy-2); line-height:1.55; margin-bottom:14px; }
+.reflection-prompt p b { color:var(--navy); font-weight:600; }
+.reflection-prompt .prompt-q { background:var(--surface); border-left:3px solid var(--green); border-radius:0 8px 8px 0; padding:12px 16px; margin-bottom:10px; font-size:12px; color:var(--navy-2); line-height:1.55; font-style:italic; }
+.reflection-prompt .prompt-q b { color:var(--navy); font-weight:600; font-style:normal; }
+.reflection-prompt .deadline-note { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface); border-radius:7px; margin-top:8px; font-size:11px; color:var(--navy-2); }
+.reflection-prompt .deadline-note b { color:var(--green); font-weight:700; }
+
+/* Side card */
+.side-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; margin-bottom:14px; }
+.side-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.side-card h4 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-bottom:10px; line-height:1.3; }
+.side-card h4 em { font-style:italic; color:var(--gold); }
+.side-card .meta-row { display:flex; justify-content:space-between; padding:6px 0; font-size:11px; color:var(--navy-2); border-bottom:1px solid var(--border); }
+.side-card .meta-row:last-child { border-bottom:none; }
+.side-card .meta-row b { color:var(--navy); font-weight:700; }
+
+.pts-earned-card { background:var(--navy); color:var(--bg); border-radius:12px; padding:20px 24px; margin-bottom:14px; }
+.pts-earned-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:5px; }
+.pts-earned-card h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:500; margin-bottom:14px; }
+.pts-earned-card h4 em { font-style:italic; color:var(--gold); }
+.pts-earned-card .pts-row { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.08); font-size:12px; color:rgba(250,247,242,0.85); }
+.pts-earned-card .pts-row:last-child { border-bottom:none; padding-top:11px; font-weight:700; color:var(--gold); font-size:13px; }
+.pts-earned-card .pts-row b { color:var(--bg); font-weight:700; }
+.pts-earned-card .pts-row b.gold { color:var(--gold); }
+
+/* Foot */
+.foot-summary { padding:18px 36px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:space-between; }
+.foot-summary .summary-stack { display:flex; gap:32px; }
+.foot-summary .stat-item .num { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.foot-summary .stat-item .num em { font-style:italic; color:var(--gold); }
+.foot-summary .stat-item .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(250,247,242,0.7); font-weight:700; margin-top:2px; }
+.foot-summary .stat-item .lab b { color:var(--gold); }
+.foot-summary .factions { display:flex; gap:10px; }
+.foot-summary .factions button { padding:11px 18px; border-radius:7px; font-size:12px; font-weight:700; cursor:pointer; border:none; }
+.foot-summary .factions button.secondary { background:rgba(255,255,255,0.08); color:var(--bg); border:1px solid rgba(255,255,255,0.2); }
+.foot-summary .factions button.primary { background:var(--gold); color:var(--navy); }
+
+/* Editorial · the 48hr reflection */
+.editorial-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial-card h3 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial-card h3 em { font-style:italic; color:var(--gold); }
+.editorial-card p { font-size:14px; color:var(--navy-2); line-height:1.7; margin-bottom:14px; }
+.editorial-card p b { color:var(--navy); font-weight:600; }
+.editorial-card p em { color:var(--gold); font-family:'Fraunces',serif; font-weight:500; font-style:italic; }
+
+.reflection-flow-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; margin-top:24px; }
+.rfg-card { background:var(--bg); border-left:3px solid var(--gold); padding:16px 18px; border-radius:0 8px 8px 0; }
+.rfg-card .num-step { font-family:'Fraunces',serif; font-style:italic; font-size:20px; font-weight:500; color:var(--gold); margin-bottom:4px; }
+.rfg-card h5 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; margin-bottom:8px; }
+.rfg-card p { font-size:11px; line-height:1.55; color:var(--navy-2); }
+.rfg-card p b { color:var(--navy); font-weight:600; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · PLC/CPD batch · 02 of 06</div>
+  <span class="mvp-tag">SHS · weekly use · highest frequency</span>
+  <span class="related-tag">Facilitator view · 60 min Friday afternoon</span>
+  <h1 class="display">Friday, 3:30 PM · <em>attendance and reflection</em></h1>
+  <div class="gold-rule"></div>
+  <p>It's Friday afternoon. The Maths teachers are gathered. Mr Adusei opens his phone, marks attendance, runs the session, and at the end captures the reflection prompts that each teacher will complete on their own time over the next 48 hours. <b>One session, two registers — attendance now, reflection later.</b> Both required for the 1 CPD point. Mark attendance in 30 seconds, run the session, send the reflection nudge as the room empties. Omnischools tracks the rest. <em>This is the daily-use surface that drives the entire CPD ledger.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">State 3 · session in progress · attendance + agenda</div>
+    <div class="section-meta">Most-frequent surface · facilitator (HoD) view</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / plc / maths / session-9 / live</div>
+      </div>
+
+      <div class="lifecycle-bar">
+        <div class="lc-pill done">
+          <div class="num">✓</div>
+          <div>Schedule<span class="lab-detail">auto-generated weekly</span></div>
+        </div>
+        <div class="lc-pill done">
+          <div class="num">✓</div>
+          <div>SMS reminder<span class="lab-detail">Thursday 4 PM</span></div>
+        </div>
+        <div class="lc-pill active">
+          <div class="num">3</div>
+          <div>Live · attendance + agenda<span class="lab-detail">in progress · 42 min</span></div>
+        </div>
+        <div class="lc-pill">
+          <div class="num">4</div>
+          <div>Reflection window<span class="lab-detail">opens at close · 48hr</span></div>
+        </div>
+        <div class="lc-pill">
+          <div class="num">5</div>
+          <div>CPD points awarded<span class="lab-detail">auto-posted</span></div>
+        </div>
+      </div>
+
+      <div class="context-bar">
+        <div class="icon-wrap">M</div>
+        <div class="meta-cluster">
+          <div class="crumb">PLC · Mathematics · Semester 2 · Session 9 of 12</div>
+          <h2 class="display">Maths PLC <em>· Friday 16 May</em></h2>
+          <div class="submeta">
+            <span>Started <b>3:33 PM</b> · 42 min in</span>
+            <span class="sep">·</span>
+            <span>Facilitator <b>Mr E. Adusei (HoD)</b></span>
+            <span class="sep">·</span>
+            <span>Room <b>B12</b></span>
+            <span class="sep">·</span>
+            <span>Members <b>9 expected · 8 present</b></span>
+          </div>
+        </div>
+        <div class="status-pill"><div class="pulse"></div>LIVE</div>
+      </div>
+
+      <div class="live-shell">
+        <div class="live-main">
+
+          <!-- Focus banner -->
+          <div class="focus-banner">
+            <div class="eb">Semester 2 focus · session 9 sub-topic</div>
+            <h3 class="display">Item analysis · <em>circle theorems on Form 3 mock</em></h3>
+            <p>"Working through Item 14b (chord-tangent angle) — <b>missed by 71% of Form 3</b> across all four sections. Looking at the marking script and student work samples. Goal: identify whether the gap is conceptual or procedural, agree a reteach approach for next week."</p>
+          </div>
+
+          <!-- Attendance register -->
+          <div class="section-block">
+            <div class="block-head">
+              <div>
+                <div class="eb">Register · teachers in this PLC</div>
+                <h3 class="display">Attendance <em>· 9 expected</em></h3>
+              </div>
+              <div class="count-stack">
+                <div class="big display"><em>8</em> / 9</div>
+                <div class="small">89% · above CPD threshold</div>
+              </div>
+            </div>
+
+            <div class="reg-quick">
+              <div class="lab">Quick:</div>
+              <button>Mark all present</button>
+              <button>Reset</button>
+              <div style="margin-left:auto; font-size:10px; color:var(--navy-3); font-style:italic;">P or L counts toward CPD attendance pt · A does not</div>
+            </div>
+
+            <div class="attendee-row present">
+              <div class="av facilitator">EA</div>
+              <div class="info">
+                <div class="name">Mr Emmanuel Adusei</div>
+                <div class="ctx">HoD Mathematics · facilitator<span class="role-tag-mini facilitator">FACILITATOR</span></div>
+              </div>
+              <div class="reflection-state na"><div class="dot"></div>Reflection N/A · facilitator</div>
+              <div class="status-cluster">
+                <div class="status-btn p">P</div>
+                <div class="status-btn">L</div>
+                <div class="status-btn">A</div>
+              </div>
+            </div>
+
+            <div class="attendee-row present">
+              <div class="av">AM</div>
+              <div class="info">
+                <div class="name">Mr Alexander Mensah</div>
+                <div class="ctx">Maths · Form 2 GA A Form Master<span class="role-tag-mini hod">SENIOR</span></div>
+              </div>
+              <div class="reflection-state pending"><div class="dot"></div>Reflection pending</div>
+              <div class="status-cluster">
+                <div class="status-btn p">P</div>
+                <div class="status-btn">L</div>
+                <div class="status-btn">A</div>
+              </div>
+            </div>
+
+            <div class="attendee-row present">
+              <div class="av">SK</div>
+              <div class="info">
+                <div class="name">Mr Samuel Kpodo</div>
+                <div class="ctx">Maths · Elective Maths · <b>year 2 (NTC induction)</b><span class="role-tag-mini new">NEW</span></div>
+              </div>
+              <div class="reflection-state pending"><div class="dot"></div>Reflection pending</div>
+              <div class="status-cluster">
+                <div class="status-btn p">P</div>
+                <div class="status-btn">L</div>
+                <div class="status-btn">A</div>
+              </div>
+            </div>
+
+            <div class="attendee-row present">
+              <div class="av">DT</div>
+              <div class="info">
+                <div class="name">Mr Daniel Twum</div>
+                <div class="ctx">Maths · Form 1 lead · curriculum coordinator</div>
+              </div>
+              <div class="reflection-state pending"><div class="dot"></div>Reflection pending</div>
+              <div class="status-cluster">
+                <div class="status-btn p">P</div>
+                <div class="status-btn">L</div>
+                <div class="status-btn">A</div>
+              </div>
+            </div>
+
+            <div class="attendee-row late">
+              <div class="av">PB</div>
+              <div class="info">
+                <div class="name">Mrs Patience Bonsu</div>
+                <div class="ctx">Maths · arrived 3:42 PM · taught last period</div>
+              </div>
+              <div class="reflection-state pending"><div class="dot"></div>Reflection pending</div>
+              <div class="status-cluster">
+                <div class="status-btn">P</div>
+                <div class="status-btn l">L</div>
+                <div class="status-btn">A</div>
+              </div>
+            </div>
+
+            <div class="attendee-row present">
+              <div class="av">JM</div>
+              <div class="info">
+                <div class="name">Mr Joseph Mensah</div>
+                <div class="ctx">Maths · Form 3 lead · WASSCE coach</div>
+              </div>
+              <div class="reflection-state pending"><div class="dot"></div>Reflection pending</div>
+              <div class="status-cluster">
+                <div class="status-btn p">P</div>
+                <div class="status-btn">L</div>
+                <div class="status-btn">A</div>
+              </div>
+            </div>
+
+            <div class="attendee-row present">
+              <div class="av">RA</div>
+              <div class="info">
+                <div class="name">Mrs Rebecca Asomaning</div>
+                <div class="ctx">Maths · Elective Maths Form 2 &amp; 3</div>
+              </div>
+              <div class="reflection-state pending"><div class="dot"></div>Reflection pending</div>
+              <div class="status-cluster">
+                <div class="status-btn p">P</div>
+                <div class="status-btn">L</div>
+                <div class="status-btn">A</div>
+              </div>
+            </div>
+
+            <div class="attendee-row present">
+              <div class="av">FY</div>
+              <div class="info">
+                <div class="name">Mr Felix Yeboah</div>
+                <div class="ctx">Maths · Form 1 GS · <b>year 1 (NTC induction)</b><span class="role-tag-mini new">NEW</span></div>
+              </div>
+              <div class="reflection-state pending"><div class="dot"></div>Reflection pending</div>
+              <div class="status-cluster">
+                <div class="status-btn p">P</div>
+                <div class="status-btn">L</div>
+                <div class="status-btn">A</div>
+              </div>
+            </div>
+
+            <div class="attendee-row absent">
+              <div class="av">CK</div>
+              <div class="info">
+                <div class="name">Mrs Clara Korkor</div>
+                <div class="ctx">Maths · <b>apology in advance</b> — medical appointment</div>
+              </div>
+              <div class="reflection-state na"><div class="dot"></div>No reflection · absent</div>
+              <div class="status-cluster">
+                <div class="status-btn">P</div>
+                <div class="status-btn">L</div>
+                <div class="status-btn a">A</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Agenda checklist -->
+          <div class="section-block">
+            <div class="block-head">
+              <div>
+                <div class="eb">Session agenda · facilitator's running checklist</div>
+                <h3 class="display">Agenda <em>· tick as you go</em></h3>
+              </div>
+              <div class="count-stack">
+                <div class="big display"><em>3</em> / 5</div>
+                <div class="small">Items complete</div>
+              </div>
+            </div>
+
+            <div class="agenda-checklist">
+              <div class="agenda-item-row done">
+                <div class="checkbox-mock">✓</div>
+                <div class="body"><b>Welcome &amp; recap of last session</b> · reviewed action items from session 8 (algebra misconception reteach lessons)</div>
+                <div class="duration">5 min</div>
+              </div>
+              <div class="agenda-item-row done">
+                <div class="checkbox-mock">✓</div>
+                <div class="body"><b>Item 14b walkthrough</b> · facilitator presented student work samples from all four Form 3 sections · 12 sample scripts circulated</div>
+                <div class="duration">15 min</div>
+              </div>
+              <div class="agenda-item-row done">
+                <div class="checkbox-mock">✓</div>
+                <div class="body"><b>Small-group analysis</b> · pairs analysed scripts · noted conceptual vs procedural errors</div>
+                <div class="duration">18 min</div>
+              </div>
+              <div class="agenda-item-row">
+                <div class="checkbox-mock"></div>
+                <div class="body" style="color:var(--navy); font-weight:500;"><b>Whole-group share-out · reteach approach</b> · current item · each pair to share one observation</div>
+                <div class="duration">15 min</div>
+              </div>
+              <div class="agenda-item-row">
+                <div class="checkbox-mock"></div>
+                <div class="body">Action items + close · agree what each teacher does next week in their Form 3 class</div>
+                <div class="duration">7 min</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reflection prompt block -->
+          <div class="reflection-prompt">
+            <div class="eb">After the session · reflection window opens at close</div>
+            <h4 class="display">Reflection <em>· every attending teacher, 48 hours, +0.5 CPD pt</em></h4>
+            <p>When the session closes, each teacher who attended gets a <b>nudge SMS + in-app prompt</b> with three short reflection questions. Answer within 48 hours to earn the full 1 CPD point for this session (0.5 attendance + 0.5 reflection). Skip the reflection and you keep the 0.5 attendance point but forfeit the rest.</p>
+
+            <div class="prompt-q"><b>Q1 ·</b> What's the most useful thing you learned in this session that you can use in your classroom next week?</div>
+            <div class="prompt-q"><b>Q2 ·</b> What's one action you commit to taking before the next session?</div>
+            <div class="prompt-q"><b>Q3 ·</b> What's one question or topic you'd like to raise at the next session?</div>
+
+            <div class="deadline-note">
+              <div>Reflection window opens <b>at session close</b> · closes <b>Sunday 18 May, 5:30 PM</b> · 48 hours · facilitator confirms in next session</div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="live-side">
+
+          <div class="pts-earned-card">
+            <div class="eb">CPD ledger · auto-posted on close</div>
+            <h4 class="display">Points <em>this session will award</em></h4>
+            <div class="pts-row"><span>7 P + 1 L attended</span><b class="gold">+0.5 × 8 = 4.0</b></div>
+            <div class="pts-row"><span>1 A absent (Mrs Korkor)</span><b>0.0</b></div>
+            <div class="pts-row"><span>Facilitator (Mr Adusei)</span><b class="gold">+1.0 fixed</b></div>
+            <div class="pts-row"><span>Reflection bonus · pending</span><b>+0.5 × N (within 48h)</b></div>
+            <div class="pts-row"><span>Total auto-posted at close</span><b class="gold">5.0 pts → ledger</b></div>
+          </div>
+
+          <div class="side-card">
+            <div class="eb">Maths PLC · term progress</div>
+            <h4 class="display">Sessions <em>this semester</em></h4>
+            <div class="meta-row"><span>Sessions held</span><b>9 of 12</b></div>
+            <div class="meta-row"><span>Avg attendance</span><b>82%</b></div>
+            <div class="meta-row"><span>Reflection submission</span><b style="color:var(--green);">94%</b></div>
+            <div class="meta-row"><span>Sessions cancelled</span><b>0</b></div>
+            <div class="meta-row" style="border-top:2px solid var(--gold); padding-top:10px; margin-top:6px;"><span style="color:var(--gold); font-weight:700;">CPD pts dispensed</span><b style="color:var(--gold);">73.5 across 9 staff</b></div>
+          </div>
+
+          <div class="side-card">
+            <div class="eb">Members earning fastest</div>
+            <h4 class="display">Top <em>CPD this semester</em> · PLC contribution</h4>
+            <div class="meta-row"><span>Mr E. Adusei</span><b>9.0 pts</b></div>
+            <div class="meta-row"><span>Mr A. Mensah</span><b>8.5 pts</b></div>
+            <div class="meta-row"><span>Mr D. Twum</span><b>8.5 pts</b></div>
+            <div class="meta-row"><span>Mr S. Kpodo</span><b>8.0 pts</b></div>
+            <div class="meta-row"><span>Mrs C. Korkor</span><b style="color:var(--warn);">5.5 pts</b></div>
+            <div class="meta-row" style="font-size:10px; color:var(--navy-3); font-style:italic; padding-top:8px;">Below threshold means likely needs the remaining Semester 2 weeks to reach 8 pt PLC cap</div>
+          </div>
+
+          <div class="side-card">
+            <div class="eb">After this session</div>
+            <h4 class="display">Action <em>items captured</em></h4>
+            <div style="font-size:11px; color:var(--navy-2); line-height:1.55; padding:8px 0;">Captured from agenda item 5 · auto-extracted into facilitator's task list and each teacher's own task list when relevant. Reviewed at start of session 10.</div>
+            <div style="background:var(--bg); padding:10px 12px; border-radius:7px; font-size:11px; color:var(--navy-3); font-style:italic;">No actions yet · waiting on agenda item 5</div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="foot-summary">
+        <div class="summary-stack">
+          <div class="stat-item">
+            <div class="num display"><em>8</em> / 9</div>
+            <div class="lab">Present + late</div>
+          </div>
+          <div class="stat-item">
+            <div class="num display"><em>3</em> / 5</div>
+            <div class="lab">Agenda items done</div>
+          </div>
+          <div class="stat-item">
+            <div class="num display"><em>5.0</em> pts</div>
+            <div class="lab">Will <b>post on close</b></div>
+          </div>
+          <div class="stat-item">
+            <div class="num display"><em>18 min</em></div>
+            <div class="lab">Estimated remaining</div>
+          </div>
+        </div>
+        <div class="factions">
+          <button class="secondary">Pause & resume later</button>
+          <button class="primary">Close session &amp; trigger reflection nudges →</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Live session state</h4>
+      <ul>
+        <li><b>Single register · just teachers.</b> Unlike PTA which has two registers (parents + teachers), PLCs are teacher-only. Fast to mark. Mr Adusei taps through 8 teachers in seconds.</li>
+        <li><b>Reflection state shown in the register.</b> Each row carries the reflection state · "pending" until they submit, "submitted" once captured, "N/A" for facilitator (their participation is the session itself) and absent teachers.</li>
+        <li><b>Agenda is a checklist, not a textarea.</b> Facilitator pre-loaded the agenda when scheduling the session. During the live state, they just tick items as they finish. The facilitator runs the session — the surface stays out of the way.</li>
+        <li><b>The 1-point-per-session contract is visible.</b> Right-side panel shows what this session will auto-post to the CPD ledger when it closes · 0.5 for each attended teacher, +0.5 each on reflection within 48 hours, +1.0 fixed for the facilitator.</li>
+        <li><b>New teacher tag carries through.</b> Felix Yeboah and Samuel Kpodo carry the NEW badge because they're year-1 and year-2 staff. NTC induction credit is logged in addition to standard CPD points.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Schema this drives</h4>
+      <ul>
+        <li><b>plc_sessions</b> · session instance · plc_id, week_no, scheduled_at, started_at, closed_at, agenda_json, focus_text</li>
+        <li><b>plc_attendance</b> · per-teacher per-session · attendance_status, marked_at, reflection_submitted_at, reflection_text_json</li>
+        <li><b>cpd_points_ledger</b> · ledger entry · staff_id, source_type ('PLC_ATTEND', 'PLC_REFLECT', 'PLC_FACILITATE'), points, source_ref_id, awarded_at, ntc_synced</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why the 48-hour reflection · the half-point split</div>
+    <div class="section-meta">Editorial · the participation contract</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial-card">
+        <div class="eb">The design call</div>
+        <h3 class="display">Attendance is necessary but <em>not sufficient</em> for the full CPD point.</h3>
+        <p>Teachers can attend a PLC session and learn nothing. <b>The point of PLC isn't to occupy bodies in a room</b> — it's to provoke change in classroom practice. The reflection requirement closes the loop: each teacher writes briefly about what they took away, what they'll do differently, what they want to raise next time. The reflection is the bridge from "I sat through a session" to "I'm carrying something into next week's lesson."</p>
+        <p>Splitting the point into 0.5 attendance + 0.5 reflection has three effects. <em>First</em>, a teacher who shows up but isn't engaged still earns something (0.5) — we don't punish honest attendance. <em>Second</em>, the bonus 0.5 means a small effort (3 short questions, 48-hour window) gets a real reward. <em>Third</em>, the reflection becomes a data signal: if 30% of attendees don't reflect, the PLC content probably isn't landing — which is information the facilitator and the Headmaster need.</p>
+
+        <div class="reflection-flow-grid">
+          <div class="rfg-card">
+            <div class="num-step">01</div>
+            <h5 class="display">Session closes · 4:30 PM</h5>
+            <p>Facilitator hits "Close session." Omnischools <b>sends each attending teacher</b> an SMS with the reflection link + an in-app prompt. The 48-hour countdown starts.</p>
+          </div>
+          <div class="rfg-card">
+            <div class="num-step">02</div>
+            <h5 class="display">Within 48 hours</h5>
+            <p>Teacher opens the link or app, answers <b>three short questions</b> (takeaway, commitment, question for next time). Typed or voice-to-text. Mobile-first.</p>
+          </div>
+          <div class="rfg-card">
+            <div class="num-step">03</div>
+            <h5 class="display">Auto-posted to ledger</h5>
+            <p>Submission triggers <b>+0.5 to the teacher's CPD ledger</b>. Source tagged as PLC_REFLECT. Facilitator sees it land in their dashboard. NTC sync queued.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The reflection contract</h4>
+      <ul>
+        <li><b>3 questions, not 30.</b> The reflection prompt is short on purpose. A 40-question survey gets ignored. Three questions, answerable in 5 minutes, mobile-friendly.</li>
+        <li><b>48 hours, not 7 days.</b> The reflection needs to be close enough to the session that memory is fresh. By Monday morning the teacher is in the classroom, the moment has passed.</li>
+        <li><b>Voice-to-text matters.</b> Many teachers will type a few words on phone. Some will dictate. Both feed the same field.</li>
+        <li><b>Facilitator can see who reflected.</b> The PLC facilitator (HoD) can see the reflection status per teacher in their dashboard. Useful for the next session: "Mr Yeboah, you mentioned in your reflection that you wanted to discuss assessment of Form 1 students — let's spend 10 minutes on that today."</li>
+        <li><b>Skipping reflection is a yellow flag.</b> Skipping once is fine. Skipping repeatedly surfaces in the school-wide dashboard for the HoD's notice.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

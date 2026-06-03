@@ -1,0 +1,42 @@
+# ---- dependencies ----
+node_modules/
+.pnpm-store/
+
+# ---- next.js / build ----
+omnischools/.next/
+omnischools/out/
+omnischools/build/
+omnischools/next-env.d.ts
+*.tsbuildinfo
+
+# ---- env / secrets ----
+.env
+.env.*
+!.env.example
+omnischools/.env
+omnischools/.env.*
+!omnischools/.env.example
+
+# ---- local data / docker volumes ----
+.docker-data/
+pgdata/
+
+# ---- graphify knowledge graph (generated) ----
+graphify-out/
+
+# ---- editor / tooling ----
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- logs ----
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ---- testing / coverage ----
+coverage/
+playwright-report/
+test-results/

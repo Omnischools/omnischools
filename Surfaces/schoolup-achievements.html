@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Achievements</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+.layout.mobile { grid-template-columns: 340px 340px 1fr; gap: 32px; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+  position: relative;
+}
+.app-shell.has-drawer::before {
+  content: "";
+  position: absolute;
+  inset: 0; left: 220px;
+  background: rgba(26,43,71,0.32);
+  z-index: 5;
+  pointer-events: none;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 32px 40px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.subtle { background: transparent; border-color: transparent; color: var(--navy-3); }
+.btn.outline-gold {
+  background: transparent; border: 1px solid var(--gold);
+  color: var(--gold);
+}
+.btn.outline-light {
+  background: transparent; border: 1px solid rgba(255,255,255,0.3);
+  color: var(--bg);
+}
+
+/* ============ FILTER STRIP ============ */
+.filter-strip {
+  display: flex; gap: 8px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-pill {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.filter-pill .count {
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+.filter-divider {
+  height: 18px;
+  width: 1px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+/* ============ FEATURED HERO ============ */
+.featured-hero {
+  background: var(--navy);
+  color: var(--bg);
+  border-radius: 14px;
+  padding: 28px 32px;
+  margin-bottom: 22px;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 28px;
+  align-items: center;
+}
+.featured-hero::after {
+  content: "";
+  position: absolute;
+  right: -80px; bottom: -80px;
+  width: 280px; height: 280px;
+  border-radius: 50%;
+  background: rgba(200,151,91,0.10);
+}
+.featured-hero .label {
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+  position: relative; z-index: 2;
+}
+.featured-hero .label::before {
+  content: "★";
+  font-size: 13px;
+}
+.featured-hero h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 500;
+  letter-spacing: -0.02em; line-height: 1.15;
+  margin-bottom: 12px;
+  position: relative; z-index: 2;
+  font-variation-settings: "opsz" 144;
+}
+.featured-hero h3 em { font-style: italic; color: var(--gold); }
+.featured-hero .body-text {
+  font-size: 13px;
+  color: rgba(250,247,242,0.85);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  max-width: 480px;
+  position: relative; z-index: 2;
+}
+.featured-hero .meta-row {
+  display: flex; gap: 14px; align-items: center;
+  font-size: 11px;
+  color: var(--gold-soft);
+  position: relative; z-index: 2;
+}
+.featured-hero .meta-row .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--gold-soft); }
+.featured-hero .meta-row b { color: var(--bg); font-weight: 600; }
+
+.featured-image {
+  position: relative; z-index: 2;
+  aspect-ratio: 4/3;
+  background: linear-gradient(135deg, #C8975B 0%, #8B6534 100%);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 20px;
+  box-shadow: 0 16px 40px -8px rgba(0,0,0,0.3);
+}
+.featured-image .ph-corners::before,
+.featured-image .ph-corners::after {
+  content: "";
+  position: absolute;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(26,43,71,0.4);
+}
+.featured-image .ph-corners::before { top: 12px; left: 12px; border-right: none; border-bottom: none; }
+.featured-image .ph-corners::after { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+
+/* ============ ACHIEVEMENT CARD GRID ============ */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.ach-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: all 0.15s;
+}
+.ach-card:hover {
+  border-color: var(--gold-soft);
+  box-shadow: 0 12px 30px -16px rgba(26,43,71,0.18);
+}
+.ach-card .photo {
+  aspect-ratio: 16/10;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.ach-card .photo.alpha-pattern {
+  background: linear-gradient(135deg, #C8975B 0%, #8B6534 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+.ach-card .photo.beta-pattern {
+  background: linear-gradient(135deg, #2F6B47 0%, #1d4a30 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold-soft);
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+.ach-card .photo.gamma-pattern {
+  background: linear-gradient(135deg, #1A2B47 0%, #2D3F5C 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold-soft);
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+.ach-card .photo.delta-pattern {
+  background: linear-gradient(135deg, #B84A39 0%, #7d2d20 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold-soft);
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+.ach-card .photo.placeholder-pattern {
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--border-2);
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.ach-card .photo .type-badge {
+  position: absolute;
+  top: 12px; left: 12px;
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.95);
+  color: var(--navy);
+  border-radius: 100px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.ach-card .photo .type-badge.academic { background: var(--gold); color: var(--navy); }
+.ach-card .photo .endorsed {
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Fraunces', serif;
+}
+.ach-card .body {
+  padding: 18px 20px 20px;
+  flex: 1;
+  display: flex; flex-direction: column;
+}
+.ach-card h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+.ach-card h4 em { font-style: italic; color: var(--gold); }
+.ach-card .description {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+.ach-card .recipient-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  margin-bottom: 0;
+  margin-top: auto;
+}
+.ach-card .recipient-row .av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.ach-card .recipient-row .av.school {
+  background: var(--navy);
+  color: var(--gold);
+}
+.ach-card .recipient-row .meta { flex: 1; min-width: 0; }
+.ach-card .recipient-row .meta .name {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ach-card .recipient-row .meta .sub {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.ach-card .recipient-row .scope {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  padding: 3px 7px;
+  background: var(--bg);
+  border-radius: 3px;
+}
+.ach-card .meta-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 0;
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.ach-card .meta-foot .source {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.ach-card .endorse-action {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+/* ============ DRAWER ============ */
+.drawer {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 480px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -16px 0 40px -10px rgba(26,43,71,0.18);
+  z-index: 10;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.drawer-head {
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: start;
+}
+.drawer-head .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+  margin-bottom: 6px;
+}
+.drawer-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.drawer-head h3 em { font-style: italic; color: var(--gold); }
+.drawer-head .close {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-size: 14px;
+}
+.drawer-body {
+  flex: 1;
+  padding: 22px 24px;
+  overflow-y: auto;
+}
+
+.drawer-section-label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+  margin: 22px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.drawer-section-label::before {
+  content: ""; width: 18px; height: 1px; background: var(--gold);
+}
+.drawer-section-label:first-child { margin-top: 0; }
+
+/* Type toggle (Academic / Non-academic) */
+.type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.type-seg {
+  padding: 12px 14px;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.type-seg.active {
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(26,43,71,0.1);
+}
+.type-seg .ts-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.type-seg.active .ts-label { color: var(--gold); }
+.type-seg .ts-name {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--navy-3);
+}
+.type-seg.active .ts-name { color: var(--navy); }
+.type-seg .ts-eg {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+
+.field { margin-bottom: 14px; }
+.field label {
+  display: block;
+  font-size: 11px; color: var(--navy-2); font-weight: 600;
+  margin-bottom: 5px; letter-spacing: 0.02em;
+}
+.field label .req { color: var(--terra); margin-left: 2px; }
+.field label .hint { color: var(--navy-3); font-weight: 400; margin-left: 4px; font-size: 10px; }
+.input, .textarea {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  font-family: inherit; font-size: 13px;
+  color: var(--navy);
+}
+.textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+.input::placeholder, .textarea::placeholder { color: var(--navy-3); font-style: italic; opacity: 1; }
+.input:focus, .textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+/* Recipient picker */
+.recipient-picker {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+.recip-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--surface);
+}
+.recip-row .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.recip-row .meta { flex: 1; }
+.recip-row .meta .n { font-size: 13px; font-weight: 600; }
+.recip-row .meta .s { font-size: 11px; color: var(--navy-3); }
+.recip-row .change {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+
+/* Photo upload zone */
+.photo-zone {
+  border: 1.5px dashed var(--gold);
+  border-radius: 10px;
+  background: var(--gold-bg);
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.photo-zone:hover { background: rgba(200,151,91,0.18); }
+.photo-zone .uz-icon {
+  width: 40px; height: 40px;
+  margin: 0 auto 10px;
+  background: var(--surface);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 18px;
+}
+.photo-zone .t1 {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 600;
+}
+.photo-zone .t2 {
+  font-size: 11px; color: var(--navy-3);
+  margin-top: 3px;
+}
+
+/* Scope selector */
+.scope-options {
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+.scope-row {
+  display: flex; align-items: start; gap: 12px;
+  padding: 11px 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.scope-row.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.scope-row .radio {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-2);
+  background: var(--surface);
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+}
+.scope-row.selected .radio {
+  border-color: var(--gold);
+}
+.scope-row.selected .radio::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--gold);
+  border-radius: 50%;
+}
+.scope-row .body { flex: 1; }
+.scope-row .body .t1 {
+  font-size: 13px; font-weight: 600;
+  margin-bottom: 1px;
+}
+.scope-row .body .t2 {
+  font-size: 11px; color: var(--navy-3);
+  line-height: 1.4;
+}
+.scope-row .body .t2 b { color: var(--navy); }
+
+.drawer-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  display: flex; gap: 8px; justify-content: space-between;
+  align-items: center;
+}
+
+/* Pending endorsement notice - inside parent drawer */
+.pending-notice {
+  background: rgba(200,151,91,0.08);
+  border: 1px solid var(--gold-soft);
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-top: 10px;
+  display: flex; gap: 10px; align-items: start;
+}
+.pending-notice .pn-ic {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 11px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.pending-notice .pn-body { flex: 1; font-size: 12px; color: var(--navy-2); line-height: 1.5; }
+.pending-notice .pn-body b { color: var(--navy); font-weight: 700; }
+.pending-notice .pn-body em { color: var(--gold); font-style: italic; font-weight: 600; }
+
+/* Pending status pill on cards */
+.pending-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  background: rgba(200,151,91,0.12);
+  border: 1px solid var(--gold-soft);
+  border-radius: 100px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.pending-pill::before {
+  content: "";
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Pending overlay on card (replaces the photo on parent's pending posts) */
+.pending-banner {
+  background: var(--gold-bg);
+  border-bottom: 1px solid var(--gold-soft);
+  padding: 8px 14px;
+  font-size: 10px;
+  color: var(--navy-2);
+  letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 600;
+}
+.pending-banner b { color: var(--gold); font-weight: 700; }
+
+/* Comments thread */
+.comments-thread {
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  padding: 14px 18px 16px;
+}
+.comments-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px;
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+}
+.comments-head .count { color: var(--navy-3); }
+.comment {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px dashed var(--border);
+}
+.comment:first-of-type { border-top: none; }
+.comment .av {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 10px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.comment .av.school { background: var(--navy); color: var(--gold); }
+.comment .av.parent { background: var(--green-bg); color: var(--green); }
+.comment .body .head-row {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 2px;
+}
+.comment .body .who {
+  font-size: 12px; font-weight: 600;
+}
+.comment .body .role-tag {
+  font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+}
+.comment .body .when {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.comment .body .text {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.comment-input-row {
+  display: flex; gap: 8px; align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.comment-input-row .av-mini {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 10px;
+  flex-shrink: 0;
+}
+.comment-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 100px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--navy);
+}
+.comment-input::placeholder { color: var(--navy-3); font-style: italic; }
+.comment-input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+.comment-disabled-row {
+  display: flex; gap: 10px; align-items: center;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px dashed var(--border-2);
+  border-radius: 8px;
+  font-size: 11px; color: var(--navy-3);
+  font-style: italic;
+}
+.comment-disabled-row .ic {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  color: var(--navy-3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+/* Settings preview card */
+.settings-preview {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px 24px;
+  margin-bottom: 18px;
+}
+.settings-preview .sp-head {
+  display: flex; justify-content: space-between; align-items: start;
+  margin-bottom: 14px;
+}
+.settings-preview h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.settings-preview .sp-sub {
+  font-size: 12px; color: var(--navy-3);
+  line-height: 1.5; max-width: 420px;
+}
+.settings-toggle-block {
+  display: flex; align-items: center; gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.settings-toggle-block .lbl {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+}
+.settings-toggle-block .state {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 100px;
+}
+.settings-toggle-block .state.on { background: var(--green-bg); color: var(--green); }
+.settings-toggle-block .state.off { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+.settings-toggle-block .toggle-mini {
+  width: 36px; height: 20px;
+  background: var(--green);
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+}
+.settings-toggle-block .toggle-mini::after {
+  content: "";
+  position: absolute;
+  width: 16px; height: 16px;
+  background: var(--surface);
+  border-radius: 50%;
+  top: 2px; right: 2px;
+}
+.settings-toggle-block .toggle-mini.off { background: var(--border-2); }
+.settings-toggle-block .toggle-mini.off::after { right: auto; left: 2px; }
+
+.who-can-comment {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border-radius: 6px;
+}
+.who-can-comment .lbl {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-right: 6px;
+  align-self: center;
+}
+.role-chip {
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.role-chip.allowed { background: var(--green-bg); color: var(--green); }
+.role-chip.allowed::before {
+  content: "✓ ";
+  font-weight: 700;
+}
+.role-chip.blocked {
+  background: var(--bg);
+  color: var(--navy-3);
+  border: 1px solid var(--border);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+/* ============ PHONE FRAME ============ */
+.phone {
+  width: 340px;
+  height: 690px;
+  background: var(--navy);
+  border-radius: 36px;
+  padding: 8px;
+  box-shadow: 0 30px 70px -20px rgba(26,43,71,0.35), 0 0 0 1px rgba(26,43,71,0.06);
+  position: relative;
+}
+.phone::before {
+  content: "";
+  position: absolute;
+  top: 14px; left: 50%;
+  transform: translateX(-50%);
+  width: 100px; height: 22px;
+  background: var(--navy);
+  border-radius: 12px;
+  z-index: 10;
+}
+.phone-screen {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  border-radius: 28px;
+  overflow: hidden;
+  position: relative;
+  display: flex; flex-direction: column;
+}
+.phone-label {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.statusbar {
+  height: 38px;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 24px 0 28px;
+  font-size: 12px; font-weight: 600;
+  color: var(--navy);
+}
+.statusbar .icons { display: flex; gap: 5px; align-items: center; }
+.statusbar .icons span { width: 12px; height: 8px; background: var(--navy); border-radius: 1px; }
+.statusbar .icons span:nth-child(2) { width: 14px; height: 9px; }
+.statusbar .icons span:nth-child(3) { width: 18px; height: 9px; border-radius: 2px; }
+
+.m-topbar {
+  padding: 8px 20px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.m-topbar h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.m-topbar h1 em { font-style: italic; color: var(--gold); }
+.m-topbar .add-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 18px;
+  border: none;
+  cursor: pointer;
+}
+
+.m-tabs {
+  display: flex; gap: 6px;
+  padding: 0 20px 14px;
+  overflow-x: auto;
+}
+.m-tab-pill {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  white-space: nowrap;
+}
+.m-tab-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+
+.m-content {
+  flex: 1;
+  padding: 0 20px 16px;
+  overflow-y: auto;
+}
+
+.m-ach-card {
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.m-ach-card .photo {
+  aspect-ratio: 16/10;
+  position: relative;
+}
+.m-ach-card .photo.gold-grad {
+  background: linear-gradient(135deg, #C8975B 0%, #8B6534 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.m-ach-card .photo.green-grad {
+  background: linear-gradient(135deg, #2F6B47 0%, #1d4a30 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold-soft);
+  font-family: 'Fraunces', serif;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.m-ach-card .photo.navy-grad {
+  background: linear-gradient(135deg, #1A2B47 0%, #2D3F5C 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold-soft);
+  font-family: 'Fraunces', serif;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.m-ach-card .photo .type-badge {
+  position: absolute;
+  top: 10px; left: 10px;
+  padding: 3px 8px;
+  background: rgba(255,255,255,0.95);
+  color: var(--navy);
+  border-radius: 100px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.m-ach-card .photo .type-badge.academic { background: var(--gold); }
+.m-ach-card .photo .endorsed {
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.m-ach-card .body {
+  padding: 14px 16px 16px;
+}
+.m-ach-card h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 15px; font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+.m-ach-card h4 em { font-style: italic; color: var(--gold); }
+.m-ach-card .desc {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.m-ach-card .source-row {
+  display: flex; align-items: center; gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.m-ach-card .source-row .src-av {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 9px;
+  flex-shrink: 0;
+}
+.m-ach-card .source-row .src-av.school { background: var(--navy); color: var(--gold); }
+.m-ach-card .source-row .body-text { flex: 1; }
+.m-ach-card .source-row .body-text b { color: var(--navy); font-weight: 600; }
+
+.m-empty-add {
+  background: var(--surface);
+  border: 1.5px dashed var(--border-2);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 14px;
+  cursor: pointer;
+}
+.m-empty-add:hover {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.m-empty-add .ic-big {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.m-empty-add .body { flex: 1; }
+.m-empty-add .body .t1 {
+  font-family: 'Fraunces', serif;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-bottom: 2px;
+}
+.m-empty-add .body .t2 { font-size: 11px; color: var(--navy-3); }
+
+.m-section-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin: 6px 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.m-section-label .count {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.m-tabbar {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 8px 4px 24px;
+}
+.m-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 9px; color: var(--navy-3); font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.m-tab .dot { width: 18px; height: 18px; border-radius: 4px; background: var(--border); }
+.m-tab.active { color: var(--navy); }
+.m-tab.active .dot { background: var(--navy); }
+
+@media (max-width: 1100px) {
+  .layout, .layout.mobile { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .featured-hero { grid-template-columns: 1fr; }
+  .cards-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Achievements</div>
+  <h1 class="display">Worth <em>celebrating</em></h1>
+  <div class="gold-rule"></div>
+  <p>Schools, teachers, students, and parents post achievements — academic and non-academic — to a shared feed. Endorsements signal verified milestones. Parent posts targeted at the school or class are gated on admin endorsement; students never see them until approved. Comments are an opt-in feature for adults only.</p>
+</header>
+
+<!-- ============ 01 FEED ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Achievements feed</div>
+    <div class="section-meta">Desktop · admin or teacher view</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / achievements</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item active"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Achievements</div>
+              <h2 class="display">Recently <em>celebrated</em></h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export</button>
+              <button class="btn gold">+ Post achievement</button>
+            </div>
+          </div>
+
+          <!-- Filter strip -->
+          <div class="filter-strip">
+            <div class="filter-pill active">All <span class="count">142</span></div>
+            <div class="filter-pill">Academic <span class="count">86</span></div>
+            <div class="filter-pill">Non-academic <span class="count">56</span></div>
+            <div class="filter-divider"></div>
+            <div class="filter-pill">From school</div>
+            <div class="filter-pill">From teachers</div>
+            <div class="filter-pill">From students</div>
+            <div class="filter-pill">From parents</div>
+            <div class="filter-divider"></div>
+            <div class="filter-pill">★ Endorsed only</div>
+          </div>
+
+          <!-- Featured hero -->
+          <div class="featured-hero">
+            <div>
+              <div class="label">School achievement · just posted</div>
+              <h3>Christ the King ranked <em>#2</em> in district BECE results</h3>
+              <div class="body-text">Out of 47 JHS schools in Accra Metro, our students placed second overall — with 89% achieving Grade 1–6 in their core subjects. A remarkable result and the product of years of dedication from staff, students, and families.</div>
+              <div class="meta-row">
+                <span>Posted by <b>Florence Addo</b></span>
+                <span class="dot"></span>
+                <span>2 hours ago</span>
+                <span class="dot"></span>
+                <span>Visible to <b>everyone</b></span>
+              </div>
+            </div>
+            <div class="featured-image">
+              <div class="ph-corners"></div>
+              <div>BECE results<br>presentation photo</div>
+            </div>
+          </div>
+
+          <!-- Cards grid -->
+          <div class="cards-grid">
+            <div class="ach-card">
+              <div class="photo alpha-pattern">
+                <div class="type-badge academic">Academic</div>
+                <div class="endorsed" title="Endorsed by Headmistress">★</div>
+                <div>Inter-school debate · 2nd place</div>
+              </div>
+              <div class="body">
+                <h4>Akosua placed <em>2nd</em> in inter-school debate</h4>
+                <div class="description">Akosua and her debate partner argued the case against social media regulation. Sharp, well-prepared, and remarkably composed under cross-examination.</div>
+                <div class="recipient-row">
+                  <div class="av">AB</div>
+                  <div class="meta">
+                    <div class="name">Akosua Boateng</div>
+                    <div class="sub">JHS 2A</div>
+                  </div>
+                  <div class="scope">School</div>
+                </div>
+                <div class="meta-foot">
+                  <div class="source">Posted by Mrs. Owusu · 1d ago</div>
+                  <div class="endorse-action">★ ENDORSED</div>
+                </div>
+              </div>
+              <div class="comments-thread">
+                <div class="comments-head">
+                  <span>Comments</span>
+                  <span class="count">2</span>
+                </div>
+                <div class="comment">
+                  <div class="av school">CK</div>
+                  <div class="body">
+                    <div class="head-row">
+                      <span class="who">Florence Addo</span>
+                      <span class="role-tag">Head</span>
+                      <span class="when">22h ago</span>
+                    </div>
+                    <div class="text">Tremendous result — please pass on the school's congratulations to Akosua and her partner.</div>
+                  </div>
+                </div>
+                <div class="comment">
+                  <div class="av parent">AB</div>
+                  <div class="body">
+                    <div class="head-row">
+                      <span class="who">Ama Boateng</span>
+                      <span class="role-tag" style="color:var(--green)">Parent</span>
+                      <span class="when">14h ago</span>
+                    </div>
+                    <div class="text">Thank you Mrs. Owusu, we are so proud of her. She's been preparing for weeks.</div>
+                  </div>
+                </div>
+                <div class="comment-input-row">
+                  <div class="av-mini">FA</div>
+                  <input class="comment-input" placeholder="Add a comment as Florence..." />
+                </div>
+              </div>
+            </div>
+
+            <div class="ach-card">
+              <div class="photo beta-pattern">
+                <div class="type-badge">Non-academic</div>
+                <div>Inter-school football · winners</div>
+              </div>
+              <div class="body">
+                <h4>JHS 3 boys won the <em>Greater Accra</em> football cup</h4>
+                <div class="description">Beat Achimota School 2–1 in the final after extra time. Yaw scored both goals and was named player of the tournament.</div>
+                <div class="recipient-row">
+                  <div class="av">3B</div>
+                  <div class="meta">
+                    <div class="name">JHS 3B · 11 students</div>
+                    <div class="sub">Football team</div>
+                  </div>
+                  <div class="scope">School</div>
+                </div>
+                <div class="meta-foot">
+                  <div class="source">Posted by Mr. Asante · 2d ago</div>
+                  <div class="endorse-action">+ ENDORSE</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ach-card">
+              <div class="photo gamma-pattern">
+                <div class="type-badge academic">Academic</div>
+                <div class="endorsed" title="Endorsed by Form teacher">★</div>
+                <div>Maths Olympiad qualifier</div>
+              </div>
+              <div class="body">
+                <h4>Ama qualified for the <em>National Maths Olympiad</em></h4>
+                <div class="description">Top 3% nationally in the qualifier round. The final round is at the University of Ghana in October — we'll be there to cheer her on.</div>
+                <div class="recipient-row">
+                  <div class="av">AM</div>
+                  <div class="meta">
+                    <div class="name">Ama Mensah</div>
+                    <div class="sub">JHS 2A</div>
+                  </div>
+                  <div class="scope">School</div>
+                </div>
+                <div class="meta-foot">
+                  <div class="source">Posted by Mr. Mensah · 3d ago</div>
+                  <div class="endorse-action">★ ENDORSED</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ach-card">
+              <div class="pending-banner">
+                <span>↑</span>
+                <span>Posted by parent · <b>pending school endorsement</b> — currently visible only to family circle</span>
+              </div>
+              <div class="photo delta-pattern">
+                <div class="type-badge">Non-academic</div>
+                <div>Grade 8 piano exam · distinction</div>
+              </div>
+              <div class="body">
+                <h4>Esi passed her <em>Grade 8 piano</em> exam with distinction</h4>
+                <div class="description">Six years of weekly practice. We're proud of her dedication — she'll be performing at the Christmas concert.</div>
+                <div class="recipient-row">
+                  <div class="av">EO</div>
+                  <div class="meta">
+                    <div class="name">Esi Odoom</div>
+                    <div class="sub">JHS 2A</div>
+                  </div>
+                  <div class="scope">Class · <span style="color:var(--gold)">requested</span></div>
+                </div>
+                <div class="meta-foot">
+                  <div class="source">Posted by Mr. Odoom (parent) · 4h ago</div>
+                  <div class="endorse-action">★ ENDORSE &amp; PUBLISH</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Featured hero for school-level posts.</b> Institutional achievements (BECE results, school awards) get full-width treatment — they're the reason a parent or teacher comes back to this page.</li>
+        <li><b>Filter strip with three groups.</b> Type (Academic / Non-academic), source (school / teachers / students / parents), and the "Endorsed only" filter. Three logical axes, visually separated by dividers.</li>
+        <li><b>Endorsement marker is the gold ★ in a circle</b> on the photo top-right. Subtle but unmistakable — endorsed posts feel verified without making unendorsed posts feel lesser.</li>
+        <li><b>Type badge top-left of each photo</b> — gold for Academic, white for Non-academic. Lets the eye pre-sort the feed without reading every title.</li>
+        <li><b>Recipient row separates the celebration from the source.</b> "Akosua Boateng · JHS 2A" is the recipient; "Posted by Mrs. Owusu" is the author. Confusing these is a real risk in school posts; the visual separation prevents it.</li>
+        <li><b>Parent posts pending endorsement</b> get a gold banner across the top: "pending school endorsement — currently visible only to family circle." The card visibly distinguishes itself, and the scope chip shows "Class · requested" so admins know what the parent intended.</li>
+        <li><b>The endorse action on a pending parent post says "★ ENDORSE &amp; PUBLISH"</b> instead of just "ENDORSE" — the language signals that this single click both verifies and broadcasts. One action, two clear consequences.</li>
+        <li><b>Comments thread on the Akosua card</b> shows the feature when comments are enabled school-wide. Two comments — one from the headmistress (admin), one from the parent. The comment input has a name placeholder ("Add a comment as Florence...") to remind the user of their role identity.</li>
+        <li><b>Students cannot comment, even when comments are on.</b> No comment row from a student on the thread. This is enforced at the role level, not by absence — the input field is simply not shown on screens viewed by students.</li>
+        <li><b>Role tags inside comments</b> ("Head", "Parent", "Teacher") use the existing color system — gold for school staff, green for parent. Quick visual signal of authority weight.</li>
+        <li><b>"+ ENDORSE" vs "★ ENDORSED"</b> — same place, different state. Anyone with endorsement rights sees the action; everyone else sees the static badge.</li>
+        <li><b>The four photos use the brand palette as gradient placeholders.</b> Real photos go here in production.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 ADD DRAWER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Post an achievement · drawer</div>
+    <div class="section-meta">Mobile-friendly desktop · parent posting for child</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / achievements / new</div>
+      </div>
+      <div class="app-shell has-drawer">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Home</div>
+          <div class="nav-item"><div class="ic"></div>Grades</div>
+          <div class="nav-item"><div class="ic"></div>Fees</div>
+          <div class="nav-item"><div class="ic"></div>Notices</div>
+          <div class="nav-item active"><div class="ic"></div>Achievements</div>
+          <div class="footer">
+            <div class="av">AB</div>
+            <div class="meta"><div class="n">Ama Boateng</div><div class="r">Parent</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Akosua's achievements</div>
+              <h2 class="display">Worth <em>celebrating</em></h2>
+            </div>
+          </div>
+
+          <!-- Faded background -->
+          <div style="opacity:0.4;display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;height:280px"></div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;height:280px"></div>
+          </div>
+
+          <!-- Drawer overlay -->
+          <aside class="drawer">
+            <div class="drawer-head">
+              <div>
+                <div class="label">New post · for Akosua</div>
+                <h3>Celebrate an <em>achievement</em></h3>
+              </div>
+              <div class="close">×</div>
+            </div>
+
+            <div class="drawer-body">
+              <!-- Type -->
+              <div class="drawer-section-label">Type</div>
+              <div class="type-toggle">
+                <div class="type-seg">
+                  <div class="ts-label">★ ACADEMIC</div>
+                  <div class="ts-name">Academic</div>
+                  <div class="ts-eg">Olympiad, debate, BECE</div>
+                </div>
+                <div class="type-seg active">
+                  <div class="ts-label">NON-ACADEMIC</div>
+                  <div class="ts-name">Non-academic</div>
+                  <div class="ts-eg">Sports, arts, leadership</div>
+                </div>
+              </div>
+
+              <!-- Recipient (locked for parent posts) -->
+              <div class="drawer-section-label">Who is being celebrated</div>
+              <div class="recipient-picker">
+                <div class="recip-row">
+                  <div class="av">AB</div>
+                  <div class="meta">
+                    <div class="n">Akosua Boateng</div>
+                    <div class="s">JHS 2A · your child</div>
+                  </div>
+                  <div class="change" style="color:var(--navy-3);font-style:italic">Locked</div>
+                </div>
+              </div>
+
+              <!-- Headline + description -->
+              <div class="field" style="margin-top:18px">
+                <label>Headline <span class="req">*</span></label>
+                <input class="input" placeholder="e.g. Akosua won her swimming gala" />
+              </div>
+              <div class="field">
+                <label>Description <span class="hint">— what happened, why it's special</span></label>
+                <textarea class="textarea" placeholder="A few sentences about the achievement."></textarea>
+              </div>
+
+              <!-- Photo -->
+              <div class="drawer-section-label">Photo <span style="color:var(--navy-3);font-weight:500;letter-spacing:0;text-transform:none;font-size:11px;font-style:italic">— optional but recommended</span></div>
+              <div class="photo-zone">
+                <div class="uz-icon">+</div>
+                <div class="t1">Drop a photo or tap to upload</div>
+                <div class="t2">JPG or PNG · up to 5MB</div>
+              </div>
+
+              <!-- Scope -->
+              <div class="drawer-section-label">Who can see this</div>
+              <div class="scope-options">
+                <div class="scope-row">
+                  <div class="radio"></div>
+                  <div class="body">
+                    <div class="t1">School-wide</div>
+                    <div class="t2">If a school admin endorses, everyone at <b>Christ the King JHS</b> can see. Until then, only your family circle sees it.</div>
+                  </div>
+                </div>
+                <div class="scope-row selected">
+                  <div class="radio"></div>
+                  <div class="body">
+                    <div class="t1">Class</div>
+                    <div class="t2">If a school admin endorses, the <b>JHS 2A</b> roster, form teacher, and class parents can see. Until then, only your family circle sees it.</div>
+                  </div>
+                </div>
+                <div class="scope-row">
+                  <div class="radio"></div>
+                  <div class="body">
+                    <div class="t1">Just our family circle</div>
+                    <div class="t2">Akosua, you, her form teacher. <b>No endorsement needed</b> — visible immediately to your circle.</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pending notice — shown when School-wide or Class is picked -->
+              <div class="pending-notice">
+                <div class="pn-ic">i</div>
+                <div class="pn-body">
+                  <b>How class &amp; school posts work for parents:</b> Your post will be visible to your <em>family circle</em> right away. To share it with the class or school, an admin or teacher needs to endorse it. We'll notify them automatically — most posts are endorsed within a day.
+                </div>
+              </div>
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn subtle">Cancel</button>
+              <div style="display:flex;gap:8px">
+                <button class="btn">Save as draft</button>
+                <button class="btn gold">Post →</button>
+              </div>
+            </div>
+          </aside>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Showing the parent's view</b> rather than the teacher's because that's where the new endorsement-pending behavior matters. Teacher's flow is the same minus the pending notice — endorsements auto-apply for teachers.</li>
+        <li><b>Recipient is locked.</b> Parents post for their own children only — no picker needed. The "Locked" tag on the row makes the scoping explicit.</li>
+        <li><b>Type comes first, not recipient.</b> Type shapes how the post will appear in the feed; picking it first is a cleaner mental sequence.</li>
+        <li><b>Three scope options with explicit "until then" language.</b> Each School-wide and Class option spells out the gate: <em>"If a school admin endorses"</em> + <em>"Until then, only your family circle sees it."</em> No ambiguity about what happens at post time.</li>
+        <li><b>"Just our family circle" is highlighted as no-endorsement-needed.</b> If a parent wants their post visible immediately and only to family, this is the option that does it. Removing the gate from the option that doesn't need one prevents confusion.</li>
+        <li><b>Pending notice appears below the scope picker</b> when School-wide or Class is selected. Reinforces what's about to happen at post time, not just what each option means in the abstract.</li>
+        <li><b>"We'll notify them automatically"</b> reassures the parent that they're not on the hook for chasing a teacher down. The system handles the handoff.</li>
+        <li><b>Rough timing expectation</b> ("most posts are endorsed within a day") sets reality without making a binding commitment.</li>
+        <li><b>Photo zone is gold-dashed,</b> matching the logo upload pattern from onboarding. Consistent affordance for "upload an image" across the product.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 MOBILE ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Mobile · student &amp; parent</div>
+    <div class="section-meta">Achievements tab · browse and post</div>
+  </div>
+
+  <div class="layout mobile">
+    <!-- STUDENT MOBILE -->
+    <div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="icons"><span></span><span></span><span></span></div>
+          </div>
+          <div class="m-topbar">
+            <h1>Achieve<em>ments</em></h1>
+            <button class="add-btn">+</button>
+          </div>
+
+          <div class="m-tabs">
+            <div class="m-tab-pill active">Mine</div>
+            <div class="m-tab-pill">Class</div>
+            <div class="m-tab-pill">School</div>
+          </div>
+
+          <div class="m-content">
+
+            <div class="m-empty-add">
+              <div class="ic-big">+</div>
+              <div class="body">
+                <div class="t1">Add your own achievement</div>
+                <div class="t2">Sports, awards, anything you're proud of</div>
+              </div>
+            </div>
+
+            <div class="m-section-label">
+              <span>Your achievements</span>
+              <span class="count">3</span>
+            </div>
+
+            <div class="m-ach-card">
+              <div class="photo gold-grad">
+                <div class="type-badge academic">Academic</div>
+                <div class="endorsed">★</div>
+                <div>Debate competition photo</div>
+              </div>
+              <div class="body">
+                <h4>2nd place · <em>inter-school debate</em></h4>
+                <div class="desc">Argued against social media regulation. Composed under cross-examination.</div>
+                <div class="source-row">
+                  <div class="src-av">EO</div>
+                  <div class="body-text">Posted by <b>Mrs. Owusu</b> · 1d ago</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="m-ach-card">
+              <div class="photo navy-grad">
+                <div class="type-badge">Non-academic</div>
+                <div>School play photo</div>
+              </div>
+              <div class="body">
+                <h4>Lead role · <em>school play</em></h4>
+                <div class="desc">Played Antigone in the term-end production. Three full-house performances.</div>
+                <div class="source-row">
+                  <div class="src-av">AB</div>
+                  <div class="body-text">Posted by <b>you</b> · 2 weeks ago</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="m-ach-card">
+              <div class="photo green-grad">
+                <div class="type-badge academic">Academic</div>
+                <div class="endorsed">★</div>
+                <div>Term 3 results</div>
+              </div>
+              <div class="body">
+                <h4>1st in <em>Mathematics</em> · Term 3 last year</h4>
+                <div class="desc">Top of Form 1A in Term 3 2025 with 94% in the term exam.</div>
+                <div class="source-row">
+                  <div class="src-av school">CK</div>
+                  <div class="body-text">From <b>school</b> · last term</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="m-tabbar">
+            <div class="m-tab"><div class="dot"></div>Home</div>
+            <div class="m-tab"><div class="dot"></div>Work</div>
+            <div class="m-tab"><div class="dot"></div>Grades</div>
+            <div class="m-tab"><div class="dot"></div>Notices</div>
+            <div class="m-tab active"><div class="dot"></div>More</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Student · my achievements</div>
+    </div>
+
+    <!-- PARENT MOBILE -->
+    <div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="icons"><span></span><span></span><span></span></div>
+          </div>
+          <div class="m-topbar">
+            <h1>Akosua's <em>wins</em></h1>
+            <button class="add-btn">+</button>
+          </div>
+
+          <div class="m-tabs">
+            <div class="m-tab-pill active">All</div>
+            <div class="m-tab-pill">Academic</div>
+            <div class="m-tab-pill">Other</div>
+          </div>
+
+          <div class="m-content">
+
+            <div class="m-empty-add">
+              <div class="ic-big">+</div>
+              <div class="body">
+                <div class="t1">Post one for Akosua</div>
+                <div class="t2">Outside-school wins, milestones, family achievements</div>
+              </div>
+            </div>
+
+            <div class="m-section-label">
+              <span>Recent</span>
+              <span class="count">8 total</span>
+            </div>
+
+            <div class="m-ach-card">
+              <div class="photo gold-grad">
+                <div class="type-badge academic">Academic</div>
+                <div class="endorsed">★</div>
+                <div>Debate competition</div>
+              </div>
+              <div class="body">
+                <h4>Akosua placed <em>2nd</em> in debate</h4>
+                <div class="desc">Inter-school debate · argued against social media regulation. Composed under cross-examination.</div>
+                <div class="source-row">
+                  <div class="src-av">EO</div>
+                  <div class="body-text">Posted by <b>Mrs. Owusu</b> · 1d ago</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="m-ach-card">
+              <div style="background:var(--gold-bg);border-bottom:1px solid var(--gold-soft);padding:7px 12px;font-size:9px;color:var(--navy-2);letter-spacing:0.04em;display:flex;align-items:center;gap:6px;font-weight:600">
+                <span style="width:5px;height:5px;border-radius:50%;background:var(--gold)"></span>
+                <span>Pending school endorsement · <b style="color:var(--gold)">family circle only for now</b></span>
+              </div>
+              <div class="photo green-grad">
+                <div class="type-badge">Non-academic</div>
+                <div>Sunday school certificate</div>
+              </div>
+              <div class="body">
+                <h4>Sunday school <em>memory verse</em> award</h4>
+                <div class="desc">Memorised all 12 books of the New Testament memory verses for the term.</div>
+                <div class="source-row">
+                  <div class="src-av">AB</div>
+                  <div class="body-text">Posted by <b>you</b> · 5 days ago · requested <span style="color:var(--gold)">Class</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="m-ach-card">
+              <div class="photo navy-grad">
+                <div class="type-badge">Non-academic</div>
+                <div>School play</div>
+              </div>
+              <div class="body">
+                <h4>Lead role · <em>school play</em></h4>
+                <div class="desc">Antigone in the term-end production.</div>
+                <div class="source-row">
+                  <div class="src-av">AB</div>
+                  <div class="body-text">Posted by <b>Akosua</b> · 2 weeks ago</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="m-tabbar">
+            <div class="m-tab"><div class="dot"></div>Home</div>
+            <div class="m-tab"><div class="dot"></div>Grades</div>
+            <div class="m-tab"><div class="dot"></div>Fees</div>
+            <div class="m-tab"><div class="dot"></div>Notices</div>
+            <div class="m-tab active"><div class="dot"></div>More</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Parent · child's achievements</div>
+    </div>
+
+    <div class="notes">
+      <h4>Why these layouts</h4>
+      <ul>
+        <li><b>Student tab labels are "Mine / Class / School"</b> — three concentric circles of relevance, ordered closest-out. The active default is "Mine" because that's the personal hook.</li>
+        <li><b>Parent tab labels are "All / Academic / Other"</b> — type-filtering, not source-filtering. Parents care less about <em>who posted</em> and more about <em>what kind</em>.</li>
+        <li><b>"Akosua's wins" as the parent header</b> — personal, warm, possessive. Different from the institutional "Achievements" header on desktop.</li>
+        <li><b>Big "+ Add" prompt at top of feed</b> on both, with role-specific copy. Student: "your own achievement." Parent: "post one for Akosua."</li>
+        <li><b>Pending banner on parent's own post.</b> The Sunday school card shows the small gold pulsing dot + "Pending school endorsement · family circle only for now." Parent sees their own post is in flight; status is unambiguous.</li>
+        <li><b>Source row says "requested Class"</b> with the requested scope in gold. Tells the parent what they asked for, separate from what's currently visible. When endorsed, this becomes the actual scope.</li>
+        <li><b>Endorsement star carries through to mobile,</b> same gold treatment. Visual continuity between desktop and mobile.</li>
+        <li><b>Source row distinguishes "you" vs "Mrs. Owusu" vs "school".</b> Three avatar treatments — gold-bg for individual, navy-bg for school. Makes the post-source unambiguous.</li>
+        <li><b>The "+" button in the top right</b> mirrors the gold treatment of the announcements/payments add buttons across the app.</li>
+        <li><b>Comments visible on mobile too</b> when enabled school-wide — student view shows the thread but never an input field (students can't comment in MVP1, regardless of role-on-screen). Parent view shows thread + input when commenting is enabled.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 SETTINGS · COMMENTS TOGGLE ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Comments setting · admin only</div>
+    <div class="section-meta">Settings &gt; Achievements</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / achievements</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Settings / Achievements</div>
+              <h2 class="display">Achievement <em>preferences</em></h2>
+            </div>
+          </div>
+
+          <!-- Comments toggle card -->
+          <div class="settings-preview">
+            <div class="sp-head">
+              <div>
+                <h3>Comments on achievements</h3>
+                <div class="sp-sub">Allow conversations under achievement posts. Useful for celebration and recognition; comes with a small moderation responsibility.</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span class="state on">ON</span>
+                <div class="toggle-mini"></div>
+              </div>
+            </div>
+
+            <div class="who-can-comment">
+              <span class="lbl">Who can comment</span>
+              <span class="role-chip allowed">Admin</span>
+              <span class="role-chip allowed">Teachers</span>
+              <span class="role-chip allowed">Parents</span>
+              <span class="role-chip blocked">Students</span>
+            </div>
+
+            <div style="margin-top:14px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--navy-3);line-height:1.5">
+              <b style="color:var(--navy)">In MVP1, students cannot comment on achievement posts</b> — even when comments are on. This keeps the conversation among adults and avoids moderation overhead in the early product. We'll revisit student commenting once we have a clear picture of how schools use the feature.
+            </div>
+          </div>
+
+          <!-- Endorsement policy card -->
+          <div class="settings-preview">
+            <div class="sp-head">
+              <div>
+                <h3>Endorsement policy</h3>
+                <div class="sp-sub">When a parent posts an achievement targeted at the school or class, the post is private to the family until an admin or teacher endorses it.</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span class="state on">ON</span>
+                <div class="toggle-mini"></div>
+              </div>
+            </div>
+
+            <div style="margin-top:14px;padding:12px 14px;background:var(--gold-bg);border:1px solid var(--gold-soft);border-radius:6px;font-size:11px;color:var(--navy-2);line-height:1.55">
+              <b style="color:var(--navy)">Recommended.</b> Without this gate, a parent could post anything school-wide. The endorsement step protects the school's voice while still letting parents celebrate their children freely within their family circle. <b>This is on by default and we strongly recommend keeping it on.</b>
+            </div>
+          </div>
+
+          <!-- Other achievement settings (ghosted) -->
+          <div class="settings-preview" style="opacity:0.55">
+            <div class="sp-head">
+              <div>
+                <h3>Auto-add achievements to transcripts</h3>
+                <div class="sp-sub">Endorsed academic achievements automatically appear on student transcripts at year-end. Coming in MVP3.</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span class="state off">SOON</span>
+                <div class="toggle-mini off"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-preview" style="opacity:0.55">
+            <div class="sp-head">
+              <div>
+                <h3>Share aggregate data with the Ministry</h3>
+                <div class="sp-sub">Anonymised counts of academic achievements per district contribute to national education insights. Configurable from main school settings.</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span class="state off">OFF</span>
+                <div class="toggle-mini off"></div>
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Comments off by default in production</b> (shown ON here for the wireframe to demonstrate the active state). Schools should turn it on deliberately when they're ready for moderation.</li>
+        <li><b>"Who can comment" surfaces the role rules</b> right under the main toggle. Admin / Teachers / Parents are checked; Students appears struck through and visibly blocked.</li>
+        <li><b>The footnote explicitly explains</b> why students can't comment in MVP1 — and signals it's revisitable. Better than silently omitting them.</li>
+        <li><b>Endorsement policy as a separate setting,</b> also defaulted on. Toggling it off would let parent posts go school-wide immediately — a real risk we discourage with the "Recommended" frame and the gold-bordered explanation.</li>
+        <li><b>Ghosted "coming soon" settings</b> for transcript integration and ministry data sharing. Tells admin what's on the roadmap without pretending the features exist.</li>
+        <li><b>Two ON cards full opacity, two coming-soon cards at 55%</b>. The visual hierarchy of available vs upcoming is unmistakable; admin doesn't waste time toggling something inert.</li>
+        <li><b>Settings live under their feature,</b> not in a global Settings dump. "Settings / Achievements" makes the scope clear in the breadcrumb.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

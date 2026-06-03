@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Subject teacher · Mr S. Asiedu · Chemistry F3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1500px; }
+.sidebar.tall { min-height:1800px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces', serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-group { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(232,212,184,0.5); padding:18px 24px 8px; font-weight:600; }
+.main { padding:0; background:var(--bg); }
+.head-row { background:var(--surface); border-bottom:1px solid var(--border); padding:20px 32px; display:flex; align-items:center; gap:20px; }
+.crumb { font-size:11px; color:var(--navy-3); letter-spacing:0.06em; }
+.crumb b { color:var(--navy); }
+.head-row h1 { font-family:'Fraunces', serif; font-size:24px; font-weight:500; flex:1; }
+.head-row h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.head-actions { display:flex; gap:8px; }
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:12px; font-weight:600; border-radius:6px; cursor:pointer; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); }
+.btn-primary { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.btn-gold { background:var(--gold); color:var(--navy); border-color:var(--gold); }
+.body-shell { padding:28px 32px 40px; }
+
+/* Teacher identity */
+.teacher-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 26px; margin-bottom:24px; display:grid; grid-template-columns:auto 1fr auto; gap:20px; align-items:center; }
+.t-avatar { width:60px; height:60px; border-radius:12px; background:linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:22px; font-weight:500; color:var(--gold); }
+.t-name { font-family:'Fraunces', serif; font-size:22px; font-weight:500; line-height:1.1; margin-bottom:5px; }
+.t-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.t-meta-row { display:flex; gap:18px; flex-wrap:wrap; font-size:12px; color:var(--navy-3); }
+.t-meta-row b { color:var(--navy); font-weight:600; }
+.t-pill { display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:3px 9px; border-radius:100px; font-weight:600; letter-spacing:0.04em; background:var(--gold-bg); color:var(--gold); }
+
+/* Countdown / cohort summary */
+.summary-strip { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; margin-bottom:24px; }
+.ss-cell { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 18px; }
+.ss-cell.live { border-left:3px solid var(--terra); }
+.ss-cell.gold { border-left:3px solid var(--gold); }
+.ss-cell.green { border-left:3px solid var(--green); }
+.ss-label { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:6px; }
+.ss-value { font-family:'Fraunces', serif; font-size:28px; font-weight:500; line-height:1; }
+.ss-value.terra { color:var(--terra); }
+.ss-value.green { color:var(--green); }
+.ss-value.gold { color:var(--gold); }
+.ss-meta { font-size:11px; color:var(--navy-3); margin-top:4px; }
+
+/* Distribution histogram */
+.dist-grid { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:24px 28px; margin-bottom:24px; }
+.dist-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:18px; }
+.dist-title { font-family:'Fraunces', serif; font-size:16px; font-weight:500; }
+.dist-meta { font-size:11px; color:var(--navy-3); letter-spacing:0.06em; }
+.dist-bars { display:grid; grid-template-columns:repeat(9, 1fr); gap:10px; align-items:end; height:200px; padding:0 4px; border-bottom:1px solid var(--border); margin-bottom:12px; }
+.dist-bar-col { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:6px; }
+.dist-bar { width:100%; max-width:48px; border-radius:6px 6px 0 0; position:relative; }
+.dist-bar.b-a1 { background:#1E5A35; }
+.dist-bar.b-b2 { background:#2F6B47; }
+.dist-bar.b-b3 { background:#3D8059; }
+.dist-bar.b-c4 { background:#7C9647; }
+.dist-bar.b-c5 { background:#B59B3D; }
+.dist-bar.b-c6 { background:var(--warn); }
+.dist-bar.b-d7 { background:#C58A2E; opacity:0.4; }
+.dist-bar.b-e8 { background:#C58A2E; opacity:0.3; }
+.dist-bar.b-f9 { background:var(--terra); opacity:0.4; }
+.dist-bar-num { position:absolute; top:-22px; left:0; right:0; text-align:center; font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--navy); }
+.dist-bar-grade { font-family:'Fraunces', serif; font-size:13px; font-weight:600; }
+.dist-bar-grade.dim { color:var(--navy-3); }
+.dist-summary-row { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; padding-top:14px; }
+.dist-sum-cell { font-size:12px; color:var(--navy-2); }
+.dist-sum-cell b { font-family:'Fraunces', serif; font-size:18px; font-weight:600; display:block; color:var(--navy); margin-bottom:2px; }
+.dist-sum-cell.green b { color:var(--green); }
+
+/* Student trajectory table */
+.stud-table { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.stud-head { display:grid; grid-template-columns:42px 1.5fr 80px 80px 100px 100px 1fr 100px; gap:12px; padding:12px 18px; background:var(--bg); border-bottom:1px solid var(--border); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; align-items:center; }
+.stud-row { display:grid; grid-template-columns:42px 1.5fr 80px 80px 100px 100px 1fr 100px; gap:12px; padding:13px 18px; border-bottom:1px solid var(--border); font-size:13px; align-items:center; }
+.stud-row:last-child { border-bottom:none; }
+.stud-row.flagged { background:#FBEBE7; }
+.stud-row.disrupted { background:#F5EBDC; }
+.stud-row.top { background:#F5FBF7; }
+.stud-num { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-3); font-weight:600; }
+.stud-name { font-weight:600; }
+.stud-name-meta { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.stud-grade { display:flex; justify-content:center; }
+.grade-chip { width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:12px; font-weight:600; color:var(--surface); }
+.grade-chip.A1 { background:#1E5A35; }
+.grade-chip.B2 { background:#2F6B47; }
+.grade-chip.B3 { background:#3D8059; }
+.grade-chip.C4 { background:#7C9647; }
+.grade-chip.C5 { background:#B59B3D; }
+.grade-chip.C6 { background:var(--warn); }
+.grade-chip.D7 { background:#C58A2E; }
+.grade-chip.E8 { background:#A8771F; }
+.grade-chip.F9 { background:var(--terra); }
+.stud-traj-arrow { color:var(--green); font-weight:700; font-size:13px; text-align:center; }
+.stud-traj-arrow.down { color:var(--terra); }
+.stud-traj-arrow.flat { color:var(--navy-3); }
+.stud-paper { font-size:11px; color:var(--navy-3); }
+.stud-paper.late { color:var(--gold); font-weight:600; }
+.stud-comment { font-size:11px; color:var(--navy-2); line-height:1.4; }
+.stud-comment b { color:var(--navy); }
+.stud-action { font-size:11px; color:var(--gold); font-weight:600; text-align:right; }
+.stud-flag-mini { display:inline-block; padding:2px 7px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.06em; margin-left:6px; }
+.stud-flag-mini.med { background:var(--terra-bg); color:var(--terra); }
+.stud-flag-mini.acc { background:var(--gold-bg); color:var(--gold); }
+.stud-flag-mini.risk { background:var(--warn-bg); color:var(--warn); }
+.stud-flag-mini.top { background:var(--green-bg); color:var(--green); }
+
+/* Topic heatmap */
+.topic-grid { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:22px 26px; }
+.topic-table { width:100%; }
+.topic-row { display:grid; grid-template-columns:1.5fr repeat(6, 1fr); gap:8px; padding:10px 0; border-bottom:1px solid var(--border); align-items:center; font-size:13px; }
+.topic-row.head { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding-bottom:14px; }
+.topic-row:last-child { border-bottom:none; }
+.topic-name { font-weight:600; }
+.topic-name-meta { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.heat-cell { padding:8px 4px; border-radius:4px; text-align:center; font-size:11px; font-weight:600; }
+.heat-cell.h5 { background:#1E5A35; color:var(--surface); }
+.heat-cell.h4 { background:#3D8059; color:var(--surface); }
+.heat-cell.h3 { background:#B59B3D; color:var(--surface); }
+.heat-cell.h2 { background:var(--warn); color:var(--surface); }
+.heat-cell.h1 { background:var(--terra); color:var(--surface); }
+.heat-cell.h0 { background:var(--bg); color:var(--navy-3); }
+
+/* Intervention plan */
+.iv-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+.iv-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px 22px; }
+.iv-card.urgent { border-top:3px solid var(--terra); }
+.iv-card.focus { border-top:3px solid var(--gold); }
+.iv-card.consolidate { border-top:3px solid var(--green); }
+.iv-eyebrow { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:6px; }
+.iv-card.urgent .iv-eyebrow { color:var(--terra); }
+.iv-card.consolidate .iv-eyebrow { color:var(--green); }
+.iv-title { font-family:'Fraunces', serif; font-size:16px; font-weight:500; margin-bottom:8px; line-height:1.3; }
+.iv-students { font-size:12px; color:var(--navy-2); line-height:1.6; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+.iv-students b { color:var(--navy); }
+.iv-plan { font-size:12px; color:var(--navy-2); line-height:1.6; }
+.iv-plan ul { list-style:none; margin-top:6px; }
+.iv-plan li { padding:4px 0; padding-left:14px; position:relative; }
+.iv-plan li::before { content:"·"; color:var(--gold); font-weight:700; position:absolute; left:4px; top:0; }
+
+/* Cohort vs school benchmark */
+.bench-strip { display:grid; grid-template-columns:1fr 1fr; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:22px 26px; }
+.bench-cell {  }
+.bench-label { font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:14px; }
+.bench-bar-row { display:grid; grid-template-columns:160px 1fr 60px; gap:12px; align-items:center; margin-bottom:12px; font-size:11px; }
+.bench-row-label { display:flex; flex-direction:column; gap:3px; }
+.bench-row-label b { color:var(--navy); font-size:11px; }
+.bench-source { font-size:9px; color:var(--navy-3); line-height:1.35; letter-spacing:0.01em; }
+.bench-source.weak { color:var(--warn); font-weight:600; }
+.bench-source .quality-dot { display:inline-block; width:6px; height:6px; border-radius:50%; vertical-align:middle; margin-right:4px; }
+.bench-source .quality-dot.strong { background:var(--green); }
+.bench-source .quality-dot.mod { background:var(--gold); }
+.bench-source .quality-dot.weak { background:var(--warn); }
+.bench-bar { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; }
+.bench-bar-fill { height:100%; background:var(--green); border-radius:4px; }
+.bench-num { font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right; font-size:11px; }
+.bench-note { font-size:11px; color:var(--navy-3); margin-top:10px; padding-top:10px; border-top:1px solid var(--border); line-height:1.5; }
+.bench-note b { color:var(--navy); }
+.bench-note.caveat { background:var(--warn-bg); border:1px solid var(--warn); border-radius:6px; padding:10px 12px; margin-top:14px; }
+.bench-note.caveat b { color:var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">MVP2 · WASSCE-readiness · surface 4 of 5</div>
+<div class="eyebrow">Section 4 of 5 · The subject teacher view</div>
+<h1>Subject teacher · <em>my cohort</em>.</h1>
+<div class="gold-rule"></div>
+<p>The cohort dashboard is the Head of Academics' view; the student page is everyone's view of one candidate; this is the subject teacher's view of his cohort. Mr S. Asiedu, Form Master of F3 Slessor and the Chemistry teacher for all 60 F3 Science candidates, opens this on Wednesday 14 May at 14:45 — three weeks before his Chemistry paper. He sees 28 students with Mock 1 → Mock 2 trajectory, topic-level heatmap, and a three-card intervention plan that targets the final 24 days of teaching.</p>
+</div>
+
+<!-- ============================ SECTION 1 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">My cohort · Chemistry F3 Science · 28 candidates</div>
+<div class="section-meta">Mr S. Asiedu · 24 days to paper · 100% credit rate</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/teacher/asiedu/chemistry-f3</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mr S. Asiedu · Chem &amp; Form Master</div></div></div>
+<div class="nav-group">Teaching</div>
+<div class="nav-item"><div class="ic"></div>My classes</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item"><div class="ic"></div>Lesson plans</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Assignments</div>
+<div class="nav-group">Form Master</div>
+<div class="nav-item"><div class="ic"></div>My form · F3 Slessor</div>
+<div class="nav-item"><div class="ic"></div>VLC sessions</div>
+<div class="nav-item"><div class="ic"></div>Character paragraphs</div>
+<div class="nav-group">PLC</div>
+<div class="nav-item"><div class="ic"></div>Science HOD PLC</div>
+<div class="nav-item"><div class="ic"></div>CPD points</div>
+<div class="nav-group">Other</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Calendar</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">WASSCE 2026 <b>›</b> Chemistry · F3 Science</div>
+<h1>Chemistry · <em>F3</em> · my cohort</h1>
+<div class="head-actions">
+<div class="btn">Mark Mock 3 papers</div>
+<div class="btn">Topic teaching log</div>
+<div class="btn btn-gold">Export intervention plan</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<!-- TEACHER IDENTITY CARD -->
+<div class="teacher-card">
+<div class="t-avatar">SA</div>
+<div>
+<div class="t-name">Mr S. <em>Asiedu</em></div>
+<div class="t-meta-row">
+<div><b>Subject</b> · Chemistry · F3</div>
+<div><b>Form Master</b> · F3 Slessor</div>
+<div><b>HOD Science</b></div>
+<div><b>NTC Licence</b> · GA-TL-78423 · valid to 2028</div>
+<div><b>PLC</b> · Science HOD PLC · 12 sessions YTD</div>
+</div>
+</div>
+<div><span class="t-pill">28 candidates assigned</span></div>
+</div>
+
+<!-- COUNTDOWN STRIP -->
+<div class="summary-strip">
+<div class="ss-cell live">
+<div class="ss-label">Days to Chemistry paper</div>
+<div class="ss-value terra">24</div>
+<div class="ss-meta">Mon 8 Jun · 08:00 · Paper 1+2 combined · 3 hrs</div>
+</div>
+<div class="ss-cell green">
+<div class="ss-label">Mock 2 credit rate</div>
+<div class="ss-value green">100%</div>
+<div class="ss-meta">28 / 28 at C6 or better · school-wide best</div>
+</div>
+<div class="ss-cell gold">
+<div class="ss-label">Mock 2 distinction rate</div>
+<div class="ss-value gold">43%</div>
+<div class="ss-meta">12 / 28 at A1 or B2 (vs cohort avg 31%)</div>
+</div>
+<div class="ss-cell">
+<div class="ss-label">Mock 2 cohort mean</div>
+<div class="ss-value">B3</div>
+<div class="ss-meta">↑ 1 grade from Mock 1 · ranked best in region</div>
+</div>
+<div class="ss-cell">
+<div class="ss-label">Practical · 22 Apr</div>
+<div class="ss-value">28/28</div>
+<div class="ss-meta">All candidates sat · awaiting marking</div>
+</div>
+</div>
+
+<!-- DISTRIBUTION HISTOGRAM -->
+<div class="dist-grid">
+<div class="dist-head">
+<div class="dist-title">Grade distribution · Mock 1 → Mock 2 → Chemistry paper</div>
+<div class="dist-meta">28 candidates · 9-grade scale</div>
+</div>
+<div class="dist-bars">
+<div class="dist-bar-col">
+<div class="dist-bar b-a1" style="height:14%;"><div class="dist-bar-num">4</div></div>
+<div class="dist-bar-grade">A1</div>
+</div>
+<div class="dist-bar-col">
+<div class="dist-bar b-b2" style="height:29%;"><div class="dist-bar-num">8</div></div>
+<div class="dist-bar-grade">B2</div>
+</div>
+<div class="dist-bar-col">
+<div class="dist-bar b-b3" style="height:32%;"><div class="dist-bar-num">9</div></div>
+<div class="dist-bar-grade">B3</div>
+</div>
+<div class="dist-bar-col">
+<div class="dist-bar b-c4" style="height:14%;"><div class="dist-bar-num">4</div></div>
+<div class="dist-bar-grade">C4</div>
+</div>
+<div class="dist-bar-col">
+<div class="dist-bar b-c5" style="height:7%;"><div class="dist-bar-num">2</div></div>
+<div class="dist-bar-grade">C5</div>
+</div>
+<div class="dist-bar-col">
+<div class="dist-bar b-c6" style="height:4%;"><div class="dist-bar-num">1</div></div>
+<div class="dist-bar-grade">C6</div>
+</div>
+<div class="dist-bar-col">
+<div class="dist-bar b-d7" style="height:1%;"></div>
+<div class="dist-bar-grade dim">D7</div>
+</div>
+<div class="dist-bar-col">
+<div class="dist-bar b-e8" style="height:1%;"></div>
+<div class="dist-bar-grade dim">E8</div>
+</div>
+<div class="dist-bar-col">
+<div class="dist-bar b-f9" style="height:1%;"></div>
+<div class="dist-bar-grade dim">F9</div>
+</div>
+</div>
+
+<div class="dist-summary-row">
+<div class="dist-sum-cell green"><b>21 / 28 above credit</b>75% at C4 or better — top quartile entry to tertiary</div>
+<div class="dist-sum-cell"><b>12 / 28 distinction</b>43% at B2 or better — strongest subject in F3 SCI cohort</div>
+<div class="dist-sum-cell"><b>3 / 28 borderline</b>C5–C6 band — focus zone for final 24 days</div>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Teacher view philosophy</h4>
+<ul>
+<li><b>One subject, one cohort.</b> Mr Asiedu teaches Chemistry to 28 F3 SCI candidates. The view is the people on his roster, not the school.</li>
+<li><b>His own marking.</b> Mock 1 and Mock 2 Chemistry grades were marked by him personally — the cohort he sees is the cohort he assessed. Diagnostic value beats grade inflation risk.</li>
+<li><b>Countdown to paper, not to last paper.</b> 24 days to Chemistry, not 36 days to last WASSCE paper. The teacher's clock is the subject clock.</li>
+<li><b>100% credit rate is the floor.</b> Mr Asiedu's cohort has not seen a sub-credit (D7–F9) in Chemistry since 2023. The strongest subject in F3 SCI.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 2 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">28 candidates · Mock 1 → Mock 2 → paper status</div>
+<div class="section-meta">Sortable · filterable · 9 sample rows shown</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/teacher/asiedu/chemistry-f3#students</div></div>
+<div class="app-shell">
+
+<div class="sidebar tall">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mr S. Asiedu · Chem &amp; Form Master</div></div></div>
+<div class="nav-group">Teaching</div>
+<div class="nav-item"><div class="ic"></div>My classes</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item"><div class="ic"></div>Lesson plans</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Assignments</div>
+<div class="nav-group">Form Master</div>
+<div class="nav-item"><div class="ic"></div>My form · F3 Slessor</div>
+<div class="nav-item"><div class="ic"></div>VLC sessions</div>
+<div class="nav-item"><div class="ic"></div>Character paragraphs</div>
+<div class="nav-group">PLC</div>
+<div class="nav-item"><div class="ic"></div>Science HOD PLC</div>
+<div class="nav-item"><div class="ic"></div>CPD points</div>
+<div class="nav-group">Other</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Calendar</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">Chemistry F3 <b>›</b> Candidates</div>
+<h1>28 <em>candidates</em></h1>
+<div class="head-actions">
+<div class="btn">Sort by Mock 2 grade</div>
+<div class="btn">Filter · house</div>
+<div class="btn">Filter · risk</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<div class="stud-table">
+<div class="stud-head">
+<div>#</div>
+<div>Name &amp; house</div>
+<div style="text-align:center;">Mock 1</div>
+<div style="text-align:center;">Mock 2</div>
+<div style="text-align:center;">Trajectory</div>
+<div style="text-align:center;">Practical</div>
+<div>Teacher note</div>
+<div>Action</div>
+</div>
+
+<div class="stud-row top">
+<div class="stud-num">01</div>
+<div>
+<div class="stud-name">E. Mensah <span class="stud-flag-mini acc">SC-7</span></div>
+<div class="stud-name-meta">Aggrey · 0184-0891 · accommodation 15min</div>
+</div>
+<div class="stud-grade"><div class="grade-chip A1">A1</div></div>
+<div class="stud-grade"><div class="grade-chip A1">A1</div></div>
+<div class="stud-traj-arrow flat">→ holding</div>
+<div class="stud-paper">Sat 22 Apr</div>
+<div class="stud-comment"><b>Top of cohort.</b> Mock 2 raw 96/100. Predicted A1.</div>
+<div class="stud-action">View profile</div>
+</div>
+
+<div class="stud-row top">
+<div class="stud-num">02</div>
+<div>
+<div class="stud-name">Y. Aidoo <span class="stud-flag-mini med">MED</span></div>
+<div class="stud-name-meta">Slessor · 0184-0817 · KNUST Biochem target</div>
+</div>
+<div class="stud-grade"><div class="grade-chip B2">B2</div></div>
+<div class="stud-grade"><div class="grade-chip A1">A1</div></div>
+<div class="stud-traj-arrow">↑ 1 grade</div>
+<div class="stud-paper">Sat 22 Apr</div>
+<div class="stud-comment"><b>Strong organic chem.</b> Currently hospitalised; Chem paper 24 days out.</div>
+<div class="stud-action">Student page</div>
+</div>
+
+<div class="stud-row top">
+<div class="stud-num">03</div>
+<div>
+<div class="stud-name">K. Owusu</div>
+<div class="stud-name-meta">Slessor · 0184-0824</div>
+</div>
+<div class="stud-grade"><div class="grade-chip B2">B2</div></div>
+<div class="stud-grade"><div class="grade-chip A1">A1</div></div>
+<div class="stud-traj-arrow">↑ 1 grade</div>
+<div class="stud-paper">Sat 22 Apr</div>
+<div class="stud-comment">Strongest on physical chem. Recommend A1 path.</div>
+<div class="stud-action">View profile</div>
+</div>
+
+<div class="stud-row">
+<div class="stud-num">04</div>
+<div>
+<div class="stud-name">J. Tetteh</div>
+<div class="stud-name-meta">Aggrey · 0184-0823 · Mock 2 agg 14</div>
+</div>
+<div class="stud-grade"><div class="grade-chip B2">B2</div></div>
+<div class="stud-grade"><div class="grade-chip B2">B2</div></div>
+<div class="stud-traj-arrow flat">→ holding</div>
+<div class="stud-paper">Sat 22 Apr</div>
+<div class="stud-comment">Steady B2. Organic strong, inorganic weaker.</div>
+<div class="stud-action">View profile</div>
+</div>
+
+<div class="stud-row">
+<div class="stud-num">05</div>
+<div>
+<div class="stud-name">N. Asare</div>
+<div class="stud-name-meta">Kufuor · 0184-0846</div>
+</div>
+<div class="stud-grade"><div class="grade-chip B3">B3</div></div>
+<div class="stud-grade"><div class="grade-chip B2">B2</div></div>
+<div class="stud-traj-arrow">↑ 1 grade</div>
+<div class="stud-paper">Sat 22 Apr</div>
+<div class="stud-comment">Improvement on equilibria after Semester 2 tutoring.</div>
+<div class="stud-action">View profile</div>
+</div>
+
+<div class="stud-row">
+<div class="stud-num">06</div>
+<div>
+<div class="stud-name">M. Boateng</div>
+<div class="stud-name-meta">Nkrumah · 0184-0833</div>
+</div>
+<div class="stud-grade"><div class="grade-chip C4">C4</div></div>
+<div class="stud-grade"><div class="grade-chip B3">B3</div></div>
+<div class="stud-traj-arrow">↑ 1 grade</div>
+<div class="stud-paper">Sat 22 Apr</div>
+<div class="stud-comment">Strong reaction kinetics; weaker on stoichiometry.</div>
+<div class="stud-action">View profile</div>
+</div>
+
+<div class="stud-row flagged">
+<div class="stud-num">07</div>
+<div>
+<div class="stud-name">A. Bonsu <span class="stud-flag-mini risk">FOCUS</span></div>
+<div class="stud-name-meta">Aggrey · 0184-0858</div>
+</div>
+<div class="stud-grade"><div class="grade-chip C5">C5</div></div>
+<div class="stud-grade"><div class="grade-chip C5">C5</div></div>
+<div class="stud-traj-arrow flat">→ stuck</div>
+<div class="stud-paper">Sat 22 Apr</div>
+<div class="stud-comment"><b>Risk of C6.</b> Inorganic at D7, organic at C4. Plan: 8 hrs after-school tutoring.</div>
+<div class="stud-action">Tutoring slot</div>
+</div>
+
+<div class="stud-row flagged">
+<div class="stud-num">08</div>
+<div>
+<div class="stud-name">P. Mensah <span class="stud-flag-mini risk">FOCUS</span></div>
+<div class="stud-name-meta">Slessor · 0184-0867</div>
+</div>
+<div class="stud-grade"><div class="grade-chip C4">C4</div></div>
+<div class="stud-grade"><div class="grade-chip C5">C5</div></div>
+<div class="stud-traj-arrow down">↓ 1 grade</div>
+<div class="stud-paper">Sat 22 Apr</div>
+<div class="stud-comment"><b>Concerning slip.</b> Mock 2 raw 47/100. Organic and inorganic both weak.</div>
+<div class="stud-action">Conference</div>
+</div>
+
+<div class="stud-row flagged">
+<div class="stud-num">09</div>
+<div>
+<div class="stud-name">D. Awuku <span class="stud-flag-mini risk">FOCUS</span></div>
+<div class="stud-name-meta">Kufuor · 0184-0871</div>
+</div>
+<div class="stud-grade"><div class="grade-chip C5">C5</div></div>
+<div class="stud-grade"><div class="grade-chip C6">C6</div></div>
+<div class="stud-traj-arrow down">↓ 1 grade</div>
+<div class="stud-paper">Sat 22 Apr</div>
+<div class="stud-comment"><b>Only C6 in cohort.</b> Risk of D7 without final 24-day push.</div>
+<div class="stud-action">Tutoring slot</div>
+</div>
+
+<div class="stud-row" style="text-align:center; padding:14px 18px; color:var(--navy-3); font-size:11px; font-style:italic; grid-template-columns:1fr;">
++ 19 more candidates · scroll to see full cohort
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Table conventions</h4>
+<ul>
+<li><b>Three trajectory states.</b> ↑ improving · → holding · ↓ slipping. Colour and arrow direction.</li>
+<li><b>Flags surface context.</b> MED (medical), SC-7 (accommodation), FOCUS (intervention target).</li>
+<li><b>Practical column.</b> Practical paper sat 22 Apr; this column confirms attendance, not score.</li>
+<li><b>Top-of-cohort highlighted.</b> Subtle green tint for top 3.</li>
+<li><b>Risk rows highlighted.</b> Pink tint for FOCUS students; gold for medical/accommodation cases.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 3 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">Topic heatmap · where the cohort needs attention</div>
+<div class="section-meta">12 topics × 6 sub-areas · derived from Mock 2 marking</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/teacher/asiedu/chemistry-f3#heatmap</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mr S. Asiedu · Chem &amp; Form Master</div></div></div>
+<div class="nav-group">Teaching</div>
+<div class="nav-item"><div class="ic"></div>My classes</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item"><div class="ic"></div>Lesson plans</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Assignments</div>
+<div class="nav-group">Form Master</div>
+<div class="nav-item"><div class="ic"></div>My form · F3 Slessor</div>
+<div class="nav-item"><div class="ic"></div>VLC sessions</div>
+<div class="nav-item"><div class="ic"></div>Character paragraphs</div>
+<div class="nav-group">PLC</div>
+<div class="nav-item"><div class="ic"></div>Science HOD PLC</div>
+<div class="nav-item"><div class="ic"></div>CPD points</div>
+<div class="nav-group">Other</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Calendar</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">Chemistry F3 <b>›</b> Topic heatmap</div>
+<h1>Where the <em>cohort</em> is weak</h1>
+<div class="head-actions">
+<div class="btn">Compare to Mock 1</div>
+<div class="btn">Export topic plan</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<div class="topic-grid">
+
+<div class="topic-row head">
+<div>Topic</div>
+<div style="text-align:center;">A1 band</div>
+<div style="text-align:center;">B2–B3</div>
+<div style="text-align:center;">C4–C6</div>
+<div style="text-align:center;">D7–E8</div>
+<div style="text-align:center;">F9</div>
+<div style="text-align:center;">Cohort avg</div>
+</div>
+
+<div class="topic-row">
+<div>
+<div class="topic-name">Organic chemistry</div>
+<div class="topic-name-meta">12 questions · 24% of paper</div>
+</div>
+<div class="heat-cell h5">12</div>
+<div class="heat-cell h4">11</div>
+<div class="heat-cell h2">5</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h4">B2</div>
+</div>
+
+<div class="topic-row">
+<div>
+<div class="topic-name">Inorganic chemistry · transition metals</div>
+<div class="topic-name-meta">8 questions · 16% of paper</div>
+</div>
+<div class="heat-cell h5">9</div>
+<div class="heat-cell h4">10</div>
+<div class="heat-cell h3">7</div>
+<div class="heat-cell h1">2</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h3">B3</div>
+</div>
+
+<div class="topic-row">
+<div>
+<div class="topic-name">Stoichiometry &amp; mole concept</div>
+<div class="topic-name-meta">6 questions · 12% of paper</div>
+</div>
+<div class="heat-cell h5">10</div>
+<div class="heat-cell h4">12</div>
+<div class="heat-cell h2">6</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h4">B2</div>
+</div>
+
+<div class="topic-row">
+<div>
+<div class="topic-name">Atomic structure &amp; bonding</div>
+<div class="topic-name-meta">5 questions · 10% of paper</div>
+</div>
+<div class="heat-cell h5">8</div>
+<div class="heat-cell h4">13</div>
+<div class="heat-cell h3">7</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h3">B3</div>
+</div>
+
+<div class="topic-row">
+<div>
+<div class="topic-name">Acids · bases · salts</div>
+<div class="topic-name-meta">5 questions · 10% of paper</div>
+</div>
+<div class="heat-cell h5">11</div>
+<div class="heat-cell h4">10</div>
+<div class="heat-cell h2">6</div>
+<div class="heat-cell h0">1</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h4">B2</div>
+</div>
+
+<div class="topic-row">
+<div>
+<div class="topic-name">Equilibria · Le Chatelier</div>
+<div class="topic-name-meta">5 questions · 10% of paper</div>
+</div>
+<div class="heat-cell h3">4</div>
+<div class="heat-cell h3">9</div>
+<div class="heat-cell h2">12</div>
+<div class="heat-cell h1">3</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h2">C4</div>
+</div>
+
+<div class="topic-row">
+<div>
+<div class="topic-name">Electrochemistry</div>
+<div class="topic-name-meta">4 questions · 8% of paper</div>
+</div>
+<div class="heat-cell h2">3</div>
+<div class="heat-cell h3">8</div>
+<div class="heat-cell h2">12</div>
+<div class="heat-cell h1">4</div>
+<div class="heat-cell h0">1</div>
+<div class="heat-cell h1">C5</div>
+</div>
+
+<div class="topic-row">
+<div>
+<div class="topic-name">Reaction kinetics</div>
+<div class="topic-name-meta">3 questions · 6% of paper</div>
+</div>
+<div class="heat-cell h4">7</div>
+<div class="heat-cell h4">11</div>
+<div class="heat-cell h3">9</div>
+<div class="heat-cell h1">1</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h3">B3</div>
+</div>
+
+<div class="topic-row">
+<div>
+<div class="topic-name">Energetics &amp; thermochemistry</div>
+<div class="topic-name-meta">3 questions · 6% of paper</div>
+</div>
+<div class="heat-cell h4">6</div>
+<div class="heat-cell h3">9</div>
+<div class="heat-cell h2">10</div>
+<div class="heat-cell h1">3</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h2">C4</div>
+</div>
+
+<div class="topic-row">
+<div>
+<div class="topic-name">Industrial chemistry · contemporary issues</div>
+<div class="topic-name-meta">2 questions · 4% of paper</div>
+</div>
+<div class="heat-cell h4">7</div>
+<div class="heat-cell h4">12</div>
+<div class="heat-cell h3">8</div>
+<div class="heat-cell h0">1</div>
+<div class="heat-cell h0">0</div>
+<div class="heat-cell h3">B3</div>
+</div>
+
+</div>
+
+<div style="margin-top:18px; display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; font-size:11px; color:var(--navy-3);">
+<div><div class="heat-cell h5" style="margin-bottom:4px;">14+</div>Strong</div>
+<div><div class="heat-cell h4" style="margin-bottom:4px;">10–13</div>Good</div>
+<div><div class="heat-cell h3" style="margin-bottom:4px;">6–9</div>Mixed</div>
+<div><div class="heat-cell h2" style="margin-bottom:4px;">3–5</div>Focus area</div>
+<div><div class="heat-cell h1" style="margin-bottom:4px;">0–2</div>Critical gap</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Reading the heatmap</h4>
+<ul>
+<li><b>Rows = topics from the WAEC syllabus.</b> Weighted by paper question count.</li>
+<li><b>Columns = grade bands.</b> Count of candidates in each band on this topic from Mock 2.</li>
+<li><b>Equilibria + electrochemistry are the two soft spots.</b> Cohort average is C4–C5 in those areas; A1 band is thinly populated.</li>
+<li><b>Cohort avg in the final column.</b> The grade most students would earn if the paper consisted only of this topic.</li>
+<li><b>This drives the intervention plan in the next section.</b></li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 4 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">Final 24 days · differentiated intervention plan</div>
+<div class="section-meta">3 tiers · 28 candidates · 24 days · 6 lessons remaining</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/teacher/asiedu/chemistry-f3#plan</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mr S. Asiedu · Chem &amp; Form Master</div></div></div>
+<div class="nav-group">Teaching</div>
+<div class="nav-item"><div class="ic"></div>My classes</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item"><div class="ic"></div>Lesson plans</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Assignments</div>
+<div class="nav-group">Form Master</div>
+<div class="nav-item"><div class="ic"></div>My form · F3 Slessor</div>
+<div class="nav-item"><div class="ic"></div>VLC sessions</div>
+<div class="nav-item"><div class="ic"></div>Character paragraphs</div>
+<div class="nav-group">PLC</div>
+<div class="nav-item"><div class="ic"></div>Science HOD PLC</div>
+<div class="nav-item"><div class="ic"></div>CPD points</div>
+<div class="nav-group">Other</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Calendar</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">Chemistry F3 <b>›</b> 24-day plan</div>
+<h1>The <em>final</em> 24 days</h1>
+<div class="head-actions">
+<div class="btn">Save plan</div>
+<div class="btn btn-primary">Share with Mrs Owusu-Ansah</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<div class="iv-grid">
+
+<!-- URGENT -->
+<div class="iv-card urgent">
+<div class="iv-eyebrow">Tier 1 · urgent intervention</div>
+<div class="iv-title">3 candidates · borderline credit</div>
+<div class="iv-students">
+<b>A. Bonsu</b> (Aggrey · C5) · <b>P. Mensah</b> (Slessor · C5, slipping) · <b>D. Awuku</b> (Kufuor · C6, only one in cohort)
+</div>
+<div class="iv-plan">
+<b>Plan over 24 days:</b>
+<ul>
+<li>8 hrs after-school tutoring (Mon + Wed, 16:00–17:00, weeks 1–4)</li>
+<li>Pair-tutor with K. Owusu (top-3 student) for inorganic — Saturday mornings</li>
+<li>Daily 20-min question set on weakest topic (equilibria + electrochem)</li>
+<li>Weekly parent SMS update (drafted by FM, sent by Omnischools)</li>
+<li>Pre-paper boost session · Fri 5 Jun · 14:00–16:00</li>
+</ul>
+</div>
+</div>
+
+<!-- FOCUS -->
+<div class="iv-card focus">
+<div class="iv-eyebrow">Tier 2 · focused improvement</div>
+<div class="iv-title">12 candidates · move B3 → B2 or B2 → A1</div>
+<div class="iv-students">
+<b>9 currently at B3</b> + <b>3 newly at B2 (Mock 2)</b> · all within reach of one grade lift in 24 days
+</div>
+<div class="iv-plan">
+<b>Plan over 24 days:</b>
+<ul>
+<li>Whole-class focus on equilibria + electrochem (2 lessons each)</li>
+<li>WAEC past-paper practice · weekly · marked by Mr Asiedu</li>
+<li>Topic-specific resource pack (notes + 50 questions + worked solutions per topic)</li>
+<li>Peer Guide pairs from F2 Sci for Saturday morning study group</li>
+<li>Mid-cycle check-in · Sat 24 May · 10:00 in Science block</li>
+</ul>
+</div>
+</div>
+
+<!-- CONSOLIDATE -->
+<div class="iv-card consolidate">
+<div class="iv-eyebrow">Tier 3 · consolidate strengths</div>
+<div class="iv-title">13 candidates · A1 / B2 band · hold the line</div>
+<div class="iv-students">
+<b>4 at A1</b> · <b>9 at B2</b> · low-risk of slipping if confidence maintained · includes Y. Aidoo (medical)
+</div>
+<div class="iv-plan">
+<b>Plan over 24 days:</b>
+<ul>
+<li>Self-directed past-paper drills · weekly check-in only</li>
+<li>Peer-tutor assignments (top 3 paired with Tier 1 students)</li>
+<li>Stretch material on industrial chem + contemporary issues for context</li>
+<li>Y. Aidoo: catch-up plan post-discharge · individual schedule</li>
+<li>Pre-paper boost session optional · Fri 5 Jun · 14:00–16:00</li>
+</ul>
+</div>
+</div>
+
+</div>
+
+<!-- Calendar strip -->
+<div style="margin-top:24px; padding:20px 24px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:14px;">24-day calendar · 6 remaining Chemistry lessons</div>
+<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px;">
+
+<div style="background:var(--bg); padding:12px; border-radius:6px; border:1px solid var(--border);">
+<div class="mono" style="font-size:10px; color:var(--navy-3); font-weight:600;">15–19 MAY</div>
+<div style="font-size:12px; font-weight:600; margin-top:4px;">Week 1</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:4px;">Equilibria · 2 lessons + tutoring kick-off</div>
+</div>
+
+<div style="background:var(--bg); padding:12px; border-radius:6px; border:1px solid var(--border);">
+<div class="mono" style="font-size:10px; color:var(--navy-3); font-weight:600;">20–24 MAY</div>
+<div style="font-size:12px; font-weight:600; margin-top:4px;">Week 2</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:4px;">Electrochem · 2 lessons · mid-cycle check-in Sat</div>
+</div>
+
+<div style="background:var(--bg); padding:12px; border-radius:6px; border:1px solid var(--border);">
+<div class="mono" style="font-size:10px; color:var(--navy-3); font-weight:600;">27–31 MAY</div>
+<div style="font-size:12px; font-weight:600; margin-top:4px;">Week 3</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:4px;">Past papers · 2 lessons · weekly tutoring</div>
+</div>
+
+<div style="background:var(--gold-bg); padding:12px; border-radius:6px; border:1px solid var(--gold-soft);">
+<div class="mono" style="font-size:10px; color:var(--gold); font-weight:700;">1–5 JUN</div>
+<div style="font-size:12px; font-weight:600; margin-top:4px;">Week 4</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:4px;">Final review + boost session Fri</div>
+</div>
+
+<div style="background:var(--terra-bg); padding:12px; border-radius:6px; border:1px solid var(--terra);">
+<div class="mono" style="font-size:10px; color:var(--terra); font-weight:700;">MON 8 JUN</div>
+<div style="font-size:12px; font-weight:600; margin-top:4px;">PAPER DAY</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:4px;">08:00 · 3 hrs · centre SU-0184</div>
+</div>
+
+<div style="background:var(--bg); padding:12px; border-radius:6px; border:1px solid var(--border); opacity:0.5;">
+<div class="mono" style="font-size:10px; color:var(--navy-3); font-weight:600;">POST</div>
+<div style="font-size:12px; font-weight:600; margin-top:4px;">Aug 2026</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:4px;">Results release · Mock 3 baseline for F2 cohort</div>
+</div>
+
+<div style="background:var(--bg); padding:12px; border-radius:6px; border:1px solid var(--border); opacity:0.5;">
+<div class="mono" style="font-size:10px; color:var(--navy-3); font-weight:600;">NOV 2026</div>
+<div style="font-size:12px; font-weight:600; margin-top:4px;">F2 Mock 1</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:4px;">Next cohort starts the same cycle</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Intervention plan rules</h4>
+<ul>
+<li><b>Three tiers, not five.</b> Urgent · Focused · Consolidate. Too many tiers fracture attention.</li>
+<li><b>Each tier has its own time budget.</b> Tier 1 students get 8 hours of teacher time; Tier 3 gets 0 hours of teacher time (peer-tutor only).</li>
+<li><b>Calendar shows the journey, not just the destination.</b> Six remaining lessons + boost session + paper day.</li>
+<li><b>Parents are looped in once per week, not per intervention.</b> Less noise, more signal.</li>
+<li><b>Plan exports as PDF for the HOD &amp; Head of Academics</b> — Mrs Owusu-Ansah co-signs it.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 5 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">05</div>
+<div class="section-title display">Benchmark · my cohort vs school, region, national</div>
+<div class="section-meta">Mock 2 March 2026 · 5-year rolling comparison</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/teacher/asiedu/chemistry-f3#benchmark</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mr S. Asiedu · Chem &amp; Form Master</div></div></div>
+<div class="nav-group">Teaching</div>
+<div class="nav-item"><div class="ic"></div>My classes</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item"><div class="ic"></div>Lesson plans</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Assignments</div>
+<div class="nav-group">Form Master</div>
+<div class="nav-item"><div class="ic"></div>My form · F3 Slessor</div>
+<div class="nav-item"><div class="ic"></div>VLC sessions</div>
+<div class="nav-item"><div class="ic"></div>Character paragraphs</div>
+<div class="nav-group">PLC</div>
+<div class="nav-item"><div class="ic"></div>Science HOD PLC</div>
+<div class="nav-item"><div class="ic"></div>CPD points</div>
+<div class="nav-group">Other</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Calendar</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">Chemistry F3 <b>›</b> Benchmark</div>
+<h1>How does <em>my</em> cohort compare?</h1>
+<div class="head-actions">
+<div class="btn">Region history · 5 yrs</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<div class="bench-strip">
+
+<div class="bench-cell">
+<div class="bench-label">Mock 2 credit rate · Chemistry · F3</div>
+
+<div class="bench-bar-row">
+<div class="bench-row-label">
+<b>My cohort</b>
+<div class="bench-source"><span class="quality-dot strong"></span>Omnischools · Mr Asiedu's Mock 2 marking, Mar 2026</div>
+</div>
+<div class="bench-bar"><div class="bench-bar-fill" style="width:100%; background:var(--green);"></div></div>
+<div class="bench-num">100%</div>
+</div>
+<div class="bench-bar-row">
+<div class="bench-row-label">
+<b>School avg</b>
+<div class="bench-source"><span class="quality-dot strong"></span>Omnischools internal · 5-yr history, 2021–2025</div>
+</div>
+<div class="bench-bar"><div class="bench-bar-fill" style="width:96%; background:var(--green);"></div></div>
+<div class="bench-num">96%</div>
+</div>
+<div class="bench-bar-row">
+<div class="bench-row-label">
+<b>Region · WR</b>
+<div class="bench-source weak"><span class="quality-dot weak"></span>WAEC WR summary 2024 · subject-level data sparse</div>
+</div>
+<div class="bench-bar"><div class="bench-bar-fill" style="width:78%; background:var(--gold);"></div></div>
+<div class="bench-num">78%</div>
+</div>
+<div class="bench-bar-row">
+<div class="bench-row-label">
+<b>National</b>
+<div class="bench-source"><span class="quality-dot strong"></span>WAEC 2024 chief examiner report</div>
+</div>
+<div class="bench-bar"><div class="bench-bar-fill" style="width:71%; background:var(--gold);"></div></div>
+<div class="bench-num">71%</div>
+</div>
+
+<div class="bench-note"><b>22 percentage points above national.</b> Mr Asiedu's cohort has not seen a sub-credit since 2023.</div>
+<div class="bench-note caveat"><b>Region figure is directional.</b> WAEC's Western Region summary does not consistently publish subject-level credit rates; the 78% is interpolated from regional aggregate + 2024 subject-mix. Treat as ± 4 pp.</div>
+</div>
+
+<div class="bench-cell">
+<div class="bench-label">Mock 2 distinction rate (A1 / B2)</div>
+
+<div class="bench-bar-row">
+<div class="bench-row-label">
+<b>My cohort</b>
+<div class="bench-source"><span class="quality-dot strong"></span>Omnischools · Mr Asiedu's Mock 2 marking, Mar 2026</div>
+</div>
+<div class="bench-bar"><div class="bench-bar-fill" style="width:43%; background:var(--green);"></div></div>
+<div class="bench-num">43%</div>
+</div>
+<div class="bench-bar-row">
+<div class="bench-row-label">
+<b>School avg</b>
+<div class="bench-source"><span class="quality-dot strong"></span>Omnischools internal · 5-yr history, 2021–2025</div>
+</div>
+<div class="bench-bar"><div class="bench-bar-fill" style="width:31%; background:var(--gold);"></div></div>
+<div class="bench-num">31%</div>
+</div>
+<div class="bench-bar-row">
+<div class="bench-row-label">
+<b>Region · WR</b>
+<div class="bench-source weak"><span class="quality-dot weak"></span>WAEC WR 2024 · A1/B2 mix not regionally published</div>
+</div>
+<div class="bench-bar"><div class="bench-bar-fill" style="width:24%; background:var(--gold);"></div></div>
+<div class="bench-num">24%</div>
+</div>
+<div class="bench-bar-row">
+<div class="bench-row-label">
+<b>National</b>
+<div class="bench-source"><span class="quality-dot strong"></span>WAEC 2024 chief examiner report</div>
+</div>
+<div class="bench-bar"><div class="bench-bar-fill" style="width:19%; background:var(--gold);"></div></div>
+<div class="bench-num">19%</div>
+</div>
+
+<div class="bench-note"><b>24 percentage points above national.</b> 12 of 28 candidates likely to score A1 or B2 · KNUST-eligible band for science programmes.</div>
+<div class="bench-note caveat"><b>Region figure is directional.</b> WAEC does not publish A1/B2 distinction rates by region at subject level; the 24% is estimated from national distribution adjusted for WR historical performance gap. Treat as ± 5 pp.</div>
+</div>
+
+</div>
+
+<div style="margin-top:16px; padding:12px 16px; background:var(--bg); border:1px solid var(--border); border-radius:8px; display:flex; gap:18px; align-items:center; flex-wrap:wrap; font-size:11px; color:var(--navy-3);">
+<div style="font-weight:600; color:var(--navy);">Data quality</div>
+<div style="display:flex; align-items:center; gap:6px;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green);"></span><b style="color:var(--navy);">Strong</b> · direct measurement, current data</div>
+<div style="display:flex; align-items:center; gap:6px;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--gold);"></span><b style="color:var(--navy);">Moderate</b> · annual snapshot, lightly modelled</div>
+<div style="display:flex; align-items:center; gap:6px;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--warn);"></span><b style="color:var(--navy);">Directional</b> · interpolated from coarser data</div>
+</div>
+
+<div style="margin-top:20px; padding:18px 22px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px;">
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:8px;">Mr Asiedu's CPD record on this cohort</div>
+<p style="font-size:12px; color:var(--navy-2); line-height:1.7;">Three-year teaching cycle for this group · joined them in F1 (Sep 2023) · 142 lessons taught · 18 mock assessments marked · 12 Science HOD PLC sessions attended · 1 CPD-credited equilibria pedagogy session led at Western Region NTC convention (March 2026, +15 CPD points). NTC licence renewal eligible at end of cycle. The cohort's trajectory becomes part of his teaching record at the next NTC review.</p>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Benchmark design</h4>
+<ul>
+<li><b>Four levels · my cohort, school, region, national.</b> Each level grounds the next.</li>
+<li><b>Every column carries a source line.</b> Provenance shown explicitly so the teacher knows what is direct measurement versus interpolated.</li>
+<li><b>Region is the weakest source · honestly labelled.</b> WAEC's regional summaries do not consistently publish subject-level breakdowns; the WR figure is directional, marked with a warn-coloured dot and a caveat note.</li>
+<li><b>National anchored on WAEC chief examiner report.</b> Released annually after WASSCE marking · the strongest external benchmark available.</li>
+<li><b>Multi-school pooling is the long-term fix for region.</b> Once 5+ Omnischools schools sit in the same region, the WR figure can be derived from anonymised cohort data rather than interpolation.</li>
+<li><b>Teacher's own record visible.</b> Three-year cycle · feeds NTC licence review.</li>
+<li><b>Not for parent eyes by default.</b> The teacher's own performance view.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

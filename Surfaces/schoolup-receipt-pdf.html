@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Receipt PDF design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --paper: #FFFFFF;
+  --paper-edge: rgba(26,43,71,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 56px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+/* ================================================
+   The PDF "paper" — A5 ratio (148x210 mm) at 1.42x
+   ================================================ */
+.paper-wrap {
+  background: linear-gradient(180deg, rgba(26,43,71,0.04) 0%, rgba(26,43,71,0.10) 100%);
+  padding: 32px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+}
+.paper {
+  width: 100%;
+  max-width: 580px;
+  background: var(--paper);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,1) inset,
+    0 24px 60px -16px rgba(26,43,71,0.25),
+    0 0 0 1px var(--paper-edge);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top accent strip — gold band signaling provenance */
+.accent-strip {
+  height: 6px;
+  background: linear-gradient(90deg, var(--gold) 0%, #d8a86e 100%);
+}
+
+/* Header — school identity + receipt anchor */
+.r-header {
+  padding: 28px 36px 22px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.school-block {
+  display: flex; gap: 14px; align-items: flex-start;
+}
+.school-mark {
+  width: 50px; height: 50px;
+  background: var(--navy);
+  color: var(--gold);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 18px;
+  flex-shrink: 0;
+}
+.school-info {
+  padding-top: 2px;
+}
+.school-info .name {
+  font-family: 'Fraunces', serif;
+  font-size: 18px; font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  margin-bottom: 4px;
+}
+.school-info .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+.school-info .meta .row {
+  margin-bottom: 1px;
+}
+.receipt-anchor {
+  text-align: right;
+}
+.receipt-anchor .doc-type {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.receipt-anchor .receipt-number {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--navy);
+  margin-bottom: 3px;
+}
+.receipt-anchor .issued {
+  font-size: 10px;
+  color: var(--navy-3);
+}
+
+/* Bill-to / payer block */
+.r-payer {
+  padding: 16px 36px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  border-bottom: 1px dashed var(--border);
+}
+.payer-cell .lbl {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.payer-cell .val {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+}
+.payer-cell .sub {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* Body — the line items */
+.r-body {
+  padding: 18px 36px 0;
+  display: flex; flex-direction: column;
+}
+.received-banner {
+  background: var(--bg);
+  border-left: 3px solid var(--gold);
+  padding: 12px 16px;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 16px;
+}
+.received-banner .lbl {
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.received-banner .val-row {
+  display: flex; align-items: baseline; gap: 12px;
+}
+.received-banner .amount {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--navy);
+  line-height: 1;
+}
+.received-banner .in-words {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-style: italic;
+  flex: 1;
+  line-height: 1.4;
+}
+
+/* Detail table */
+.r-table {
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.r-table-head {
+  display: grid;
+  grid-template-columns: 1fr 80px 90px;
+  gap: 16px;
+  padding: 8px 0;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+}
+.r-table-head .right { text-align: right; }
+.r-table-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 90px;
+  gap: 16px;
+  padding: 9px 0;
+  font-size: 11px;
+  border-bottom: 1px dashed var(--border);
+}
+.r-table-row:last-child { border-bottom: none; }
+.r-table-row .desc { color: var(--navy); }
+.r-table-row .desc .main { font-weight: 600; }
+.r-table-row .desc .sub {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.r-table-row .qty {
+  text-align: right;
+  color: var(--navy-3);
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+}
+.r-table-row .amt {
+  text-align: right;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.r-table-totals {
+  display: grid;
+  grid-template-columns: 1fr 90px;
+  gap: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+}
+.r-table-totals .lbl {
+  font-size: 10px;
+  color: var(--navy-3);
+  text-align: right;
+  padding: 4px 0;
+}
+.r-table-totals .val {
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  text-align: right;
+  padding: 4px 0;
+}
+.r-table-totals .row-grand .lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+  padding-top: 8px;
+  border-top: 2px solid var(--navy);
+}
+.r-table-totals .row-grand .val {
+  font-size: 16px;
+  letter-spacing: -0.015em;
+  padding-top: 8px;
+  border-top: 2px solid var(--navy);
+}
+
+/* Payment method block */
+.r-payment-method {
+  padding: 16px 36px;
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px;
+  border-top: 1px solid var(--border);
+}
+.r-payment-method .cell .lbl {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.r-payment-method .cell .val {
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+}
+.r-payment-method .cell .sub {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+
+/* Footer block — verification + powered by */
+.r-footer {
+  padding: 16px 36px 24px;
+  display: grid;
+  grid-template-columns: 1fr 80px;
+  gap: 18px;
+  align-items: end;
+  border-top: 1px solid var(--border);
+}
+.signature-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sig-stamp {
+  width: 110px; height: 60px;
+  border: 1.5px dashed var(--gold-soft);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 10px;
+  text-align: center;
+  line-height: 1.2;
+  position: relative;
+  transform: rotate(-4deg);
+}
+.sig-line {
+  width: 130px;
+  border-bottom: 1px solid var(--navy);
+  padding-bottom: 1px;
+}
+.sig-meta {
+  font-size: 9px;
+  color: var(--navy-3);
+}
+.sig-meta b {
+  color: var(--navy);
+  font-weight: 600;
+  display: block;
+  font-size: 10px;
+  letter-spacing: -0.005em;
+  font-family: 'Fraunces', serif;
+}
+
+.qr-block {
+  text-align: center;
+}
+.qr-pattern {
+  width: 70px; height: 70px;
+  background: var(--navy);
+  border-radius: 4px;
+  position: relative;
+  margin: 0 auto 4px;
+  background-image:
+    radial-gradient(circle at 10px 10px, var(--paper) 6px, transparent 7px),
+    radial-gradient(circle at 60px 10px, var(--paper) 6px, transparent 7px),
+    radial-gradient(circle at 10px 60px, var(--paper) 6px, transparent 7px);
+  background-color: var(--navy);
+}
+.qr-pattern::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0px, transparent 2px, var(--paper) 2px, var(--paper) 4px),
+    repeating-linear-gradient(90deg, transparent 0px, transparent 2px, var(--navy) 2px, var(--navy) 4px);
+  background-size: 4px 4px;
+  opacity: 0.6;
+  border-radius: 2px;
+}
+.qr-pattern::after {
+  content: "";
+  position: absolute;
+  inset: 25px;
+  background: var(--paper);
+  border-radius: 2px;
+}
+.qr-block .qr-label {
+  font-size: 8px;
+  color: var(--navy-3);
+  letter-spacing: 0.04em;
+}
+.qr-block .qr-label b { color: var(--navy); font-weight: 600; }
+
+.r-platform {
+  padding: 12px 36px 18px;
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--paper);
+  font-size: 8px;
+  color: var(--navy-3);
+  letter-spacing: 0.04em;
+  border-top: 1px solid var(--border);
+}
+.r-platform .powered em {
+  color: var(--gold);
+  font-weight: 700;
+  font-style: normal;
+}
+.r-platform .verify-url {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+/* ============== ALLOCATION SUB-TABLE ============== */
+.alloc-section {
+  background: var(--gold-bg);
+  margin: 12px -36px 0;
+  padding: 14px 36px;
+  border-top: 1px solid var(--gold-soft);
+  border-bottom: 1px solid var(--gold-soft);
+}
+.alloc-section .a-head {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.alloc-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 80px;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 10px;
+  border-top: 1px dashed rgba(200,151,91,0.3);
+}
+.alloc-row:first-of-type { border-top: none; }
+.alloc-row .inv-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--gold);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.alloc-row .inv-desc {
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  color: var(--navy);
+  font-weight: 500;
+}
+.alloc-row .inv-amt {
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green);
+  text-align: right;
+}
+
+/* ============== VOIDED OVERLAY ============== */
+.voided-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.void-stamp {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  border: 5px solid var(--terra);
+  color: var(--terra);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 64px;
+  letter-spacing: 0.08em;
+  padding: 8px 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.85);
+  text-transform: uppercase;
+  opacity: 0.85;
+  box-shadow: 0 0 0 2px rgba(184,74,57,0.2);
+}
+.void-banner {
+  background: var(--terra-bg);
+  border-top: 2px solid var(--terra);
+  border-bottom: 1px solid rgba(184,74,57,0.3);
+  padding: 14px 36px;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.void-banner .ic {
+  width: 22px; height: 22px;
+  background: var(--terra);
+  color: var(--paper);
+  border-radius: 50%;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.void-banner .body { font-size: 10px; color: var(--navy-2); line-height: 1.5; }
+.void-banner .body .t1 {
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--terra);
+  margin-bottom: 2px;
+}
+.void-banner .body b { color: var(--navy); font-weight: 600; }
+.void-banner .body .replacement {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--paper);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+/* When voided, slightly desaturate the receipt body */
+.paper.voided .r-header,
+.paper.voided .r-payer,
+.paper.voided .r-body,
+.paper.voided .r-payment-method,
+.paper.voided .r-footer {
+  opacity: 0.55;
+}
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Receipt PDF</div>
+  <h1 class="display">The <em>document</em> after the payment</h1>
+  <div class="gold-rule"></div>
+  <p>Generated automatically when a payment is recorded — sent via SMS as a link, downloadable from the success drawer, attachable to email. Designed to feel like a bank statement: substantial enough to be a legal record, simple enough to scan on a 5-inch phone, printable on A4. Three states shown: standard, multi-invoice, voided.</p>
+</header>
+
+<!-- ============ 01 STANDARD RECEIPT ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Standard receipt</div>
+    <div class="section-meta">A5 portrait · single payment, single invoice</div>
+  </div>
+
+  <div class="layout">
+    <div class="paper-wrap">
+      <div class="paper">
+        <div class="accent-strip"></div>
+
+        <div class="r-header">
+          <div class="school-block">
+            <div class="school-mark">CK</div>
+            <div class="school-info">
+              <div class="name">Christ the King JHS</div>
+              <div class="meta">
+                <div class="row">12 Independence Ave, Accra · Greater Accra</div>
+                <div class="row">+233 30 222 4488 · accounts@christtheking.edu.gh</div>
+                <div class="row">School ID: GES-AC-JHS-0184</div>
+              </div>
+            </div>
+          </div>
+          <div class="receipt-anchor">
+            <div class="doc-type">Official Receipt</div>
+            <div class="receipt-number">RCT-2026-0541</div>
+            <div class="issued">Issued 30 Apr 2026 · 10:24 AM</div>
+          </div>
+        </div>
+
+        <div class="r-payer">
+          <div class="payer-cell">
+            <div class="lbl">Received from</div>
+            <div class="val">Ama Boateng</div>
+            <div class="sub">+233 24 555 8392 · Guardian</div>
+          </div>
+          <div class="payer-cell">
+            <div class="lbl">For the account of</div>
+            <div class="val">Akosua Boateng</div>
+            <div class="sub">JHS 2A · Student ID CTK-2024-018</div>
+          </div>
+        </div>
+
+        <div class="r-body">
+          <div class="received-banner">
+            <div class="lbl">Total received</div>
+            <div class="val-row">
+              <div class="amount">GHS 340.00</div>
+              <div class="in-words">three hundred and forty Ghana cedis</div>
+            </div>
+          </div>
+
+          <div class="r-table">
+            <div class="r-table-head">
+              <div>Description</div>
+              <div class="right">Period</div>
+              <div class="right">Amount</div>
+            </div>
+            <div class="r-table-row">
+              <div class="desc">
+                <div class="main">Tuition · remaining balance</div>
+                <div class="sub">Term 1 · 2026 · INV-2026-0184</div>
+              </div>
+              <div class="qty">Term 1</div>
+              <div class="amt">GHS 300.00</div>
+            </div>
+            <div class="r-table-row">
+              <div class="desc">
+                <div class="main">Books &amp; supplies</div>
+                <div class="sub">Term 1 · 2026 · INV-2026-0184</div>
+              </div>
+              <div class="qty">Term 1</div>
+              <div class="amt">GHS 40.00</div>
+            </div>
+          </div>
+
+          <div class="r-table-totals">
+            <div class="lbl row-grand">Paid this transaction</div>
+            <div class="val row-grand">GHS 340.00</div>
+          </div>
+
+          <div style="margin-top:14px;padding:10px 14px;background:var(--bg);border-radius:6px;font-size:10px;color:var(--navy-3);line-height:1.5">
+            <b style="color:var(--navy);font-weight:600">Invoice now fully paid.</b> An earlier payment of GHS 60.00 on 18 Apr 2026 (receipt RCT-2026-0497) cleared part of this invoice. With this transaction of GHS 340.00, the GHS 400.00 invoice is settled in full.
+          </div>
+        </div>
+
+        <div class="r-payment-method">
+          <div class="cell">
+            <div class="lbl">Method</div>
+            <div class="val">MTN MoMo</div>
+            <div class="sub">+233 24 555 8392</div>
+          </div>
+          <div class="cell">
+            <div class="lbl">Transaction ID</div>
+            <div class="val mono" style="font-family:'JetBrains Mono',monospace;font-size:11px">TXN78215-MAY01</div>
+            <div class="sub">Confirmed by MTN</div>
+          </div>
+          <div class="cell">
+            <div class="lbl">Recorded by</div>
+            <div class="val">Florence Addo</div>
+            <div class="sub">Headmistress · 10:24 AM</div>
+          </div>
+        </div>
+
+        <div class="r-footer">
+          <div class="signature-block">
+            <div class="sig-stamp">
+              CHRIST<br>THE KING<br>OFFICIAL
+            </div>
+            <div class="sig-meta">
+              <b>Florence Addo</b>
+              Headmistress &amp; authorised officer
+            </div>
+          </div>
+          <div class="qr-block">
+            <div class="qr-pattern"></div>
+            <div class="qr-label">Verify at <b>omnischools.gh/r</b></div>
+          </div>
+        </div>
+
+        <div class="r-platform">
+          <div class="powered">Issued on <em>Omnischools</em> · the school management platform</div>
+          <div class="verify-url">omnischools.gh/r/RCT-2026-0541</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Gold accent strip across the top.</b> The first 6mm of the page reads as "this is from Christ the King" — provenance signal before any text is read. Survives photocopying, faxing, low-quality printer output.</li>
+        <li><b>School identity dominates the header.</b> School name in Fraunces, school address and contact below. The receipt number sits to the right but visually subordinate. <b>The school is the issuer; Omnischools is the platform.</b></li>
+        <li><b>School ID line</b> ("GES-AC-JHS-0184") matters for the ministry pitch. Ghana Education Service registers schools with unique IDs; including this on every receipt makes the document audit-ready for any government inspection.</li>
+        <li><b>"Received from" / "For the account of"</b> is the legal pattern for school receipts. The payer (guardian) and the beneficiary (student) are explicitly distinguished. This is how a parent claims tax/employer reimbursement.</li>
+        <li><b>The amount banner is the visual anchor.</b> "GHS 340.00" in 28pt Fraunces with the in-words spelling next to it. Both required for legal records — numerals can be altered, words cannot. The "three hundred and forty Ghana cedis" line is a forgery defense.</li>
+        <li><b>Line items sum to the actual payment, not the invoice total.</b> A receipt documents what was received in this transaction — GHS 340.00. The two line items (tuition remaining balance + books) sum to exactly that. <b>The receipt does not subtract the previous payment from itself</b> — that prior payment had its own receipt, and adding it here would double-count.</li>
+        <li><b>Prior-payment context in a footnote box,</b> not in the totals math. Tells the reader: "an earlier GHS 60 payment was made; this GHS 340 settles the rest of the GHS 400 invoice." Provides full picture without cluttering the receipt body.</li>
+        <li><b>Three-cell payment method strip.</b> Method (with phone for MoMo), Transaction ID (mono font for legibility), and the human who recorded it. Each cell answers a different question: how, what proof, who.</li>
+        <li><b>Stamp + signature line + name.</b> The dashed circle is the school's stamp impression; in production schools upload a real stamp PNG. The "authorised officer" framing matches what GES inspectors expect to see.</li>
+        <li><b>QR code for verification.</b> Anyone scanning lands on a public page that confirms the receipt is real. Defends against forgery — receipts can be photographed and edited; verification URL can't be faked.</li>
+        <li><b>Bottom strip is intentionally quiet.</b> "Issued on Omnischools" is the only platform mention. Doesn't compete with the school's identity above.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 MULTI-INVOICE RECEIPT ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Multi-invoice receipt</div>
+    <div class="section-meta">A5 portrait · one MoMo payment settling two invoices</div>
+  </div>
+
+  <div class="layout">
+    <div class="paper-wrap">
+      <div class="paper">
+        <div class="accent-strip"></div>
+
+        <div class="r-header">
+          <div class="school-block">
+            <div class="school-mark">CK</div>
+            <div class="school-info">
+              <div class="name">Christ the King JHS</div>
+              <div class="meta">
+                <div class="row">12 Independence Ave, Accra · Greater Accra</div>
+                <div class="row">+233 30 222 4488 · accounts@christtheking.edu.gh</div>
+                <div class="row">School ID: GES-AC-JHS-0184</div>
+              </div>
+            </div>
+          </div>
+          <div class="receipt-anchor">
+            <div class="doc-type">Official Receipt</div>
+            <div class="receipt-number">RCT-2026-0541</div>
+            <div class="issued">Issued 30 Apr 2026 · 10:24 AM</div>
+          </div>
+        </div>
+
+        <div class="r-payer">
+          <div class="payer-cell">
+            <div class="lbl">Received from</div>
+            <div class="val">Ama Boateng</div>
+            <div class="sub">+233 24 555 8392 · Guardian</div>
+          </div>
+          <div class="payer-cell">
+            <div class="lbl">For the account of</div>
+            <div class="val">Akosua Boateng</div>
+            <div class="sub">JHS 2A · Student ID CTK-2024-018</div>
+          </div>
+        </div>
+
+        <div class="r-body">
+          <div class="received-banner">
+            <div class="lbl">Total received</div>
+            <div class="val-row">
+              <div class="amount">GHS 440.00</div>
+              <div class="in-words">four hundred and forty Ghana cedis</div>
+            </div>
+          </div>
+
+          <div class="alloc-section">
+            <div class="a-head">Settled across 2 invoices</div>
+            <div class="alloc-row">
+              <div class="inv-id">INV-2025-3084</div>
+              <div class="inv-desc">Term 3 · 2025 outstanding</div>
+              <div class="inv-amt">GHS 100.00</div>
+            </div>
+            <div class="alloc-row">
+              <div class="inv-id">INV-2026-0184</div>
+              <div class="inv-desc">Term 1 · 2026 fees</div>
+              <div class="inv-amt">GHS 340.00</div>
+            </div>
+          </div>
+
+          <div class="r-table">
+            <div class="r-table-head">
+              <div>Description</div>
+              <div class="right">Period</div>
+              <div class="right">Amount</div>
+            </div>
+            <div class="r-table-row">
+              <div class="desc">
+                <div class="main">Term 3 · 2025 carryover · settled in full</div>
+                <div class="sub">cleared from INV-2025-3084</div>
+              </div>
+              <div class="qty">2025</div>
+              <div class="amt">GHS 100.00</div>
+            </div>
+            <div class="r-table-row">
+              <div class="desc">
+                <div class="main">Term 1 · 2026 remaining balance</div>
+                <div class="sub">cleared from INV-2026-0184</div>
+              </div>
+              <div class="qty">Term 1</div>
+              <div class="amt">GHS 340.00</div>
+            </div>
+          </div>
+
+          <div class="r-table-totals">
+            <div class="lbl row-grand">Paid this transaction</div>
+            <div class="val row-grand">GHS 440.00</div>
+          </div>
+
+          <div style="margin-top:14px;padding:10px 14px;background:var(--bg);border-radius:6px;font-size:10px;color:var(--navy-3);line-height:1.5">
+            <b style="color:var(--navy);font-weight:600">Both invoices now fully paid.</b> An earlier payment of GHS 60.00 on 18 Apr 2026 (receipt RCT-2026-0497) cleared part of the Term 1 invoice. With this transaction, both Term 3 · 2025 (GHS 400.00 total) and Term 1 · 2026 (GHS 400.00 total) are settled in full.
+          </div>
+        </div>
+
+        <div class="r-payment-method">
+          <div class="cell">
+            <div class="lbl">Method</div>
+            <div class="val">MTN MoMo</div>
+            <div class="sub">+233 24 555 8392</div>
+          </div>
+          <div class="cell">
+            <div class="lbl">Transaction ID</div>
+            <div class="val" style="font-family:'JetBrains Mono',monospace;font-size:11px">TXN78215-MAY01</div>
+            <div class="sub">Confirmed by MTN</div>
+          </div>
+          <div class="cell">
+            <div class="lbl">Recorded by</div>
+            <div class="val">Florence Addo</div>
+            <div class="sub">Headmistress · 10:24 AM</div>
+          </div>
+        </div>
+
+        <div class="r-footer">
+          <div class="signature-block">
+            <div class="sig-stamp">CHRIST<br>THE KING<br>OFFICIAL</div>
+            <div class="sig-meta">
+              <b>Florence Addo</b>
+              Headmistress &amp; authorised officer
+            </div>
+          </div>
+          <div class="qr-block">
+            <div class="qr-pattern"></div>
+            <div class="qr-label">Verify at <b>omnischools.gh/r</b></div>
+          </div>
+        </div>
+
+        <div class="r-platform">
+          <div class="powered">Issued on <em>Omnischools</em> · the school management platform</div>
+          <div class="verify-url">omnischools.gh/r/RCT-2026-0541</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Gold allocation summary band</b> appears between the amount banner and the line items. Tells the reader at a glance: this single MoMo transaction cleared two invoices. The two invoice IDs are visible up front, before the per-line breakdown.</li>
+        <li><b>Line items sum to the GHS 440 paid in this transaction.</b> Term 3 carryover (100) + Term 1 remaining balance (340) = 440. <b>Not</b> the sum of both invoice totals minus the prior payment — that math is correct but harder to read on a receipt. The receipt documents the GHS 440 transaction; the invoice page in-app shows the full historical math.</li>
+        <li><b>Same receipt number for both invoices.</b> One transaction, one receipt — even if it cleared multiple invoices. Matches the parent's mental model of "I sent one MoMo payment, I got one receipt."</li>
+        <li><b>Footnote box explains the full settlement context.</b> Tells the reader that both Term 3 and Term 1 invoices are now fully paid, and references the earlier GHS 60 payment that contributed to Term 1. Same pattern as the standard receipt — context lives in prose, not in the totals math.</li>
+        <li><b>Allocation summary uses the gold palette</b> instead of the default white. Visual signal: this section is special; it explains what kind of receipt this is.</li>
+        <li><b>Header / payer / method / footer all unchanged</b> from the standard receipt. Rule of thumb: layout consistency between receipt types, only the body section flexes.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 VOIDED RECEIPT ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Voided receipt</div>
+    <div class="section-meta">A5 portrait · receipt voided after payment was reversed</div>
+  </div>
+
+  <div class="layout">
+    <div class="paper-wrap">
+      <div class="paper voided">
+        <div class="accent-strip"></div>
+
+        <div class="void-banner">
+          <div class="ic">!</div>
+          <div class="body">
+            <div class="t1">This receipt has been voided</div>
+            Voided 02 May 2026 · 14:08 by Florence Addo · reason: <b>"Parent disputed MoMo charge — refund issued via MTN reversal"</b>. The original payment of GHS 340.00 was reversed; this receipt is no longer a valid record of payment. Replacement: <span class="replacement">RCT-2026-0578</span>.
+          </div>
+        </div>
+
+        <div class="r-header">
+          <div class="school-block">
+            <div class="school-mark">CK</div>
+            <div class="school-info">
+              <div class="name">Christ the King JHS</div>
+              <div class="meta">
+                <div class="row">12 Independence Ave, Accra · Greater Accra</div>
+                <div class="row">+233 30 222 4488 · accounts@christtheking.edu.gh</div>
+                <div class="row">School ID: GES-AC-JHS-0184</div>
+              </div>
+            </div>
+          </div>
+          <div class="receipt-anchor">
+            <div class="doc-type">Official Receipt</div>
+            <div class="receipt-number">RCT-2026-0541</div>
+            <div class="issued">Issued 30 Apr 2026 · 10:24 AM</div>
+          </div>
+        </div>
+
+        <div class="r-payer">
+          <div class="payer-cell">
+            <div class="lbl">Received from</div>
+            <div class="val">Ama Boateng</div>
+            <div class="sub">+233 24 555 8392 · Guardian</div>
+          </div>
+          <div class="payer-cell">
+            <div class="lbl">For the account of</div>
+            <div class="val">Akosua Boateng</div>
+            <div class="sub">JHS 2A · Student ID CTK-2024-018</div>
+          </div>
+        </div>
+
+        <div class="r-body">
+          <div class="received-banner">
+            <div class="lbl">Total received</div>
+            <div class="val-row">
+              <div class="amount">GHS 340.00</div>
+              <div class="in-words">three hundred and forty Ghana cedis</div>
+            </div>
+          </div>
+
+          <div class="r-table">
+            <div class="r-table-head">
+              <div>Description</div>
+              <div class="right">Period</div>
+              <div class="right">Amount</div>
+            </div>
+            <div class="r-table-row">
+              <div class="desc">
+                <div class="main">Tuition · remaining balance</div>
+                <div class="sub">Term 1 · 2026 · INV-2026-0184</div>
+              </div>
+              <div class="qty">Term 1</div>
+              <div class="amt">GHS 300.00</div>
+            </div>
+            <div class="r-table-row">
+              <div class="desc">
+                <div class="main">Books &amp; supplies</div>
+                <div class="sub">Term 1 · 2026 · INV-2026-0184</div>
+              </div>
+              <div class="qty">Term 1</div>
+              <div class="amt">GHS 40.00</div>
+            </div>
+          </div>
+
+          <div class="r-table-totals">
+            <div class="lbl row-grand">Paid this transaction</div>
+            <div class="val row-grand">GHS 340.00</div>
+          </div>
+
+          <div style="margin-top:14px;padding:10px 14px;background:var(--bg);border-radius:6px;font-size:10px;color:var(--navy-3);line-height:1.5">
+            <b style="color:var(--navy);font-weight:600">Invoice now fully paid.</b> An earlier payment of GHS 60.00 on 18 Apr 2026 (receipt RCT-2026-0497) cleared part of this invoice. With this transaction of GHS 340.00, the GHS 400.00 invoice is settled in full.
+          </div>
+        </div>
+
+        <div class="r-payment-method">
+          <div class="cell">
+            <div class="lbl">Method</div>
+            <div class="val">MTN MoMo</div>
+            <div class="sub">+233 24 555 8392</div>
+          </div>
+          <div class="cell">
+            <div class="lbl">Transaction ID</div>
+            <div class="val" style="font-family:'JetBrains Mono',monospace;font-size:11px">TXN78215-MAY01</div>
+            <div class="sub">Reversed by MTN</div>
+          </div>
+          <div class="cell">
+            <div class="lbl">Recorded by</div>
+            <div class="val">Florence Addo</div>
+            <div class="sub">Headmistress · 10:24 AM</div>
+          </div>
+        </div>
+
+        <div class="r-footer">
+          <div class="signature-block">
+            <div class="sig-stamp">CHRIST<br>THE KING<br>OFFICIAL</div>
+            <div class="sig-meta">
+              <b>Florence Addo</b>
+              Headmistress &amp; authorised officer
+            </div>
+          </div>
+          <div class="qr-block">
+            <div class="qr-pattern"></div>
+            <div class="qr-label">Verify at <b>omnischools.gh/r</b></div>
+          </div>
+        </div>
+
+        <div class="r-platform">
+          <div class="powered">Issued on <em>Omnischools</em> · the school management platform</div>
+          <div class="verify-url">omnischools.gh/r/RCT-2026-0541 · VOIDED</div>
+        </div>
+
+        <div class="voided-overlay">
+          <div class="void-stamp">VOID</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>VOID stamp angled diagonally,</b> 5px terracotta border, 64pt Fraunces. Reads as a real ink stamp would on a printed receipt — the universal visual convention for "this is no longer a valid record."</li>
+        <li><b>Stamp opacity 0.85,</b> not opaque. The original content is still readable underneath — auditors need to see what the original receipt said to understand what was voided. A fully-opaque stamp would obscure the audit trail.</li>
+        <li><b>Original receipt body slightly desaturated</b> (55% opacity). Pulls visual weight away from the body, reinforces that the document is historical not current. Header and footer remain at full opacity so school identity is unmistakable.</li>
+        <li><b>Void banner above the header</b> contains the reversal facts: when, who, why, replacement number. <b>This is the most important text on the void receipt</b> — it explains what happened. Terracotta treatment matches the danger color in the system.</li>
+        <li><b>Replacement receipt ID shown inline</b> (RCT-2026-0578). Auditor can immediately follow the trail to the replacement. Makes the void recoverable as a story, not a dead-end.</li>
+        <li><b>"Reversed by MTN" replaces "Confirmed by MTN"</b> on the transaction ID line. Single-word change that signals the chain-of-custody for the actual money — it went back to the parent through the same channel it arrived on.</li>
+        <li><b>Verify URL footer says "VOIDED"</b>. If anyone scans the QR or visits the URL, the public verification page also says voided — no way to mistake an old, voided receipt for a current one.</li>
+        <li><b>Same receipt number, not a new one.</b> RCT-2026-0541 stays attached to the void event. Replacement is a separate document with its own number. This is how financial audit trails work — voids don't erase, they overlay.</li>
+        <li><b>The void itself is the fact being recorded.</b> A void is a financial event with its own audit log entry (who, when, why). The receipt PDF reflects that event; it doesn't pretend the original payment never happened.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

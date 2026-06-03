@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Fixed assets register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { font-family: 'Manrope', system-ui, sans-serif; background: var(--bg); color: var(--navy); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin-bottom: 12px; }
+.page-header h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 56px; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 16px; font-variation-settings: "opsz" 144; }
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 700px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+.mvp-tag { display: inline-block; background: var(--gold); color: var(--navy); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; padding: 3px 10px; border-radius: 100px; margin-bottom: 14px; }
+
+.section { margin-bottom: 80px; }
+.section-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+.section-num { font-family: 'Fraunces', serif; font-style: italic; font-size: 32px; font-weight: 400; color: var(--gold); }
+.section-title { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 500; letter-spacing: -0.01em; }
+.section-meta { margin-left: auto; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-3); font-weight: 600; }
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 500; margin-bottom: 14px; }
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li { font-size: 13px; color: var(--navy-2); padding: 10px 0; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop { width: 100%; background: var(--surface); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background: var(--navy); padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url { background: rgba(255,255,255,0.08); color: var(--gold-soft); padding: 5px 12px; border-radius: 6px; font-size: 11px; font-family: 'Fraunces', monospace; margin-left: 12px; letter-spacing: 0.04em; }
+
+.app-shell { display: grid; grid-template-columns: 220px 1fr; background: var(--bg); }
+.sidebar { background: var(--navy); color: var(--bg); padding: 24px 0; display: flex; flex-direction: column; min-height: 1580px; }
+.sidebar .brand { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; }
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini { width: 38px; height: 38px; border-radius: 8px; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; flex-shrink: 0; }
+.school-name { font-family: 'Fraunces', serif; font-size: 13px; font-weight: 500; letter-spacing: -0.01em; }
+.school-meta { font-size: 10px; color: var(--gold-soft); margin-top: 2px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 24px; font-size: 13px; color: rgba(250,247,242,0.7); font-weight: 500; border-left: 2px solid transparent; }
+.nav-item.active { background: rgba(200,151,91,0.08); color: var(--bg); border-left-color: var(--gold); }
+.nav-item .ic { width: 16px; height: 16px; background: currentColor; opacity: 0.8; border-radius: 3px; }
+.nav-item.sub { padding-left: 44px; font-size: 12px; color: rgba(250,247,242,0.55); }
+.nav-item.sub.active { color: var(--bg); background: rgba(200,151,91,0.08); }
+.nav-item .new-tag { margin-left: auto; background: var(--gold); color: var(--navy); font-size: 8px; font-weight: 700; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 100px; }
+.sidebar .footer { margin-top: auto; padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.sidebar .footer .av { width: 32px; height: 32px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; color: var(--navy); font-family: 'Fraunces', serif; font-weight: 600; font-size: 12px; }
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by { padding: 10px 24px 16px; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(200,151,91,0.55); font-weight: 700; background: var(--navy); border-top: 1px solid rgba(255,255,255,0.05); }
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 0; background: var(--bg); }
+
+.page-head { background: var(--surface); border-bottom: 1px solid var(--border); padding: 24px 36px 22px; }
+.page-head .crumb { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-3); font-weight: 600; margin-bottom: 8px; }
+.page-head .crumb a { color: var(--gold); text-decoration: none; }
+.page-head .top-row { display: flex; justify-content: space-between; align-items: end; margin-bottom: 12px; }
+.page-head h1 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 500; letter-spacing: -0.018em; line-height: 1.1; }
+.page-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-head .lede { font-size: 13px; color: var(--navy-3); margin-top: 4px; max-width: 680px; }
+.page-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.actions { display: flex; gap: 8px; }
+.btn { padding: 9px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-2); background: var(--surface); color: var(--navy); font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); font-weight: 700; }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); font-weight: 700; }
+
+.body { padding: 28px 36px 60px; }
+
+/* Total assets hero */
+.assets-hero { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+.assets-main { background: var(--navy); color: var(--bg); border-radius: 14px; padding: 22px 26px; background-image: radial-gradient(circle at 90% 0%, rgba(200,151,91,0.16) 0%, transparent 55%); position: relative; overflow: hidden; }
+.assets-main .lbl { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-soft); font-weight: 700; margin-bottom: 4px; }
+.assets-main .val { font-family: 'Fraunces', serif; font-size: 44px; font-weight: 600; letter-spacing: -0.022em; line-height: 1; color: var(--gold); }
+.assets-main .val em { font-style: italic; }
+.assets-main .val .currency { font-size: 20px; color: rgba(232,212,184,0.7); font-weight: 500; margin-right: 4px; }
+.assets-main .meta { margin-top: 12px; font-size: 12px; color: rgba(232,212,184,0.85); line-height: 1.55; }
+.assets-main .meta b { color: var(--bg); font-weight: 600; }
+
+.asset-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; }
+.asset-tile .lbl { font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; }
+.asset-tile .val { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 600; letter-spacing: -0.018em; line-height: 1.05; margin-top: 4px; }
+.asset-tile .val .currency { font-size: 12px; color: var(--navy-3); font-weight: 500; margin-right: 3px; }
+.asset-tile .val em { font-style: italic; color: var(--gold); }
+.asset-tile .sub { font-size: 11px; color: var(--navy-3); margin-top: 4px; }
+.asset-tile .sub b { color: var(--navy-2); font-weight: 600; }
+
+/* Category breakdown */
+.region { margin-bottom: 32px; }
+.region-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.region-head .num { font-family: 'Fraunces', serif; font-style: italic; font-size: 18px; color: var(--gold); font-weight: 500; }
+.region-head h2 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; letter-spacing: -0.005em; }
+.region-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.region-head .meta { margin-left: auto; font-size: 11px; color: var(--navy-3); font-style: italic; }
+.region-head .meta b { color: var(--navy-2); font-weight: 600; font-style: normal; }
+
+.cat-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.cat-tab { padding: 8px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 100px; font-size: 12px; font-weight: 600; color: var(--navy-2); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.cat-tab.active { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.cat-tab.active em { font-style: italic; color: var(--gold); font-family: 'Fraunces', serif; font-weight: 500; }
+.cat-tab .count { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; opacity: 0.6; }
+.cat-tab.active .count { opacity: 0.85; }
+
+/* Asset table */
+.asset-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.asset-table { width: 100%; border-collapse: collapse; }
+.asset-table thead th { background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 18px; text-align: left; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; }
+.asset-table thead th.num { text-align: right; }
+.asset-table tbody td { padding: 14px 18px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.asset-table tbody tr:last-child td { border-bottom: none; }
+.asset-table tbody tr:hover { background: var(--bg); cursor: pointer; }
+
+.asset-cat-group { background: var(--gold-bg); border-bottom: 1px solid var(--gold-soft); }
+.asset-cat-group td { padding: 10px 18px !important; }
+.asset-cat-header { display: flex; justify-content: space-between; align-items: center; }
+.asset-cat-header .cg-left { display: flex; align-items: center; gap: 10px; }
+.asset-cat-header .cg-icon { width: 26px; height: 26px; border-radius: 6px; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 700; font-size: 13px; }
+.asset-cat-header .cg-name { font-family: 'Fraunces', serif; font-size: 13px; font-weight: 600; letter-spacing: -0.005em; color: var(--navy); }
+.asset-cat-header .cg-name em { font-style: italic; color: var(--gold); }
+.asset-cat-header .cg-meta { font-size: 11px; color: var(--navy-2); }
+.asset-cat-header .cg-meta b { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--navy); }
+
+.asset-name { display: flex; flex-direction: column; gap: 2px; }
+.asset-name .a-name { font-weight: 600; color: var(--navy); font-size: 13px; }
+.asset-name .a-id { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--navy-3); font-weight: 600; }
+
+.acq-cell { font-size: 11px; color: var(--navy-2); }
+.acq-cell .acq-date { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--navy); font-size: 11px; }
+.acq-cell .acq-cost { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--navy-2); margin-top: 2px; font-size: 11px; }
+
+/* Depreciation bar */
+.dep-bar-cell { width: 200px; }
+.dep-bar-wrap { padding: 4px 0; }
+.dep-bar { height: 8px; background: var(--bg); border-radius: 100px; overflow: hidden; border: 1px solid var(--border); }
+.dep-bar-fill { height: 100%; background: var(--gold); border-radius: 100px; }
+.dep-bar-fill.high { background: var(--terra); }
+.dep-bar-fill.low { background: var(--green); }
+.dep-bar-meta { display: flex; justify-content: space-between; font-size: 9px; font-family: 'JetBrains Mono', monospace; color: var(--navy-3); margin-top: 4px; font-weight: 600; }
+.dep-bar-meta b { color: var(--navy-2); }
+
+.book-value { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--navy); font-size: 13px; text-align: right; }
+.book-value .small { font-size: 9px; color: var(--navy-3); font-weight: 500; margin-top: 2px; letter-spacing: 0; }
+
+.condition-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 100px; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.condition-tag.good { background: var(--green-bg); color: var(--green); }
+.condition-tag.fair { background: var(--warn-bg); color: var(--warn); }
+.condition-tag.poor { background: var(--terra-bg); color: var(--terra); }
+
+/* Subtotal row */
+.subtotal-row { background: var(--bg); }
+.subtotal-row td { padding: 10px 18px !important; font-weight: 700; }
+.subtotal-row .st-label { font-family: 'Fraunces', serif; font-size: 12px; font-style: italic; color: var(--navy-3); }
+.subtotal-row .st-amount { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--navy); font-size: 13px; text-align: right; }
+
+/* GES infrastructure cross-ref note */
+.cross-ref { background: var(--gold-bg); border: 1px solid var(--gold-soft); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: grid; grid-template-columns: 28px 1fr; gap: 14px; align-items: start; }
+.cross-ref .ic { width: 26px; height: 26px; border-radius: 50%; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 700; font-size: 13px; }
+.cross-ref .body { font-size: 12px; color: var(--navy-2); line-height: 1.55; }
+.cross-ref .body .heading { font-family: 'Fraunces', serif; font-weight: 600; font-size: 13px; color: var(--navy); margin-bottom: 3px; letter-spacing: -0.005em; }
+.cross-ref .body .heading em { font-style: italic; color: var(--gold); }
+.cross-ref .body b { color: var(--navy); font-weight: 600; }
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .assets-hero { grid-template-columns: 1fr 1fr; }
+  .dep-bar-cell { width: auto; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Books · Fixed assets &amp; infrastructure</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">What the school <em>owns</em></h1>
+  <div class="gold-rule"></div>
+  <p>Fixed assets bundled with infrastructure tracking — one register that serves both the balance sheet (asset side) and the GES annual census (which has had a 2-page hatched manual section for facilities). Buildings, vehicles, ICT, furniture, kitchen — each tracked with acquisition cost, useful life, and depreciation schedule. Once a school records its assets here, the annual census infrastructure section flips from hatched-manual to auto-fill.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Fixed assets register</div>
+    <div class="section-meta">22 assets · GHS 1,004,600 net book value · 5 categories</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / books / fixed-assets</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Books<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub">Dashboard</div>
+          <div class="nav-item sub">Expenses</div>
+          <div class="nav-item sub">Income</div>
+          <div class="nav-item sub active">Fixed assets</div>
+          <div class="nav-item sub">Reports</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Books</a> / Fixed assets &amp; infrastructure</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Assets &amp; <em>infrastructure</em></h1>
+                <div class="lede">22 items recorded · GHS 1,004,600 net book value · also feeds the GES annual census infrastructure section · last update <b>14 Sep 2025</b> by Florence</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Depreciation schedule →</button>
+                <button class="btn primary">+ Add asset</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <!-- Hero -->
+            <div class="assets-hero">
+              <div class="assets-main">
+                <div class="lbl">Total net book value · today</div>
+                <div class="val"><span class="currency">GHS</span>1,004,600</div>
+                <div class="meta">Down from <b>GHS 1,082,400</b> at year start · <b>GHS 77,800</b> depreciation expensed YTD across all categories</div>
+              </div>
+              <div class="asset-tile">
+                <div class="lbl">Buildings</div>
+                <div class="val"><span class="currency">GHS</span>880,000</div>
+                <div class="sub"><b>3 buildings</b> · 87.6% of asset value</div>
+              </div>
+              <div class="asset-tile">
+                <div class="lbl">Vehicles</div>
+                <div class="val"><span class="currency">GHS</span>64,000</div>
+                <div class="sub"><b>1 school bus</b> · 6.4%</div>
+              </div>
+              <div class="asset-tile">
+                <div class="lbl">All other</div>
+                <div class="val"><span class="currency">GHS</span>60,600</div>
+                <div class="sub">Furniture · ICT · kitchen · 6.0%</div>
+              </div>
+            </div>
+
+            <!-- Cross-reference to GES -->
+            <div class="cross-ref">
+              <div class="ic">i</div>
+              <div class="body">
+                <div class="heading">This register also feeds the <em>GES annual census</em></div>
+                Once you've recorded your buildings, latrines, water source, electricity, library, ICT lab, kitchen, and furniture here — the infrastructure section of the annual census <b>auto-fills</b> rather than appearing as the 2-page hatched manual section it does today. <b>One entry, two outputs.</b>
+              </div>
+            </div>
+
+            <!-- Region 01: Asset register by category -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">Asset <em>register</em></h2>
+                <div class="meta">Grouped by category · click any row for full asset detail</div>
+              </div>
+
+              <div class="cat-tabs">
+                <div class="cat-tab active">All<span class="count">22</span></div>
+                <div class="cat-tab">Buildings<span class="count">3</span></div>
+                <div class="cat-tab">Vehicles<span class="count">1</span></div>
+                <div class="cat-tab">Furniture<span class="count">5</span></div>
+                <div class="cat-tab">ICT equipment<span class="count">8</span></div>
+                <div class="cat-tab">Kitchen &amp; feeding<span class="count">3</span></div>
+                <div class="cat-tab">Sanitation<span class="count">2</span></div>
+              </div>
+
+              <div class="asset-card">
+                <table class="asset-table">
+                  <thead>
+                    <tr>
+                      <th>Asset</th>
+                      <th>Acquired</th>
+                      <th>Original cost</th>
+                      <th>Depreciation</th>
+                      <th>Condition</th>
+                      <th class="num">Book value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+
+                    <!-- BUILDINGS -->
+                    <tr class="asset-cat-group">
+                      <td colspan="6">
+                        <div class="asset-cat-header">
+                          <div class="cg-left">
+                            <div class="cg-icon">B</div>
+                            <div>
+                              <div class="cg-name display">Buildings <em>· 3 items</em></div>
+                              <div class="cg-meta">25-year straight line · used for <b>9 classrooms · 3 staff offices · 1 hall</b></div>
+                            </div>
+                          </div>
+                          <div class="cg-meta">Subtotal · <b>GHS 880,000</b></div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Main classroom block</div><div class="a-id">CTK-BLD-001 · 6 classrooms</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Jan 2010</div><div class="acq-cost">GHS 720,000</div></div></td>
+                      <td>15 of 25 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill" style="width:60%"></div></div>
+                          <div class="dep-bar-meta"><span><b>60%</b> depreciated</span><span>10 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag good">Good</span></td>
+                      <td class="book-value">GHS 432,000<div class="small">−288,000 dep.</div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Annex block · JHS 2 + 3</div><div class="a-id">CTK-BLD-002 · 3 classrooms + offices</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Aug 2018</div><div class="acq-cost">GHS 380,000</div></div></td>
+                      <td>7 of 25 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill low" style="width:28%"></div></div>
+                          <div class="dep-bar-meta"><span><b>28%</b> depreciated</span><span>18 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag good">Good</span></td>
+                      <td class="book-value">GHS 273,600<div class="small">−106,400 dep.</div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Hall &amp; assembly building</div><div class="a-id">CTK-BLD-003 · multipurpose</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Mar 2015</div><div class="acq-cost">GHS 240,000</div></div></td>
+                      <td>10 of 25 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill" style="width:40%"></div></div>
+                          <div class="dep-bar-meta"><span><b>40%</b> depreciated</span><span>15 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag fair">Fair</span></td>
+                      <td class="book-value">GHS 174,400<div class="small">−65,600 dep.</div></td>
+                    </tr>
+
+                    <!-- VEHICLES -->
+                    <tr class="asset-cat-group">
+                      <td colspan="6">
+                        <div class="asset-cat-header">
+                          <div class="cg-left">
+                            <div class="cg-icon">V</div>
+                            <div>
+                              <div class="cg-name display">Vehicles <em>· 1 item</em></div>
+                              <div class="cg-meta">8-year straight line · school bus services <b>3 routes</b> across Accra</div>
+                            </div>
+                          </div>
+                          <div class="cg-meta">Subtotal · <b>GHS 64,000</b></div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Toyota Coaster school bus</div><div class="a-id">CTK-VEH-001 · GR 4421-22 · 30-seater</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">May 2022</div><div class="acq-cost">GHS 96,000</div></div></td>
+                      <td>3 of 8 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill" style="width:33%"></div></div>
+                          <div class="dep-bar-meta"><span><b>33%</b> depreciated</span><span>5 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag good">Good</span></td>
+                      <td class="book-value">GHS 64,000<div class="small">−32,000 dep.</div></td>
+                    </tr>
+
+                    <!-- ICT -->
+                    <tr class="asset-cat-group">
+                      <td colspan="6">
+                        <div class="asset-cat-header">
+                          <div class="cg-left">
+                            <div class="cg-icon">I</div>
+                            <div>
+                              <div class="cg-name display">ICT equipment <em>· 8 items</em></div>
+                              <div class="cg-meta">5-year straight line · ICT lab + admin computers · <b>1 functional · 1 partial</b></div>
+                            </div>
+                          </div>
+                          <div class="cg-meta">Subtotal · <b>GHS 18,200</b></div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">ICT lab desktops · batch of 12</div><div class="a-id">CTK-ICT-001 to 012 · HP ProDesk</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Sep 2022</div><div class="acq-cost">GHS 24,000</div></div></td>
+                      <td>3 of 5 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill" style="width:60%"></div></div>
+                          <div class="dep-bar-meta"><span><b>60%</b> depreciated</span><span>2 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag fair">Fair · 9 working</span></td>
+                      <td class="book-value">GHS 9,600<div class="small">−14,400 dep.</div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Office computers &amp; printer</div><div class="a-id">CTK-ICT-013, 014 · Dell Inspiron + HP</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Jan 2024</div><div class="acq-cost">GHS 12,800</div></div></td>
+                      <td>2 of 5 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill low" style="width:40%"></div></div>
+                          <div class="dep-bar-meta"><span><b>40%</b> depreciated</span><span>3 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag good">Good</span></td>
+                      <td class="book-value">GHS 7,680<div class="small">−5,120 dep.</div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Projector · staff room</div><div class="a-id">CTK-ICT-015 · Epson EB-X51</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Mar 2023</div><div class="acq-cost">GHS 1,800</div></div></td>
+                      <td>2 of 5 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill low" style="width:40%"></div></div>
+                          <div class="dep-bar-meta"><span><b>40%</b> depreciated</span><span>3 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag good">Good</span></td>
+                      <td class="book-value">GHS 1,080<div class="small">−720 dep.</div></td>
+                    </tr>
+
+                    <!-- FURNITURE summary row -->
+                    <tr class="asset-cat-group">
+                      <td colspan="6">
+                        <div class="asset-cat-header">
+                          <div class="cg-left">
+                            <div class="cg-icon">F</div>
+                            <div>
+                              <div class="cg-name display">Furniture <em>· 5 items</em></div>
+                              <div class="cg-meta">10-year straight line · <b>312 student desks · 17 staff desks · chalkboards</b></div>
+                            </div>
+                          </div>
+                          <div class="cg-meta">Subtotal · <b>GHS 42,400</b></div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Student desks · batch of 320</div><div class="a-id">CTK-FRN-001 · combined desk-chair units</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Aug 2020</div><div class="acq-cost">GHS 48,000</div></div></td>
+                      <td>5 of 10 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill" style="width:50%"></div></div>
+                          <div class="dep-bar-meta"><span><b>50%</b> depreciated</span><span>5 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag fair">Fair · 18 broken</span></td>
+                      <td class="book-value">GHS 24,000<div class="small">−24,000 dep.</div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Staff desks &amp; chairs · 17 sets</div><div class="a-id">CTK-FRN-002 · staff room + offices</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Aug 2020</div><div class="acq-cost">GHS 8,500</div></div></td>
+                      <td>5 of 10 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill" style="width:50%"></div></div>
+                          <div class="dep-bar-meta"><span><b>50%</b> depreciated</span><span>5 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag good">Good</span></td>
+                      <td class="book-value">GHS 4,250<div class="small">−4,250 dep.</div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Chalkboards &amp; whiteboards · 12</div><div class="a-id">CTK-FRN-003 · 9 chalk · 3 white</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Aug 2020</div><div class="acq-cost">GHS 4,800</div></div></td>
+                      <td>5 of 10 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill" style="width:50%"></div></div>
+                          <div class="dep-bar-meta"><span><b>50%</b> depreciated</span><span>5 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag good">Good</span></td>
+                      <td class="book-value">GHS 2,400<div class="small">−2,400 dep.</div></td>
+                    </tr>
+
+                    <!-- KITCHEN -->
+                    <tr class="asset-cat-group">
+                      <td colspan="6">
+                        <div class="asset-cat-header">
+                          <div class="cg-left">
+                            <div class="cg-icon">K</div>
+                            <div>
+                              <div class="cg-name display">Kitchen &amp; feeding <em>· 3 items</em></div>
+                              <div class="cg-meta">7-year straight line · supports the <b>school feeding programme</b> · open-air cooking area</div>
+                            </div>
+                          </div>
+                          <div class="cg-meta">Subtotal · <b>GHS —</b></div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Industrial cooking pots · 4</div><div class="a-id">CTK-KCN-001 · 50L aluminium</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Sep 2018</div><div class="acq-cost">GHS 1,800</div></div></td>
+                      <td>7 of 7 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill high" style="width:100%"></div></div>
+                          <div class="dep-bar-meta"><span><b>100%</b> depreciated</span><span>fully written down</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag fair">Fair · still in use</span></td>
+                      <td class="book-value">GHS 0<div class="small">−1,800 dep.</div></td>
+                    </tr>
+
+                    <!-- SANITATION -->
+                    <tr class="asset-cat-group">
+                      <td colspan="6">
+                        <div class="asset-cat-header">
+                          <div class="cg-left">
+                            <div class="cg-icon">S</div>
+                            <div>
+                              <div class="cg-name display">Sanitation &amp; water <em>· 2 items</em></div>
+                              <div class="cg-meta">15-year straight line · <b>4 boys + 4 girls + 2 staff KVIP latrines · borehole</b></div>
+                            </div>
+                          </div>
+                          <div class="cg-meta">Subtotal · <b>GHS —</b></div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="asset-name"><div class="a-name">Borehole &amp; tank</div><div class="a-id">CTK-SAN-001 · 5,000 L overhead tank</div></div></td>
+                      <td><div class="acq-cell"><div class="acq-date">Aug 2018</div><div class="acq-cost">GHS 12,000</div></div></td>
+                      <td>7 of 15 yrs</td>
+                      <td class="dep-bar-cell">
+                        <div class="dep-bar-wrap">
+                          <div class="dep-bar"><div class="dep-bar-fill" style="width:46%"></div></div>
+                          <div class="dep-bar-meta"><span><b>46%</b> depreciated</span><span>8 yrs left</span></div>
+                        </div>
+                      </td>
+                      <td><span class="condition-tag good">Good</span></td>
+                      <td class="book-value">GHS 6,400<div class="small">−5,600 dep.</div></td>
+                    </tr>
+
+                    <!-- Total row -->
+                    <tr class="subtotal-row">
+                      <td colspan="2"><span class="st-label">All categories · 22 assets</span></td>
+                      <td>—</td>
+                      <td>—</td>
+                      <td>—</td>
+                      <td class="st-amount">GHS 1,004,600</td>
+                    </tr>
+
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>4-tile asset hero in navy/gold</b> showing total net book value (GHS 1,004,600) with the down-from-year-start delta (depreciation expensed YTD = GHS 77,800). <b>The hero teaches the concept</b>: assets shrink each year through depreciation, and that shrinkage is a real expense.</li>
+        <li><b>Cross-reference card to GES annual census</b> in gold-bordered tint: "<b>One entry, two outputs.</b>" Recording assets here flips the 2-page hatched manual section in the annual census to auto-fill. <b>This is the key value proposition for operators</b> — work done once produces both a balance sheet AND fills statutory paperwork.</li>
+        <li><b>Category tabs with counts:</b> All 22 / Buildings 3 / Vehicles 1 / Furniture 5 / ICT 8 / Kitchen 3 / Sanitation 2. <b>5 categories aligned with the GES annual census infrastructure section</b> so the data model maps cleanly.</li>
+        <li><b>Asset table grouped by category</b> with gold-bordered header rows showing category icon, name, useful-life convention, and subtotal. <b>The convention "25-year straight line" is shown in the group header</b> so admin understands why each building depreciates the way it does.</li>
+        <li><b>6 columns: Asset / Acquired / Original cost / Depreciation / Condition / Book value.</b> Acquisition date and cost in mono. Depreciation as a visual progress bar showing % depreciated + years remaining. Condition uses 3-state tag (Good green / Fair warn / Poor terra). Book value is the headline output number.</li>
+        <li><b>Depreciation bar uses three colour states:</b> green for low (less than 33% depreciated), gold default, terra for high (over 75%). <b>Visual ageing of assets</b> — schools see at a glance which assets are nearing end-of-life and need replacement planning.</li>
+        <li><b>The Toyota Coaster school bus has full operational identity:</b> "GR 4421-22 · 30-seater". <b>Real Ghana number-plate format and capacity detail</b> matters because the registry is also operational, not just accounting.</li>
+        <li><b>"ICT lab desktops · 9 working" condition note</b> reflects the partial-functionality state from the annual census infrastructure section. <b>Same vocabulary as the form</b>: "Functional · all working / Partial · some working / Computers but no power / connectivity / No ICT lab" — captured here at asset level.</li>
+        <li><b>Fully-depreciated cooking pots (100% depreciated, still in use, GHS 0 book value)</b> are an honest treatment of school operations. Pots bought in 2018 are still cooking lunch — the depreciation schedule says they're worth zero on paper, but they're operationally valuable. <b>The register doesn't auto-retire them</b>; admin marks disposal explicitly when an asset is sold or scrapped.</li>
+        <li><b>Sanitation / latrines tracked as the borehole + tank capital line item.</b> KVIP latrine count appears in the group meta line. <b>Sanitation as fixed asset rather than expense</b> matches accounting reality and feeds the GES infrastructure section accurately.</li>
+        <li><b>Asset IDs follow CTK-CAT-NNN pattern</b> (CTK-BLD-001, CTK-ICT-013, etc.) — visible in mono in the asset name cell. <b>Schoolish asset numbering convention</b> that operators can paint or sticker on the physical items for inventory tracking.</li>
+        <li><b>Total row at the bottom</b> in italic Fraunces label "All categories · 22 assets" with GHS 1,004,600. <b>The same number that appears in the hero</b> — visual closure of the table.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Customise list flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+/* Modal-style overlay desktop frame */
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+  position: relative;
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* Stage holds the dimmed background + the modal */
+.stage {
+  background: linear-gradient(180deg, #E8E1D2 0%, #DDD5C2 100%);
+  padding: 0;
+  position: relative;
+  min-height: 1180px;
+  overflow: hidden;
+}
+
+/* Dimmed page peek behind modal */
+.bg-peek {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  opacity: 0.4;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+}
+.bg-peek-side {
+  background: var(--navy);
+}
+.bg-peek-main {
+  background: var(--bg);
+  padding: 20px;
+}
+.bg-peek-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  height: 100%;
+  min-height: 700px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(26,43,71,0.45);
+  z-index: 5;
+}
+.modal {
+  position: absolute;
+  top: 36px; left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 80px);
+  max-width: 1240px;
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: 0 32px 80px -20px rgba(26,43,71,0.55);
+  z-index: 10;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100% - 72px);
+}
+
+/* Modal head */
+.modal-head {
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 16px;
+}
+.modal-head .left {
+  flex: 1;
+}
+.modal-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.modal-head .crumb a { color: var(--gold); text-decoration: none; }
+.modal-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+  margin-bottom: 3px;
+}
+.modal-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.modal-head .lede {
+  font-size: 12px;
+  color: var(--navy-3);
+}
+.modal-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.modal-head .close-btn {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 16px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+/* Body — 2 columns */
+.modal-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* LEFT: Filter rail */
+.filter-rail {
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 18px 20px 100px;
+}
+
+.filter-rail-head {
+  margin-bottom: 18px;
+}
+.filter-rail-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-bottom: 4px;
+}
+.filter-rail-head h2 em { font-style: italic; color: var(--gold); }
+.filter-rail-head .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+.filter-rail-head .sub b { color: var(--navy-2); font-weight: 600; }
+
+.filter-group {
+  margin-bottom: 22px;
+}
+.filter-group .group-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+}
+.filter-group .group-name {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.filter-group .group-active {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.filter-group .clear-link {
+  font-size: 9px;
+  color: var(--terra);
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Toggle pills */
+.toggle-grid {
+  display: flex; flex-wrap: wrap;
+  gap: 5px;
+}
+.t-pill {
+  padding: 5px 11px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy-2);
+  cursor: pointer;
+  font-family: inherit;
+}
+.t-pill.on {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.t-pill.on em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 400;
+  margin-left: 3px;
+}
+.t-pill .count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  margin-left: 4px;
+  color: var(--navy-3);
+}
+.t-pill.on .count { color: var(--gold-soft); }
+
+/* Status pills - color coded */
+.t-pill.status-overdue.on { background: var(--terra); border-color: var(--terra); color: white; }
+.t-pill.status-overdue.on .count { color: rgba(255,255,255,0.7); }
+.t-pill.status-paid.on { background: var(--green); border-color: var(--green); color: white; }
+.t-pill.status-paid.on .count { color: rgba(255,255,255,0.7); }
+.t-pill.status-partial.on { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+.t-pill.status-partial.on .count { color: rgba(26,43,71,0.6); }
+
+/* Aging slider */
+.aging-slider {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.aging-slider .as-label-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+.aging-slider .as-label-row .selected {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.aging-slider .slider-track {
+  height: 4px;
+  background: var(--bg);
+  border-radius: 100px;
+  position: relative;
+  margin: 14px 0 8px;
+  border: 1px solid var(--border);
+}
+.aging-slider .slider-fill {
+  position: absolute;
+  height: 100%;
+  background: var(--gold);
+  border-radius: 100px;
+  top: -1px;
+}
+.aging-slider .slider-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px; height: 14px;
+  background: var(--surface);
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 1;
+}
+.aging-slider .tick-row {
+  display: flex; justify-content: space-between;
+  font-size: 8px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* Active filters summary at top */
+.active-summary {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+.active-summary .as-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.active-summary .as-text {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.active-summary .as-text b {
+  color: var(--navy);
+  font-weight: 600;
+}
+.active-summary .as-text em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+}
+.active-summary .clear-all {
+  font-size: 10px;
+  color: var(--terra);
+  font-weight: 700;
+  margin-top: 8px;
+  cursor: pointer;
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* RIGHT: Recipient panel */
+.recipient-panel {
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  overflow: hidden;
+}
+.recipient-panel-head {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--surface);
+}
+.recipient-panel-head .left .head-row {
+  display: flex; align-items: baseline; gap: 10px;
+}
+.recipient-panel-head .left .heading {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.recipient-panel-head .left .heading em { font-style: italic; color: var(--gold); }
+.recipient-panel-head .left .meta {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.recipient-panel-head .left .meta b { color: var(--navy-2); font-weight: 600; }
+
+.bulk-actions {
+  display: flex; gap: 6px;
+  align-items: center;
+}
+.bulk-pill {
+  padding: 5px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy-2);
+  cursor: pointer;
+  font-family: inherit;
+}
+.bulk-pill.terra {
+  color: var(--terra);
+  border-color: rgba(184,74,57,0.3);
+}
+
+.sort-dropdown {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy-2);
+  cursor: pointer;
+}
+.sort-dropdown .arrow {
+  font-size: 8px;
+  color: var(--navy-3);
+}
+
+/* Excluded inline note (when admin has unchecked some) */
+.excluded-note {
+  background: var(--terra-bg-soft);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 24px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px;
+  color: var(--terra);
+}
+.excluded-note .left b { color: var(--navy); font-weight: 600; }
+.excluded-note .view-link {
+  font-size: 10px;
+  color: var(--terra);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* Recipient table */
+.recipient-list {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+.recipient-list-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.recipient-list-table thead th {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 9px 24px;
+  text-align: left;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  position: sticky; top: 0;
+  z-index: 1;
+}
+.recipient-list-table thead th:first-child {
+  width: 40px;
+  padding-left: 24px;
+  padding-right: 0;
+}
+.recipient-list-table thead th.num { text-align: right; }
+
+.recipient-list-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.recipient-list-table tbody tr:hover {
+  background: var(--bg);
+}
+.recipient-list-table tbody tr.unchecked {
+  background: rgba(184,74,57,0.04);
+  opacity: 0.7;
+}
+.recipient-list-table tbody tr.unchecked:hover {
+  background: rgba(184,74,57,0.08);
+  opacity: 0.9;
+}
+.recipient-list-table td {
+  padding: 11px 24px;
+  vertical-align: middle;
+}
+.recipient-list-table td:first-child {
+  padding-right: 0;
+  width: 40px;
+}
+
+/* Custom checkbox */
+.row-checkbox {
+  width: 18px; height: 18px;
+  border: 1.5px solid var(--border-2);
+  border-radius: 4px;
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: transparent;
+  cursor: pointer;
+}
+.row-checkbox.on {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+}
+.row-checkbox.thead {
+  border-color: var(--navy-3);
+}
+.row-checkbox.partial {
+  background: var(--surface);
+  border-color: var(--gold);
+  position: relative;
+}
+.row-checkbox.partial::after {
+  content: "";
+  width: 8px;
+  height: 2px;
+  background: var(--gold);
+}
+
+/* Recipient cell within row */
+.r-cell {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.r-cell .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+}
+.r-cell .info { min-width: 0; }
+.r-cell .name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--navy);
+}
+.r-cell .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.r-cell .meta b { color: var(--navy-2); font-weight: 600; }
+
+/* Match-reason pills (showing why this row matches the active filters) */
+.match-cell {
+  display: flex; gap: 4px;
+  flex-wrap: wrap;
+}
+.match-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.match-tag.class {
+  background: var(--bg);
+  color: var(--navy-2);
+  border: 1px solid var(--border);
+}
+.match-tag.overdue {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.match-tag.aging {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.match-tag.installments {
+  background: var(--gold-bg);
+  color: var(--gold);
+}
+
+/* Numeric cells */
+.num-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  text-align: right;
+}
+.num-cell.terra { color: var(--terra); }
+.num-cell .small {
+  font-size: 9px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-top: 1px;
+  letter-spacing: 0;
+}
+
+/* Channel cell */
+.ch-cell {
+  display: flex; gap: 4px;
+}
+.ch-icon {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 9px;
+}
+.ch-icon.wa {
+  background: var(--wa-green);
+  color: white;
+}
+.ch-icon.sms {
+  background: var(--gold);
+  color: var(--navy);
+}
+.ch-icon.dim {
+  opacity: 0.3;
+  filter: grayscale(0.6);
+}
+
+/* Excluded list popover */
+.excluded-popover {
+  position: absolute;
+  top: 56px;
+  right: 24px;
+  width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px -10px rgba(26,43,71,0.35);
+  z-index: 30;
+  overflow: hidden;
+}
+.excluded-popover .ep-head {
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.excluded-popover .ep-head .h-row {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.excluded-popover .ep-head .h-title {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.excluded-popover .ep-head .h-title em { font-style: italic; color: var(--terra); }
+.excluded-popover .ep-head .close-x {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-weight: 600;
+}
+.excluded-popover .ep-head .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 3px;
+  line-height: 1.5;
+}
+
+.excluded-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.excluded-row:last-child { border-bottom: none; }
+.excluded-row .av-mini {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 10px;
+}
+.excluded-row .info .name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.excluded-row .info .reason {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-style: italic;
+  margin-top: 1px;
+}
+.excluded-row .info .reason b { color: var(--navy-2); font-style: normal; font-weight: 600; }
+.excluded-row .restore-btn {
+  font-size: 9px;
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+/* Modal footer · sticky summary bar */
+.modal-foot {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 14px 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 24px;
+  align-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 -8px 20px -8px rgba(26,43,71,0.08);
+}
+
+.foot-stat {
+  display: flex; flex-direction: column;
+  gap: 2px;
+}
+.foot-stat .lbl {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.foot-stat .val {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1;
+}
+.foot-stat .val em {
+  font-style: italic;
+  color: var(--gold);
+}
+.foot-stat .val .currency {
+  font-size: 13px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-right: 3px;
+  letter-spacing: 0;
+}
+.foot-stat .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+  font-style: italic;
+}
+.foot-stat .sub b { color: var(--navy-2); font-weight: 600; font-style: normal; }
+
+.foot-actions {
+  display: flex; gap: 8px;
+}
+.btn {
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn.primary {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+  font-weight: 700;
+  padding: 10px 20px;
+}
+.btn.primary em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 400;
+  margin: 0 3px;
+}
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .modal-body { grid-template-columns: 1fr; }
+  .filter-rail { border-right: none; border-bottom: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Send reminders · Customise list</div>
+  <h1 class="display">Build the <em>exact</em> list</h1>
+  <div class="gold-rule"></div>
+  <p>Pre-built segments work for most cases ("All overdue families," "JHS 3 only"), but sometimes the right list isn't any of them. The customise list flow lets the headmistress combine filters across class, payment status, aging, and special tags — then refine the result by hand-checking individuals to include or exclude. Filter to narrow, scan to verify, uncheck the ones who shouldn't be reminded.</p>
+</header>
+
+<!-- ============ CUSTOMISE LIST FLOW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Customise list · modal over send-reminders drawer</div>
+    <div class="section-meta">Florence · 47 matched · 3 manually excluded · 44 will be reminded</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing / reminders / customise</div>
+      </div>
+
+      <div class="stage">
+        <!-- Background page peek -->
+        <div class="bg-peek">
+          <div class="bg-peek-side"></div>
+          <div class="bg-peek-main">
+            <div class="bg-peek-card"></div>
+          </div>
+        </div>
+
+        <div class="modal-overlay"></div>
+
+        <div class="modal">
+
+          <!-- Modal head -->
+          <div class="modal-head">
+            <div class="left">
+              <div class="crumb"><a href="#">Send reminders</a> / Customise list</div>
+              <h1 class="display">Customise <em>recipient list</em></h1>
+              <div class="lede">Filter to narrow · uncheck individuals you don't want to message · <b>changes are not saved</b> after this reminder is sent</div>
+            </div>
+            <button class="close-btn">×</button>
+          </div>
+
+          <!-- Body -->
+          <div class="modal-body">
+
+            <!-- LEFT: Filter rail -->
+            <aside class="filter-rail">
+
+              <div class="filter-rail-head">
+                <h2 class="display">Filters &amp; <em>controls</em></h2>
+                <div class="sub">Start from the school's full <b>312 students</b> and narrow down. Each filter further refines the list on the right.</div>
+              </div>
+
+              <!-- Active summary -->
+              <div class="active-summary">
+                <div class="as-label">Active filters</div>
+                <div class="as-text">
+                  <b>JHS 3</b> · <b>overdue invoices only</b> · aged <em>31—60 days</em> · transport users <b>excluded</b>
+                </div>
+                <div class="clear-all">Clear all filters</div>
+              </div>
+
+              <!-- Class & year -->
+              <div class="filter-group">
+                <div class="group-head">
+                  <div class="group-name">Class &amp; year</div>
+                  <div class="group-active">3 of 9 selected</div>
+                </div>
+                <div class="toggle-grid">
+                  <button class="t-pill">JHS 1A</button>
+                  <button class="t-pill">JHS 1B</button>
+                  <button class="t-pill">JHS 1C</button>
+                  <button class="t-pill">JHS 2A</button>
+                  <button class="t-pill">JHS 2B</button>
+                  <button class="t-pill">JHS 2C</button>
+                  <button class="t-pill on">JHS 3A<span class="count">34</span></button>
+                  <button class="t-pill on">JHS 3B<span class="count">35</span></button>
+                  <button class="t-pill on">JHS 3C<span class="count">33</span></button>
+                </div>
+              </div>
+
+              <!-- Payment status -->
+              <div class="filter-group">
+                <div class="group-head">
+                  <div class="group-name">Payment status</div>
+                  <div class="group-active">overdue only</div>
+                </div>
+                <div class="toggle-grid">
+                  <button class="t-pill status-overdue on">Overdue<span class="count">62</span></button>
+                  <button class="t-pill status-partial">Partial</button>
+                  <button class="t-pill status-paid">Paid in full</button>
+                  <button class="t-pill">Exempted</button>
+                </div>
+              </div>
+
+              <!-- Aging -->
+              <div class="filter-group">
+                <div class="group-head">
+                  <div class="group-name">Aging of overdue</div>
+                  <div class="group-active">31—60 days</div>
+                </div>
+                <div class="aging-slider">
+                  <div class="as-label-row">
+                    <span>0 days</span>
+                    <span class="selected">31—60 days</span>
+                    <span>90+ days</span>
+                  </div>
+                  <div class="slider-track">
+                    <div class="slider-fill" style="left:33%;width:30%"></div>
+                    <div class="slider-handle" style="left:33%"></div>
+                    <div class="slider-handle" style="left:63%"></div>
+                  </div>
+                  <div class="tick-row">
+                    <span>0</span>
+                    <span>30</span>
+                    <span>60</span>
+                    <span>90+</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Special tags -->
+              <div class="filter-group">
+                <div class="group-head">
+                  <div class="group-name">Tags</div>
+                  <div class="group-active">1 exclusion</div>
+                </div>
+                <div class="toggle-grid">
+                  <button class="t-pill">BECE candidates</button>
+                  <button class="t-pill" style="background:var(--terra-bg);color:var(--terra);border-color:rgba(184,74,57,0.3)">−Transport users</button>
+                  <button class="t-pill">Scholarship</button>
+                  <button class="t-pill">Sibling discount</button>
+                  <button class="t-pill">New admission</button>
+                  <button class="t-pill">Repeating year</button>
+                </div>
+              </div>
+
+              <!-- Communication -->
+              <div class="filter-group">
+                <div class="group-head">
+                  <div class="group-name">Communication</div>
+                  <div class="group-active">none</div>
+                </div>
+                <div class="toggle-grid">
+                  <button class="t-pill">WhatsApp opted in</button>
+                  <button class="t-pill">Has email on file</button>
+                  <button class="t-pill">Reminded last 7 days</button>
+                </div>
+              </div>
+
+              <!-- Last contact -->
+              <div class="filter-group">
+                <div class="group-head">
+                  <div class="group-name">Last reminder</div>
+                  <div class="group-active">none</div>
+                </div>
+                <div class="toggle-grid">
+                  <button class="t-pill">Never</button>
+                  <button class="t-pill">In last 7 days</button>
+                  <button class="t-pill">8—14 days ago</button>
+                  <button class="t-pill">More than 14 days</button>
+                </div>
+              </div>
+
+            </aside>
+
+            <!-- RIGHT: Recipients -->
+            <div class="recipient-panel">
+
+              <div class="recipient-panel-head">
+                <div class="left">
+                  <div class="head-row">
+                    <div class="heading display">Matching <em>households</em></div>
+                  </div>
+                  <div class="meta"><b>47 households · 47 invoices</b> · sorted by largest balance first</div>
+                </div>
+                <div class="bulk-actions">
+                  <button class="bulk-pill">Check all</button>
+                  <button class="bulk-pill terra">Uncheck all</button>
+                  <div class="sort-dropdown">Sort: Balance ↓<span class="arrow">▾</span></div>
+                </div>
+              </div>
+
+              <!-- Excluded note (since 3 are unchecked) -->
+              <div class="excluded-note">
+                <div class="left"><b>3 manually excluded</b> · they will not receive this reminder</div>
+                <span class="view-link">View excluded ↗</span>
+              </div>
+
+              <!-- Recipient table -->
+              <div class="recipient-list">
+                <table class="recipient-list-table">
+                  <thead>
+                    <tr>
+                      <th><div class="row-checkbox thead partial"></div></th>
+                      <th>Recipient</th>
+                      <th>Match</th>
+                      <th class="num">Balance</th>
+                      <th class="num">Aged</th>
+                      <th>Channels</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+
+                    <!-- Checked row -->
+                    <tr>
+                      <td><div class="row-checkbox on">✓</div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">EA</div>
+                          <div class="info">
+                            <div class="name">Ekow Antwi</div>
+                            <div class="meta">Guardian of <b>Kwame Antwi</b> · JHS 3A</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3A</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">52d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 410.00</td>
+                      <td class="num-cell">52d <span class="small">since 1 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="row-checkbox on">✓</div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">SO</div>
+                          <div class="info">
+                            <div class="name">Sarah Owusu-Ampofo</div>
+                            <div class="meta">Guardian of <b>Akua Owusu-Ampofo</b> · JHS 3B</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3B</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">48d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 410.00</td>
+                      <td class="num-cell">48d <span class="small">since 5 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <!-- Unchecked row 1 -->
+                    <tr class="unchecked">
+                      <td><div class="row-checkbox"></div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">DM</div>
+                          <div class="info">
+                            <div class="name">Daniel Mensah</div>
+                            <div class="meta">Guardian of <b>Stephen Mensah</b> · JHS 3A</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3A</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">42d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 410.00</td>
+                      <td class="num-cell">42d <span class="small">since 11 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="row-checkbox on">✓</div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">RA</div>
+                          <div class="info">
+                            <div class="name">Robert Asante</div>
+                            <div class="meta">Guardian of <b>Esi Asante</b> · JHS 3C</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3C</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">40d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 380.00</td>
+                      <td class="num-cell">40d <span class="small">since 13 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="row-checkbox on">✓</div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">PO</div>
+                          <div class="info">
+                            <div class="name">Patience Ofori</div>
+                            <div class="meta">Guardian of <b>Ama Ofori</b> · JHS 3B</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3B</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">38d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 380.00</td>
+                      <td class="num-cell">38d <span class="small">since 15 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms dim">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <!-- Unchecked row 2 -->
+                    <tr class="unchecked">
+                      <td><div class="row-checkbox"></div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">JA</div>
+                          <div class="info">
+                            <div class="name">Joseph Amponsah</div>
+                            <div class="meta">Guardian of <b>Yaw Amponsah</b> · JHS 3A</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3A</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">37d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 380.00</td>
+                      <td class="num-cell">37d <span class="small">since 16 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="row-checkbox on">✓</div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">VK</div>
+                          <div class="info">
+                            <div class="name">Veronica Kuffour</div>
+                            <div class="meta">Guardian of <b>Adjoa Kuffour</b> · JHS 3C</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3C</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">36d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 340.00</td>
+                      <td class="num-cell">36d <span class="small">since 17 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="row-checkbox on">✓</div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">SN</div>
+                          <div class="info">
+                            <div class="name">Stephen Nuamah</div>
+                            <div class="meta">Guardian of <b>Faith Nuamah</b> · JHS 3B</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3B</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">35d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 340.00</td>
+                      <td class="num-cell">35d <span class="small">since 18 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <!-- Unchecked row 3 -->
+                    <tr class="unchecked">
+                      <td><div class="row-checkbox"></div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">MA</div>
+                          <div class="info">
+                            <div class="name">Margaret Adu</div>
+                            <div class="meta">Guardian of <b>Kofi Adu</b> · JHS 3A</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3A</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">34d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 340.00</td>
+                      <td class="num-cell">34d <span class="small">since 19 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="row-checkbox on">✓</div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">CB</div>
+                          <div class="info">
+                            <div class="name">Charles Boateng</div>
+                            <div class="meta">Guardian of <b>Yaa Boateng</b> · JHS 3C</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3C</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">33d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 340.00</td>
+                      <td class="num-cell">33d <span class="small">since 20 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="row-checkbox on">✓</div></td>
+                      <td>
+                        <div class="r-cell">
+                          <div class="av">FK</div>
+                          <div class="info">
+                            <div class="name">Florence Kwakye</div>
+                            <div class="meta">Guardian of <b>Mensah Kwakye</b> · JHS 3A</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="match-cell">
+                          <span class="match-tag class">JHS 3A</span>
+                          <span class="match-tag overdue">Overdue</span>
+                          <span class="match-tag aging">32d</span>
+                        </div>
+                      </td>
+                      <td class="num-cell terra">GHS 340.00</td>
+                      <td class="num-cell">32d <span class="small">since 21 Sep</span></td>
+                      <td>
+                        <div class="ch-cell">
+                          <div class="ch-icon wa">W</div>
+                          <div class="ch-icon sms">S</div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td colspan="6" style="padding:14px;text-align:center;font-size:11px;color:var(--navy-3);font-style:italic;background:var(--bg)">36 more matching households · scroll to load</td>
+                    </tr>
+
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Excluded popover (showing the "view excluded" interaction) -->
+              <div class="excluded-popover">
+                <div class="ep-head">
+                  <div class="h-row">
+                    <div class="h-title display"><em>3 excluded</em> by you</div>
+                    <button class="close-x">×</button>
+                  </div>
+                  <div class="meta">These match the filter but you've unchecked them · they won't receive this reminder</div>
+                </div>
+
+                <div class="excluded-row">
+                  <div class="av-mini">DM</div>
+                  <div class="info">
+                    <div class="name">Daniel Mensah</div>
+                    <div class="reason"><b>Reminded yesterday</b> · already messaged</div>
+                  </div>
+                  <button class="restore-btn">Restore</button>
+                </div>
+
+                <div class="excluded-row">
+                  <div class="av-mini">JA</div>
+                  <div class="info">
+                    <div class="name">Joseph Amponsah</div>
+                    <div class="reason">Spoke to him in person · <b>paying Friday</b></div>
+                  </div>
+                  <button class="restore-btn">Restore</button>
+                </div>
+
+                <div class="excluded-row">
+                  <div class="av-mini">MA</div>
+                  <div class="info">
+                    <div class="name">Margaret Adu</div>
+                    <div class="reason"><b>Bereaved</b> · holding off until next term</div>
+                  </div>
+                  <button class="restore-btn">Restore</button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Modal foot · sticky summary -->
+          <div class="modal-foot">
+            <div class="foot-stat">
+              <div class="lbl">Will receive this reminder</div>
+              <div class="val"><em>44</em> households</div>
+              <div class="sub"><b>47 matched</b> · 3 unchecked by you</div>
+            </div>
+
+            <div class="foot-stat">
+              <div class="lbl">Sending cost</div>
+              <div class="val"><span class="currency">GHS</span>2.20</div>
+              <div class="sub"><b>44 SMS</b> · WhatsApp included in your bundle</div>
+            </div>
+
+            <div class="foot-actions">
+              <button class="btn">Cancel</button>
+              <button class="btn primary">Continue with <em>44</em> recipients →</button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Modal over the send-reminders drawer</b>, not a full-page navigation. Admin entered the customise flow from a specific reminder she's drafting; closing the modal returns her to that drafting context. <b>Maintaining context</b> matters because the reminder content (message text, channel choice) is still being composed in the drawer behind.</li>
+        <li><b>Background page peek dimmed at 0.4 opacity</b> with a generic light grey card to suggest "the send-reminders drawer is back there." Doesn't try to redraw the drawer perfectly — admin has the mental model of "I clicked this button, here I am, I'll go back when I'm done."</li>
+        <li><b>Modal head: crumb + "Customise <em>recipient list</em>" + lede "Filter to narrow · uncheck individuals · changes are not saved after this reminder is sent".</b> The "not saved" note is critical — admin understands this is a one-shot list construction, not a saved segment. <b>Sets expectations honestly</b>; a future iteration could add saved segments but MVP1 doesn't.</li>
+        <li><b>Two-column body: 280px filter rail on the left, recipient list on the right.</b> Filters narrower because they're configuration; the list is the content and deserves the space. <b>Filter rail scrolls independently</b> from the recipient list — admin can scroll filter options without losing the list, and vice versa.</li>
+        <li><b>Filter rail head explains the starting point:</b> "Start from the school's full <b>312 students</b> and narrow down. Each filter further refines the list on the right." <b>Helps admin understand the model</b> — filters are subtractive from the school-wide population, not additive from zero.</li>
+        <li><b>Active filters summary card</b> at the top of the filter rail in gold-bordered tint. Reads in plain English: "JHS 3 · overdue invoices only · aged 31—60 days · transport users excluded." <b>Translates the configuration into a sentence</b>; admin can read this aloud and decide if it's right. "Clear all filters" link in terra at the bottom of the card.</li>
+        <li><b>Six filter groups, each with its own pattern.</b> Class &amp; year (multi-select pill grid 3×3), Payment status (color-coded status pills), Aging (range slider), Tags (multi-select with negation), Communication (boolean filters), Last reminder (mutually-exclusive time bands). <b>Each group uses the right control for its data shape</b>; not every filter is a pill.</li>
+        <li><b>Class pills show counts inline:</b> "JHS 3A 34" / "JHS 3B 35" / "JHS 3C 33". <b>Admin sees the population behind each class</b> while choosing. The selected pills fill with navy and italic gold. The unselected pills are surface-coloured.</li>
+        <li><b>Status pills use the locked colour vocabulary when on:</b> Overdue terra / Partial gold / Paid green / Exempted neutral. <b>Visual reinforcement</b> — clicking "Overdue" highlights with terra to mean "this is a problem state being filtered for." Same colour grammar as everywhere else.</li>
+        <li><b>Aging is a range slider, not buckets.</b> Two handles let admin pick "31—60 days" or "0—30" or "any custom range." <b>Continuous control for a continuous variable</b> (days). Range readout in italic gold ("31—60 days") matches the system's tunable-parameter visual signature.</li>
+        <li><b>Aging slider tick marks at 0/30/60/90+</b> in mono. Common reference points without forcing them as buckets. Admin can drag handles to anywhere; the ticks just orient the eye.</li>
+        <li><b>Tags filter supports negation.</b> "−Transport users" pill in terra-tinted with a minus prefix means "exclude this tag from the result." Different visual state from "include this tag" (which would be navy on). <b>Inclusion vs exclusion is a real distinction</b> in segmentation; the visual difference makes it explicit.</li>
+        <li><b>"BECE candidates" / "Scholarship" / "Sibling discount" / "New admission" / "Repeating year"</b> are realistic Ghanaian school tags. Not generic CRM segments — these reflect actual operational categories (BECE = end-of-JHS exam preparation; sibling discount = fee reduction for multiple-children families; repeating year = students who didn't promote). <b>Ghana-school-specific, not generic SaaS</b>.</li>
+        <li><b>Communication group filters by channel availability:</b> "WhatsApp opted in / Has email on file / Reminded last 7 days." <b>Useful for cost optimisation</b> — if admin filters to "WhatsApp opted in" she'll send via WhatsApp not SMS, saving GHS 0.05 per recipient.</li>
+        <li><b>Last reminder group prevents over-messaging:</b> "Never / In last 7 days / 8—14 days ago / More than 14 days." <b>Helps admin avoid annoying parents</b> with too-frequent reminders. Could be combined with "Reminded last 7 days" exclusion to send only to people who haven't been reminded recently.</li>
+        <li><b>Right panel head: "Matching households" + count "47 households · 47 invoices · sorted by largest balance first".</b> <b>Households not students</b> because reminders go to families, not individual students; one parent of two children gets one reminder, not two. The "47 households · 47 invoices" being equal here is coincidence — could be "47 households · 52 invoices" if some families have multiple children.</li>
+        <li><b>Bulk actions on the right: "Check all / Uncheck all / Sort: Balance ↓".</b> <b>Default is all-checked</b>; admin uncheckes individuals. Uncheck all is in terra to signal it's significant — admin would only do that if they want to start fresh and check specific people. Sort dropdown gives ordering choice (balance, name, aging).</li>
+        <li><b>Excluded note bar in terra-soft above the table:</b> "3 manually excluded · they will not receive this reminder · View excluded ↗". <b>Sticky reminder of admin's manual interventions</b>. Without this banner it'd be easy to forget which rows you'd unchecked while scrolling through the long list.</li>
+        <li><b>Recipient table columns: checkbox / Recipient / Match / Balance / Aged / Channels.</b> Each column earns its space. <b>Match column is the unusual one</b> — shows the filter attributes that satisfied each row's match (class pill, status pill, aging pill). Admin can sanity-check the filter logic by scanning Match.</li>
+        <li><b>Match tags echo the filter-rail colour vocabulary.</b> Class tag in neutral, Overdue tag in terra-tinted, Aging tag in warn-tinted (gold-amber for "this is the time-based one"). <b>Visual continuity across the modal</b> — admin sees the same colour grammar in the rail and in the result.</li>
+        <li><b>Header checkbox is in "partial" state</b> (gold border, gold dash inside, no fill) because not all rows are checked. <b>Tri-state checkbox</b> — full (all on), partial (some on), empty (none on) — gives admin a quick read of the bulk state.</li>
+        <li><b>Unchecked rows are terra-tinted with reduced opacity (0.7).</b> Same row layout, different visual state. <b>Stays in the table rather than disappearing</b> because admin might want to re-check after deciding "actually let me include Daniel." Hiding unchecked rows would force a different mental model and make restoration harder.</li>
+        <li><b>Channel cell shows two icons (WhatsApp + SMS) per row.</b> When a recipient doesn't have WhatsApp opted in, the W icon is greyed; when SMS isn't reachable, the S is greyed. Patience Ofori's row shows a dim S meaning "her SMS number is iffy" — useful info before sending.</li>
+        <li><b>Excluded popover anchored to the "View excluded" link.</b> Small floating card showing the 3 unchecked households with an italic "reason" line and a "Restore" button. <b>The reason is admin-typed inline</b> when she unchecks a row (a tiny inline input that appears on uncheck), preserved as audit trail.</li>
+        <li><b>Realistic exclusion reasons:</b> "Reminded yesterday · already messaged" / "Spoke to him in person · paying Friday" / "Bereaved · holding off until next term." <b>Real human reasons</b>, not enum values. The bereavement case is operationally important — sending a fee reminder to a grieving family would damage trust irreparably.</li>
+        <li><b>Restore button per excluded row</b> in italic gold uppercase. <b>Quick reversal</b> if admin changes her mind. Restoring removes the row from excluded and re-checks it in the main list.</li>
+        <li><b>Sticky modal footer with 3-cell summary + actions.</b> "Will receive this reminder · 44 households" (italic gold "44") / "Sending cost · GHS 2.20" / Cancel + "Continue with 44 recipients →" primary CTA. <b>Two stats + actions in a tight horizontal strip</b>; everything admin needs to commit visible without scrolling.</li>
+        <li><b>"Continue with <em>44</em> recipients" CTA uses italic gold for the number</b>. The 44 is the most important fact at this moment; treating it visually as the lever (italic gold) makes it pop. <b>Same convention as user-tunable values everywhere</b>.</li>
+        <li><b>"WhatsApp included in your bundle" sub-line</b> on the cost stat. WhatsApp Business has conversation pricing where bundled conversations are effectively free; only SMS has marginal cost. <b>Honest about why the cost is GHS 2.20 not GHS 22</b> (44 SMS × 0.05 = 2.20, no WhatsApp cost). Admin learns the cost model.</li>
+        <li><b>What's not on this surface:</b> No save-as-segment ("save this as 'JHS 3 unpaid' for later"). No combine-segments ("union of segment A and segment B"). No A/B split ("send variant A to half, variant B to half"). No scheduled send ("send this Friday at 9 AM"). <b>MVP1 keeps it simple</b>; the modal builds one list, sends it once.</li>
+        <li><b>What's also not here:</b> No bulk uncheck-by-attribute ("uncheck everyone in JHS 3A"). The use case is "remove individual outliers," not "remove a sub-group" — sub-groups belong in the filter rail, not in row-level interactions.</li>
+        <li><b>"Changes are not saved after this reminder is sent" lede line</b> manages expectations. If admin spent 10 minutes constructing a list and unchecking individuals, she might assume the system would remember next time. It won't. <b>Honest about ephemerality</b> rather than letting admin discover the disappointment.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

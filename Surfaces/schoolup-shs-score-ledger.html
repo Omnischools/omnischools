@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools Senior — Score ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:800px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Oversight uses a deeper navy app chrome to distinguish it from the operational app */
+.app-shell { display:grid; grid-template-columns:230px 1fr; background:var(--bg); }
+.sidebar { background:#13203A; color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1240px; }
+.sidebar.tall { min-height:1620px; }
+.sidebar.taller { min-height:1880px; }
+.sidebar .gov-mark { padding:0 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:8px; }
+.sidebar .gov-mark .crest { display:flex; gap:11px; align-items:center; }
+.sidebar .gov-mark .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; line-height:1; text-align:center; }
+.sidebar .gov-mark .crest-text .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.sidebar .gov-mark .crest-text .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.sidebar .scope-chip { margin:14px 20px 8px; padding:10px 12px; background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:8px; }
+.sidebar .scope-chip .sc-label { font-size:8.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.sidebar .scope-chip .sc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.sidebar .scope-chip .sc-meta { font-size:10px; color:var(--gold-soft); margin-top:1px; }
+.nav-group { padding:16px 24px 6px; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(200,151,91,0.6); font-weight:700; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.1); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; }
+.sidebar .footer .av { width:34px; height:34px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; flex-shrink:0; }
+.sidebar .footer .meta-name { font-weight:600; font-size:12px; }
+.sidebar .footer .meta-role { font-size:9.5px; color:var(--gold-soft); margin-top:1px; }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.5); font-weight:700; }
+.powered-by em { color:var(--gold); font-style:normal; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:820px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Data-period banner */
+.period-banner { display:flex; align-items:center; gap:14px; padding:12px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; margin-bottom:24px; }
+.period-banner .pb-icon { width:34px; height:34px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:15px; flex-shrink:0; }
+.period-banner .pb-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.period-banner .pb-text b { color:var(--navy); font-weight:700; }
+.period-banner .pb-aside { margin-left:auto; font-size:10px; letter-spacing:0.06em; color:var(--navy-3); font-weight:600; text-align:right; }
+
+/* KPI strip */
+.kpi-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.kpi-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.kpi-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.kpi-card .k-lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.kpi-card .k-val { font-family:'Fraunces', serif; font-size:33px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.kpi-card .k-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.kpi-card .k-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.kpi-card .k-sub { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.kpi-card .k-sub b { color:var(--navy-2); font-weight:700; }
+.kpi-card .k-delta { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; margin-top:8px; position:relative; }
+.kpi-card .k-delta.up { background:var(--green-bg); color:var(--green); }
+.kpi-card .k-delta.down { background:var(--terra-bg); color:var(--terra); }
+.kpi-card .k-delta.flat { background:var(--bg); color:var(--navy-3); }
+
+/* Panel */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.panel-head { padding:16px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; justify-content:space-between; }
+.panel-head .ph-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.panel-head .ph-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.panel-head .ph-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.panel-head .ph-link { font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; }
+.panel-body { padding:20px 22px; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* Bar rows for enrolment-by-sex etc */
+.bar-row { margin-bottom:14px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-row .br-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.bar-row .br-label { font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-label .br-sub { color:var(--navy-3); font-weight:500; font-size:10.5px; margin-left:6px; }
+.bar-row .br-value { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-track { height:9px; background:var(--bg); border-radius:100px; overflow:hidden; display:flex; }
+.bar-row .br-fill { height:100%; }
+.bar-row .br-fill.navy { background:var(--navy); }
+.bar-row .br-fill.gold { background:var(--gold); }
+.bar-row .br-fill.green { background:var(--green); }
+.bar-row .br-fill.terra { background:var(--terra); }
+.bar-row .br-fill.warn { background:var(--warn); }
+.split-legend { display:flex; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.split-legend .sl-item { display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--navy-2); font-weight:600; }
+.split-legend .sl-dot { width:9px; height:9px; border-radius:2px; }
+.bar-row.parent .br-label { display:flex; align-items:center; gap:7px; }
+.bar-row.parent .drill-chip { font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; color:var(--gold); background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:100px; padding:2px 7px; cursor:pointer; }
+.bar-row.child { margin-left:18px; padding-left:12px; border-left:2px solid var(--border); }
+.bar-row.child .br-label { font-weight:500; color:var(--navy-2); font-size:11.5px; }
+.bar-row.child .br-value { font-size:11px; color:var(--navy-2); }
+.bar-row.child .br-track { height:7px; }
+.subtotal-note { font-size:10px; color:var(--navy-3); font-weight:600; margin:3px 0 10px 30px; font-style:italic; }
+.fee-row { margin-bottom:14px; }
+.fee-row:last-child { margin-bottom:0; }
+.fee-row .fr-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.fee-row .fr-level { font-size:12px; font-weight:700; color:var(--navy); }
+.fee-row .fr-total { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.fee-row .fr-bar { height:16px; border-radius:4px; overflow:hidden; display:flex; }
+.fee-row .fr-seg { height:100%; }
+.fee-legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.fee-legend .fl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.fee-legend .fl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* Mini stat list */
+.stat-list { display:flex; flex-direction:column; }
+.stat-list .st-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.stat-list .st-row:last-child { border-bottom:none; }
+.stat-list .st-label { font-size:12px; color:var(--navy-2); font-weight:500; }
+.stat-list .st-label b { color:var(--navy); font-weight:700; }
+.stat-list .st-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stat-list .st-val .st-unit { font-size:10px; color:var(--navy-3); font-weight:500; }
+.stat-list .st-val.flag { color:var(--terra); }
+.stat-list .st-val.good { color:var(--green); }
+
+/* Performance band chart */
+.band-chart { display:flex; flex-direction:column; gap:10px; }
+.band-row { display:grid; grid-template-columns:78px 1fr 48px; gap:10px; align-items:center; }
+.band-row .bd-label { font-size:11px; font-weight:600; color:var(--navy-2); }
+.band-row .bd-track { height:20px; background:var(--bg); border-radius:5px; overflow:hidden; display:flex; }
+.band-row .bd-seg { height:100%; }
+.band-row .bd-pct { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.band-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.band-legend .bl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.band-legend .bl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* School list table */
+.school-table { width:100%; border-collapse:collapse; }
+.school-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.school-table th.c { text-align:center; }
+.school-table th.r { text-align:right; }
+.school-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.school-table tr:last-child td { border-bottom:none; }
+.school-table tr.drill { cursor:pointer; }
+.school-table tr.drill:hover td { background:var(--gold-bg); }
+.school-table td .sc-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.school-table td .sc-name .sc-badge { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.school-table td .sc-name .sc-badge.anchor { background:var(--gold); color:var(--navy); }
+.school-table td .sc-meta { font-size:9.5px; color:var(--navy-3); margin-top:1px; font-weight:500; }
+.school-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.school-table td .num.r { text-align:right; }
+.school-table td .ratio { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; }
+.school-table td .ratio.good { color:var(--green); }
+.school-table td .ratio.warn { color:var(--warn); }
+.school-table td .ratio.flag { color:var(--terra); }
+.school-table td .perf-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; }
+.school-table td .perf-pill.good { background:var(--green-bg); color:var(--green); }
+.school-table td .perf-pill.mid { background:var(--warn-bg); color:var(--warn); }
+.school-table td .perf-pill.low { background:var(--terra-bg); color:var(--terra); }
+.school-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.table-toolbar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.table-toolbar .tt-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.chip { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:5px 11px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.chip.compare { background:var(--gold-bg); border-color:var(--gold); color:var(--navy); margin-left:auto; }
+.chip.compare::before { content:"⊕ "; color:var(--gold); }
+
+/* Anomaly callouts */
+.flag-list { display:flex; flex-direction:column; gap:10px; }
+.flag-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.flag-item.warn { border-color:var(--warn); background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 60%); }
+.flag-item.terra { border-color:var(--terra); background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 60%); }
+.flag-item .fi-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.flag-item.warn .fi-icon { background:var(--warn); color:var(--bg); }
+.flag-item.terra .fi-icon { background:var(--terra); color:var(--bg); }
+.flag-item .fi-body .fi-title { font-size:12px; font-weight:700; color:var(--navy); }
+.flag-item .fi-body .fi-detail { font-size:10.5px; color:var(--navy-2); margin-top:2px; line-height:1.45; }
+.flag-item .fi-body .fi-detail b { color:var(--navy); font-weight:700; }
+.flag-item .fi-action { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:700; color:var(--navy); cursor:pointer; }
+
+/* Comparison teaser */
+.compare-strip { background:linear-gradient(135deg, #13203A 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:22px 26px; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.compare-strip::before { content:""; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.compare-strip .cs-body { position:relative; }
+.compare-strip .cs-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.compare-strip .cs-title { font-family:'Fraunces', serif; font-size:21px; font-weight:500; line-height:1.2; margin-bottom:6px; }
+.compare-strip .cs-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.compare-strip .cs-text { font-size:12px; color:var(--gold-soft); line-height:1.5; max-width:560px; }
+.compare-strip .cs-text b { color:var(--bg); font-weight:600; }
+.compare-strip .cs-action { position:relative; }
+
+/* Data provenance footer */
+.provenance { display:flex; gap:18px; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-top:18px; flex-wrap:wrap; }
+.provenance .pv-item { font-size:10.5px; color:var(--navy-3); font-weight:500; }
+.provenance .pv-item b { color:var(--navy-2); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .dash-grid { grid-template-columns:1fr; }
+  .compare-strip { grid-template-columns:1fr; }
+}
+
+/* ============================================================
+ * Senior-specific overrides — school-internal product, not Oversight
+ * ============================================================ */
+.app-shell .sidebar { background: var(--navy); }  /* regular navy, not Oversight deep-navy */
+.app-shell .sidebar .gov-mark .crest-badge { background: var(--gold); color: var(--navy); }  /* gold school mark instead of GES */
+.app-shell .sidebar .scope-chip { background: rgba(200,151,91,0.10); border-color: rgba(200,151,91,0.25); }
+
+/* Path chooser — three big choice cards */
+.path-chooser { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+.path-card { background: var(--surface); border: 1.5px solid var(--border-2); border-radius: 12px; padding: 18px 20px; cursor: pointer; position: relative; transition: all 0.15s; }
+.path-card:hover { border-color: var(--gold-soft); }
+.path-card.active { border-color: var(--gold); background: linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 60%); }
+.path-card.active::after { content: "Active"; position: absolute; top: 12px; right: 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+.path-card .pc-letter { font-family: 'Fraunces', serif; font-style: italic; font-size: 22px; font-weight: 600; color: var(--gold); margin-bottom: 6px; }
+.path-card .pc-name { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+.path-card .pc-desc { font-size: 10.5px; color: var(--navy-3); line-height: 1.5; }
+
+/* Five-category ledger grid */
+.ledger-grid { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.ledger-grid thead th { background: var(--bg); color: var(--navy-3); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; padding: 11px 10px; text-align: center; border-bottom: 1px solid var(--border-2); }
+.ledger-grid thead th.cat-asgn { color: var(--green); }
+.ledger-grid thead th.cat-mid { color: var(--navy-2); }
+.ledger-grid thead th.cat-end { color: var(--navy-2); }
+.ledger-grid thead th.cat-proj { color: var(--green); }
+.ledger-grid thead th.cat-port { color: var(--terra); }
+.ledger-grid thead th.cat-total { background: var(--navy); color: var(--bg); }
+.ledger-grid thead th.student-col { text-align: left; padding-left: 14px; }
+.ledger-grid thead th .cat-weight { display: block; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--navy-3); font-weight: 600; margin-top: 3px; letter-spacing: 0.04em; text-transform: none; }
+.ledger-grid tbody td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--navy); }
+.ledger-grid tbody td.student-name { text-align: left; padding-left: 14px; font-family: 'Manrope', sans-serif; font-weight: 600; color: var(--navy); }
+.ledger-grid tbody td.student-name .student-ref { display: block; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--navy-3); font-weight: 500; margin-top: 1px; letter-spacing: 0.03em; }
+.ledger-grid tbody td.score-cell { background: var(--surface); }
+.ledger-grid tbody td.score-cell.computed { background: var(--green-bg); color: var(--green); font-weight: 700; }
+.ledger-grid tbody td.score-cell.manual { background: var(--gold-bg); color: var(--navy); font-weight: 700; }
+.ledger-grid tbody td.score-cell.empty { color: var(--border-2); }
+.ledger-grid tbody td.score-cell.low-conf { background: var(--warn-bg); color: var(--warn); font-weight: 700; position: relative; }
+.ledger-grid tbody td.score-cell.low-conf::after { content: "?"; position: absolute; top: 2px; right: 5px; font-size: 9px; color: var(--warn); font-weight: 700; }
+.ledger-grid tbody td.total { background: var(--navy); color: var(--bg); font-weight: 700; font-size: 13px; }
+.ledger-grid tbody tr:hover td { background-color: var(--gold-bg); }
+.ledger-grid tbody tr:hover td.total { background: var(--navy-deep); }
+
+.legend { display: flex; gap: 16px; padding: 12px 0; font-size: 10px; color: var(--navy-3); flex-wrap: wrap; }
+.legend .swatch { display: inline-flex; align-items: center; gap: 6px; }
+.legend .sw-box { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border-2); }
+.legend .sw-box.computed { background: var(--green-bg); border-color: var(--green); }
+.legend .sw-box.manual { background: var(--gold-bg); border-color: var(--gold); }
+.legend .sw-box.low-conf { background: var(--warn-bg); border-color: var(--warn); }
+
+/* Term progress card */
+.term-progress { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 18px 20px; }
+.term-progress .tp-title { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; margin-bottom: 12px; }
+.cat-progress { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.cat-progress:last-child { border-bottom: none; }
+.cat-progress .cp-label { flex: 1; font-size: 11.5px; color: var(--navy-2); }
+.cat-progress .cp-status { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 100px; }
+.cat-progress .cp-status.done { background: var(--green-bg); color: var(--green); }
+.cat-progress .cp-status.partial { background: var(--gold-bg); color: var(--gold); }
+.cat-progress .cp-status.pending { background: var(--bg); color: var(--navy-3); }
+
+/* Scan & diff panel */
+.scan-panel { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 16px; }
+.scan-image { background: var(--bg); border: 1.5px dashed var(--border-2); border-radius: 10px; padding: 16px; aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; position: relative; }
+.scan-image .scan-mock { width: 100%; height: 100%; background: var(--surface); border-radius: 6px; padding: 14px; font-family: 'Caveat', 'Comic Sans MS', cursive; font-size: 11px; color: var(--navy-2); position: relative; }
+.scan-image .scan-mock::before { content: ""; position: absolute; inset: 8px; border: 1px solid var(--border); border-radius: 3px; pointer-events: none; }
+.handwritten-row { display: grid; grid-template-columns: 1.5fr repeat(5, 1fr); gap: 4px; padding: 5px 4px; border-bottom: 1px dotted var(--border-2); align-items: center; font-size: 11.5px; }
+.handwritten-row .hw-name { font-weight: 500; }
+.scan-corner-stamp { position: absolute; top: 12px; right: 14px; font-family: 'JetBrains Mono', monospace; font-size: 9px; background: var(--gold); color: var(--navy); padding: 3px 8px; border-radius: 4px; font-weight: 700; letter-spacing: 0.04em; }
+
+/* Diff flag panel */
+.diff-flag { display: flex; gap: 12px; padding: 13px 16px; background: var(--warn-bg); border: 1px solid var(--warn); border-radius: 10px; margin-bottom: 10px; }
+.diff-flag .df-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--warn); color: var(--bg); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+.diff-flag .df-text { font-size: 11px; color: var(--navy-2); line-height: 1.55; flex: 1; }
+.diff-flag .df-text b { color: var(--navy); font-weight: 700; }
+.diff-flag .df-choices { display: flex; gap: 6px; flex-shrink: 0; }
+.diff-flag .df-choice { font-size: 10px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-2); background: var(--surface); cursor: pointer; font-weight: 600; color: var(--navy-2); }
+.diff-flag .df-choice.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+
+/* STPSHS export readiness card */
+.stpshs-ready { background: linear-gradient(135deg, var(--green-bg) 0%, var(--surface) 70%); border: 1.5px solid var(--green); border-radius: 12px; padding: 16px 20px; display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; }
+.stpshs-ready.pending { background: linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 70%); border-color: var(--gold); }
+.stpshs-ready .sr-icon { width: 36px; height: 36px; border-radius: 9px; background: var(--green); color: var(--bg); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 16px; }
+.stpshs-ready.pending .sr-icon { background: var(--gold); color: var(--navy); }
+.stpshs-ready .sr-text { font-size: 12px; color: var(--navy-2); line-height: 1.5; }
+.stpshs-ready .sr-text b { color: var(--navy); font-weight: 700; }
+
+/* Class switcher tab list — sits above the ledger grid */
+.class-switcher-header {
+  font-family: 'Manrope', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  margin: 0 0 9px 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.class-switcher-header em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--gold);
+}
+.class-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  margin-bottom: 16px;
+}
+.class-tab {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.class-tab.active {
+  background: var(--surface);
+  border-color: var(--gold);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.class-tab .ct-class {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+  line-height: 1.15;
+}
+.class-tab:not(.active) .ct-class { color: var(--navy-2); }
+.class-tab .ct-class em { font-style: italic; color: var(--gold); font-weight: 500; }
+.class-tab .ct-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.class-tab .ct-status {
+  font-family: 'Manrope', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2.5px 7px;
+  border-radius: 100px;
+  margin-left: auto;
+}
+.class-tab .ct-status.current { background: var(--gold); color: var(--navy); }
+.class-tab .ct-status.ready { background: var(--green-bg); color: var(--green); }
+.class-tab .ct-status.behind { background: var(--warn-bg); color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Omnischools Senior · The SHS Score Ledger</div>
+<div class="eyebrow">Omnischools Senior · for an SHS subject teacher</div>
+<h1>The ledger, <em>three ways.</em></h1>
+<div class="gold-rule"></div>
+<p>SHS teachers in Ghana keep a score ledger — five categories per student per subject per semester: assignments, mid-semester exam, end-of-semester exam, project work, portfolio. Most teachers write it by hand in a paper book. Some compute it from a digital gradebook. A few will want to type it directly into a digital ledger view. Omnischools supports all three, on the same data model underneath — and the choice belongs to the teacher, not the product. The demo is Mr. Owusu, who teaches Mathematics to two Form 2 classes at Asankrangwa SHS — Form 2 Science and Form 2 General — at the end of Semester 2 of the 2025/26 academic year. The class-tab list above the grid switches between his two classes; the grid itself shows the active one. The surfaces that follow are the working ledger view with its class switcher (section 1), the upload-and-diff workflow when a teacher photographs their paper ledger (section 2), and the semester-end export path that feeds STPSHS (section 3).</p>
+</div>
+
+<!-- ============================================ SECTION 1 — the working ledger ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">The working ledger · five categories, three paths, one record</div>
+<div class="section-meta">Path A active · auto-compile from in-semester entries</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh / senior / ledger / form-2-science / mathematics / 2025-26-t2</div></div>
+
+<div class="app-shell">
+<div class="sidebar">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">A</div><div class="crest-text"><div class="l1">Omnischools Senior</div><div class="l2">Asankrangwa SHS</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Teaching</div>
+<div class="sc-name">Mr. K. Owusu</div>
+<div class="sc-meta">Mathematics · Form 2 Science</div>
+</div>
+<div class="nav-group">My teaching</div>
+<div class="nav-item"><div class="ic"></div>Today's lessons</div>
+<div class="nav-item"><div class="ic"></div>Classes</div>
+<div class="nav-item active"><div class="ic"></div>Score ledger</div>
+<div class="nav-item"><div class="ic"></div>Lesson plans</div>
+<div class="nav-item"><div class="ic"></div>Assignments</div>
+<div class="nav-group">Students</div>
+<div class="nav-item"><div class="ic"></div>Class registers</div>
+<div class="nav-item"><div class="ic"></div>Parent messages</div>
+<div class="nav-group">Semester end</div>
+<div class="nav-item"><div class="ic"></div>Report cards</div>
+<div class="nav-item"><div class="ic"></div>STPSHS export</div>
+<div class="footer"><div class="av">KO</div><div><div class="meta-name">K. Owusu</div><div class="meta-role">Subject teacher · Maths</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Senior · Mathematics · Form 2 Science · Semester 2, 2025/26 · Score ledger</div>
+<div class="top-row">
+<div>
+<h1>Form 2 Science · <em>Mathematics.</em></h1>
+<div class="lede">37 students · Semester 2 of 2025/26 · weighted by Asankrangwa SHS configuration for Mathematics (15/15/40/15/15)</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Configure weights</button>
+<button class="btn primary">Generate STPSHS sheet →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<!-- Path chooser -->
+<div class="path-chooser">
+<div class="path-card active">
+<div class="pc-letter">A</div>
+<div class="pc-name">Auto-compile</div>
+<div class="pc-desc">From the assignments, exams and projects I've recorded through the semester. Portfolio entered at semester end.</div>
+</div>
+<div class="path-card">
+<div class="pc-letter">B</div>
+<div class="pc-name">Scan my paper ledger</div>
+<div class="pc-desc">I keep a paper book; photograph it and Omnischools extracts the scores. I verify cell-by-cell.</div>
+</div>
+<div class="path-card">
+<div class="pc-letter">C</div>
+<div class="pc-name">Type directly</div>
+<div class="pc-desc">Skip individual assignment tracking; enter category scores onto the ledger grid as I go.</div>
+</div>
+</div>
+
+<!-- Class switcher — Mr. Owusu teaches 2 Form 2 Maths classes this semester -->
+<div class="class-switcher-header">
+<span>Mr. K. Owusu · 2 classes this semester</span>
+<em>tap a tab to switch · the grid below reloads with that class's roster</em>
+</div>
+<div class="class-tabs">
+<div class="class-tab active">
+<div class="ct-class">Form 2 Science · <em>Maths</em></div>
+<div class="ct-meta">37 students · Path A · 4 of 5 categories<span class="ct-status current">current</span></div>
+</div>
+<div class="class-tab">
+<div class="ct-class">Form 2 General · <em>Maths</em></div>
+<div class="ct-meta">29 students · Path A · 4 of 5 categories<span class="ct-status behind">behind</span></div>
+</div>
+</div>
+
+<!-- The ledger grid itself -->
+<div class="panel" style="margin-bottom: 14px;">
+<div class="panel-head">
+<div class="ph-title">Semester 2 <em>ledger</em></div>
+<div class="ph-meta">37 of 37 students · 4 of 5 categories filled · portfolio pending</div>
+</div>
+<table class="ledger-grid">
+<thead>
+<tr>
+<th class="student-col">Student</th>
+<th class="cat-asgn">Assignments<span class="cat-weight">15%</span></th>
+<th class="cat-mid">Mid-sem<span class="cat-weight">15%</span></th>
+<th class="cat-end">End-of-sem<span class="cat-weight">40%</span></th>
+<th class="cat-proj">Project<span class="cat-weight">15%</span></th>
+<th class="cat-port">Portfolio<span class="cat-weight">15%</span></th>
+<th class="cat-total">Weighted<span class="cat-weight" style="color: rgba(255,255,255,0.6);">100%</span></th>
+</tr>
+</thead>
+<tbody>
+<tr><td class="student-name">Abena Mensah <span class="student-ref">REF-2024-0142</span></td><td class="score-cell computed">72</td><td class="score-cell computed">68</td><td class="score-cell computed">81</td><td class="score-cell computed">75</td><td class="score-cell empty">—</td><td class="total">76.1</td></tr>
+<tr><td class="student-name">Akwasi Boateng <span class="student-ref">REF-2024-0143</span></td><td class="score-cell computed">65</td><td class="score-cell computed">71</td><td class="score-cell computed">69</td><td class="score-cell computed">80</td><td class="score-cell empty">—</td><td class="total">70.6</td></tr>
+<tr><td class="student-name">Ama Asante <span class="student-ref">REF-2024-0144</span></td><td class="score-cell computed">88</td><td class="score-cell computed">85</td><td class="score-cell computed">89</td><td class="score-cell computed">92</td><td class="score-cell empty">—</td><td class="total">88.6</td></tr>
+<tr><td class="student-name">Daniel Owusu <span class="student-ref">REF-2024-0145</span></td><td class="score-cell computed">58</td><td class="score-cell computed">62</td><td class="score-cell computed">55</td><td class="score-cell computed">66</td><td class="score-cell empty">—</td><td class="total">58.7</td></tr>
+<tr><td class="student-name">Efua Adjei <span class="student-ref">REF-2024-0146</span></td><td class="score-cell computed">79</td><td class="score-cell computed">74</td><td class="score-cell computed">82</td><td class="score-cell computed">78</td><td class="score-cell empty">—</td><td class="total">79.4</td></tr>
+<tr><td class="student-name">Emmanuel Tetteh <span class="student-ref">REF-2024-0147</span></td><td class="score-cell computed">71</td><td class="score-cell computed">69</td><td class="score-cell computed">73</td><td class="score-cell computed">70</td><td class="score-cell empty">—</td><td class="total">71.4</td></tr>
+<tr><td class="student-name">Esi Coleman <span class="student-ref">REF-2024-0148</span></td><td class="score-cell computed">84</td><td class="score-cell computed">88</td><td class="score-cell computed">86</td><td class="score-cell computed">90</td><td class="score-cell empty">—</td><td class="total">86.7</td></tr>
+<tr><td class="student-name">Kojo Mensah <span class="student-ref">REF-2024-0149</span></td><td class="score-cell computed">62</td><td class="score-cell computed">58</td><td class="score-cell computed">64</td><td class="score-cell computed">61</td><td class="score-cell empty">—</td><td class="total">62.1</td></tr>
+<tr><td class="student-name">Kwame Nkrumah <span class="student-ref">REF-2024-0150</span></td><td class="score-cell computed">91</td><td class="score-cell computed">89</td><td class="score-cell computed">93</td><td class="score-cell computed">87</td><td class="score-cell empty">—</td><td class="total">90.9</td></tr>
+<tr><td class="student-name">Mariama Iddrisu <span class="student-ref">REF-2024-0151</span></td><td class="score-cell computed">76</td><td class="score-cell computed">73</td><td class="score-cell computed">78</td><td class="score-cell computed">82</td><td class="score-cell empty">—</td><td class="total">77.5</td></tr>
+<tr style="opacity: 0.4;"><td class="student-name">… 27 more students</td><td colspan="6" style="font-style: italic; color: var(--navy-3); font-family: 'Manrope', sans-serif;">scroll to view full class</td></tr>
+</tbody>
+</table>
+<div class="legend">
+<div class="swatch"><div class="sw-box computed"></div>Auto-compiled from in-semester entries</div>
+<div class="swatch"><div class="sw-box manual"></div>Manual entry (portfolio + corrections)</div>
+<div class="swatch"><div class="sw-box low-conf"></div>Low-confidence (scan path only)</div>
+</div>
+</div>
+
+<div class="layout" style="grid-template-columns: 1fr 1fr; gap: 14px;">
+<div class="term-progress">
+<div class="tp-title">Semester 2 progress · this class-subject</div>
+<div class="cat-progress"><div class="cp-label">Assignments / class exercises</div><div class="cp-status done">8 of 8 · done</div></div>
+<div class="cat-progress"><div class="cp-label">Mid-semester examination</div><div class="cp-status done">37 of 37 · done</div></div>
+<div class="cat-progress"><div class="cp-label">End-of-semester examination</div><div class="cp-status done">37 of 37 · done</div></div>
+<div class="cat-progress"><div class="cp-label">Individual project work</div><div class="cp-status done">37 of 37 · done</div></div>
+<div class="cat-progress"><div class="cp-label">Portfolio</div><div class="cp-status pending">0 of 37 · enter at semester end</div></div>
+</div>
+<div class="stpshs-ready pending">
+<div class="sr-icon">!</div>
+<div class="sr-text">STPSHS export is <b>one step away</b>. Enter the portfolio scores for the 37 students, then the printable STPSHS-ready score sheet generates from this ledger. <b>STPSHS Semester 2 window opens 14 July 2026</b> · 17 days from now.</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>One data model, the teacher's choice of medium</h4>
+<ul>
+<li><b>Five categories, NaCCA-standard.</b> Assignments, mid-sem exam, end-of-sem exam, project work, portfolio — the structure that appears on every score ledger in every Ghanaian SHS, public or private, because every SHS teaches the NaCCA curriculum and submits to WAEC. Weights are configured per (subject × school) at enrolment; Asankrangwa SHS runs Mathematics at 15/15/40/15/15, with the end-of-semester exam carrying 40% — the dominant weight, reflecting how most schools treat the terminal assessment. Other subjects at the same school, and other schools entirely, may run different schedules; the surface always shows the configured weights so a parent or auditor can see how the total was computed.</li>
+<li><b>The class-tab list above the grid is the switch between Mr. Owusu's classes.</b> Almost no SHS teacher teaches one class. Mr. Owusu has two Form 2 Maths classes; an Integrated Science teacher might teach four; an English teacher across forms might teach six. Each tab shows the class name, student count, path used, completion summary, and a status pill — "current," "ready," or "behind." Tap a tab, the grid below reloads with that class's roster, scores, and progress. The same affordance is on the PWA as a chevron + bottom sheet; the conceptual model is identical across form factors. The active tab persists per teacher per semester — Mr. Owusu lands back on the class he last touched, not on whichever is alphabetically first.</li>
+<li><b>Path A is active here, and the auto-compile pattern shows.</b> Four categories already have computed scores from in-semester entries (the green-tint cells); portfolio is the one column waiting for the teacher's end-of-semester judgment. The weighted total is provisional until portfolio is in.</li>
+<li><b>The three paths are equivalents, not a progression.</b> The path chooser shows them as three peers, not "best / better / paper fallback." The teacher picks per (subject × class × semester) and can switch. Omnischools deliberately avoids implying that paper is inferior — the branded paper ledger book is a feature, not a transitional artifact.</li>
+<li><b>Portfolio is structurally different from the other four.</b> No in-semester events feed it — it is a one-shot end-of-semester discretionary mark for how well the student kept their own assessment papers organised. Omnischools cannot auto-compile it, and the UI says so plainly ("enter at semester end" instead of a progress count).</li>
+<li><b>The STPSHS export sits visibly downstream.</b> The right-hand card names the WAEC submission window date and the steps remaining. This is not a separate STPSHS surface; it is one button that becomes active when the ledger is complete. Section 3 below shows what generates.</li>
+<li><b>Assessment Reference IDs are present on every row.</b> The `REF-2024-XXXX` codes are the canonical student keys STPSHS assigns at Year 1 registration; the ledger shows them alongside the names so the eventual STPSHS export can be matched per-student. Even before the WAEC API conversation, this matters.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 2 — Path B scan & diff ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">When the paper ledger is the source · scan, extract, verify, diff</div>
+<div class="section-meta">Path B · the workflow most SHS teachers will actually use</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh / senior / ledger / form-2-science / mathematics / 2025-26-t2 / scan</div></div>
+
+<div class="app-shell">
+<div class="sidebar">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">A</div><div class="crest-text"><div class="l1">Omnischools Senior</div><div class="l2">Asankrangwa SHS</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Teaching</div>
+<div class="sc-name">Mr. K. Owusu</div>
+<div class="sc-meta">Mathematics · Form 2 Science</div>
+</div>
+<div class="nav-group">My teaching</div>
+<div class="nav-item"><div class="ic"></div>Today's lessons</div>
+<div class="nav-item"><div class="ic"></div>Classes</div>
+<div class="nav-item active"><div class="ic"></div>Score ledger</div>
+<div class="nav-item"><div class="ic"></div>Lesson plans</div>
+<div class="nav-item"><div class="ic"></div>Assignments</div>
+<div class="nav-group">Students</div>
+<div class="nav-item"><div class="ic"></div>Class registers</div>
+<div class="nav-item"><div class="ic"></div>Parent messages</div>
+<div class="nav-group">Semester end</div>
+<div class="nav-item"><div class="ic"></div>Report cards</div>
+<div class="nav-item"><div class="ic"></div>STPSHS export</div>
+<div class="footer"><div class="av">KO</div><div><div class="meta-name">K. Owusu</div><div class="meta-role">Subject teacher · Maths</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Senior · Mathematics · Form 2 Science · Semester 2 · Scan upload · Verify v2</div>
+<div class="top-row">
+<div>
+<h1>End-of-semester upload · <em>verify the read.</em></h1>
+<div class="lede">Uploaded 26 June 2026 · supersedes the 8 May mid-semester upload · 4 changes to review</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Re-upload page</button>
+<button class="btn primary">Commit verified ledger →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<!-- Scan & extracted grid side by side -->
+<div class="scan-panel" style="margin-bottom: 18px;">
+<div class="scan-image">
+<div class="scan-mock">
+<div class="scan-corner-stamp">PAGE 1/2 · F2 SCI · MATHS · T2</div>
+<div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 13px; color: var(--navy); margin-bottom: 8px; text-align: center;">Mathematics — Form 2 Science — Semester 2</div>
+<div class="handwritten-row" style="font-weight: 700; border-bottom: 1.5px solid var(--navy-3);"><span class="hw-name">Name</span><span>Asg</span><span>MS</span><span>ES</span><span>Pj</span><span>Pf</span></div>
+<div class="handwritten-row"><span class="hw-name">A. Mensah</span><span>72</span><span>68</span><span>81</span><span>75</span><span>8</span></div>
+<div class="handwritten-row"><span class="hw-name">A. Boateng</span><span>65</span><span>74</span><span>69</span><span>80</span><span>7</span></div>
+<div class="handwritten-row"><span class="hw-name">A. Asante</span><span>88</span><span>85</span><span>89</span><span>92</span><span>10</span></div>
+<div class="handwritten-row"><span class="hw-name">D. Owusu</span><span>58</span><span>62</span><span>55</span><span>66</span><span>5</span></div>
+<div class="handwritten-row"><span class="hw-name">E. Adjei</span><span>79</span><span>74</span><span>82</span><span>78</span><span>9</span></div>
+<div class="handwritten-row"><span class="hw-name">E. Tetteh</span><span>71</span><span>69</span><span>73</span><span>70</span><span>7</span></div>
+<div class="handwritten-row"><span class="hw-name">E. Coleman</span><span>84</span><span>88</span><span>86</span><span>90</span><span>9</span></div>
+</div>
+</div>
+
+<div>
+<div style="font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; margin-bottom: 10px;">Extracted ledger · sample</div>
+<table class="ledger-grid" style="font-size: 11px;">
+<thead>
+<tr>
+<th class="student-col">Student</th>
+<th class="cat-asgn">Asg</th>
+<th class="cat-mid">MS</th>
+<th class="cat-end">ES</th>
+<th class="cat-proj">Pj</th>
+<th class="cat-port">Pf</th>
+</tr>
+</thead>
+<tbody>
+<tr><td class="student-name">Abena Mensah</td><td class="score-cell manual">72</td><td class="score-cell manual">68</td><td class="score-cell manual">81</td><td class="score-cell manual">75</td><td class="score-cell manual">8</td></tr>
+<tr><td class="student-name">Akwasi Boateng</td><td class="score-cell manual">65</td><td class="score-cell low-conf">74</td><td class="score-cell manual">69</td><td class="score-cell manual">80</td><td class="score-cell manual">7</td></tr>
+<tr><td class="student-name">Ama Asante</td><td class="score-cell manual">88</td><td class="score-cell manual">85</td><td class="score-cell manual">89</td><td class="score-cell manual">92</td><td class="score-cell manual">10</td></tr>
+<tr><td class="student-name">Daniel Owusu</td><td class="score-cell manual">58</td><td class="score-cell manual">62</td><td class="score-cell manual">55</td><td class="score-cell manual">66</td><td class="score-cell manual">5</td></tr>
+<tr><td class="student-name">Efua Adjei</td><td class="score-cell manual">79</td><td class="score-cell manual">74</td><td class="score-cell manual">82</td><td class="score-cell manual">78</td><td class="score-cell manual">9</td></tr>
+<tr><td class="student-name">Emmanuel Tetteh</td><td class="score-cell manual">71</td><td class="score-cell manual">69</td><td class="score-cell manual">73</td><td class="score-cell manual">70</td><td class="score-cell manual">7</td></tr>
+<tr><td class="student-name">Esi Coleman</td><td class="score-cell manual">84</td><td class="score-cell manual">88</td><td class="score-cell manual">86</td><td class="score-cell manual">90</td><td class="score-cell manual">9</td></tr>
+</tbody>
+</table>
+<div style="font-size: 10.5px; color: var(--navy-3); margin-top: 9px; font-style: italic; line-height: 1.5;">Showing 7 of 37 students · 4 cells flagged across the full class (low-confidence OCR) · 4 differences from the mid-semester upload, below.</div>
+</div>
+</div>
+
+<!-- Diff flags -->
+<div style="margin-bottom: 8px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-3); font-weight: 700;">Changes since mid-semester upload · 4 to review</div>
+
+<div class="diff-flag">
+<div class="df-icon">!</div>
+<div class="df-text"><b>Akwasi Boateng</b> · Mid-sem score · mid-semester upload showed <b>71</b> · this upload shows <b>74</b>. Cell is also flagged low-confidence OCR. <b>Review the photo</b> before accepting.</div>
+<div class="df-choices"><div class="df-choice">Keep 71</div><div class="df-choice primary">Keep 74</div><div class="df-choice">Enter manually</div></div>
+</div>
+
+<div class="diff-flag" style="background: var(--gold-bg); border-color: var(--gold);">
+<div class="df-icon" style="background: var(--gold); color: var(--navy);">!</div>
+<div class="df-text"><b>Kojo Mensah</b> · End-of-sem score · mid-semester upload showed <b>—</b> (blank, exam hadn't happened yet) · this upload shows <b>64</b>. Expected change — new entry, accepted silently if you don't intervene.</div>
+<div class="df-choices"><div class="df-choice">Accept</div></div>
+</div>
+
+<div class="diff-flag">
+<div class="df-icon">!</div>
+<div class="df-text"><b>Mariama Iddrisu</b> · Assignment score · mid-semester upload showed <b>76</b> · this upload shows <b>73</b>. Score went down — unusual unless re-graded. <b>Confirm the change with reason.</b></div>
+<div class="df-choices"><div class="df-choice">Keep 76</div><div class="df-choice primary">Keep 73 · re-graded</div><div class="df-choice">Enter manually</div></div>
+</div>
+
+<div class="diff-flag" style="background: var(--terra-bg); border-color: var(--terra);">
+<div class="df-icon" style="background: var(--terra); color: var(--bg);">!</div>
+<div class="df-text"><b>Yaa Asantewaa</b> · Mid-sem score · mid-semester upload showed <b>82</b> · this upload shows <b>blank</b>. <b>Score has gone missing</b> from the ledger between uploads. Re-photograph the page or enter the score manually.</div>
+<div class="df-choices"><div class="df-choice">Keep 82</div><div class="df-choice">Re-upload page</div><div class="df-choice primary">Enter manually</div></div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The diff is where Omnischools earns trust beyond digitisation</h4>
+<ul>
+<li><b>Side-by-side, photo and extraction.</b> The teacher reviews the OCR's read of their handwritten ledger against the original photograph — cell by cell. Low-confidence cells are flagged (orange tint with a small "?" marker) so the teacher knows which ones to scrutinise. The product promise is "we save you typing, you confirm the read" — not "we read your ledger correctly," which would be over-promise.</li>
+<li><b>Diff against the prior upload is the integrity layer.</b> A mid-semester upload established a baseline; the end-of-semester upload supersedes it. Cells blank-to-filled are expected (new entries); cells filled-to-different need a teacher's reasoned decision. The four flags here show the four cases — low-confidence overlap, new entry (silent accept), score down (re-grade confirmation), and score gone missing (highest severity).</li>
+<li><b>This is where deliberate alteration becomes visible.</b> A teacher who quietly raises a student's mid-sem mark from 60 to 75 between uploads triggers a flag — the system records who reviewed it, when, with what reason. The paper ledger alone has none of this: a teacher can erase and rewrite a score with no audit trail. Omnischools doesn't prevent the change; it makes the change auditable.</li>
+<li><b>The discipline is fair to honest teachers.</b> A teacher who genuinely re-graded an assignment selects "re-graded" as the reason, the change is recorded, and the audit trail protects them if a parent or auditor later asks. The friction is small; the trust value is large.</li>
+<li><b>Cross-path diffing applies the same logic.</b> A Path A teacher who decides to photograph their paper ledger as a verification step gets the same comparison — Omnischools' auto-compiled scores versus what's actually written in the teacher's paper ledger. The two should match; when they don't, the teacher is told which.</li>
+<li><b>The branded ledger book is what makes the OCR practical.</b> The "PAGE 1/2 · F2 SCI · MATHS · S2" stamp in the corner of the scan mock is the QR code's metadata, telling Omnischools which class-subject-semester this page belongs to — and the printed gridlines on a known template are what let the OCR find the right cell. Teachers using their own ledger format still benefit, just with more verification needed.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 3 — STPSHS export ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">Semester end · the printable STPSHS score sheet generates from the ledger</div>
+<div class="section-meta">No WAEC API required · the manual-entry helper</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh / senior / ledger / form-2-science / mathematics / 2025-26-t2 / stpshs-export</div></div>
+
+<div class="app-shell">
+<div class="sidebar">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">A</div><div class="crest-text"><div class="l1">Omnischools Senior</div><div class="l2">Asankrangwa SHS</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Teaching</div>
+<div class="sc-name">Mr. K. Owusu</div>
+<div class="sc-meta">Mathematics · Form 2 Science</div>
+</div>
+<div class="nav-group">My teaching</div>
+<div class="nav-item"><div class="ic"></div>Today's lessons</div>
+<div class="nav-item"><div class="ic"></div>Classes</div>
+<div class="nav-item"><div class="ic"></div>Score ledger</div>
+<div class="nav-item"><div class="ic"></div>Lesson plans</div>
+<div class="nav-item"><div class="ic"></div>Assignments</div>
+<div class="nav-group">Students</div>
+<div class="nav-item"><div class="ic"></div>Class registers</div>
+<div class="nav-item"><div class="ic"></div>Parent messages</div>
+<div class="nav-group">Semester end</div>
+<div class="nav-item"><div class="ic"></div>Report cards</div>
+<div class="nav-item active"><div class="ic"></div>STPSHS export</div>
+<div class="footer"><div class="av">KO</div><div><div class="meta-name">K. Owusu</div><div class="meta-role">Subject teacher · Maths</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Senior · Mathematics · Form 2 Science · Semester 2 · STPSHS export</div>
+<div class="top-row">
+<div>
+<h1>STPSHS-ready <em>score sheet.</em></h1>
+<div class="lede">Pre-filled from the verified Semester 2 ledger · 37 students · ready for manual entry into stpshs.waecgh.org</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Re-open ledger</button>
+<button class="btn primary">Download PDF · 2 pages</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="stpshs-ready">
+<div class="sr-icon">✓</div>
+<div class="sr-text"><b>Ledger is complete and STPSHS-ready.</b> All 37 students have all five categories filled. Weighted totals computed at Asankrangwa SHS's configured weights for Mathematics (15/15/40/15/15). Download the PDF, open it beside your STPSHS tab, work through the per-subject capture screen one student at a time. <b>STPSHS window opens 14 July 2026 — 17 days away.</b></div>
+<div><button class="btn primary">Open print preview →</button></div>
+</div>
+
+<div class="panel" style="margin-top: 18px;">
+<div class="panel-head">
+<div class="ph-title">Preview · <em>STPSHS-ready score sheet</em></div>
+<div class="ph-meta">Matches the order of STPSHS's "Capture Per Subject" screen · tick each row as entered</div>
+</div>
+<div style="background: var(--bg); padding: 24px; border-radius: 0 0 11px 11px;">
+<div style="background: var(--surface); border: 1px solid var(--border-2); border-radius: 4px; padding: 24px 28px; font-family: 'Manrope', sans-serif; max-width: 720px; margin: 0 auto; box-shadow: 0 6px 20px -10px rgba(0,0,0,0.1);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 2px solid var(--navy);">
+<div>
+<div style="font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; color: var(--navy);">Asankrangwa SHS · STPSHS Score Sheet</div>
+<div style="font-size: 11px; color: var(--navy-3); margin-top: 3px;">School code WR-WAW-014 · Generated 27 June 2026 from Omnischools</div>
+</div>
+<div style="text-align: right;">
+<div style="font-size: 10px; color: var(--navy-3); letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700;">Subject · Year · Sem</div>
+<div style="font-family: 'Fraunces', serif; font-size: 14px; font-weight: 600; color: var(--navy); margin-top: 2px;">Mathematics · Y2 · T2</div>
+</div>
+</div>
+<table style="width: 100%; margin-top: 14px; border-collapse: collapse; font-size: 11px;">
+<thead>
+<tr style="background: var(--bg);">
+<th style="text-align: left; padding: 7px 8px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-3); border-bottom: 1px solid var(--border-2); width: 28px;">✓</th>
+<th style="text-align: left; padding: 7px 8px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-3); border-bottom: 1px solid var(--border-2);">Ass't Ref ID</th>
+<th style="text-align: left; padding: 7px 8px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-3); border-bottom: 1px solid var(--border-2);">Student name</th>
+<th style="text-align: center; padding: 7px 8px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-3); border-bottom: 1px solid var(--border-2);">Asg</th>
+<th style="text-align: center; padding: 7px 8px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-3); border-bottom: 1px solid var(--border-2);">MS</th>
+<th style="text-align: center; padding: 7px 8px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-3); border-bottom: 1px solid var(--border-2);">ES</th>
+<th style="text-align: center; padding: 7px 8px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-3); border-bottom: 1px solid var(--border-2);">Proj</th>
+<th style="text-align: center; padding: 7px 8px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-3); border-bottom: 1px solid var(--border-2);">Port</th>
+</tr>
+</thead>
+<tbody style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px;">
+<tr><td style="padding: 5px 8px; border-bottom: 1px solid var(--border);">☐</td><td style="padding: 5px 8px; border-bottom: 1px solid var(--border);">REF-2024-0142</td><td style="padding: 5px 8px; border-bottom: 1px solid var(--border); font-family: 'Manrope', sans-serif;">Abena Mensah</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">72</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">68</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">81</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">75</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">8</td></tr>
+<tr><td style="padding: 5px 8px; border-bottom: 1px solid var(--border);">☐</td><td style="padding: 5px 8px; border-bottom: 1px solid var(--border);">REF-2024-0143</td><td style="padding: 5px 8px; border-bottom: 1px solid var(--border); font-family: 'Manrope', sans-serif;">Akwasi Boateng</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">65</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">74</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">69</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">80</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">7</td></tr>
+<tr><td style="padding: 5px 8px; border-bottom: 1px solid var(--border);">☐</td><td style="padding: 5px 8px; border-bottom: 1px solid var(--border);">REF-2024-0144</td><td style="padding: 5px 8px; border-bottom: 1px solid var(--border); font-family: 'Manrope', sans-serif;">Ama Asante</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">88</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">85</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">89</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">92</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">10</td></tr>
+<tr><td style="padding: 5px 8px; border-bottom: 1px solid var(--border);">☐</td><td style="padding: 5px 8px; border-bottom: 1px solid var(--border);">REF-2024-0145</td><td style="padding: 5px 8px; border-bottom: 1px solid var(--border); font-family: 'Manrope', sans-serif;">Daniel Owusu</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">58</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">62</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">55</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">66</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">5</td></tr>
+<tr><td style="padding: 5px 8px; border-bottom: 1px solid var(--border);">☐</td><td style="padding: 5px 8px; border-bottom: 1px solid var(--border);">REF-2024-0146</td><td style="padding: 5px 8px; border-bottom: 1px solid var(--border); font-family: 'Manrope', sans-serif;">Efua Adjei</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">79</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">74</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">82</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">78</td><td style="text-align: center; padding: 5px 8px; border-bottom: 1px solid var(--border);">9</td></tr>
+<tr style="opacity: 0.5;"><td colspan="8" style="padding: 12px 8px; text-align: center; font-family: 'Manrope', sans-serif; font-style: italic; color: var(--navy-3); font-size: 10px;">… 32 more students on this page and the next</td></tr>
+</tbody>
+</table>
+<div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 10px; color: var(--navy-3); display: flex; justify-content: space-between;">
+<span>Asg = assignments · MS = mid-sem · ES = end-of-sem · Proj = project · Port = portfolio</span>
+<span style="font-family: 'JetBrains Mono', monospace;">Page 1 of 2 · Generated by Omnischools</span>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The export ships independently of any WAEC API conversation</h4>
+<ul>
+<li><b>The sheet matches STPSHS's Capture Per Subject screen flow.</b> Same column order, same Assessment Reference IDs in the same place, same five categories — so the teacher works top-to-bottom on the printed sheet and top-to-bottom on STPSHS's UI, ticking each row as entered. The 75 minutes of STPSHS entry that used to be 75 minutes of "compute then enter" becomes 30 minutes of "look-and-type."</li>
+<li><b>No WAEC cooperation needed.</b> This is a paper artifact Omnischools generates from data the school owns. It does not touch WAEC's infrastructure; it does not depend on an API; it ships now and works on the day Mr. Owusu's STPSHS window opens. If the WAEC API conversation later succeeds, this same data flows machine-to-machine and the printed sheet becomes optional. If it doesn't, the sheet remains the path.</li>
+<li><b>The Assessment Reference IDs were quietly the whole story.</b> The Year 1 student-registration bulk upload (the one STPSHS does support) returned REF-2024-XXXX codes that Omnischools stored against each student. Two years later, those codes appear on every export — which is what makes per-student matching reliable when the teacher enters scores manually.</li>
+<li><b>The discipline is "STPSHS receives a copy of the ledger's totals," not "Omnischools talks to STPSHS."</b> The school's source of truth is its ledger (whichever path produced it); STPSHS is one of the destinations. Parent reports and Oversight aggregation feed from the same ledger, in parallel. Decoupling the ledger from any one destination is what makes the architecture robust.</li>
+<li><b>This is the surface a Headmaster will photograph and send.</b> The sheet is print-ready, branded with the school's name and code, dated, and clearly labelled as the STPSHS-ready format. A school showing this to a GES inspector is showing the work between the ledger and the regulator — exactly the kind of artifact that builds trust beyond just the digital record.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

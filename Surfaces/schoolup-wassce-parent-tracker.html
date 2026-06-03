@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Parent tracker · A. Aidoo · WASSCE day 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+/* Parent uses a mobile-leaning desktop frame */
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Parent shell — narrower than staff, no sidebar */
+.parent-shell { background:var(--bg); padding:0; }
+.parent-header { background:var(--surface); padding:18px 28px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:14px; }
+.ph-brand { display:flex; align-items:center; gap:10px; flex:1; }
+.ph-brand .logo-mini { width:36px; height:36px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:14px; }
+.ph-name { font-family:'Fraunces', serif; font-size:15px; font-weight:500; }
+.ph-name-meta { font-size:11px; color:var(--navy-3); }
+.ph-user { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--navy-3); }
+.ph-user-avatar { width:32px; height:32px; border-radius:50%; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:13px; font-weight:600; }
+
+.parent-nav { background:var(--surface); border-bottom:1px solid var(--border); padding:0 28px; display:flex; gap:0; overflow-x:auto; }
+.pn-item { padding:14px 16px; font-size:13px; font-weight:500; color:var(--navy-3); border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; }
+.pn-item.active { color:var(--navy); border-bottom-color:var(--gold); font-weight:600; }
+.pn-item .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--terra); margin-left:6px; }
+
+.parent-body { padding:24px 28px 36px; max-width:980px; margin:0 auto; }
+
+/* Hero status card */
+.status-hero { background:linear-gradient(135deg, #B84A39 0%, #8B3829 100%); color:var(--bg); border-radius:14px; padding:28px 32px; margin-bottom:24px; box-shadow:0 16px 40px -12px rgba(184,74,57,0.4); }
+.sh-eyebrow-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.sh-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; opacity:0.75; font-weight:600; }
+.sh-live { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.14); padding:5px 12px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; }
+.sh-live-dot { width:7px; height:7px; border-radius:50%; background:#FFD4C9; animation:pulse 1.8s infinite; box-shadow:0 0 0 0 rgba(255,212,201,0.7); }
+@keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(255,212,201,0.7); } 70% { box-shadow:0 0 0 10px rgba(255,212,201,0); } 100% { box-shadow:0 0 0 0 rgba(255,212,201,0); } }
+.sh-headline { font-family:'Fraunces', serif; font-size:28px; font-weight:500; line-height:1.2; margin-bottom:12px; }
+.sh-headline em { font-style:italic; color:#F5D4C9; font-weight:400; }
+.sh-body { font-size:14px; opacity:0.92; line-height:1.6; margin-bottom:20px; max-width:760px; }
+.sh-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:18px; }
+.sh-cell { background:rgba(255,255,255,0.1); border-radius:10px; padding:14px 16px; }
+.sh-cell-label { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; opacity:0.7; font-weight:600; margin-bottom:4px; }
+.sh-cell-value { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:2px; }
+.sh-cell-meta { font-size:11px; opacity:0.78; }
+.sh-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.sh-btn { background:rgba(255,255,255,0.95); color:var(--terra); padding:10px 18px; font-size:12px; font-weight:700; border-radius:7px; letter-spacing:0.04em; }
+.sh-btn-ghost { background:rgba(255,255,255,0.14); color:var(--bg); border:1px solid rgba(255,255,255,0.3); padding:10px 18px; font-size:12px; font-weight:600; border-radius:7px; }
+
+/* Child quick card */
+.child-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 26px; margin-bottom:24px; display:grid; grid-template-columns:auto 1fr auto; gap:20px; align-items:center; }
+.cc-avatar { width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:22px; font-weight:500; color:var(--navy); }
+.cc-name { font-family:'Fraunces', serif; font-size:22px; font-weight:500; line-height:1.1; margin-bottom:4px; }
+.cc-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.cc-meta { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--navy-3); margin-bottom:6px; }
+.cc-meta b { color:var(--navy); }
+.cc-pill { display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:3px 9px; border-radius:100px; font-weight:600; background:#E5F0EB; color:#1E5A35; }
+.cc-target-label { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:4px; text-align:right; }
+.cc-target-value { font-family:'Fraunces', serif; font-size:16px; font-weight:500; text-align:right; }
+.cc-target-meta { font-size:11px; color:var(--navy-3); text-align:right; margin-top:2px; }
+
+/* WASSCE schedule (parent-friendly version) */
+.papers-list { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.papers-head { padding:18px 24px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.papers-head h3 { font-family:'Fraunces', serif; font-size:16px; font-weight:500; }
+.papers-head-meta { font-size:11px; color:var(--navy-3); letter-spacing:0.06em; }
+.paper-row { display:grid; grid-template-columns:auto 1fr auto; gap:16px; padding:16px 24px; border-bottom:1px solid var(--border); align-items:center; }
+.paper-row:last-child { border-bottom:none; }
+.paper-row.missed { background:#FBEBE7; }
+.paper-row.next { background:#FAF7F2; }
+.paper-date { width:70px; text-align:center; }
+.paper-date-day { font-family:'Fraunces', serif; font-size:11px; color:var(--navy-3); letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.paper-date-num { font-family:'Fraunces', serif; font-size:24px; font-weight:500; line-height:1; }
+.paper-date-mo { font-size:10px; color:var(--navy-3); letter-spacing:0.08em; text-transform:uppercase; font-weight:600; margin-top:2px; }
+.paper-info { }
+.paper-name { font-family:'Fraunces', serif; font-size:15px; font-weight:500; margin-bottom:3px; }
+.paper-time { font-size:12px; color:var(--navy-3); }
+.paper-status { }
+.ps-pill { display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:5px 11px; border-radius:100px; font-weight:600; letter-spacing:0.04em; }
+.ps-pill.missed { background:var(--terra-bg); color:var(--terra); }
+.ps-pill.sat { background:var(--green-bg); color:var(--green); }
+.ps-pill.next { background:var(--gold); color:var(--navy); }
+.ps-pill.upcoming { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+
+/* SC-12 process card */
+.process-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 28px; }
+.proc-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.proc-title { font-family:'Fraunces', serif; font-size:18px; font-weight:500; }
+.proc-ref { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-3); }
+.proc-ref b { color:var(--navy); }
+.proc-steps { display:flex; gap:0; margin-bottom:20px; position:relative; }
+.proc-step { flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; position:relative; padding:0 8px; }
+.proc-step::before { content:""; position:absolute; top:14px; left:-50%; right:50%; height:2px; background:var(--border); z-index:0; }
+.proc-step:first-child::before { display:none; }
+.proc-step.done::before { background:var(--green); }
+.proc-step.active::before { background:linear-gradient(to right, var(--green) 0%, var(--gold) 100%); }
+.proc-dot { width:30px; height:30px; border-radius:50%; background:var(--bg); border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:12px; font-weight:600; color:var(--navy-3); position:relative; z-index:1; }
+.proc-step.done .proc-dot { background:var(--green); border-color:var(--green); color:var(--surface); }
+.proc-step.active .proc-dot { background:var(--gold); border-color:var(--gold); color:var(--navy); animation:pulse-gold 2s infinite; }
+@keyframes pulse-gold { 0% { box-shadow:0 0 0 0 rgba(200,151,91,0.5); } 70% { box-shadow:0 0 0 8px rgba(200,151,91,0); } 100% { box-shadow:0 0 0 0 rgba(200,151,91,0); } }
+.proc-label { font-size:11px; font-weight:600; text-align:center; line-height:1.3; }
+.proc-step.pending .proc-label { color:var(--navy-3); }
+.proc-meta { font-size:10px; color:var(--navy-3); text-align:center; }
+.proc-explain { background:var(--bg); border-left:3px solid var(--gold); padding:14px 18px; border-radius:6px; font-size:13px; color:var(--navy-2); line-height:1.6; }
+.proc-explain b { color:var(--navy); }
+.proc-explain ul { margin-top:8px; }
+.proc-explain li { padding:4px 0; padding-left:14px; position:relative; }
+.proc-explain li::before { content:"·"; color:var(--gold); position:absolute; left:4px; top:0; font-weight:700; }
+
+/* Comms thread (parent's view) */
+.thread { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.thread-head { padding:18px 24px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.thread-title { font-family:'Fraunces', serif; font-size:16px; font-weight:500; }
+.thread-meta { font-size:11px; color:var(--navy-3); }
+.thread-msg { padding:16px 24px; border-bottom:1px solid var(--border); display:grid; grid-template-columns:64px 1fr; gap:16px; }
+.thread-msg:last-child { border-bottom:none; }
+.thread-msg.system { background:var(--bg); }
+.tm-time { }
+.tm-time-num { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.tm-time-channel { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-top:2px; }
+.tm-body { }
+.tm-from { font-size:11px; color:var(--navy-3); margin-bottom:4px; }
+.tm-from b { color:var(--navy); font-weight:600; }
+.tm-content { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.tm-content b { color:var(--navy); }
+.tm-status { font-size:10px; color:var(--green); letter-spacing:0.06em; font-weight:600; margin-top:6px; text-transform:uppercase; }
+.tm-status.scheduled { color:var(--gold); }
+
+/* Readiness statement summary (signed) */
+.readiness-card { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--bg) 100%); border:1px solid var(--gold-soft); border-radius:12px; padding:22px 26px; }
+.rc-head { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+.rc-icon { width:42px; height:42px; border-radius:10px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:18px; font-weight:600; }
+.rc-title { font-family:'Fraunces', serif; font-size:16px; font-weight:500; line-height:1.2; }
+.rc-subtitle { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.rc-body { font-size:13px; color:var(--navy-2); line-height:1.6; margin-bottom:14px; padding-top:14px; border-top:1px solid var(--gold-soft); }
+.rc-body b { color:var(--navy); }
+.rc-sig-row { display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; padding-top:14px; border-top:1px solid var(--gold-soft); }
+.rc-sig { font-size:11px; color:var(--navy-3); }
+.rc-sig b { color:var(--navy); }
+.rc-sig-link { font-size:12px; color:var(--gold); font-weight:700; }
+
+/* Information cards */
+.info-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.info-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 24px; }
+.info-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.info-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.info-icon.hosp { background:var(--terra-bg); color:var(--terra); }
+.info-icon.school { background:var(--gold-bg); color:var(--gold); }
+.info-icon.nhis { background:var(--green-bg); color:var(--green); }
+.info-icon.waec { background:#E5EAF2; color:var(--navy); }
+.info-title { font-family:'Fraunces', serif; font-size:15px; font-weight:500; }
+.info-body { font-size:12px; color:var(--navy-2); line-height:1.7; }
+.info-body b { color:var(--navy); }
+.info-body .row { display:flex; justify-content:space-between; padding:4px 0; }
+.info-body a { color:var(--gold); font-weight:600; }
+
+/* FAQ */
+.faq { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 28px; }
+.faq-title { font-family:'Fraunces', serif; font-size:16px; font-weight:500; margin-bottom:18px; }
+.faq-item { padding:14px 0; border-bottom:1px solid var(--border); }
+.faq-item:last-child { border-bottom:none; padding-bottom:0; }
+.faq-q { font-weight:600; font-size:13px; color:var(--navy); margin-bottom:6px; }
+.faq-q::before { content:"Q. "; color:var(--gold); font-family:'Fraunces', serif; font-style:italic; font-weight:500; }
+.faq-a { font-size:13px; color:var(--navy-2); line-height:1.6; padding-left:18px; }
+.faq-a::before { content:"A. "; color:var(--gold); font-family:'Fraunces', serif; font-style:italic; font-weight:500; margin-left:-18px; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">MVP2 · WASSCE-readiness · surface 5 of 5</div>
+<div class="eyebrow">Section 5 of 5 · The parent tracker</div>
+<h1>Parent <em>tracker</em>.<br>One mother, one daughter, Wednesday 14:45.</h1>
+<div class="gold-rule"></div>
+<p>The four staff surfaces have all been built. The fifth view is the one the parent opens. A. Aidoo lives in Tarkwa, works night shifts at the GoldFields mine, and is sitting at Ward B bed 7 by her daughter's bedside. She has had four phone calls and two SMS today. She opens Omnischools on her phone (rendered here in a desktop frame) to see the timeline of her daughter's WASSCE, the make-up process in motion, and the readiness statement she signed on phone-OTP back in March. Same design system; simpler chrome; the parent gets no sidebar, no dashboards, and no benchmark data — just her child.</p>
+</div>
+
+<!-- ============================ SECTION 1 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">Live status · day 2 of WASSCE</div>
+<div class="section-meta">A. Aidoo · mother · phone +233 24 487 6612</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">parent.omnischools.gh/asankrangwa/aidoo-yaa/wassce</div></div>
+
+<div class="parent-shell">
+<div class="parent-header">
+<div class="ph-brand">
+<div class="logo-mini">A</div>
+<div>
+<div class="ph-name">Asankrangwa SHS</div>
+<div class="ph-name-meta">Parent portal · Yaa Aidoo</div>
+</div>
+</div>
+<div class="ph-user">
+<div>
+<div style="font-size:12px; color:var(--navy); font-weight:600; text-align:right;">A. Aidoo</div>
+<div style="font-size:10px; color:var(--navy-3); text-align:right;">Mother</div>
+</div>
+<div class="ph-user-avatar">AA</div>
+</div>
+</div>
+
+<div class="parent-nav">
+<div class="pn-item active">WASSCE<span class="dot"></span></div>
+<div class="pn-item">Sickbay<span class="dot"></span></div>
+<div class="pn-item">Communications</div>
+<div class="pn-item">Billing</div>
+<div class="pn-item">Boarding</div>
+<div class="pn-item">School calendar</div>
+</div>
+
+<div class="parent-body">
+
+<div class="status-hero">
+<div class="sh-eyebrow-row">
+<div class="sh-eyebrow">Live · Wednesday 14 May · 14:45 GMT</div>
+<div class="sh-live"><div class="sh-live-dot"></div>Active case</div>
+</div>
+<div class="sh-headline">Yaa is at <em>Ward B bed 7</em>. Her three English papers have been formally <em>postponed</em> by WAEC.</div>
+<div class="sh-body">
+We received your SMS confirmation at 11:32 from WAEC. The special-consideration form (SC-12) for Yaa was filed this morning at 11:00 and acknowledged by WAEC's Western Region office at 11:32. The three English papers she missed — Oral English (yesterday), English Language 1 and 2 (this morning) — will be rescheduled at the regional WAEC office in Sefwi-Wiawso. We do not know the date yet; WAEC will advise once Yaa's clinician confirms fitness to sit. Her next paper at our centre is Mathematics on Wednesday 3 June. The matron and clinician will assess fitness on Monday 1 June.
+</div>
+<div class="sh-grid">
+<div class="sh-cell">
+<div class="sh-cell-label">Yaa's location</div>
+<div class="sh-cell-value">Ward B · bed 7</div>
+<div class="sh-cell-meta">Asankrangwa Govt Hospital</div>
+</div>
+<div class="sh-cell">
+<div class="sh-cell-label">Treatment</div>
+<div class="sh-cell-value">Responding well</div>
+<div class="sh-cell-meta">IV artesunate · 14:30 ward round</div>
+</div>
+<div class="sh-cell">
+<div class="sh-cell-label">Next paper</div>
+<div class="sh-cell-value">Math · Wed 3 Jun</div>
+<div class="sh-cell-meta">19 days · fit-to-sit pending</div>
+</div>
+</div>
+<div class="sh-actions">
+<div class="sh-btn">Call Matron Bediako</div>
+<div class="sh-btn-ghost">Call Head of Academics</div>
+<div class="sh-btn-ghost">Hospital ward info</div>
+</div>
+</div>
+
+<div class="child-card">
+<div class="cc-avatar">YA</div>
+<div>
+<div class="cc-name">Yaa <em>Aidoo</em></div>
+<div class="cc-meta">
+<div><b>F3</b> · Slessor House</div>
+<div><span class="cc-pill">Science programme</span></div>
+<div><b>Form Master</b> · Mr S. Asiedu</div>
+<div><b>Index</b> · 0184-0817</div>
+</div>
+<div style="font-size:11px; color:var(--navy-3);">Born 12 August 2008 · NHIS 9842-1276-5503 (active)</div>
+</div>
+<div>
+<div class="cc-target-label">University target</div>
+<div class="cc-target-value">KNUST Biochemistry</div>
+<div class="cc-target-meta">Projected aggregate 10 · cut-off 11 · one place inside</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Why the parent view is simpler</h4>
+<ul>
+<li><b>One child, one page.</b> No dashboards, no benchmarks. Just her daughter's status.</li>
+<li><b>Hero is the live moment.</b> WASSCE is live, the case is live, the page leads with it.</li>
+<li><b>Two-click actions only.</b> Call matron · call HoA · view hospital. No fillable forms; everything heavy is done by school.</li>
+<li><b>No "data". The page surfaces what the parent has been told, in order.</b> Nothing newer than the last comms timestamp.</li>
+<li><b>Mobile-first reading order.</b> The desktop frame is for this presentation; on phone, the order is hero → child card → schedule → SC-12 process → thread.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 2 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">WASSCE schedule · what Yaa has done, missed, and has left</div>
+<div class="section-meta">9 papers · 1 sat · 3 missed (medical · being rescheduled) · 5 upcoming</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">parent.omnischools.gh/asankrangwa/aidoo-yaa/wassce#schedule</div></div>
+
+<div class="parent-shell">
+<div class="parent-header">
+<div class="ph-brand">
+<div class="logo-mini">A</div>
+<div>
+<div class="ph-name">Asankrangwa SHS</div>
+<div class="ph-name-meta">Parent portal · Yaa Aidoo</div>
+</div>
+</div>
+<div class="ph-user">
+<div><div style="font-size:12px; color:var(--navy); font-weight:600; text-align:right;">A. Aidoo</div><div style="font-size:10px; color:var(--navy-3); text-align:right;">Mother</div></div>
+<div class="ph-user-avatar">AA</div>
+</div>
+</div>
+
+<div class="parent-nav">
+<div class="pn-item active">WASSCE<span class="dot"></span></div>
+<div class="pn-item">Sickbay<span class="dot"></span></div>
+<div class="pn-item">Communications</div>
+<div class="pn-item">Billing</div>
+<div class="pn-item">Boarding</div>
+<div class="pn-item">School calendar</div>
+</div>
+
+<div class="parent-body">
+
+<div class="papers-list">
+<div class="papers-head">
+<h3>Paper-by-paper schedule</h3>
+<div class="papers-head-meta">Centre · Asankrangwa SHS · SU-0184</div>
+</div>
+
+<div class="paper-row">
+<div class="paper-date">
+<div class="paper-date-day">Mon</div>
+<div class="paper-date-num">12</div>
+<div class="paper-date-mo">May</div>
+</div>
+<div class="paper-info">
+<div class="paper-name">Social Studies · Paper 1</div>
+<div class="paper-time">08:00 · 1 hour · objective</div>
+</div>
+<div class="paper-status"><span class="ps-pill sat">Sat · attended</span></div>
+</div>
+
+<div class="paper-row missed">
+<div class="paper-date">
+<div class="paper-date-day">Tue</div>
+<div class="paper-date-num">13</div>
+<div class="paper-date-mo">May</div>
+</div>
+<div class="paper-info">
+<div class="paper-name">English Language · Oral</div>
+<div class="paper-time">14:00 · 45 minutes · listening test</div>
+</div>
+<div class="paper-status"><span class="ps-pill missed">Postponed · SC-12 filed</span></div>
+</div>
+
+<div class="paper-row missed">
+<div class="paper-date">
+<div class="paper-date-day">Wed</div>
+<div class="paper-date-num">14</div>
+<div class="paper-date-mo">May</div>
+</div>
+<div class="paper-info">
+<div class="paper-name">English Language · Paper 1</div>
+<div class="paper-time">08:00 · 1 hour · objective</div>
+</div>
+<div class="paper-status"><span class="ps-pill missed">Postponed · SC-12 filed</span></div>
+</div>
+
+<div class="paper-row missed">
+<div class="paper-date">
+<div class="paper-date-day">Wed</div>
+<div class="paper-date-num">14</div>
+<div class="paper-date-mo">May</div>
+</div>
+<div class="paper-info">
+<div class="paper-name">English Language · Paper 2</div>
+<div class="paper-time">10:30 · 1 hr 30 min · essay</div>
+</div>
+<div class="paper-status"><span class="ps-pill missed">Postponed · SC-12 filed</span></div>
+</div>
+
+<div class="paper-row">
+<div class="paper-date">
+<div class="paper-date-day">Tue</div>
+<div class="paper-date-num">26</div>
+<div class="paper-date-mo">May</div>
+</div>
+<div class="paper-info">
+<div class="paper-name">Integrated Science · Paper 1+2</div>
+<div class="paper-time">08:00 · 2 hr 30 min · combined</div>
+</div>
+<div class="paper-status"><span class="ps-pill upcoming">In 11 days</span></div>
+</div>
+
+<div class="paper-row next">
+<div class="paper-date">
+<div class="paper-date-day">Wed</div>
+<div class="paper-date-num">3</div>
+<div class="paper-date-mo">Jun</div>
+</div>
+<div class="paper-info">
+<div class="paper-name">Mathematics (Core) · Paper 1+2</div>
+<div class="paper-time">08:00 + 11:00 · combined sittings · 4 hours</div>
+</div>
+<div class="paper-status"><span class="ps-pill next">Next paper · 19 days</span></div>
+</div>
+
+<div class="paper-row">
+<div class="paper-date">
+<div class="paper-date-day">Mon</div>
+<div class="paper-date-num">8</div>
+<div class="paper-date-mo">Jun</div>
+</div>
+<div class="paper-info">
+<div class="paper-name">Chemistry · Paper 1+2</div>
+<div class="paper-time">08:00 · 3 hours · theory</div>
+</div>
+<div class="paper-status"><span class="ps-pill upcoming">In 24 days</span></div>
+</div>
+
+<div class="paper-row">
+<div class="paper-date">
+<div class="paper-date-day">Tue</div>
+<div class="paper-date-num">9</div>
+<div class="paper-date-mo">Jun</div>
+</div>
+<div class="paper-info">
+<div class="paper-name">Physics · Paper 1+2</div>
+<div class="paper-time">11:00 · 3 hours · theory</div>
+</div>
+<div class="paper-status"><span class="ps-pill upcoming">In 25 days</span></div>
+</div>
+
+<div class="paper-row">
+<div class="paper-date">
+<div class="paper-date-day">Thu</div>
+<div class="paper-date-num">11</div>
+<div class="paper-date-mo">Jun</div>
+</div>
+<div class="paper-info">
+<div class="paper-name">Biology · Paper 1+2</div>
+<div class="paper-time">08:00 · 3 hours · theory</div>
+</div>
+<div class="paper-status"><span class="ps-pill upcoming">In 27 days</span></div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Parent schedule rules</h4>
+<ul>
+<li><b>All nine papers shown together.</b> Sat · postponed · upcoming · all in one view, in calendar order.</li>
+<li><b>"Postponed", not "missed".</b> The school owns the language. Three papers are being rescheduled by WAEC; they have not been failed.</li>
+<li><b>Next paper highlighted.</b> Gold accent on the paper coming next at the school centre.</li>
+<li><b>Times in the parent's local zone.</b> Same as WAEC's published times; no zone shift.</li>
+<li><b>Centre name visible.</b> The school's WAEC centre code (SU-0184) is at the top of the list — useful for hospital discharge planning.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 3 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">WAEC special-consideration process · what happens next</div>
+<div class="section-meta">Form SC-12 · ref SC-12-184-2026-0044 · 5 steps · 2 done</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">parent.omnischools.gh/asankrangwa/aidoo-yaa/wassce#sc12</div></div>
+
+<div class="parent-shell">
+<div class="parent-header">
+<div class="ph-brand">
+<div class="logo-mini">A</div>
+<div>
+<div class="ph-name">Asankrangwa SHS</div>
+<div class="ph-name-meta">Parent portal · Yaa Aidoo</div>
+</div>
+</div>
+<div class="ph-user">
+<div><div style="font-size:12px; color:var(--navy); font-weight:600; text-align:right;">A. Aidoo</div><div style="font-size:10px; color:var(--navy-3); text-align:right;">Mother</div></div>
+<div class="ph-user-avatar">AA</div>
+</div>
+</div>
+
+<div class="parent-nav">
+<div class="pn-item active">WASSCE<span class="dot"></span></div>
+<div class="pn-item">Sickbay<span class="dot"></span></div>
+<div class="pn-item">Communications</div>
+<div class="pn-item">Billing</div>
+<div class="pn-item">Boarding</div>
+<div class="pn-item">School calendar</div>
+</div>
+
+<div class="parent-body">
+
+<div class="process-card">
+<div class="proc-head">
+<div>
+<div class="proc-title">Make-up sitting · the 5 steps</div>
+<div style="font-size:11px; color:var(--navy-3); margin-top:2px;">School is handling steps 1–4. Step 5 is between you, Yaa, and the clinician.</div>
+</div>
+<div class="proc-ref">WAEC ref · <b>SC-12-184-2026-0044</b></div>
+</div>
+
+<div class="proc-steps">
+
+<div class="proc-step done">
+<div class="proc-dot">✓</div>
+<div class="proc-label">Filed</div>
+<div class="proc-meta">Wed · 11:00</div>
+</div>
+
+<div class="proc-step done">
+<div class="proc-dot">✓</div>
+<div class="proc-label">Acknowledged<br>by WAEC</div>
+<div class="proc-meta">Wed · 11:32</div>
+</div>
+
+<div class="proc-step active">
+<div class="proc-dot">3</div>
+<div class="proc-label">Awaiting<br>fit-to-sit</div>
+<div class="proc-meta">Mon 1 Jun</div>
+</div>
+
+<div class="proc-step pending">
+<div class="proc-dot">4</div>
+<div class="proc-label">Date<br>scheduled</div>
+<div class="proc-meta">By WAEC</div>
+</div>
+
+<div class="proc-step pending">
+<div class="proc-dot">5</div>
+<div class="proc-label">Yaa sits<br>papers</div>
+<div class="proc-meta">Sefwi-Wiawso</div>
+</div>
+
+</div>
+
+<div class="proc-explain">
+<b>What the school is doing for you:</b>
+<ul>
+<li>Mrs Owusu-Ansah (Head of Academics) filed the SC-12 form this morning with WAEC's Western Region office in Sefwi-Wiawso, with copies of Yaa's hospital admission slip and the clinician's letter.</li>
+<li>WAEC acknowledged the filing at 11:32 — this means they have the paperwork and Yaa is officially registered as a candidate with special consideration.</li>
+<li>The matron, Mrs Bediako, will assess Yaa with the hospital clinician on Mon 1 June. If they confirm she is fit to sit, the school informs WAEC the same day.</li>
+<li>WAEC then sets a make-up sitting date — typically within 10 working days of fit-to-sit. The make-up papers are taken at the WAEC Regional office in Sefwi-Wiawso, not here at the school.</li>
+<li>The school will arrange transport to Sefwi-Wiawso and a teacher will accompany Yaa on the day. You will be informed before, during, and after.</li>
+</ul>
+</div>
+
+<div style="margin-top:14px; display:flex; gap:10px;">
+<div style="background:var(--navy); color:var(--bg); padding:10px 18px; font-size:12px; font-weight:600; border-radius:7px;">View SC-12 form</div>
+<div style="background:var(--surface); color:var(--navy); border:1px solid var(--border-2); padding:10px 18px; font-size:12px; font-weight:600; border-radius:7px;">Hospital clinician contact</div>
+<div style="background:var(--surface); color:var(--navy); border:1px solid var(--border-2); padding:10px 18px; font-size:12px; font-weight:600; border-radius:7px;">Call Mrs Owusu-Ansah</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Process design</h4>
+<ul>
+<li><b>Five steps; not more.</b> If the process feels longer than this, the parent is being given too much information.</li>
+<li><b>School owns 1–4.</b> The school files, follows up, schedules, and accompanies. The parent and clinician own step 5 (fit-to-sit confirmation).</li>
+<li><b>Active step is animated.</b> The current step pulses; done steps are checked; pending steps are quiet.</li>
+<li><b>Reference number on the card.</b> WAEC's ref number is what the parent quotes when asking about the case.</li>
+<li><b>Make-up is at WAEC, not at school.</b> Stated explicitly so the parent doesn't expect Yaa to sit again at the school.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 4 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">Today's communications · ordered, with you in the loop</div>
+<div class="section-meta">6 events · 4 phone calls · 2 SMS · 1 scheduled</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">parent.omnischools.gh/asankrangwa/aidoo-yaa/wassce#thread</div></div>
+
+<div class="parent-shell">
+<div class="parent-header">
+<div class="ph-brand">
+<div class="logo-mini">A</div>
+<div>
+<div class="ph-name">Asankrangwa SHS</div>
+<div class="ph-name-meta">Parent portal · Yaa Aidoo</div>
+</div>
+</div>
+<div class="ph-user">
+<div><div style="font-size:12px; color:var(--navy); font-weight:600; text-align:right;">A. Aidoo</div><div style="font-size:10px; color:var(--navy-3); text-align:right;">Mother</div></div>
+<div class="ph-user-avatar">AA</div>
+</div>
+</div>
+
+<div class="parent-nav">
+<div class="pn-item active">WASSCE<span class="dot"></span></div>
+<div class="pn-item">Sickbay<span class="dot"></span></div>
+<div class="pn-item">Communications</div>
+<div class="pn-item">Billing</div>
+<div class="pn-item">Boarding</div>
+<div class="pn-item">School calendar</div>
+</div>
+
+<div class="parent-body">
+
+<div class="thread">
+<div class="thread-head">
+<div class="thread-title">Wednesday 14 May · day 2 of WASSCE</div>
+<div class="thread-meta">All times GMT · school contact records</div>
+</div>
+
+<div class="thread-msg system">
+<div class="tm-time">
+<div class="tm-time-num">06:52</div>
+<div class="tm-time-channel">Phone</div>
+</div>
+<div class="tm-body">
+<div class="tm-from"><b>Matron Mrs G. Bediako</b> · called you</div>
+<div class="tm-content">Yaa admitted to Asankrangwa Govt Hospital, Ward B bed 7, at 06:45 with severe malaria. NHIS card in use. Mrs Bediako accompanied her from sickbay to A&amp;E. Clinician has declared her unfit to sit today's papers. You said you were leaving Tarkwa immediately and would be at the hospital by 11:00.</div>
+<div class="tm-status">Delivered · 4-minute call</div>
+</div>
+</div>
+
+<div class="thread-msg">
+<div class="tm-time">
+<div class="tm-time-num">07:14</div>
+<div class="tm-time-channel">SMS</div>
+</div>
+<div class="tm-body">
+<div class="tm-from"><b>Omnischools system</b> · automated</div>
+<div class="tm-content">"Confirmation: Yaa is on Ward B bed 7, Asankrangwa Govt Hospital. Oral English today and English Lang 1 + 2 tomorrow morning will be missed. WAEC SC-12 form being filed at 11:00 by Mrs Owusu-Ansah. Matron Bediako with Yaa now."</div>
+<div class="tm-status">Delivered</div>
+</div>
+</div>
+
+<div class="thread-msg system">
+<div class="tm-time">
+<div class="tm-time-num">11:00</div>
+<div class="tm-time-channel">Phone</div>
+</div>
+<div class="tm-body">
+<div class="tm-from"><b>Mrs C. Owusu-Ansah</b> (Head of Academics) · called you</div>
+<div class="tm-content">SC-12 special-consideration form filed with WAEC Regional. Hospital admission slip and clinician's letter attached. Mrs Owusu-Ansah explained the 5-step process for make-up sitting. You confirmed you had arrived at the hospital at 10:48 and were with Yaa.</div>
+<div class="tm-status">Delivered · 9-minute call</div>
+</div>
+</div>
+
+<div class="thread-msg">
+<div class="tm-time">
+<div class="tm-time-num">11:32</div>
+<div class="tm-time-channel">SMS</div>
+</div>
+<div class="tm-body">
+<div class="tm-from"><b>Omnischools system</b> · automated · from WAEC</div>
+<div class="tm-content">"WAEC has acknowledged the SC-12 special-consideration form for candidate 0184-0817 (Aidoo, Yaa). Reference number SC-12-184-2026-0044. Make-up sitting will be scheduled once a fit-to-sit confirmation is received from the candidate's clinician."</div>
+<div class="tm-status">Delivered</div>
+</div>
+</div>
+
+<div class="thread-msg system">
+<div class="tm-time">
+<div class="tm-time-num">14:30</div>
+<div class="tm-time-channel">Phone</div>
+</div>
+<div class="tm-body">
+<div class="tm-from"><b>Matron Mrs G. Bediako</b> · called you</div>
+<div class="tm-content">Hospital ward round update. Yaa is responding to IV artesunate, no fever for the past four hours, awake and comfortable. NHIS card itemised for the hospital bill — IV medication and ward bed covered; meals (GHS 24 line) not covered. Next ward round at 21:00.</div>
+<div class="tm-status">Delivered · 6-minute call · you were at bedside</div>
+</div>
+</div>
+
+<div class="thread-msg">
+<div class="tm-time">
+<div class="tm-time-num">21:00</div>
+<div class="tm-time-channel">SMS</div>
+</div>
+<div class="tm-body">
+<div class="tm-from"><b>Omnischools system</b> · scheduled · evening ward summary</div>
+<div class="tm-content">Evening ward round summary will be sent automatically once the ward round is complete and the matron has confirmed it. You will receive an SMS, and a more detailed update will appear in your communications log.</div>
+<div class="tm-status scheduled">Scheduled · 21:00 tonight</div>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The thread design</h4>
+<ul>
+<li><b>Chronological, top-down.</b> Earliest event at the top; today's last scheduled event at the bottom.</li>
+<li><b>"Called you" not "called the parent".</b> Second-person tone; the parent is reading her own thread, not a record about a third party.</li>
+<li><b>Each event shows who, what, channel, status.</b> The parent never has to ask "did you call me?" — the answer is in the log.</li>
+<li><b>SMS verbatim quoted in quotes.</b> Phone-call notes are summarised, not verbatim.</li>
+<li><b>Scheduled events are visible.</b> The parent knows what is coming next; they are not surprised by the 21:00 SMS.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 5 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">05</div>
+<div class="section-title display">Readiness statement · what you signed in March</div>
+<div class="section-meta">Signed 28 Mar 2026 · phone-OTP · projected aggregate 10 · KNUST Biochem</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">parent.omnischools.gh/asankrangwa/aidoo-yaa/wassce#readiness</div></div>
+
+<div class="parent-shell">
+<div class="parent-header">
+<div class="ph-brand">
+<div class="logo-mini">A</div>
+<div>
+<div class="ph-name">Asankrangwa SHS</div>
+<div class="ph-name-meta">Parent portal · Yaa Aidoo</div>
+</div>
+</div>
+<div class="ph-user">
+<div><div style="font-size:12px; color:var(--navy); font-weight:600; text-align:right;">A. Aidoo</div><div style="font-size:10px; color:var(--navy-3); text-align:right;">Mother</div></div>
+<div class="ph-user-avatar">AA</div>
+</div>
+</div>
+
+<div class="parent-nav">
+<div class="pn-item active">WASSCE<span class="dot"></span></div>
+<div class="pn-item">Sickbay<span class="dot"></span></div>
+<div class="pn-item">Communications</div>
+<div class="pn-item">Billing</div>
+<div class="pn-item">Boarding</div>
+<div class="pn-item">School calendar</div>
+</div>
+
+<div class="parent-body">
+
+<div class="readiness-card" style="margin-bottom:20px;">
+<div class="rc-head">
+<div class="rc-icon">✓</div>
+<div>
+<div class="rc-title">Mock 2 readiness statement · you signed on Saturday 28 March 2026</div>
+<div class="rc-subtitle">After the March 2026 mock cycle · before the WASSCE in May</div>
+</div>
+</div>
+<div class="rc-body">
+You acknowledged Yaa's projected aggregate of <b>10</b> based on her Mock 2 results. You agreed with <b>KNUST Biochemistry</b> as her primary target (cut-off 11 · one place inside) and three supporting choices: Legon Biochemistry (comfortable), KNUST Pharmacy (stretch), UCC Biochemistry (safety). You raised one concern: <i>"commute distance to Kumasi is far from Tarkwa."</i> Mrs Owusu-Ansah noted this on the form and we discussed UCC Biochemistry as a closer fallback.
+</div>
+<div class="rc-sig-row">
+<div class="rc-sig">Phone-OTP signature · <b>+233 24 487 6612</b> · 28 Mar 2026 · 14:22 GMT</div>
+<a href="#" class="rc-sig-link">View signed PDF →</a>
+</div>
+</div>
+
+<div class="info-grid" style="margin-bottom:20px;">
+
+<div class="info-card">
+<div class="info-head">
+<div class="info-icon hosp">⚕</div>
+<div class="info-title">Hospital details</div>
+</div>
+<div class="info-body">
+<div class="row"><span>Hospital</span><b>Asankrangwa Govt Hospital</b></div>
+<div class="row"><span>Ward</span><b>Ward B · bed 7</b></div>
+<div class="row"><span>Admitted</span><b>Tue 13 May · 06:45</b></div>
+<div class="row"><span>Clinician</span><b>Dr E. Nyarko</b></div>
+<div class="row"><span>Treatment</span><b>IV artesunate</b></div>
+<div class="row"><span>Ward round</span><b>14:30 today · 21:00 evening</b></div>
+<div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);"><a href="#">Hospital map &amp; directions →</a></div>
+</div>
+</div>
+
+<div class="info-card">
+<div class="info-head">
+<div class="info-icon nhis">⊕</div>
+<div class="info-title">NHIS coverage</div>
+</div>
+<div class="info-body">
+<div class="row"><span>Card number</span><b>9842-1276-5503</b></div>
+<div class="row"><span>Status</span><b>Active · to Mar 2027</b></div>
+<div class="row"><span>Bed</span><b>Covered</b></div>
+<div class="row"><span>IV medication</span><b>Covered</b></div>
+<div class="row"><span>Diagnostic tests</span><b>Covered</b></div>
+<div class="row"><span>Meals</span><b>Not covered · GHS 24/day</b></div>
+<div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">No out-of-pocket payment for Yaa's care other than meals.</div>
+</div>
+</div>
+
+<div class="info-card">
+<div class="info-head">
+<div class="info-icon school">A</div>
+<div class="info-title">Asankrangwa SHS contacts</div>
+</div>
+<div class="info-body">
+<div class="row"><span>Matron</span><b>Mrs G. Bediako</b></div>
+<div class="row"><span>Form Master</span><b>Mr S. Asiedu</b></div>
+<div class="row"><span>Head of Academics</span><b>Mrs C. Owusu-Ansah</b></div>
+<div class="row"><span>Headmaster</span><b>Dr K. Asare-Bediako</b></div>
+<div class="row"><span>Centre code</span><b>SU-0184</b></div>
+<div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);"><a href="#">Open contact directory →</a></div>
+</div>
+</div>
+
+<div class="info-card">
+<div class="info-head">
+<div class="info-icon waec">W</div>
+<div class="info-title">WAEC details</div>
+</div>
+<div class="info-body">
+<div class="row"><span>Yaa's index</span><b>0184-0817</b></div>
+<div class="row"><span>Centre</span><b>SU-0184 (here)</b></div>
+<div class="row"><span>Make-up centre</span><b>WAEC Regional · Sefwi-Wiawso</b></div>
+<div class="row"><span>SC-12 reference</span><b>SC-12-184-2026-0044</b></div>
+<div class="row"><span>Programme</span><b>Science · 8 subjects</b></div>
+<div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);"><a href="#">WAEC Western Region contact →</a></div>
+</div>
+</div>
+
+</div>
+
+<!-- FAQ -->
+<div class="faq">
+<div class="faq-title">Questions you might have</div>
+
+<div class="faq-item">
+<div class="faq-q">Will Yaa fail because she missed the English papers?</div>
+<div class="faq-a">No. The SC-12 special-consideration process is exactly for this. WAEC will reschedule the three English papers within the WASSCE window. Yaa's aggregate calculation will include the English grades from the make-up sitting, not zeros.</div>
+</div>
+
+<div class="faq-item">
+<div class="faq-q">When will we know the make-up sitting date?</div>
+<div class="faq-a">After the fit-to-sit confirmation on Mon 1 Jun. WAEC then schedules the date and notifies the school and you via SMS. Typically 5–10 working days after the confirmation.</div>
+</div>
+
+<div class="faq-item">
+<div class="faq-q">Will Yaa be able to sit Mathematics on Wed 3 Jun?</div>
+<div class="faq-a">That depends on the matron and clinician's assessment on Mon 1 Jun. If Yaa is well enough, she sits at the school centre as scheduled. If she is not, the matron will file an additional SC-12 for Mathematics. Mrs Owusu-Ansah will update you on Mon 1 Jun by phone.</div>
+</div>
+
+<div class="faq-item">
+<div class="faq-q">Is the school open today and tomorrow?</div>
+<div class="faq-a">Yes. The school is fully operational and Yaa's classmates are sitting their papers. You do not need to come to the school for anything; everything that involves you happens by phone or via this portal.</div>
+</div>
+
+<div class="faq-item">
+<div class="faq-q">What does the projected aggregate of 10 mean now?</div>
+<div class="faq-a">It is the same projection from Mock 2 in March. We do not adjust it for the missed papers — we wait for the make-up sitting to score and update with real data. If Yaa scores the same B3 in English at the make-up that she did in Mock 2, the aggregate of 10 holds.</div>
+</div>
+
+<div class="faq-item">
+<div class="faq-q">How will I know about the make-up papers when they happen?</div>
+<div class="faq-a">You will get a phone call from Mrs Owusu-Ansah at least 48 hours before, and a follow-up SMS confirming the date, time, and transport plan. On the day, the school will collect Yaa, accompany her to Sefwi-Wiawso, and bring her back. You will be informed after each step.</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Why this view ends here</h4>
+<ul>
+<li><b>Readiness statement is the receipt.</b> Parent agreed in March; the page surfaces what she agreed to and the signed PDF.</li>
+<li><b>Four info cards · the practical context.</b> Hospital, NHIS, school contacts, WAEC details. Nothing the parent has to dig for.</li>
+<li><b>FAQ is the longest section by intent.</b> Most of what a parent worries about can be answered without a phone call.</li>
+<li><b>No benchmarks, no cohort data.</b> The parent's view never compares Yaa to others. That is the school's analytical work.</li>
+<li><b>End the parent view with reassurance, not action.</b> The closing FAQ is what we want them to read last.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

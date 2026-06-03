@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Void & refund flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+/* Concept distinction box */
+.concept-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 32px;
+  margin-bottom: 56px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+.concept-cell {
+  position: relative;
+}
+.concept-cell .label {
+  font-size: 9px; letter-spacing: 0.16em;
+  text-transform: uppercase; font-weight: 700;
+  margin-bottom: 8px;
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 100px;
+}
+.concept-cell.void .label { background: var(--terra-bg); color: var(--terra); }
+.concept-cell.refund .label { background: var(--gold-bg); color: var(--gold); }
+.concept-cell h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  margin-bottom: 6px;
+}
+.concept-cell h3 em { font-style: italic; color: var(--gold); }
+.concept-cell .lede {
+  font-size: 13px;
+  color: var(--navy-3);
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+.concept-cell .examples {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.concept-cell .examples li {
+  padding: 5px 0 5px 16px;
+  position: relative;
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.45;
+}
+.concept-cell .examples li::before {
+  content: "·";
+  position: absolute; left: 0;
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
+}
+.concept-cell .examples li b { color: var(--navy); font-weight: 600; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+/* ============ APP SHELL ============ */
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+  position: relative;
+}
+.app-shell.has-drawer::before {
+  content: "";
+  position: absolute;
+  inset: 0; left: 220px;
+  background: rgba(26,43,71,0.32);
+  z-index: 5;
+  pointer-events: none;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head .crumb a { color: var(--gold); text-decoration: none; }
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.danger {
+  background: var(--terra); color: var(--bg); border-color: var(--terra);
+}
+.btn.danger-outline {
+  background: transparent; color: var(--terra); border-color: var(--terra-bg);
+}
+.btn.subtle { background: transparent; border-color: transparent; color: var(--navy-3); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Payment detail page */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 22px;
+}
+.detail-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.detail-card .dc-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: start;
+}
+.detail-card .dc-head .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 4px;
+}
+.detail-card .dc-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px; font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.detail-card .dc-head .actions {
+  display: flex; gap: 6px;
+}
+.detail-card .dc-body { padding: 18px 22px; }
+
+/* Payment summary block */
+.payment-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 24px;
+}
+.ps-cell .l {
+  font-size: 9px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 700;
+  margin-bottom: 3px;
+}
+.ps-cell .v {
+  font-family: 'Fraunces', serif;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--navy);
+}
+.ps-cell .v.amount {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--green);
+}
+.ps-cell .v.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ps-cell .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.status-pill.confirmed { background: var(--green-bg); color: var(--green); }
+.status-pill.settled { background: var(--green-bg); color: var(--green); }
+.status-pill.voided { background: var(--terra-bg); color: var(--terra); }
+.status-pill.pending { background: var(--gold-bg); color: var(--gold); }
+.status-pill::before {
+  content: "";
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Allocations list inside detail card */
+.alloc-list {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.alloc-list .al-head {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700; margin-bottom: 8px;
+}
+.alloc-row-d {
+  display: grid;
+  grid-template-columns: 90px 1fr 90px;
+  gap: 14px;
+  padding: 8px 0;
+  font-size: 12px;
+  border-top: 1px dashed var(--border);
+}
+.alloc-row-d:first-of-type { border-top: none; }
+.alloc-row-d .inv-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 600;
+}
+.alloc-row-d .inv-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+}
+.alloc-row-d .inv-name .sub { font-size: 10px; color: var(--navy-3); font-family: 'Manrope', sans-serif; font-weight: 500; margin-top: 1px; }
+.alloc-row-d .alloc-amt {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  text-align: right;
+  color: var(--navy);
+}
+
+/* Audit timeline */
+.audit-timeline {
+  position: relative;
+  padding-left: 4px;
+}
+.audit-event {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 14px;
+  padding: 12px 0;
+  position: relative;
+}
+.audit-event + .audit-event::before {
+  content: "";
+  position: absolute;
+  left: 13px; top: -8px;
+  width: 2px; height: 24px;
+  background: var(--border);
+}
+.audit-event .ae-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1.5px solid var(--border-2);
+  color: var(--navy-3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.audit-event.created .ae-dot { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+.audit-event.sms .ae-dot { background: var(--gold-bg); border-color: var(--gold); color: var(--gold); }
+.audit-event.viewed .ae-dot { background: var(--bg); border-color: var(--border-2); color: var(--navy-3); }
+.audit-event.allocated .ae-dot { background: var(--surface); border-color: var(--gold); color: var(--gold); }
+.audit-event.voided .ae-dot { background: var(--terra-bg); border-color: var(--terra); color: var(--terra); }
+.audit-event.refunded .ae-dot { background: var(--terra-bg); border-color: var(--terra); color: var(--terra); }
+
+.audit-event .body .head-row {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 3px;
+}
+.audit-event .body .what {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.audit-event .body .when {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.audit-event .body .who {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.audit-event .body .who b { color: var(--navy); font-weight: 600; }
+.audit-event .body .detail-block {
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-left: 2px solid var(--border-2);
+  border-radius: 0 4px 4px 0;
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.audit-event.voided .body .detail-block,
+.audit-event.refunded .body .detail-block {
+  background: var(--terra-bg);
+  border-left-color: var(--terra);
+  color: var(--navy);
+}
+.audit-event .body .detail-block b { color: var(--navy); font-weight: 600; }
+.audit-event .body .detail-block .quote { font-style: italic; }
+
+/* Receipt mini-card */
+.receipt-mini {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 10px;
+}
+.receipt-mini.voided {
+  background: var(--terra-bg-soft);
+  border-color: rgba(184,74,57,0.2);
+}
+.receipt-mini .rm-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.receipt-mini .rcpt-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 600;
+}
+.receipt-mini .rcpt-id.struck { text-decoration: line-through; color: var(--navy-3); }
+.receipt-mini .rm-actions {
+  display: flex; gap: 6px;
+}
+.receipt-mini .mini-btn {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid var(--gold-soft);
+  padding: 3px 9px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.receipt-mini .rm-detail { font-size: 11px; color: var(--navy-3); }
+.receipt-mini .rm-detail b { color: var(--navy); }
+
+/* ============ DECISION DRAWER ============ */
+.drawer {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 480px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -16px 0 40px -10px rgba(26,43,71,0.18);
+  z-index: 10;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.drawer-head {
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: start;
+}
+.drawer-head .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--terra); font-weight: 700;
+  margin-bottom: 6px;
+}
+.drawer-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.drawer-head h3 em { font-style: italic; color: var(--gold); }
+.drawer-head .close {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-size: 14px;
+}
+.drawer-body {
+  flex: 1;
+  padding: 22px 24px;
+  overflow-y: auto;
+}
+
+/* Payment context card in drawer */
+.dc-payment-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 22px;
+}
+.dc-payment-card .row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 0;
+  font-size: 12px;
+}
+.dc-payment-card .row .l { color: var(--navy-3); font-weight: 500; }
+.dc-payment-card .row .v { font-weight: 600; }
+.dc-payment-card .row .v.amount {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  color: var(--green);
+  font-weight: 600;
+}
+.dc-payment-card .row.divider { border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 8px; }
+
+/* Decision tile picker */
+.drawer-section-label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+  margin: 22px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.drawer-section-label::before {
+  content: ""; width: 18px; height: 1px; background: var(--gold);
+}
+.drawer-section-label:first-child { margin-top: 0; }
+
+.decision-tiles {
+  display: flex; flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.dec-tile {
+  display: flex; gap: 12px; align-items: start;
+  padding: 14px 14px 14px 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.dec-tile.selected {
+  border-color: var(--terra);
+  background: var(--terra-bg);
+}
+.dec-tile.selected.refund {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.dec-tile .radio {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-2);
+  background: var(--surface);
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+}
+.dec-tile.selected .radio {
+  border-color: var(--terra);
+}
+.dec-tile.selected.refund .radio {
+  border-color: var(--gold);
+}
+.dec-tile.selected .radio::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--terra);
+  border-radius: 50%;
+}
+.dec-tile.selected.refund .radio::after { background: var(--gold); }
+.dec-tile .body { flex: 1; }
+.dec-tile .body .t1 {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-bottom: 3px;
+}
+.dec-tile .body .t1 em { font-style: italic; color: var(--gold); }
+.dec-tile.selected .body .t1 em { color: var(--terra); }
+.dec-tile.selected.refund .body .t1 em { color: var(--gold); }
+.dec-tile .body .t2 {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+.dec-tile .body .t2 b { color: var(--navy); font-weight: 600; }
+.dec-tile .body .examples {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+/* Reason field */
+.field { margin-bottom: 16px; }
+.field label {
+  display: block;
+  font-size: 11px; color: var(--navy-2); font-weight: 600;
+  margin-bottom: 6px; letter-spacing: 0.02em;
+}
+.field label .req { color: var(--terra); margin-left: 2px; }
+.field label .hint { color: var(--navy-3); font-weight: 400; margin-left: 4px; font-size: 10px; }
+.input, .textarea {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  font-family: inherit; font-size: 13px;
+  color: var(--navy);
+}
+.textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+.input::placeholder, .textarea::placeholder { color: var(--navy-3); font-style: italic; opacity: 1; }
+.input:focus, .textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+.reason-presets {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-top: 8px;
+}
+.preset-chip {
+  padding: 5px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+}
+.preset-chip:hover { background: var(--gold-bg); border-color: var(--gold-soft); color: var(--navy); }
+
+/* Consequences strip */
+.consequences {
+  background: var(--terra-bg);
+  border: 1px solid rgba(184,74,57,0.3);
+  border-left: 3px solid var(--terra);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.consequences .head {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--terra); font-weight: 700;
+  margin-bottom: 8px;
+}
+.consequences ul { list-style: none; padding: 0; margin: 0; }
+.consequences li {
+  padding: 4px 0 4px 18px;
+  position: relative;
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.consequences li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--terra);
+  font-weight: 700;
+}
+.consequences li b { color: var(--navy); font-weight: 600; }
+
+/* Type ahead checkbox at the bottom */
+.confirm-block {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex; gap: 10px; align-items: start;
+}
+.confirm-block .check {
+  width: 18px; height: 18px;
+  border: 1.5px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+}
+.confirm-block .check.on {
+  background: var(--terra);
+  border-color: var(--terra);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+.confirm-block .check.on::before { content: "✓"; }
+.confirm-block .body {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.confirm-block .body b { color: var(--navy); font-weight: 600; }
+
+.drawer-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  display: flex; gap: 8px; justify-content: space-between;
+  align-items: center;
+}
+
+/* ============ AUDIT LOG VIEW ============ */
+.filter-strip {
+  display: flex; gap: 8px;
+  margin-bottom: 22px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filter-pill {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.filter-pill .count {
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+.filter-divider {
+  height: 18px;
+  width: 1px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.filter-search {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-family: inherit;
+  width: 220px;
+  color: var(--navy);
+}
+.filter-search::placeholder { color: var(--navy-3); font-style: italic; }
+
+.audit-table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.audit-table-head {
+  display: grid;
+  grid-template-columns: 100px 90px 1fr 130px 130px 110px;
+  gap: 16px;
+  padding: 12px 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.audit-row {
+  display: grid;
+  grid-template-columns: 100px 90px 1fr 130px 130px 110px;
+  gap: 16px;
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  align-items: center;
+}
+.audit-row:last-child { border-bottom: none; }
+.audit-row:hover { background: var(--bg); }
+.audit-row.flagged { background: rgba(184,74,57,0.04); }
+
+.audit-event-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 9px; letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+.audit-event-tag.created { background: var(--green-bg); color: var(--green); }
+.audit-event-tag.voided { background: var(--terra-bg); color: var(--terra); }
+.audit-event-tag.refunded { background: var(--terra-bg); color: var(--terra); }
+.audit-event-tag.allocated { background: var(--gold-bg); color: var(--gold); }
+.audit-event-tag.discount { background: var(--gold-bg); color: var(--gold); }
+.audit-event-tag.endorsed { background: var(--gold-bg); color: var(--gold); }
+.audit-event-tag.role { background: rgba(26,43,71,0.08); color: var(--navy); }
+.audit-event-tag.settings { background: rgba(26,43,71,0.08); color: var(--navy); }
+.audit-event-tag.access { background: rgba(26,43,71,0.08); color: var(--navy); }
+.audit-event-tag.student { background: var(--green-bg); color: var(--green); }
+
+/* Financial summary strip — sits above the financial audit table */
+.fin-summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.fin-summary .ft {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.fin-summary .ft.refunds { background: var(--terra-bg-soft); border-color: rgba(184,74,57,0.2); }
+.fin-summary .ft .label {
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700; margin-bottom: 6px;
+}
+.fin-summary .ft.refunds .label { color: var(--terra); }
+.fin-summary .ft .v {
+  font-family: 'Fraunces', serif;
+  font-size: 18px; font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--navy);
+}
+.fin-summary .ft.refunds .v { color: var(--terra); }
+.fin-summary .ft .meta {
+  font-size: 10px; color: var(--navy-3);
+  margin-top: 3px;
+}
+
+/* Period selector pill row above the summary */
+.period-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 18px;
+}
+.period-bar .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-right: 4px;
+}
+.period-bar .period-pill {
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+}
+.period-bar .period-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.period-bar .period-pill .sub {
+  font-size: 9px;
+  margin-left: 4px;
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+/* Activity log denser row — for events that don't have amounts */
+.activity-row {
+  display: grid;
+  grid-template-columns: 100px 110px 1fr 130px 130px;
+  gap: 16px;
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  align-items: center;
+}
+.activity-row:last-child { border-bottom: none; }
+.activity-row:hover { background: var(--bg); }
+.activity-table-head {
+  display: grid;
+  grid-template-columns: 100px 110px 1fr 130px 130px;
+  gap: 16px;
+  padding: 12px 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+
+.audit-row .when {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.audit-row .when .date {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 12px;
+  display: block;
+}
+.audit-row .desc .main {
+  font-weight: 600;
+}
+.audit-row .desc .sub {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+.audit-row .student {
+  font-size: 11px;
+}
+.audit-row .student .name { font-weight: 600; }
+.audit-row .student .class { font-size: 10px; color: var(--navy-3); }
+.audit-row .actor {
+  font-size: 11px;
+}
+.audit-row .actor .who { font-weight: 600; }
+.audit-row .actor .role {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-top: 1px;
+}
+.audit-row .amount {
+  text-align: right;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+}
+.audit-row .amount.terra { color: var(--terra); }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .concept-box { grid-template-columns: 1fr; }
+  .audit-table-head, .audit-row { grid-template-columns: 1fr; gap: 6px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Void &amp; refund flow</div>
+  <h1 class="display">Correcting <em>payments</em> safely</h1>
+  <div class="gold-rule"></div>
+  <p>Mistakes happen. Parents dispute. Students withdraw. Omnischools lets admins void and refund payments — but always with reason text, audit history, and a replacement receipt. The financial record is corrected by overlay, never by silent edit. The financial audit log lives under Billing for the accountant; a separate activity log lives under Settings for admin oversight.</p>
+</header>
+
+<!-- Concept distinction -->
+<section class="concept-box">
+  <div class="concept-cell void">
+    <div class="label">Void</div>
+    <h3>The record was <em>wrong</em></h3>
+    <div class="lede">A payment was recorded incorrectly — wrong amount, wrong student, duplicate entry. The original receipt is voided; if the money was correctly received, it's typically re-recorded against the right invoice.</div>
+    <ul class="examples">
+      <li>Admin typed <b>GHS 4400.00</b> instead of GHS 440.00 — void and re-record</li>
+      <li>Payment was recorded against <b>Yaw's invoice</b>, but the parent paid for Akosua — void and re-record correctly</li>
+      <li>Same MoMo transaction was <b>recorded twice</b> by mistake — void the duplicate</li>
+    </ul>
+  </div>
+  <div class="concept-cell refund">
+    <div class="label">Refund</div>
+    <h3>The school is <em>returning money</em></h3>
+    <div class="lede">The original payment was correct, but the school is sending the money back to the parent. Original receipt stays valid; a refund event is recorded separately, and the invoice balance reverts.</div>
+    <ul class="examples">
+      <li>Parent <b>disputed a MoMo charge</b> and the school agrees — refund via MTN reversal</li>
+      <li>Student <b>withdrew mid-term</b>; school refunds the prorated balance</li>
+      <li>Parent paid <b>GHS 500.00 against a GHS 400.00 balance</b> and asks for the GHS 100.00 back rather than leaving as credit</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ 01 PAYMENT DETAIL WITH AUDIT ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Payment detail · audit history</div>
+    <div class="section-meta">Admin · destination from billing table click</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing / payments / pay-541</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item active"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Billing</a> / <a href="#">Payments</a> / pay-541</div>
+              <h2 class="display">Payment from <em>Ama Boateng</em></h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Download receipt PDF</button>
+              <button class="btn danger-outline">Void or refund...</button>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <!-- LEFT: payment summary -->
+            <div>
+              <div class="detail-card" style="margin-bottom:14px">
+                <div class="dc-head">
+                  <div>
+                    <div class="label">Payment record</div>
+                    <h3>GHS 340.00 received</h3>
+                  </div>
+                  <div class="actions">
+                    <span class="status-pill confirmed">Confirmed</span>
+                  </div>
+                </div>
+                <div class="dc-body">
+                  <div class="payment-summary">
+                    <div class="ps-cell">
+                      <div class="l">Amount</div>
+                      <div class="v amount">GHS 340.00</div>
+                    </div>
+                    <div class="ps-cell">
+                      <div class="l">Date paid</div>
+                      <div class="v">30 Apr 2026</div>
+                      <div class="sub">10:24 AM</div>
+                    </div>
+                    <div class="ps-cell">
+                      <div class="l">Method</div>
+                      <div class="v">MTN MoMo</div>
+                      <div class="sub">+233 24 555 8392</div>
+                    </div>
+                    <div class="ps-cell">
+                      <div class="l">Transaction ID</div>
+                      <div class="v mono">TXN78215-MAY01</div>
+                      <div class="sub">Confirmed by MTN</div>
+                    </div>
+                    <div class="ps-cell">
+                      <div class="l">Received from</div>
+                      <div class="v">Ama Boateng</div>
+                      <div class="sub">Guardian of Akosua</div>
+                    </div>
+                    <div class="ps-cell">
+                      <div class="l">For</div>
+                      <div class="v">Akosua Boateng</div>
+                      <div class="sub">JHS 2A · CTK-2024-018</div>
+                    </div>
+                  </div>
+
+                  <div class="alloc-list">
+                    <div class="al-head">Applied to</div>
+                    <div class="alloc-row-d">
+                      <div class="inv-id">INV-2026-0184</div>
+                      <div class="inv-name">
+                        Term 1 · 2026 fees
+                        <div class="sub">remaining balance after earlier partial</div>
+                      </div>
+                      <div class="alloc-amt">GHS 340.00</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Receipt mini-card -->
+              <div class="detail-card">
+                <div class="dc-head">
+                  <div>
+                    <div class="label">Receipt issued</div>
+                    <h3>RCT-2026-0541</h3>
+                  </div>
+                </div>
+                <div class="dc-body">
+                  <div class="receipt-mini">
+                    <div class="rm-head">
+                      <div class="rcpt-id">RCT-2026-0541</div>
+                      <div class="rm-actions">
+                        <button class="mini-btn">View</button>
+                        <button class="mini-btn">Download</button>
+                        <button class="mini-btn">Email</button>
+                      </div>
+                    </div>
+                    <div class="rm-detail">
+                      Generated <b>30 Apr 2026 at 10:24 AM</b> · sent via SMS to <b>+233 24 555 8392</b> · downloaded once
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT: Audit timeline -->
+            <div class="detail-card">
+              <div class="dc-head">
+                <div>
+                  <div class="label">Activity history</div>
+                  <h3>Audit trail</h3>
+                </div>
+              </div>
+              <div class="dc-body">
+                <div class="audit-timeline">
+                  <div class="audit-event sms">
+                    <div class="ae-dot">↺</div>
+                    <div class="body">
+                      <div class="head-row">
+                        <div class="what">SMS confirmation re-sent</div>
+                        <div class="when">2 May, 9:14 AM</div>
+                      </div>
+                      <div class="who">Re-sent by <b>Florence Addo</b> · parent requested</div>
+                    </div>
+                  </div>
+
+                  <div class="audit-event viewed">
+                    <div class="ae-dot">◉</div>
+                    <div class="body">
+                      <div class="head-row">
+                        <div class="what">Receipt viewed by guardian</div>
+                        <div class="when">30 Apr, 10:31 AM</div>
+                      </div>
+                      <div class="who">Ama Boateng tapped the SMS link</div>
+                    </div>
+                  </div>
+
+                  <div class="audit-event sms">
+                    <div class="ae-dot">→</div>
+                    <div class="body">
+                      <div class="head-row">
+                        <div class="what">Confirmation SMS sent</div>
+                        <div class="when">30 Apr, 10:24 AM</div>
+                      </div>
+                      <div class="who">To <b>+233 24 555 8392</b> · delivered in 4s</div>
+                    </div>
+                  </div>
+
+                  <div class="audit-event allocated">
+                    <div class="ae-dot">$</div>
+                    <div class="body">
+                      <div class="head-row">
+                        <div class="what">Allocated to invoice</div>
+                        <div class="when">30 Apr, 10:24 AM</div>
+                      </div>
+                      <div class="who">GHS 340.00 → INV-2026-0184 (Term 1 · 2026)</div>
+                    </div>
+                  </div>
+
+                  <div class="audit-event created">
+                    <div class="ae-dot">+</div>
+                    <div class="body">
+                      <div class="head-row">
+                        <div class="what">Payment recorded</div>
+                        <div class="when">30 Apr, 10:24 AM</div>
+                      </div>
+                      <div class="who">Recorded by <b>Florence Addo</b> · Headmistress</div>
+                      <div class="detail-block">
+                        Method: MTN MoMo · TXN78215-MAY01 · GHS 340.00 received from +233 24 555 8392
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Two-column layout</b> separates the static facts from the running history. Left column is "what this payment is"; right column is "what's happened to it."</li>
+        <li><b>Three actions in the page header.</b> "Download receipt PDF" is the most-used; "Void or refund..." is the danger action with terracotta outline. Trailing ellipsis signals "this opens a flow, not a one-click."</li>
+        <li><b>Status pill in the card header</b> shows Confirmed (green dot). When voided, the same card would show "Voided" (terracotta dot) — same surface, different state.</li>
+        <li><b>"Applied to" allocation list</b> matches the multi-line model. For a single-invoice payment it's one row; for multi-invoice it would show all targets. Same component, both cases.</li>
+        <li><b>Receipt mini-card with three actions</b> (View, Download, Email) lives in its own panel because the receipt is the document that goes outside Omnischools. Distinct from the payment record itself.</li>
+        <li><b>Audit timeline reads top-to-bottom most-recent-first.</b> The action that just happened is at the top — the one admin needs to see most. Created event sits at the bottom as the foundation.</li>
+        <li><b>Each audit event has icon + what + when + who + optional detail block.</b> Five fields, each load-bearing. The detail block is grey for ordinary events, terracotta for voids/refunds.</li>
+        <li><b>Subtle events still show up</b> ("Receipt viewed by guardian"). For a school product, knowing the parent actually saw the receipt is genuinely useful — proves notification worked.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 VOID/REFUND DECISION DRAWER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Void or refund · decision drawer</div>
+    <div class="section-meta">Admin · clicked "Void or refund..."</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing / payments / pay-541 / correct</div>
+      </div>
+      <div class="app-shell has-drawer">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item active"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <!-- Faded background -->
+          <div style="opacity:0.4">
+            <div class="main-head">
+              <div>
+                <div class="crumb">Billing / Payments / pay-541</div>
+                <h2 class="display">Payment from <em>Ama Boateng</em></h2>
+              </div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;height:300px"></div>
+          </div>
+
+          <!-- Drawer overlay -->
+          <aside class="drawer">
+            <div class="drawer-head">
+              <div>
+                <div class="label">Correct this payment</div>
+                <h3>Void or <em>refund?</em></h3>
+              </div>
+              <div class="close">×</div>
+            </div>
+
+            <div class="drawer-body">
+              <!-- Payment context -->
+              <div class="dc-payment-card">
+                <div class="row">
+                  <div class="l">Payment</div>
+                  <div class="v amount">GHS 340.00</div>
+                </div>
+                <div class="row">
+                  <div class="l">From</div>
+                  <div class="v">Ama Boateng (guardian)</div>
+                </div>
+                <div class="row">
+                  <div class="l">For</div>
+                  <div class="v">Akosua Boateng · JHS 2A</div>
+                </div>
+                <div class="row divider">
+                  <div class="l">Receipt</div>
+                  <div class="v" style="font-family:'JetBrains Mono',monospace;color:var(--gold);font-size:11px">RCT-2026-0541</div>
+                </div>
+              </div>
+
+              <div class="drawer-section-label">What kind of correction?</div>
+
+              <div class="decision-tiles">
+                <div class="dec-tile selected refund">
+                  <div class="radio"></div>
+                  <div class="body">
+                    <div class="t1"><em>Refund</em> — the school is returning this money</div>
+                    <div class="t2">The original payment was correct, but the school needs to send the money back to the parent. The receipt stays valid. A refund record is created and the invoice balance is restored.</div>
+                    <div class="examples">e.g. parent disputed the charge, student withdrew, overpayment refund</div>
+                  </div>
+                </div>
+
+                <div class="dec-tile">
+                  <div class="radio"></div>
+                  <div class="body">
+                    <div class="t1"><em>Void</em> — this payment record is wrong</div>
+                    <div class="t2">The payment was entered incorrectly — wrong amount, wrong student, or a duplicate. The receipt is voided. If money actually moved correctly, you'll re-record it against the right invoice.</div>
+                    <div class="examples">e.g. typo in amount, wrong student selected, accidentally recorded twice</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="drawer-section-label">Refund amount</div>
+              <div class="field">
+                <label>Amount to refund <span class="req">*</span></label>
+                <input class="input" value="GHS 340.00" style="font-family:'Fraunces',serif;font-size:16px;font-weight:600" />
+                <div style="font-size:11px;color:var(--navy-3);margin-top:5px;font-style:italic">Defaults to the full payment amount. Reduce for partial refunds (e.g. prorated mid-term withdrawals).</div>
+              </div>
+
+              <div class="drawer-section-label">Reason <span style="color:var(--navy-3);font-weight:500;letter-spacing:0;text-transform:none;font-size:11px;font-style:italic">— required for the audit log</span></div>
+              <div class="field">
+                <textarea class="textarea" placeholder="Describe what happened. This will appear on the receipt and in the audit log.">Parent disputed MoMo charge — investigation confirmed unauthorised transaction on her phone. Refund issued via MTN reversal.</textarea>
+                <div class="reason-presets">
+                  <span class="preset-chip">Parent disputed charge</span>
+                  <span class="preset-chip">Student withdrew</span>
+                  <span class="preset-chip">Overpayment</span>
+                  <span class="preset-chip">School policy adjustment</span>
+                </div>
+              </div>
+
+              <div class="drawer-section-label">How was the refund issued? <span style="color:var(--navy-3);font-weight:500;letter-spacing:0;text-transform:none;font-size:11px;font-style:italic">— for the audit trail</span></div>
+              <div class="field">
+                <label>Method</label>
+                <input class="input" value="MTN MoMo reversal · TXN-REV-78215" />
+                <div style="font-size:11px;color:var(--navy-3);margin-top:5px;font-style:italic">Cash refund / MoMo reversal / bank transfer / cheque · enter the reference if any.</div>
+              </div>
+
+              <div class="consequences">
+                <div class="head">When you confirm this refund</div>
+                <ul>
+                  <li>Akosua's <b>Term 1 invoice balance is restored</b> from GHS 0.00 back to GHS 340.00 outstanding</li>
+                  <li>Original receipt RCT-2026-0541 <b>stays valid</b>; a new refund receipt RCT-R-2026-0042 is generated</li>
+                  <li>Guardian gets an <b>SMS</b> confirming the refund and updated balance</li>
+                  <li>Refund event is added to the payment's audit trail and the school's audit log <b>permanently</b></li>
+                </ul>
+              </div>
+
+              <div class="confirm-block">
+                <div class="check on"></div>
+                <div class="body">
+                  <b>I understand this refund cannot be undone</b> from this screen. To reverse a refund, you'll need to record a new payment for the same amount.
+                </div>
+              </div>
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn subtle">Cancel</button>
+              <button class="btn danger">Confirm refund of GHS 340.00 →</button>
+            </div>
+          </aside>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Title is "Void or refund?"</b> with a question mark. The drawer's first job is to help the admin distinguish the two. The body of the drawer is structured around answering that question.</li>
+        <li><b>Refund tile selected by default</b> in this state. Showing the refund branch because it's the more common case (parent disputes, student withdrawals are weekly events; data-entry errors are weekly too but tend to be void). In production, no default — admin actively picks.</li>
+        <li><b>Void tile uses terracotta;</b> refund tile uses gold. Distinct visual signals because they're conceptually different: void is "this was wrong" (red), refund is "we're sending money back" (warning gold).</li>
+        <li><b>Tile descriptions explain consequences in plain language.</b> Not "the receipt is invalidated" — instead "the receipt stays valid. A refund record is created and the invoice balance is restored." Admin learns the model from the description.</li>
+        <li><b>Refund amount field with default = full payment.</b> Most refunds are full; partial refunds (mid-term withdrawals) need to override. The hint text explains.</li>
+        <li><b>Reason is required, with preset chips.</b> Free-form text is the canonical record; presets are quick-fills for common cases. Admin can tap "Parent disputed charge" then add specific detail. <b>The reason text appears on the void/refund receipt itself</b> — this is what the audit reads.</li>
+        <li><b>Method field captures how the money actually moved.</b> "MTN MoMo reversal · TXN-REV-78215" lets the school trace the refund back to MTN's records. Cash, bank, cheque all work too.</li>
+        <li><b>Consequences strip in terracotta-bordered block</b> reads back exactly what's about to happen, in four bullets. Same pre-flight pattern as the record-payment drawer; same level of trust before a destructive action.</li>
+        <li><b>Confirm checkbox at the bottom</b> requires explicit acknowledgment that the action is durable. Adds a small piece of friction that earns its place — refunds shouldn't be undoable with a back arrow.</li>
+        <li><b>"Confirm refund of GHS 340.00"</b> on the gold danger button — anchors the action to the specific amount, prevents wrong-amount errors at the moment of commitment.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 FINANCIAL AUDIT LOG ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Financial audit log</div>
+    <div class="section-meta">Admin / accountant · Billing &gt; Financial audit</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing / audit</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item active"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Billing / Financial audit</div>
+              <h2 class="display">Every <em>cedi</em> in &amp; out</h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export CSV</button>
+              <button class="btn">Export PDF</button>
+            </div>
+          </div>
+
+          <!-- Period selector -->
+          <div class="period-bar">
+            <div class="label">Period</div>
+            <div class="period-pill">Today</div>
+            <div class="period-pill">This week</div>
+            <div class="period-pill active">Apr 2026 <span class="sub">28 days</span></div>
+            <div class="period-pill">This term</div>
+            <div class="period-pill">Custom...</div>
+          </div>
+
+          <!-- Financial summary strip -->
+          <div class="fin-summary">
+            <div class="ft">
+              <div class="label">Payments received</div>
+              <div class="v">GHS 94,830.00</div>
+              <div class="meta">238 transactions</div>
+            </div>
+            <div class="ft">
+              <div class="label">By MoMo</div>
+              <div class="v">GHS 71,440.00</div>
+              <div class="meta">75% of received</div>
+            </div>
+            <div class="ft">
+              <div class="label">By cash</div>
+              <div class="v">GHS 18,200.00</div>
+              <div class="meta">19% of received</div>
+            </div>
+            <div class="ft">
+              <div class="label">By bank transfer</div>
+              <div class="v">GHS 5,190.00</div>
+              <div class="meta">6% of received</div>
+            </div>
+            <div class="ft refunds">
+              <div class="label">Voids &amp; refunds</div>
+              <div class="v">−GHS 740.00</div>
+              <div class="meta">3 events</div>
+            </div>
+          </div>
+
+          <!-- Filter strip -->
+          <div class="filter-strip">
+            <div class="filter-pill active">All <span class="count">241</span></div>
+            <div class="filter-divider"></div>
+            <div class="filter-pill">Payments <span class="count">228</span></div>
+            <div class="filter-pill">Discounts <span class="count">10</span></div>
+            <div class="filter-pill">Voids <span class="count">2</span></div>
+            <div class="filter-pill">Refunds <span class="count">1</span></div>
+            <div class="filter-divider"></div>
+            <input class="filter-search" placeholder="Search by student, receipt, MoMo TXN..." />
+          </div>
+
+          <div class="audit-table">
+            <div class="audit-table-head">
+              <div>When</div>
+              <div>Event</div>
+              <div>What happened</div>
+              <div>Student</div>
+              <div>By</div>
+              <div style="text-align:right">Amount</div>
+            </div>
+
+            <div class="audit-row flagged">
+              <div class="when">
+                <span class="date">2 May 2026</span>
+                14:08
+              </div>
+              <div><span class="audit-event-tag refunded">Refunded</span></div>
+              <div class="desc">
+                <div class="main">Refund issued for disputed payment</div>
+                <div class="sub">RCT-2026-0541 stays valid · refund receipt RCT-R-2026-0042 · MTN reversal · TXN-REV-78215</div>
+              </div>
+              <div class="student">
+                <div class="name">Akosua Boateng</div>
+                <div class="class">JHS 2A</div>
+              </div>
+              <div class="actor">
+                <div class="who">Florence Addo</div>
+                <div class="role">Headmistress</div>
+              </div>
+              <div class="amount terra">−GHS 340.00</div>
+            </div>
+
+            <div class="audit-row flagged">
+              <div class="when">
+                <span class="date">1 May 2026</span>
+                09:42
+              </div>
+              <div><span class="audit-event-tag voided">Voided</span></div>
+              <div class="desc">
+                <div class="main">Duplicate payment record voided</div>
+                <div class="sub">RCT-2026-0538 voided — same MoMo TXN had been recorded twice. Replacement: RCT-2026-0539</div>
+              </div>
+              <div class="student">
+                <div class="name">Yaw Asante</div>
+                <div class="class">JHS 2A</div>
+              </div>
+              <div class="actor">
+                <div class="who">Joseph Owusu</div>
+                <div class="role">Accountant</div>
+              </div>
+              <div class="amount">GHS 400.00</div>
+            </div>
+
+            <div class="audit-row">
+              <div class="when">
+                <span class="date">30 Apr 2026</span>
+                10:24
+              </div>
+              <div><span class="audit-event-tag created">Recorded</span></div>
+              <div class="desc">
+                <div class="main">Payment received via MTN MoMo</div>
+                <div class="sub">Term 1 fees · INV-2026-0184 settled in full · receipt RCT-2026-0541 · TXN78215-MAY01</div>
+              </div>
+              <div class="student">
+                <div class="name">Akosua Boateng</div>
+                <div class="class">JHS 2A</div>
+              </div>
+              <div class="actor">
+                <div class="who">Florence Addo</div>
+                <div class="role">Headmistress</div>
+              </div>
+              <div class="amount">GHS 340.00</div>
+            </div>
+
+            <div class="audit-row">
+              <div class="when">
+                <span class="date">29 Apr 2026</span>
+                15:38
+              </div>
+              <div><span class="audit-event-tag discount">Discount</span></div>
+              <div class="desc">
+                <div class="main">Sibling discount −50% applied</div>
+                <div class="sub">Applied to Term 1 invoice INV-2026-0192 — sibling of Akosua Boateng</div>
+              </div>
+              <div class="student">
+                <div class="name">Kofi Boateng</div>
+                <div class="class">JHS 1B</div>
+              </div>
+              <div class="actor">
+                <div class="who">Florence Addo</div>
+                <div class="role">Headmistress</div>
+              </div>
+              <div class="amount terra">−GHS 200.00</div>
+            </div>
+
+            <div class="audit-row">
+              <div class="when">
+                <span class="date">29 Apr 2026</span>
+                09:14
+              </div>
+              <div><span class="audit-event-tag created">Recorded</span></div>
+              <div class="desc">
+                <div class="main">Payment received via cash</div>
+                <div class="sub">Term 1 fees · INV-2026-0188 partial · receipt RCT-2026-0540</div>
+              </div>
+              <div class="student">
+                <div class="name">Esi Odoom</div>
+                <div class="class">JHS 2A</div>
+              </div>
+              <div class="actor">
+                <div class="who">Joseph Owusu</div>
+                <div class="role">Accountant</div>
+              </div>
+              <div class="amount">GHS 200.00</div>
+            </div>
+
+            <div class="audit-row">
+              <div class="when">
+                <span class="date">28 Apr 2026</span>
+                16:50
+              </div>
+              <div><span class="audit-event-tag created">Recorded</span></div>
+              <div class="desc">
+                <div class="main">Payment received via bank transfer</div>
+                <div class="sub">Term 1 fees · INV-2026-0177 settled in full · receipt RCT-2026-0535 · GCB ref 8821-44</div>
+              </div>
+              <div class="student">
+                <div class="name">Ama Mensah</div>
+                <div class="class">JHS 2A</div>
+              </div>
+              <div class="actor">
+                <div class="who">Joseph Owusu</div>
+                <div class="role">Accountant</div>
+              </div>
+              <div class="amount">GHS 400.00</div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Lives under Billing,</b> not Settings. The financial audit is an accountant's daily/monthly tool — putting it where the money lives matches the workflow. Accountants navigate Billing → Financial audit, not three layers deep into Settings.</li>
+        <li><b>Period selector at the top</b> defaults to current month. End-of-month reconciliation is the most common reason to open this page; the default does the right thing without a click.</li>
+        <li><b>Financial summary strip</b> shows the period totals at a glance: total received, broken down by method, plus voids/refunds in terracotta. This is what an accountant copies into their reconciliation report.</li>
+        <li><b>"By MoMo / By cash / By bank transfer" breakdown</b> matches how schools actually account — the accountant reconciles each channel against its source (MTN settlement statement, cash drawer count, bank statement). The sum of these tiles plus the refund delta equals net cash position change.</li>
+        <li><b>"Every cedi in &amp; out" page title</b> sets scope. Plain language; tells the accountant exactly what they'll find here. Voids, refunds, and discounts are visible alongside payments because they're all monetary events.</li>
+        <li><b>Discounts in the financial audit, not the activity log.</b> A discount changes what's billed — accountants need to see them when reconciling expected vs received. Even though they're not cash transactions, they're financial events.</li>
+        <li><b>Voids and refunds tinted soft red.</b> Same row treatment as before; subtle but unmistakable when scanning.</li>
+        <li><b>Sub-line carries forensic detail.</b> Each "what happened" row's second line includes the receipt number, MoMo TXN, bank reference — whatever the auditor needs to cross-check against external records.</li>
+        <li><b>Two export buttons:</b> CSV (for spreadsheet reconciliation) and PDF (for filing/Ministry submission). Same data, two formats.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 ACTIVITY LOG ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Activity log</div>
+    <div class="section-meta">Admin only · Settings &gt; Activity log</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / activity</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Settings / Activity log</div>
+              <h2 class="display">Who did <em>what</em>, when</h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export CSV</button>
+              <button class="btn">Filter by date...</button>
+            </div>
+          </div>
+
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:22px;display:flex;gap:14px;align-items:start">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--gold-bg);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:12px;flex-shrink:0;margin-top:1px">i</div>
+            <div style="font-size:12px;color:var(--navy-2);line-height:1.55">
+              <b style="color:var(--navy);font-weight:600">Looking for payment, void, or refund records?</b> Those live in the <a href="#" style="color:var(--gold);font-weight:700;text-decoration:none">Financial audit log</a> under Billing. This page tracks non-financial activity: endorsements, role changes, settings updates, and student record edits.
+            </div>
+          </div>
+
+          <div class="filter-strip">
+            <div class="filter-pill active">All <span class="count">1,419</span></div>
+            <div class="filter-divider"></div>
+            <div class="filter-pill">Endorsements <span class="count">86</span></div>
+            <div class="filter-pill">Student records <span class="count">412</span></div>
+            <div class="filter-pill">Roles &amp; access <span class="count">17</span></div>
+            <div class="filter-pill">Settings <span class="count">23</span></div>
+            <div class="filter-divider"></div>
+            <input class="filter-search" placeholder="Search by person or what changed..." />
+          </div>
+
+          <div class="audit-table">
+            <div class="activity-table-head">
+              <div>When</div>
+              <div>Event</div>
+              <div>What happened</div>
+              <div>Subject</div>
+              <div>By</div>
+            </div>
+
+            <div class="activity-row">
+              <div class="when">
+                <span class="date">2 May 2026</span>
+                11:14
+              </div>
+              <div><span class="audit-event-tag role">Role change</span></div>
+              <div class="desc">
+                <div class="main">Joseph Owusu invited as Accountant</div>
+                <div class="sub">Granted billing-only permissions · invite SMS sent to +233 24 778 4421</div>
+              </div>
+              <div class="student">
+                <div class="name">Joseph Owusu</div>
+                <div class="class" style="color:var(--navy-3)">new staff</div>
+              </div>
+              <div class="actor">
+                <div class="who">Florence Addo</div>
+                <div class="role">Headmistress</div>
+              </div>
+            </div>
+
+            <div class="activity-row">
+              <div class="when">
+                <span class="date">1 May 2026</span>
+                15:22
+              </div>
+              <div><span class="audit-event-tag settings">Settings</span></div>
+              <div class="desc">
+                <div class="main">Comments on achievements turned ON</div>
+                <div class="sub">Allowed for Admin, Teachers, Parents · Students remain blocked (MVP1 policy)</div>
+              </div>
+              <div class="student" style="color:var(--navy-3);font-style:italic">School-wide</div>
+              <div class="actor">
+                <div class="who">Florence Addo</div>
+                <div class="role">Headmistress</div>
+              </div>
+            </div>
+
+            <div class="activity-row">
+              <div class="when">
+                <span class="date">30 Apr 2026</span>
+                14:08
+              </div>
+              <div><span class="audit-event-tag endorsed">Endorsed</span></div>
+              <div class="desc">
+                <div class="main">Parent achievement post endorsed</div>
+                <div class="sub">"Esi's Grade 8 piano distinction" published to class scope</div>
+              </div>
+              <div class="student">
+                <div class="name">Esi Odoom</div>
+                <div class="class">JHS 2A</div>
+              </div>
+              <div class="actor">
+                <div class="who">Florence Addo</div>
+                <div class="role">Headmistress</div>
+              </div>
+            </div>
+
+            <div class="activity-row">
+              <div class="when">
+                <span class="date">30 Apr 2026</span>
+                09:01
+              </div>
+              <div><span class="audit-event-tag student">Student edit</span></div>
+              <div class="desc">
+                <div class="main">Guardian phone number updated</div>
+                <div class="sub">+233 24 555 8392 → +233 50 711 0093 · old number flagged as inactive</div>
+              </div>
+              <div class="student">
+                <div class="name">Akosua Boateng</div>
+                <div class="class">JHS 2A</div>
+              </div>
+              <div class="actor">
+                <div class="who">Florence Addo</div>
+                <div class="role">Headmistress</div>
+              </div>
+            </div>
+
+            <div class="activity-row">
+              <div class="when">
+                <span class="date">29 Apr 2026</span>
+                17:45
+              </div>
+              <div><span class="audit-event-tag access">Access</span></div>
+              <div class="desc">
+                <div class="main">Mr. Mensah accepted teacher invite</div>
+                <div class="sub">First login from +233 27 442 9911 · 2FA enabled</div>
+              </div>
+              <div class="student">
+                <div class="name">Kwame Mensah</div>
+                <div class="class" style="color:var(--navy-3)">teacher</div>
+              </div>
+              <div class="actor">
+                <div class="who">Kwame Mensah</div>
+                <div class="role">Teacher</div>
+              </div>
+            </div>
+
+            <div class="activity-row">
+              <div class="when">
+                <span class="date">28 Apr 2026</span>
+                10:33
+              </div>
+              <div><span class="audit-event-tag student">Student edit</span></div>
+              <div class="desc">
+                <div class="main">Class assignment changed</div>
+                <div class="sub">Moved from JHS 1A to JHS 2A · effective immediately · invoices reissued</div>
+              </div>
+              <div class="student">
+                <div class="name">Yaw Asante</div>
+                <div class="class">JHS 2A</div>
+              </div>
+              <div class="actor">
+                <div class="who">Florence Addo</div>
+                <div class="role">Headmistress</div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Page title "Who did what, when"</b> is the auditor's question, plainly stated. Activity log is fundamentally about accountability — who took which action, on what subject. The title matches.</li>
+        <li><b>Cross-link to Financial audit log</b> at the top of the page. An admin who lands here looking for a payment record sees immediately where to go. Reduces wasted time and prevents the wrong column being scanned.</li>
+        <li><b>No amount column.</b> Activity events don't have monetary values; forcing an amount column would create empty cells everywhere. Five columns instead of six: When / Event / What / Subject / By.</li>
+        <li><b>"Subject" column instead of "Student"</b> because activity touches more than students. Settings changes have "School-wide" in italic grey; role changes have the new staff member as subject; teacher invites have the teacher as both subject and actor (their first action was accepting their own invite).</li>
+        <li><b>Four event categories</b> with their own colors: Endorsements (gold), Student edits (green), Roles &amp; access (navy), Settings (navy). Different palette from the financial audit's red/green/gold — visual distinction reinforces the conceptual split.</li>
+        <li><b>Activity log is admin-only.</b> Accountant doesn't see this nav item — they have no use for it and surfacing settings changes to a billing-only role creates noise. Reflects the same role-permission model from the accountant role wireframe.</li>
+        <li><b>Student edits include both data updates and class moves.</b> "Guardian phone number updated" and "Class assignment changed" are both consequential changes to a student record. The audit captures both with the same tag.</li>
+        <li><b>Access events</b> ("Mr. Mensah accepted teacher invite", "2FA enabled") matter for security audits. If a school suspects unauthorised access, this is where they look first.</li>
+        <li><b>Same audit principles apply.</b> Append-only, no edit/delete on rows, exportable CSV, the original action gets a corresponding correction entry rather than a silent edit.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

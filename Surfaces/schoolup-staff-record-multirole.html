@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Staff record · multi-role + GES rank</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+/* Desktop frame */
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:920px; }
+.brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar-footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar-footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar-footer .meta-name { font-weight:600; }
+.sidebar-footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:680px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+
+.body-c { padding:28px 36px 60px; }
+
+/* Staff profile header */
+.profile-head { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:26px 30px; display:grid; grid-template-columns:80px 1fr 240px; gap:24px; align-items:center; margin-bottom:24px; }
+.profile-head .av-lg { width:80px; height:80px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:28px; letter-spacing:-0.02em; }
+.profile-head .info h2 { font-family:'Fraunces',serif; font-size:26px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; margin-bottom:4px; }
+.profile-head .info h2 em { font-style:italic; color:var(--gold); }
+.profile-head .info .id-row { display:flex; gap:14px; align-items:center; font-size:11px; color:var(--navy-3); margin-bottom:8px; }
+.profile-head .info .id-row .id-pill { font-family:'JetBrains Mono',monospace; padding:3px 9px; border-radius:100px; background:var(--bg); border:1px solid var(--border); font-size:10px; font-weight:600; color:var(--navy-2); letter-spacing:0.04em; }
+.profile-head .info .id-row b { color:var(--navy-2); font-weight:600; }
+.profile-head .info .summary-line { font-size:13px; color:var(--navy-2); line-height:1.5; }
+.profile-head .info .summary-line em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.profile-head .info .summary-line b { color:var(--navy); font-weight:600; }
+.profile-head .rank-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:14px 16px; }
+.profile-head .rank-card .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.profile-head .rank-card .val { font-family:'Fraunces',serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; margin-bottom:4px; }
+.profile-head .rank-card .val em { font-style:italic; color:var(--gold); }
+.profile-head .rank-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.profile-head .rank-card .sub b { color:var(--navy-2); font-weight:600; }
+
+/* Roles stack */
+.roles-section { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+.roles-head { background:var(--bg); padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:end; justify-content:space-between; }
+.roles-head .left h3 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.005em; }
+.roles-head .left h3 em { font-style:italic; color:var(--gold); }
+.roles-head .left .meta { font-size:11px; color:var(--navy-3); margin-top:2px; font-style:italic; }
+.roles-head .left .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.roles-head .actions { display:flex; gap:8px; }
+
+.role-row { display:grid; grid-template-columns:44px 1fr 200px 140px 90px; gap:18px; padding:16px 24px; border-bottom:1px solid var(--border); align-items:center; }
+.role-row:last-child { border-bottom:none; }
+.role-row .role-ic { width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; }
+.role-row .role-ic.lead { background:var(--navy); color:var(--bg); }
+.role-row .role-ic.teach { background:var(--gold-bg); color:var(--gold); border:1px solid var(--gold-soft); }
+.role-row .role-ic.house { background:var(--green-bg); color:var(--green); border:1px solid #C8DDC9; }
+.role-row .role-ic.coord { background:var(--surface); color:var(--navy); border:1px solid var(--border-2); }
+.role-row .role-info h4 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; margin-bottom:3px; }
+.role-row .role-info h4 em { font-style:italic; color:var(--gold); }
+.role-row .role-info .scope { font-size:11px; color:var(--navy-3); line-height:1.5; }
+.role-row .role-info .scope b { color:var(--navy-2); font-weight:600; }
+.role-row .role-info .scope em { font-style:italic; color:var(--gold); }
+.role-row .since { font-size:12px; color:var(--navy-2); }
+.role-row .since b { font-family:'JetBrains Mono',monospace; color:var(--navy); font-size:11px; font-weight:600; }
+.role-row .since .meta-sm { display:block; font-size:10px; color:var(--navy-3); font-style:italic; margin-top:2px; }
+.role-row .status-cell { font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.role-row .status-cell .pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:100px; }
+.role-row .status-cell .pill.active { background:var(--green-bg); color:var(--green); }
+.role-row .status-cell .pill .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.role-row .row-action { text-align:right; }
+.role-row .row-action .menu-btn { color:var(--navy-3); font-size:16px; cursor:pointer; padding:6px; }
+
+/* Two column meta */
+.meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:24px; }
+.meta-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 26px; }
+.meta-card h3 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; gap:10px; }
+.meta-card h3 em { font-style:italic; color:var(--gold); }
+.meta-card h3 .count { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; font-weight:400; }
+.meta-card .row { display:flex; padding:9px 0; border-bottom:1px solid var(--border); align-items:start; gap:14px; font-size:12px; }
+.meta-card .row:last-child { border-bottom:none; }
+.meta-card .row .lab { color:var(--navy-3); font-weight:600; width:130px; flex-shrink:0; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding-top:2px; }
+.meta-card .row .val { color:var(--navy); flex:1; font-weight:500; line-height:1.5; }
+.meta-card .row .val b { font-weight:600; }
+.meta-card .row .val em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.meta-card .row .val .tag { display:inline-block; padding:2px 8px; border-radius:100px; font-size:10px; font-weight:600; background:var(--bg); border:1px solid var(--border); margin-right:5px; }
+.meta-card .row .val .tag.green { background:var(--green-bg); color:var(--green); border-color:#C8DDC9; }
+
+/* GES rank ladder visualization */
+.rank-ladder { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px 28px; }
+.rank-ladder h3 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; margin-bottom:6px; }
+.rank-ladder h3 em { font-style:italic; color:var(--gold); }
+.rank-ladder .desc { font-size:12px; color:var(--navy-3); margin-bottom:20px; line-height:1.5; }
+.rank-ladder .desc b { color:var(--navy-2); font-weight:600; }
+
+.ladder { display:flex; flex-direction:column; gap:4px; }
+.ladder-step { display:grid; grid-template-columns:32px 1fr 200px; gap:14px; padding:10px 14px; align-items:center; border-radius:8px; }
+.ladder-step.current { background:var(--gold-bg); border:1.5px solid var(--gold); }
+.ladder-step.past { opacity:0.55; }
+.ladder-step .level-num { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--navy-3); }
+.ladder-step.current .level-num { color:var(--gold); }
+.ladder-step .rank-name { font-family:'Fraunces',serif; font-size:13px; font-weight:600; letter-spacing:-0.005em; }
+.ladder-step.current .rank-name { font-size:14px; }
+.ladder-step .rank-name em { font-style:italic; color:var(--gold); }
+.ladder-step .rank-meta { font-size:10px; color:var(--navy-3); font-style:italic; text-align:right; }
+.ladder-step .rank-meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.ladder-step.current .rank-meta b { color:var(--gold); }
+.ladder-divider { height:1px; background:var(--border); margin:6px 0; }
+
+/* Editorial card */
+.principle-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:20px; }
+.principle-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.principle-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.principle-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.principle-card p b { color:var(--navy); font-weight:600; }
+
+/* Role picker modal */
+.modal-stage { padding:32px; background:linear-gradient(180deg, #2D3F5C 0%, #1A2B47 100%); border-radius:14px; }
+.modal-c { background:var(--surface); border-radius:14px; max-width:680px; margin:0 auto; box-shadow:0 30px 80px -20px rgba(0,0,0,0.5); overflow:hidden; }
+.modal-head-c { background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); padding:18px 24px; }
+.modal-head-c .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.modal-head-c h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; }
+.modal-head-c h3 em { font-style:italic; color:var(--gold); }
+.modal-body-c { padding:22px 24px; }
+.role-type-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-bottom:18px; }
+.role-type-card { background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:14px 16px; cursor:pointer; display:flex; gap:12px; align-items:start; }
+.role-type-card.selected { border-color:var(--gold); background:var(--gold-bg); }
+.role-type-card .ic { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; flex-shrink:0; }
+.role-type-card.lead .ic { background:var(--navy); color:var(--bg); }
+.role-type-card.teach .ic { background:var(--gold-bg); color:var(--gold); border:1px solid var(--gold-soft); }
+.role-type-card.house .ic { background:var(--green-bg); color:var(--green); border:1px solid #C8DDC9; }
+.role-type-card.coord .ic { background:var(--surface); color:var(--navy); border:1px solid var(--border-2); }
+.role-type-card .body h4 { font-family:'Fraunces',serif; font-size:13px; font-weight:600; letter-spacing:-0.005em; margin-bottom:2px; line-height:1.2; }
+.role-type-card .body h4 em { font-style:italic; color:var(--gold); }
+.role-type-card .body .desc { font-size:11px; color:var(--navy-3); line-height:1.4; }
+
+.scope-input { background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:11px 14px; margin-bottom:10px; }
+.scope-input .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.scope-input .input-mock { font-size:13px; color:var(--navy); font-weight:500; }
+.scope-input .input-mock em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.scope-input .helper { font-size:10px; color:var(--navy-3); margin-top:5px; line-height:1.4; font-style:italic; }
+.modal-foot-c { padding:14px 24px; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.modal-foot-c .left-meta { font-size:11px; color:var(--navy-3); font-style:italic; }
+.modal-foot-c .right-actions { display:flex; gap:8px; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Batch 0 · Structural foundation · <span style="color:var(--navy-3);">refactored in PLC/CPD batch · 06 of 06</span></div>
+  <span class="mvp-tag">SHS · staff</span>
+  <span class="related-tag">Refactors basic-school staff record</span>
+  <h1 class="display">Mr Mensah is <em>not one thing</em></h1>
+  <div class="gold-rule"></div>
+  <p>In Ghanaian SHS, a teacher is rarely just a teacher. Mr Mensah teaches Mathematics, leads the Maths department, runs Aryee House, facilitates weekly PLC sessions, and sits on the school's discipline committee. His <b>GES rank</b> (Principal Superintendent) is separate from any of those roles — it's a national civil-service ladder he climbs over decades. The staff record must hold all of this without becoming a Christmas tree. <em>Density without overwhelm</em> is the design challenge.</p>
+</header>
+
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 24px; margin-bottom:56px; display:flex; align-items:center; gap:14px;">
+  <div style="width:36px; height:36px; border-radius:8px; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; flex-shrink:0;">↻</div>
+  <div style="flex:1; font-size:12px; color:var(--navy-2); line-height:1.55;"><b style="color:var(--navy); font-weight:700;">What changed in the PLC/CPD refactor:</b> a new <em style="font-style:italic; color:var(--gold);">CPD &amp; professional learning</em> section (§04 below) added between the roles section and the migration impact section. Surfaces current-year CPD progress (14.5 / 20 pts), NTC licence renewal countdown, PLC memberships per term, and the 5 most recent CPD ledger entries — all read-only on this surface, deep-link to the full ledger for editing. <em style="font-style:italic; color:var(--gold);">The roles, GES rank, and migration sections are unchanged.</em> The staff record is now the single canonical staff detail page across all of Omnischools Senior — every other surface deep-links here.</div>
+</div>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Mr Mensah's profile · everything in one place</div>
+    <div class="section-meta">Staff list → Mr Mensah · the canonical staff detail page</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / staff / mensah-alexander</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King SHS</div>
+              <div class="school-meta">SHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item active"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Programmes</div>
+          <div class="nav-item"><div class="ic"></div>Houses</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Comms</div>
+          <div class="nav-item"><div class="ic"></div>PLC · CPD</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="sidebar-footer">
+            <div class="av">FA</div>
+            <div>
+              <div class="meta-name">Florence A.</div>
+              <div class="meta-role">Admin</div>
+            </div>
+          </div>
+          <div class="powered-by">Powered by <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Staff</a> · Mr Alexander Mensah</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Mr Alexander <em>Mensah</em></h1>
+                <div class="lede">Joined <b>15 Sept 2014</b> · 4 active roles · <b>Assistant Director II</b> · last promoted 14 months ago</div>
+              </div>
+              <div class="actions">
+                <button class="btn">View timetable</button>
+                <button class="btn">Performance review</button>
+                <button class="btn primary">Edit profile</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body-c">
+
+            <div class="profile-head">
+              <div class="av-lg">AM</div>
+              <div class="info">
+                <h2 class="display">Mr Alexander <em>Mensah</em></h2>
+                <div class="id-row">
+                  <span class="id-pill">STAFF-2014-0042</span>
+                  <span class="id-pill">GES-LIC · TC-89241</span>
+                  <span>Email: <b>a.mensah@ctksenior.edu.gh</b></span>
+                  <span>Phone: <b>024-XXX-7841</b></span>
+                </div>
+                <div class="summary-line">
+                  <em>Assistant Headmaster · Academic</em> at Christ the King SHS · serves <b>4 active roles</b> · teaches Mathematics across 3 Forms · facilitates weekly PLC · House master of Aryee House.
+                </div>
+              </div>
+              <div class="rank-card">
+                <div class="lab">GES rank</div>
+                <div class="val display"><em>Assistant Director II</em></div>
+                <div class="sub">Level <b>19.1</b> · since <b>March 2024</b> · eligible for AD I in <b>2027</b></div>
+              </div>
+            </div>
+
+            <div class="roles-section">
+              <div class="roles-head">
+                <div class="left">
+                  <h3 class="display"><em>Active roles</em> · 4 assignments</h3>
+                  <div class="meta">A teacher can hold <b>multiple roles simultaneously</b> · each has its own scope and start date</div>
+                </div>
+                <div class="actions">
+                  <button class="btn">View history</button>
+                  <button class="btn gold">+ Add role</button>
+                </div>
+              </div>
+
+              <div class="role-row">
+                <div class="role-ic lead">AH</div>
+                <div class="role-info">
+                  <h4 class="display">Assistant Headmaster · <em>Academic</em></h4>
+                  <div class="scope">Senior leadership role · responsible for <b>curriculum delivery, lesson supervision, exam coordination</b>, and <em>PLC oversight</em>. One of three Assistant Heads.</div>
+                </div>
+                <div class="since">Since <b>Sept 2022</b><span class="meta-sm">3 academic years</span></div>
+                <div class="status-cell"><span class="pill active"><span class="dot"></span>ACTIVE</span></div>
+                <div class="row-action"><div class="menu-btn">⋯</div></div>
+              </div>
+
+              <div class="role-row">
+                <div class="role-ic teach">MS</div>
+                <div class="role-info">
+                  <h4 class="display">Subject Teacher · <em>Mathematics</em></h4>
+                  <div class="scope">Teaches <b>Elective Maths</b> across <em>Form 2 Science A · Form 2 Science B · Form 3 Science A</em> · 3 classes · <b>12 contact hours/week</b></div>
+                </div>
+                <div class="since">Since <b>Sept 2014</b><span class="meta-sm">original role · 11 years</span></div>
+                <div class="status-cell"><span class="pill active"><span class="dot"></span>ACTIVE</span></div>
+                <div class="row-action"><div class="menu-btn">⋯</div></div>
+              </div>
+
+              <div class="role-row">
+                <div class="role-ic house">AH</div>
+                <div class="role-info">
+                  <h4 class="display">Housemaster · <em>Aryee House</em></h4>
+                  <div class="scope">Pastoral care lead for <b>148 boys</b> (boarding + day) · runs House PTA · coordinates with matrons · reports to Asst Head · Domestic.</div>
+                </div>
+                <div class="since">Since <b>Sept 2020</b><span class="meta-sm">5 academic years</span></div>
+                <div class="status-cell"><span class="pill active"><span class="dot"></span>ACTIVE</span></div>
+                <div class="row-action"><div class="menu-btn">⋯</div></div>
+              </div>
+
+              <div class="role-row">
+                <div class="role-ic coord">PL</div>
+                <div class="role-info">
+                  <h4 class="display">PLC Facilitator · <em>weekly sessions</em></h4>
+                  <div class="scope">Facilitates the <b>weekly PLC meeting</b> for all teaching staff · responsible for NTC handbook coverage · marks PLC attendance register · feeds CPD points.</div>
+                </div>
+                <div class="since">Since <b>Sept 2023</b><span class="meta-sm">2 academic years</span></div>
+                <div class="status-cell"><span class="pill active"><span class="dot"></span>ACTIVE</span></div>
+                <div class="row-action"><div class="menu-btn">⋯</div></div>
+              </div>
+
+            </div>
+
+            <div class="meta-grid">
+
+              <div class="meta-card">
+                <h3 class="display">Personal &amp; <em>contact</em><span class="count">7 fields</span></h3>
+                <div class="row">
+                  <div class="lab">Full name</div>
+                  <div class="val">Mr Alexander Kwabena <b>Mensah</b></div>
+                </div>
+                <div class="row">
+                  <div class="lab">Date of birth</div>
+                  <div class="val">14 August 1978 · <em>47 years old</em></div>
+                </div>
+                <div class="row">
+                  <div class="lab">Gender</div>
+                  <div class="val">Male</div>
+                </div>
+                <div class="row">
+                  <div class="lab">Phone</div>
+                  <div class="val">024-XXX-7841 <span class="tag green">VERIFIED</span></div>
+                </div>
+                <div class="row">
+                  <div class="lab">Email</div>
+                  <div class="val">a.mensah@ctksenior.edu.gh</div>
+                </div>
+                <div class="row">
+                  <div class="lab">Address</div>
+                  <div class="val">East Legon, Accra · <em>10km from school</em></div>
+                </div>
+                <div class="row">
+                  <div class="lab">Emergency contact</div>
+                  <div class="val">Mrs Adwoa Mensah · spouse · <b>024-XXX-9152</b></div>
+                </div>
+              </div>
+
+              <div class="meta-card">
+                <h3 class="display">Qualifications &amp; <em>licensure</em><span class="count">5 records</span></h3>
+                <div class="row">
+                  <div class="lab">Highest qual</div>
+                  <div class="val">MEd Mathematics Education · <b>University of Cape Coast</b> · 2019</div>
+                </div>
+                <div class="row">
+                  <div class="lab">Undergraduate</div>
+                  <div class="val">BSc Mathematics · <b>UCC</b> · 2003</div>
+                </div>
+                <div class="row">
+                  <div class="lab">NTC licence</div>
+                  <div class="val">TC-89241 · <em>renewed 2024</em> · <b>expires Aug 2026</b></div>
+                </div>
+                <div class="row">
+                  <div class="lab">CPD points</div>
+                  <div class="val"><b>14 / 20</b> for 2025/26 cycle · <em>70% complete</em></div>
+                </div>
+                <div class="row">
+                  <div class="lab">Specialisations</div>
+                  <div class="val"><span class="tag">Elective Maths</span> <span class="tag">Calculus</span> <span class="tag">Statistics</span></div>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="rank-ladder">
+              <h3 class="display">GES rank ladder · Mr Mensah's <em>career progression</em></h3>
+              <div class="desc">The GES rank ladder is separate from school role. <b>Rank progresses with years of service + qualifications + promotion exams</b>, governed by NTC and GES. School promotions (e.g. Subject Teacher → Asst Head) can happen at the same rank.</div>
+
+              <div class="ladder">
+                <div class="ladder-step">
+                  <div class="level-num">L25</div>
+                  <div class="rank-name display">Director-General</div>
+                  <div class="rank-meta">national head · <b>1 in the country</b></div>
+                </div>
+                <div class="ladder-step">
+                  <div class="level-num">L23-24</div>
+                  <div class="rank-name display">Deputy Director-General</div>
+                  <div class="rank-meta">2 nationally · Quality &amp; Management</div>
+                </div>
+                <div class="ladder-step">
+                  <div class="level-num">L22</div>
+                  <div class="rank-name display">Director I / II</div>
+                  <div class="rank-meta">regional &amp; divisional</div>
+                </div>
+                <div class="ladder-step">
+                  <div class="level-num">L20-21</div>
+                  <div class="rank-name display">Deputy Director</div>
+                  <div class="rank-meta">SHS headmasters &amp; headmistresses</div>
+                </div>
+                <div class="ladder-step">
+                  <div class="level-num">L19.1</div>
+                  <div class="rank-name display">Assistant Director I</div>
+                  <div class="rank-meta">eligible <b>March 2027</b></div>
+                </div>
+                <div class="ladder-step current">
+                  <div class="level-num">L19.1</div>
+                  <div class="rank-name display"><em>Assistant Director II</em> · current</div>
+                  <div class="rank-meta">Mr Mensah · <b>since March 2024</b></div>
+                </div>
+                <div class="ladder-step past">
+                  <div class="level-num">L18.1</div>
+                  <div class="rank-name display">Principal Superintendent</div>
+                  <div class="rank-meta">previous · <b>2019-2024</b></div>
+                </div>
+                <div class="ladder-step past">
+                  <div class="level-num">L16.1</div>
+                  <div class="rank-name display">Principal Superintendent · entry</div>
+                  <div class="rank-meta">degree-holder entry · <b>2014-2019</b></div>
+                </div>
+                <div class="ladder-divider"></div>
+                <div class="ladder-step">
+                  <div class="level-num">L14-15</div>
+                  <div class="rank-name display">Senior Superintendent I / II</div>
+                  <div class="rank-meta">diploma-holder mid-tier</div>
+                </div>
+                <div class="ladder-step">
+                  <div class="level-num">L11-13</div>
+                  <div class="rank-name display">Superintendent I / II</div>
+                  <div class="rank-meta">early-career</div>
+                </div>
+                <div class="ladder-step">
+                  <div class="level-num">L8-10</div>
+                  <div class="rank-name display">Teacher</div>
+                  <div class="rank-meta">entry · pupil-teacher</div>
+                </div>
+              </div>
+
+              <div style="margin-top:18px; padding:14px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:8px; font-size:12px; color:var(--navy-2); line-height:1.6;">
+                <b>Why this matters in Omnischools:</b> Mr Mensah's <em style="color:var(--gold); font-style:italic;">GES rank</em> determines his salary scale (SSSS Level 19.1), promotion eligibility, and signing authority for official documents (transcripts, GES returns). His <em style="color:var(--gold); font-style:italic;">school roles</em> determine what he does day-to-day. They're different facts about the same person, kept in different fields.
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="principle-card">
+      <div class="eb">The principle · facts that don't collapse</div>
+      <p>The wrong design would be a single "title" field that says <em>"Assistant Headmaster · Mathematics · Aryee House · PLC"</em> mashed together. The right design separates <b>rank</b> (one-per-person, civil-service ladder) from <b>roles</b> (many-per-person, school-defined, time-bounded). Each role has its own scope (which classes, which House, what period). When Mr Mensah gets promoted to Headmaster in 2030, his rank changes to Deputy Director and his role changes to Headmaster — independently. <em>The model holds.</em></p>
+    </div>
+
+    <div class="layout" style="margin-top:24px;">
+      <div></div>
+      <div class="notes">
+        <h4>Calls worth flagging</h4>
+        <ul>
+          <li><b>The profile header shows three identity facts at once</b>: name, rank, primary role. The summary line beneath the name reconciles them — "Assistant Headmaster Academic · 4 active roles · teaches across 3 Forms" — so admin doesn't have to read the whole page to know the basics.</li>
+          <li>The <b>rank card</b> in the top-right is gold-tinted because GES rank is a <em>protected fact</em> — admins can't change it (only GES promotion processes can). Surfacing it as a read-only card communicates "this is a fact, not a configuration."</li>
+          <li>The <b>4 active roles</b> are visually differentiated by icon colour: navy (leadership), gold-bg (teaching), green-bg (House), surface (coordination). Pattern recognition before reading.</li>
+          <li>"Since Sept 2014 · original role · 11 years" on the Subject Teacher row — admin sees instantly that <b>teaching is Mr Mensah's primary identity</b>, the leadership and house roles came later. This is contextually important.</li>
+          <li>The <b>GES rank ladder visualisation</b> shows all 10 ranks with Mr Mensah's current position highlighted, past ranks dimmed, future ranks shown ahead. Admin doesn't need this every day — but when reviewing a teacher for a school-level promotion or doing GES return paperwork, it's invaluable.</li>
+          <li>The <b>CPD progress</b> ("14 / 20 for 2025/26 cycle · 70% complete") is surfaced in qualifications because it affects licence renewal — a teacher below threshold can't renew, and admin needs to know that 6 months before the expiry.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Adding a new role · the role-picker modal</div>
+    <div class="section-meta">Florence assigns Mr Mensah a 5th role · "Examinations Coordinator"</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="modal-stage">
+        <div class="modal-c">
+          <div class="modal-head-c">
+            <div class="eb">Add role · for Mr Alexander Mensah</div>
+            <h3 class="display">Pick a <em>role type</em>, then define the scope</h3>
+          </div>
+          <div class="modal-body-c">
+
+            <div style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:10px;">1. Role category</div>
+
+            <div class="role-type-grid">
+              <div class="role-type-card lead">
+                <div class="ic">L</div>
+                <div class="body">
+                  <h4 class="display">Leadership <em>role</em></h4>
+                  <div class="desc">Headmaster · Asst Head · Department Head · Senior Housemaster</div>
+                </div>
+              </div>
+              <div class="role-type-card teach">
+                <div class="ic">T</div>
+                <div class="body">
+                  <h4 class="display">Teaching <em>role</em></h4>
+                  <div class="desc">Subject Teacher · Form Teacher · Extra-classes Tutor</div>
+                </div>
+              </div>
+              <div class="role-type-card house">
+                <div class="ic">H</div>
+                <div class="body">
+                  <h4 class="display">House <em>role</em></h4>
+                  <div class="desc">Housemaster · Housemistress · Matron · House Tutor</div>
+                </div>
+              </div>
+              <div class="role-type-card coord selected">
+                <div class="ic">C</div>
+                <div class="body">
+                  <h4 class="display">Coordinator <em>role</em></h4>
+                  <div class="desc">PLC Facilitator · Examinations · Guidance &amp; Counselling · Sports · Library</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:10px;">2. Specific role &amp; scope</div>
+
+            <div class="scope-input">
+              <div class="lab">Role title</div>
+              <div class="input-mock"><em>Examinations Coordinator</em></div>
+              <div class="helper">Coordinator roles are school-defined · pick from common list or type a custom name.</div>
+            </div>
+
+            <div class="scope-input">
+              <div class="lab">Scope · what this covers</div>
+              <div class="input-mock">All Forms · WASSCE prep + mock exams + internal end-of-term assessments</div>
+              <div class="helper">Be specific. "All Forms" means scope is school-wide. <b>For role-specific oversight</b>, e.g. "Form 3 only · WASSCE prep", the scope shows on roles overview.</div>
+            </div>
+
+            <div class="scope-input">
+              <div class="lab">Start date</div>
+              <div class="input-mock">15 Sept 2025 · <em>this academic year</em></div>
+              <div class="helper">Roles are time-bounded · you'll set an end date when Mr Mensah hands over the role. <b>Historical records preserved</b>.</div>
+            </div>
+
+            <div class="scope-input" style="background:var(--gold-bg); border-color:var(--gold-soft);">
+              <div class="lab" style="color:var(--gold);">Compensation impact</div>
+              <div class="input-mock">+ GHS 280.00 monthly responsibility allowance · <em>auto-applied to next payroll</em></div>
+              <div class="helper">Omnischools <b>knows that Examinations Coordinator carries a responsibility allowance</b> per GES guidelines. The allowance is added to Mr Mensah's monthly compensation from October.</div>
+            </div>
+
+          </div>
+          <div class="modal-foot-c">
+            <div class="left-meta">5th active role · <b>audit entry will be created</b></div>
+            <div class="right-actions">
+              <button class="btn ghost">Cancel</button>
+              <button class="btn gold">Add role →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">The picker is opinionated, not free-form</div>
+        <p>4 role categories cover everything a teacher might do in SHS — picking one narrows the next field meaningfully. Within "Coordinator," the dropdown lists the common roles Omnischools knows about (PLC, Exams, Guidance, Sports, Library), with a "type a custom name" affordance for the rest. <b>The picker is opinionated</b> because most schools' role structures are similar enough that defaulting is faster than starting blank — but <em>flexible enough</em> to handle the exceptions.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The <b>"Compensation impact"</b> field is gold-tinted as a heads-up — admin sees that adding this role triggers a payroll change. Surfacing the financial consequence prevents surprises later.</li>
+        <li>For roles Omnischools <em>doesn't</em> know carry an allowance (e.g. custom school-defined coordinator), the compensation field is empty with a "no automatic allowance — adjust on payroll if needed" helper. <b>Don't fabricate facts</b>.</li>
+        <li>The <b>Coordinator category is the catch-all</b> — schools have invented endless coordinator roles over the years (Cultural, Health & Safety, ICT, Library, etc.). Letting admin add custom roles within the category is the right balance between structure and flexibility.</li>
+        <li>"5th active role" in the footer reminds admin of role concentration — <b>some teachers carry too many hats</b>, and a discreet count nudges admin to consider whether to reassign instead.</li>
+        <li>Role <b>start dates are required, end dates optional</b> — most roles are open-ended ("I'm Asst Head until I'm not"). The end date gets set when the role ends, creating a clean historical record. <em>Forward-only, append-only.</em></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">CPD &amp; professional learning · read-only summary on this surface</div>
+    <div class="section-meta">Added in PLC/CPD batch · deep-links to full ledger</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
+
+        <!-- Top strip: current year progress hero -->
+        <div style="padding:24px 30px; background:var(--navy); color:var(--bg); display:grid; grid-template-columns:1.3fr 1fr; gap:32px; align-items:center;">
+          <div>
+            <div style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px;">Academic year 2025/26 · NTC annual target</div>
+            <div style="font-family:'Fraunces',serif; font-size:22px; font-weight:500; line-height:1.2; margin-bottom:14px;">On track for renewal · <em style="font-style:italic; color:var(--gold);">14.5 of 20 pts</em> · 138 days left</div>
+            <div style="display:flex; align-items:baseline; gap:14px; margin-bottom:10px;">
+              <div style="font-family:'Fraunces',serif; font-size:38px; font-weight:500; line-height:1; letter-spacing:-0.02em;"><em style="font-style:italic; color:var(--gold);">14.5</em></div>
+              <div style="font-size:14px; color:rgba(250,247,242,0.5); font-family:'Fraunces',serif;">of</div>
+              <div style="font-family:'Fraunces',serif; font-size:20px; font-weight:500; color:rgba(250,247,242,0.7);">20 pts</div>
+            </div>
+            <div style="width:100%; height:8px; background:rgba(255,255,255,0.08); border-radius:100px; overflow:hidden; margin-bottom:8px;"><div style="height:100%; background:linear-gradient(90deg, var(--gold), #E8B57A); width:72.5%; border-radius:100px;"></div></div>
+            <div style="font-size:11px; color:rgba(232,212,184,0.7);"><b style="color:var(--gold); font-weight:700;">72.5%</b> of annual target · pace check on-track · forecast year-end <b style="color:var(--gold); font-weight:700;">22.3 pts ✓</b></div>
+          </div>
+          <div style="padding-left:32px; border-left:1px solid rgba(255,255,255,0.08);">
+            <div style="display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.08); font-size:11px; color:rgba(250,247,242,0.85);"><span>Licence expires</span><b style="color:var(--bg); font-weight:700;">30 Sept 2027</b></div>
+            <div style="display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.08); font-size:11px; color:rgba(250,247,242,0.85);"><span>3-year cycle pts</span><b style="color:var(--gold); font-weight:700;">36.5 / 60</b></div>
+            <div style="display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.08); font-size:11px; color:rgba(250,247,242,0.85);"><span>NTC ID</span><b style="color:var(--bg); font-weight:700; font-family:'JetBrains Mono',monospace; font-size:10px;">GH-T-2018-04472</b></div>
+            <div style="display:flex; justify-content:space-between; padding:7px 0; font-size:11px; color:rgba(250,247,242,0.85);"><span>Last NTC sync</span><b style="color:var(--bg); font-weight:700;">12 May · 2d ago</b></div>
+          </div>
+        </div>
+
+        <!-- Body: PLC memberships + recent ledger -->
+        <div style="padding:24px 30px; display:grid; grid-template-columns:1fr 1fr; gap:28px;">
+
+          <!-- PLC memberships -->
+          <div>
+            <div style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px;">PLC memberships · this term</div>
+            <h4 style="font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:14px; line-height:1.3;">Two <em style="font-style:italic; color:var(--gold); font-weight:500;">Friday-afternoon</em> rooms</h4>
+
+            <div style="background:var(--bg); border-left:3px solid var(--navy); border-radius:0 8px 8px 0; padding:14px 18px; margin-bottom:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <div style="font-family:'Fraunces',serif; font-size:14px; font-weight:600;">Maths PLC</div>
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy); font-weight:700; background:var(--navy); color:var(--bg); padding:2px 8px; border-radius:100px;">SUBJECT</div>
+              </div>
+              <div style="font-size:11px; color:var(--navy-2); line-height:1.55;">Member · facilitator Mr E. Adusei · <b style="color:var(--navy); font-weight:600;">9 of 9 sessions attended this term</b> · 7.5 PLC pts earned (cap 8)</div>
+              <div style="margin-top:6px; font-size:10px; color:var(--gold); font-weight:600; letter-spacing:0.04em; text-transform:uppercase;">→ VIEW PLC</div>
+            </div>
+
+            <div style="background:var(--bg); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; padding:14px 18px; margin-bottom:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <div style="font-family:'Fraunces',serif; font-size:14px; font-weight:600;">ICT-in-Pedagogy PLC</div>
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; background:var(--gold); color:var(--navy); padding:2px 8px; border-radius:100px;">CROSS-CUTTING</div>
+              </div>
+              <div style="font-size:11px; color:var(--navy-2); line-height:1.55;">Member · facilitator Mr P. Akoto · <b style="color:var(--navy); font-weight:600;">Maths department rep</b> · biweekly cadence · voluntary</div>
+              <div style="margin-top:6px; font-size:10px; color:var(--gold); font-weight:600; letter-spacing:0.04em; text-transform:uppercase;">→ VIEW PLC</div>
+            </div>
+
+            <div style="padding:10px 16px; background:var(--gold-bg); border:1px dashed var(--gold-soft); border-radius:8px; font-size:11px; color:var(--navy-2); line-height:1.5; text-align:center; font-style:italic;">As an experienced senior teacher, Mr Mensah was approached to mentor <b style="color:var(--navy);">Mr F. Yeboah (year-1 new teacher)</b> — accepting would add the New Teacher PLC and earn +1 pt/term in mentoring source</div>
+          </div>
+
+          <!-- Recent ledger entries -->
+          <div>
+            <div style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px;">Last 5 ledger entries</div>
+            <h4 style="font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:14px; line-height:1.3;">Recent <em style="font-style:italic; color:var(--gold); font-weight:500;">CPD activity</em></h4>
+
+            <div style="background:var(--bg); border-radius:10px; padding:0; overflow:hidden;">
+              <div style="display:grid; grid-template-columns:auto 1fr auto auto; gap:10px; padding:11px 16px; border-bottom:1px solid var(--border); align-items:center; font-size:11px;">
+                <div style="width:8px; height:8px; border-radius:50%; background:var(--navy); flex-shrink:0;"></div>
+                <div><div style="font-weight:600; color:var(--navy);">Maths PLC session 9</div><div style="font-size:10px; color:var(--navy-3); margin-top:1px;">16 May 2026 · attend + reflect</div></div>
+                <div style="font-family:'Fraunces',serif; font-weight:600; color:var(--navy);"><em style="font-style:italic; color:var(--gold);">+1.0</em></div>
+                <div style="font-size:8px; padding:2px 6px; background:var(--gold-bg); color:var(--gold); border-radius:100px; font-weight:700; letter-spacing:0.04em;">QUEUED</div>
+              </div>
+              <div style="display:grid; grid-template-columns:auto 1fr auto auto; gap:10px; padding:11px 16px; border-bottom:1px solid var(--border); align-items:center; font-size:11px;">
+                <div style="width:8px; height:8px; border-radius:50%; background:var(--navy); flex-shrink:0;"></div>
+                <div><div style="font-weight:600; color:var(--navy);">Maths PLC session 8</div><div style="font-size:10px; color:var(--navy-3); margin-top:1px;">09 May 2026 · attend + reflect</div></div>
+                <div style="font-family:'Fraunces',serif; font-weight:600; color:var(--navy);"><em style="font-style:italic; color:var(--gold);">+1.0</em></div>
+                <div style="font-size:8px; padding:2px 6px; background:var(--gold-bg); color:var(--gold); border-radius:100px; font-weight:700; letter-spacing:0.04em;">QUEUED</div>
+              </div>
+              <div style="display:grid; grid-template-columns:auto 1fr auto auto; gap:10px; padding:11px 16px; border-bottom:1px solid var(--border); align-items:center; font-size:11px;">
+                <div style="width:8px; height:8px; border-radius:50%; background:var(--gold); flex-shrink:0;"></div>
+                <div><div style="font-weight:600; color:var(--navy);">Cambridge IGCSE workshop</div><div style="font-size:10px; color:var(--navy-3); margin-top:1px;">28 Apr 2026 · 2-day British Council</div></div>
+                <div style="font-family:'Fraunces',serif; font-weight:600; color:var(--navy);"><em style="font-style:italic; color:var(--gold);">+2.0</em></div>
+                <div style="font-size:8px; padding:2px 6px; background:var(--green-bg); color:var(--green); border-radius:100px; font-weight:700; letter-spacing:0.04em;">SYNCED</div>
+              </div>
+              <div style="display:grid; grid-template-columns:auto 1fr auto auto; gap:10px; padding:11px 16px; border-bottom:1px solid var(--border); align-items:center; font-size:11px;">
+                <div style="width:8px; height:8px; border-radius:50%; background:var(--navy); flex-shrink:0;"></div>
+                <div><div style="font-weight:600; color:var(--navy);">Maths PLC session 7</div><div style="font-size:10px; color:var(--navy-3); margin-top:1px;">02 May 2026 · attended · <span style="color:var(--warn);">no reflect</span></div></div>
+                <div style="font-family:'Fraunces',serif; font-weight:600; color:var(--warn);"><em style="font-style:italic;">+0.5</em></div>
+                <div style="font-size:8px; padding:2px 6px; background:var(--gold-bg); color:var(--gold); border-radius:100px; font-weight:700; letter-spacing:0.04em;">QUEUED</div>
+              </div>
+              <div style="display:grid; grid-template-columns:auto 1fr auto auto; gap:10px; padding:11px 16px; align-items:center; font-size:11px;">
+                <div style="width:8px; height:8px; border-radius:50%; background:var(--green); flex-shrink:0;"></div>
+                <div><div style="font-weight:600; color:var(--navy);">Coursera · Teaching Maths Online</div><div style="font-size:10px; color:var(--navy-3); margin-top:1px;">18 Apr 2026 · 6-week course</div></div>
+                <div style="font-family:'Fraunces',serif; font-weight:600; color:var(--navy);"><em style="font-style:italic; color:var(--gold);">+2.0</em></div>
+                <div style="font-size:8px; padding:2px 6px; background:var(--green-bg); color:var(--green); border-radius:100px; font-weight:700; letter-spacing:0.04em;">SYNCED</div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px; text-align:center;">
+              <a style="font-size:11px; color:var(--gold); font-weight:700; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer;">Open full ledger · all 14 entries this year →</a>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>What this section adds</h4>
+      <ul>
+        <li><b>One-glance progress.</b> Same hero pattern as the standalone CPD ledger — the staff record now answers "is Mr Mensah on track" without leaving the page.</li>
+        <li><b>PLC memberships are first-class.</b> Each PLC he's in surfaces with type, cadence, attendance status. Subject PLCs and cross-cutting both visible.</li>
+        <li><b>Last 5 ledger entries.</b> Most recent activity gives an instant picture without the full ledger's noise. Click through to expand.</li>
+        <li><b>Read-only on this surface.</b> The staff record is canonical detail · the ledger is the operating surface. No edits here. Deep-link to ledger for adds, evidence uploads.</li>
+        <li><b>Mentoring nudge.</b> Discovered the gap analysis suggestion from the standalone CPD ledger surfaces here too — Mr Yeboah needs a mentor, Mr Mensah's the obvious match. Surfacing it here turns intent into action.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Why the refactor matters</h4>
+      <ul>
+        <li><b>The staff record is the canonical detail page.</b> Every other surface deep-links here · the school dashboard, the PLC session register, the NTC sync, all open the staff record when an admin clicks through.</li>
+        <li><b>Adding CPD here makes the page complete.</b> Before this refactor, the staff record showed roles, GES rank, contact, but said nothing about professional learning. After, it's a fuller picture of the staff member.</li>
+        <li><b>Without overwhelming.</b> The new section is constrained to one screen-third — hero + PLC memberships + last 5 entries. Anyone needing more clicks through to the dedicated ledger.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Migration impact · what changes for existing basic-school staff records</div>
+    <div class="section-meta">The structural refactor · backwards-compatible</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 28px;">
+
+        <h3 style="font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:14px; letter-spacing:-0.005em;">What happens to <em style="font-style:italic; color:var(--gold); font-weight:500;">existing basic-school</em> staff records?</h3>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+
+          <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px 18px;">
+            <div style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px;">Before · single role field</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--navy-2); line-height:1.7;">
+              staff<br>
+              <span style="padding-left:14px;">id<br>name<br><span style="color:var(--terra); font-weight:600;">role: "Class 3 Teacher"</span></span>
+            </div>
+          </div>
+
+          <div style="background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:8px; padding:16px 18px;">
+            <div style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px;">After · roles as a 1:N relation</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--navy-2); line-height:1.7;">
+              staff<br>
+              <span style="padding-left:14px;">id<br>name<br>ges_rank_id <span style="color:var(--navy-3); font-style:italic;">(nullable)</span></span><br>
+              staff_role_assignments<br>
+              <span style="padding-left:14px;">staff_id<br>role_type<br>scope<br>start_date · end_date</span>
+            </div>
+          </div>
+
+        </div>
+
+        <h4 style="font-family:'Fraunces',serif; font-size:14px; font-weight:600; margin-bottom:10px;">The migration · <em style="font-style:italic; color:var(--gold);">one-time backfill</em></h4>
+        <p style="font-size:12px; color:var(--navy-2); line-height:1.7; margin-bottom:14px;">For each existing staff row with a non-null <span style="font-family:'JetBrains Mono',monospace; background:var(--bg); padding:1px 6px; border-radius:3px;">role</span> field, Omnischools inserts <b>one row into staff_role_assignments</b> with the same value as scope, type as <em>"Teaching"</em>, and start_date as the staff member's join date. The original <span style="font-family:'JetBrains Mono',monospace; background:var(--bg); padding:1px 6px; border-radius:3px;">role</span> column stays for two release cycles as <b>read-only fallback</b>, then dropped.</p>
+
+        <div style="background:var(--green-bg); border:1px solid #C8DDC9; border-radius:8px; padding:14px 18px; font-size:12px; color:var(--navy-2); line-height:1.6;">
+          <b>Net impact on basic-school admins:</b> nothing visible changes immediately. Their staff records still show one role per teacher — because most basic-school teachers only have one role. <em>The structural capacity is there</em>, ready for the day a basic-school admin wants to add a 2nd role (e.g. "Sports Coordinator") without changing schemas. <b>Existing data preserved, new capability available.</b>
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">For the build phase</div>
+        <p>This refactor is small in code (one migration, one new table, one updated query layer) but <b>large in consequence</b> — it unlocks SHS, it unlocks multi-role basic-school teachers, it unlocks honest historical records. Doing it in Sprint 1 of MVP1 (rather than later) means we never have to migrate live customer data. <em>The cost is one extra day in Sprint 1; the alternative is a painful re-architecture mid-launch.</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The <b>ges_rank_id</b> field on the staff table is nullable because basic-school staff records often won't have a GES rank set during MVP1 — admin doesn't need to fill it in unless they want to. SHS staff records require it (enforced at the UI level, not the schema).</li>
+        <li>The <b>role column staying for two release cycles</b> is a defensive measure — if the new query layer has a bug, admins can fall back to the old field. After two releases without issue, it's dropped cleanly.</li>
+        <li>"<b>Teaching</b>" is the default role_type for backfilled rows because that's what 95%+ of basic-school staff records have. Admins can update the type post-migration if needed (e.g. a school's headteacher record gets manually retagged as "Leadership").</li>
+        <li>The original <b>scope</b> field carries the freeform role description ("Class 3 Teacher", "P5 Maths Teacher", etc.) — preserves the admin's original wording, which is more useful than forcing them into a canonical form.</li>
+        <li>For the build estimate: the migration script is <b>~30 lines of SQL</b>, the new query layer is <b>~80 lines of Drizzle code</b>, and the UI changes to existing staff list/detail screens are about <b>2 days of work</b>. Doable in Sprint 1 comfortably.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

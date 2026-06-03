@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Peer Guides roster</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.sum-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.sum-card.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-card.warn { background:var(--warn-bg); border-color:var(--warn); }
+.sum-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-card.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-card.warn .lab { color:var(--warn); }
+.sum-card .big { font-family:'Fraunces',serif; font-size:26px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-card .big em { font-style:italic; color:var(--gold); }
+.sum-card.warn .big { color:var(--warn); }
+.sum-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-card.featured .sub { color:rgba(232,212,184,0.6); }
+.sum-card .sub b { color:var(--navy-2); font-weight:600; }
+.sum-card.featured .sub b { color:var(--gold); }
+
+.body-shell { padding:32px 36px 36px; }
+
+.term-context { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:14px 20px; margin-bottom:26px; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.term-context .left { display:flex; align-items:center; gap:16px; }
+.term-context .term-pill { background:var(--gold); color:var(--navy); padding:4px 12px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.08em; }
+.term-context .info { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.term-context .info b { color:var(--navy); font-weight:700; }
+.term-context .info em { color:var(--gold); font-family:'Fraunces',serif; font-style:italic; font-weight:500; }
+.term-context .actions { display:flex; gap:8px; }
+
+.block { margin-bottom:36px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+.block-head .actions { display:flex; gap:8px; }
+
+/* Classes grid · 9 example cards */
+.classes-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+.class-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.class-card.form1 { background:var(--bg); }
+.class-card.gap { border:1.5px solid var(--terra); background:var(--terra-bg); }
+.class-card .cc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed var(--border); }
+.class-card.gap .cc-head { border-bottom-color:var(--terra); }
+.class-card .cc-head .info { flex:1; }
+.class-card .cc-head .info h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; line-height:1.2; }
+.class-card .cc-head .info h4 em { font-style:italic; color:var(--gold); }
+.class-card .cc-head .info .sub { font-size:10px; color:var(--navy-3); margin-top:2px; letter-spacing:0.02em; }
+.class-card .cc-head .form-pill { font-size:9px; font-weight:700; letter-spacing:0.08em; padding:3px 8px; border-radius:100px; }
+.class-card .cc-head .form-pill.f1 { background:var(--border); color:var(--navy-3); }
+.class-card .cc-head .form-pill.f2 { background:var(--gold-bg); color:var(--gold); }
+.class-card .cc-head .form-pill.f3 { background:var(--green-bg); color:var(--green); }
+
+.pg-pair { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.pg-slot { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:var(--bg); }
+.pg-slot.boy { border-left:3px solid var(--navy); }
+.pg-slot.girl { border-left:3px solid var(--terra); }
+.pg-slot.empty { background:var(--terra-bg); border:1px dashed var(--terra); }
+.pg-slot .av { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; flex-shrink:0; }
+.pg-slot.boy .av { background:var(--navy); color:var(--gold); }
+.pg-slot.girl .av { background:var(--terra); color:var(--bg); }
+.pg-slot.empty .av { background:var(--terra-bg); color:var(--terra); border:1px dashed var(--terra); font-size:14px; }
+.pg-slot .pg-info .nm { font-size:11px; font-weight:600; color:var(--navy); line-height:1.2; }
+.pg-slot .pg-info .role { font-size:9px; color:var(--navy-3); letter-spacing:0.04em; margin-top:1px; }
+.pg-slot.empty .pg-info .nm { color:var(--terra); }
+.pg-slot.empty .pg-info .role { color:var(--terra); }
+
+.class-card.form1 .no-pg-note { padding:14px; text-align:center; background:var(--surface); border-radius:8px; font-size:11px; color:var(--navy-3); line-height:1.5; font-style:italic; }
+.class-card.form1 .no-pg-note b { color:var(--navy-2); font-style:normal; font-weight:600; }
+
+.class-card .tenure-bar { margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); display:flex; justify-content:space-between; align-items:center; font-size:9px; letter-spacing:0.04em; }
+.class-card .tenure-bar .label { color:var(--navy-3); font-weight:600; text-transform:uppercase; }
+.class-card .tenure-bar .val { color:var(--navy-2); font-family:'JetBrains Mono',monospace; font-weight:600; }
+
+/* Gap callout */
+.gap-callout { background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:14px; padding:22px 26px; margin-top:24px; }
+.gap-callout .gc-head { display:flex; align-items:flex-start; gap:16px; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--terra); }
+.gap-callout .gc-head .ic { width:40px; height:40px; border-radius:10px; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:18px; flex-shrink:0; }
+.gap-callout .gc-head h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:4px; line-height:1.25; }
+.gap-callout .gc-head h4 em { font-style:italic; color:var(--terra); }
+.gap-callout .gc-head .sub { font-size:11px; color:var(--navy-2); line-height:1.45; }
+.gap-callout .gc-head .sub b { color:var(--terra); font-weight:700; }
+.gap-callout .gc-head .actions { margin-left:auto; display:flex; gap:6px; flex-shrink:0; }
+.gap-callout .gc-body { font-size:12px; color:var(--navy-2); line-height:1.65; }
+.gap-callout .gc-body b { color:var(--navy); font-weight:600; }
+.gap-callout .gc-body em { color:var(--terra); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+/* Training calendar */
+.training-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:0; overflow:hidden; }
+.training-row { display:grid; grid-template-columns:80px 1fr 90px 110px 90px; gap:14px; align-items:center; padding:14px 22px; border-bottom:1px solid var(--border); font-size:12px; }
+.training-row:last-child { border-bottom:none; }
+.training-row.done { background:var(--bg); }
+.training-row.next { background:var(--gold-bg); border-left:3px solid var(--gold); }
+.training-row.future { opacity:0.65; }
+.training-row .date-box { font-family:'JetBrains Mono',monospace; }
+.training-row .date-box .day { font-weight:700; color:var(--navy); font-size:13px; }
+.training-row .date-box .mo { color:var(--navy-3); font-size:10px; letter-spacing:0.04em; text-transform:uppercase; margin-top:1px; }
+.training-row .topic { line-height:1.5; }
+.training-row .topic .title { font-weight:600; color:var(--navy); }
+.training-row .topic .desc { font-size:10px; color:var(--navy-3); margin-top:2px; }
+.training-row .duration { font-size:10px; color:var(--navy-3); font-family:'JetBrains Mono',monospace; }
+.training-row .attendance .bar-mini { width:60px; height:5px; background:var(--border); border-radius:100px; overflow:hidden; margin-bottom:3px; }
+.training-row .attendance .bar-mini .fill { height:100%; background:var(--green); border-radius:100px; }
+.training-row .attendance .pct { font-size:10px; color:var(--navy-2); font-weight:600; }
+.training-row .status-pill { padding:3px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.06em; text-align:center; }
+.training-row .status-pill.done { background:var(--green-bg); color:var(--green); }
+.training-row .status-pill.next { background:var(--gold); color:var(--navy); }
+.training-row .status-pill.future { background:var(--border); color:var(--navy-3); }
+
+/* Leadership development tiles */
+.lead-card { background:var(--navy); color:var(--bg); border-radius:14px; padding:28px 32px; }
+.lead-card .lc-eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.lead-card h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:18px; line-height:1.3; }
+.lead-card h3 em { font-style:italic; color:var(--gold); }
+.lead-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; }
+.lead-tile { background:rgba(255,255,255,0.04); border:1px solid rgba(232,212,184,0.15); border-radius:10px; padding:16px 18px; }
+.lead-tile .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,212,184,0.6); font-weight:700; margin-bottom:6px; }
+.lead-tile .num { font-family:'Fraunces',serif; font-size:30px; font-weight:600; letter-spacing:-0.015em; line-height:1; }
+.lead-tile .num em { font-style:italic; color:var(--gold); }
+.lead-tile .sub { font-size:11px; color:rgba(250,247,242,0.6); margin-top:6px; line-height:1.45; }
+.lead-tile .sub b { color:var(--bg); font-weight:600; }
+
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · VLC batch · 02 of 05</div>
+  <span class="mvp-tag">SHS · Dean of Students view</span>
+  <span class="related-tag">Roster, training, leadership development</span>
+  <h1 class="display">Thirty-six <em>Peer Guides</em></h1>
+  <div class="gold-rule"></div>
+  <p>Two per class across the eighteen Form 2 and Form 3 classes, one boy and one girl by default, serving a one-term tenure. <b>This is the student leadership layer that makes VLC work.</b> Form 1 doesn't supply Peer Guides — they're being received in their first year, not asked to lead. Selection is class-vote with Form Master approval and Dean sign-off. Monthly training keeps the facilitation skill fresh. The Dean of Students owns the roster, tracks attendance at training, and watches for the gaps that need filling.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The roster · 36 Peer Guides across 18 classes</div>
+    <div class="section-meta">Pastoral &amp; values → VLC → Peer Guides</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / pastoral / vlc / peer-guides</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Pastoral &amp; values · VLC · Peer Guides roster</div>
+          <h2 class="display">Peer Guides <em>· Semester 2 · 2025/26</em></h2>
+          <div class="lede">34 of 36 slots filled · 17 boys + 17 girls (perfect balance) · 22 Form 2 + 12 Form 3 · next training Saturday 19 May · class vote pending for Form 2 Eunyam vacancy</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">View selection history</button>
+          <button class="btn gold">Schedule 2026/27 Semester 1 selection</button>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-card featured">
+          <div class="lab">Active Peer Guides</div>
+          <div class="big display"><em>34</em> / 36</div>
+          <div class="sub"><b>94%</b> · 2 slots open (1 vacancy + 1 rotation)</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Gender balance</div>
+          <div class="big display"><em>17</em> · <em>17</em></div>
+          <div class="sub"><b>Boys / girls</b> · default 1+1 pattern holding</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Form distribution</div>
+          <div class="big display"><em>22</em> · <em>12</em></div>
+          <div class="sub"><b>F2 / F3</b> · F3 students tend to rotate out for WASSCE</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Training attendance</div>
+          <div class="big display"><em>92%</em></div>
+          <div class="sub">4 trainings done · avg <b>33 of 36</b> attended</div>
+        </div>
+        <div class="sum-card warn">
+          <div class="lab">Rotating after T2</div>
+          <div class="big display"><em>14</em> PGs</div>
+          <div class="sub">Selection cycle <b>15 Jul</b> for 2026/27 Semester 1</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <div class="term-context">
+          <div class="left">
+            <div class="term-pill">SEMESTER 2 LOCKED</div>
+            <div class="info"><b>Current selection in tenure</b> · Semester 2 PGs serve May — Aug 2026 · <em>2026/27 Semester 1 selection opens 15 Jul</em> · 14 of 34 will rotate (Form 3 finishing, voluntary step-aside, end of tenure)</div>
+          </div>
+          <div class="actions">
+            <button class="btn ghost">View tenure rules</button>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Per-class roster · 9 classes shown of 18</div>
+              <h3 class="display">Each class <em>· two Peer Guides</em> · except Form 1</h3>
+            </div>
+            <div class="meta">Filterable by form · click any card for class detail</div>
+          </div>
+
+          <div class="classes-grid">
+
+            <!-- Form 1 examples (no PGs) -->
+            <div class="class-card form1">
+              <div class="cc-head">
+                <div class="info">
+                  <h4 class="display">Form 1 <em>GS</em></h4>
+                  <div class="sub">General Science · 42 students · Mrs Y. Akoto FM</div>
+                </div>
+                <div class="form-pill f1">F1</div>
+              </div>
+              <div class="no-pg-note">
+                <b>No Peer Guides by policy</b><br/>
+                Form 1 students receive · they don't lead in their first year
+              </div>
+            </div>
+
+            <div class="class-card form1">
+              <div class="cc-head">
+                <div class="info">
+                  <h4 class="display">Form 1 <em>SC</em></h4>
+                  <div class="sub">Science · 38 students · Mr D. Mensah FM</div>
+                </div>
+                <div class="form-pill f1">F1</div>
+              </div>
+              <div class="no-pg-note">
+                <b>No Peer Guides by policy</b><br/>
+                Form 1 students receive · they don't lead in their first year
+              </div>
+            </div>
+
+            <!-- Form 2 GA A · the gap case -->
+            <div class="class-card gap">
+              <div class="cc-head">
+                <div class="info">
+                  <h4 class="display">Form 2 <em>Eunyam</em></h4>
+                  <div class="sub">General Arts · 41 students · Mrs L. Owusu FM · <b style="color:var(--terra);">vacancy open</b></div>
+                </div>
+                <div class="form-pill f2">F2</div>
+              </div>
+              <div class="pg-pair">
+                <div class="pg-slot boy">
+                  <div class="av">KO</div>
+                  <div class="pg-info"><div class="nm">Kwame Osei</div><div class="role">Boys' rep · F2</div></div>
+                </div>
+                <div class="pg-slot empty">
+                  <div class="av">!</div>
+                  <div class="pg-info"><div class="nm">Akosua M. stepped aside</div><div class="role">Vote pending Fri 23 May</div></div>
+                </div>
+              </div>
+              <div class="tenure-bar">
+                <span class="label">Tenure</span>
+                <span class="val">Semester 2 · 2 wks in · 14 wks left</span>
+              </div>
+            </div>
+
+            <!-- Form 2 GA A · regular -->
+            <div class="class-card">
+              <div class="cc-head">
+                <div class="info">
+                  <h4 class="display">Form 2 <em>GA A</em></h4>
+                  <div class="sub">General Arts · 40 students · Mr A. Mensah FM</div>
+                </div>
+                <div class="form-pill f2">F2</div>
+              </div>
+              <div class="pg-pair">
+                <div class="pg-slot boy">
+                  <div class="av">PO</div>
+                  <div class="pg-info"><div class="nm">Prince Otoo</div><div class="role">Boys' rep · F2</div></div>
+                </div>
+                <div class="pg-slot girl">
+                  <div class="av">AG</div>
+                  <div class="pg-info"><div class="nm">Akua Gyamfi</div><div class="role">Girls' rep · F2</div></div>
+                </div>
+              </div>
+              <div class="tenure-bar">
+                <span class="label">Tenure</span>
+                <span class="val">Semester 2 · ends 21 Aug</span>
+              </div>
+            </div>
+
+            <div class="class-card">
+              <div class="cc-head">
+                <div class="info">
+                  <h4 class="display">Form 2 <em>GS A</em></h4>
+                  <div class="sub">General Science · 42 students · Mr K. Yiadom FM</div>
+                </div>
+                <div class="form-pill f2">F2</div>
+              </div>
+              <div class="pg-pair">
+                <div class="pg-slot boy">
+                  <div class="av">EA</div>
+                  <div class="pg-info"><div class="nm">Edem Agbeko</div><div class="role">Boys' rep · F2</div></div>
+                </div>
+                <div class="pg-slot girl">
+                  <div class="av">NB</div>
+                  <div class="pg-info"><div class="nm">Naa Boakye</div><div class="role">Girls' rep · F2</div></div>
+                </div>
+              </div>
+              <div class="tenure-bar">
+                <span class="label">Tenure</span>
+                <span class="val">Semester 2 · ends 21 Aug</span>
+              </div>
+            </div>
+
+            <div class="class-card">
+              <div class="cc-head">
+                <div class="info">
+                  <h4 class="display">Form 2 <em>BUS</em></h4>
+                  <div class="sub">Business · 36 students · Mrs J. Ofori FM</div>
+                </div>
+                <div class="form-pill f2">F2</div>
+              </div>
+              <div class="pg-pair">
+                <div class="pg-slot boy">
+                  <div class="av">SA</div>
+                  <div class="pg-info"><div class="nm">Samuel Annan</div><div class="role">Boys' rep · F2</div></div>
+                </div>
+                <div class="pg-slot girl">
+                  <div class="av">EB</div>
+                  <div class="pg-info"><div class="nm">Esther Bonsu</div><div class="role">Girls' rep · F2</div></div>
+                </div>
+              </div>
+              <div class="tenure-bar">
+                <span class="label">Tenure</span>
+                <span class="val">Semester 2 · ends 21 Aug</span>
+              </div>
+            </div>
+
+            <!-- Form 3 examples -->
+            <div class="class-card">
+              <div class="cc-head">
+                <div class="info">
+                  <h4 class="display">Form 3 <em>GS A</em></h4>
+                  <div class="sub">General Science · 38 students · Dr E. Tetteh FM</div>
+                </div>
+                <div class="form-pill f3">F3</div>
+              </div>
+              <div class="pg-pair">
+                <div class="pg-slot boy">
+                  <div class="av">KA</div>
+                  <div class="pg-info"><div class="nm">Kofi Adusei</div><div class="role">Boys' rep · F3</div></div>
+                </div>
+                <div class="pg-slot girl">
+                  <div class="av">YB</div>
+                  <div class="pg-info"><div class="nm">Yaa Bediako</div><div class="role">Girls' rep · F3</div></div>
+                </div>
+              </div>
+              <div class="tenure-bar">
+                <span class="label">Tenure</span>
+                <span class="val">Final semester · WASSCE soon</span>
+              </div>
+            </div>
+
+            <div class="class-card">
+              <div class="cc-head">
+                <div class="info">
+                  <h4 class="display">Form 3 <em>GA</em></h4>
+                  <div class="sub">General Arts · 35 students · Mrs G. Asante FM</div>
+                </div>
+                <div class="form-pill f3">F3</div>
+              </div>
+              <div class="pg-pair">
+                <div class="pg-slot boy">
+                  <div class="av">JM</div>
+                  <div class="pg-info"><div class="nm">Joseph Mensah</div><div class="role">Boys' rep · F3</div></div>
+                </div>
+                <div class="pg-slot girl">
+                  <div class="av">PS</div>
+                  <div class="pg-info"><div class="nm">Priscilla Sarpong</div><div class="role">Girls' rep · F3</div></div>
+                </div>
+              </div>
+              <div class="tenure-bar">
+                <span class="label">Tenure</span>
+                <span class="val">Final semester · rotating out</span>
+              </div>
+            </div>
+
+            <div class="class-card">
+              <div class="cc-head">
+                <div class="info">
+                  <h4 class="display">Form 3 <em>BUS</em></h4>
+                  <div class="sub">Business · 32 students · Mr P. Akoto FM</div>
+                </div>
+                <div class="form-pill f3">F3</div>
+              </div>
+              <div class="pg-pair">
+                <div class="pg-slot boy">
+                  <div class="av">DK</div>
+                  <div class="pg-info"><div class="nm">Daniel Kpodo</div><div class="role">Boys' rep · F3</div></div>
+                </div>
+                <div class="pg-slot girl">
+                  <div class="av">AT</div>
+                  <div class="pg-info"><div class="nm">Abena Twum</div><div class="role">Girls' rep · F3</div></div>
+                </div>
+              </div>
+              <div class="tenure-bar">
+                <span class="label">Tenure</span>
+                <span class="val">Final semester · rotating out</span>
+              </div>
+            </div>
+
+          </div>
+
+          <div style="margin-top:14px; padding:12px; background:var(--bg); border:1px dashed var(--border); border-radius:8px; text-align:center; font-size:11px; color:var(--navy-3); font-style:italic;"><b style="color:var(--navy-2); font-style:normal; font-weight:600;">9 more classes</b> · 4 Form 2 + 5 Form 3 · click to expand the full roster</div>
+        </div>
+
+        <!-- Gap callout -->
+        <div class="gap-callout">
+          <div class="gc-head">
+            <div class="ic">!</div>
+            <div>
+              <h4 class="display">Open vacancy · <em>Form 2 Eunyam</em></h4>
+              <div class="sub"><b>Akosua Mensah stepped aside 02 May 2026.</b> Personal circumstances (family illness, returning home weekends). Class vote scheduled for Friday 23 May to elect replacement girls' rep. Mrs L. Owusu (FM) has 4 candidate names from class members.</div>
+            </div>
+            <div class="actions">
+              <button class="btn ghost">View candidates</button>
+              <button class="btn gold">Confirm vote</button>
+            </div>
+          </div>
+          <div class="gc-body">
+            <p>Vacancy protocol when a PG steps aside mid-term: <b>class members nominate up to 4 candidates within one week</b> · FM holds a class vote · winner serves the remainder of the term (not a fresh full tenure). <em>Kwame Otoo (boys' rep) continues solo</em> during the gap — Mrs Owusu has been picking up the small-group facilitation that would normally be Akosua's. Vote happens Friday in the regular VLC slot. Dean (Mr Kyei) attends to ratify.</p>
+          </div>
+        </div>
+
+        <!-- Training calendar -->
+        <div class="block" style="margin-top:36px;">
+          <div class="block-head">
+            <div>
+              <div class="eb">Monthly training · last Saturday morning</div>
+              <h3 class="display">Training <em>calendar</em> · 6 sessions per academic year</h3>
+            </div>
+            <div class="actions">
+              <button class="btn ghost">Download attendance log</button>
+              <button class="btn">Plan next training</button>
+            </div>
+          </div>
+
+          <div class="training-card">
+            <div class="training-row done">
+              <div class="date-box"><div class="day">26</div><div class="mo">Jan</div></div>
+              <div class="topic">
+                <div class="title">Welcome &amp; the Peer Guide role</div>
+                <div class="desc">What it is, what it is not · facilitation vs authority</div>
+              </div>
+              <div class="duration">90 min</div>
+              <div class="attendance"><div class="bar-mini"><div class="fill" style="width:100%;"></div></div><div class="pct">36 / 36 · 100%</div></div>
+              <div class="status-pill done">DONE</div>
+            </div>
+
+            <div class="training-row done">
+              <div class="date-box"><div class="day">23</div><div class="mo">Feb</div></div>
+              <div class="topic">
+                <div class="title">Listening · the discipline of holding space</div>
+                <div class="desc">Active listening drills · paired exercises · silence as a tool</div>
+              </div>
+              <div class="duration">90 min</div>
+              <div class="attendance"><div class="bar-mini"><div class="fill" style="width:94%;"></div></div><div class="pct">34 / 36 · 94%</div></div>
+              <div class="status-pill done">DONE</div>
+            </div>
+
+            <div class="training-row done">
+              <div class="date-box"><div class="day">30</div><div class="mo">Mar</div></div>
+              <div class="topic">
+                <div class="title">When to flag · pastoral concern protocol</div>
+                <div class="desc">Recognising a struggle · escalation paths · confidentiality boundaries</div>
+              </div>
+              <div class="duration">120 min</div>
+              <div class="attendance"><div class="bar-mini"><div class="fill" style="width:92%;"></div></div><div class="pct">33 / 36 · 92%</div></div>
+              <div class="status-pill done">DONE</div>
+            </div>
+
+            <div class="training-row done">
+              <div class="date-box"><div class="day">27</div><div class="mo">Apr</div></div>
+              <div class="topic">
+                <div class="title">Difficult moments · de-escalation</div>
+                <div class="desc">When a group conversation goes off-rails · case scenarios from Semester 1</div>
+              </div>
+              <div class="duration">90 min</div>
+              <div class="attendance"><div class="bar-mini"><div class="fill" style="width:89%;"></div></div><div class="pct">32 / 36 · 89%</div></div>
+              <div class="status-pill done">DONE</div>
+            </div>
+
+            <div class="training-row next">
+              <div class="date-box"><div class="day">19</div><div class="mo">May</div></div>
+              <div class="topic">
+                <div class="title">Service projects · planning &amp; running Value 7B</div>
+                <div class="desc">Prep for the Patriotism→Service paired session block · per-class project briefs</div>
+              </div>
+              <div class="duration">120 min</div>
+              <div class="attendance"><div class="bar-mini"><div class="fill" style="width:0%;"></div></div><div class="pct">— · upcoming</div></div>
+              <div class="status-pill next">NEXT · SAT</div>
+            </div>
+
+            <div class="training-row future">
+              <div class="date-box"><div class="day">23</div><div class="mo">Jun</div></div>
+              <div class="topic">
+                <div class="title">Year reflection · handing over</div>
+                <div class="desc">Capstone training · F3 PGs prepare to step down · F2s prepare to mentor next intake</div>
+              </div>
+              <div class="duration">90 min</div>
+              <div class="attendance"><div class="bar-mini"><div class="fill" style="width:0%;"></div></div><div class="pct">— · scheduled</div></div>
+              <div class="status-pill future">FUTURE</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leadership development -->
+        <div class="lead-card">
+          <div class="lc-eb">Leadership development · the year so far</div>
+          <h3 class="display">36 students <em>have led a peer-conversation</em> this year</h3>
+          <div class="lead-grid">
+            <div class="lead-tile">
+              <div class="lab">Students who held a PG role</div>
+              <div class="num display"><em>36</em></div>
+              <div class="sub"><b>Cumulative this year</b> · plus 14 more rotating in for 2026/27 Semester 1</div>
+            </div>
+            <div class="lead-tile">
+              <div class="lab">Trained in facilitation</div>
+              <div class="num display"><em>50</em></div>
+              <div class="sub">By year-end · 36 current + 14 incoming</div>
+            </div>
+            <div class="lead-tile">
+              <div class="lab">Hours of practice each</div>
+              <div class="num display"><em>22</em> hrs</div>
+              <div class="sub">11 sessions × 60 min each · plus monthly training</div>
+            </div>
+            <div class="lead-tile">
+              <div class="lab">Recognised on character ref</div>
+              <div class="num display"><em>36</em></div>
+              <div class="sub">PG service line on school-leaver letter · all current PGs eligible</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What this surface manages</h4>
+      <ul>
+        <li><b>Per-class PG slots.</b> Every F2/F3 class has 2 slots — boys' rep and girls' rep. Form 1 classes show "no PGs by policy" cards.</li>
+        <li><b>Vacancy protocol.</b> When a PG steps aside, the class card flips to vacancy state. Class members nominate up to 4 candidates within one week, FM holds a class vote, winner finishes the term.</li>
+        <li><b>Training attendance is tracked per session.</b> Drives the 92% headline metric. Below 80% triggers a Dean conversation with the missing PG · pattern of absence may signal stepping aside.</li>
+        <li><b>Tenure rotation is calendared.</b> 2026/27 Semester 1 selection opens 15 July · current Form 3 PGs roll off (WASSCE prep), some Form 2 PGs roll off (1-term tenure ended), new candidates step in.</li>
+        <li><b>Leadership stats feed the year-end character paragraph.</b> Each PG's service is recognised on the school-leaver reference letter — concrete contribution, not just a line.</li>
+      </ul>
+      <h4 style="margin-top:28px;">Why not a longer tenure?</h4>
+      <ul>
+        <li><b>One term feels too short, but it's deliberate.</b> Three reasons: (1) leadership opportunity spreads wider across the cohort, (2) burnout doesn't accumulate, (3) class gets multiple PG personalities across the year — different students surface different conversations.</li>
+        <li><b>Re-selection is allowed.</b> A PG who served Semester 1 of this year can stand again for next year's Semester 1. Several do · about 20-30%. Most don't · they've had their turn.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Peer Guide vs Prefect · two different student leadership roles</div>
+    <div class="section-meta">Editorial · why both can coexist</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The distinction that matters</div>
+        <h3 class="display">A Prefect <em>holds authority</em>. A Peer Guide <em>holds space</em>.</h3>
+        <p>Ghanaian SHS has a long-running Prefect system — Senior Prefect, House Prefects, Class Captains, Dining Hall Prefects, Library Prefects, Sports Prefects. They are the school's student-leadership scaffold and they work. They <b>enforce rules</b>, <b>represent the school</b> at functions, <b>liaise between students and staff</b>, and in some schools sit on disciplinary committees. The role is authority-bearing by design. A Class Captain who can't enforce a rule is no Class Captain.</p>
+        <p>Peer Guides are something else. The role exists because a Form Master can lead a value conversation, and a Prefect can keep the classroom in order, but <em>neither one can be the peer asking the question</em>. When the value of the week is Compassion and the Form Master asks "who in your life is struggling and how could you help" — the answers a student gives an adult will be different from the answers that same student gives a friend in a small group. <b>The Peer Guide is the friend version of the conversation.</b> Same student, same value, different access to the truth.</p>
+        <p>Selection reflects the distinction. Prefects are appointed — by the Headmaster, often based on academic standing, conduct record, and visible leadership over time. Peer Guides are <em>elected by their classmates</em>, with Form Master approval as a check. The difference matters: a Prefect's authority comes from the institution, a Peer Guide's standing comes from peers. Different sources, different legitimacy, different jobs.</p>
+        <p>A student can be both. Several are — the same person who's House Prefect can also be Peer Guide in their classroom. They wear different hats in different rooms. <b>The system does not collapse them into one role</b> because the work is different: one keeps order, the other holds space. Both are needed.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The practical implication</h4>
+      <ul>
+        <li><b>Don't appoint Peer Guides from above.</b> The class election step is the source of legitimacy. Skipping it makes a Peer Guide functionally a Prefect.</li>
+        <li><b>Don't make PG service compete with Prefect duty.</b> Different timeslots, different rooms, different functions. A student can wear both hats without conflict.</li>
+        <li><b>Don't recognise PGs in the same channel as Prefects.</b> Prefects line up at assembly, get badges. PGs get a sentence on the character paragraph. Different recognition, different intent.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

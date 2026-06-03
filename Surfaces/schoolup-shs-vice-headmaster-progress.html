@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools Senior — Vice Headmaster Academic progress view</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:800px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Oversight uses a deeper navy app chrome to distinguish it from the operational app */
+.app-shell { display:grid; grid-template-columns:230px 1fr; background:var(--bg); }
+.sidebar { background:#13203A; color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1240px; }
+.sidebar.tall { min-height:1620px; }
+.sidebar.taller { min-height:1880px; }
+.sidebar .gov-mark { padding:0 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:8px; }
+.sidebar .gov-mark .crest { display:flex; gap:11px; align-items:center; }
+.sidebar .gov-mark .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; line-height:1; text-align:center; }
+.sidebar .gov-mark .crest-text .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.sidebar .gov-mark .crest-text .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.sidebar .scope-chip { margin:14px 20px 8px; padding:10px 12px; background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:8px; }
+.sidebar .scope-chip .sc-label { font-size:8.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.sidebar .scope-chip .sc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.sidebar .scope-chip .sc-meta { font-size:10px; color:var(--gold-soft); margin-top:1px; }
+.nav-group { padding:16px 24px 6px; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(200,151,91,0.6); font-weight:700; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.1); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; }
+.sidebar .footer .av { width:34px; height:34px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; flex-shrink:0; }
+.sidebar .footer .meta-name { font-weight:600; font-size:12px; }
+.sidebar .footer .meta-role { font-size:9.5px; color:var(--gold-soft); margin-top:1px; }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.5); font-weight:700; }
+.powered-by em { color:var(--gold); font-style:normal; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:820px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Data-period banner */
+.period-banner { display:flex; align-items:center; gap:14px; padding:12px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; margin-bottom:24px; }
+.period-banner .pb-icon { width:34px; height:34px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:15px; flex-shrink:0; }
+.period-banner .pb-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.period-banner .pb-text b { color:var(--navy); font-weight:700; }
+.period-banner .pb-aside { margin-left:auto; font-size:10px; letter-spacing:0.06em; color:var(--navy-3); font-weight:600; text-align:right; }
+
+/* KPI strip */
+.kpi-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.kpi-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.kpi-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.kpi-card .k-lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.kpi-card .k-val { font-family:'Fraunces', serif; font-size:33px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.kpi-card .k-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.kpi-card .k-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.kpi-card .k-sub { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.kpi-card .k-sub b { color:var(--navy-2); font-weight:700; }
+.kpi-card .k-delta { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; margin-top:8px; position:relative; }
+.kpi-card .k-delta.up { background:var(--green-bg); color:var(--green); }
+.kpi-card .k-delta.down { background:var(--terra-bg); color:var(--terra); }
+.kpi-card .k-delta.flat { background:var(--bg); color:var(--navy-3); }
+
+/* Panel */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.panel-head { padding:16px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; justify-content:space-between; }
+.panel-head .ph-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.panel-head .ph-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.panel-head .ph-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.panel-head .ph-link { font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; }
+.panel-body { padding:20px 22px; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* Bar rows for enrolment-by-sex etc */
+.bar-row { margin-bottom:14px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-row .br-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.bar-row .br-label { font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-label .br-sub { color:var(--navy-3); font-weight:500; font-size:10.5px; margin-left:6px; }
+.bar-row .br-value { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-track { height:9px; background:var(--bg); border-radius:100px; overflow:hidden; display:flex; }
+.bar-row .br-fill { height:100%; }
+.bar-row .br-fill.navy { background:var(--navy); }
+.bar-row .br-fill.gold { background:var(--gold); }
+.bar-row .br-fill.green { background:var(--green); }
+.bar-row .br-fill.terra { background:var(--terra); }
+.bar-row .br-fill.warn { background:var(--warn); }
+.split-legend { display:flex; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.split-legend .sl-item { display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--navy-2); font-weight:600; }
+.split-legend .sl-dot { width:9px; height:9px; border-radius:2px; }
+.bar-row.parent .br-label { display:flex; align-items:center; gap:7px; }
+.bar-row.parent .drill-chip { font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; color:var(--gold); background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:100px; padding:2px 7px; cursor:pointer; }
+.bar-row.child { margin-left:18px; padding-left:12px; border-left:2px solid var(--border); }
+.bar-row.child .br-label { font-weight:500; color:var(--navy-2); font-size:11.5px; }
+.bar-row.child .br-value { font-size:11px; color:var(--navy-2); }
+.bar-row.child .br-track { height:7px; }
+.subtotal-note { font-size:10px; color:var(--navy-3); font-weight:600; margin:3px 0 10px 30px; font-style:italic; }
+.fee-row { margin-bottom:14px; }
+.fee-row:last-child { margin-bottom:0; }
+.fee-row .fr-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.fee-row .fr-level { font-size:12px; font-weight:700; color:var(--navy); }
+.fee-row .fr-total { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.fee-row .fr-bar { height:16px; border-radius:4px; overflow:hidden; display:flex; }
+.fee-row .fr-seg { height:100%; }
+.fee-legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.fee-legend .fl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.fee-legend .fl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* Mini stat list */
+.stat-list { display:flex; flex-direction:column; }
+.stat-list .st-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.stat-list .st-row:last-child { border-bottom:none; }
+.stat-list .st-label { font-size:12px; color:var(--navy-2); font-weight:500; }
+.stat-list .st-label b { color:var(--navy); font-weight:700; }
+.stat-list .st-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stat-list .st-val .st-unit { font-size:10px; color:var(--navy-3); font-weight:500; }
+.stat-list .st-val.flag { color:var(--terra); }
+.stat-list .st-val.good { color:var(--green); }
+
+/* Performance band chart */
+.band-chart { display:flex; flex-direction:column; gap:10px; }
+.band-row { display:grid; grid-template-columns:78px 1fr 48px; gap:10px; align-items:center; }
+.band-row .bd-label { font-size:11px; font-weight:600; color:var(--navy-2); }
+.band-row .bd-track { height:20px; background:var(--bg); border-radius:5px; overflow:hidden; display:flex; }
+.band-row .bd-seg { height:100%; }
+.band-row .bd-pct { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.band-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.band-legend .bl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.band-legend .bl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* School list table */
+.school-table { width:100%; border-collapse:collapse; }
+.school-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.school-table th.c { text-align:center; }
+.school-table th.r { text-align:right; }
+.school-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.school-table tr:last-child td { border-bottom:none; }
+.school-table tr.drill { cursor:pointer; }
+.school-table tr.drill:hover td { background:var(--gold-bg); }
+.school-table td .sc-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.school-table td .sc-name .sc-badge { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.school-table td .sc-name .sc-badge.anchor { background:var(--gold); color:var(--navy); }
+.school-table td .sc-meta { font-size:9.5px; color:var(--navy-3); margin-top:1px; font-weight:500; }
+.school-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.school-table td .num.r { text-align:right; }
+.school-table td .ratio { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; }
+.school-table td .ratio.good { color:var(--green); }
+.school-table td .ratio.warn { color:var(--warn); }
+.school-table td .ratio.flag { color:var(--terra); }
+.school-table td .perf-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; }
+.school-table td .perf-pill.good { background:var(--green-bg); color:var(--green); }
+.school-table td .perf-pill.mid { background:var(--warn-bg); color:var(--warn); }
+.school-table td .perf-pill.low { background:var(--terra-bg); color:var(--terra); }
+.school-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.table-toolbar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.table-toolbar .tt-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.chip { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:5px 11px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.chip.compare { background:var(--gold-bg); border-color:var(--gold); color:var(--navy); margin-left:auto; }
+.chip.compare::before { content:"⊕ "; color:var(--gold); }
+
+/* Anomaly callouts */
+.flag-list { display:flex; flex-direction:column; gap:10px; }
+.flag-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.flag-item.warn { border-color:var(--warn); background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 60%); }
+.flag-item.terra { border-color:var(--terra); background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 60%); }
+.flag-item .fi-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.flag-item.warn .fi-icon { background:var(--warn); color:var(--bg); }
+.flag-item.terra .fi-icon { background:var(--terra); color:var(--bg); }
+.flag-item .fi-body .fi-title { font-size:12px; font-weight:700; color:var(--navy); }
+.flag-item .fi-body .fi-detail { font-size:10.5px; color:var(--navy-2); margin-top:2px; line-height:1.45; }
+.flag-item .fi-body .fi-detail b { color:var(--navy); font-weight:700; }
+.flag-item .fi-action { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:700; color:var(--navy); cursor:pointer; }
+
+/* Comparison teaser */
+.compare-strip { background:linear-gradient(135deg, #13203A 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:22px 26px; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.compare-strip::before { content:""; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.compare-strip .cs-body { position:relative; }
+.compare-strip .cs-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.compare-strip .cs-title { font-family:'Fraunces', serif; font-size:21px; font-weight:500; line-height:1.2; margin-bottom:6px; }
+.compare-strip .cs-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.compare-strip .cs-text { font-size:12px; color:var(--gold-soft); line-height:1.5; max-width:560px; }
+.compare-strip .cs-text b { color:var(--bg); font-weight:600; }
+.compare-strip .cs-action { position:relative; }
+
+/* Data provenance footer */
+.provenance { display:flex; gap:18px; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-top:18px; flex-wrap:wrap; }
+.provenance .pv-item { font-size:10.5px; color:var(--navy-3); font-weight:500; }
+.provenance .pv-item b { color:var(--navy-2); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .dash-grid { grid-template-columns:1fr; }
+  .compare-strip { grid-template-columns:1fr; }
+}
+
+/* ============================================================
+ * Senior-specific overrides — school-internal product, not Oversight
+ * ============================================================ */
+.app-shell .sidebar { background: var(--navy); }  /* regular navy, not Oversight deep-navy */
+.app-shell .sidebar .gov-mark .crest-badge { background: var(--gold); color: var(--navy); }  /* gold school mark instead of GES */
+.app-shell .sidebar .scope-chip { background: rgba(200,151,91,0.10); border-color: rgba(200,151,91,0.25); }
+
+/* Path chooser — three big choice cards */
+.path-chooser { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+.path-card { background: var(--surface); border: 1.5px solid var(--border-2); border-radius: 12px; padding: 18px 20px; cursor: pointer; position: relative; transition: all 0.15s; }
+.path-card:hover { border-color: var(--gold-soft); }
+.path-card.active { border-color: var(--gold); background: linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 60%); }
+.path-card.active::after { content: "Active"; position: absolute; top: 12px; right: 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+.path-card .pc-letter { font-family: 'Fraunces', serif; font-style: italic; font-size: 22px; font-weight: 600; color: var(--gold); margin-bottom: 6px; }
+.path-card .pc-name { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+.path-card .pc-desc { font-size: 10.5px; color: var(--navy-3); line-height: 1.5; }
+
+/* Five-category ledger grid */
+.ledger-grid { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.ledger-grid thead th { background: var(--bg); color: var(--navy-3); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; padding: 11px 10px; text-align: center; border-bottom: 1px solid var(--border-2); }
+.ledger-grid thead th.cat-asgn { color: var(--green); }
+.ledger-grid thead th.cat-mid { color: var(--navy-2); }
+.ledger-grid thead th.cat-end { color: var(--navy-2); }
+.ledger-grid thead th.cat-proj { color: var(--green); }
+.ledger-grid thead th.cat-port { color: var(--terra); }
+.ledger-grid thead th.cat-total { background: var(--navy); color: var(--bg); }
+.ledger-grid thead th.student-col { text-align: left; padding-left: 14px; }
+.ledger-grid thead th .cat-weight { display: block; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--navy-3); font-weight: 600; margin-top: 3px; letter-spacing: 0.04em; text-transform: none; }
+.ledger-grid tbody td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--navy); }
+.ledger-grid tbody td.student-name { text-align: left; padding-left: 14px; font-family: 'Manrope', sans-serif; font-weight: 600; color: var(--navy); }
+.ledger-grid tbody td.student-name .student-ref { display: block; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--navy-3); font-weight: 500; margin-top: 1px; letter-spacing: 0.03em; }
+.ledger-grid tbody td.score-cell { background: var(--surface); }
+.ledger-grid tbody td.score-cell.computed { background: var(--green-bg); color: var(--green); font-weight: 700; }
+.ledger-grid tbody td.score-cell.manual { background: var(--gold-bg); color: var(--navy); font-weight: 700; }
+.ledger-grid tbody td.score-cell.empty { color: var(--border-2); }
+.ledger-grid tbody td.score-cell.low-conf { background: var(--warn-bg); color: var(--warn); font-weight: 700; position: relative; }
+.ledger-grid tbody td.score-cell.low-conf::after { content: "?"; position: absolute; top: 2px; right: 5px; font-size: 9px; color: var(--warn); font-weight: 700; }
+.ledger-grid tbody td.total { background: var(--navy); color: var(--bg); font-weight: 700; font-size: 13px; }
+.ledger-grid tbody tr:hover td { background-color: var(--gold-bg); }
+.ledger-grid tbody tr:hover td.total { background: var(--navy-deep); }
+
+.legend { display: flex; gap: 16px; padding: 12px 0; font-size: 10px; color: var(--navy-3); flex-wrap: wrap; }
+.legend .swatch { display: inline-flex; align-items: center; gap: 6px; }
+.legend .sw-box { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border-2); }
+.legend .sw-box.computed { background: var(--green-bg); border-color: var(--green); }
+.legend .sw-box.manual { background: var(--gold-bg); border-color: var(--gold); }
+.legend .sw-box.low-conf { background: var(--warn-bg); border-color: var(--warn); }
+
+/* Term progress card */
+.term-progress { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 18px 20px; }
+.term-progress .tp-title { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; margin-bottom: 12px; }
+.cat-progress { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.cat-progress:last-child { border-bottom: none; }
+.cat-progress .cp-label { flex: 1; font-size: 11.5px; color: var(--navy-2); }
+.cat-progress .cp-status { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 100px; }
+.cat-progress .cp-status.done { background: var(--green-bg); color: var(--green); }
+.cat-progress .cp-status.partial { background: var(--gold-bg); color: var(--gold); }
+.cat-progress .cp-status.pending { background: var(--bg); color: var(--navy-3); }
+
+/* Scan & diff panel */
+.scan-panel { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 16px; }
+.scan-image { background: var(--bg); border: 1.5px dashed var(--border-2); border-radius: 10px; padding: 16px; aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; position: relative; }
+.scan-image .scan-mock { width: 100%; height: 100%; background: var(--surface); border-radius: 6px; padding: 14px; font-family: 'Caveat', 'Comic Sans MS', cursive; font-size: 11px; color: var(--navy-2); position: relative; }
+.scan-image .scan-mock::before { content: ""; position: absolute; inset: 8px; border: 1px solid var(--border); border-radius: 3px; pointer-events: none; }
+.handwritten-row { display: grid; grid-template-columns: 1.5fr repeat(5, 1fr); gap: 4px; padding: 5px 4px; border-bottom: 1px dotted var(--border-2); align-items: center; font-size: 11.5px; }
+.handwritten-row .hw-name { font-weight: 500; }
+.scan-corner-stamp { position: absolute; top: 12px; right: 14px; font-family: 'JetBrains Mono', monospace; font-size: 9px; background: var(--gold); color: var(--navy); padding: 3px 8px; border-radius: 4px; font-weight: 700; letter-spacing: 0.04em; }
+
+/* Diff flag panel */
+.diff-flag { display: flex; gap: 12px; padding: 13px 16px; background: var(--warn-bg); border: 1px solid var(--warn); border-radius: 10px; margin-bottom: 10px; }
+.diff-flag .df-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--warn); color: var(--bg); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+.diff-flag .df-text { font-size: 11px; color: var(--navy-2); line-height: 1.55; flex: 1; }
+.diff-flag .df-text b { color: var(--navy); font-weight: 700; }
+.diff-flag .df-choices { display: flex; gap: 6px; flex-shrink: 0; }
+.diff-flag .df-choice { font-size: 10px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-2); background: var(--surface); cursor: pointer; font-weight: 600; color: var(--navy-2); }
+.diff-flag .df-choice.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+
+/* STPSHS export readiness card */
+.stpshs-ready { background: linear-gradient(135deg, var(--green-bg) 0%, var(--surface) 70%); border: 1.5px solid var(--green); border-radius: 12px; padding: 16px 20px; display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; }
+.stpshs-ready.pending { background: linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 70%); border-color: var(--gold); }
+.stpshs-ready .sr-icon { width: 36px; height: 36px; border-radius: 9px; background: var(--green); color: var(--bg); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 16px; }
+.stpshs-ready.pending .sr-icon { background: var(--gold); color: var(--navy); }
+.stpshs-ready .sr-text { font-size: 12px; color: var(--navy-2); line-height: 1.5; }
+.stpshs-ready .sr-text b { color: var(--navy); font-weight: 700; }
+
+/* ============================================================
+ * Vice Headmaster Academic progress view — specific styles
+ * ============================================================ */
+.vha-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.vha-table thead th { background: var(--bg); padding: 11px 12px; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--navy-3); text-align: left; border-bottom: 1px solid var(--border-2); position: sticky; top: 0; }
+.vha-table thead th.cat-col { text-align: center; }
+.vha-table thead th.right { text-align: right; }
+.vha-table tbody td { padding: 10px 12px; font-size: 11.5px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.vha-table tbody td.right { text-align: right; }
+.vha-table tbody td.center { text-align: center; }
+.vha-table tbody tr:hover td { background-color: var(--gold-bg); }
+.vha-table tbody td .teacher-name { font-weight: 700; color: var(--navy); }
+.vha-table tbody td .teacher-subjects { display: block; font-size: 9.5px; color: var(--navy-3); margin-top: 2px; }
+.vha-table tbody td .class-name { font-weight: 600; color: var(--navy-2); }
+.vha-table tbody td .path-pill { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 3px 7px; border-radius: 100px; letter-spacing: 0.04em; }
+.vha-table tbody td .path-pill.a { background: var(--green-bg); color: var(--green); }
+.vha-table tbody td .path-pill.b { background: var(--gold-bg); color: var(--gold); }
+.vha-table tbody td .path-pill.c { background: var(--terra-bg); color: var(--terra); }
+
+.cat-dot { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; }
+.cat-dot.done { background: var(--green); color: var(--bg); }
+.cat-dot.partial { background: var(--gold); color: var(--navy); }
+.cat-dot.pending { background: var(--border-2); color: var(--navy-3); }
+.cat-dot.late { background: var(--terra); color: var(--bg); }
+
+.stpshs-cell { display: inline-block; font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 100px; letter-spacing: 0.04em; text-transform: uppercase; }
+.stpshs-cell.ready { background: var(--green-bg); color: var(--green); }
+.stpshs-cell.behind { background: var(--gold-bg); color: var(--gold); }
+.stpshs-cell.at-risk { background: var(--terra-bg); color: var(--terra); }
+
+.last-active { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--navy-3); }
+.last-active.stale { color: var(--terra); font-weight: 700; }
+
+/* Risk flag stack */
+.risk-stack { display: flex; flex-direction: column; gap: 10px; }
+.risk-card { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 14px 18px; border-radius: 11px; border: 1px solid; }
+.risk-card.high { background: var(--terra-bg); border-color: var(--terra); }
+.risk-card.med { background: var(--gold-bg); border-color: var(--gold); }
+.risk-card.low { background: var(--bg); border-color: var(--border-2); }
+.risk-card .rc-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 15px; color: var(--bg); flex-shrink: 0; }
+.risk-card.high .rc-icon { background: var(--terra); }
+.risk-card.med .rc-icon { background: var(--gold); color: var(--navy); }
+.risk-card.low .rc-icon { background: var(--navy-3); }
+.risk-card .rc-text { font-size: 12px; color: var(--navy-2); line-height: 1.55; }
+.risk-card .rc-text b { color: var(--navy); font-weight: 700; }
+.risk-card .rc-text .rc-meta { display: block; font-size: 9.5px; color: var(--navy-3); margin-top: 3px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; }
+.risk-card .rc-action { font-size: 11px; padding: 7px 13px; border-radius: 7px; background: var(--surface); border: 1px solid var(--border-2); font-weight: 600; cursor: pointer; }
+.risk-card.high .rc-action { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+
+/* Discipline banner — score values are not shown */
+.discipline-banner { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color: var(--bg); padding: 16px 22px; border-radius: 12px; margin-bottom: 18px; }
+.discipline-banner .db-icon { width: 36px; height: 36px; border-radius: 9px; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 16px; }
+.discipline-banner .db-text { font-size: 12px; line-height: 1.55; }
+.discipline-banner .db-text b { font-family: 'Fraunces', serif; font-style: italic; color: var(--gold); font-weight: 600; }
+
+/* Headmaster roll-up cards */
+.rollup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.rollup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 18px 20px; }
+.rollup-card .rc-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--navy-3); margin-bottom: 10px; }
+.rollup-card .rc-num { font-family: 'Fraunces', serif; font-size: 36px; font-weight: 600; color: var(--navy); line-height: 1; }
+.rollup-card .rc-num em { font-style: italic; color: var(--gold); }
+.rollup-card .rc-suffix { font-size: 12px; color: var(--navy-3); font-weight: 500; margin-top: 6px; }
+.rollup-card.complete { border-color: var(--green); }
+.rollup-card.complete .rc-num em { color: var(--green); }
+.rollup-card.partial { border-color: var(--gold); }
+.rollup-card.behind { border-color: var(--terra); }
+.rollup-card.behind .rc-num em { color: var(--terra); }
+.subject-list { font-size: 10.5px; color: var(--navy-2); padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border); line-height: 1.55; }
+.subject-list b { color: var(--navy); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Omnischools Senior · Vice Headmaster Academic · Progress view</div>
+<div class="eyebrow">Omnischools Senior · the management view of ledger entry</div>
+<h1>Who's done, <em>who's not.</em></h1>
+<div class="gold-rule"></div>
+<p>The Vice Headmaster Academic — or Head of Academic, depending on the school — runs the academic calendar. They need to know, ahead of every STPSHS submission window and every parent-report deadline, which teachers have completed their ledger entries and which have not. The discipline is precise: this surface shows <b>completion progress</b>, not <b>score values</b>. The Vice Headmaster sees that Mr. Owusu has entered all five categories for Form 2 Science Maths; they do not see what those scores are. Accountability without surveillance. Section 1 is the per-teacher progress table. Section 2 is the at-risk flags. Section 3 is the Headmaster's cascade roll-up — same data, aggregated one level up.</p>
+</div>
+
+<!-- ============================================ SECTION 1 — Per-teacher table ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">Per-teacher progress · five categories, the path each teacher chose</div>
+<div class="section-meta">Asankrangwa SHS · Semester 2 · 2025/26 · all forms</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh / senior / academic-progress / semester-2-2025-26</div></div>
+
+<div class="app-shell">
+<div class="sidebar">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">A</div><div class="crest-text"><div class="l1">Omnischools Senior</div><div class="l2">Asankrangwa SHS</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Role</div>
+<div class="sc-name">Mrs. P. Anim</div>
+<div class="sc-meta">Vice Headmaster Academic</div>
+</div>
+<div class="nav-group">Academic management</div>
+<div class="nav-item active"><div class="ic"></div>Ledger progress</div>
+<div class="nav-item"><div class="ic"></div>Teachers</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; subjects</div>
+<div class="nav-item"><div class="ic"></div>Timetable</div>
+<div class="nav-group">Term cycle</div>
+<div class="nav-item"><div class="ic"></div>Assessment calendar</div>
+<div class="nav-item"><div class="ic"></div>Report cards</div>
+<div class="nav-item"><div class="ic"></div>STPSHS submissions</div>
+<div class="nav-group">School</div>
+<div class="nav-item"><div class="ic"></div>All students</div>
+<div class="nav-item"><div class="ic"></div>Parents</div>
+<div class="footer"><div class="av">PA</div><div><div class="meta-name">P. Anim</div><div class="meta-role">Vice Headmaster Academic</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Senior · Vice Headmaster · Academic progress · Semester 2 of 2025/26</div>
+<div class="top-row">
+<div>
+<h1>Score ledger <em>progress.</em></h1>
+<div class="lede">14 teachers · 23 class-subject combinations · STPSHS window opens 14 July 2026 — 17 days from now</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Filter</button>
+<button class="btn ghost">Export PDF</button>
+<button class="btn primary">Message behind teachers →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="discipline-banner">
+<div class="db-icon">i</div>
+<div class="db-text">This view shows <b>completion progress</b>, not the score values themselves. The Vice Headmaster sees which categories each teacher has entered; the marks themselves remain the teacher's domain until the semester is closed. To inspect actual scores, navigate to the gradebook — that access is audit-logged, the same way Oversight's compliance record view is.</div>
+</div>
+
+<div class="panel" style="margin-bottom: 0;">
+<div class="panel-head">
+<div class="ph-title">Teacher × class · <em>23 combinations</em></div>
+<div class="ph-meta">Sorted by STPSHS readiness · most behind first</div>
+</div>
+<table class="vha-table">
+<thead>
+<tr>
+<th>Teacher</th>
+<th>Class · subject</th>
+<th class="center">Path</th>
+<th class="cat-col" style="color: var(--green);">Asg</th>
+<th class="cat-col" style="color: var(--navy-2);">MS</th>
+<th class="cat-col" style="color: var(--navy-2);">ES</th>
+<th class="cat-col" style="color: var(--green);">Proj</th>
+<th class="cat-col" style="color: var(--terra);">Port</th>
+<th class="center">STPSHS</th>
+<th class="right">Last activity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><div class="teacher-name">B. Akoto</div><span class="teacher-subjects">Government</span></td>
+<td><div class="class-name">Form 3 Arts A</div></td>
+<td class="center"><span class="path-pill b">B</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="stpshs-cell at-risk">At risk · 0/5</span></td>
+<td class="right"><span class="last-active stale">19 days ago</span></td>
+</tr>
+<tr>
+<td><div class="teacher-name">B. Akoto</div><span class="teacher-subjects">Government</span></td>
+<td><div class="class-name">Form 3 Arts B</div></td>
+<td class="center"><span class="path-pill b">B</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="stpshs-cell at-risk">At risk · 0/5</span></td>
+<td class="right"><span class="last-active stale">19 days ago</span></td>
+</tr>
+<tr>
+<td><div class="teacher-name">J. Asare</div><span class="teacher-subjects">Chemistry</span></td>
+<td><div class="class-name">Form 2 Science</div></td>
+<td class="center"><span class="path-pill a">A</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot partial">¾</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="stpshs-cell behind">Behind · 2/5</span></td>
+<td class="right"><span class="last-active">2 days ago</span></td>
+</tr>
+<tr>
+<td><div class="teacher-name">M. Boateng</div><span class="teacher-subjects">English</span></td>
+<td><div class="class-name">Form 1 General</div></td>
+<td class="center"><span class="path-pill c">C</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot partial">⅔</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="stpshs-cell behind">Behind · 3/5</span></td>
+<td class="right"><span class="last-active">today</span></td>
+</tr>
+<tr>
+<td><div class="teacher-name">A. Nkrumah</div><span class="teacher-subjects">Biology</span></td>
+<td><div class="class-name">Form 2 Science</div></td>
+<td class="center"><span class="path-pill b">B</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="stpshs-cell behind">Behind · 4/5</span></td>
+<td class="right"><span class="last-active">yesterday</span></td>
+</tr>
+<tr>
+<td><div class="teacher-name">K. Owusu</div><span class="teacher-subjects">Mathematics</span></td>
+<td><div class="class-name">Form 2 Science</div></td>
+<td class="center"><span class="path-pill a">A</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="stpshs-cell behind">Behind · 4/5</span></td>
+<td class="right"><span class="last-active">today</span></td>
+</tr>
+<tr>
+<td><div class="teacher-name">K. Owusu</div><span class="teacher-subjects">Mathematics</span></td>
+<td><div class="class-name">Form 2 General</div></td>
+<td class="center"><span class="path-pill a">A</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot pending">—</span></td>
+<td class="center"><span class="stpshs-cell behind">Behind · 4/5</span></td>
+<td class="right"><span class="last-active">today</span></td>
+</tr>
+<tr>
+<td><div class="teacher-name">F. Sarpong</div><span class="teacher-subjects">Physics</span></td>
+<td><div class="class-name">Form 2 Science</div></td>
+<td class="center"><span class="path-pill c">C</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="stpshs-cell ready">Ready · 5/5</span></td>
+<td class="right"><span class="last-active">4 days ago</span></td>
+</tr>
+<tr>
+<td><div class="teacher-name">G. Mensah</div><span class="teacher-subjects">Elective Maths</span></td>
+<td><div class="class-name">Form 3 Science</div></td>
+<td class="center"><span class="path-pill a">A</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="cat-dot done">✓</span></td>
+<td class="center"><span class="stpshs-cell ready">Ready · 5/5</span></td>
+<td class="right"><span class="last-active">3 days ago</span></td>
+</tr>
+<tr style="opacity: 0.4;">
+<td colspan="10" style="font-style: italic; padding: 14px; text-align: center; color: var(--navy-3); font-family: 'Manrope', sans-serif;">… 14 more class-subject combinations · 5 ready, 8 behind, 1 at risk</td>
+</tr>
+</tbody>
+</table>
+<div style="display: flex; gap: 18px; padding: 12px 14px; font-size: 10.5px; color: var(--navy-3); border-top: 1px solid var(--border); flex-wrap: wrap;">
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span class="cat-dot done" style="width: 16px; height: 16px; font-size: 9px;">✓</span> Entered</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span class="cat-dot partial" style="width: 16px; height: 16px; font-size: 9px;">¾</span> Partial</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span class="cat-dot pending" style="width: 16px; height: 16px; font-size: 9px;">—</span> Pending</span>
+<span style="margin-left: 14px;"><span class="path-pill a">A</span> Auto-compile · <span class="path-pill b">B</span> Scan paper · <span class="path-pill c">C</span> Direct digital</span>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Completion progress, deliberately — not score surveillance</h4>
+<ul>
+<li><b>The navy banner names the discipline before anyone scrolls.</b> "Completion progress, not score values." The Vice Headmaster cannot accidentally read this surface as a window into individual teachers' marks — the framing is explicit, the columns show category-entered states (✓ / ¾ / —), and the surface never shows a number from any student's gradebook. Inspecting actual scores requires navigating to the gradebook itself, which is audit-logged the same way Oversight's compliance record view is. Accountability without surveillance — the right posture for a tool that respects teacher autonomy over marks themselves.</li>
+<li><b>Path A / B / C visible per row.</b> A teacher chose auto-compile, paper-scan, or direct-digital for each class-subject. The Vice Headmaster sees which, because path choice affects what "complete" looks like — a Path C teacher entering scores cell-by-cell shows progress earlier than a Path B teacher waiting to scan at semester end. The pill colours match the ledger surface's colour vocabulary so the system feels consistent.</li>
+<li><b>Sorted by STPSHS readiness, behind first.</b> The Vice Headmaster's first job is to find the teachers who are not going to be ready when the submission window opens. The table defaults to that sort — Mr. Akoto's two Form 3 Arts classes show first, at-risk with zero categories entered and a 19-days-stale last-activity flag. The default order makes the most consequential cases visually loudest.</li>
+<li><b>Asg / MS / ES / Proj / Port — the same five categories everywhere.</b> The columns match the ledger view, the STPSHS export sheet, the report card, the analytics DB schema. One data model, surfaced in different views for different roles. The Vice Headmaster's view and the teacher's view share the same vocabulary, which means a conversation between them about "you haven't entered the mid-sem for Form 2 Maths yet" needs no translation.</li>
+<li><b>"Behind · 4/5" tells the story precisely.</b> A teacher with four of five categories done is *behind* (the window is approaching), not *at risk* (the window has arrived and they haven't moved). The three tiers — Ready / Behind / At risk — are calibrated against the calendar, not against an arbitrary completion percentage. Section 2 below shows how the at-risk flags get triggered.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 2 — At-risk flags ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">At-risk flags · what the Vice Headmaster needs to act on this week</div>
+<div class="section-meta">Same anomaly discipline as Oversight, applied inside the school</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh / senior / academic-progress / risks</div></div>
+
+<div class="app-shell">
+<div class="sidebar">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">A</div><div class="crest-text"><div class="l1">Omnischools Senior</div><div class="l2">Asankrangwa SHS</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Role</div>
+<div class="sc-name">Mrs. P. Anim</div>
+<div class="sc-meta">Vice Headmaster Academic</div>
+</div>
+<div class="nav-group">Academic management</div>
+<div class="nav-item active"><div class="ic"></div>Ledger progress</div>
+<div class="nav-item"><div class="ic"></div>Teachers</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; subjects</div>
+<div class="nav-item"><div class="ic"></div>Timetable</div>
+<div class="nav-group">Term cycle</div>
+<div class="nav-item"><div class="ic"></div>Assessment calendar</div>
+<div class="nav-item"><div class="ic"></div>Report cards</div>
+<div class="nav-item"><div class="ic"></div>STPSHS submissions</div>
+<div class="nav-group">School</div>
+<div class="nav-item"><div class="ic"></div>All students</div>
+<div class="nav-item"><div class="ic"></div>Parents</div>
+<div class="footer"><div class="av">PA</div><div><div class="meta-name">P. Anim</div><div class="meta-role">Vice Headmaster Academic</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Senior · Vice Headmaster · Academic progress · At-risk flags</div>
+<div class="top-row">
+<div>
+<h1>Risks <em>this week.</em></h1>
+<div class="lede">3 flags raised by the engine · sorted by severity · STPSHS window opens in 17 days</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Configure rules</button>
+<button class="btn primary">Message all flagged teachers →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="risk-stack">
+
+<div class="risk-card high">
+<div class="rc-icon">!</div>
+<div class="rc-text">
+<b>Mr. B. Akoto has not touched the ledger in 19 days.</b> Two Form 3 Arts Government classes — 82 students between them — have zero categories entered for Semester 2. STPSHS window opens in 17 days. Mid-sem and end-of-sem exam dates have already passed; scores exist on paper somewhere but not in Omnischools.
+<span class="rc-meta">Rule: teacher inactivity 14+ days during semester · severity high</span>
+</div>
+<div><button class="rc-action">Message Mr. Akoto →</button></div>
+</div>
+
+<div class="risk-card high">
+<div class="rc-icon">!</div>
+<div class="rc-text">
+<b>STPSHS window opens in 17 days · 9 of 23 class-subject combinations not yet ready.</b> If trajectory holds, 4 of those will not be complete by 14 July. The teachers behind are: J. Asare (1 class), M. Boateng (1), A. Nkrumah (1), K. Owusu (2), and B. Akoto (2 — flagged separately above).
+<span class="rc-meta">Rule: STPSHS window &lt; 7 days with incomplete entries · severity high</span>
+</div>
+<div><button class="rc-action">See behind list →</button></div>
+</div>
+
+<div class="risk-card med">
+<div class="rc-icon">!</div>
+<div class="rc-text">
+<b>Mrs. E. Coleman entered 38 scores in 4 minutes on Path C.</b> Possible data-quality concern — that pace is significantly faster than the class median (38 students entered in ~22 minutes). Could be a teacher with all marks ready in front of them typing fast; could also be guessing. Worth a brief conversation before STPSHS submission.
+<span class="rc-meta">Rule: entry rate &gt; 3σ from median · severity medium</span>
+</div>
+<div><button class="rc-action">Review with Mrs. Coleman →</button></div>
+</div>
+
+</div>
+
+<div style="margin-top: 22px; padding: 14px 18px; background: var(--bg); border: 1px solid var(--border); border-radius: 11px; font-size: 11px; color: var(--navy-3); display: flex; gap: 14px; align-items: center;">
+<div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 13px; color: var(--navy); flex-shrink: 0;">No more flags.</div>
+<div style="line-height: 1.55;">The engine evaluated 23 class-subject combinations against five active rules. Three triggered. The remainder are tracking on schedule. Rules are configurable — the Headmaster or Vice Headmaster Academic can add a school-specific rule (e.g. "no class incomplete by week 9") and the engine picks it up the next night.</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Same anomaly discipline as Oversight, applied inside the school</h4>
+<ul>
+<li><b>The rules are config, not code.</b> The five rules running here — teacher inactivity, STPSHS window approach, entry-rate outlier, score-down between uploads (from the ledger surface's diff logic), portfolio-only-pending — live in the same kind of `ref_anomaly_rule` table the Oversight anomaly queue uses. Each rule is inspectable as readable logic, severity-graded, enable/disable-able, and tunable by the school. The Headmaster can add a school-specific rule (`"no class incomplete by week 9"`) without a deploy.</li>
+<li><b>Three severity tiers, calibrated against the calendar.</b> High means "the window is approaching and a teacher needs to act this week." Medium means "something looks off and a brief conversation would help." Low means "noted, not urgent." The Vice Headmaster's working day shouldn't be filled with low-severity flags; the noise level is calibrated to surface what matters.</li>
+<li><b>Each flag carries the rule that raised it.</b> The small meta-line — "Rule: teacher inactivity 14+ days during semester · severity high" — names the discipline that produced the flag. This is the same readability-of-logic that Oversight's anomaly queue applies: a teacher who is flagged can be told <em>why</em> in language that does not require interpretation.</li>
+<li><b>The medium flag is the one most school products would not surface.</b> 38 scores in 4 minutes might be a competent teacher who has the marks lined up and types fast; might also be a teacher inventing scores under deadline pressure. Most school software would not flag it. Omnischools surfaces it as a <em>conversation prompt</em>, not an accusation — the action button reads "Review with Mrs. Coleman" because the Vice Headmaster's job is to talk first, conclude second.</li>
+<li><b>"Message all flagged teachers" is the bulk action.</b> A Vice Headmaster who finds three flags at the start of the week can compose one templated message that goes to each flagged teacher with their specific gap referenced — "you have N categories outstanding for class X, the window opens in 17 days, can we talk?" — instead of three individual notes. The discipline reduces the management overhead of the system rather than creating it.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 3 — Headmaster roll-up ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">The Headmaster's cascade · same data, one level up</div>
+<div class="section-meta">For Mr. V. Yanney · Headmaster · Asankrangwa SHS</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh / senior / headmaster-summary / semester-2-2025-26</div></div>
+
+<div class="app-shell">
+<div class="sidebar">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">A</div><div class="crest-text"><div class="l1">Omnischools Senior</div><div class="l2">Asankrangwa SHS</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Role</div>
+<div class="sc-name">Mr. V. Yanney</div>
+<div class="sc-meta">Headmaster</div>
+</div>
+<div class="nav-group">School overview</div>
+<div class="nav-item active"><div class="ic"></div>Headmaster summary</div>
+<div class="nav-item"><div class="ic"></div>Enrolment</div>
+<div class="nav-item"><div class="ic"></div>WASSCE readiness</div>
+<div class="nav-group">Academic</div>
+<div class="nav-item"><div class="ic"></div>Ledger progress (full)</div>
+<div class="nav-item"><div class="ic"></div>Teachers</div>
+<div class="nav-item"><div class="ic"></div>STPSHS submissions</div>
+<div class="nav-group">School operations</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Finance</div>
+<div class="nav-item"><div class="ic"></div>Parents &amp; PTA</div>
+<div class="footer"><div class="av">VY</div><div><div class="meta-name">V. Yanney</div><div class="meta-role">Headmaster</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Senior · Headmaster · Semester-end summary</div>
+<div class="top-row">
+<div>
+<h1>Where the school <em>stands.</em></h1>
+<div class="lede">Semester 2 of 2025/26 · 23 class-subject combinations · STPSHS window opens 14 July 2026</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Open full progress view</button>
+<button class="btn primary">Brief the board →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--navy-3); margin-bottom: 12px;">Subject-level readiness · cascaded from per-teacher progress</div>
+
+<div class="rollup-grid">
+
+<div class="rollup-card complete">
+<div class="rc-label">Subjects fully ready</div>
+<div class="rc-num"><em>3</em></div>
+<div class="rc-suffix">of 9 subjects · all teachers complete</div>
+<div class="subject-list">
+<b>Physics</b> · Elective Maths · Geography
+</div>
+</div>
+
+<div class="rollup-card partial">
+<div class="rc-label">Subjects partially ready</div>
+<div class="rc-num"><em>5</em></div>
+<div class="rc-suffix">of 9 subjects · 1 or more teachers behind</div>
+<div class="subject-list">
+<b>Mathematics</b> (4 of 6 teachers complete) · <b>English</b> (3 of 5) · <b>Chemistry</b> (1 of 2) · <b>Biology</b> (2 of 3) · <b>Integrated Science</b> (3 of 4)
+</div>
+</div>
+
+<div class="rollup-card behind">
+<div class="rc-label">Subjects at risk</div>
+<div class="rc-num"><em>1</em></div>
+<div class="rc-suffix">of 9 subjects · zero teachers ready</div>
+<div class="subject-list">
+<b>Government</b> (Form 3 Arts) — Mr. B. Akoto's two classes flagged; 19 days inactive
+</div>
+</div>
+
+</div>
+
+<div style="margin-top: 22px; padding: 16px 22px; background: linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 70%); border: 1.5px solid var(--gold); border-radius: 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center;">
+<div style="width: 36px; height: 36px; border-radius: 9px; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 16px;">!</div>
+<div style="font-size: 12px; color: var(--navy-2); line-height: 1.55;">The Vice Headmaster Academic has flagged Mr. B. Akoto's classes as the most urgent action item — 19 days inactive, no scores entered, two classes affected. Mrs. P. Anim has been in touch; Mr. Akoto cited illness, returning next week. Mrs. Anim is preparing to support score entry on Mr. Akoto's return. <b>You may want to confirm the support plan with her before the STPSHS window opens.</b></div>
+<div><button class="btn primary" style="padding: 8px 14px; font-size: 12px;">Message Mrs. Anim</button></div>
+</div>
+
+<div class="provenance" style="margin-top: 22px;">
+<div class="pv-item"><b>Source data</b> · per-teacher ledger progress, same as Vice Headmaster view</div>
+<div class="pv-item"><b>Aggregation</b> · grouped by subject across all classes</div>
+<div class="pv-item"><b>Refresh</b> · live as teachers enter</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>One level up, same data, the Headmaster's question answered</h4>
+<ul>
+<li><b>The Headmaster does not want per-teacher detail by default.</b> A Headmaster runs the whole school; per-teacher granularity is the Vice Headmaster's domain. The roll-up answers the Headmaster's actual question — "is the school ready for STPSHS?" — at the subject level. Three subjects ready, five partial, one at risk. The answer fits on one screen.</li>
+<li><b>The discipline that surfaces the actual action item.</b> Underneath the three numbers, the gold-bordered card names the most urgent case (Mr. Akoto's Government classes) and what the Vice Headmaster is already doing about it. The Headmaster does not need to dig — the system surfaces the case where their personal attention or sign-off is most likely to be needed. The action button is "Message Mrs. Anim," not "Message Mr. Akoto" — because escalating past the line manager is the wrong move and the system reflects the hierarchy.</li>
+<li><b>The cascade is genuinely the Vice Headmaster's data rolled up, not a separate calculation.</b> Same per-teacher progress, aggregated by subject. A Headmaster who wants to see Mr. Akoto's row specifically clicks "Open full progress view" and lands in the Vice Headmaster's view — same data, deeper granularity. No data lives in only one of the two surfaces.</li>
+<li><b>Subjects, not just totals.</b> "9 ready / 8 behind / 1 at risk" would be the right total but the wrong framing — the Headmaster needs to know <em>which subjects</em>, because Government being at risk is a different problem from Mathematics being at risk (Government is one teacher; Mathematics is six). The subject-list line under each tile names the specific subjects and per-subject teacher counts, so the Headmaster reads the situation, not just the number.</li>
+<li><b>"Brief the board" is the action button.</b> The Headmaster's reporting obligations run upward to the Board of Governors and onward to GES through Oversight. The roll-up surface is also a briefing-input surface — a Headmaster preparing for a board meeting or a district director's visit drops these three figures and the action note into their briefing. Same data, third surface, same five-category model underneath.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

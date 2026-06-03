@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Module empty states</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+/* ============ DESKTOP FRAME ============ */
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 32px 40px; overflow: hidden; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+.main-head .actions { display: flex; gap: 8px; }
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.subtle { background: transparent; border-color: transparent; color: var(--navy-3); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ========== STUDENTS EMPTY ========== */
+.students-empty-zone {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.path-tile {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 22px 22px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex; flex-direction: column;
+}
+.path-tile:hover {
+  border-color: var(--gold-soft);
+  box-shadow: 0 12px 32px -16px rgba(26,43,71,0.15);
+}
+.path-tile.recommended {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+  position: relative;
+}
+.path-tile.recommended::before {
+  content: "RECOMMENDED";
+  position: absolute;
+  top: -10px; left: 22px;
+  background: var(--gold);
+  color: var(--navy);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+.path-tile .p-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px;
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 18px;
+  color: var(--navy);
+}
+.path-tile.recommended .p-icon {
+  background: var(--surface);
+  border-color: var(--gold-soft);
+  color: var(--gold);
+}
+.path-tile h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 600; letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.path-tile h3 em { font-style: italic; color: var(--gold); }
+.path-tile .p-body {
+  font-size: 12px; color: var(--navy-2); line-height: 1.55;
+  margin-bottom: 14px;
+  flex: 1;
+}
+.path-tile .p-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-2);
+  margin-bottom: 12px;
+}
+.path-tile.recommended .p-meta { border-top-color: var(--gold-soft); }
+.path-tile .p-cta {
+  font-size: 12px;
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reversibility-strip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 22px;
+}
+.reversibility-strip .ri {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--green-bg);
+  color: var(--green);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 14px;
+  flex-shrink: 0;
+}
+.reversibility-strip .body { flex: 1; }
+.reversibility-strip .body .t1 {
+  font-family: 'Fraunces', serif;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-bottom: 2px;
+}
+.reversibility-strip .body .t2 {
+  font-size: 12px; color: var(--navy-3); line-height: 1.5;
+}
+.reversibility-strip .body .t2 b { color: var(--navy); }
+
+.template-strip {
+  background: var(--bg);
+  border: 1px dashed var(--border-2);
+  border-radius: 8px;
+  padding: 14px 18px;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12px;
+  color: var(--navy-3);
+}
+.template-strip b { color: var(--navy); }
+.template-strip a {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+.template-strip .file-ic {
+  width: 28px; height: 28px;
+  border-radius: 5px;
+  background: var(--green-bg);
+  color: var(--green);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ========== GRADEBOOK EMPTY ========== */
+.gb-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 22px;
+}
+.gb-context .av-class {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  background: var(--navy);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 14px;
+  flex-shrink: 0;
+}
+.gb-context .body { flex: 1; }
+.gb-context .body .t1 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.gb-context .body .t2 {
+  font-size: 12px; color: var(--navy-3);
+  margin-top: 2px;
+}
+.gb-context .body .t2 b { color: var(--navy); font-weight: 600; }
+.gb-context .pill-strip {
+  display: flex; gap: 8px;
+}
+.gb-context .pill {
+  font-size: 10px;
+  padding: 5px 10px;
+  border-radius: 100px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.gb-context .pill.active { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+
+/* The empty gradebook itself */
+.gb-empty-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.gb-empty-toolbar {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg);
+}
+.gb-empty-toolbar .left {
+  display: flex; gap: 8px;
+}
+.gb-empty-toolbar .left .pill {
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  color: var(--navy-3);
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+.gb-empty-toolbar .left .pill.active { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.gb-empty-toolbar .meta {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+
+.gb-table-empty {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.gb-table-empty th {
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.gb-table-empty th.add-col {
+  text-align: center;
+  border-left: 1px dashed var(--border-2);
+  background: var(--gold-bg);
+  color: var(--gold);
+  cursor: pointer;
+}
+.gb-table-empty th.add-col:hover { background: var(--gold-soft); }
+.gb-table-empty td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.gb-table-empty td.placeholder {
+  color: var(--border-2);
+  text-align: center;
+  font-size: 14px;
+  font-family: 'Fraunces', serif;
+}
+.gb-table-empty .student {
+  display: flex; align-items: center; gap: 10px;
+}
+.gb-table-empty .student .av-mini {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.gb-table-empty .student .name { font-weight: 600; }
+.gb-table-empty .student .id { font-size: 10px; color: var(--navy-3); }
+
+.gb-overlay-cta {
+  position: relative;
+  margin: -1px;
+}
+.gb-cta-floating {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--surface);
+  border: 1px solid var(--gold);
+  border-radius: 14px;
+  padding: 24px 28px 22px;
+  box-shadow: 0 30px 70px -20px rgba(26,43,71,0.22), 0 0 0 8px rgba(255,255,255,0.6);
+  text-align: center;
+  width: 360px;
+  z-index: 5;
+}
+.gb-cta-floating .ic {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 14px;
+}
+.gb-cta-floating h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.gb-cta-floating h4 em { font-style: italic; color: var(--gold); }
+.gb-cta-floating .body-text {
+  font-size: 12px; color: var(--navy-3);
+  line-height: 1.55;
+  margin-bottom: 16px;
+}
+.gb-cta-floating .actions {
+  display: flex; gap: 8px; justify-content: center;
+}
+
+.gb-faded {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* ========== BILLING EMPTY ========== */
+.billing-state-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px 36px;
+  margin-bottom: 18px;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 36px;
+  align-items: center;
+}
+.billing-state-card .left .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 10px;
+}
+.billing-state-card .left h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500;
+  letter-spacing: -0.02em; line-height: 1.1;
+  margin-bottom: 14px;
+}
+.billing-state-card .left h3 em { font-style: italic; color: var(--gold); }
+.billing-state-card .left .body-text {
+  font-size: 14px;
+  color: var(--navy-2);
+  line-height: 1.6;
+  margin-bottom: 22px;
+  max-width: 480px;
+}
+.billing-state-card .left .body-text b { color: var(--navy); }
+
+.billing-state-card .left .actions {
+  display: flex; gap: 8px;
+}
+
+.invoice-preview-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  position: relative;
+}
+.invoice-preview-card::before {
+  content: "PREVIEW";
+  position: absolute;
+  top: -10px; left: 18px;
+  background: var(--navy);
+  color: var(--gold);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+.inv-prev-head {
+  display: flex; gap: 10px; align-items: center;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--border-2);
+  margin-bottom: 14px;
+}
+.inv-prev-head .logo-r {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  background: var(--navy);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 13px;
+}
+.inv-prev-head .meta .nm { font-family: 'Fraunces', serif; font-size: 12px; font-weight: 600; }
+.inv-prev-head .meta .sb { font-size: 10px; color: var(--navy-3); }
+.inv-prev-head .doc-type {
+  margin-left: auto;
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+}
+.inv-prev-line {
+  display: flex; justify-content: space-between;
+  font-size: 11px;
+  padding: 4px 0;
+}
+.inv-prev-line .lbl { color: var(--navy-3); }
+.inv-prev-line .val { font-family: 'Fraunces', serif; font-weight: 600; }
+.inv-prev-divider {
+  border-top: 1px solid var(--border);
+  margin: 8px 0;
+}
+.inv-prev-total {
+  display: flex; justify-content: space-between;
+  padding: 8px 0 0;
+}
+.inv-prev-total .lbl { font-size: 12px; font-weight: 600; }
+.inv-prev-total .val {
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.what-happens {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  padding: 18px 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px;
+}
+.what-step .num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 22px;
+  color: var(--gold);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.what-step .t1 {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-bottom: 4px;
+}
+.what-step .t2 {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .students-empty-zone { grid-template-columns: 1fr; }
+  .billing-state-card { grid-template-columns: 1fr; }
+  .what-happens { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Empty states · Set B</div>
+  <h1 class="display">The <em>module</em> empty moments</h1>
+  <div class="gold-rule"></div>
+  <p>What a user sees when they navigate <em>into</em> a section that doesn't have data yet. Different from day-one — they came here with intent. The empty state should bridge that intent to action without feeling like a quiz.</p>
+</header>
+
+<!-- ============ 01 STUDENTS ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Students · no roster yet</div>
+    <div class="section-meta">Admin · arrived from checklist</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / students</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item active"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Students</div>
+              <h2 class="display">Add your <em>first students</em></h2>
+              <div style="font-size:14px;color:var(--navy-3);margin-top:6px">Pick the path that matches what you have on hand. You can mix and match — start with a CSV, then add stragglers manually later.</div>
+            </div>
+          </div>
+
+          <div class="students-empty-zone">
+            <div class="path-tile recommended">
+              <div class="p-icon">.csv</div>
+              <h3>Upload a <em>spreadsheet</em></h3>
+              <div class="p-body">If you have a list of students in Excel or Google Sheets — names, classes, parent contacts — this is the fastest way. We'll validate every row before importing.</div>
+              <div class="p-meta">Best for · 50+ students</div>
+              <div class="p-cta">Upload CSV →</div>
+            </div>
+
+            <div class="path-tile">
+              <div class="p-icon">+</div>
+              <h3>Add one by one</h3>
+              <div class="p-body">Type each student in directly. Good for small schools, or for adding new admissions later in the term once your main roster is in.</div>
+              <div class="p-meta">Best for · Under 50 students</div>
+              <div class="p-cta">Add manually →</div>
+            </div>
+
+            <div class="path-tile">
+              <div class="p-icon">↓</div>
+              <h3>Import from another system</h3>
+              <div class="p-body">Migrating from another school management tool? We support direct import from common providers — your data lands here ready to use.</div>
+              <div class="p-meta">Talk to us · Available on request</div>
+              <div class="p-cta">Get help →</div>
+            </div>
+          </div>
+
+          <div class="reversibility-strip">
+            <div class="ri">↺</div>
+            <div class="body">
+              <div class="t1">Imports are reversible</div>
+              <div class="t2">Every import becomes one undoable batch. <b>If something goes wrong</b>, you can roll the whole thing back from Settings → Imports — no manual cleanup needed.</div>
+            </div>
+          </div>
+
+          <div class="template-strip">
+            <div class="file-ic">CSV</div>
+            <div><b>Need our template?</b> The CSV format is simple — name, class, date of birth, guardian name, guardian phone.</div>
+            <a href="#">DOWNLOAD TEMPLATE ↓</a>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Three tiles, one recommended.</b> The "best path" gold ribbon removes choice paralysis without forcing the decision. Heads who know their situation will pick freely; heads who don't have a clear winner.</li>
+        <li><b>Each tile has a "Best for" footnote.</b> "50+ students" / "Under 50" gives a concrete signal — admin self-identifies by school size, not by guessing what fits them.</li>
+        <li><b>Third tile (migration) is the long-tail catch.</b> Schools moving from another system are a real subset; offering a path makes them feel seen even though it's a "talk to us" workflow in MVP1.</li>
+        <li><b>Reversibility strip in green</b> is the most important reassurance on this screen. Heads are nervous about importing 200 records badly. "Imports are one undoable batch" removes that anxiety.</li>
+        <li><b>Template strip below the path tiles</b> sits as a passive utility. Heads who already have a CSV won't need it; heads who don't will find it within reach.</li>
+        <li><b>No fake table preview.</b> Some products show "0 students" with a stylised empty grid. We don't — empty grids look broken, and the path tiles are the work itself.</li>
+        <li><b>"Mix and match" is stated explicitly</b> in the lede. Many heads assume picking one path locks them in; the line removes that assumption upfront.</li>
+        <li><b>Page title is "Add your first students,"</b> not "Students" or "No students yet." Action-framed; tells the head what this page is for.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 GRADEBOOK ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Gradebook · no assignments yet</div>
+    <div class="section-meta">Teacher · students loaded, nothing graded</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / classes / jhs-2a / mathematics / gradebook</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item active"><div class="ic"></div>My Classes</div>
+          <div class="nav-item"><div class="ic"></div>Assignments</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Profile</div>
+          <div class="footer">
+            <div class="av">KM</div>
+            <div class="meta"><div class="n">Kwame Mensah</div><div class="r">Teacher</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">My Classes / JHS 2A / Mathematics</div>
+              <h2 class="display">Term 1 <em>gradebook</em></h2>
+            </div>
+            <div class="actions">
+              <button class="btn" disabled>Export</button>
+              <button class="btn primary" disabled>Save</button>
+            </div>
+          </div>
+
+          <!-- Class context strip -->
+          <div class="gb-context">
+            <div class="av-class">2A</div>
+            <div class="body">
+              <div class="t1">JHS 2A · Mathematics</div>
+              <div class="t2">38 students · taught by <b>you</b> · term 1 just started</div>
+            </div>
+            <div class="pill-strip">
+              <div class="pill active">Continuous Assessment</div>
+              <div class="pill">Term Exam</div>
+              <div class="pill">Final Grade</div>
+            </div>
+          </div>
+
+          <!-- Empty gradebook with floating CTA -->
+          <div class="gb-empty-wrap gb-overlay-cta">
+            <div class="gb-faded">
+              <div class="gb-empty-toolbar">
+                <div class="left">
+                  <div class="pill" style="font-size:11px;padding:5px 12px;border-radius:100px;background:var(--surface);color:var(--navy);font-weight:600;border:1px solid var(--border)">All students</div>
+                </div>
+                <div class="meta">38 students</div>
+              </div>
+              <table class="gb-table-empty">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th class="add-col" colspan="5">+ Add your first column</th>
+                    <th style="text-align:center">Total</th>
+                    <th style="text-align:center">Grade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><div class="student"><div class="av-mini">AB</div><div><div class="name">Akosua Boateng</div><div class="id">CTK-2024-018</div></div></div></td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                  </tr>
+                  <tr>
+                    <td><div class="student"><div class="av-mini">KO</div><div><div class="name">Kofi Owusu</div><div class="id">CTK-2024-019</div></div></div></td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                  </tr>
+                  <tr>
+                    <td><div class="student"><div class="av-mini">AM</div><div><div class="name">Ama Mensah</div><div class="id">CTK-2024-020</div></div></div></td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                  </tr>
+                  <tr>
+                    <td><div class="student"><div class="av-mini">YA</div><div><div class="name">Yaw Asante</div><div class="id">CTK-2024-021</div></div></div></td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                  </tr>
+                  <tr>
+                    <td><div class="student"><div class="av-mini">EO</div><div><div class="name">Esi Odoom</div><div class="id">CTK-2024-022</div></div></div></td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                    <td class="placeholder">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="gb-cta-floating">
+              <div class="ic">+</div>
+              <h4>Add your <em>first column</em></h4>
+              <div class="body-text">A column is one assessment — Quiz 1, Class Test, Assignment 2. Once you add it and set the marks ceiling, you can grade students inline.</div>
+              <div class="actions">
+                <button class="btn">Use a quick template</button>
+                <button class="btn gold">+ Add column</button>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Class context strip up top</b> tells the teacher exactly where they are. Important when a teacher has 3 classes and the URL alone isn't enough orientation.</li>
+        <li><b>Term Exam / CA / Final pills shown active,</b> not greyed out. Even with no data, the structure is visible — teacher learns the navigation while looking at the empty state.</li>
+        <li><b>Student names are real,</b> not placeholders. The roster has loaded; what's missing is just the assessment columns. This is the entire teaching of the empty state — "your students are here, you just haven't graded anything yet."</li>
+        <li><b>Floating CTA card sits over a faded gradebook,</b> not over a blank canvas. Shows the eventual shape of the page; reduces the cognitive jump from this screen to a filled one.</li>
+        <li><b>Em-dashes (—) in cells,</b> not zeros. A zero is a grade; a dash is "no value." Critical distinction for fairness — never imply a student got 0 by default.</li>
+        <li><b>"+ Add your first column" header in the table</b> spans where assessment columns will go. It's both an explanation and a clickable affordance — same surface, two roles.</li>
+        <li><b>"Use a quick template"</b> as a softer second CTA. Teachers who don't know what to add first can pick from a preset (3 quizzes, 2 assignments, 1 term exam — the standard JHS shape).</li>
+        <li><b>Save and Export buttons disabled</b> in the top right, not hidden. Visible-but-inactive teaches the teacher what these buttons will do once they have something to save.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 BILLING ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Billing · no invoices issued</div>
+    <div class="section-meta">Admin · students loaded, fees configured</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item active"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Billing / Term 1 · 2026</div>
+              <h2 class="display">Issue <em>Term 1 invoices</em></h2>
+            </div>
+          </div>
+
+          <div class="billing-state-card">
+            <div class="left">
+              <div class="label">Ready when you are</div>
+              <h3>Issue invoices for <em>381 students</em></h3>
+              <div class="body-text">All students are loaded and your fee structure is set. Once you issue invoices, every guardian gets an SMS with the amount due and a payment link. <b>This is the moment fees go live</b> — review the preview on the right before you send.</div>
+              <div class="actions">
+                <button class="btn">Edit fee structure first</button>
+                <button class="btn gold">Issue 381 invoices →</button>
+              </div>
+            </div>
+
+            <div class="invoice-preview-card">
+              <div class="inv-prev-head">
+                <div class="logo-r">CK</div>
+                <div class="meta">
+                  <div class="nm">Christ the King JHS</div>
+                  <div class="sb">Term 1 · 2026</div>
+                </div>
+                <div class="doc-type">Invoice</div>
+              </div>
+              <div class="inv-prev-line"><div class="lbl">Tuition</div><div class="val">GHS 280.00</div></div>
+              <div class="inv-prev-line"><div class="lbl">Books &amp; supplies</div><div class="val">GHS 40.00</div></div>
+              <div class="inv-prev-line"><div class="lbl">Transport <em style="color:var(--navy-3);font-style:italic;font-size:10px;font-family:'Manrope'">— optional</em></div><div class="val" style="color:var(--navy-3)">GHS 80.00</div></div>
+              <div class="inv-prev-divider"></div>
+              <div class="inv-prev-total">
+                <div class="lbl">Total billed</div>
+                <div class="val">GHS 320.00</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="what-happens">
+            <div class="what-step">
+              <div class="num">i</div>
+              <div class="t1">Each student gets their own invoice</div>
+              <div class="t2">Generated from your fee structure, scoped to that student. Discounts you've configured (siblings, scholarships, exemptions) are applied automatically based on student records.</div>
+            </div>
+            <div class="what-step">
+              <div class="num">ii</div>
+              <div class="t1">Guardians get an SMS within minutes</div>
+              <div class="t2">"Akosua's Term 1 fees of GHS 320.00 are due by Sep 30. Pay via MoMo — omnischools.gh/p/abc" — short, clear, with a payment link.</div>
+            </div>
+            <div class="what-step">
+              <div class="num">iii</div>
+              <div class="t1">Payments start arriving</div>
+              <div class="t2">As parents pay, this page fills with collection data. You can also record cash payments manually anytime via the "+ Record payment" button.</div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>"Issue Term 1 invoices" as the page title,</b> not "Billing." Action-framed — admin came here to do something specific, the title confirms that's exactly what's about to happen.</li>
+        <li><b>State card on the left, invoice preview on the right.</b> The preview is the most reassuring object on the page — head sees what each parent will receive before sending. Removes the "I have to send 381 of these and I don't know what they look like" anxiety.</li>
+        <li><b>"This is the moment fees go live" is the key sentence.</b> Issuing invoices triggers SMS to every guardian — this is irreversible in spirit (parents will see the SMS) even if technically reversible. The tone signals weight without alarm.</li>
+        <li><b>"Edit fee structure first" sits as a secondary CTA.</b> Heads who realise mid-page that fees aren't right shouldn't have to navigate elsewhere — escape hatch right here.</li>
+        <li><b>Three-step "what happens" strip in gold</b> answers the unspoken question: "what actually happens when I click that gold button?" Each step is concrete — scoped per student, SMS preview, payments arrive.</li>
+        <li><b>Roman numerals for the steps,</b> not 1-2-3. Subtle but they read as a sequence rather than a checklist. Aligns with the Fraunces italic tone elsewhere in the system.</li>
+        <li><b>SMS preview text is verbatim.</b> "Akosua's Term 1 fees of GHS 320.00 are due by Sep 30..." — head sees the actual SMS copy, builds trust that nothing weird gets sent in their school's name.</li>
+        <li><b>Optional fees shown in muted color</b> in the preview. Transport is opt-in per family; the preview shows it but signals it won't be included by default. Honest visual communication of how the model works.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

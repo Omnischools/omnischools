@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools Oversight — District director dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Omnischools Oversight — Anomaly &amp; investigation queue</title>
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:800px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Oversight uses a deeper navy app chrome to distinguish it from the operational app */
+.app-shell { display:grid; grid-template-columns:230px 1fr; background:var(--bg); }
+.sidebar { background:#13203A; color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1240px; }
+.sidebar.tall { min-height:1620px; }
+.sidebar.taller { min-height:1880px; }
+.sidebar .gov-mark { padding:0 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:8px; }
+.sidebar .gov-mark .crest { display:flex; gap:11px; align-items:center; }
+.sidebar .gov-mark .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; line-height:1; text-align:center; }
+.sidebar .gov-mark .crest-text .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.sidebar .gov-mark .crest-text .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.sidebar .scope-chip { margin:14px 20px 8px; padding:10px 12px; background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:8px; }
+.sidebar .scope-chip .sc-label { font-size:8.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.sidebar .scope-chip .sc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.sidebar .scope-chip .sc-meta { font-size:10px; color:var(--gold-soft); margin-top:1px; }
+.nav-group { padding:16px 24px 6px; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(200,151,91,0.6); font-weight:700; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.1); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; }
+.sidebar .footer .av { width:34px; height:34px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; flex-shrink:0; }
+.sidebar .footer .meta-name { font-weight:600; font-size:12px; }
+.sidebar .footer .meta-role { font-size:9.5px; color:var(--gold-soft); margin-top:1px; }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.5); font-weight:700; }
+.powered-by em { color:var(--gold); font-style:normal; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:820px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Data-period banner */
+.period-banner { display:flex; align-items:center; gap:14px; padding:12px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; margin-bottom:24px; }
+.period-banner .pb-icon { width:34px; height:34px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:15px; flex-shrink:0; }
+.period-banner .pb-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.period-banner .pb-text b { color:var(--navy); font-weight:700; }
+.period-banner .pb-aside { margin-left:auto; font-size:10px; letter-spacing:0.06em; color:var(--navy-3); font-weight:600; text-align:right; }
+
+/* KPI strip */
+.kpi-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.kpi-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.kpi-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.kpi-card .k-lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.kpi-card .k-val { font-family:'Fraunces', serif; font-size:33px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.kpi-card .k-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.kpi-card .k-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.kpi-card .k-sub { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.kpi-card .k-sub b { color:var(--navy-2); font-weight:700; }
+.kpi-card .k-delta { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; margin-top:8px; position:relative; }
+.kpi-card .k-delta.up { background:var(--green-bg); color:var(--green); }
+.kpi-card .k-delta.down { background:var(--terra-bg); color:var(--terra); }
+.kpi-card .k-delta.flat { background:var(--bg); color:var(--navy-3); }
+
+/* Panel */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.panel-head { padding:16px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; justify-content:space-between; }
+.panel-head .ph-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.panel-head .ph-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.panel-head .ph-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.panel-head .ph-link { font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; }
+.panel-body { padding:20px 22px; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* Bar rows for enrolment-by-sex etc */
+.bar-row { margin-bottom:14px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-row .br-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.bar-row .br-label { font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-label .br-sub { color:var(--navy-3); font-weight:500; font-size:10.5px; margin-left:6px; }
+.bar-row .br-value { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-track { height:9px; background:var(--bg); border-radius:100px; overflow:hidden; display:flex; }
+.bar-row .br-fill { height:100%; }
+.bar-row .br-fill.navy { background:var(--navy); }
+.bar-row .br-fill.gold { background:var(--gold); }
+.bar-row .br-fill.green { background:var(--green); }
+.bar-row .br-fill.terra { background:var(--terra); }
+.bar-row .br-fill.warn { background:var(--warn); }
+.split-legend { display:flex; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.split-legend .sl-item { display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--navy-2); font-weight:600; }
+.split-legend .sl-dot { width:9px; height:9px; border-radius:2px; }
+.bar-row.parent .br-label { display:flex; align-items:center; gap:7px; }
+.bar-row.parent .drill-chip { font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; color:var(--gold); background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:100px; padding:2px 7px; cursor:pointer; }
+.bar-row.child { margin-left:18px; padding-left:12px; border-left:2px solid var(--border); }
+.bar-row.child .br-label { font-weight:500; color:var(--navy-2); font-size:11.5px; }
+.bar-row.child .br-value { font-size:11px; color:var(--navy-2); }
+.bar-row.child .br-track { height:7px; }
+.subtotal-note { font-size:10px; color:var(--navy-3); font-weight:600; margin:3px 0 10px 30px; font-style:italic; }
+.fee-row { margin-bottom:14px; }
+.fee-row:last-child { margin-bottom:0; }
+.fee-row .fr-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.fee-row .fr-level { font-size:12px; font-weight:700; color:var(--navy); }
+.fee-row .fr-total { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.fee-row .fr-bar { height:16px; border-radius:4px; overflow:hidden; display:flex; }
+.fee-row .fr-seg { height:100%; }
+.fee-legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.fee-legend .fl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.fee-legend .fl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* Mini stat list */
+.stat-list { display:flex; flex-direction:column; }
+.stat-list .st-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.stat-list .st-row:last-child { border-bottom:none; }
+.stat-list .st-label { font-size:12px; color:var(--navy-2); font-weight:500; }
+.stat-list .st-label b { color:var(--navy); font-weight:700; }
+.stat-list .st-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stat-list .st-val .st-unit { font-size:10px; color:var(--navy-3); font-weight:500; }
+.stat-list .st-val.flag { color:var(--terra); }
+.stat-list .st-val.good { color:var(--green); }
+
+/* Performance band chart */
+.band-chart { display:flex; flex-direction:column; gap:10px; }
+.band-row { display:grid; grid-template-columns:78px 1fr 48px; gap:10px; align-items:center; }
+.band-row .bd-label { font-size:11px; font-weight:600; color:var(--navy-2); }
+.band-row .bd-track { height:20px; background:var(--bg); border-radius:5px; overflow:hidden; display:flex; }
+.band-row .bd-seg { height:100%; }
+.band-row .bd-pct { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.band-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.band-legend .bl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.band-legend .bl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* School list table */
+.school-table { width:100%; border-collapse:collapse; }
+.school-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.school-table th.c { text-align:center; }
+.school-table th.r { text-align:right; }
+.school-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.school-table tr:last-child td { border-bottom:none; }
+.school-table tr.drill { cursor:pointer; }
+.school-table tr.drill:hover td { background:var(--gold-bg); }
+.school-table td .sc-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.school-table td .sc-name .sc-badge { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.school-table td .sc-name .sc-badge.anchor { background:var(--gold); color:var(--navy); }
+.school-table td .sc-meta { font-size:9.5px; color:var(--navy-3); margin-top:1px; font-weight:500; }
+.school-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.school-table td .num.r { text-align:right; }
+.school-table td .ratio { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; }
+.school-table td .ratio.good { color:var(--green); }
+.school-table td .ratio.warn { color:var(--warn); }
+.school-table td .ratio.flag { color:var(--terra); }
+.school-table td .perf-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; }
+.school-table td .perf-pill.good { background:var(--green-bg); color:var(--green); }
+.school-table td .perf-pill.mid { background:var(--warn-bg); color:var(--warn); }
+.school-table td .perf-pill.low { background:var(--terra-bg); color:var(--terra); }
+.school-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.table-toolbar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.table-toolbar .tt-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.chip { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:5px 11px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.chip.compare { background:var(--gold-bg); border-color:var(--gold); color:var(--navy); margin-left:auto; }
+.chip.compare::before { content:"⊕ "; color:var(--gold); }
+
+/* Anomaly callouts */
+.flag-list { display:flex; flex-direction:column; gap:10px; }
+.flag-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.flag-item.warn { border-color:var(--warn); background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 60%); }
+.flag-item.terra { border-color:var(--terra); background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 60%); }
+.flag-item .fi-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.flag-item.warn .fi-icon { background:var(--warn); color:var(--bg); }
+.flag-item.terra .fi-icon { background:var(--terra); color:var(--bg); }
+.flag-item .fi-body .fi-title { font-size:12px; font-weight:700; color:var(--navy); }
+.flag-item .fi-body .fi-detail { font-size:10.5px; color:var(--navy-2); margin-top:2px; line-height:1.45; }
+.flag-item .fi-body .fi-detail b { color:var(--navy); font-weight:700; }
+.flag-item .fi-action { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:700; color:var(--navy); cursor:pointer; }
+
+/* Comparison teaser */
+.compare-strip { background:linear-gradient(135deg, #13203A 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:22px 26px; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.compare-strip::before { content:""; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.compare-strip .cs-body { position:relative; }
+.compare-strip .cs-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.compare-strip .cs-title { font-family:'Fraunces', serif; font-size:21px; font-weight:500; line-height:1.2; margin-bottom:6px; }
+.compare-strip .cs-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.compare-strip .cs-text { font-size:12px; color:var(--gold-soft); line-height:1.5; max-width:560px; }
+.compare-strip .cs-text b { color:var(--bg); font-weight:600; }
+.compare-strip .cs-action { position:relative; }
+
+/* Data provenance footer */
+.provenance { display:flex; gap:18px; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-top:18px; flex-wrap:wrap; }
+.provenance .pv-item { font-size:10.5px; color:var(--navy-3); font-weight:500; }
+.provenance .pv-item b { color:var(--navy-2); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .dash-grid { grid-template-columns:1fr; }
+  .compare-strip { grid-template-columns:1fr; }
+}
+
+/* ===== Anomaly queue specific ===== */
+.queue-filters { display:flex; gap:6px; padding:14px 22px; border-bottom:1px solid var(--border); align-items:center; flex-wrap:wrap; }
+.queue-filters .qf-lbl { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.queue-filters .qf-div { width:1px; height:20px; background:var(--border-2); margin:0 6px; }
+/* anomaly card */
+.anomaly-card { border:1px solid var(--border); border-radius:12px; padding:0; margin-bottom:12px; overflow:hidden; }
+.anomaly-card.sev-high { border-left:4px solid var(--terra); }
+.anomaly-card.sev-mid { border-left:4px solid var(--warn); }
+.anomaly-card.sev-low { border-left:4px solid var(--navy-3); }
+.anomaly-card .ac-main { display:grid; grid-template-columns:auto 1fr auto; gap:14px; padding:15px 18px; align-items:start; }
+.anomaly-card .ac-sev { width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:16px; flex-shrink:0; }
+.anomaly-card .ac-sev.high { background:var(--terra); color:var(--bg); }
+.anomaly-card .ac-sev.mid { background:var(--warn); color:var(--bg); }
+.anomaly-card .ac-sev.low { background:var(--navy-3); color:var(--bg); }
+.anomaly-card .ac-body .ac-title { font-size:13px; font-weight:700; color:var(--navy); margin-bottom:3px; }
+.anomaly-card .ac-body .ac-where { font-size:10.5px; color:var(--navy-3); font-weight:600; margin-bottom:6px; }
+.anomaly-card .ac-body .ac-detail { font-size:11px; color:var(--navy-2); line-height:1.5; }
+.anomaly-card .ac-body .ac-detail b { color:var(--navy); font-weight:700; }
+.anomaly-card .ac-meta { text-align:right; flex-shrink:0; }
+.anomaly-card .ac-rule { font-size:9px; letter-spacing:0.04em; font-family:'JetBrains Mono', monospace; color:var(--navy-3); font-weight:600; margin-bottom:6px; }
+.anomaly-card .ac-status { display:inline-block; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; padding:3px 9px; border-radius:100px; }
+.anomaly-card .ac-status.new { background:var(--terra-bg); color:var(--terra); }
+.anomaly-card .ac-status.review { background:var(--warn-bg); color:var(--warn); }
+.anomaly-card .ac-status.assigned { background:var(--gold-bg); color:var(--gold); }
+.anomaly-card .ac-status.resolved { background:var(--green-bg); color:var(--green); }
+.anomaly-card .ac-status.dismissed { background:var(--bg); color:var(--navy-3); }
+.anomaly-card .ac-foot { display:flex; align-items:center; gap:10px; padding:10px 18px; background:var(--bg); border-top:1px solid var(--border); flex-wrap:wrap; }
+.anomaly-card .ac-foot .acf-info { font-size:10px; color:var(--navy-3); font-weight:600; }
+.anomaly-card .ac-foot .acf-info b { color:var(--navy-2); font-weight:700; }
+.anomaly-card .ac-act { font-size:10px; font-weight:700; padding:5px 11px; border-radius:6px; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); cursor:pointer; }
+.anomaly-card .ac-act.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.anomaly-card .ac-corr { display:flex; align-items:center; gap:7px; padding:9px 18px; background:var(--gold-bg); border-top:1px solid var(--gold-soft); font-size:10px; color:var(--navy-2); font-weight:600; }
+.anomaly-card .ac-corr b { color:var(--navy); font-weight:700; }
+/* triage detail panel */
+.triage-grid { display:grid; grid-template-columns:1fr 290px; gap:18px; align-items:start; }
+.triage-step { display:flex; gap:11px; padding:13px 0; border-bottom:1px solid var(--border); }
+.triage-step:last-child { border-bottom:none; }
+.triage-step .ts-dot { width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; flex-shrink:0; }
+.triage-step .ts-dot.done { background:var(--green); color:var(--bg); }
+.triage-step .ts-dot.now { background:var(--gold); color:var(--navy); }
+.triage-step .ts-dot.next { background:var(--bg); color:var(--navy-3); border:1.5px solid var(--border-2); }
+.triage-step .ts-body .ts-title { font-size:12px; font-weight:700; color:var(--navy); }
+.triage-step .ts-body .ts-meta { font-size:10px; color:var(--navy-3); margin-top:2px; line-height:1.45; }
+.triage-step .ts-body .ts-meta b { color:var(--navy-2); font-weight:700; }
+.method-mini { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.method-mini .mm-title { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; }
+.method-mini .mm-rule { font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--navy-2); background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:9px 11px; line-height:1.5; margin-bottom:8px; }
+.method-mini .mm-note { font-size:10px; color:var(--navy-3); line-height:1.5; }
+.method-mini .mm-note b { color:var(--navy-2); font-weight:700; }
+.assign-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-top:12px; }
+.assign-box .ab-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:11px; }
+.assign-box .ab-row:last-child { border-bottom:none; }
+.assign-box .ab-k { color:var(--navy-3); font-weight:600; }
+.assign-box .ab-v { color:var(--navy); font-weight:700; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Omnischools Oversight · Batch 3 · surface 2 of 5</div>
+<div class="eyebrow">Omnischools Oversight · where signals get worked</div>
+<h1>The queue of <em>things to check.</em></h1>
+<div class="gold-rule"></div>
+<p>The dashboards surface a short list of flagged signals; this is the full queue behind them. The anomaly engine runs rule-based heuristics over every nightly sync — enrolment spikes, attendance collapse, fee outliers, performance drops, coverage gaps — and raises an anomaly when a rule trips. The queue is where a district director triages them: each anomaly carries the rule that raised it, a severity, and a status that moves from new through review and assignment to resolved or dismissed. Crucially the engine is rule-based and explainable, not a black box — every anomaly can state exactly why it fired. The demo is the Wassa Amenfi West queue, nine open anomalies, with the Samreboi cluster the dashboards have pointed at all along.</p>
+</div>
+
+<!-- ============================================ SECTION 1 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">The queue · every open signal, triaged</div>
+<div class="section-meta">Wassa Amenfi West · 9 open</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/anomaly-queue</div></div>
+
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item active"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Anomaly queue</div>
+<div class="top-row">
+<div>
+<h1>Anomaly <em>queue.</em></h1>
+<div class="lede">Every open signal the anomaly engine has raised for your district — triage, assign, resolve.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Filter</button>
+<button class="btn">Export queue</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="kpi-strip">
+<div class="kpi-card lead">
+<div class="k-lbl">Open anomalies</div>
+<div class="k-val"><em>9</em><span class="unit">signals</span></div>
+<div class="k-sub">3 high · 4 medium · 2 low severity</div>
+</div>
+<div class="kpi-card">
+<div class="k-lbl">New since last sync</div>
+<div class="k-val">2<span class="unit">today</span></div>
+<div class="k-sub">Raised at 02:00 GMT this morning</div>
+</div>
+<div class="kpi-card">
+<div class="k-lbl">Assigned &amp; in progress</div>
+<div class="k-val">4<span class="unit">cases</span></div>
+<div class="k-sub">Being worked by district staff</div>
+</div>
+<div class="kpi-card">
+<div class="k-lbl">Resolved · 90 days</div>
+<div class="k-val">17<span class="unit">closed</span></div>
+<div class="k-sub">11 resolved · 6 dismissed as expected</div>
+</div>
+</div>
+
+<div class="panel" style="margin-bottom:0;">
+<div class="queue-filters">
+<span class="qf-lbl">Severity</span>
+<button class="chip active">All</button>
+<button class="chip">High</button>
+<button class="chip">Medium</button>
+<button class="chip">Low</button>
+<div class="qf-div"></div>
+<span class="qf-lbl">Theme</span>
+<button class="chip active">All</button>
+<button class="chip">Enrolment</button>
+<button class="chip">Attendance</button>
+<button class="chip">Performance</button>
+<button class="chip">Staffing</button>
+<button class="chip">Coverage</button>
+<div class="qf-div"></div>
+<span class="qf-lbl">Status</span>
+<button class="chip active">Open</button>
+<button class="chip">Resolved</button>
+</div>
+<div style="padding:18px 22px;">
+
+<div class="anomaly-card sev-high">
+<div class="ac-main">
+<div class="ac-sev high">!</div>
+<div class="ac-body">
+<div class="ac-title">Pupil-teacher ratio above escalation threshold</div>
+<div class="ac-where">Samreboi D/A JHS · staffing</div>
+<div class="ac-detail">PTR is <b>32.6:1</b>, above the 30:1 escalation threshold. Enrolment rose 7% while teaching staff held flat — <b>3 vacancies</b> unfilled since the 2024/25 reshuffle.</div>
+</div>
+<div class="ac-meta">
+<div class="ac-rule">RULE · PTR-ESC-30</div>
+<div class="ac-status new">New</div>
+</div>
+</div>
+<div class="ac-corr">
+<span style="color:var(--gold); font-weight:700;">⋈</span>
+<span><b>Correlated</b> with 2 other Samreboi anomalies — see the cluster in section 02</span>
+</div>
+<div class="ac-foot">
+<div class="acf-info">Raised <b>today 02:00</b> · unassigned</div>
+<button class="ac-act">Dismiss</button>
+<button class="ac-act">Assign</button>
+<button class="ac-act primary">Triage →</button>
+</div>
+</div>
+
+<div class="anomaly-card sev-high">
+<div class="ac-main">
+<div class="ac-sev high">↓</div>
+<div class="ac-body">
+<div class="ac-title">BECE qualification rate fell sharply year-on-year</div>
+<div class="ac-where">Samreboi D/A JHS · performance</div>
+<div class="ac-detail">2025 BECE qualification <b>49%</b>, down from 67% in 2024 — an <b>18-point drop</b>, the steepest single-school fall in the district.</div>
+</div>
+<div class="ac-meta">
+<div class="ac-rule">RULE · PERF-DROP-15</div>
+<div class="ac-status review">In review</div>
+</div>
+</div>
+<div class="ac-corr">
+<span style="color:var(--gold); font-weight:700;">⋈</span>
+<span><b>Correlated</b> with the Samreboi staffing anomaly above — likely the same root cause</span>
+</div>
+<div class="ac-foot">
+<div class="acf-info">Raised <b>9 Mar</b> · reviewed by D. Mensah-Bonsu</div>
+<button class="ac-act">Dismiss</button>
+<button class="ac-act">Assign</button>
+<button class="ac-act primary">Triage →</button>
+</div>
+</div>
+
+<div class="anomaly-card sev-high">
+<div class="ac-main">
+<div class="ac-sev high">⊕</div>
+<div class="ac-body">
+<div class="ac-title">School not reporting — coverage gap</div>
+<div class="ac-where">6 schools district-wide · coverage</div>
+<div class="ac-detail">6 of 40 EMIS-registered schools have no Omnischools data. This caps the reliability of every district aggregate — <b>resolved by onboarding, not investigation</b>.</div>
+</div>
+<div class="ac-meta">
+<div class="ac-rule">RULE · COV-GAP</div>
+<div class="ac-status assigned">Assigned</div>
+</div>
+</div>
+<div class="ac-foot">
+<div class="acf-info">Raised <b>standing</b> · assigned to district onboarding lead</div>
+<button class="ac-act">View plan</button>
+<button class="ac-act primary">Triage →</button>
+</div>
+</div>
+
+<div class="anomaly-card sev-mid">
+<div class="ac-main">
+<div class="ac-sev mid">▼</div>
+<div class="ac-body">
+<div class="ac-title">Attendance dropped below seasonal band</div>
+<div class="ac-where">Dadwen D/A Basic · attendance</div>
+<div class="ac-detail">Term 2 attendance <b>85.3%</b>, down 4 points on Term 1. Coincides with the cocoa harvest in the Dadwen catchment — possibly seasonal, worth confirming with the head.</div>
+</div>
+<div class="ac-meta">
+<div class="ac-rule">RULE · ATT-DROP-3</div>
+<div class="ac-status assigned">Assigned</div>
+</div>
+</div>
+<div class="ac-foot">
+<div class="acf-info">Raised <b>4 Mar</b> · assigned to circuit supervisor</div>
+<button class="ac-act">Dismiss</button>
+<button class="ac-act primary">Triage →</button>
+</div>
+</div>
+
+<div class="anomaly-card sev-low">
+<div class="ac-main">
+<div class="ac-sev low">~</div>
+<div class="ac-body">
+<div class="ac-title">Fee above district range for level</div>
+<div class="ac-where">Nkwanta Methodist Basic · fees</div>
+<div class="ac-detail">JHS term fee <b>GHS 145.00</b> against a district JHS average of GHS 95.00. A private school — variation is expected, flagged low for awareness only.</div>
+</div>
+<div class="ac-meta">
+<div class="ac-rule">RULE · FEE-OUT-1.5x</div>
+<div class="ac-status review">In review</div>
+</div>
+</div>
+<div class="ac-foot">
+<div class="acf-info">Raised <b>2 Mar</b> · low severity · likely dismiss</div>
+<button class="ac-act">Dismiss</button>
+<button class="ac-act primary">Triage →</button>
+</div>
+</div>
+
+<div style="text-align:center; padding:6px; font-size:11px; color:var(--navy-3); font-style:italic;">Showing 5 of 9 open anomalies · sorted by severity then date</div>
+
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>A queue, not just a list of alarms</h4>
+<ul>
+<li><b>The full queue sits behind the dashboard shortlists.</b> The district dashboard showed four flagged signals; this is all nine, with the rest of the engine's output. The dashboard answers "what is urgent today," the queue answers "what is outstanding" — and gives each signal a status that moves through triage rather than just blinking.</li>
+<li><b>Every anomaly states the rule that raised it.</b> <span class="mono">PTR-ESC-30</span>, <span class="mono">PERF-DROP-15</span>, <span class="mono">COV-GAP</span> — a named, inspectable rule on every card. The engine is rule-based heuristics, not an opaque model; an anomaly that cannot say why it fired could not be triaged, and could not be trusted.</li>
+<li><b>Severity and status are separate axes.</b> Severity is how much it matters (high/medium/low); status is where it is in the workflow (new, in review, assigned, resolved, dismissed). A low-severity fee outlier and a high-severity PTR breach both need a status — the queue tracks both dimensions because triage needs both.</li>
+<li><b>Correlated anomalies are linked, not listed twice.</b> Samreboi's PTR breach and its BECE drop carry a "correlated" tag pointing at each other — the engine recognises they are likely one root cause. A queue that showed them as two unrelated cards would invite two separate, half-effective responses.</li>
+<li><b>Some anomalies resolve by onboarding, not investigation.</b> The coverage-gap card says it outright — "resolved by onboarding, not investigation." The queue is honest that not every flag is a problem to investigate; some are a reminder to close the platform's blind spot.</li>
+<li><b>Dismissal is a first-class outcome.</b> The 90-day KPI counts 6 dismissed "as expected" — the Dadwen attendance dip may simply be the cocoa harvest. A queue where everything must be a crisis would train directors to ignore it; dismissing-with-reason keeps it credible.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 2 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">Triage one anomaly · the Samreboi cluster</div>
+<div class="section-meta">How a signal gets worked</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/anomaly-queue/a-0218</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item active"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Anomaly queue · A-0218</div>
+<div class="top-row">
+<div>
+<h1>Triage · <em>Samreboi cluster.</em></h1>
+<div class="lede">Three correlated anomalies, one school — worked as a single investigation.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Back to queue</button>
+<button class="btn">Open Samreboi detail →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="triage-grid">
+
+<div>
+<div class="panel" style="margin-bottom:18px;">
+<div class="panel-head">
+<div class="ph-title">The <em>cluster</em></div>
+<div class="ph-meta">3 correlated · Samreboi D/A JHS</div>
+</div>
+<div class="panel-body">
+<div style="font-size:11.5px; color:var(--navy-2); line-height:1.6; margin-bottom:14px;">The engine grouped three anomalies at Samreboi D/A JHS that fired within the same sync window and share a school. Worked together they tell one story; worked apart they would each get a partial response.</div>
+<div class="stat-list">
+<div class="st-row"><div class="st-label"><b>PTR-ESC-30</b> · pupil-teacher ratio 32.6:1</div><div class="st-val flag">High</div></div>
+<div class="st-row"><div class="st-label"><b>PERF-DROP-15</b> · BECE qualification −18 pts</div><div class="st-val flag">High</div></div>
+<div class="st-row"><div class="st-label"><b>ATT-DIP-2</b> · attendance −2.4 pts on band</div><div class="st-val" style="color:var(--warn);">Medium</div></div>
+</div>
+<div style="font-size:10.5px; color:var(--navy-3); margin-top:12px; line-height:1.55;"><b>The likely root cause</b> — 3 unfilled teaching vacancies since the 2024/25 reshuffle. Understaffing raises PTR directly, and plausibly drives both the BECE fall and the attendance dip. One staffing fix may clear all three; that is why the cluster is triaged as a unit.</div>
+</div>
+</div>
+
+<div class="panel">
+<div class="panel-head">
+<div class="ph-title">Triage <em>progress</em></div>
+<div class="ph-meta">A-0218 · cluster case</div>
+</div>
+<div class="panel-body">
+<div class="triage-step">
+<div class="ts-dot done">✓</div>
+<div class="ts-body"><div class="ts-title">Raised by the engine</div><div class="ts-meta">3 rules tripped over the <b>9 Mar</b> and <b>21 May</b> syncs · auto-grouped as a correlated cluster</div></div>
+</div>
+<div class="triage-step">
+<div class="ts-dot done">✓</div>
+<div class="ts-body"><div class="ts-title">Reviewed</div><div class="ts-meta">D. Mensah-Bonsu confirmed the cluster is real and not a data artefact · <b>13 May</b></div></div>
+</div>
+<div class="triage-step">
+<div class="ts-dot now">3</div>
+<div class="ts-body"><div class="ts-title">Assigned — in progress</div><div class="ts-meta">Routed to the <b>district HR / postings officer</b> · staffing reallocation under way · this is the current step</div></div>
+</div>
+<div class="triage-step">
+<div class="ts-dot next">4</div>
+<div class="ts-body"><div class="ts-title">Resolution &amp; verification</div><div class="ts-meta">Closes when vacancies are filled and the next sync shows PTR back within band · all 3 anomalies clear together or are re-examined</div></div>
+</div>
+</div>
+</div>
+</div>
+
+<div>
+<div class="method-mini">
+<div class="mm-title">Why PTR-ESC-30 fired</div>
+<div class="mm-rule">IF ptr &gt; 30.0<br>AND enrolment_yoy &gt; 0<br>AND staff_yoy &lt;= 0<br>THEN raise · severity HIGH</div>
+<div class="mm-note">The rule is plain and inspectable. Samreboi met all three conditions: PTR <b>32.6</b>, enrolment up, staffing flat. <b>No black box</b> — a director can read exactly why the signal exists and judge it.</div>
+</div>
+
+<div class="assign-box">
+<div class="ab-row"><div class="ab-k">Case</div><div class="ab-v">A-0218</div></div>
+<div class="ab-row"><div class="ab-k">Status</div><div class="ab-v" style="color:var(--gold);">Assigned</div></div>
+<div class="ab-row"><div class="ab-k">Owner</div><div class="ab-v">District HR officer</div></div>
+<div class="ab-row"><div class="ab-k">Opened</div><div class="ab-v">13 May 2026</div></div>
+<div class="ab-row"><div class="ab-k">Anomalies</div><div class="ab-v">3 correlated</div></div>
+<div class="ab-row"><div class="ab-k">Target</div><div class="ab-v">Next reshuffle</div></div>
+</div>
+
+<div class="assign-box" style="background:var(--gold-bg); border-color:var(--gold-soft);">
+<div style="font-size:10.5px; color:var(--navy-2); line-height:1.6;"><b>This cluster is also visible upward.</b> The same three anomalies appear in the Western Region's queue, attributed to this district — a regional director sees that Wassa Amenfi West has a known, owned staffing case. The queue rolls up the tiers the way the dashboards do.</div>
+</div>
+</div>
+
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Engine</b> · rule-based heuristics · same as operational audit anomalies</div>
+<div class="pv-item"><b>Clustering</b> · same school + same sync window → grouped</div>
+<div class="pv-item"><b>Roll-up</b> · district anomalies visible in the regional &amp; national queues</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Triage turns a flag into a worked case</h4>
+<ul>
+<li><b>The cluster is the unit of work, not the single anomaly.</b> Samreboi's three signals are triaged as one case A-0218, because they likely share a root cause — three unfilled vacancies. Working them separately would produce three partial responses; the cluster view forces one coherent fix.</li>
+<li><b>The rule is shown as actual readable logic.</b> <span class="mono">IF ptr &gt; 30 AND enrolment up AND staffing flat</span> — the director sees the exact conditions, confirms Samreboi met all three, and judges the signal themselves. This is what "rule-based, not a black box" means concretely: the heuristic is legible.</li>
+<li><b>Triage has explicit stages.</b> Raised → reviewed → assigned → resolved-and-verified. The case sits at "assigned, in progress" with an owner; a regional director glancing at it sees not an unattended alarm but a managed case. Status is a workflow, not a label.</li>
+<li><b>Resolution requires verification, not just a fix.</b> The final step closes only when a later sync shows PTR back within band — the engine confirms the fix worked. An anomaly cannot be marked resolved by assertion; the data has to agree.</li>
+<li><b>The queue rolls up the tiers.</b> The same cluster appears in the regional and national anomaly queues attributed to the district — consistent with how the dashboards roll up. A regional director sees Wassa Amenfi West has a known, owned case rather than an unexplained weak spot.</li>
+<li><b>This completes the anomaly queue.</b> The full triaged queue (section 1) and a worked cluster case (section 2) — the engine the dashboards have drawn on all along, now shown as the place signals are actually resolved. The second surface of Batch 3.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

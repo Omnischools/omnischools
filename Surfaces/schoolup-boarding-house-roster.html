@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — House roster &amp; bed allocation</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.browser-bar .ctx { margin-left:auto; font-size:10px; letter-spacing:0.12em; color:rgba(232,212,184,0.6); font-weight:600; text-transform:uppercase; }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+/* House identity strip */
+.house-strip { background:#B43A2F; color:var(--bg); padding:18px 36px; display:flex; align-items:center; gap:20px; border-bottom:1px solid var(--border); }
+.house-strip .crest { width:48px; height:48px; border-radius:10px; background:var(--bg); color:#B43A2F; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:22px; font-weight:700; flex-shrink:0; }
+.house-strip .info { flex:1; }
+.house-strip .info .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.7); font-weight:700; margin-bottom:2px; }
+.house-strip .info h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; line-height:1.15; }
+.house-strip .info h3 em { font-style:italic; color:var(--bg); opacity:0.85; }
+.house-strip .stats { display:flex; gap:18px; font-size:11px; }
+.house-strip .stats .st { text-align:right; }
+.house-strip .stats .st .l { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(255,255,255,0.6); font-weight:700; }
+.house-strip .stats .st .v { font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-top:2px; }
+
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.sum-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.sum-card.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-card.warn { background:var(--warn-bg); border-color:var(--warn); }
+.sum-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-card.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-card.warn .lab { color:var(--warn); }
+.sum-card .big { font-family:'Fraunces',serif; font-size:26px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-card .big em { font-style:italic; color:var(--gold); }
+.sum-card.warn .big em { color:var(--warn); }
+.sum-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-card.featured .sub { color:rgba(232,212,184,0.6); }
+.sum-card .sub b { color:var(--navy-2); font-weight:600; }
+.sum-card.featured .sub b { color:var(--gold); }
+
+.body-shell { padding:32px 36px 36px; }
+
+/* Prefect strip */
+.prefect-strip { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:12px; padding:18px 22px; margin-bottom:32px; }
+.prefect-strip .ps-head { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:14px; }
+.prefect-strip .ps-head em { font-style:italic; color:var(--navy); font-weight:500; }
+.prefect-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; }
+.prefect-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:flex; align-items:center; gap:10px; }
+.prefect-card.head { border-color:var(--gold); border-width:1.5px; background:var(--gold); }
+.prefect-card .av { width:32px; height:32px; border-radius:50%; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:11px; font-weight:700; flex-shrink:0; }
+.prefect-card.head .av { background:var(--navy); color:var(--gold); }
+.prefect-card .info { flex:1; min-width:0; }
+.prefect-card .info .role { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.prefect-card.head .info .role { color:var(--navy); }
+.prefect-card .info .nm { font-size:12px; font-weight:700; color:var(--navy); margin-top:1px; line-height:1.2; }
+.prefect-card .info .form { font-size:9px; color:var(--navy-3); margin-top:1px; }
+.prefect-card.head .info .form { color:var(--navy); opacity:0.8; }
+
+.block { margin-bottom:36px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+.block-head .actions { display:flex; gap:8px; }
+
+/* Dormitory grid */
+.dorm-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:18px; }
+.dorm-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.dorm-card.flagged { border:1.5px solid var(--terra); }
+.dorm-card .d-head { padding:12px 18px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-start; }
+.dorm-card.flagged .d-head { background:var(--terra-bg); border-bottom-color:var(--terra); }
+.dorm-card .d-head .info h5 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; line-height:1.2; }
+.dorm-card .d-head .info h5 em { font-style:italic; color:var(--gold); }
+.dorm-card .d-head .info .sub { font-size:10px; color:var(--navy-3); margin-top:2px; letter-spacing:0.02em; }
+.dorm-card .d-head .info .sub b { color:var(--navy-2); font-weight:600; }
+.dorm-card .d-head .cnt { display:flex; align-items:center; gap:6px; }
+.dorm-card .d-head .cnt .pill { padding:3px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; background:var(--green-bg); color:var(--green); }
+.dorm-card .d-head .cnt .pill.full { background:var(--warn-bg); color:var(--warn); }
+.dorm-card .d-head .cnt .pill.vacant { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.dorm-card .bunks { padding:14px 18px; display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; }
+.bunk { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:7px 9px; display:flex; align-items:center; gap:5px; font-size:10px; cursor:grab; }
+.bunk.empty { background:var(--surface); border:1px dashed var(--border-2); color:var(--navy-3); justify-content:center; font-style:italic; }
+.bunk.prefect { background:var(--gold-bg); border-color:var(--gold); }
+.bunk.flagged { background:var(--terra-bg); border-color:var(--terra); border-width:1.5px; }
+.bunk.new { background:var(--green-bg); border-color:var(--green); }
+.bunk .pos { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--navy-3); font-weight:600; }
+.bunk.prefect .pos { color:var(--gold); }
+.bunk.flagged .pos { color:var(--terra); }
+.bunk .nm { font-size:10px; font-weight:600; color:var(--navy); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.bunk .badge { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.bunk.prefect .badge { background:var(--gold); }
+.bunk.flagged .badge { background:var(--terra); }
+.bunk.new .badge { background:var(--green); }
+.dorm-card .d-foot { padding:10px 18px; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--navy-3); }
+.dorm-card .d-foot .who { display:flex; align-items:center; gap:6px; }
+.dorm-card .d-foot .who b { color:var(--navy-2); font-weight:700; }
+.dorm-card .d-foot .who .av { width:18px; height:18px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:8px; font-weight:700; }
+.dorm-card .d-foot .lastinspected { font-family:'JetBrains Mono',monospace; }
+
+/* Student detail card (J. Manu) */
+.detail-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-top:14px; }
+.detail-card .dt-head { background:var(--terra-bg); border-bottom:1.5px solid var(--terra); padding:18px 22px; display:flex; align-items:center; gap:16px; }
+.detail-card .dt-head .av { width:56px; height:56px; border-radius:14px; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:20px; font-weight:600; flex-shrink:0; }
+.detail-card .dt-head .info { flex:1; }
+.detail-card .dt-head .info .eb { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--terra); font-weight:700; margin-bottom:3px; }
+.detail-card .dt-head .info h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.detail-card .dt-head .info h4 em { font-style:italic; color:var(--terra); }
+.detail-card .dt-head .info .sub { font-size:11px; color:var(--navy-2); margin-top:2px; }
+.detail-card .dt-head .info .sub b { color:var(--navy); font-weight:700; }
+.detail-card .dt-head .vis { padding:4px 11px; background:var(--terra); color:var(--bg); border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; }
+.detail-card .dt-body { padding:18px 22px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; }
+.detail-card .dt-cell { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+.detail-card .dt-cell .l { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.detail-card .dt-cell .v { font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-top:4px; line-height:1.2; }
+.detail-card .dt-cell .v em { font-style:italic; color:var(--gold); }
+.detail-card .dt-cell .sub { font-size:10px; color:var(--navy-3); margin-top:3px; line-height:1.4; }
+.detail-card .dt-cell .sub b { color:var(--navy-2); font-weight:600; }
+.detail-card .dt-foot { padding:14px 22px; background:var(--bg); border-top:1px solid var(--border); display:flex; gap:10px; align-items:center; font-size:11px; color:var(--navy-2); }
+.detail-card .dt-foot .quiet { font-style:italic; color:var(--navy-3); flex:1; }
+.detail-card .dt-foot .quiet b { color:var(--navy-2); font-style:normal; font-weight:600; }
+
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Boarding batch · 02 of 07</div>
+  <span class="mvp-tag">SHS · Housemaster · per-House view</span>
+  <span class="related-tag">Aggrey House · Mr A. Mensah · 119 of 120 occupied</span>
+  <h1 class="display">Where each boarder <em>actually sleeps</em></h1>
+  <div class="gold-rule"></div>
+  <p>Mr Mensah's view of Aggrey House — eight dormitories, fifteen bunks each, one hundred and twenty beds in total, one of which is vacant this week. The Housemaster's primary spatial document. <b>Click a bunk to see the student;</b> drag a bunk to reassign within the House; flag a dormitory for attention. <em>One student in Aggrey is currently flagged for pastoral attention — the same J. Manu whose VLC journal we hold elsewhere.</em> Boarding and pastoral see the same boy through different windows.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Aggrey House · 8 dormitories · 119 of 120</div>
+    <div class="section-meta">Boarding → Houses → Aggrey → Roster</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / boarding / houses / aggrey / roster</div>
+        <div class="ctx">BOYS · CAP 120 · 1 VACANT BUNK</div>
+      </div>
+
+      <!-- House identity strip -->
+      <div class="house-strip">
+        <div class="crest">A</div>
+        <div class="info">
+          <div class="eb">HOUSE · EASTERN COMPOUND · FOUNDED 1956</div>
+          <h3 class="display">Aggrey House <em>· named for Dr J. E. K. Aggrey</em></h3>
+        </div>
+        <div class="stats">
+          <div class="st"><div class="l">Capacity</div><div class="v">120</div></div>
+          <div class="st"><div class="l">Filled</div><div class="v">119</div></div>
+          <div class="st"><div class="l">Vacant</div><div class="v">1</div></div>
+          <div class="st"><div class="l">Forms</div><div class="v">3 / 3</div></div>
+        </div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Boarding &amp; residential life · Houses · Aggrey · Roster &amp; bunk allocation</div>
+          <h2 class="display">Roster <em>· today's bed map</em></h2>
+          <div class="lede">8 dormitories named A — H · 15 bunks per dorm (5 wide × 3 deep) · current occupancy 99% · last bed re-allocation 11 May (Boahen → Adusei, end-of-term swap) · vacancy in Dorm D-08 awaiting Form 1 reassignment</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Print bed map</button>
+          <button class="btn">Re-allocate bunks</button>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-card featured">
+          <div class="lab">Total boarders · Aggrey</div>
+          <div class="big display"><em>119</em></div>
+          <div class="sub"><b>40 Form 1</b> · 39 Form 2 · 40 Form 3</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Vacant bunks</div>
+          <div class="big display"><em>1</em></div>
+          <div class="sub">D-08-bunk-04 · awaiting Form 1 placement decision</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Prefects in House</div>
+          <div class="big display"><em>5</em></div>
+          <div class="sub">Head, Dining, Sanitation, Prep, Sick Bay · all Form 3</div>
+        </div>
+        <div class="sum-card warn">
+          <div class="lab">Pastoral flags</div>
+          <div class="big display"><em>1</em> active</div>
+          <div class="sub">J. Manu (F2) · cross-linked to VLC case file</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Last bed swap</div>
+          <div class="big display">11 May</div>
+          <div class="sub">3 days ago · 1 swap this semester so far</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- Prefect strip -->
+        <div class="prefect-strip">
+          <div class="ps-head">HOUSE PREFECTS · 2025/26 · <em>five roles, all Form 3, appointed by Headmaster on HM nomination</em></div>
+          <div class="prefect-grid">
+            <div class="prefect-card head">
+              <div class="av">DA</div>
+              <div class="info">
+                <div class="role">HEAD OF HOUSE</div>
+                <div class="nm">D. Adjei</div>
+                <div class="form">Form 3 GS · Dorm A bunk 01</div>
+              </div>
+            </div>
+            <div class="prefect-card">
+              <div class="av">SO</div>
+              <div class="info">
+                <div class="role">DINING HALL</div>
+                <div class="nm">S. Owusu</div>
+                <div class="form">Form 3 GA · Dorm B bunk 01</div>
+              </div>
+            </div>
+            <div class="prefect-card">
+              <div class="av">KB</div>
+              <div class="info">
+                <div class="role">SANITATION</div>
+                <div class="nm">K. Boateng</div>
+                <div class="form">Form 3 BUS · Dorm C bunk 01</div>
+              </div>
+            </div>
+            <div class="prefect-card">
+              <div class="av">EM</div>
+              <div class="info">
+                <div class="role">PREP / STUDY</div>
+                <div class="nm">E. Mensah</div>
+                <div class="form">Form 3 GS · Dorm E bunk 01</div>
+              </div>
+            </div>
+            <div class="prefect-card">
+              <div class="av">FT</div>
+              <div class="info">
+                <div class="role">SICK BAY</div>
+                <div class="nm">F. Tetteh</div>
+                <div class="form">Form 3 GS · Dorm F bunk 01</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dormitory grid -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">The eight dormitories · drag a bunk to reassign within the House</div>
+              <h3 class="display">Dorm A through Dorm H <em>· 15 bunks each</em></h3>
+            </div>
+            <div class="meta"><b>Gold</b> bunks are House Prefects · <b>terra</b> bunks have an active pastoral flag · <b>green</b> bunks moved in this semester · <b>dashed</b> bunks are vacant · click any bunk to see student</div>
+          </div>
+
+          <div class="dorm-grid">
+
+            <!-- Dorm A -->
+            <div class="dorm-card">
+              <div class="d-head">
+                <div class="info">
+                  <h5 class="display">Dorm A <em>· Head's dorm</em></h5>
+                  <div class="sub"><b>Form 3</b> · 15 of 15 · senior section</div>
+                </div>
+                <div class="cnt"><div class="pill full">15 / 15</div></div>
+              </div>
+              <div class="bunks">
+                <div class="bunk prefect"><div class="badge"></div><div class="pos">01</div><div class="nm">D. Adjei *</div></div>
+                <div class="bunk"><div class="pos">02</div><div class="nm">B. Acheampong</div></div>
+                <div class="bunk"><div class="pos">03</div><div class="nm">C. Asare</div></div>
+                <div class="bunk"><div class="pos">04</div><div class="nm">D. Annan</div></div>
+                <div class="bunk"><div class="pos">05</div><div class="nm">E. Adusei</div></div>
+                <div class="bunk"><div class="pos">06</div><div class="nm">F. Amankwah</div></div>
+                <div class="bunk"><div class="pos">07</div><div class="nm">G. Aboagye</div></div>
+                <div class="bunk"><div class="pos">08</div><div class="nm">H. Appiah</div></div>
+                <div class="bunk"><div class="pos">09</div><div class="nm">I. Aboasi</div></div>
+                <div class="bunk"><div class="pos">10</div><div class="nm">J. Adomako</div></div>
+                <div class="bunk"><div class="pos">11</div><div class="nm">K. Antwi</div></div>
+                <div class="bunk"><div class="pos">12</div><div class="nm">L. Addo</div></div>
+                <div class="bunk"><div class="pos">13</div><div class="nm">M. Akoto</div></div>
+                <div class="bunk"><div class="pos">14</div><div class="nm">N. Agyei</div></div>
+                <div class="bunk"><div class="pos">15</div><div class="nm">O. Amponsah</div></div>
+              </div>
+              <div class="d-foot">
+                <div class="who"><div class="av">DA</div><b>D. Adjei</b> oversees</div>
+                <div class="lastinspected">INSPECTED 06:11 · today</div>
+              </div>
+            </div>
+
+            <!-- Dorm B -->
+            <div class="dorm-card">
+              <div class="d-head">
+                <div class="info">
+                  <h5 class="display">Dorm B <em>· Dining Prefect's dorm</em></h5>
+                  <div class="sub"><b>Form 3</b> · 15 of 15 · senior section</div>
+                </div>
+                <div class="cnt"><div class="pill full">15 / 15</div></div>
+              </div>
+              <div class="bunks">
+                <div class="bunk prefect"><div class="badge"></div><div class="pos">01</div><div class="nm">S. Owusu *</div></div>
+                <div class="bunk"><div class="pos">02</div><div class="nm">B. Boakye</div></div>
+                <div class="bunk"><div class="pos">03</div><div class="nm">C. Bonsu</div></div>
+                <div class="bunk"><div class="pos">04</div><div class="nm">D. Botchway</div></div>
+                <div class="bunk"><div class="pos">05</div><div class="nm">E. Boahen</div></div>
+                <div class="bunk"><div class="pos">06</div><div class="nm">F. Bediako</div></div>
+                <div class="bunk"><div class="pos">07</div><div class="nm">G. Brako</div></div>
+                <div class="bunk"><div class="pos">08</div><div class="nm">H. Boateng</div></div>
+                <div class="bunk"><div class="pos">09</div><div class="nm">I. Berko</div></div>
+                <div class="bunk"><div class="pos">10</div><div class="nm">J. Boahene</div></div>
+                <div class="bunk"><div class="pos">11</div><div class="nm">K. Boamah</div></div>
+                <div class="bunk"><div class="pos">12</div><div class="nm">L. Buabeng</div></div>
+                <div class="bunk"><div class="pos">13</div><div class="nm">M. Bukari</div></div>
+                <div class="bunk"><div class="pos">14</div><div class="nm">N. Boadu</div></div>
+                <div class="bunk"><div class="pos">15</div><div class="nm">O. Brefo</div></div>
+              </div>
+              <div class="d-foot">
+                <div class="who"><div class="av">SO</div><b>S. Owusu</b> oversees</div>
+                <div class="lastinspected">INSPECTED 06:13 · today</div>
+              </div>
+            </div>
+
+            <!-- Dorm C -->
+            <div class="dorm-card">
+              <div class="d-head">
+                <div class="info">
+                  <h5 class="display">Dorm C <em>· Sanitation Prefect</em></h5>
+                  <div class="sub"><b>Form 3</b> · 10 of 15 · senior section</div>
+                </div>
+                <div class="cnt"><div class="pill">10 / 15</div></div>
+              </div>
+              <div class="bunks">
+                <div class="bunk prefect"><div class="badge"></div><div class="pos">01</div><div class="nm">K. Boateng *</div></div>
+                <div class="bunk"><div class="pos">02</div><div class="nm">B. Coleman</div></div>
+                <div class="bunk"><div class="pos">03</div><div class="nm">C. Codjoe</div></div>
+                <div class="bunk"><div class="pos">04</div><div class="nm">D. Caesar</div></div>
+                <div class="bunk"><div class="pos">05</div><div class="nm">E. Cudjoe</div></div>
+                <div class="bunk"><div class="pos">06</div><div class="nm">F. Curtis</div></div>
+                <div class="bunk"><div class="pos">07</div><div class="nm">G. Cobbah</div></div>
+                <div class="bunk"><div class="pos">08</div><div class="nm">H. Cofie</div></div>
+                <div class="bunk"><div class="pos">09</div><div class="nm">I. Conduah</div></div>
+                <div class="bunk"><div class="pos">10</div><div class="nm">J. Cooper</div></div>
+                <div class="bunk empty">11 · empty</div>
+                <div class="bunk empty">12 · empty</div>
+                <div class="bunk empty">13 · empty</div>
+                <div class="bunk empty">14 · empty</div>
+                <div class="bunk empty">15 · empty</div>
+              </div>
+              <div class="d-foot">
+                <div class="who"><div class="av">KB</div><b>K. Boateng</b> oversees · F3 cohort small</div>
+                <div class="lastinspected">INSPECTED 06:15 · today</div>
+              </div>
+            </div>
+
+            <!-- Dorm D - flagged, has J. Manu -->
+            <div class="dorm-card flagged">
+              <div class="d-head">
+                <div class="info">
+                  <h5 class="display">Dorm D <em>· Form 2 · pastoral flag</em></h5>
+                  <div class="sub"><b>Form 2</b> · 14 of 15 · 1 vacant · 1 flagged</div>
+                </div>
+                <div class="cnt"><div class="pill vacant">14 / 15</div></div>
+              </div>
+              <div class="bunks">
+                <div class="bunk"><div class="pos">01</div><div class="nm">A. Donkor</div></div>
+                <div class="bunk"><div class="pos">02</div><div class="nm">B. Danso</div></div>
+                <div class="bunk flagged"><div class="badge"></div><div class="pos">03</div><div class="nm">J. Manu</div></div>
+                <div class="bunk empty">04 · empty</div>
+                <div class="bunk"><div class="pos">05</div><div class="nm">E. Doe</div></div>
+                <div class="bunk"><div class="pos">06</div><div class="nm">F. Darko</div></div>
+                <div class="bunk"><div class="pos">07</div><div class="nm">G. Dwomoh</div></div>
+                <div class="bunk"><div class="pos">08</div><div class="nm">H. Dadzie</div></div>
+                <div class="bunk"><div class="pos">09</div><div class="nm">I. Dapaah</div></div>
+                <div class="bunk"><div class="pos">10</div><div class="nm">P. Otoo</div></div>
+                <div class="bunk"><div class="pos">11</div><div class="nm">K. Domfeh</div></div>
+                <div class="bunk"><div class="pos">12</div><div class="nm">L. Duah</div></div>
+                <div class="bunk"><div class="pos">13</div><div class="nm">M. Daniels</div></div>
+                <div class="bunk"><div class="pos">14</div><div class="nm">N. Davis</div></div>
+                <div class="bunk"><div class="pos">15</div><div class="nm">O. Dwomoh</div></div>
+              </div>
+              <div class="d-foot">
+                <div class="who"><div class="av">JD</div><b>Prince Otoo</b> · Form 2 PG · bunk 10</div>
+                <div class="lastinspected">INSPECTED 06:17 · today · J. Manu flagged</div>
+              </div>
+            </div>
+
+            <!-- Dorm E -->
+            <div class="dorm-card">
+              <div class="d-head">
+                <div class="info">
+                  <h5 class="display">Dorm E <em>· Prep Prefect</em></h5>
+                  <div class="sub"><b>Form 3</b> · 15 of 15 · senior section</div>
+                </div>
+                <div class="cnt"><div class="pill full">15 / 15</div></div>
+              </div>
+              <div class="bunks">
+                <div class="bunk prefect"><div class="badge"></div><div class="pos">01</div><div class="nm">E. Mensah *</div></div>
+                <div class="bunk"><div class="pos">02</div><div class="nm">B. Edwin</div></div>
+                <div class="bunk"><div class="pos">03</div><div class="nm">C. Essuman</div></div>
+                <div class="bunk"><div class="pos">04</div><div class="nm">D. Eshun</div></div>
+                <div class="bunk"><div class="pos">05</div><div class="nm">F. Effah</div></div>
+                <div class="bunk"><div class="pos">06</div><div class="nm">G. Esi</div></div>
+                <div class="bunk"><div class="pos">07</div><div class="nm">H. Ennin</div></div>
+                <div class="bunk"><div class="pos">08</div><div class="nm">I. Egyir</div></div>
+                <div class="bunk"><div class="pos">09</div><div class="nm">J. Edusei</div></div>
+                <div class="bunk"><div class="pos">10</div><div class="nm">K. Ennor</div></div>
+                <div class="bunk"><div class="pos">11</div><div class="nm">L. Eduful</div></div>
+                <div class="bunk"><div class="pos">12</div><div class="nm">M. Ekow</div></div>
+                <div class="bunk"><div class="pos">13</div><div class="nm">N. Essien</div></div>
+                <div class="bunk"><div class="pos">14</div><div class="nm">O. Effanga</div></div>
+                <div class="bunk"><div class="pos">15</div><div class="nm">P. Etwire</div></div>
+              </div>
+              <div class="d-foot">
+                <div class="who"><div class="av">EM</div><b>E. Mensah</b> oversees</div>
+                <div class="lastinspected">INSPECTED 06:18 · today</div>
+              </div>
+            </div>
+
+            <!-- Dorm F -->
+            <div class="dorm-card">
+              <div class="d-head">
+                <div class="info">
+                  <h5 class="display">Dorm F <em>· Sick Bay Prefect</em></h5>
+                  <div class="sub"><b>Form 1</b> · 15 of 15 · junior section</div>
+                </div>
+                <div class="cnt"><div class="pill full">15 / 15</div></div>
+              </div>
+              <div class="bunks">
+                <div class="bunk prefect"><div class="badge"></div><div class="pos">01</div><div class="nm">F. Tetteh *</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">02</div><div class="nm">A. Fosu</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">03</div><div class="nm">B. Frimpong</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">04</div><div class="nm">C. Forson</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">05</div><div class="nm">D. Fianko</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">06</div><div class="nm">E. Folson</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">07</div><div class="nm">G. Fokuo</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">08</div><div class="nm">H. Fuseini</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">09</div><div class="nm">I. Faraji</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">10</div><div class="nm">J. Fianu</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">11</div><div class="nm">K. Fennell</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">12</div><div class="nm">L. Fynn</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">13</div><div class="nm">M. Funny</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">14</div><div class="nm">N. Forkuo</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">15</div><div class="nm">O. Fynn</div></div>
+              </div>
+              <div class="d-foot">
+                <div class="who"><div class="av">FT</div><b>F. Tetteh</b> oversees · Form 1 dorm · all new this semester</div>
+                <div class="lastinspected">INSPECTED 06:14 · today</div>
+              </div>
+            </div>
+
+            <!-- Dorm G -->
+            <div class="dorm-card">
+              <div class="d-head">
+                <div class="info">
+                  <h5 class="display">Dorm G <em>· Form 1</em></h5>
+                  <div class="sub"><b>Form 1</b> · 15 of 15 · junior section</div>
+                </div>
+                <div class="cnt"><div class="pill full">15 / 15</div></div>
+              </div>
+              <div class="bunks">
+                <div class="bunk new"><div class="badge"></div><div class="pos">01</div><div class="nm">A. Gyamfi</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">02</div><div class="nm">B. Gyimah</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">03</div><div class="nm">C. Gborgla</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">04</div><div class="nm">D. Gaisie</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">05</div><div class="nm">E. Gloria</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">06</div><div class="nm">F. Gyebi</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">07</div><div class="nm">G. Gyebi</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">08</div><div class="nm">H. Gala</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">09</div><div class="nm">I. Garib</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">10</div><div class="nm">J. Goku</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">11</div><div class="nm">K. Gabriel</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">12</div><div class="nm">L. Gleeson</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">13</div><div class="nm">M. Grant</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">14</div><div class="nm">N. Graham</div></div>
+                <div class="bunk new"><div class="badge"></div><div class="pos">15</div><div class="nm">O. Gakor</div></div>
+              </div>
+              <div class="d-foot">
+                <div class="who"><div class="av">F1</div>F1 dorm leader · A. Gyamfi</div>
+                <div class="lastinspected">INSPECTED 06:16 · today</div>
+              </div>
+            </div>
+
+            <!-- Dorm H -->
+            <div class="dorm-card">
+              <div class="d-head">
+                <div class="info">
+                  <h5 class="display">Dorm H <em>· Form 2</em></h5>
+                  <div class="sub"><b>Form 2</b> · 15 of 15 · middle section</div>
+                </div>
+                <div class="cnt"><div class="pill full">15 / 15</div></div>
+              </div>
+              <div class="bunks">
+                <div class="bunk"><div class="pos">01</div><div class="nm">A. Henrik</div></div>
+                <div class="bunk"><div class="pos">02</div><div class="nm">B. Hadji</div></div>
+                <div class="bunk"><div class="pos">03</div><div class="nm">C. Hammond</div></div>
+                <div class="bunk"><div class="pos">04</div><div class="nm">D. Howard</div></div>
+                <div class="bunk"><div class="pos">05</div><div class="nm">E. Holm</div></div>
+                <div class="bunk"><div class="pos">06</div><div class="nm">F. Hagan</div></div>
+                <div class="bunk"><div class="pos">07</div><div class="nm">G. Hanson</div></div>
+                <div class="bunk"><div class="pos">08</div><div class="nm">H. Hyde</div></div>
+                <div class="bunk"><div class="pos">09</div><div class="nm">I. Hutton</div></div>
+                <div class="bunk"><div class="pos">10</div><div class="nm">J. Henkel</div></div>
+                <div class="bunk"><div class="pos">11</div><div class="nm">K. Hayford</div></div>
+                <div class="bunk"><div class="pos">12</div><div class="nm">L. Hesse</div></div>
+                <div class="bunk"><div class="pos">13</div><div class="nm">M. Hammer</div></div>
+                <div class="bunk"><div class="pos">14</div><div class="nm">N. Hanover</div></div>
+                <div class="bunk"><div class="pos">15</div><div class="nm">O. Hagger</div></div>
+              </div>
+              <div class="d-foot">
+                <div class="who"><div class="av">F2</div>F2 dorm leader · A. Henrik</div>
+                <div class="lastinspected">INSPECTED 06:19 · today</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- J. Manu detail (cross-link to VLC) -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Click-through · pastoral flag on Joseph Manu · Dorm D bunk 03</div>
+              <h3 class="display">The student behind the flag <em>· cross-linked to VLC case</em></h3>
+            </div>
+            <div class="meta">HM-only visibility on this card · Dean has separate visibility into VLC journal</div>
+          </div>
+
+          <div class="detail-card">
+            <div class="dt-head">
+              <div class="av">JM</div>
+              <div class="info">
+                <div class="eb">DORM D · BUNK 03 · ALLOCATED 5 JAN 2026</div>
+                <h4 class="display">Joseph Manu <em>· Form 2 GA A · age 15 · Aggrey House</em></h4>
+                <div class="sub"><b>Allocated</b> Dorm D bunk 03 since Form 1 (Sept 2024) · <b>chop box</b> #A2-D03-J · <b>locker</b> D-03 · same bunk for 19 months — not yet reassigned</div>
+              </div>
+              <div class="vis">HM + DEAN · PASTORAL ACTIVE</div>
+            </div>
+            <div class="dt-body">
+              <div class="dt-cell">
+                <div class="l">VLC case · cross-link</div>
+                <div class="v display"><em>Active</em> · since 19 Feb</div>
+                <div class="sub"><b>Bereavement</b> · father d. 7 Feb 2026 · 4 FM notes, 11 reflections in journal · case held by FM Mr Mensah (also HM here)</div>
+              </div>
+              <div class="dt-cell">
+                <div class="l">Boarding behaviour</div>
+                <div class="v display">No infractions</div>
+                <div class="sub"><b>Inspection clean</b> across last 26 daily inspections · prep attendance 100% this semester · siesta compliant · no exeat irregularities</div>
+              </div>
+              <div class="dt-cell">
+                <div class="l">Last contact home</div>
+                <div class="v display">7 May 2026</div>
+                <div class="sub"><b>Mother</b> visited last visiting Sunday (12 Apr) · phoned 7 May · next visiting day Sun 17 May · she has indicated she will attend</div>
+              </div>
+            </div>
+            <div class="dt-foot">
+              <div class="quiet"><b>The boarding system holds him gently:</b> bunk unchanged, dorm-mates unchanged, routine unchanged. The pastoral system is the one that changed for him in February. That is by design.</div>
+              <button class="btn ghost">Open VLC case file</button>
+              <button class="btn">Add HM note</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>House Prefect roles</h4>
+      <ul>
+        <li><b>Head of House</b> · D. Adjei · the senior student authority · liaison between HM and student body · sits with HM at weekly review</li>
+        <li><b>Dining Hall Prefect</b> · S. Owusu · organises Aggrey's seating at meals, manages dining hall conduct, handles dietary issues</li>
+        <li><b>Sanitation Prefect</b> · K. Boateng · responsible for cleanliness, dustbin emptying, water tank checks, the morning duties roster</li>
+        <li><b>Prep / Study Prefect</b> · E. Mensah · evening prep supervision, attendance, silence enforcement, F3 prep extension</li>
+        <li><b>Sick Bay Prefect</b> · F. Tetteh · escorts ill students to the sick bay, maintains the daily symptom log, alerts matron and HM</li>
+      </ul>
+      <h4 style="margin-top:24px;">Drag-and-drop semantics</h4>
+      <ul>
+        <li><b>Drag within House:</b> moves the student's bunk · audit-logged · counts as a "swap"</li>
+        <li><b>Drag to another House:</b> not allowed from this surface · House transfers go through Senior HM workflow with parent consent</li>
+        <li><b>Drag to vacancy:</b> straightforward · drag onto empty bunk · confirm</li>
+        <li><b>Drag with occupant:</b> two students swap · both moves logged · both parents SMS-notified that evening</li>
+      </ul>
+      <h4 style="margin-top:24px;">Why J. Manu's bunk hasn't moved</h4>
+      <ul>
+        <li><b>Continuity is part of pastoral care.</b> A student in active grief who has been in the same bunk since Form 1 is a student who knows where his life is. <em>Move the bunk only when there is a reason to.</em></li>
+        <li><b>The dorm-mates know.</b> Prince Otoo (bunk 10, his Peer Guide from VLC) is in the same dorm. The cross-VLC continuity is intentional — pastoral and residential overlap on purpose.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why the bunk is the unit · and why moves are logged</div>
+    <div class="section-meta">Editorial · the spatial document the school actually runs on</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The bunk as primary key</div>
+        <h3 class="display">In a boarding house, the <em>bunk is the address</em>.</h3>
+        <p>If you ask a Housemaster where a student is at 9:35 PM on a Tuesday — five minutes after lights out — they don't tell you which class the student is in, or which Form. They tell you Dorm D, Bunk 3. <em>The bunk is the student's spatial identity in the boarding system</em>, and every operational question — who inspected your locker this morning, who is your bunk-mate on either side, where will you sleep tonight, where is your chop box stored — keys off it.</p>
+        <p>The data model reflects this. A student record carries a residency_type. A boarder also has a `current_bunk_id` foreign key into the bunks table. Bunks know their dormitory, dormitories know their House, Houses know their school. The student-to-bunk link is *current*; the history is a separate `bunk_allocation_history` table that records every move, when, why, by whom. <b>A student can occupy at most one bunk at a time</b> — enforced at the database level. A bunk can hold at most one student — also enforced. The simple invariants are what makes the operational layer trustworthy.</p>
+        <p>Why log every move? Because boarding bunk changes are not casual. <em>They are negotiations.</em> A Form 1 student moved from Dorm F to Dorm G mid-term has probably been bullied, or has a medical issue, or has asked to be near a friend, or has been part of a disciplinary intervention. <b>Each of these reasons matters and each is worth recording.</b> Six months later, when the same student has another move proposed, the Housemaster wants to see the previous move's context. Five years later, when a former student writes for a reference letter and mentions that they were moved to Dorm A in Form 3 for "leadership development," the school wants to be able to verify that.</p>
+        <p>The history table is append-only. It records *every* change — including the resumption-day initial allocation, the once-a-year promotional moves (Form 1 → Form 2 dorms), and the disciplinary moves. The Housemaster's view shows the current state; the history is one click deeper.</p>
+        <p>One more invariant worth naming: <b>a bunk has a single Housemaster.</b> Bunks belong to dormitories, dormitories belong to Houses, and Houses have one resident Housemaster (with possibly an Assistant). When responsibility for a student needs to be determined — for a pastoral issue, for a discipline event, for a parent enquiry — the chain from student to responsible adult is one query deep: <em>find the student's bunk, follow the chain up to the House, ask the Housemaster.</em> Clear, fast, accountable. That is the architecture this surface enforces.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What the spatial document does not contain</h4>
+      <ul>
+        <li><b>Bunk-mate friendship maps.</b> The school knows who sleeps near whom but does not infer social ties from physical proximity. Friendship is not data.</li>
+        <li><b>Bunk preferences.</b> Students don't pick bunks. Form 1s are allocated to junior dorms by HM; Form 3s graduate to senior dorms; mid-form moves happen for cause.</li>
+        <li><b>Per-bunk fees.</b> All bunks within a House cost the same. The premium is the House (or rather, the School) — not the bunk.</li>
+      </ul>
+      <h4 style="margin-top:24px;">Cross-batch link</h4>
+      <ul>
+        <li><b>J. Manu's bunk = Dorm D bunk 03.</b> His VLC journal entries are filed under his student record, not his bunk record. Two separate documents, one student. The boarding surface knows where he sleeps; the pastoral surface knows what he wrote. <em>The Housemaster (Mr Mensah) is also his Form Master, so he holds both — by design and by name.</em></li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Per-recipient delivery detail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+  --wa-tick: #34B7F1;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+/* App shell */
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head .crumb a { color: var(--gold); text-decoration: none; }
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+.main-head .lede {
+  font-size: 13px; color: var(--navy-3);
+  margin-top: 6px; max-width: 540px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.subtle { background: transparent; border-color: transparent; color: var(--navy-3); }
+
+/* ============ MESSAGE SUMMARY CARD ============ */
+.msg-summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+}
+.msg-summary .msg-content {
+  padding: 22px 24px;
+  border-right: 1px solid var(--border);
+}
+.msg-summary .msg-meta-block {
+  padding: 22px 24px;
+  background: var(--bg);
+  border-radius: 0 12px 12px 0;
+}
+.msg-summary .label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.msg-summary h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+.msg-summary .body-preview {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+  background: var(--bg);
+  padding: 12px 14px;
+  border-radius: 8px;
+  border-left: 3px solid var(--gold);
+  white-space: pre-wrap;
+  font-style: italic;
+}
+.msg-summary .meta-row {
+  display: flex; justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.msg-summary .meta-row:last-child { border-bottom: none; }
+.msg-summary .meta-row .l { color: var(--navy-3); }
+.msg-summary .meta-row .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 13px;
+}
+.msg-summary .meta-row .v.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ============ DELIVERY KPI STRIP ============ */
+.delivery-strip {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.delivery-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.delivery-card.featured {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.delivery-card.featured .l { color: var(--gold-soft); }
+.delivery-card .l {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-bottom: 6px;
+}
+.delivery-card .v-row {
+  display: flex; align-items: baseline; gap: 12px;
+}
+.delivery-card .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 30px;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  color: var(--navy);
+}
+.delivery-card.featured .v { color: var(--bg); }
+.delivery-card .v-pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--gold);
+  letter-spacing: -0.01em;
+}
+.delivery-card.featured .v-pct { color: var(--gold); }
+.delivery-card.success .v { color: var(--green); }
+.delivery-card.success .v-pct { color: var(--green); }
+.delivery-card.warn .v { color: var(--warn); }
+.delivery-card.warn .v-pct { color: var(--warn); }
+.delivery-card.danger .v { color: var(--terra); }
+.delivery-card.danger .v-pct { color: var(--terra); }
+.delivery-card .change {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 8px;
+}
+.delivery-card.featured .change { color: var(--gold-soft); }
+
+/* Channel split bar */
+.channel-bar-wrap {
+  margin-top: 12px;
+}
+.channel-bar {
+  height: 8px;
+  background: var(--bg);
+  border-radius: 100px;
+  overflow: hidden;
+  display: flex;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.delivery-card:not(.featured) .channel-bar { border-color: var(--border); }
+.channel-bar .seg-sms { background: var(--gold); }
+.channel-bar .seg-wa { background: var(--wa-green); }
+.channel-bar .seg-app { background: var(--gold-soft); }
+.channel-bar .seg-failed { background: var(--terra); }
+.channel-bar-legend {
+  display: flex; gap: 12px; margin-top: 8px;
+  font-size: 10px;
+}
+.channel-bar-legend .li {
+  display: flex; gap: 5px; align-items: center;
+}
+.channel-bar-legend .swatch {
+  width: 8px; height: 8px;
+  border-radius: 2px;
+}
+.channel-bar-legend .swatch.sms { background: var(--gold); }
+.channel-bar-legend .swatch.wa { background: var(--wa-green); }
+.channel-bar-legend .swatch.app { background: var(--gold-soft); }
+.channel-bar-legend .swatch.failed { background: var(--terra); }
+.delivery-card.featured .channel-bar-legend { color: var(--gold-soft); }
+.delivery-card.featured .channel-bar-legend b { color: var(--bg); font-weight: 600; }
+.delivery-card:not(.featured) .channel-bar-legend b { color: var(--navy); font-weight: 600; }
+
+/* ============ FAILURE BREAKDOWN ============ */
+.failure-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--terra);
+  border-radius: 12px;
+  padding: 18px 22px 16px;
+  margin-bottom: 22px;
+}
+.failure-card .fc-head {
+  display: flex; justify-content: space-between; align-items: start;
+  margin-bottom: 14px;
+}
+.failure-card .label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--terra);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.failure-card h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.failure-card .fc-action {
+  display: flex; gap: 8px;
+}
+.failure-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.failure-tile {
+  padding: 12px 14px 10px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+.failure-tile .ft-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-2);
+  margin-bottom: 4px;
+}
+.failure-tile .ft-count {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 22px;
+  color: var(--terra);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.failure-tile .ft-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* ============ RECIPIENT TABLE ============ */
+.filter-strip {
+  display: flex; gap: 8px;
+  margin-bottom: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filter-pill {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.filter-pill .count {
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+.filter-pill.danger.active {
+  background: var(--terra);
+  color: var(--bg);
+  border-color: var(--terra);
+}
+.filter-divider {
+  height: 18px;
+  width: 1px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.filter-search {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-family: inherit;
+  width: 240px;
+  color: var(--navy);
+}
+.filter-search::placeholder { color: var(--navy-3); font-style: italic; }
+
+.recipient-card-big {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.rcb-head {
+  padding: 14px 22px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.rcb-head .label {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 3px;
+}
+.rcb-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.rcb-head .ctx {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.rcb-head .ctx b { color: var(--navy); font-weight: 600; }
+
+.recipient-table-head {
+  display: grid;
+  grid-template-columns: 1fr 90px 110px 130px 110px 90px;
+  gap: 14px;
+  padding: 12px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.recipient-row {
+  display: grid;
+  grid-template-columns: 1fr 90px 110px 130px 110px 90px;
+  gap: 14px;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+}
+.recipient-row:last-child { border-bottom: none; }
+.recipient-row:hover { background: var(--bg); }
+.recipient-row.failed-row { background: var(--terra-bg-soft); }
+.recipient-row.failed-row:hover { background: var(--terra-bg); }
+
+.recipient-row .person {
+  display: flex; gap: 10px; align-items: center;
+}
+.recipient-row .person .av {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.recipient-row .person .body .name {
+  font-weight: 600;
+  font-size: 13px;
+}
+.recipient-row .person .body .student {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.recipient-row .person .body .student b { color: var(--navy-2); font-weight: 600; }
+
+.channel-pill {
+  display: inline-flex;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 100px;
+}
+.channel-pill.sms { background: var(--gold-bg); color: var(--gold); }
+.channel-pill.wa { background: rgba(37,168,89,0.12); color: var(--wa-green); }
+.channel-pill.app { background: var(--bg); color: var(--navy-2); border: 1px solid var(--border); }
+
+.status-cell {
+  display: flex; align-items: center; gap: 6px;
+}
+.status-cell .status-icon {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.status-cell .status-icon.delivered { background: var(--green-bg); color: var(--green); }
+.status-cell .status-icon.read { background: var(--wa-tick); color: white; }
+.status-cell .status-icon.failed { background: var(--terra-bg); color: var(--terra); }
+.status-cell .status-icon.pending { background: var(--gold-bg); color: var(--gold); }
+.status-cell .status-icon.tapped { background: rgba(37,168,89,0.12); color: var(--wa-green); }
+.status-cell .status-text {
+  font-weight: 600;
+  font-size: 12px;
+}
+.status-cell .status-text.delivered { color: var(--green); }
+.status-cell .status-text.read { color: var(--wa-tick); }
+.status-cell .status-text.failed { color: var(--terra); }
+.status-cell .status-text.pending { color: var(--gold); }
+.status-cell .status-text.tapped { color: var(--wa-green); }
+
+.recipient-row .when {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+}
+.recipient-row .when .when-detail {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+  font-style: italic;
+  font-family: 'Manrope', sans-serif;
+}
+.recipient-row .when .when-fail {
+  font-size: 10px;
+  color: var(--terra);
+  margin-top: 1px;
+  font-style: italic;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 600;
+}
+
+.recipient-row .phone {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--navy-2);
+}
+
+.recipient-row .actions { text-align: right; }
+.recipient-row .ghost-btn {
+  font-size: 9px; letter-spacing: 0.04em;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  padding: 4px 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.recipient-row .ghost-btn:hover { color: var(--gold); border-color: var(--gold-soft); }
+.recipient-row .ghost-btn.retry {
+  color: var(--terra);
+  border-color: rgba(184,74,57,0.3);
+}
+.recipient-row .ghost-btn.retry:hover {
+  background: var(--terra);
+  color: var(--bg);
+  border-color: var(--terra);
+}
+
+/* ============ RESEND BANNER ============ */
+.resend-banner {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+.resend-banner .ic {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.resend-banner .body { font-size: 13px; color: var(--navy-2); line-height: 1.5; }
+.resend-banner .body .t1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+  margin-bottom: 2px;
+}
+.resend-banner .body b { color: var(--navy); font-weight: 600; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .msg-summary { grid-template-columns: 1fr; }
+  .msg-summary .msg-content { border-right: none; border-bottom: 1px solid var(--border); }
+  .delivery-strip { grid-template-columns: 1fr 1fr; }
+  .failure-grid { grid-template-columns: 1fr 1fr; }
+  .recipient-table-head, .recipient-row { grid-template-columns: 1fr; gap: 6px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Announcements · Delivery detail</div>
+  <h1 class="display">Who got it, <em>who didn't</em></h1>
+  <div class="gold-rule"></div>
+  <p>Drill-through from the announcements history — one row per recipient, with channel used, delivery status, and the failure reason when something went wrong. The "Resend to failed" action is the load-bearing reason this page exists: most visits end with admin recovering the parents who didn't receive the message the first time.</p>
+</header>
+
+<!-- ============ PER-RECIPIENT DELIVERY DETAIL ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Delivery detail · "Sports day reminder"</div>
+    <div class="section-meta">Admin · Announcements &gt; History &gt; Delivery</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / announcements / sports-day-reminder / delivery</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item active"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Announcements</a> / History / Sports day reminder / Delivery</div>
+              <h2 class="display">Sports day <em>reminder</em> · delivery</h2>
+              <div class="lede">Sent on 22 April 2026 at 11:33 AM to all 600 parents and guardians. 88% delivered overall.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export CSV</button>
+              <button class="btn">View original</button>
+            </div>
+          </div>
+
+          <!-- Message summary -->
+          <div class="msg-summary">
+            <div class="msg-content">
+              <div class="label">The message</div>
+              <h3>Sports day reminder</h3>
+              <div class="body-preview">Annual sports day this Saturday 26 Apr at 9 AM. Athletes report by 8:00 AM in PE uniform. Parents welcome.
+
+- Christ the King</div>
+            </div>
+            <div class="msg-meta-block">
+              <div class="meta-row">
+                <div class="l">Sent</div>
+                <div class="v">22 Apr · 11:33 AM</div>
+              </div>
+              <div class="meta-row">
+                <div class="l">Sent by</div>
+                <div class="v">Florence Addo</div>
+              </div>
+              <div class="meta-row">
+                <div class="l">Audience</div>
+                <div class="v">All school · 600</div>
+              </div>
+              <div class="meta-row">
+                <div class="l">Channels</div>
+                <div class="v">SMS + WhatsApp + App</div>
+              </div>
+              <div class="meta-row">
+                <div class="l">Total cost</div>
+                <div class="v">GHS 28.30</div>
+              </div>
+              <div class="meta-row">
+                <div class="l">Reference</div>
+                <div class="v mono">ANN-2026-0418</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resend banner -->
+          <div class="resend-banner">
+            <div class="ic">!</div>
+            <div class="body">
+              <div class="t1">72 parents didn't receive this message</div>
+              Most failures are number-unreachable issues that may resolve in a re-send. <b>Resend cost: GHS 3.60</b> (only failed numbers; delivered recipients won't be charged again).
+            </div>
+            <div>
+              <button class="btn gold">Resend to 72 failed →</button>
+            </div>
+          </div>
+
+          <!-- Delivery KPI strip -->
+          <div class="delivery-strip">
+            <div class="delivery-card featured">
+              <div class="l">Total reach</div>
+              <div class="v-row">
+                <div class="v">528</div>
+                <div class="v-pct">88%</div>
+              </div>
+              <div class="change">of <b>600 recipients</b> · 72 failed</div>
+              <div class="channel-bar-wrap">
+                <div class="channel-bar">
+                  <div class="seg-wa" style="width:14%"></div>
+                  <div class="seg-sms" style="width:62%"></div>
+                  <div class="seg-app" style="width:12%"></div>
+                  <div class="seg-failed" style="width:12%"></div>
+                </div>
+                <div class="channel-bar-legend">
+                  <div class="li"><div class="swatch wa"></div><b>84</b> WA</div>
+                  <div class="li"><div class="swatch sms"></div><b>372</b> SMS</div>
+                  <div class="li"><div class="swatch app"></div><b>72</b> App</div>
+                  <div class="li"><div class="swatch failed"></div><b>72</b> failed</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="delivery-card success">
+              <div class="l">Confirmed read</div>
+              <div class="v-row">
+                <div class="v">189</div>
+                <div class="v-pct">36%</div>
+              </div>
+              <div class="change">of delivered · WA &amp; app only</div>
+            </div>
+
+            <div class="delivery-card">
+              <div class="l">Delivered, not yet read</div>
+              <div class="v-row">
+                <div class="v">339</div>
+                <div class="v-pct">64%</div>
+              </div>
+              <div class="change">SMS has no read receipts</div>
+            </div>
+
+            <div class="delivery-card danger">
+              <div class="l">Failed</div>
+              <div class="v-row">
+                <div class="v">72</div>
+                <div class="v-pct">12%</div>
+              </div>
+              <div class="change">eligible for resend</div>
+            </div>
+          </div>
+
+          <!-- Failure breakdown -->
+          <div class="failure-card">
+            <div class="fc-head">
+              <div>
+                <div class="label">Failure reasons</div>
+                <h3>Why 72 messages didn't deliver</h3>
+              </div>
+            </div>
+            <div class="failure-grid">
+              <div class="failure-tile">
+                <div class="ft-name">Number unreachable</div>
+                <div class="ft-count">48</div>
+                <div class="ft-meta">phone off / no signal · usually retryable</div>
+              </div>
+              <div class="failure-tile">
+                <div class="ft-name">Invalid number</div>
+                <div class="ft-count">14</div>
+                <div class="ft-meta">no longer in service · update guardian record</div>
+              </div>
+              <div class="failure-tile">
+                <div class="ft-name">SMS opted out</div>
+                <div class="ft-count">7</div>
+                <div class="ft-meta">parent replied STOP · SMS only</div>
+              </div>
+              <div class="failure-tile">
+                <div class="ft-name">Carrier rejected</div>
+                <div class="ft-count">3</div>
+                <div class="ft-meta">temporary network issue · always retry</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter strip -->
+          <div class="filter-strip">
+            <div class="filter-pill active">All recipients <span class="count">600</span></div>
+            <div class="filter-divider"></div>
+            <div class="filter-pill">Read <span class="count">189</span></div>
+            <div class="filter-pill">Delivered <span class="count">339</span></div>
+            <div class="filter-pill danger active">Failed <span class="count">72</span></div>
+            <div class="filter-divider"></div>
+            <div class="filter-pill">SMS <span class="count">444</span></div>
+            <div class="filter-pill">WhatsApp <span class="count">84</span></div>
+            <div class="filter-pill">App <span class="count">72</span></div>
+            <div class="filter-divider"></div>
+            <input class="filter-search" placeholder="Search by parent or student name..." />
+          </div>
+
+          <!-- Recipient table — showing failed -->
+          <div class="recipient-card-big">
+            <div class="rcb-head">
+              <div>
+                <div class="label">Failed deliveries · 72 recipients</div>
+                <h3>Per-recipient detail</h3>
+              </div>
+              <div class="ctx">Click a row to open the guardian record · <b>Retry</b> resends only that recipient</div>
+            </div>
+            <div class="recipient-table-head">
+              <div>Recipient</div>
+              <div>Channel</div>
+              <div>Status</div>
+              <div>When</div>
+              <div>Phone</div>
+              <div></div>
+            </div>
+
+            <div class="recipient-row failed-row">
+              <div class="person">
+                <div class="av">AB</div>
+                <div class="body">
+                  <div class="name">Mary Boateng</div>
+                  <div class="student">guardian of <b>Akosua Boateng</b> · JHS 2A</div>
+                </div>
+              </div>
+              <div><span class="channel-pill sms">SMS</span></div>
+              <div class="status-cell">
+                <div class="status-icon failed">×</div>
+                <div class="status-text failed">Failed</div>
+              </div>
+              <div class="when">
+                11:34 AM
+                <div class="when-fail">Number unreachable</div>
+              </div>
+              <div class="phone">+233 24 887 4412</div>
+              <div class="actions"><button class="ghost-btn retry">Retry</button></div>
+            </div>
+
+            <div class="recipient-row failed-row">
+              <div class="person">
+                <div class="av">JM</div>
+                <div class="body">
+                  <div class="name">James Mensah</div>
+                  <div class="student">guardian of <b>Esi Mensah</b> · JHS 1A</div>
+                </div>
+              </div>
+              <div><span class="channel-pill sms">SMS</span></div>
+              <div class="status-cell">
+                <div class="status-icon failed">×</div>
+                <div class="status-text failed">Failed</div>
+              </div>
+              <div class="when">
+                11:34 AM
+                <div class="when-fail">Invalid number</div>
+              </div>
+              <div class="phone">+233 27 102 0084</div>
+              <div class="actions"><button class="ghost-btn">Update phone</button></div>
+            </div>
+
+            <div class="recipient-row failed-row">
+              <div class="person">
+                <div class="av">SO</div>
+                <div class="body">
+                  <div class="name">Sarah Owusu</div>
+                  <div class="student">guardian of <b>Joseph Owusu</b> · JHS 3A</div>
+                </div>
+              </div>
+              <div><span class="channel-pill sms">SMS</span></div>
+              <div class="status-cell">
+                <div class="status-icon failed">×</div>
+                <div class="status-text failed">Opted out</div>
+              </div>
+              <div class="when">
+                11:34 AM
+                <div class="when-fail">Replied STOP on 4 Mar</div>
+              </div>
+              <div class="phone">+233 20 558 9942</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <div class="recipient-row failed-row">
+              <div class="person">
+                <div class="av">EA</div>
+                <div class="body">
+                  <div class="name">Emmanuel Adjei</div>
+                  <div class="student">guardian of <b>Kwame Adjei</b> · JHS 3B</div>
+                </div>
+              </div>
+              <div><span class="channel-pill sms">SMS</span></div>
+              <div class="status-cell">
+                <div class="status-icon failed">×</div>
+                <div class="status-text failed">Failed</div>
+              </div>
+              <div class="when">
+                11:34 AM
+                <div class="when-fail">Number unreachable</div>
+              </div>
+              <div class="phone">+233 54 712 3304</div>
+              <div class="actions"><button class="ghost-btn retry">Retry</button></div>
+            </div>
+
+            <div class="recipient-row failed-row">
+              <div class="person">
+                <div class="av">RA</div>
+                <div class="body">
+                  <div class="name">Robert Adu</div>
+                  <div class="student">guardian of <b>Naa Adu</b> · JHS 1B</div>
+                </div>
+              </div>
+              <div><span class="channel-pill sms">SMS</span></div>
+              <div class="status-cell">
+                <div class="status-icon failed">×</div>
+                <div class="status-text failed">Failed</div>
+              </div>
+              <div class="when">
+                11:34 AM
+                <div class="when-fail">Carrier rejected</div>
+              </div>
+              <div class="phone">+233 24 990 1158</div>
+              <div class="actions"><button class="ghost-btn retry">Retry</button></div>
+            </div>
+
+          </div>
+
+          <!-- Sample of successful deliveries — collapsed -->
+          <div class="recipient-card-big">
+            <div class="rcb-head">
+              <div>
+                <div class="label">Successful deliveries · 528 recipients</div>
+                <h3>Sample of <em>delivered &amp; read</em></h3>
+              </div>
+              <div class="ctx">Showing first 4 · click "Read" / "Delivered" filters above to see more</div>
+            </div>
+            <div class="recipient-table-head">
+              <div>Recipient</div>
+              <div>Channel</div>
+              <div>Status</div>
+              <div>When</div>
+              <div>Phone</div>
+              <div></div>
+            </div>
+
+            <div class="recipient-row">
+              <div class="person">
+                <div class="av">AsB</div>
+                <div class="body">
+                  <div class="name">Joseph Asante</div>
+                  <div class="student">guardian of <b>Yaw Asante</b> · JHS 2A</div>
+                </div>
+              </div>
+              <div><span class="channel-pill wa">WhatsApp</span></div>
+              <div class="status-cell">
+                <div class="status-icon read">✓✓</div>
+                <div class="status-text read">Read</div>
+              </div>
+              <div class="when">
+                11:34 AM
+                <div class="when-detail">read at 12:08 PM</div>
+              </div>
+              <div class="phone">+233 24 661 7724</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <div class="recipient-row">
+              <div class="person">
+                <div class="av">PO</div>
+                <div class="body">
+                  <div class="name">Patricia Owusu</div>
+                  <div class="student">guardian of <b>Selasi Owusu</b> · JHS 2B</div>
+                </div>
+              </div>
+              <div><span class="channel-pill wa">WhatsApp</span></div>
+              <div class="status-cell">
+                <div class="status-icon read">✓✓</div>
+                <div class="status-text read">Read</div>
+              </div>
+              <div class="when">
+                11:34 AM
+                <div class="when-detail">read at 11:42 AM</div>
+              </div>
+              <div class="phone">+233 27 384 1102</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <div class="recipient-row">
+              <div class="person">
+                <div class="av">AA</div>
+                <div class="body">
+                  <div class="name">Adwoa Adjei</div>
+                  <div class="student">guardian of <b>Kwame Adjei</b> · JHS 3B</div>
+                </div>
+              </div>
+              <div><span class="channel-pill app">In-app</span></div>
+              <div class="status-cell">
+                <div class="status-icon tapped">⊕</div>
+                <div class="status-text tapped">Tapped</div>
+              </div>
+              <div class="when">
+                11:33 AM
+                <div class="when-detail">opened at 1:14 PM</div>
+              </div>
+              <div class="phone">+233 50 224 8843</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+
+            <div class="recipient-row">
+              <div class="person">
+                <div class="av">EM</div>
+                <div class="body">
+                  <div class="name">Grace Mensah</div>
+                  <div class="student">guardian of <b>Esi Mensah</b> · JHS 1A</div>
+                </div>
+              </div>
+              <div><span class="channel-pill sms">SMS</span></div>
+              <div class="status-cell">
+                <div class="status-icon delivered">✓</div>
+                <div class="status-text delivered">Delivered</div>
+              </div>
+              <div class="when">
+                11:34 AM
+                <div class="when-detail">no read receipt for SMS</div>
+              </div>
+              <div class="phone">+233 24 558 1023</div>
+              <div class="actions"><button class="ghost-btn">View</button></div>
+            </div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Message summary at the top in two columns.</b> Left side shows the actual message text in a gold-accented quote block — admin reads exactly what was sent before reading delivery stats. Right side shows the operational metadata (when, by whom, audience, total cost, reference ID). Important to anchor the page to the message itself, not just numbers.</li>
+        <li><b>Resend banner is the load-bearing call-to-action.</b> "72 parents didn't receive this message" with the resend cost (GHS 3.60) and the Gold "Resend to 72 failed →" button. Most visits to this page end here — admin sees the headline, taps resend, done. The banner makes that path one click from page load.</li>
+        <li><b>Resend explicitly states it won't double-charge.</b> "Only failed numbers; delivered recipients won't be charged again." Removes the "wait, will this re-bill me for the 528 already-delivered?" question that would otherwise stop admin from clicking.</li>
+        <li><b>Featured KPI is "Total reach"</b> in navy with both the absolute count (528) and percentage (88%). The channel split bar below it shows the composition: 84 WhatsApp + 372 SMS + 72 in-app + 72 failed = 600. Visual ratio of how the message reached people.</li>
+        <li><b>"Delivered, not yet read" is its own KPI</b>, separate from confirmed-read. SMS has no read receipts, so 444 SMS recipients can never have a "Read" status. Conflating them with WhatsApp/app would be misleading. The card explicitly notes "SMS has no read receipts."</li>
+        <li><b>Failure reasons grouped into 4 categories.</b> "Number unreachable" (48, retryable), "Invalid number" (14, needs phone update), "SMS opted out" (7, parent's choice), "Carrier rejected" (3, retry). Each tile shows the count and a one-line interpretation. Admin reads the breakdown and knows which failures are recoverable.</li>
+        <li><b>Different per-row actions based on failure type.</b> Number unreachable / carrier rejected → "Retry" button (sends to that one recipient). Invalid number → "Update phone" (jumps to guardian record). Opted out → "View" (read-only; can't override parent's STOP). The action matches the recovery path; admin doesn't have to reason about it.</li>
+        <li><b>"Failed" filter pill in red,</b> active by default when the page loads from a low-delivery announcement. The page's primary purpose is failure investigation; pre-filtering matches the use case.</li>
+        <li><b>Channel pills use the brand colours.</b> SMS in gold, WhatsApp in green, In-app in neutral. Visual hierarchy mirrors the channel hierarchy — gold for the universal-reach workhorse, green for the cheaper richer modern option, neutral for the supplementary push.</li>
+        <li><b>Status icons are channel-aware.</b> WhatsApp uses the double-check (✓✓) in WhatsApp blue for "Read" — matches what parents see in the actual app. In-app uses ⊕ for "Tapped" — different mental model from "read." SMS just gets a single ✓ for "Delivered" because that's all SMS gateways report.</li>
+        <li><b>"Read at 12:08 PM" / "no read receipt for SMS"</b> in the When column gives temporal detail where it exists, transparent admission where it doesn't. Avoids misleading admin into thinking SMS recipients haven't read when really we just don't know.</li>
+        <li><b>Successful deliveries shown as a small sample,</b> not the full 528. Admin who wants to see all delivered recipients clicks the filter pill. Default view privileges the actionable (failures) over the routine (successes).</li>
+        <li><b>"Opted out" gets a soft treatment.</b> Marked as failed in the count, but the action is "View" not "Retry" — admin shouldn't pressure-resend to a parent who explicitly opted out of SMS. Includes the date they opted out so admin sees this is intentional, not a system error.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

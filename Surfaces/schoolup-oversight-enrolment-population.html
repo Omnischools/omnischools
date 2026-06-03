@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools Oversight — District director dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Omnischools Oversight — Enrolment vs population analysis</title>
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:800px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Oversight uses a deeper navy app chrome to distinguish it from the operational app */
+.app-shell { display:grid; grid-template-columns:230px 1fr; background:var(--bg); }
+.sidebar { background:#13203A; color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1240px; }
+.sidebar.tall { min-height:1620px; }
+.sidebar.taller { min-height:1880px; }
+.sidebar .gov-mark { padding:0 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:8px; }
+.sidebar .gov-mark .crest { display:flex; gap:11px; align-items:center; }
+.sidebar .gov-mark .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; line-height:1; text-align:center; }
+.sidebar .gov-mark .crest-text .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.sidebar .gov-mark .crest-text .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.sidebar .scope-chip { margin:14px 20px 8px; padding:10px 12px; background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:8px; }
+.sidebar .scope-chip .sc-label { font-size:8.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.sidebar .scope-chip .sc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.sidebar .scope-chip .sc-meta { font-size:10px; color:var(--gold-soft); margin-top:1px; }
+.nav-group { padding:16px 24px 6px; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(200,151,91,0.6); font-weight:700; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.1); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; }
+.sidebar .footer .av { width:34px; height:34px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; flex-shrink:0; }
+.sidebar .footer .meta-name { font-weight:600; font-size:12px; }
+.sidebar .footer .meta-role { font-size:9.5px; color:var(--gold-soft); margin-top:1px; }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.5); font-weight:700; }
+.powered-by em { color:var(--gold); font-style:normal; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:820px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Data-period banner */
+.period-banner { display:flex; align-items:center; gap:14px; padding:12px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; margin-bottom:24px; }
+.period-banner .pb-icon { width:34px; height:34px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:15px; flex-shrink:0; }
+.period-banner .pb-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.period-banner .pb-text b { color:var(--navy); font-weight:700; }
+.period-banner .pb-aside { margin-left:auto; font-size:10px; letter-spacing:0.06em; color:var(--navy-3); font-weight:600; text-align:right; }
+
+/* KPI strip */
+.kpi-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.kpi-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.kpi-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.kpi-card .k-lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.kpi-card .k-val { font-family:'Fraunces', serif; font-size:33px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.kpi-card .k-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.kpi-card .k-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.kpi-card .k-sub { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.kpi-card .k-sub b { color:var(--navy-2); font-weight:700; }
+.kpi-card .k-delta { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; margin-top:8px; position:relative; }
+.kpi-card .k-delta.up { background:var(--green-bg); color:var(--green); }
+.kpi-card .k-delta.down { background:var(--terra-bg); color:var(--terra); }
+.kpi-card .k-delta.flat { background:var(--bg); color:var(--navy-3); }
+
+/* Panel */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.panel-head { padding:16px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; justify-content:space-between; }
+.panel-head .ph-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.panel-head .ph-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.panel-head .ph-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.panel-head .ph-link { font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; }
+.panel-body { padding:20px 22px; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* Bar rows for enrolment-by-sex etc */
+.bar-row { margin-bottom:14px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-row .br-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.bar-row .br-label { font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-label .br-sub { color:var(--navy-3); font-weight:500; font-size:10.5px; margin-left:6px; }
+.bar-row .br-value { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-track { height:9px; background:var(--bg); border-radius:100px; overflow:hidden; display:flex; }
+.bar-row .br-fill { height:100%; }
+.bar-row .br-fill.navy { background:var(--navy); }
+.bar-row .br-fill.gold { background:var(--gold); }
+.bar-row .br-fill.green { background:var(--green); }
+.bar-row .br-fill.terra { background:var(--terra); }
+.bar-row .br-fill.warn { background:var(--warn); }
+.split-legend { display:flex; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.split-legend .sl-item { display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--navy-2); font-weight:600; }
+.split-legend .sl-dot { width:9px; height:9px; border-radius:2px; }
+.bar-row.parent .br-label { display:flex; align-items:center; gap:7px; }
+.bar-row.parent .drill-chip { font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; color:var(--gold); background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:100px; padding:2px 7px; cursor:pointer; }
+.bar-row.child { margin-left:18px; padding-left:12px; border-left:2px solid var(--border); }
+.bar-row.child .br-label { font-weight:500; color:var(--navy-2); font-size:11.5px; }
+.bar-row.child .br-value { font-size:11px; color:var(--navy-2); }
+.bar-row.child .br-track { height:7px; }
+.subtotal-note { font-size:10px; color:var(--navy-3); font-weight:600; margin:3px 0 10px 30px; font-style:italic; }
+.fee-row { margin-bottom:14px; }
+.fee-row:last-child { margin-bottom:0; }
+.fee-row .fr-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.fee-row .fr-level { font-size:12px; font-weight:700; color:var(--navy); }
+.fee-row .fr-total { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.fee-row .fr-bar { height:16px; border-radius:4px; overflow:hidden; display:flex; }
+.fee-row .fr-seg { height:100%; }
+.fee-legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.fee-legend .fl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.fee-legend .fl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* Mini stat list */
+.stat-list { display:flex; flex-direction:column; }
+.stat-list .st-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.stat-list .st-row:last-child { border-bottom:none; }
+.stat-list .st-label { font-size:12px; color:var(--navy-2); font-weight:500; }
+.stat-list .st-label b { color:var(--navy); font-weight:700; }
+.stat-list .st-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stat-list .st-val .st-unit { font-size:10px; color:var(--navy-3); font-weight:500; }
+.stat-list .st-val.flag { color:var(--terra); }
+.stat-list .st-val.good { color:var(--green); }
+
+/* Performance band chart */
+.band-chart { display:flex; flex-direction:column; gap:10px; }
+.band-row { display:grid; grid-template-columns:78px 1fr 48px; gap:10px; align-items:center; }
+.band-row .bd-label { font-size:11px; font-weight:600; color:var(--navy-2); }
+.band-row .bd-track { height:20px; background:var(--bg); border-radius:5px; overflow:hidden; display:flex; }
+.band-row .bd-seg { height:100%; }
+.band-row .bd-pct { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.band-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.band-legend .bl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.band-legend .bl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* School list table */
+.school-table { width:100%; border-collapse:collapse; }
+.school-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.school-table th.c { text-align:center; }
+.school-table th.r { text-align:right; }
+.school-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.school-table tr:last-child td { border-bottom:none; }
+.school-table tr.drill { cursor:pointer; }
+.school-table tr.drill:hover td { background:var(--gold-bg); }
+.school-table td .sc-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.school-table td .sc-name .sc-badge { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.school-table td .sc-name .sc-badge.anchor { background:var(--gold); color:var(--navy); }
+.school-table td .sc-meta { font-size:9.5px; color:var(--navy-3); margin-top:1px; font-weight:500; }
+.school-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.school-table td .num.r { text-align:right; }
+.school-table td .ratio { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; }
+.school-table td .ratio.good { color:var(--green); }
+.school-table td .ratio.warn { color:var(--warn); }
+.school-table td .ratio.flag { color:var(--terra); }
+.school-table td .perf-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; }
+.school-table td .perf-pill.good { background:var(--green-bg); color:var(--green); }
+.school-table td .perf-pill.mid { background:var(--warn-bg); color:var(--warn); }
+.school-table td .perf-pill.low { background:var(--terra-bg); color:var(--terra); }
+.school-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.table-toolbar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.table-toolbar .tt-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.chip { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:5px 11px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.chip.compare { background:var(--gold-bg); border-color:var(--gold); color:var(--navy); margin-left:auto; }
+.chip.compare::before { content:"⊕ "; color:var(--gold); }
+
+/* Anomaly callouts */
+.flag-list { display:flex; flex-direction:column; gap:10px; }
+.flag-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.flag-item.warn { border-color:var(--warn); background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 60%); }
+.flag-item.terra { border-color:var(--terra); background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 60%); }
+.flag-item .fi-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.flag-item.warn .fi-icon { background:var(--warn); color:var(--bg); }
+.flag-item.terra .fi-icon { background:var(--terra); color:var(--bg); }
+.flag-item .fi-body .fi-title { font-size:12px; font-weight:700; color:var(--navy); }
+.flag-item .fi-body .fi-detail { font-size:10.5px; color:var(--navy-2); margin-top:2px; line-height:1.45; }
+.flag-item .fi-body .fi-detail b { color:var(--navy); font-weight:700; }
+.flag-item .fi-action { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:700; color:var(--navy); cursor:pointer; }
+
+/* Comparison teaser */
+.compare-strip { background:linear-gradient(135deg, #13203A 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:22px 26px; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.compare-strip::before { content:""; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.compare-strip .cs-body { position:relative; }
+.compare-strip .cs-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.compare-strip .cs-title { font-family:'Fraunces', serif; font-size:21px; font-weight:500; line-height:1.2; margin-bottom:6px; }
+.compare-strip .cs-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.compare-strip .cs-text { font-size:12px; color:var(--gold-soft); line-height:1.5; max-width:560px; }
+.compare-strip .cs-text b { color:var(--bg); font-weight:600; }
+.compare-strip .cs-action { position:relative; }
+
+/* Data provenance footer */
+.provenance { display:flex; gap:18px; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-top:18px; flex-wrap:wrap; }
+.provenance .pv-item { font-size:10.5px; color:var(--navy-3); font-weight:500; }
+.provenance .pv-item b { color:var(--navy-2); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .dash-grid { grid-template-columns:1fr; }
+  .compare-strip { grid-template-columns:1fr; }
+}
+
+/* ===== Enrolment-vs-population specific ===== */
+.method-card { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 70%); border:1px solid var(--gold-soft); border-radius:14px; padding:22px 26px; margin-bottom:24px; }
+.method-card .mc-head { display:flex; align-items:center; gap:11px; margin-bottom:12px; }
+.method-card .mc-icon { width:36px; height:36px; border-radius:9px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:16px; }
+.method-card .mc-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.method-card .mc-text { font-size:12.5px; color:var(--navy-2); line-height:1.6; }
+.method-card .mc-text b { color:var(--navy); font-weight:700; }
+.method-card .mc-eqn { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+.method-card .mc-term { text-align:center; }
+.method-card .mc-term .mt-val { font-family:'Fraunces', serif; font-size:15px; font-weight:600; color:var(--navy); }
+.method-card .mc-term .mt-lbl { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-top:2px; }
+.method-card .mc-op { font-family:'Fraunces', serif; font-size:20px; color:var(--gold); font-weight:600; }
+
+/* stage comparison rows */
+.stage-band { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:14px; }
+.stage-band.gap-high { border-left:3px solid var(--terra); }
+.stage-band.gap-mid { border-left:3px solid var(--warn); }
+.stage-band.gap-low { border-left:3px solid var(--green); }
+.stage-band .sb-top { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:4px; }
+.stage-band .sb-name { font-family:'Fraunces', serif; font-size:16px; font-weight:600; }
+.stage-band .sb-age { font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-left:8px; }
+.stage-band .sb-rate { font-family:'Fraunces', serif; font-size:22px; font-weight:600; }
+.stage-band .sb-rate.terra { color:var(--terra); }
+.stage-band .sb-rate.warn { color:var(--warn); }
+.stage-band .sb-rate.green { color:var(--green); }
+.stage-band .sb-rate .sbr-lbl { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:700; font-family:'Manrope',sans-serif; margin-left:4px; }
+.stage-band .sb-bar-wrap { margin-top:12px; }
+.stage-band .sb-bar-scale { position:relative; height:30px; background:var(--bg); border-radius:6px; overflow:hidden; }
+.stage-band .sb-bar-pop { position:absolute; inset:0; background:repeating-linear-gradient(135deg, var(--border) 0 6px, var(--bg) 6px 12px); }
+.stage-band .sb-bar-enr { position:absolute; left:0; top:0; bottom:0; background:var(--navy); display:flex; align-items:center; }
+.stage-band .sb-bar-enr.terra { background:var(--terra); }
+.stage-band .sb-bar-enr.warn { background:var(--warn); }
+.stage-band .sb-bar-enr.green { background:var(--green); }
+.stage-band .sb-bar-enr .sbe-txt { font-size:10px; font-weight:700; color:var(--bg); padding-left:10px; white-space:nowrap; }
+.stage-band .sb-figures { display:flex; gap:22px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+.stage-band .sb-fig .sbf-v { font-family:'JetBrains Mono', monospace; font-size:14px; font-weight:600; color:var(--navy); }
+.stage-band .sb-fig .sbf-v.terra { color:var(--terra); }
+.stage-band .sb-fig .sbf-l { font-size:9.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-top:1px; }
+.stage-band .sb-scale-legend { display:flex; gap:16px; margin-top:8px; }
+.stage-band .sb-scale-legend .ssl { display:flex; align-items:center; gap:6px; font-size:9.5px; color:var(--navy-3); font-weight:600; }
+.stage-band .sb-scale-legend .ssl-sw { width:16px; height:9px; border-radius:2px; }
+
+/* unmeasured-gap split banner */
+.gap-split { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 26px; margin-bottom:18px; }
+.gap-split .gs-head { margin-bottom:14px; }
+.gap-split .gs-title { font-family:'Fraunces', serif; font-size:20px; font-weight:600; margin-bottom:5px; }
+.gap-split .gs-title em { font-style:italic; color:var(--gold); font-weight:500; }
+.gap-split .gs-sub { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.gap-split .gs-split-bar { display:flex; height:38px; border-radius:8px; overflow:hidden; margin-bottom:16px; }
+.gap-split .gs-seg { height:100%; display:flex; align-items:center; justify-content:center; }
+.gap-split .gs-seg.explain { background:var(--navy-3); }
+.gap-split .gs-seg.signal { background:var(--terra); }
+.gap-split .gs-seg span { font-size:10.5px; font-weight:700; color:var(--bg); padding:0 10px; text-align:center; line-height:1.2; }
+.gap-split .gs-parts { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.gap-split .gs-part { display:grid; grid-template-columns:auto 1fr; gap:12px; padding:14px 16px; border:1px solid var(--border); border-radius:10px; background:var(--bg); }
+.gap-split .gs-part-icon { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:14px; color:var(--bg); }
+.gap-split .gs-part-icon.explain { background:var(--navy-3); }
+.gap-split .gs-part-icon.signal { background:var(--terra); }
+.gap-split .gs-part-h { font-size:12px; font-weight:700; color:var(--navy); margin-bottom:3px; }
+.gap-split .gs-part-t { font-size:11px; color:var(--navy-2); line-height:1.5; }
+.gap-split .gs-part-t b { color:var(--navy); font-weight:700; }
+.gap-split .gs-foot { font-size:10.5px; color:var(--navy-3); line-height:1.55; padding-top:12px; border-top:1px solid var(--border); }
+.gap-split .gs-foot b { color:var(--navy-2); font-weight:700; }
+
+/* comparison toggle chips */
+.scope-toggle { display:flex; gap:6px; padding:14px 22px; border-bottom:1px solid var(--border); align-items:center; flex-wrap:wrap; }
+.scope-toggle .st-lbl { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+
+/* school-level table for the gap */
+.gap-table { width:100%; border-collapse:collapse; }
+.gap-table th { background:var(--bg); padding:10px 12px; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.gap-table th.c { text-align:center; }
+.gap-table td { padding:12px; font-size:12px; border-bottom:1px solid var(--border); color:var(--navy-2); }
+.gap-table tr:last-child td { border-bottom:none; }
+.gap-table tr.total-row td { background:var(--gold-bg); font-weight:700; }
+.gap-table td .area-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); }
+.gap-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.gap-table td .rate-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; padding:3px 9px; border-radius:100px; }
+.gap-table td .rate-pill.green { background:var(--green-bg); color:var(--green); }
+.gap-table td .rate-pill.warn { background:var(--warn-bg); color:var(--warn); }
+.gap-table td .rate-pill.terra { background:var(--terra-bg); color:var(--terra); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Omnischools Oversight · Batch 2 · surface 1 of 5</div>
+<div class="eyebrow">Omnischools Oversight · the signature analysis</div>
+<h1>Who is enrolled — <em>and who is missing.</em></h1>
+<div class="gold-rule"></div>
+<p>This is the analysis that justifies Oversight existing as a separate product. A single school knows its own enrolment; no school can see the wider picture of children in its catchment. GES can begin to — by setting enrolment at each stage against the population of children who are of the official age for that stage. The comparison is strictly stage-for-stage on a matched age basis: JHS enrolment is measured against the count of children of JHS age (~12–14) living in the district, Primary against Primary-age children (~6–11), never against total population and never across stages. But the surface is careful about one thing: Omnischools only sees enrolment at schools that are on the platform — 34 of the district's 40 schools. So the difference between population and what we record is an <b>unmeasured gap</b>, not an out-of-school count. Part of that gap is children enrolled at the 6 schools we cannot see; only the remainder is a possible out-of-school signal. This surface shows the gap and splits it — it does not claim a single out-of-school number while coverage is partial. The reference population comes from the Ghana Statistical Service 2021 Census; the demo jurisdiction is Wassa Amenfi West.</p>
+</div>
+
+<!-- ============================================ SECTION 1 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">The method · stage-for-stage, matched on age</div>
+<div class="section-meta">How the comparison is built</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/enrolment-vs-population</div></div>
+
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item active"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Enrolment vs population</div>
+<div class="top-row">
+<div>
+<h1>Enrolment vs <em>population.</em></h1>
+<div class="lede">Setting recorded enrolment at each stage against the school-age population for that same stage — and being honest about what partial school coverage means for the result.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">2025/26 ▾</button>
+<button class="btn">Export analysis</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="method-card">
+<div class="mc-head">
+<div class="mc-icon">∑</div>
+<div class="mc-title">How this comparison is constructed</div>
+</div>
+<div class="mc-text">Every stage is compared only against the population of children who are <b>of the official age for that stage</b>. JHS enrolment is set against children aged <b>12–14</b>; it is never compared to total district population, and never to a different stage's age band. This keeps the comparison honest — a district is not "under-enrolled" simply because it has many infants or many adults. But a second honesty matters just as much: <b>Omnischools only records enrolment at schools on the platform</b>. The difference between population and recorded enrolment is therefore an <em>unmeasured gap</em> — it is not an out-of-school count, because part of it is children at schools we cannot yet see.</div>
+<div class="mc-eqn">
+<div class="mc-term"><div class="mt-val">Recorded enrolment</div><div class="mt-lbl">34 of 40 schools · on Omnischools</div></div>
+<div class="mc-op">÷</div>
+<div class="mc-term"><div class="mt-val">Age-matched population</div><div class="mt-lbl">GSS 2021 Census, that age band</div></div>
+<div class="mc-op">=</div>
+<div class="mc-term"><div class="mt-val" style="color:var(--gold);">Recorded enrolment rate</div><div class="mt-lbl">remainder = the unmeasured gap</div></div>
+</div>
+</div>
+
+<div class="method-card" style="background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 70%); border-color:var(--warn);">
+<div class="mc-head">
+<div class="mc-icon" style="background:var(--warn);">!</div>
+<div class="mc-title">Why this is not an "out of school" number — yet</div>
+</div>
+<div class="mc-text">The district's EMIS register lists <b>40 schools</b>; <b>34</b> are on Omnischools and report into this analysis. The other <b>6 schools have pupils who are enrolled</b> — those children are in school, just not visible to us. So the unmeasured gap has two parts that must never be merged:
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:13px 15px;">
+<div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:4px;">Part 1 · explainable</div>
+<div style="font-size:11.5px; color:var(--navy-2); line-height:1.5;">Children enrolled at the <b>6 non-Omnischools schools</b>. In school — outside our coverage. Resolved by onboarding those schools, not by intervention.</div>
+</div>
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:13px 15px;">
+<div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--terra); font-weight:700; margin-bottom:4px;">Part 2 · the real signal</div>
+<div style="font-size:11.5px; color:var(--navy-2); line-height:1.5;">The remainder after Part 1 is set aside — a <b>possible out-of-school</b> signal worth investigating. Only this part is an enrolment concern.</div>
+</div>
+</div>
+<div style="margin-top:12px;">A true out-of-school figure needs <b>full district coverage</b>. Until all 40 schools report, this surface shows the gap and its split — it does not collapse them into one "out of school" headline. Onboarding the remaining 6 schools is what turns this estimate into a real count.</div>
+</div>
+</div>
+
+<div class="panel">
+<div class="panel-head">
+<div class="ph-title">The official <em>age-for-stage</em> mapping</div>
+<div class="ph-meta">Ghana basic &amp; senior structure</div>
+</div>
+<div class="panel-body">
+<div class="stat-list">
+<div class="st-row"><div class="st-label"><b>Kindergarten</b> · KG1–KG2</div><div class="st-val">ages 4–5 <span class="st-unit">2 year-cohorts</span></div></div>
+<div class="st-row"><div class="st-label"><b>Primary</b> · Primary 1–6</div><div class="st-val">ages 6–11 <span class="st-unit">6 year-cohorts</span></div></div>
+<div class="st-row"><div class="st-label"><b>Junior High</b> · JHS1–JHS3</div><div class="st-val">ages 12–14 <span class="st-unit">3 year-cohorts</span></div></div>
+<div class="st-row"><div class="st-label"><b>Senior High</b> · Form 1–3</div><div class="st-val">ages 15–17 <span class="st-unit">3 year-cohorts</span></div></div>
+</div>
+<div style="font-size:10.5px; color:var(--navy-3); margin-top:12px; line-height:1.55;">These are the <b>official</b> ages. Real cohorts include over-age and under-age pupils — a child repeating P3 or starting JHS late. The analysis reports the official-age comparison as the headline and flags large over-age populations separately, because an over-age JHS pupil is enrolled but also a sign of earlier repetition.</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The method has to be visible — and honest about its blind spot</h4>
+<ul>
+<li><b>The surface refuses to claim an out-of-school number while coverage is partial.</b> The most important design decision here is a negative one: Omnischools sees 34 of 40 schools, so the population-minus-enrolment difference is an <em>unmeasured gap</em>, not an out-of-school count. A chunk of it is children enrolled at the 6 invisible schools. Collapsing that into one alarming "out of school" headline would mislead a director the moment they repeated it upward — so the surface does not.</li>
+<li><b>The gap is split into two parts that are never merged.</b> Part 1 is explainable — children at non-Omnischools schools, resolved by onboarding not intervention. Part 2 is the remainder, the only part that is a genuine enrolment concern. Keeping these separate is what makes the analysis trustworthy at partial coverage.</li>
+<li><b>Full coverage is named as the precondition for a real count.</b> The surface states plainly that a true out-of-school figure needs all 40 schools reporting — and that onboarding the remaining 6 is what converts this estimate into a count. The coverage gap is not a footnote; it is the stated limit of the analysis.</li>
+<li><b>Stage-for-stage on a matched age basis is still the rule.</b> JHS recorded enrolment compares to the 12–14 population, not to total population and not to another stage. The comparison is only meaningful when numerator and denominator describe the same children — that holds regardless of coverage.</li>
+<li><b>The age-for-stage mapping is configuration, and over-age pupils are named as a wrinkle.</b> Ghana's KG/Primary/JHS/SHS age bands are data a GES administrator sets; real cohorts include over-age and under-age children, flagged separately rather than hidden.</li>
+<li><b>The reference population is sourced explicitly.</b> GSS 2021 Census, district age tables (Volume 3B). Per Decision 7 this is loaded reference data — the surface names its origin so a director knows the denominator's vintage.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 2 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">The result · enrolment rate at every stage</div>
+<div class="section-meta">Wassa Amenfi West · 2025/26</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/enrolment-vs-population</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item active"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Enrolment vs population</div>
+<div class="top-row">
+<div>
+<h1>The result, <em>stage by stage.</em></h1>
+<div class="lede">Each band sets Omnischools-recorded enrolment against the age-matched population. The shaded track is the population; the solid bar is recorded enrolment; the remainder is the unmeasured gap.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Official age ▾</button>
+<button class="btn">Export analysis</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="gap-split">
+<div class="gs-head">
+<div class="gs-title">The unmeasured gap · <em>3,940 children</em></div>
+<div class="gs-sub">Age-matched population minus enrolment recorded on Omnischools, summed across all four stages. This is not an out-of-school figure — it is split below, and the two parts are not added back together into one headline.</div>
+</div>
+<div class="gs-split-bar">
+<div class="gs-seg explain" style="width:61%;"><span>≈ 2,410 · likely at non-Omnischools schools</span></div>
+<div class="gs-seg signal" style="width:39%;"><span>≈ 1,530 · possible out-of-school</span></div>
+</div>
+<div class="gs-parts">
+<div class="gs-part">
+<div class="gs-part-icon explain">1</div>
+<div class="gs-part-body">
+<div class="gs-part-h">≈ 2,410 · likely enrolled, not visible to us</div>
+<div class="gs-part-t">An estimate of children attending the <b>6 district schools not yet on Omnischools</b>, scaled from those schools' known capacity in the EMIS register. These children are <b>in school</b>. The fix is onboarding the schools — not an enrolment intervention.</div>
+</div>
+</div>
+<div class="gs-part">
+<div class="gs-part-icon signal">2</div>
+<div class="gs-part-body">
+<div class="gs-part-h">≈ 1,530 · possible out-of-school — worth investigating</div>
+<div class="gs-part-t">The remainder, after setting aside Part 1. This is the <b>only</b> part that is a genuine enrolment concern — and it is still an estimate. Concentrated at Kindergarten and Senior High, the entry and exit ends of the system.</div>
+</div>
+</div>
+</div>
+<div class="gs-foot">Both figures are estimates. The split itself depends on how accurately the 6 missing schools' enrolment is inferred — which is exactly why <b>onboarding those schools</b> is the way to replace this estimate with a measured count. Until then, Oversight reports the gap and its parts, never a single "out of school" number.</div>
+</div>
+
+<div class="stage-band gap-mid">
+<div class="sb-top">
+<div><span class="sb-name">Kindergarten</span><span class="sb-age">Ages 4–5</span></div>
+<div class="sb-rate warn">81.4%<span class="sbr-lbl">recorded enrolment rate</span></div>
+</div>
+<div class="sb-bar-wrap">
+<div class="sb-bar-scale">
+<div class="sb-bar-pop"></div>
+<div class="sb-bar-enr warn" style="width:81.4%;"><span class="sbe-txt">2,946 enrolled</span></div>
+</div>
+</div>
+<div class="sb-figures">
+<div class="sb-fig"><div class="sbf-v">3,619</div><div class="sbf-l">Age 4–5 population</div></div>
+<div class="sb-fig"><div class="sbf-v">2,946</div><div class="sbf-l">Enrolled in KG</div></div>
+<div class="sb-fig"><div class="sbf-v terra">673</div><div class="sbf-l">Unmeasured gap</div></div>
+</div>
+<div class="sb-scale-legend">
+<div class="ssl"><span class="ssl-sw" style="background:var(--warn);"></span>Enrolled</div>
+<div class="ssl"><span class="ssl-sw" style="background:repeating-linear-gradient(135deg, var(--border) 0 4px, var(--bg) 4px 8px);"></span>Age-matched population (GSS 2021)</div>
+</div>
+</div>
+
+<div class="stage-band gap-low">
+<div class="sb-top">
+<div><span class="sb-name">Primary</span><span class="sb-age">Ages 6–11</span></div>
+<div class="sb-rate green">96.1%<span class="sbr-lbl">recorded enrolment rate</span></div>
+</div>
+<div class="sb-bar-wrap">
+<div class="sb-bar-scale">
+<div class="sb-bar-pop"></div>
+<div class="sb-bar-enr green" style="width:96.1%;"><span class="sbe-txt">6,418 enrolled</span></div>
+</div>
+</div>
+<div class="sb-figures">
+<div class="sb-fig"><div class="sbf-v">6,679</div><div class="sbf-l">Age 6–11 population</div></div>
+<div class="sb-fig"><div class="sbf-v">6,418</div><div class="sbf-l">Enrolled in Primary</div></div>
+<div class="sb-fig"><div class="sbf-v terra">261</div><div class="sbf-l">Unmeasured gap</div></div>
+</div>
+<div class="sb-scale-legend">
+<div class="ssl"><span class="ssl-sw" style="background:var(--green);"></span>Enrolled</div>
+<div class="ssl"><span class="ssl-sw" style="background:repeating-linear-gradient(135deg, var(--border) 0 4px, var(--bg) 4px 8px);"></span>Age-matched population (GSS 2021)</div>
+</div>
+</div>
+
+<div class="stage-band gap-mid">
+<div class="sb-top">
+<div><span class="sb-name">Junior High</span><span class="sb-age">Ages 12–14</span></div>
+<div class="sb-rate warn">87.6%<span class="sbr-lbl">recorded enrolment rate</span></div>
+</div>
+<div class="sb-bar-wrap">
+<div class="sb-bar-scale">
+<div class="sb-bar-pop"></div>
+<div class="sb-bar-enr warn" style="width:87.6%;"><span class="sbe-txt">2,743 enrolled</span></div>
+</div>
+</div>
+<div class="sb-figures">
+<div class="sb-fig"><div class="sbf-v">3,131</div><div class="sbf-l">Age 12–14 population</div></div>
+<div class="sb-fig"><div class="sbf-v">2,743</div><div class="sbf-l">Enrolled in JHS</div></div>
+<div class="sb-fig"><div class="sbf-v terra">388</div><div class="sbf-l">Unmeasured gap</div></div>
+</div>
+<div class="sb-scale-legend">
+<div class="ssl"><span class="ssl-sw" style="background:var(--warn);"></span>Enrolled</div>
+<div class="ssl"><span class="ssl-sw" style="background:repeating-linear-gradient(135deg, var(--border) 0 4px, var(--bg) 4px 8px);"></span>Age-matched population (GSS 2021)</div>
+</div>
+</div>
+
+<div class="stage-band gap-high">
+<div class="sb-top">
+<div><span class="sb-name">Senior High</span><span class="sb-age">Ages 15–17</span></div>
+<div class="sb-rate terra">50.9%<span class="sbr-lbl">recorded enrolment rate</span></div>
+</div>
+<div class="sb-bar-wrap">
+<div class="sb-bar-scale">
+<div class="sb-bar-pop"></div>
+<div class="sb-bar-enr terra" style="width:50.9%;"><span class="sbe-txt">2,713 enrolled</span></div>
+</div>
+</div>
+<div class="sb-figures">
+<div class="sb-fig"><div class="sbf-v">5,331</div><div class="sbf-l">Age 15–17 population</div></div>
+<div class="sb-fig"><div class="sbf-v">2,713</div><div class="sbf-l">Enrolled in SHS</div></div>
+<div class="sb-fig"><div class="sbf-v terra">2,618</div><div class="sbf-l">Unmeasured gap</div></div>
+</div>
+<div class="sb-scale-legend">
+<div class="ssl"><span class="ssl-sw" style="background:var(--terra);"></span>Enrolled</div>
+<div class="ssl"><span class="ssl-sw" style="background:repeating-linear-gradient(135deg, var(--border) 0 4px, var(--bg) 4px 8px);"></span>Age-matched population (GSS 2021)</div>
+</div>
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Recorded enrolment</b> · 34 of 40 schools on Omnischools · 2025/26 Term 2</div>
+<div class="pv-item"><b>Population</b> · GSS 2021 Census · Vol 3B district age tables</div>
+<div class="pv-item"><b>Gap</b> · unmeasured · partly non-Omnischools schools, partly possible out-of-school</div>
+<div class="pv-item"><b>SHS</b> · also affected by district children placed at SHS elsewhere</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Reading the stage bands</h4>
+<ul>
+<li><b>Each band is one honest division.</b> Recorded enrolment over age-matched population — the shaded track is the 2021 Census population for that age band, the solid bar is what the 34 Omnischools schools recorded. The shaded remainder is the <em>unmeasured gap</em>, not an out-of-school count: it includes children at the 6 non-Omnischools schools.</li>
+<li><b>The split banner sits above the bands deliberately.</b> Before a director reads any stage, the banner has already established that the 3,940-child gap is two things — ~2,410 likely at invisible schools, ~1,530 a possible out-of-school signal — and that they are not added back into one figure. The per-stage bands then show where the gap concentrates, read through that frame.</li>
+<li><b>The SHS gap carries an extra caveat beyond coverage.</b> SHS recorded enrolment is low partly for the coverage reason, and partly because SHS placement via CSSPS is national — district children are routinely placed at SHS in other districts and would not appear here even at full coverage. The provenance row says so; a director must not read the SHS rate as pure local drop-off.</li>
+<li><b>Primary is near-universal; the ends of the system show the widest gaps.</b> Recorded Primary enrolment at 96% against KG 81% and SHS 51% — but "widest gap" is not yet "most out-of-school children," because the gap is unresolved. The shape is a signal of where to look, not a verdict.</li>
+<li><b>Colour encodes gap width, not confirmed severity.</b> Green Primary, amber KG and JHS, red SHS — the same palette as the dashboard. It flags where the unmeasured gap is largest and so where investigation and school-onboarding should focus first.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 3 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">Where the gap sits · by area, and against peers</div>
+<div class="section-meta">Drill-down &amp; comparison</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/enrolment-vs-population</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item active"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Enrolment vs population</div>
+<div class="top-row">
+<div>
+<h1>Where the gap <em>sits.</em></h1>
+<div class="lede">The district figure breaks down by sub-area, and sets against neighbouring districts — the comparison stays stage-for-stage.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">JHS stage ▾</button>
+<button class="btn">Open in comparison →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="panel" style="margin-bottom:18px;">
+<div class="scope-toggle">
+<span class="st-lbl">Breakdown</span>
+<button class="chip active">By area within district</button>
+<button class="chip">Against neighbour districts</button>
+<span class="st-lbl" style="margin-left:10px;">Stage</span>
+<button class="chip">KG</button>
+<button class="chip">Primary</button>
+<button class="chip active">JHS</button>
+<button class="chip">SHS</button>
+</div>
+<table class="gap-table">
+<thead><tr>
+<th>Area / circuit</th>
+<th class="c">Schools on Omnischools</th>
+<th class="c">JHS-age population</th>
+<th class="c">Recorded JHS enrolment</th>
+<th class="c">Recorded rate</th>
+<th class="c">Unmeasured gap</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><div class="area-name">Asankrangwa Central</div></td>
+<td><div class="num">12 / 12</div></td>
+<td><div class="num">1,043</div></td>
+<td><div class="num">986</div></td>
+<td><div class="num"><span class="rate-pill green">94.5%</span></div></td>
+<td><div class="num">57</div></td>
+</tr>
+<tr>
+<td><div class="area-name">Manso Amenfi</div></td>
+<td><div class="num">9 / 10</div></td>
+<td><div class="num">724</div></td>
+<td><div class="num">631</div></td>
+<td><div class="num"><span class="rate-pill warn">87.2%</span></div></td>
+<td><div class="num">93</div></td>
+</tr>
+<tr>
+<td><div class="area-name">Samreboi</div></td>
+<td><div class="num">7 / 10</div></td>
+<td><div class="num">681</div></td>
+<td><div class="num">548</div></td>
+<td><div class="num"><span class="rate-pill terra">80.5%</span></div></td>
+<td><div class="num">133</div></td>
+</tr>
+<tr>
+<td><div class="area-name">Dadwen &amp; outlying</div></td>
+<td><div class="num">6 / 8</div></td>
+<td><div class="num">683</div></td>
+<td><div class="num">578</div></td>
+<td><div class="num"><span class="rate-pill terra">84.6%</span></div></td>
+<td><div class="num">105</div></td>
+</tr>
+<tr class="total-row">
+<td>District total · JHS</td>
+<td><div class="num">34 / 40</div></td>
+<td><div class="num">3,131</div></td>
+<td><div class="num">2,743</div></td>
+<td><div class="num"><span class="rate-pill warn">87.6%</span></div></td>
+<td><div class="num">388</div></td>
+</tr>
+</tbody>
+</table>
+<div style="font-size:10.5px; color:var(--navy-3); padding:12px 22px; line-height:1.55;">JHS stage shown · toggle stage above. Read the gap column <b>through the coverage column</b>. Asankrangwa Central is at 12/12 schools — its 57-child gap is genuinely unmeasured-but-small. Samreboi is at 7/10 — much of its larger gap is the <b>3 missing schools</b>, so its 80.5% is partly a coverage artefact, not confirmed local under-enrolment. The circuit to truly worry about is one with <b>full coverage and a wide gap</b>; the way to find it is to onboard the missing schools.</div>
+</div>
+
+<div class="compare-strip">
+<div class="cs-body">
+<div class="cs-eyebrow">Stays stage-for-stage in comparison</div>
+<div class="cs-title">Set this against <em>neighbouring districts.</em></div>
+<div class="cs-text">Open the comparison workspace to put Wassa Amenfi West's recorded stage enrolment rates beside <b>Wassa Amenfi East, Wassa Amenfi Central, Prestea-Huni Valley</b>. The age-matched method holds: each district's JHS enrolment is measured against its own JHS-age population. The comparison also shows each district's <b>school coverage</b> — so a director never reads a well-covered district's rate against a poorly-covered one as if they were equivalent. Comparison is scoped to your jurisdiction ceiling — sibling districts, not other regions.</div>
+</div>
+<div class="cs-action"><button class="btn gold lg">Open comparison workspace →</button></div>
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Sub-area</b> · GES circuits within the district</div>
+<div class="pv-item"><b>Each rate</b> · recorded circuit enrolment ÷ that circuit's age-matched population</div>
+<div class="pv-item"><b>Read with coverage</b> · a low rate at partial coverage is not confirmed under-enrolment</div>
+<div class="pv-item"><b>Comparison ceiling</b> · sibling districts · not cross-region</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The gap has a location — read through coverage</h4>
+<ul>
+<li><b>The circuit table adds a coverage column, and it changes everything.</b> A circuit's recorded rate cannot be read without knowing how many of its schools are on Omnischools. Samreboi's 80.5% looks like the worst under-enrolment in the district — but at 7 of 10 schools, much of that gap is simply the 3 schools we cannot see. Asankrangwa Central's smaller gap is more trustworthy precisely because it is at full 12/12 coverage.</li>
+<li><b>The circuit to worry about is "full coverage, wide gap."</b> The surface says this explicitly: a low rate plus partial coverage is ambiguous; a low rate plus full coverage is a real signal. This reframes the director's task — first close coverage, then read the gap — rather than chasing what might be an artefact.</li>
+<li><b>Onboarding the missing schools is the resolution, and the surface keeps saying so.</b> Every level — the banner split, the stage bands, this circuit table — points to the same fix: get all 40 schools reporting. That converts an unmeasured gap into a measured one. It is the recurring call to action because it is the honest one.</li>
+<li><b>Every circuit row keeps the matched-age rule.</b> Samreboi's rate is its recorded JHS enrolment over Samreboi's JHS-age population. The stage-for-stage discipline holds at circuit level; coverage is the second caveat layered on top, not a replacement for it.</li>
+<li><b>Cross-signal corroboration still helps — carefully.</b> Samreboi shows a wide gap, the worst PTR, and the steepest BECE drop. PTR and BECE come from schools that <em>are</em> on Omnischools, so they are measured; together they make Samreboi worth a visit even though its enrolment gap alone is coverage-ambiguous.</li>
+<li><b>Comparison against neighbours preserves the method.</b> Putting Wassa Amenfi West beside Wassa Amenfi East stays stage-for-stage and should also surface each district's coverage, so a director never compares a well-covered district's rate against a poorly-covered one as if equal.</li>
+<li><b>This surface completes the signature analysis — honestly.</b> Method and its blind spot (section 1), the district result split into explainable and signal (section 2), and where the gap sits read through coverage (section 3). Oversight's reason to exist as a separate product, built without overclaiming what partial coverage can show.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — WhatsApp inbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+  --wa-bg: #E7F8EE;
+  --wa-chat-bg: #ECE5DD;
+  --wa-msg-bg-out: #DCF8C6;
+  --wa-msg-bg-in: #FFFFFF;
+  --wa-system: #FFF4D0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 380px 1fr 280px;
+  min-height: 760px;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--terra);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 100px;
+  min-width: 20px;
+  text-align: center;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+/* INBOX LIST PANE */
+.inbox-list {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  min-height: 0;
+}
+.inbox-head {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.inbox-head .top-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.inbox-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.inbox-head h2 em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 400;
+}
+.inbox-search {
+  width: 100%;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 100px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--navy);
+}
+.inbox-search::placeholder { color: var(--navy-3); font-style: italic; }
+.inbox-search:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+  border-color: var(--gold);
+}
+
+.filter-tabs {
+  display: flex;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  gap: 2px;
+}
+.filter-tab {
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 5px;
+}
+.filter-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--gold);
+}
+.filter-tab .count {
+  background: var(--bg);
+  color: var(--navy-3);
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+.filter-tab.active .count {
+  background: var(--gold);
+  color: var(--navy);
+}
+.filter-tab.urgent { color: var(--terra); }
+.filter-tab.urgent .count { background: var(--terra-bg); color: var(--terra); }
+.filter-tab.urgent.active .count { background: var(--terra); color: white; }
+
+.conversation-list {
+  flex: 1;
+  overflow-y: auto;
+}
+.conv-item {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  position: relative;
+}
+.conv-item:hover { background: var(--bg); }
+.conv-item.active {
+  background: var(--gold-bg);
+  border-left: 3px solid var(--gold);
+  padding-left: 13px;
+}
+.conv-item.unread { background: var(--surface); }
+.conv-item.unread::before {
+  content: "";
+  position: absolute;
+  left: 6px; top: 50%;
+  transform: translateY(-50%);
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--terra);
+}
+
+.conv-item .av {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  flex-shrink: 0;
+  position: relative;
+}
+.conv-item .av .status-dot {
+  position: absolute;
+  bottom: -2px; right: -2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+}
+.conv-item.active .av .status-dot { border-color: var(--gold-bg); }
+.conv-item .av .status-dot.open { background: var(--wa-green); }
+.conv-item .av .status-dot.closing { background: var(--gold); }
+.conv-item .av .status-dot.closed { background: var(--navy-3); }
+
+.conv-item .body { min-width: 0; }
+.conv-item .body .top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 2px;
+}
+.conv-item .body .name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+}
+.conv-item.unread .body .name { font-weight: 700; }
+.conv-item .body .time {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.conv-item.unread .body .time { color: var(--terra); font-weight: 700; }
+.conv-item .body .student-context {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+.conv-item .body .preview {
+  font-size: 12px;
+  color: var(--navy-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+  line-height: 1.4;
+}
+.conv-item.unread .body .preview { color: var(--navy-2); font-weight: 500; }
+.conv-item .body .preview .me-tag { color: var(--navy-3); font-weight: 600; }
+.conv-item .body .bottom {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 4px;
+  gap: 6px;
+}
+.conv-item .body .unread-badge {
+  background: var(--terra);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 100px;
+  min-width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.window-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 100px;
+}
+.window-pill.open { background: var(--green-bg); color: var(--green); }
+.window-pill.closing { background: var(--gold-bg); color: var(--gold); }
+.window-pill.closed { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+
+/* CONVERSATION PANE */
+.conv-pane {
+  background: var(--wa-chat-bg);
+  display: flex; flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+.conv-pane::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 25% 35%, rgba(200,151,91,0.04) 0%, transparent 35%),
+    radial-gradient(circle at 75% 65%, rgba(26,43,71,0.04) 0%, transparent 35%);
+  pointer-events: none;
+  z-index: 0;
+}
+.conv-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 18px;
+  display: flex; align-items: center; gap: 12px;
+  position: relative; z-index: 1;
+}
+.conv-header .av-big {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.conv-header .info { flex: 1; min-width: 0; }
+.conv-header .name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.005em;
+}
+.conv-header .meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.conv-header .meta b { color: var(--gold); font-weight: 700; }
+.conv-header .actions { display: flex; gap: 4px; }
+.conv-header-btn {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 600;
+}
+.conv-header-btn:hover {
+  background: var(--bg);
+  color: var(--gold);
+  border-color: var(--gold-soft);
+}
+
+.window-strip {
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  position: relative; z-index: 1;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.window-strip.open { background: var(--green-bg); color: var(--green); }
+.window-strip.closing { background: var(--gold-bg); color: var(--gold); }
+.window-strip.closed { background: var(--bg); color: var(--navy-3); }
+.window-strip .icon {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+  background: rgba(0,0,0,0.08);
+}
+.window-strip.open .icon { background: var(--green); color: white; }
+.window-strip.closing .icon { background: var(--gold); color: var(--navy); }
+.window-strip.closed .icon { background: var(--navy-3); color: white; }
+.window-strip b { font-family: 'Fraunces', serif; font-weight: 600; }
+
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex; flex-direction: column;
+  gap: 4px;
+  position: relative; z-index: 1;
+}
+.day-divider {
+  text-align: center;
+  margin: 12px auto;
+  font-size: 11px;
+  color: var(--navy-3);
+  background: var(--wa-system);
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-weight: 600;
+  align-self: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.message {
+  max-width: 70%;
+  display: flex;
+  position: relative;
+  margin-bottom: 2px;
+}
+.message.in { align-self: flex-start; }
+.message.out { align-self: flex-end; }
+.message .bubble {
+  padding: 7px 10px 8px 12px;
+  border-radius: 8px;
+  position: relative;
+  font-size: 13px;
+  line-height: 1.45;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--navy);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.08);
+}
+.message.in .bubble { background: var(--wa-msg-bg-in); border-radius: 0 8px 8px 8px; }
+.message.out .bubble { background: var(--wa-msg-bg-out); border-radius: 8px 0 8px 8px; }
+.message .bubble .text { white-space: pre-wrap; padding-right: 50px; }
+.message .bubble .meta-row {
+  display: flex; align-items: center; gap: 4px;
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+  font-size: 10px;
+  color: rgba(26,43,71,0.55);
+}
+.message .bubble .meta-row .checks { color: #34B7F1; font-weight: 700; }
+.message .bubble .template-tag {
+  display: inline-flex;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: rgba(37,168,89,0.15);
+  color: var(--wa-green);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-bottom: 4px;
+}
+.message .bubble .doc-attach {
+  background: rgba(0,0,0,0.04);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex; align-items: center; gap: 9px;
+  margin-bottom: 6px;
+}
+.message .bubble .doc-attach .doc-icon {
+  width: 28px; height: 28px;
+  background: var(--terra);
+  color: white;
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 9px;
+  flex-shrink: 0;
+}
+.message .bubble .doc-attach .doc-info { min-width: 0; }
+.message .bubble .doc-attach .doc-name {
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.message .bubble .doc-attach .doc-meta { font-size: 10px; color: var(--navy-3); }
+
+.message.note {
+  align-self: stretch;
+  max-width: 100%;
+  margin: 8px 0;
+}
+.message.note .bubble {
+  background: var(--gold-bg);
+  border: 1px dashed var(--gold);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 12px;
+  color: var(--navy-2);
+  box-shadow: none;
+}
+.message.note .bubble .note-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+.message.note .bubble .note-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* COMPOSE AREA */
+.compose-area {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px 14px;
+  position: relative; z-index: 1;
+}
+.compose-tools {
+  display: flex; gap: 6px; align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.compose-mode-toggle {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 2px;
+  margin-right: 6px;
+}
+.compose-mode-toggle .mode-tile {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+  border-radius: 100px;
+  display: flex; align-items: center; gap: 5px;
+}
+.compose-mode-toggle .mode-tile.active.reply { background: var(--wa-green); color: white; }
+.compose-mode-toggle .mode-tile.active.note { background: var(--gold); color: var(--navy); }
+
+.quick-reply-chip {
+  padding: 5px 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-2);
+  cursor: pointer;
+  font-family: inherit;
+}
+.quick-reply-chip:hover {
+  background: var(--gold-bg);
+  border-color: var(--gold-soft);
+  color: var(--navy);
+}
+.quick-reply-chip .icon { margin-right: 3px; color: var(--gold); }
+
+.compose-input-row {
+  display: grid;
+  grid-template-columns: 32px 1fr 38px;
+  gap: 8px;
+  align-items: end;
+}
+.compose-attach {
+  width: 32px; height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--navy-3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+.compose-attach:hover { color: var(--gold); border-color: var(--gold-soft); }
+.compose-input {
+  width: 100%;
+  padding: 9px 14px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--navy);
+  resize: none;
+  min-height: 36px;
+  line-height: 1.4;
+}
+.compose-input::placeholder { color: var(--navy-3); font-style: italic; }
+.compose-input:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+  border-color: var(--gold);
+}
+.compose-area.note-mode .compose-input {
+  background: var(--gold-bg);
+  border-color: var(--gold-soft);
+}
+.compose-send {
+  width: 36px; height: 36px;
+  background: var(--wa-green);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.compose-send.note-mode { background: var(--gold); color: var(--navy); }
+
+.closed-window-banner {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--navy-2);
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+  line-height: 1.5;
+}
+.closed-window-banner .ic {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--navy-3);
+  color: white;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.closed-window-banner b { color: var(--navy); font-weight: 600; }
+
+.template-picker-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.template-picker-card .tp-head {
+  padding: 10px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.template-picker-card .tp-head .view-all {
+  font-size: 10px;
+  color: var(--gold);
+  cursor: pointer;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.template-row-mini {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+}
+.template-row-mini:last-child { border-bottom: none; }
+.template-row-mini:hover { background: var(--gold-bg); }
+.template-row-mini .t-icon {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.template-row-mini .body .name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+}
+.template-row-mini .body .preview {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+  font-style: italic;
+}
+.template-row-mini .arrow { color: var(--navy-3); font-weight: 700; font-size: 14px; }
+
+.sms-fallback {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.sms-fallback .ic {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+}
+.sms-fallback .body { font-size: 11px; line-height: 1.5; color: var(--navy-2); }
+.sms-fallback .body b { color: var(--navy); font-weight: 600; }
+.sms-fallback .switch-btn {
+  background: var(--surface);
+  border: 1px solid var(--gold);
+  color: var(--navy);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 100px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+/* CONTEXT PANE */
+.context-pane {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+  gap: 14px;
+}
+.ctx-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.ctx-card .ctx-head {
+  padding: 10px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.ctx-card .ctx-body { padding: 12px 14px; }
+
+.guardian-card .av-large {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  margin: 0 auto 10px;
+}
+.guardian-card .name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.005em;
+  text-align: center;
+}
+.guardian-card .phone {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  margin-top: 2px;
+  margin-bottom: 12px;
+}
+.ctx-stat-row {
+  display: flex; justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px dashed var(--border);
+  font-size: 11px;
+}
+.ctx-stat-row:first-of-type { border-top: none; }
+.ctx-stat-row .l { color: var(--navy-3); }
+.ctx-stat-row .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 12px;
+}
+
+.student-mini {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 10px;
+  padding: 6px 0;
+  align-items: center;
+  border-top: 1px dashed var(--border);
+}
+.student-mini:first-of-type { border-top: none; padding-top: 4px; }
+.student-mini .av {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+}
+.student-mini .body .name { font-weight: 600; font-size: 12px; }
+.student-mini .body .meta { font-size: 10px; color: var(--navy-3); margin-top: 1px; }
+
+.fee-status-pill {
+  display: inline-flex;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-top: 3px;
+}
+.fee-status-pill.paid { background: var(--green-bg); color: var(--green); }
+.fee-status-pill.due { background: var(--terra-bg); color: var(--terra); }
+.fee-status-pill.partial { background: var(--gold-bg); color: var(--gold); }
+
+.action-btn-list { display: flex; flex-direction: column; gap: 5px; }
+.action-btn-list .ab {
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-2);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  display: flex; align-items: center; gap: 8px;
+}
+.action-btn-list .ab:hover {
+  border-color: var(--gold);
+  color: var(--navy);
+  background: var(--gold-bg);
+}
+.action-btn-list .ab .ab-icon {
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.window-timeline-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 11px;
+  align-items: baseline;
+}
+.window-timeline-row .wt-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--navy-3);
+  white-space: nowrap;
+}
+.window-timeline-row .wt-event { color: var(--navy-2); }
+.window-timeline-row .wt-event b { color: var(--navy); font-weight: 600; }
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 220px 320px 1fr; }
+  .context-pane { display: none; }
+}
+@media (max-width: 1000px) {
+  .app-shell { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Inbox</div>
+  <h1 class="display">When parents <em>reply</em></h1>
+  <div class="gold-rule"></div>
+  <p>WhatsApp Business is two-way. Parents reply to template messages, ask questions, share concerns. The inbox is where school admin sees those replies and answers them. The 24-hour conversation window mechanic shapes everything: when it's open, you can reply with anything; when it closes, only approved templates can re-engage.</p>
+</header>
+
+<!-- 01 INBOX LIST + ACTIVE OPEN CONVERSATION -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Inbox · open conversation</div>
+    <div class="section-meta">Admin · Inbox &gt; Open</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / inbox / conv-2026-0182</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item active"><div class="ic"></div>Inbox<span class="badge">7</span></div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <aside class="inbox-list">
+          <div class="inbox-head">
+            <div class="top-row">
+              <h2 class="display"><em>Inbox</em></h2>
+              <span style="font-size:10px;color:var(--navy-3);font-weight:700;letter-spacing:0.1em;text-transform:uppercase">WhatsApp</span>
+            </div>
+            <input class="inbox-search" placeholder="Search conversations, parents, students..." />
+          </div>
+
+          <div class="filter-tabs">
+            <div class="filter-tab urgent active">Urgent <span class="count">3</span></div>
+            <div class="filter-tab">Open <span class="count">12</span></div>
+            <div class="filter-tab">All <span class="count">47</span></div>
+            <div class="filter-tab">Unread <span class="count">7</span></div>
+            <div class="filter-tab">Closed <span class="count">35</span></div>
+            <div class="filter-tab">Mine <span class="count">5</span></div>
+          </div>
+
+          <div class="conversation-list">
+            <div class="conv-item active">
+              <div class="av">PB<div class="status-dot closing"></div></div>
+              <div class="body">
+                <div class="top">
+                  <div class="name">Patricia Boateng</div>
+                  <div class="time">10:42</div>
+                </div>
+                <div class="student-context">re: Akosua Boateng · JHS 2A · payment dispute</div>
+                <div class="preview"><span class="me-tag">You:</span> I've checked with MTN — the GHS 340 was credited back to your...</div>
+                <div class="bottom">
+                  <span class="window-pill closing">22h left</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="conv-item unread">
+              <div class="av">EQ<div class="status-dot open"></div></div>
+              <div class="body">
+                <div class="top">
+                  <div class="name">Esther Quaye</div>
+                  <div class="time">10:38</div>
+                </div>
+                <div class="student-context">re: Kofi Quaye · JHS 1B</div>
+                <div class="preview">Good morning, please Kofi is unwell today and won't be in school...</div>
+                <div class="bottom">
+                  <span class="window-pill open">Open</span>
+                  <div class="unread-badge">2</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="conv-item">
+              <div class="av">KA<div class="status-dot open"></div></div>
+              <div class="body">
+                <div class="top">
+                  <div class="name">Kofi Adjei</div>
+                  <div class="time">09:24</div>
+                </div>
+                <div class="student-context">re: Daniel Adjei · JHS 3A · PTA confirmation</div>
+                <div class="preview"><span class="me-tag">You:</span> Wonderful, see you Friday at 4:30. The hall is on the second floor.</div>
+                <div class="bottom">
+                  <span class="window-pill open">Open</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="conv-item unread">
+              <div class="av">MA<div class="status-dot open"></div></div>
+              <div class="body">
+                <div class="top">
+                  <div class="name">Mary Asante</div>
+                  <div class="time">Yesterday</div>
+                </div>
+                <div class="student-context">re: Yaa Asante · JHS 2A · fees</div>
+                <div class="preview">Madam, I want to ask if I can pay the fees in 2 instalments? I get my salary on...</div>
+                <div class="bottom">
+                  <span class="window-pill open">Open</span>
+                  <div class="unread-badge">1</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="conv-item">
+              <div class="av">AO<div class="status-dot open"></div></div>
+              <div class="body">
+                <div class="top">
+                  <div class="name">Ama Owusu</div>
+                  <div class="time">Yesterday</div>
+                </div>
+                <div class="student-context">re: Kwame Owusu · JHS 1A</div>
+                <div class="preview">Thank you very much madam, I have received the report. God bless you.</div>
+                <div class="bottom">
+                  <span class="window-pill open">Open</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="conv-item">
+              <div class="av">JM<div class="status-dot open"></div></div>
+              <div class="body">
+                <div class="top">
+                  <div class="name">Joseph Mensah</div>
+                  <div class="time">Mon</div>
+                </div>
+                <div class="student-context">re: Linda Mensah · JHS 3B · address change</div>
+                <div class="preview"><span class="me-tag">You:</span> I've updated the records, thank you for letting us know.</div>
+                <div class="bottom">
+                  <span class="window-pill open">Open</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="conv-item">
+              <div class="av">SO<div class="status-dot closed"></div></div>
+              <div class="body">
+                <div class="top">
+                  <div class="name">Stephen Owusu</div>
+                  <div class="time">28 Apr</div>
+                </div>
+                <div class="student-context">re: Joana Owusu · JHS 2B</div>
+                <div class="preview">Noted, thank you.</div>
+                <div class="bottom">
+                  <span class="window-pill closed">Closed</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <main class="conv-pane">
+          <div class="conv-header">
+            <div class="av-big">PB</div>
+            <div class="info">
+              <div class="name">Patricia Boateng</div>
+              <div class="meta">guardian of <b>Akosua Boateng</b> · JHS 2A · +233 24 555 0182</div>
+            </div>
+            <div class="actions">
+              <button class="conv-header-btn" title="Pin">📌</button>
+              <button class="conv-header-btn" title="Mark unread">●</button>
+              <button class="conv-header-btn" title="More">⋯</button>
+            </div>
+          </div>
+
+          <div class="window-strip open">
+            <div class="icon">✓</div>
+            <div><b>Open conversation window</b> — you can reply freely until <b>4:30 PM tomorrow</b> · 22h 18m left</div>
+          </div>
+
+          <div class="messages-area">
+
+            <div class="day-divider">Yesterday</div>
+
+            <div class="message out">
+              <div class="bubble">
+                <div class="template-tag">Template · payment_confirmation_v3</div>
+                <div class="text">Hello Patricia, your payment of GHS 340.00 for Akosua Boateng has been received. Receipt RCT-2026-0541 is attached.
+
+Thank you.
+
+- Christ the King JHS</div>
+                <div class="meta-row">2:42 PM <span class="checks">✓✓</span></div>
+              </div>
+            </div>
+
+            <div class="message in">
+              <div class="bubble">
+                <div class="text">Madam, I did not make this payment. Please check again, I think there is some mistake. The MoMo was for my other transaction, not for school fees. Akosua already paid last week.</div>
+                <div class="meta-row">4:30 PM</div>
+              </div>
+            </div>
+
+            <div class="message note">
+              <div class="bubble">
+                <div class="note-tag">🔒 Internal note · not sent to parent</div>
+                <div>Called Patricia at 4:48 PM. She confirmed the payment was processed but she didn't authorise it — looks like family member used her MoMo wallet. Investigating with MTN merchant team. Refund likely. Will update tomorrow.</div>
+                <div class="note-meta">— Florence Addo · yesterday at 4:52 PM</div>
+              </div>
+            </div>
+
+            <div class="message out">
+              <div class="bubble">
+                <div class="text">Patricia, thank you for letting us know. I'll check with our accounts team and get back to you tomorrow morning. I can see the payment came through MoMo TXN78199 — we'll trace it.</div>
+                <div class="meta-row">4:55 PM <span class="checks">✓✓</span></div>
+              </div>
+            </div>
+
+            <div class="day-divider">Today</div>
+
+            <div class="message out">
+              <div class="bubble">
+                <div class="text">Good morning Patricia. I've checked with MTN — the GHS 340 was credited back to your number this morning. The payment record on our side has been voided and Akosua's fees still show as paid from last week's payment.
+
+Apologies for the confusion. Receipt RCT-R-2026-0042 attached.</div>
+                <div class="doc-attach">
+                  <div class="doc-icon">PDF</div>
+                  <div class="doc-info">
+                    <div class="doc-name">RCT-R-2026-0042_refund.pdf</div>
+                    <div class="doc-meta">142 KB · refund receipt</div>
+                  </div>
+                </div>
+                <div class="meta-row">10:42 AM <span class="checks">✓✓</span></div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="compose-area">
+            <div class="compose-tools">
+              <div class="compose-mode-toggle">
+                <div class="mode-tile active reply">💬 Reply</div>
+                <div class="mode-tile note">🔒 Note</div>
+              </div>
+              <span style="font-size:10px;color:var(--navy-3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-right:4px">Quick:</span>
+              <button class="quick-reply-chip"><span class="icon">✓</span> Acknowledged</button>
+              <button class="quick-reply-chip"><span class="icon">✓</span> Will look into this</button>
+              <button class="quick-reply-chip"><span class="icon">📅</span> Mock exams: 19-23 May</button>
+              <button class="quick-reply-chip"><span class="icon">+</span> More</button>
+            </div>
+
+            <div class="compose-input-row">
+              <button class="compose-attach" title="Attach">📎</button>
+              <textarea class="compose-input" placeholder="Reply to Patricia..."></textarea>
+              <button class="compose-send">→</button>
+            </div>
+          </div>
+        </main>
+
+        <aside class="context-pane">
+          <div class="ctx-card guardian-card">
+            <div class="ctx-head">Guardian</div>
+            <div class="ctx-body">
+              <div class="av-large">PB</div>
+              <div class="name">Patricia Boateng</div>
+              <div class="phone">+233 24 555 0182</div>
+              <div class="ctx-stat-row">
+                <div class="l">Opted-in WhatsApp</div>
+                <div class="v">15 Jan 2026</div>
+              </div>
+              <div class="ctx-stat-row">
+                <div class="l">Conversations</div>
+                <div class="v">8 · this term</div>
+              </div>
+              <div class="ctx-stat-row">
+                <div class="l">Avg response time</div>
+                <div class="v">14 min</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ctx-card">
+            <div class="ctx-head">Children at this school</div>
+            <div class="ctx-body">
+              <div class="student-mini">
+                <div class="av">AB</div>
+                <div class="body">
+                  <div class="name">Akosua Boateng</div>
+                  <div class="meta">JHS 2A · CTK-2024-018</div>
+                  <span class="fee-status-pill paid">Fees · paid in full</span>
+                </div>
+              </div>
+              <div class="student-mini">
+                <div class="av">KB</div>
+                <div class="body">
+                  <div class="name">Kofi Boateng</div>
+                  <div class="meta">JHS 1B · CTK-2024-029</div>
+                  <span class="fee-status-pill partial">Fees · 60% paid</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ctx-card">
+            <div class="ctx-head">Quick actions</div>
+            <div class="ctx-body">
+              <div class="action-btn-list">
+                <button class="ab"><span class="ab-icon">$</span>View Akosua's billing</button>
+                <button class="ab"><span class="ab-icon">A</span>View Akosua's grades</button>
+                <button class="ab"><span class="ab-icon">S</span>Open student record</button>
+                <button class="ab"><span class="ab-icon">→</span>Assign to colleague</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ctx-card">
+            <div class="ctx-head">This conversation</div>
+            <div class="ctx-body">
+              <div class="ctx-stat-row">
+                <div class="l">Started</div>
+                <div class="v">Yesterday · 2:42 PM</div>
+              </div>
+              <div class="ctx-stat-row">
+                <div class="l">Triggered by</div>
+                <div class="v" style="font-family:'JetBrains Mono',monospace;font-size:11px">payment_confirmation_v3</div>
+              </div>
+              <div class="ctx-stat-row">
+                <div class="l">Cost so far</div>
+                <div class="v">GHS 0.18</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Inbox added as top-level sidebar nav</b> with an unread count badge (7). The inbox is the response surface for an entire two-way channel; nesting it inside Announcements would underplay it.</li>
+        <li><b>Three-pane layout: list / conversation / context.</b> Email-style two-pane wouldn't be enough — answering a parent question well needs the student's billing status and grades visible without leaving the conversation. The right pane is the school context that turns an okay reply into a great one.</li>
+        <li><b>Filter tabs:</b> Urgent / Open / All / Unread / Closed / Mine. <b>"Urgent" is first and styled in terra</b> — these are conversations with closing windows or unread messages, the highest priority. "Mine" prepares for MVP2+ multi-admin assignment.</li>
+        <li><b>Conversation rows show window status three ways:</b> small status dot on the avatar (green/gold/grey), window pill in the bottom-right (Open / 22h left / Closed), and the row treatment. Multiple visual reinforcements because the window state is consequential.</li>
+        <li><b>Student context line under the name:</b> "re: Akosua Boateng · JHS 2A · payment dispute" combines the student's name with a topic. Prevents the "wait, who's Patricia?" moment when scanning.</li>
+        <li><b>Conversation pane uses WhatsApp visual conventions:</b> chat-background colour with subtle pattern, day dividers in warm yellow, school's outbound in green-tinted bubbles, parent's inbound in white. Familiar mental model for admin who use WhatsApp daily.</li>
+        <li><b>Window strip immediately below header</b> — green when open, gold when closing soon, grey when closed. Always-visible reminder of whether free-form reply is allowed. <b>"22h 18m left"</b> is precise so admin knows whether to type now or send a template.</li>
+        <li><b>Template tag on outbound template messages</b> ("Template · payment_confirmation_v3") in green caps inside the bubble. Distinguishes templated messages from free-form replies — useful in audit and in spotting where a conversation began.</li>
+        <li><b>Internal notes inline as gold-bordered blocks.</b> Critical for audit. Admin called Patricia, made notes — that activity becomes visible in the conversation flow without going to the parent. The 🔒 lock icon and "not sent to parent" text removes ambiguity.</li>
+        <li><b>Compose-mode toggle:</b> Reply (green) vs Note (gold). Mode-aware visual treatment carries through: in note mode, the input field tints gold and the send button becomes gold. <b>The mode is an explicit choice;</b> admin can't accidentally send an internal note as a reply or vice-versa.</li>
+        <li><b>Quick-reply chips above the input.</b> "Acknowledged", "Will look into this", and a context-aware date chip ("Mock exams: 19-23 May" — auto-generated from a prior internal note). Click to insert; admin can still edit before sending.</li>
+        <li><b>Right context pane:</b> Guardian card, Children at this school, Quick actions, Conversation metadata. Each card answers a different question. The fee-status pills tell admin Akosua is paid up but Kofi is at 60%; quick actions let admin jump to billing/grades without losing the conversation.</li>
+        <li><b>Conversation cost shown in the context pane:</b> "Cost so far GHS 0.18" — single conversation cost regardless of message count. Helps admin internalise WhatsApp's economics.</li>
+        <li><b>"Assign to colleague" button is present but flagged for MVP2+.</b> The wireframe shows where it lives so the data model supports it from day one, even if multi-admin assignment doesn't ship in MVP1.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 02 CLOSED-WINDOW STATE -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Closed-window state · template re-engagement</div>
+    <div class="section-meta">Admin · selected an old conversation</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / inbox / conv-2026-0094</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item active"><div class="ic"></div>Inbox<span class="badge">7</span></div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <aside class="inbox-list" style="opacity:0.5;pointer-events:none">
+          <div class="inbox-head">
+            <div class="top-row">
+              <h2 class="display"><em>Inbox</em></h2>
+              <span style="font-size:10px;color:var(--navy-3);font-weight:700;letter-spacing:0.1em;text-transform:uppercase">WhatsApp</span>
+            </div>
+            <input class="inbox-search" placeholder="Search conversations..." />
+          </div>
+          <div class="filter-tabs">
+            <div class="filter-tab">Urgent <span class="count">3</span></div>
+            <div class="filter-tab">Open <span class="count">12</span></div>
+            <div class="filter-tab">All <span class="count">47</span></div>
+            <div class="filter-tab">Unread <span class="count">7</span></div>
+            <div class="filter-tab active">Closed <span class="count">35</span></div>
+            <div class="filter-tab">Mine <span class="count">5</span></div>
+          </div>
+
+          <div class="conversation-list">
+            <div class="conv-item active">
+              <div class="av">SO<div class="status-dot closed"></div></div>
+              <div class="body">
+                <div class="top">
+                  <div class="name">Stephen Owusu</div>
+                  <div class="time">28 Apr</div>
+                </div>
+                <div class="student-context">re: Joana Owusu · JHS 2B</div>
+                <div class="preview">Noted, thank you.</div>
+                <div class="bottom">
+                  <span class="window-pill closed">Closed</span>
+                </div>
+              </div>
+            </div>
+            <div class="conv-item">
+              <div class="av">EN<div class="status-dot closed"></div></div>
+              <div class="body">
+                <div class="top">
+                  <div class="name">Emmanuel Nuamah</div>
+                  <div class="time">26 Apr</div>
+                </div>
+                <div class="student-context">re: Faith Nuamah · JHS 1A</div>
+                <div class="preview">Thank you for the update on the trip.</div>
+                <div class="bottom">
+                  <span class="window-pill closed">Closed</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <main class="conv-pane">
+          <div class="conv-header">
+            <div class="av-big">SO</div>
+            <div class="info">
+              <div class="name">Stephen Owusu</div>
+              <div class="meta">guardian of <b>Joana Owusu</b> · JHS 2B · +233 50 333 0094</div>
+            </div>
+            <div class="actions">
+              <button class="conv-header-btn">📌</button>
+              <button class="conv-header-btn">●</button>
+              <button class="conv-header-btn">⋯</button>
+            </div>
+          </div>
+
+          <div class="window-strip closed">
+            <div class="icon">!</div>
+            <div><b>Conversation window closed</b> — last reply was <b>2 days, 4 hours ago</b>. Free-form messages no longer allowed; send an approved template to re-engage.</div>
+          </div>
+
+          <div class="messages-area" style="max-height:340px">
+
+            <div class="day-divider">28 April</div>
+
+            <div class="message out">
+              <div class="bubble">
+                <div class="template-tag">Template · pta_meeting_reminder</div>
+                <div class="text">Hello Stephen, this is a reminder of the PTA meeting on Friday 2 May at 4:30 PM in the assembly hall.
+
+We hope to see you there.
+
+- Christ the King JHS</div>
+                <div class="meta-row">10:14 AM <span class="checks">✓✓</span></div>
+              </div>
+            </div>
+
+            <div class="message in">
+              <div class="bubble">
+                <div class="text">Noted, thank you.</div>
+                <div class="meta-row">11:32 AM</div>
+              </div>
+            </div>
+
+            <div class="message out">
+              <div class="bubble">
+                <div class="text">Thank you Stephen, see you Friday.</div>
+                <div class="meta-row">11:38 AM <span class="checks">✓✓</span></div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="compose-area">
+
+            <div class="closed-window-banner">
+              <div class="ic">i</div>
+              <div><b>Free-form replies aren't available</b> for this conversation. To re-engage Stephen, send one of the approved templates below — once he replies, the window opens for 24 hours and you can reply with anything.</div>
+            </div>
+
+            <div class="template-picker-card">
+              <div class="tp-head">
+                <div>Suggested templates</div>
+                <div class="view-all">View all 12 →</div>
+              </div>
+              <div class="template-row-mini">
+                <div class="t-icon">F</div>
+                <div class="body">
+                  <div class="name">general_followup</div>
+                  <div class="preview">"Hello {parent_name}, I wanted to follow up on..."</div>
+                </div>
+                <div class="arrow">›</div>
+              </div>
+              <div class="template-row-mini">
+                <div class="t-icon">R</div>
+                <div class="body">
+                  <div class="name">term_report_ready_v1</div>
+                  <div class="preview">"Hello {parent_name}, {student_name}'s end-of-{term} report is ready..."</div>
+                </div>
+                <div class="arrow">›</div>
+              </div>
+              <div class="template-row-mini">
+                <div class="t-icon">M</div>
+                <div class="body">
+                  <div class="name">pta_meeting_reminder</div>
+                  <div class="preview">"PTA meeting at {school_name} on {date} at {time}..."</div>
+                </div>
+                <div class="arrow">›</div>
+              </div>
+            </div>
+
+            <div class="sms-fallback">
+              <div class="ic">↩</div>
+              <div class="body"><b>Or fall back to SMS.</b> If your message is urgent and doesn't fit any approved template, you can send Stephen an SMS instead. Costs ~GHS 0.05 and reaches him immediately without a window mechanic.</div>
+              <button class="switch-btn">Switch to SMS</button>
+            </div>
+
+          </div>
+        </main>
+
+        <aside class="context-pane">
+          <div class="ctx-card guardian-card">
+            <div class="ctx-head">Guardian</div>
+            <div class="ctx-body">
+              <div class="av-large">SO</div>
+              <div class="name">Stephen Owusu</div>
+              <div class="phone">+233 50 333 0094</div>
+              <div class="ctx-stat-row">
+                <div class="l">Opted-in WhatsApp</div>
+                <div class="v">22 Mar 2026</div>
+              </div>
+              <div class="ctx-stat-row">
+                <div class="l">Conversations</div>
+                <div class="v">3 · this term</div>
+              </div>
+              <div class="ctx-stat-row">
+                <div class="l">Avg response time</div>
+                <div class="v">2h 11m</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ctx-card">
+            <div class="ctx-head">Children at this school</div>
+            <div class="ctx-body">
+              <div class="student-mini">
+                <div class="av">JO</div>
+                <div class="body">
+                  <div class="name">Joana Owusu</div>
+                  <div class="meta">JHS 2B · CTK-2024-052</div>
+                  <span class="fee-status-pill paid">Fees · paid in full</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ctx-card">
+            <div class="ctx-head">Window timeline</div>
+            <div class="ctx-body">
+              <div class="window-timeline-row">
+                <div class="wt-time">28 Apr · 10:14</div>
+                <div class="wt-event"><b>Window opened</b> by pta_meeting_reminder</div>
+              </div>
+              <div class="window-timeline-row">
+                <div class="wt-time">28 Apr · 11:38</div>
+                <div class="wt-event">Last parent reply</div>
+              </div>
+              <div class="window-timeline-row">
+                <div class="wt-time">29 Apr · 11:38</div>
+                <div class="wt-event"><b>Window closed</b> · 24h after last reply</div>
+              </div>
+              <div class="window-timeline-row" style="border-top:1px dashed var(--border);margin-top:6px;padding-top:10px">
+                <div class="wt-time">Now</div>
+                <div class="wt-event">Closed for <b>2d 4h</b> · template only</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ctx-card">
+            <div class="ctx-head">Cost</div>
+            <div class="ctx-body">
+              <div class="ctx-stat-row">
+                <div class="l">This conversation</div>
+                <div class="v">GHS 0.18</div>
+              </div>
+              <div class="ctx-stat-row">
+                <div class="l">Status</div>
+                <div class="v" style="color:var(--navy-3);font-weight:600;font-style:italic">Closed</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Closed window has dramatically different compose treatment.</b> Instead of a text input that admin might mistakenly use, the entire compose area replaces with a closed-banner + template picker + SMS fallback. <b>The constraint is unmissable.</b></li>
+        <li><b>Window strip in grey</b> shows the closed state with precise duration ("2 days, 4 hours ago"). Same component as open-state; the visual treatment shifts so admin doesn't have to read words to know the state changed.</li>
+        <li><b>Closed-window banner explains the constraint</b> in plain language. "Free-form replies aren't available... once he replies, the window opens for 24 hours and you can reply with anything." Teaches the WhatsApp model without lecturing.</li>
+        <li><b>Suggested templates ranked by context.</b> The previous conversation was a PTA meeting reminder; the suggested templates start with general_followup (most reusable), then templates that fit similar contexts. Reduces decision time when admin knows what to send.</li>
+        <li><b>SMS fallback is the escape hatch.</b> Sometimes WhatsApp templates don't fit and the message is urgent. The SMS fallback option in gold makes the trade-off explicit: <b>"Costs ~GHS 0.05 and reaches him immediately without a window mechanic."</b> Honest about cost and character limits so admin chooses informed.</li>
+        <li><b>Window timeline in the context pane</b> shows the lifecycle — when the window opened (and by which template), when the parent last replied, when it closed, how long ago. Auditor reconstructs what happened in one glance.</li>
+        <li><b>Same conversation history is still readable above.</b> The closed state doesn't hide history; admin can still scroll through past messages. Only the forward action (composing) is constrained.</li>
+        <li><b>"Status: Closed" annotation in the cost card.</b> The cost is GHS 0.18 because that's what the conversation cost when it was active; the conversation isn't accruing more cost while closed. Admin sees the bill is settled.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

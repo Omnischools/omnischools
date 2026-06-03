@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — District, region, ownership · Oversight readiness</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+/* Desktop frame */
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:880px; }
+.brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.settings-sub { padding:8px 0; background:rgba(0,0,0,0.15); }
+.settings-sub-item { font-size:11px; padding:8px 24px 8px 50px; color:rgba(250,247,242,0.6); cursor:pointer; }
+.settings-sub-item.active { color:var(--bg); border-left:2px solid var(--gold); padding-left:48px; background:rgba(200,151,91,0.08); }
+.sidebar-footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar-footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar-footer .meta-name { font-weight:600; }
+.sidebar-footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+
+.main { background:var(--bg); }
+.page-head-c { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head-c .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head-c .crumb a { color:var(--gold); text-decoration:none; }
+.page-head-c .top-row { display:flex; justify-content:space-between; align-items:end; gap:24px; }
+.page-head-c h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head-c h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head-c .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:780px; line-height:1.55; }
+.page-head-c .lede b { color:var(--navy-2); font-weight:600; }
+.page-head-c .actions { display:flex; gap:8px; flex-shrink:0; }
+
+.body-c { padding:28px 36px 60px; max-width:900px; }
+
+/* Config card */
+.config-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+.config-card .head-cc { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:end; gap:14px; }
+.config-card .head-cc .text-l h3 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.005em; }
+.config-card .head-cc .text-l h3 em { font-style:italic; color:var(--gold); }
+.config-card .head-cc .text-l .desc-h { font-size:12px; color:var(--navy-3); margin-top:3px; line-height:1.5; }
+.config-card .head-cc .text-l .desc-h b { color:var(--navy-2); font-weight:600; }
+.config-card .head-cc .status-x { margin-left:auto; }
+.config-card .head-cc .status-x .pill-x { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.config-card .head-cc .status-x .pill-x.complete { background:var(--green-bg); color:var(--green); }
+.config-card .head-cc .status-x .pill-x.partial { background:var(--warn-bg); color:var(--warn); }
+.config-card .head-cc .status-x .pill-x .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.config-card .body-cc { padding:22px 24px; }
+
+/* Form fields */
+.field-pair { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.field-pair:last-child { margin-bottom:0; }
+.field-x .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.field-x .lab .star { color:var(--terra); }
+.field-x .lab .info-ic { width:14px; height:14px; border-radius:50%; background:var(--bg); color:var(--navy-3); display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; font-style:italic; font-family:'Fraunces',serif; cursor:help; }
+.field-x .input-c { background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:11px 14px; font-size:13px; color:var(--navy); font-weight:500; display:flex; align-items:center; gap:8px; }
+.field-x .input-c.dropdown::after { content:"▾"; margin-left:auto; color:var(--navy-3); font-size:11px; }
+.field-x .input-c.locked { background:var(--gold-bg); border-color:var(--gold-soft); }
+.field-x .input-c em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.field-x .helper-x { font-size:10px; color:var(--navy-3); margin-top:5px; line-height:1.5; font-style:italic; }
+.field-x .helper-x b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Ownership pills */
+.ownership-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; }
+.own-pick { background:var(--bg); border:1.5px solid var(--border); border-radius:9px; padding:14px 12px; cursor:pointer; text-align:center; }
+.own-pick.selected { border-color:var(--gold); background:var(--gold-bg); }
+.own-pick .ic-sq { width:36px; height:36px; border-radius:8px; margin:0 auto 8px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; }
+.own-pick.public .ic-sq { background:var(--navy); color:var(--bg); }
+.own-pick.private .ic-sq { background:var(--gold); color:var(--navy); }
+.own-pick.mission .ic-sq { background:var(--green-bg); color:var(--green); border:1px solid #C8DDC9; }
+.own-pick.intl .ic-sq { background:var(--surface); color:var(--navy); border:1.5px solid var(--navy); }
+.own-pick h4 { font-family:'Fraunces',serif; font-size:13px; font-weight:600; letter-spacing:-0.005em; margin-bottom:3px; }
+.own-pick h4 em { font-style:italic; color:var(--gold); }
+.own-pick .own-sub { font-size:10px; color:var(--navy-3); line-height:1.4; }
+
+/* Data sharing toggle */
+.sharing-toggle { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 22px; display:grid; grid-template-columns:1fr 56px; gap:18px; align-items:center; }
+.sharing-toggle.enabled { background:var(--green-bg); border-color:#C8DDC9; }
+.sharing-toggle .left { }
+.sharing-toggle .left h4 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; margin-bottom:4px; }
+.sharing-toggle .left h4 em { font-style:italic; color:var(--gold); }
+.sharing-toggle .left .desc-st { font-size:11px; color:var(--navy-3); line-height:1.5; }
+.sharing-toggle .left .desc-st b { color:var(--navy-2); font-weight:600; }
+.sharing-toggle .switch { width:44px; height:24px; background:var(--border-2); border-radius:100px; position:relative; cursor:pointer; }
+.sharing-toggle.enabled .switch { background:var(--green); }
+.sharing-toggle .switch::after { content:""; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:var(--surface); transition:left 0.15s ease; box-shadow:0 1px 4px rgba(0,0,0,0.15); }
+.sharing-toggle.enabled .switch::after { left:22px; }
+
+.sharing-meta { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 18px; margin-top:12px; font-size:11px; color:var(--navy-2); line-height:1.6; }
+.sharing-meta b { color:var(--navy); font-weight:600; }
+.sharing-meta em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+
+/* Scope checklist */
+.scope-list { margin-top:14px; }
+.scope-item { display:grid; grid-template-columns:24px 1fr; gap:12px; padding:11px 14px; border-radius:8px; align-items:center; }
+.scope-item:nth-child(odd) { background:var(--bg); }
+.scope-item .check-sq { width:18px; height:18px; border-radius:4px; border:2px solid var(--gold); background:var(--gold); position:relative; }
+.scope-item .check-sq::after { content:"✓"; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:var(--navy); font-size:11px; font-weight:700; }
+.scope-item.disabled .check-sq { background:var(--surface); border-color:var(--border-2); }
+.scope-item.disabled .check-sq::after { content:""; }
+.scope-item .scope-text { font-size:12px; color:var(--navy-2); }
+.scope-item .scope-text b { color:var(--navy); font-weight:600; }
+.scope-item .scope-text .meta-sm { font-size:10px; color:var(--navy-3); font-style:italic; display:block; margin-top:2px; }
+.scope-item .scope-text .meta-sm b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Footer action bar */
+.save-bar { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 22px; display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+.save-bar .left-m { font-size:12px; color:var(--navy-3); font-style:italic; }
+.save-bar .left-m b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.save-bar .right-a { display:flex; gap:8px; }
+
+/* Editorial card */
+.principle-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:20px; }
+.principle-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.principle-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.principle-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.principle-card p b { color:var(--navy); font-weight:600; }
+
+/* Oversight context · what GES sees */
+.oversight-preview { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.oversight-preview .head-op { padding:14px 20px; background:var(--navy); color:var(--bg); display:flex; align-items:center; gap:14px; }
+.oversight-preview .head-op .eb { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.oversight-preview .head-op h4 { font-family:'Fraunces',serif; font-size:14px; font-weight:500; letter-spacing:-0.005em; }
+.oversight-preview .head-op h4 em { font-style:italic; color:var(--gold); }
+.oversight-preview .head-op .url-mock { margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--gold-soft); padding:3px 9px; background:rgba(255,255,255,0.05); border-radius:4px; }
+.oversight-preview .body-op { padding:20px 24px; }
+.aggr-card { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.aggr-c { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px 18px; }
+.aggr-c .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.aggr-c .val { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; line-height:1.1; margin-bottom:2px; }
+.aggr-c .val em { font-style:italic; color:var(--gold); }
+.aggr-c .sub-c-x { font-size:10px; color:var(--navy-3); font-style:italic; }
+.aggr-c .sub-c-x b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.aggr-note { margin-top:14px; padding:11px 14px; background:var(--terra-bg); border:1px solid #E5C4BC; border-radius:8px; font-size:11px; color:var(--navy-2); line-height:1.55; }
+.aggr-note b { color:var(--terra); font-weight:700; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Batch 0 · Structural foundation</div>
+  <span class="mvp-tag">Settings · Oversight readiness</span>
+  <span class="related-tag">Applies to all school types</span>
+  <h1 class="display">District, region, <em>ownership</em></h1>
+  <div class="gold-rule"></div>
+  <p>Three small fields, one big consequence. <b>Where the school is</b> (district + region), <b>who owns it</b> (public, private, mission, international), and <b>what it agrees to share</b> with GES — these determine whether the school appears in the future Oversight tier, which jurisdictional view it belongs to, and what subset of its data flows into the analytics pipeline. The admin fills this in once during setup, never thinks about it again. <em>Quietly important.</em></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The settings surface · three sections, one save</div>
+    <div class="section-meta">Settings → School profile → Geography &amp; ownership</div>
+  </div>
+
+  <div>
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / geography-ownership</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King SHS</div>
+              <div class="school-meta">SHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Programmes</div>
+          <div class="nav-item"><div class="ic"></div>Houses</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Comms</div>
+          <div class="nav-item"><div class="ic"></div>PLC · CPD</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="settings-sub">
+            <div class="settings-sub-item">School profile</div>
+            <div class="settings-sub-item active">Geography &amp; ownership</div>
+            <div class="settings-sub-item">Academic year</div>
+            <div class="settings-sub-item">Fees structure</div>
+            <div class="settings-sub-item">SMS &amp; Comms</div>
+            <div class="settings-sub-item">User permissions</div>
+            <div class="settings-sub-item">Data &amp; privacy</div>
+            <div class="settings-sub-item">Billing &amp; plan</div>
+          </div>
+          <div class="sidebar-footer">
+            <div class="av">FA</div>
+            <div>
+              <div class="meta-name">Florence A.</div>
+              <div class="meta-role">Admin</div>
+            </div>
+          </div>
+          <div class="powered-by">Powered by <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head-c">
+            <div class="crumb"><a href="#">Settings</a> · School profile · Geography &amp; ownership</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Geography &amp; <em>ownership</em></h1>
+                <div class="lede">Where the school sits and what it is. <b>Used by:</b> GES termly returns, annual census, future Oversight reporting for your district director. <em style="font-style:italic; color:var(--gold);">Set once · refresh if anything changes.</em></div>
+              </div>
+              <div class="actions">
+                <button class="btn ghost">Revert changes</button>
+                <button class="btn primary">Save changes</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body-c">
+
+            <div class="config-card">
+              <div class="head-cc">
+                <div class="text-l">
+                  <h3 class="display"><em>1.</em> Where you are · district &amp; region</h3>
+                  <div class="desc-h">Locks your school to a <b>GES district directorate</b> · drives jurisdictional reporting. Use the official GES geography (16 regions · ~260 districts) — not common-name aliases.</div>
+                </div>
+                <div class="status-x"><span class="pill-x complete"><span class="dot"></span>COMPLETE</span></div>
+              </div>
+              <div class="body-cc">
+                <div class="field-pair">
+                  <div class="field-x">
+                    <div class="lab">Region <span class="star">*</span> <span class="info-ic">i</span></div>
+                    <div class="input-c dropdown locked"><em>Greater Accra Region</em></div>
+                    <div class="helper-x">One of <b>16 GES regions</b> · locked once first student admitted (transfer requires support).</div>
+                  </div>
+                  <div class="field-x">
+                    <div class="lab">District <span class="star">*</span> <span class="info-ic">i</span></div>
+                    <div class="input-c dropdown locked"><em>Accra Metropolitan</em></div>
+                    <div class="helper-x">District within selected region · GES district directorate for this school is <b>AMA Education Directorate</b>.</div>
+                  </div>
+                </div>
+                <div class="field-pair">
+                  <div class="field-x">
+                    <div class="lab">Circuit <span style="color:var(--navy-3); font-style:italic; font-weight:400; letter-spacing:0;">(optional)</span></div>
+                    <div class="input-c dropdown">Circuit 3 · Asylum Down</div>
+                    <div class="helper-x">Some districts further sub-divide into circuits with their own School Improvement Officers (SIO). <b>Optional but useful</b> for PLC clustering with neighbouring schools.</div>
+                  </div>
+                  <div class="field-x">
+                    <div class="lab">Town / suburb <span class="star">*</span></div>
+                    <div class="input-c">Adabraka, Accra</div>
+                    <div class="helper-x">Free-text for the school's specific location · displayed on parent comms and reports.</div>
+                  </div>
+                </div>
+                <div class="field-pair">
+                  <div class="field-x">
+                    <div class="lab">GES district directorate contact <span style="color:var(--navy-3); font-style:italic; font-weight:400; letter-spacing:0;">(auto-filled)</span></div>
+                    <div class="input-c">AMA Education Office · <em>Mr Kwame Boateng</em> · District Director</div>
+                    <div class="helper-x">Omnischools <b>auto-fills the district director's contact</b> from the GES public directory · used for statutory notifications.</div>
+                  </div>
+                  <div class="field-x">
+                    <div class="lab">Coordinates · for mapping</div>
+                    <div class="input-c">5.5611° N, −0.2126° W</div>
+                    <div class="helper-x">Derived from town/suburb · used for boarding-eligibility distance calculations.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="config-card">
+              <div class="head-cc">
+                <div class="text-l">
+                  <h3 class="display"><em>2.</em> Ownership type</h3>
+                  <div class="desc-h">Determines <b>fee structure defaults</b>, <b>data-sharing posture</b> with GES, and which compliance rails activate. <em style="font-style:italic; color:var(--gold);">Public schools have different obligations from private schools.</em></div>
+                </div>
+                <div class="status-x"><span class="pill-x complete"><span class="dot"></span>COMPLETE</span></div>
+              </div>
+              <div class="body-cc">
+                <div class="ownership-grid">
+                  <div class="own-pick public">
+                    <div class="ic-sq">P</div>
+                    <h4 class="display"><em>Public</em></h4>
+                    <div class="own-sub">government-owned · Free SHS applies · GES data sharing on by default</div>
+                  </div>
+                  <div class="own-pick private selected">
+                    <div class="ic-sq">Pv</div>
+                    <h4 class="display"><em>Private</em></h4>
+                    <div class="own-sub">privately owned · fees applied normally · GES sharing opt-in</div>
+                  </div>
+                  <div class="own-pick mission">
+                    <div class="ic-sq">M</div>
+                    <h4 class="display"><em>Mission</em></h4>
+                    <div class="own-sub">church or faith-affiliated · varies on Free SHS · GES sharing opt-in</div>
+                  </div>
+                  <div class="own-pick intl">
+                    <div class="ic-sq">Int</div>
+                    <h4 class="display"><em>International</em></h4>
+                    <div class="own-sub">expat / IB / Cambridge curriculum · not GES-bound</div>
+                  </div>
+                </div>
+                <div class="sharing-meta">
+                  <b>Christ the King SHS is a Private school.</b> Free SHS does not apply automatically · students pay fees through standard MoMo flows. GES data sharing requires explicit opt-in (see section 3 below). <em>You can change ownership type</em> if school status changes (e.g. mission school transitioning to public via government acquisition), but this is rare and triggers a compliance review.
+                </div>
+              </div>
+            </div>
+
+            <div class="config-card">
+              <div class="head-cc">
+                <div class="text-l">
+                  <h3 class="display"><em>3.</em> GES data sharing <span style="font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-size:13px; font-weight:500; margin-left:6px;">(future Oversight tier)</span></h3>
+                  <div class="desc-h">Opt in or out of contributing school metrics to the planned GES Oversight tier. <b>Aggregated metrics only</b> — never raw student records. Revocable any time.</div>
+                </div>
+                <div class="status-x"><span class="pill-x partial"><span class="dot"></span>PARTIAL</span></div>
+              </div>
+              <div class="body-cc">
+                <div class="sharing-toggle enabled">
+                  <div class="left">
+                    <h4 class="display">Share <em>aggregated metrics</em> with GES Oversight</h4>
+                    <div class="desc-st">When the Oversight tier launches, <b>your district director and regional director</b> will see your school's aggregated metrics in their dashboard alongside other schools in their jurisdiction. <em style="font-style:italic; color:var(--gold);">Raw student records never leave Omnischools.</em></div>
+                  </div>
+                  <div class="switch"></div>
+                </div>
+
+                <div style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-top:18px; margin-bottom:10px;">Scope · what specifically is shared</div>
+
+                <div class="scope-list">
+                  <div class="scope-item">
+                    <div class="check-sq"></div>
+                    <div class="scope-text">
+                      <b>School identity</b> · name, type (SHS), enrolment count, ownership
+                      <div class="meta-sm">Always shared if data sharing is on · cannot be unchecked · <b>required for jurisdictional grouping</b></div>
+                    </div>
+                  </div>
+                  <div class="scope-item">
+                    <div class="check-sq"></div>
+                    <div class="scope-text">
+                      <b>Attendance metrics</b> · weekly/monthly attendance rates per Form (% not names)
+                      <div class="meta-sm">Aggregated · individual student attendance never shared · <b>helps GES track school-level performance</b></div>
+                    </div>
+                  </div>
+                  <div class="scope-item">
+                    <div class="check-sq"></div>
+                    <div class="scope-text">
+                      <b>PLC compliance</b> · weekly PLC session attendance rate (teacher attendance %)
+                      <div class="meta-sm">Anonymised · GES sees the school's overall PLC rate, not which teachers attended <b>(this is one of the key Oversight metrics)</b></div>
+                    </div>
+                  </div>
+                  <div class="scope-item">
+                    <div class="check-sq"></div>
+                    <div class="scope-text">
+                      <b>CPD points status</b> · % of teaching staff meeting annual CPD threshold (20 points)
+                      <div class="meta-sm">Aggregated · individual teacher CPD never shared · <b>supports NTC licence renewal tracking</b></div>
+                    </div>
+                  </div>
+                  <div class="scope-item">
+                    <div class="check-sq"></div>
+                    <div class="scope-text">
+                      <b>VLC compliance</b> · weekly VLC session attendance rate for students
+                      <div class="meta-sm">Aggregated · individual student attendance never shared · <b>tracks values curriculum delivery</b></div>
+                    </div>
+                  </div>
+                  <div class="scope-item disabled">
+                    <div class="check-sq"></div>
+                    <div class="scope-text">
+                      <b>WASSCE pass rates</b> · once results land, aggregate pass rate per programme
+                      <div class="meta-sm">Optional · enabled per-term when WASSCE results are submitted by school · <b>can be unchecked anytime</b></div>
+                    </div>
+                  </div>
+                  <div class="scope-item disabled">
+                    <div class="check-sq"></div>
+                    <div class="scope-text">
+                      <b>Financial metrics</b> · fee collection rates, outstanding balances (private schools only)
+                      <div class="meta-sm">Opt-in · most private schools decline · <b>not requested by current GES leadership</b></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sharing-meta" style="margin-top:18px;">
+                  <em>What this looks like in practice:</em> Once Oversight launches, the District Director of AMA will be able to log into <b>oversight.omnischools.gh</b> and see all participating schools in their district as a dashboard — with attendance, PLC, CPD, VLC metrics. Christ the King SHS will appear as one tile. <b>Your individual student data is never visible to GES.</b> The boundary is enforced architecturally — different database, different app, different login.
+                </div>
+              </div>
+            </div>
+
+            <div class="save-bar">
+              <div class="left-m">Configuration <b>complete</b> · 12 fields filled · last updated <b>3 days ago</b> by Florence A.</div>
+              <div class="right-a">
+                <button class="btn ghost">Revert changes</button>
+                <button class="btn gold">Save changes →</button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">What the District Director will see · future Oversight preview</div>
+    <div class="section-meta">For context · this is what data sharing enables</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="oversight-preview">
+        <div class="head-op">
+          <div>
+            <div class="eb">GES Oversight · district view · sketch</div>
+            <h4 class="display">AMA Education Directorate · <em>Mr Boateng's dashboard</em></h4>
+          </div>
+          <div class="url-mock">oversight.omnischools.gh / district / ama</div>
+        </div>
+        <div class="body-op">
+          <div style="font-size:12px; color:var(--navy-3); line-height:1.6; margin-bottom:16px; font-style:italic;">
+            What the District Director of Accra Metropolitan sees when Omnischools's Oversight tier launches — aggregated metrics across all schools in AMA that have opted in to data sharing. <b>Christ the King SHS appears as one tile</b> in this view, alongside other participating schools.
+          </div>
+
+          <div class="aggr-card">
+            <div class="aggr-c">
+              <div class="lab">Schools in district</div>
+              <div class="val display"><em>67</em> schools<span class="sub-c-x" style="display:block; margin-top:3px;"><b>42</b> opted in · 63% participation</span></div>
+            </div>
+            <div class="aggr-c">
+              <div class="lab">SHS · attendance avg</div>
+              <div class="val display"><em>91.8</em>%<span class="sub-c-x" style="display:block; margin-top:3px;">across 18 SHS · <b>+2.1pp YoY</b></span></div>
+            </div>
+            <div class="aggr-c">
+              <div class="lab">PLC compliance avg</div>
+              <div class="val display"><em>76.4</em>%<span class="sub-c-x" style="display:block; margin-top:3px;">teacher PLC attendance · <b>target 80%</b></span></div>
+            </div>
+          </div>
+
+          <div class="aggr-note">
+            <b>What's NOT visible:</b> individual student names, individual teacher records, parent contact details, fee amounts, disciplinary records, health data, or anything that could identify a person. Mr Boateng sees school-level percentages, not people. <em style="color:var(--terra); font-style:italic;">This is the architectural promise.</em>
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Why this admin surface is small but consequential</div>
+        <p>The three fields on this page — <b>geography</b>, <b>ownership type</b>, and <b>data-sharing scope</b> — are tiny in volume but enormous in implication. They determine which jurisdiction the school belongs to, which fee model applies, and what slice of data flows into the analytics database that feeds the Oversight tier. <em>Most admins fill this in once during setup and never think about it again</em> — which is exactly the right behaviour. The surface exists so that when an admin <em>does</em> need to revisit it (e.g. when a new GES policy changes data-sharing requirements), they can.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The <b>region/district dropdowns are locked once students are admitted</b> — changing a school's district is a serious operation that affects historical reporting. Forcing it through support prevents accidental changes. The locked-state visual (gold-tinted background) signals the field's protected status.</li>
+        <li><b>Ownership type affects defaults but never enforces</b> — a private school can still toggle Free SHS on if they choose, an international school can still opt-in to GES sharing. The type sets defaults; admin overrides per case. <em>Soft guardrails, not hard rails.</em></li>
+        <li>The <b>data-sharing scope checklist</b> is opt-in checkbox-by-checkbox, not all-or-nothing. A school can share attendance but not finance, share PLC but not VLC. The current "PARTIAL" pill at the top of the section reflects that some items are checked and some are not. <em>Granular consent.</em></li>
+        <li>"School identity" is the only <b>can't-be-unchecked</b> item — if data sharing is on at all, the school's name and basic identity have to be visible to be assigned to a district. This is the architectural minimum.</li>
+        <li>The <b>District Director's name</b> auto-filling is convenience, not contract — when district directorships change (often), Omnischools pulls the latest from a GES directory that we'll maintain. Surface admin doesn't have to keep this up to date manually.</li>
+        <li>The Oversight preview at the bottom is <b>educational, not functional</b> — admins benefit from seeing what their data will look like to GES so they can make informed sharing decisions. Most settings surfaces don't show "what consequences this has elsewhere"; this one does because the consequences matter.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Database impact · the three new fields and one new table</div>
+    <div class="section-meta">For the build phase · schema additions</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 28px;">
+
+        <h3 style="font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:16px; letter-spacing:-0.005em;">Schema additions · <em style="font-style:italic; color:var(--gold); font-weight:500;">backward-compatible</em></h3>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;">
+
+          <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px 18px;">
+            <div style="font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px;">schools · 3 new columns</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); line-height:1.8;">
+              ALTER TABLE schools<br>
+              ADD COLUMN district_id <span style="color:var(--gold);">FK → districts</span><br>
+              ADD COLUMN region_id <span style="color:var(--gold);">FK → regions</span><br>
+              ADD COLUMN ownership_type <span style="color:var(--gold);">enum</span>
+            </div>
+            <div style="font-size:10px; color:var(--navy-3); margin-top:8px; font-style:italic; line-height:1.4;">
+              All three nullable · existing schools null until admin fills in · no migration data needed.
+            </div>
+          </div>
+
+          <div style="background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:8px; padding:16px 18px;">
+            <div style="font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px;">New table · ges_data_sharing_agreements</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); line-height:1.8;">
+              school_id<br>
+              enabled <span style="color:var(--navy-3);">bool</span><br>
+              scope_attendance <span style="color:var(--navy-3);">bool</span><br>
+              scope_plc <span style="color:var(--navy-3);">bool</span><br>
+              scope_cpd <span style="color:var(--navy-3);">bool</span><br>
+              scope_vlc <span style="color:var(--navy-3);">bool</span><br>
+              scope_wassce <span style="color:var(--navy-3);">bool</span><br>
+              scope_financial <span style="color:var(--navy-3);">bool</span><br>
+              consented_by · consented_at<br>
+              revoked_at <span style="color:var(--navy-3);">nullable</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px 18px; margin-bottom:14px;">
+          <div style="font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px;">Reference tables · seeded · ~276 total rows</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy-2); line-height:1.8;">
+            regions · 16 rows · GES official list<br>
+            districts · 260 rows · GES district directorates<br>
+            <span style="color:var(--navy-3);">(circuits seeded later, district-by-district as needed · ~2000+ circuits exist)</span>
+          </div>
+        </div>
+
+        <div style="padding:14px 18px; background:var(--green-bg); border:1px solid #C8DDC9; border-radius:8px; font-size:12px; color:var(--navy-2); line-height:1.6;">
+          <b>Net impact on basic-school MVP1:</b> a handful of dropdowns on the school-profile settings page. Reference tables seeded once in migration. <b>Existing basic-school subscribers see new optional fields</b> in settings that they can fill in (or not — they're not blocking anything). When Oversight launches, schools that filled them in are immediately discoverable by their district directors; schools that didn't aren't, until they choose to be.
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">For the build phase</div>
+        <p>This is the cheapest insurance policy in batch 0 — <b>4 small schema additions today</b> that unlock the entire Oversight tier later. The cost is one short migration script and a settings page. The benefit is that when GES Oversight launches in 12–18 months, you're not retro-fitting district relationships into a database with 200+ school subscribers. <em>Plant the hooks early, harvest the structure later.</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The <b>ges_data_sharing_agreements</b> table is a wide row with one record per school — could be done as columns on the schools table, but separating into its own table makes the audit story cleaner ("who consented to what when, who revoked, when") and makes it easier to evolve the scope flags without affecting the core schools table.</li>
+        <li><b>consented_by</b> references a staff user_id, not just a name — when a private school revokes consent in 2028 because of a policy change, the audit trail shows that Florence A. (admin) consented originally, and Kwame Y. (new admin) revoked. Accountable both directions.</li>
+        <li>The <b>revoked_at</b> nullable field is the soft-delete pattern — we don't delete the consent record when revoked, just timestamp the revocation. Historical record preserved. <em>Forward-only audit pattern applies here too.</em></li>
+        <li>The <b>16 regions / 260 districts</b> reference data is GES's official list as of 2026 — these change rarely but do change (region splits, new districts created). The build phase should treat the seed as a versioned snapshot, with a small process for updating when GES revises boundaries.</li>
+        <li>For Multi-tier schools (Basic + Senior), <b>geography and ownership apply at the school-group level</b>, not per-tier. The JHS and SHS share a district. Data sharing scope, however, can be different per tier — e.g. share SHS metrics with GES but not JHS metrics. <em>Granular within reason.</em></li>
+        <li>Circuits are the <em>smallest jurisdictional unit</em> below district — populated lazily because there are 2000+ of them across Ghana and we don't need them all on day one. Admin selects circuit from a dropdown if known; if not, blank is fine.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

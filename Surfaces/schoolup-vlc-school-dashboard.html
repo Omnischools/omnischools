@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — VLC school dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.sum-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.sum-card.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-card.terra { background:var(--terra-bg); border-color:var(--terra); }
+.sum-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-card.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-card.terra .lab { color:var(--terra); }
+.sum-card .big { font-family:'Fraunces',serif; font-size:26px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-card .big em { font-style:italic; color:var(--gold); }
+.sum-card.terra .big em { color:var(--terra); }
+.sum-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-card.featured .sub { color:rgba(232,212,184,0.6); }
+.sum-card .sub b { color:var(--navy-2); font-weight:600; }
+.sum-card.featured .sub b { color:var(--gold); }
+
+.body-shell { padding:32px 36px 36px; }
+
+/* Filter bar */
+.filter-bar { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 20px; margin-bottom:26px; display:flex; gap:14px; align-items:center; }
+.filter-bar .lab { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.filter-bar .chips { display:flex; gap:6px; flex:1; flex-wrap:wrap; }
+.filter-bar .chip { padding:4px 11px; border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:600; color:var(--navy-2); background:var(--bg); cursor:pointer; }
+.filter-bar .chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-bar .search { padding:6px 12px; border:1px solid var(--border-2); border-radius:6px; font-size:11px; font-family:inherit; min-width:200px; }
+
+.block { margin-bottom:36px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+.block-head .actions { display:flex; gap:8px; }
+
+/* Class matrix */
+.matrix-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.matrix-head { display:grid; grid-template-columns:200px 1.1fr 90px 90px 70px 160px 110px; gap:14px; padding:12px 22px; background:var(--bg); border-bottom:1px solid var(--border); font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; align-items:center; }
+.matrix-row { display:grid; grid-template-columns:200px 1.1fr 90px 90px 70px 160px 110px; gap:14px; padding:14px 22px; border-bottom:1px solid var(--border); font-size:12px; align-items:center; }
+.matrix-row:last-child { border-bottom:none; }
+.matrix-row.f1 { background:var(--bg); }
+.matrix-row.flagged { background:var(--terra-bg); }
+.matrix-row.exemplar { background:var(--green-bg); }
+.matrix-row .class-cell .nm { font-family:'Fraunces',serif; font-weight:600; font-size:14px; color:var(--navy); }
+.matrix-row .class-cell .nm em { font-style:italic; color:var(--gold); }
+.matrix-row .class-cell .sub { font-size:10px; color:var(--navy-3); margin-top:2px; }
+.matrix-row .progress-cell .pos-line { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+.matrix-row .progress-cell .pos-line .v-tag { font-family:'Fraunces',serif; font-style:italic; font-size:13px; color:var(--gold); font-weight:600; }
+.matrix-row .progress-cell .pos-line .v-text { font-size:11px; color:var(--navy-2); font-weight:600; }
+.matrix-row .progress-cell .bar { height:6px; background:var(--border); border-radius:100px; overflow:hidden; }
+.matrix-row .progress-cell .bar .fill { height:100%; background:var(--green); border-radius:100px; }
+.matrix-row .progress-cell .bar .fill.warn { background:var(--warn); }
+.matrix-row .progress-cell .bar .fill.terra { background:var(--terra); }
+.matrix-row .progress-cell .bar .fill.gold { background:var(--gold); }
+.matrix-row .progress-cell .bar-meta { font-size:10px; color:var(--navy-3); margin-top:3px; font-family:'JetBrains Mono',monospace; font-weight:600; }
+.matrix-row .att-cell { font-family:'Fraunces',serif; font-weight:600; font-size:18px; line-height:1; }
+.matrix-row .att-cell em { font-style:italic; color:var(--gold); }
+.matrix-row .att-cell .small { font-size:9px; color:var(--navy-3); font-family:'Manrope',sans-serif; font-weight:600; letter-spacing:0.04em; margin-top:3px; text-transform:uppercase; }
+.matrix-row .flag-cell { display:flex; align-items:center; gap:6px; }
+.matrix-row .flag-cell .badge { padding:3px 8px; border-radius:100px; font-size:10px; font-weight:700; }
+.matrix-row .flag-cell .badge.zero { background:var(--bg); color:var(--navy-3); }
+.matrix-row .flag-cell .badge.one { background:var(--warn-bg); color:var(--warn); }
+.matrix-row .flag-cell .badge.multi { background:var(--terra-bg); color:var(--terra); }
+.matrix-row .fm-cell { font-size:11px; color:var(--navy-2); }
+.matrix-row .fm-cell b { color:var(--navy); font-weight:600; }
+.matrix-row .fm-cell .pg-row { font-size:9px; color:var(--navy-3); margin-top:2px; letter-spacing:0.02em; }
+.matrix-row .pg-cell { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-2); font-weight:600; }
+.matrix-row .pg-cell.complete { color:var(--green); }
+.matrix-row .pg-cell.gap { color:var(--terra); }
+
+/* No PG row (Form 1) */
+.matrix-row .no-pg-note { font-size:10px; color:var(--navy-3); font-style:italic; grid-column:3 / span 4; padding:6px 10px; background:var(--bg); border:1px dashed var(--border); border-radius:6px; }
+
+/* Pastoral flags drilldown */
+.flag-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.flag-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 22px; border-left:3px solid var(--warn); }
+.flag-card.escalated { border-left-color:var(--terra); background:var(--terra-bg); }
+.flag-card.resolved { border-left-color:var(--green); opacity:0.7; }
+.flag-card .fc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed var(--border); }
+.flag-card .fc-head .info { flex:1; }
+.flag-card .fc-head .info h4 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; line-height:1.25; }
+.flag-card .fc-head .info h4 em { font-style:italic; color:var(--gold); }
+.flag-card .fc-head .info .sub { font-size:10px; color:var(--navy-3); margin-top:3px; letter-spacing:0.02em; }
+.flag-card .severity-pill { padding:3px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; }
+.flag-card .severity-pill.note { background:var(--gold-bg); color:var(--gold); }
+.flag-card .severity-pill.concern { background:var(--warn-bg); color:var(--warn); }
+.flag-card .severity-pill.escalate { background:var(--terra); color:var(--bg); }
+.flag-card .fc-body { font-size:11px; color:var(--navy-2); line-height:1.6; margin-bottom:10px; }
+.flag-card .fc-body b { color:var(--navy); font-weight:600; }
+.flag-card .fc-meta { display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px dashed var(--border); }
+.flag-card .fc-meta .owner { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-3); }
+.flag-card .fc-meta .owner .av { width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:8px; font-weight:700; }
+.flag-card .fc-meta .owner b { color:var(--navy-2); font-weight:700; }
+.flag-card .fc-meta .status { font-size:9px; letter-spacing:0.06em; font-weight:700; padding:3px 8px; border-radius:100px; }
+.flag-card .fc-meta .status.queued { background:var(--bg); color:var(--navy-3); }
+.flag-card .fc-meta .status.escalated { background:var(--terra); color:var(--bg); }
+.flag-card .fc-meta .status.resolved { background:var(--green); color:var(--bg); }
+
+/* Curriculum coverage timeline */
+.coverage-card { background:var(--navy); color:var(--bg); border-radius:14px; padding:24px 28px; }
+.coverage-card .cv-head { margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:flex-end; }
+.coverage-card .cv-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.coverage-card .cv-head h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; }
+.coverage-card .cv-head h4 em { font-style:italic; color:var(--gold); }
+.coverage-card .cv-head .meta { font-size:11px; color:rgba(232,212,184,0.7); font-family:'JetBrains Mono',monospace; font-weight:600; }
+.coverage-grid { display:grid; grid-template-columns:repeat(11, 1fr); gap:8px; }
+.cov-val { background:rgba(255,255,255,0.04); border:1px solid rgba(232,212,184,0.15); border-radius:8px; padding:10px 8px; }
+.cov-val.done { background:rgba(47,107,71,0.18); border-color:var(--green); }
+.cov-val.current { background:var(--gold); color:var(--navy); border-color:var(--gold); }
+.cov-val.upcoming { opacity:0.5; }
+.cov-val .v-n { font-family:'Fraunces',serif; font-style:italic; font-size:14px; color:var(--gold); font-weight:600; line-height:1; }
+.cov-val.done .v-n { color:var(--green); }
+.cov-val.current .v-n { color:var(--navy); font-style:italic; }
+.cov-val .v-name { font-size:9px; font-weight:700; margin-top:4px; line-height:1.2; color:var(--bg); }
+.cov-val.upcoming .v-name { color:rgba(250,247,242,0.6); }
+.cov-val.current .v-name { color:var(--navy); }
+.cov-val .v-rate { font-size:9px; color:rgba(232,212,184,0.7); margin-top:6px; font-family:'JetBrains Mono',monospace; }
+.cov-val.current .v-rate { color:var(--navy); }
+.cov-val.upcoming .v-rate { color:rgba(232,212,184,0.4); }
+.coverage-card .cv-foot { margin-top:14px; padding:12px 14px; background:rgba(200,151,91,0.1); border-left:3px solid var(--gold); border-radius:0 6px 6px 0; font-size:11px; color:rgba(250,247,242,0.85); line-height:1.6; }
+.coverage-card .cv-foot b { color:var(--bg); font-weight:700; }
+.coverage-card .cv-foot em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+/* Editorial */
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · VLC batch · 05 of 05</div>
+  <span class="mvp-tag">SHS · Headmaster &amp; Dean view</span>
+  <span class="related-tag">School-wide rollup · 18 classes</span>
+  <h1 class="display">The view <em>across the school</em></h1>
+  <div class="gold-rule"></div>
+  <p>What the Headmaster and Dean see when they want to know: <em>how is the values programme actually running?</em> Eighteen classes, thirteen sessions held to date, four active pastoral flags, ninety-two percent peer-guide training attendance, sixty percent through the eleven-value curriculum. <b>Not a grade for VLC, not a ranking — a rhythm-check.</b> Which classes are ahead, which are behind, where the pastoral concentration is forming, and which Form Master needs a conversation this week.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">School rollup · attendance, flags, curriculum position</div>
+    <div class="section-meta">Pastoral &amp; values → VLC → School dashboard</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / pastoral / vlc / dashboard / academic-year-2025-26</div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Pastoral &amp; values · VLC · School-wide dashboard</div>
+          <h2 class="display">Semester 2 · Week 26 of 30 <em>· 14 May 2026</em></h2>
+          <div class="lede">18 classes running · 234 VLC sessions held cumulatively year-to-date · 91% average attendance · 12 pastoral flags raised this year (4 currently open) · 36 trained Peer Guides</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Export term report</button>
+          <button class="btn gold">Open pastoral case file</button>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-card featured">
+          <div class="lab">Year progress</div>
+          <div class="big display"><em>59%</em></div>
+          <div class="sub"><b>13 of 22</b> sessions held · 9 to go · on schedule</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Avg attendance</div>
+          <div class="big display"><em>91%</em></div>
+          <div class="sub"><b>Form 2</b> 93% · <b>Form 3</b> 88% (WASSCE pressure)</div>
+        </div>
+        <div class="sum-card terra">
+          <div class="lab">Pastoral flags · year</div>
+          <div class="big display"><em>12</em> raised</div>
+          <div class="sub"><b>4 open</b> · 1 escalated to Dean · 8 resolved</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">PG training attendance</div>
+          <div class="big display"><em>92%</em></div>
+          <div class="sub">4 trainings held · next 19 May (Sat morning)</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Reflection submission</div>
+          <div class="big display"><em>94%</em></div>
+          <div class="sub"><b>Class avg</b> · range 87%—99% · F3 GS A leads</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+          <div class="lab">FILTERS</div>
+          <div class="chips">
+            <div class="chip active">All forms</div>
+            <div class="chip">Form 1</div>
+            <div class="chip">Form 2</div>
+            <div class="chip">Form 3</div>
+            <div class="chip">·</div>
+            <div class="chip">Has flags</div>
+            <div class="chip">Behind schedule</div>
+            <div class="chip">Ahead of schedule</div>
+            <div class="chip">PG vacancy</div>
+          </div>
+          <input class="search" type="text" placeholder="Search class or Form Master..." />
+        </div>
+
+        <!-- Class matrix -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Per-class status · 18 classes</div>
+              <h3 class="display">Class-by-class <em>· position in curriculum, attendance, flags</em></h3>
+            </div>
+            <div class="meta">Sorted by form, then by curriculum position · 1 row per class</div>
+          </div>
+
+          <div class="matrix-card">
+            <div class="matrix-head">
+              <div>Class</div>
+              <div>Curriculum position</div>
+              <div>Attendance</div>
+              <div>Submission</div>
+              <div>Flags</div>
+              <div>Form Master / PGs</div>
+              <div>Action</div>
+            </div>
+
+            <!-- Form 1 rows -->
+            <div class="matrix-row f1">
+              <div class="class-cell">
+                <div class="nm display">Form 1 <em>GS</em></div>
+                <div class="sub">General Science · 42 students</div>
+              </div>
+              <div class="progress-cell">
+                <div class="pos-line"><span class="v-tag">07A</span><span class="v-text">Patriotism · session A done</span></div>
+                <div class="bar"><div class="fill" style="width:59%;"></div></div>
+                <div class="bar-meta">13 / 22 sessions · on schedule</div>
+              </div>
+              <div class="att-cell display"><em>94%</em><div class="small">+1 vs avg</div></div>
+              <div class="att-cell display"><em>96%</em><div class="small">strong</div></div>
+              <div class="flag-cell"><div class="badge zero">— 0</div></div>
+              <div class="fm-cell"><b>Mrs Y. Akoto</b><div class="pg-row">No PGs · Form 1 receives</div></div>
+              <div class="pg-cell complete">VIEW CLASS →</div>
+            </div>
+
+            <div class="matrix-row f1">
+              <div class="class-cell">
+                <div class="nm display">Form 1 <em>SC</em></div>
+                <div class="sub">Science · 38 students</div>
+              </div>
+              <div class="progress-cell">
+                <div class="pos-line"><span class="v-tag">07A</span><span class="v-text">Patriotism · session A done</span></div>
+                <div class="bar"><div class="fill" style="width:59%;"></div></div>
+                <div class="bar-meta">13 / 22 sessions · on schedule</div>
+              </div>
+              <div class="att-cell display"><em>89%</em><div class="small">−2 vs avg</div></div>
+              <div class="att-cell display"><em>91%</em><div class="small">ok</div></div>
+              <div class="flag-cell"><div class="badge one">1 open</div></div>
+              <div class="fm-cell"><b>Mr D. Mensah</b><div class="pg-row">No PGs · Form 1 receives</div></div>
+              <div class="pg-cell">VIEW CLASS →</div>
+            </div>
+
+            <!-- Form 2 GA A · flagged today, J. Manu -->
+            <div class="matrix-row flagged">
+              <div class="class-cell">
+                <div class="nm display">Form 2 <em>GA A</em></div>
+                <div class="sub">General Arts · 40 students</div>
+              </div>
+              <div class="progress-cell">
+                <div class="pos-line"><span class="v-tag">07B</span><span class="v-text">Patriotism · session B · LIVE NOW</span></div>
+                <div class="bar"><div class="fill warn" style="width:59%;"></div></div>
+                <div class="bar-meta">13 / 22 sessions · on schedule</div>
+              </div>
+              <div class="att-cell display"><em>90%</em><div class="small">on avg</div></div>
+              <div class="att-cell display"><em>92%</em><div class="small">ok</div></div>
+              <div class="flag-cell"><div class="badge one">1 today</div></div>
+              <div class="fm-cell"><b>Mr A. Mensah</b><div class="pg-row">PO + AG · in session</div></div>
+              <div class="pg-cell complete">VIEW SESSION →</div>
+            </div>
+
+            <!-- Form 2 Eunyam (gap) -->
+            <div class="matrix-row">
+              <div class="class-cell">
+                <div class="nm display">Form 2 <em>Eunyam</em></div>
+                <div class="sub">General Arts · 41 students · <span style="color:var(--terra);">PG vacancy</span></div>
+              </div>
+              <div class="progress-cell">
+                <div class="pos-line"><span class="v-tag">07A</span><span class="v-text">Patriotism · session A done</span></div>
+                <div class="bar"><div class="fill" style="width:59%;"></div></div>
+                <div class="bar-meta">13 / 22 sessions · on schedule</div>
+              </div>
+              <div class="att-cell display"><em>88%</em><div class="small">−3 vs avg</div></div>
+              <div class="att-cell display"><em>89%</em><div class="small">ok</div></div>
+              <div class="flag-cell"><div class="badge zero">— 0</div></div>
+              <div class="fm-cell"><b>Mrs L. Owusu</b><div class="pg-row" style="color:var(--terra);">KO + vote pending</div></div>
+              <div class="pg-cell gap">VOTE 23 MAY →</div>
+            </div>
+
+            <!-- Form 2 GS A · exemplar -->
+            <div class="matrix-row exemplar">
+              <div class="class-cell">
+                <div class="nm display">Form 2 <em>GS A</em></div>
+                <div class="sub">General Science · 42 students</div>
+              </div>
+              <div class="progress-cell">
+                <div class="pos-line"><span class="v-tag">07A</span><span class="v-text">Patriotism · session A done</span></div>
+                <div class="bar"><div class="fill" style="width:64%;"></div></div>
+                <div class="bar-meta">14 / 22 sessions · 1 ahead</div>
+              </div>
+              <div class="att-cell display"><em>96%</em><div class="small">+5 vs avg</div></div>
+              <div class="att-cell display"><em>98%</em><div class="small">strong</div></div>
+              <div class="flag-cell"><div class="badge zero">— 0</div></div>
+              <div class="fm-cell"><b>Mr K. Yiadom</b><div class="pg-row">EA + NB · both trained 100%</div></div>
+              <div class="pg-cell complete">VIEW CLASS →</div>
+            </div>
+
+            <div class="matrix-row">
+              <div class="class-cell">
+                <div class="nm display">Form 2 <em>BUS</em></div>
+                <div class="sub">Business · 36 students</div>
+              </div>
+              <div class="progress-cell">
+                <div class="pos-line"><span class="v-tag">07A</span><span class="v-text">Patriotism · session A done</span></div>
+                <div class="bar"><div class="fill" style="width:59%;"></div></div>
+                <div class="bar-meta">13 / 22 sessions · on schedule</div>
+              </div>
+              <div class="att-cell display"><em>92%</em><div class="small">on avg</div></div>
+              <div class="att-cell display"><em>95%</em><div class="small">strong</div></div>
+              <div class="flag-cell"><div class="badge one">1 open</div></div>
+              <div class="fm-cell"><b>Mrs J. Ofori</b><div class="pg-row">SA + EB</div></div>
+              <div class="pg-cell">VIEW CLASS →</div>
+            </div>
+
+            <!-- Form 3 GS A · top -->
+            <div class="matrix-row exemplar">
+              <div class="class-cell">
+                <div class="nm display">Form 3 <em>GS A</em></div>
+                <div class="sub">General Science · 38 students</div>
+              </div>
+              <div class="progress-cell">
+                <div class="pos-line"><span class="v-tag">07A</span><span class="v-text">Patriotism · session A done</span></div>
+                <div class="bar"><div class="fill" style="width:64%;"></div></div>
+                <div class="bar-meta">14 / 22 sessions · 1 ahead</div>
+              </div>
+              <div class="att-cell display"><em>87%</em><div class="small">−4 vs avg</div></div>
+              <div class="att-cell display"><em>99%</em><div class="small">top</div></div>
+              <div class="flag-cell"><div class="badge zero">— 0</div></div>
+              <div class="fm-cell"><b>Dr E. Tetteh</b><div class="pg-row">KA + YB</div></div>
+              <div class="pg-cell complete">VIEW CLASS →</div>
+            </div>
+
+            <div class="matrix-row flagged">
+              <div class="class-cell">
+                <div class="nm display">Form 3 <em>GA</em></div>
+                <div class="sub">General Arts · 35 students</div>
+              </div>
+              <div class="progress-cell">
+                <div class="pos-line"><span class="v-tag">06B</span><span class="v-text">Compassion · session B done</span></div>
+                <div class="bar"><div class="fill terra" style="width:55%;"></div></div>
+                <div class="bar-meta">12 / 22 sessions · <span style="color:var(--terra);">1 behind</span></div>
+              </div>
+              <div class="att-cell display"><em>82%</em><div class="small">−9 vs avg</div></div>
+              <div class="att-cell display"><em>87%</em><div class="small">low</div></div>
+              <div class="flag-cell"><div class="badge multi">2 open</div></div>
+              <div class="fm-cell"><b>Mrs G. Asante</b><div class="pg-row">JM + PS</div></div>
+              <div class="pg-cell gap">FM CONVO →</div>
+            </div>
+
+            <div class="matrix-row">
+              <div class="class-cell">
+                <div class="nm display">Form 3 <em>BUS</em></div>
+                <div class="sub">Business · 32 students</div>
+              </div>
+              <div class="progress-cell">
+                <div class="pos-line"><span class="v-tag">07A</span><span class="v-text">Patriotism · session A done</span></div>
+                <div class="bar"><div class="fill" style="width:59%;"></div></div>
+                <div class="bar-meta">13 / 22 sessions · on schedule</div>
+              </div>
+              <div class="att-cell display"><em>90%</em><div class="small">on avg</div></div>
+              <div class="att-cell display"><em>93%</em><div class="small">ok</div></div>
+              <div class="flag-cell"><div class="badge zero">— 0</div></div>
+              <div class="fm-cell"><b>Mr P. Akoto</b><div class="pg-row">DK + AT</div></div>
+              <div class="pg-cell complete">VIEW CLASS →</div>
+            </div>
+
+            <div style="padding:14px 22px; text-align:center; font-size:11px; color:var(--navy-3); font-style:italic; background:var(--bg); border-top:1px solid var(--border);"><b style="color:var(--navy-2); font-style:normal; font-weight:600;">9 more classes</b> · 2 Form 2 + 7 Form 3 · click to expand · sort by attendance, flags, or curriculum position</div>
+          </div>
+        </div>
+
+        <!-- Pastoral flag drilldown -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Active pastoral flags · 4 open across the school</div>
+              <h3 class="display">Where the <em>pastoral attention is concentrating</em></h3>
+            </div>
+            <div class="actions">
+              <button class="btn ghost">View resolved (8)</button>
+              <button class="btn">Open case file</button>
+            </div>
+          </div>
+
+          <div class="flag-grid">
+
+            <div class="flag-card">
+              <div class="fc-head">
+                <div class="info">
+                  <h4 class="display">Form 2 GA A · <em>J. Manu</em> · V7B Patriotism</h4>
+                  <div class="sub">RAISED TODAY · 3:08 PM · session live · 2nd flag in 3 weeks</div>
+                </div>
+                <div class="severity-pill concern">CONCERN</div>
+              </div>
+              <div class="fc-body">Student became tearful during plenary share-back · stepped out · returned · PG Akua Gyamfi handled escalation correctly. <b>Bereavement context</b> (father d. Feb 2026, family financial strain). Case file active since Feb · 4 FM notes on record.</div>
+              <div class="fc-meta">
+                <div class="owner"><div class="av">AM</div><b>Mr A. Mensah</b> · FM · check-in at 3:33 PM</div>
+                <div class="status queued">QUEUED · FM CHECK-IN</div>
+              </div>
+            </div>
+
+            <div class="flag-card escalated">
+              <div class="fc-head">
+                <div class="info">
+                  <h4 class="display">Form 3 GA · <em>A. Quartey</em> · V6A Compassion</h4>
+                  <div class="sub">RAISED 16 APR · session A · 4 weeks old · escalated 19 Apr</div>
+                </div>
+                <div class="severity-pill escalate">ESCALATED</div>
+              </div>
+              <div class="fc-body">Student disclosed home-violence concern during small group reflection (PG observation). FM consulted Dean within 24h, Dean consulted Headmaster within 48h. <b>Now active social services referral.</b> Student remaining in school · attendance protected · family situation under monitoring.</div>
+              <div class="fc-meta">
+                <div class="owner"><div class="av">GA</div><b>Mrs G. Asante</b> + Dean</div>
+                <div class="status escalated">ESCALATED · ACTIVE</div>
+              </div>
+            </div>
+
+            <div class="flag-card">
+              <div class="fc-head">
+                <div class="info">
+                  <h4 class="display">Form 1 SC · <em>K. Boateng</em> · V5B Perseverance</h4>
+                  <div class="sub">RAISED 26 FEB · session B · 11 weeks old · slow-burn watch</div>
+                </div>
+                <div class="severity-pill note">NOTE</div>
+              </div>
+              <div class="fc-body">FM has noted student withdrawal across multiple sessions · academic performance steady · social engagement reduced · <b>family reports father lost job</b>, household stress. Case opened to track pattern · not crisis · FM monitoring weekly.</div>
+              <div class="fc-meta">
+                <div class="owner"><div class="av">DM</div><b>Mr D. Mensah</b> · FM</div>
+                <div class="status queued">MONITORING · WEEKLY</div>
+              </div>
+            </div>
+
+            <div class="flag-card">
+              <div class="fc-head">
+                <div class="info">
+                  <h4 class="display">Form 2 BUS · <em>R. Adjei</em> · V6A Compassion</h4>
+                  <div class="sub">RAISED 16 APR · session A · 4 weeks · pending resolution conversation</div>
+                </div>
+                <div class="severity-pill concern">CONCERN</div>
+              </div>
+              <div class="fc-body">PG flagged after small group: student described <b>persistent feeling of being unseen</b> in class. FM held a 1-on-1 20 Apr · setting up peer-buddy arrangement · re-check at 18 May session. Showing gradual improvement.</div>
+              <div class="fc-meta">
+                <div class="owner"><div class="av">JO</div><b>Mrs J. Ofori</b> · FM</div>
+                <div class="status queued">PENDING · CHECK 18 MAY</div>
+              </div>
+            </div>
+
+          </div>
+
+          <div style="margin-top:18px; padding:14px 20px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:12px; color:var(--navy-2); line-height:1.6;">
+            <b style="color:var(--navy);">Pattern across 4 open flags:</b> 2 in Compassion (V6) territory, 1 in Patriotism (V7), 1 in Perseverance (V5) · <em style="color:var(--gold); font-family:'Fraunces',serif; font-style:italic;">interpersonal-term values are surfacing more pastoral concerns than foundations-term values</em> · consistent with the design intent (Semester 2 invites the harder material). All flags routed to FM first; only 1 escalated to Dean. <b>System operating as designed.</b>
+          </div>
+        </div>
+
+        <!-- Curriculum coverage -->
+        <div class="coverage-card">
+          <div class="cv-head">
+            <div>
+              <div class="eb">Curriculum coverage · school-wide</div>
+              <h4 class="display">All 18 classes <em>at the same value</em> · ±1 session</h4>
+            </div>
+            <div class="meta">RATE = % of classes that completed the value</div>
+          </div>
+          <div class="coverage-grid">
+            <div class="cov-val done">
+              <div class="v-n display">01</div>
+              <div class="v-name">Respect</div>
+              <div class="v-rate">100%</div>
+            </div>
+            <div class="cov-val done">
+              <div class="v-n display">02</div>
+              <div class="v-name">Integrity</div>
+              <div class="v-rate">100%</div>
+            </div>
+            <div class="cov-val done">
+              <div class="v-n display">03</div>
+              <div class="v-name">Responsibility</div>
+              <div class="v-rate">100%</div>
+            </div>
+            <div class="cov-val done">
+              <div class="v-n display">04</div>
+              <div class="v-name">Discipline</div>
+              <div class="v-rate">100%</div>
+            </div>
+            <div class="cov-val done">
+              <div class="v-n display">05</div>
+              <div class="v-name">Perseverance</div>
+              <div class="v-rate">100%</div>
+            </div>
+            <div class="cov-val done">
+              <div class="v-n display">06</div>
+              <div class="v-name">Compassion</div>
+              <div class="v-rate">100%</div>
+            </div>
+            <div class="cov-val current">
+              <div class="v-n display">07</div>
+              <div class="v-name">Patriotism</div>
+              <div class="v-rate">94%</div>
+            </div>
+            <div class="cov-val upcoming">
+              <div class="v-n display">08</div>
+              <div class="v-name">Tolerance</div>
+              <div class="v-rate">—</div>
+            </div>
+            <div class="cov-val upcoming">
+              <div class="v-n display">09</div>
+              <div class="v-name">Service</div>
+              <div class="v-rate">—</div>
+            </div>
+            <div class="cov-val upcoming">
+              <div class="v-n display">10</div>
+              <div class="v-name">Excellence</div>
+              <div class="v-rate">—</div>
+            </div>
+            <div class="cov-val upcoming">
+              <div class="v-n display">11</div>
+              <div class="v-name">Wisdom</div>
+              <div class="v-rate">—</div>
+            </div>
+          </div>
+          <div class="cv-foot">
+            <b>Reading the row:</b> 18 of 18 classes completed Values 1—6 by end of April. 17 of 18 classes have completed Value 7A; <em>Form 3 GA is the one class behind</em> (one session short, pastoral flag absorption) · catching up later this Semester 2 with curriculum-condensed sessions. Values 8—11 are Semester 2 work.
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What this surface answers</h4>
+      <ul>
+        <li><b>Is VLC running?</b> Top strip · curriculum coverage card · matrix bars. One glance tells you whether the programme is held together this semester.</li>
+        <li><b>Where is the pastoral attention?</b> The flags grid · the active cases · the pattern across them. The Dean and Headmaster see concentration, not just incidents.</li>
+        <li><b>Which Form Master needs a conversation this week?</b> The flagged-row class. Form 3 GA shows up red on multiple cells — that's where the Friday Dean meeting starts.</li>
+        <li><b>Are the Peer Guides being trained?</b> 92% headline · gap visibility on the matrix · vacancy queue · escalation if attendance drops below 80%.</li>
+        <li><b>Is the calendar holding?</b> Curriculum position bar per class · the variance band (±1 session is fine, ±2 is a conversation, ±3 is a redesign).</li>
+      </ul>
+      <h4 style="margin-top:24px;">What this surface deliberately doesn't show</h4>
+      <ul>
+        <li><b>No journal content.</b> Reflections live on the student journal surface, FM-only.</li>
+        <li><b>No student rankings.</b> No leaderboards · no "best class for VLC." VLC is not a competition.</li>
+        <li><b>No staff comparisons.</b> Form Masters aren't ranked by VLC outcomes. Sessions held is a hygiene metric, not a performance one.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why a dashboard, and why this one</div>
+    <div class="section-meta">Editorial · the dashboard as rhythm-check, not scoreboard</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The view from the head office</div>
+        <h3 class="display">A pastoral programme <em>needs management</em>, not measurement.</h3>
+        <p>The instinct, when designing a school-wide dashboard for a values programme, is to start grading: best class, worst class, leaderboard, rankings, percentile, color-coded by performance. That instinct is wrong. <em>VLC is not a competition.</em> A class with two pastoral flags is not failing; it's potentially doing the work better than a class with zero flags, because something is surfacing. A class that's one session behind isn't underperforming; it might have a Form Master who paused for a difficult conversation, which is exactly what the system is for.</p>
+        <p>What the Headmaster and Dean actually need is a <b>rhythm-check</b>: is the programme running, is the calendar holding, are the flags being attended to, are the Peer Guides being trained, is the curriculum being delivered. <em>These are operational questions, not performance ones.</em> The dashboard answers them in one screen, with enough drill-down that the Friday morning admin meeting can be five minutes on VLC, not thirty.</p>
+        <p>The decisions this surface drives are small but high-frequency: <b>which Form Master to talk to this week, which class needs a Dean visit, which pastoral flag needs to escalate, which PG training is approaching, which class is running ahead and can be slowed.</b> The dashboard exists to surface those decisions early — before they become crises, before they become end-of-term audits. The aggregate numbers up top are honest about the year. The matrix in the middle is honest about the classes. The flags grid is honest about the concentration of pastoral work. <em>Nothing is hidden by averaging.</em></p>
+        <p>One last design choice worth naming: this dashboard <b>does not surface journal content.</b> Not to the Headmaster, not even to the Dean in summary form. The journal is FM + Dean for case oversight only, and even there the Dean reads cases — not aggregates. The dashboard surfaces flags (which are by their nature pastoral metadata, not student content), attendance, submission rates, and curriculum position. <em>Aggregating reflection content into school-wide statistics would distort what reflections are.</em> The student writes for two readers. The dashboard does not become a third.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The wrong dashboard would do these things</h4>
+      <ul>
+        <li><b>Rank classes by "values engagement."</b> Turns the programme into a competition Form Masters game.</li>
+        <li><b>Surface anonymised reflection themes school-wide.</b> Breaks the FM-student trust that makes reflections honest.</li>
+        <li><b>Score Form Masters by attendance %.</b> Turns the FM into an attendance-officer instead of a values facilitator.</li>
+        <li><b>Display flags publicly inside the dashboard rollup.</b> Privacy violation · pastoral confidentiality.</li>
+        <li><b>Trend pastoral flag counts as a "school health metric."</b> Schools with more flags may be safer, not worse.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

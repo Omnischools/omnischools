@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Expense entry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin-bottom: 12px; }
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 680px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+.mvp-tag { display: inline-block; background: var(--gold); color: var(--navy); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; padding: 3px 10px; border-radius: 100px; margin-bottom: 14px; }
+
+.section { margin-bottom: 80px; }
+.section-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+.section-num { font-family: 'Fraunces', serif; font-style: italic; font-size: 32px; font-weight: 400; color: var(--gold); }
+.section-title { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 500; letter-spacing: -0.01em; }
+.section-meta { margin-left: auto; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-3); font-weight: 600; }
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 500; margin-bottom: 14px; }
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li { font-size: 13px; color: var(--navy-2); padding: 10px 0; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop { width: 100%; background: var(--surface); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background: var(--navy); padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url { background: rgba(255,255,255,0.08); color: var(--gold-soft); padding: 5px 12px; border-radius: 6px; font-size: 11px; font-family: 'Fraunces', monospace; margin-left: 12px; letter-spacing: 0.04em; }
+
+.app-shell { display: grid; grid-template-columns: 220px 1fr; background: var(--bg); }
+.sidebar { background: var(--navy); color: var(--bg); padding: 24px 0; display: flex; flex-direction: column; min-height: 1380px; }
+.sidebar.tall { min-height: 1480px; }
+.sidebar .brand { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; }
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini { width: 38px; height: 38px; border-radius: 8px; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; flex-shrink: 0; }
+.school-name { font-family: 'Fraunces', serif; font-size: 13px; font-weight: 500; letter-spacing: -0.01em; }
+.school-meta { font-size: 10px; color: var(--gold-soft); margin-top: 2px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 24px; font-size: 13px; color: rgba(250,247,242,0.7); font-weight: 500; border-left: 2px solid transparent; }
+.nav-item.active { background: rgba(200,151,91,0.08); color: var(--bg); border-left-color: var(--gold); }
+.nav-item .ic { width: 16px; height: 16px; background: currentColor; opacity: 0.8; border-radius: 3px; }
+.nav-item.sub { padding-left: 44px; font-size: 12px; color: rgba(250,247,242,0.55); }
+.nav-item.sub.active { color: var(--bg); background: rgba(200,151,91,0.08); }
+.nav-item .new-tag { margin-left: auto; background: var(--gold); color: var(--navy); font-size: 8px; font-weight: 700; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 100px; }
+.sidebar .footer { margin-top: auto; padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.sidebar .footer .av { width: 32px; height: 32px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; color: var(--navy); font-family: 'Fraunces', serif; font-weight: 600; font-size: 12px; }
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by { padding: 10px 24px 16px; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(200,151,91,0.55); font-weight: 700; background: var(--navy); border-top: 1px solid rgba(255,255,255,0.05); }
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 0; background: var(--bg); }
+
+/* Page head */
+.page-head { background: var(--surface); border-bottom: 1px solid var(--border); padding: 24px 36px 22px; }
+.page-head .crumb { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-3); font-weight: 600; margin-bottom: 8px; }
+.page-head .crumb a { color: var(--gold); text-decoration: none; }
+.page-head .top-row { display: flex; justify-content: space-between; align-items: end; margin-bottom: 12px; }
+.page-head h1 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 500; letter-spacing: -0.018em; line-height: 1.1; }
+.page-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-head .lede { font-size: 13px; color: var(--navy-3); margin-top: 4px; }
+.page-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.actions { display: flex; gap: 8px; }
+.btn { padding: 9px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-2); background: var(--surface); color: var(--navy); font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); font-weight: 700; }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); font-weight: 700; }
+
+/* Mode switcher */
+.mode-switch-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.mode-pills { display: flex; gap: 4px; }
+.mode-pill { padding: 7px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 100px; font-family: 'Fraunces', serif; font-size: 12px; font-weight: 600; color: var(--navy-3); cursor: pointer; }
+.mode-pill.active { background: var(--navy); border-color: var(--navy); color: var(--bg); }
+.mode-pill em { font-style: italic; color: var(--gold); }
+.mode-meta { margin-left: auto; font-size: 11px; color: var(--navy-3); font-style: italic; }
+.mode-meta b { color: var(--navy-2); font-weight: 600; font-style: normal; }
+
+.body { padding: 28px 36px 60px; }
+
+/* DETAILED MODE: Transaction list */
+.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 16px; }
+.toolbar-left { display: flex; align-items: center; gap: 14px; }
+.toolbar-left .results-count { font-size: 12px; color: var(--navy-3); }
+.toolbar-left .results-count b { color: var(--navy); font-weight: 600; font-family: 'Fraunces', serif; font-size: 14px; }
+.toolbar-left .results-count em { font-style: italic; color: var(--gold); font-family: 'Fraunces', serif; font-weight: 500; }
+
+.filter-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.filter-pill { padding: 5px 11px; background: var(--surface); border: 1px solid var(--border-2); border-radius: 100px; font-size: 10px; font-weight: 600; color: var(--navy-2); cursor: pointer; font-family: inherit; }
+.filter-pill.active { background: var(--gold-bg); border-color: var(--gold); color: var(--gold); }
+.filter-pill .count { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; margin-left: 4px; opacity: 0.7; }
+
+.tx-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.tx-table { width: 100%; border-collapse: collapse; }
+.tx-table thead th { background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 18px; text-align: left; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; }
+.tx-table thead th.num { text-align: right; }
+.tx-table tbody td { padding: 12px 18px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.tx-table tbody tr:last-child td { border-bottom: none; }
+.tx-table tbody tr:hover { background: var(--bg); cursor: pointer; }
+
+.tx-table .tx-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--navy); }
+.tx-table .tx-date .day-name { font-size: 9px; color: var(--navy-3); margin-top: 2px; font-weight: 500; }
+
+.tx-cat-cell { display: flex; align-items: center; gap: 8px; }
+.tx-cat-cell .swatch { width: 10px; height: 10px; border-radius: 3px; }
+.tx-cat-cell .swatch.salaries { background: var(--navy); }
+.tx-cat-cell .swatch.utilities { background: var(--gold); }
+.tx-cat-cell .swatch.supplies { background: var(--green); }
+.tx-cat-cell .swatch.feeding { background: var(--warn); }
+.tx-cat-cell .swatch.repairs { background: var(--terra); }
+.tx-cat-cell .swatch.transport { background: var(--navy-3); }
+.tx-cat-cell .swatch.fees { background: var(--gold-soft); }
+.tx-cat-cell .swatch.other { background: var(--border-2); }
+.tx-cat-cell .cat-name { font-weight: 600; color: var(--navy); font-size: 12px; }
+
+.tx-desc { font-size: 12px; color: var(--navy-2); }
+.tx-desc b { color: var(--navy); font-weight: 600; }
+.tx-desc .sub { display: block; font-size: 10px; color: var(--navy-3); margin-top: 2px; font-style: italic; }
+
+.tx-payee { font-size: 11px; color: var(--navy-2); }
+.tx-payee b { color: var(--navy); font-weight: 600; }
+
+.tx-amount { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--navy); font-size: 13px; text-align: right; }
+
+.tx-method { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 100px; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
+.tx-method.bank { background: var(--bg); color: var(--navy-2); border: 1px solid var(--border); }
+.tx-method.momo { background: var(--gold-bg); color: var(--gold); }
+.tx-method.cash { background: var(--green-bg); color: var(--green); }
+
+.tx-receipt { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 4px; font-size: 9px; font-weight: 600; }
+.tx-receipt.attached { background: var(--green-bg); color: var(--green); }
+.tx-receipt.missing { background: var(--warn-bg); color: var(--warn); border: 1px solid rgba(197,138,46,0.3); }
+
+/* Day group header in transaction list */
+.tx-day-row { background: var(--bg); }
+.tx-day-row td { padding: 8px 18px !important; border-bottom: 1px solid var(--border) !important; }
+.tx-day-header { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+.tx-day-header b { color: var(--navy); font-family: 'Fraunces', serif; font-size: 12px; font-weight: 600; letter-spacing: -0.005em; text-transform: none; }
+.tx-day-header .day-total { font-family: 'JetBrains Mono', monospace; color: var(--navy-2); font-weight: 700; }
+
+/* AGGREGATE MODE */
+.agg-month-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+.agg-month-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; }
+.agg-month-card.current { border-color: var(--gold); background: var(--gold-bg); }
+.agg-month-card .month-name { font-family: 'Fraunces', serif; font-size: 13px; font-weight: 600; letter-spacing: -0.005em; }
+.agg-month-card .month-name em { font-style: italic; color: var(--gold); }
+.agg-month-card.current .month-name em { color: var(--gold); }
+.agg-month-card .month-meta { font-size: 10px; color: var(--navy-3); margin-top: 1px; font-style: italic; }
+.agg-month-card .month-total-row { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.agg-month-card.current .month-total-row { border-top-color: var(--gold-soft); }
+.agg-month-card .month-total { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; letter-spacing: -0.018em; }
+.agg-month-card .month-total .currency { font-size: 10px; color: var(--navy-3); font-weight: 500; margin-right: 2px; }
+.agg-month-card .month-status { margin-left: auto; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; padding: 2px 7px; border-radius: 100px; }
+.agg-month-card .month-status.complete { background: var(--green-bg); color: var(--green); }
+.agg-month-card .month-status.draft { background: var(--warn-bg); color: var(--warn); }
+.agg-month-card .month-status.current { background: var(--gold); color: var(--navy); }
+
+/* Aggregate entry table */
+.agg-entry-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.agg-entry-head { background: var(--gold-bg); border-bottom: 1px solid var(--gold-soft); padding: 14px 22px; display: flex; justify-content: space-between; align-items: center; }
+.agg-entry-head .left .label { font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-bottom: 2px; }
+.agg-entry-head .left .head-title { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; }
+.agg-entry-head .left .head-title em { font-style: italic; color: var(--gold); }
+.agg-entry-head .right { font-size: 11px; color: var(--navy-3); font-style: italic; }
+.agg-entry-head .right b { color: var(--navy-2); font-weight: 600; font-style: normal; }
+
+.agg-cat-row { padding: 14px 22px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 14px 1fr 180px 1fr; gap: 16px; align-items: center; }
+.agg-cat-row:last-child { border-bottom: none; }
+.agg-cat-row.subtotal { background: var(--bg); border-bottom: none; padding: 16px 22px; }
+
+.agg-cat-row .swatch { width: 12px; height: 12px; border-radius: 3px; }
+.agg-cat-row .swatch.salaries { background: var(--navy); }
+.agg-cat-row .swatch.utilities { background: var(--gold); }
+.agg-cat-row .swatch.supplies { background: var(--green); }
+.agg-cat-row .swatch.feeding { background: var(--warn); }
+.agg-cat-row .swatch.repairs { background: var(--terra); }
+.agg-cat-row .swatch.transport { background: var(--navy-3); }
+.agg-cat-row .swatch.fees { background: var(--gold-soft); }
+.agg-cat-row .swatch.other { background: var(--border-2); }
+
+.agg-cat-row .cat-info .cat-name { font-weight: 600; color: var(--navy); font-size: 13px; }
+.agg-cat-row .cat-info .cat-sub { font-size: 10px; color: var(--navy-3); margin-top: 2px; font-style: italic; }
+
+.agg-input-cell { display: flex; align-items: center; gap: 8px; }
+.agg-input-cell .currency-prefix { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--navy-3); font-weight: 600; }
+.agg-input { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 14px; color: var(--navy); padding: 6px 10px; background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; width: 130px; text-align: right; }
+.agg-input.filled { background: var(--surface); border-color: var(--gold); color: var(--navy); }
+.agg-input.empty { color: var(--navy-3); font-style: italic; font-family: 'Fraunces', serif; font-weight: 500; }
+
+.agg-meta-cell { font-size: 11px; color: var(--navy-3); }
+.agg-meta-cell .delta-up { color: var(--terra); font-weight: 700; }
+.agg-meta-cell .delta-down { color: var(--green); font-weight: 700; }
+.agg-meta-cell b { color: var(--navy-2); font-weight: 600; }
+.agg-meta-cell em { font-family: 'Fraunces', serif; font-style: italic; color: var(--gold); font-weight: 500; }
+
+.agg-cat-row.subtotal .swatch { background: transparent; }
+.agg-cat-row.subtotal .cat-info .cat-name { font-family: 'Fraunces', serif; font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
+.agg-cat-row.subtotal .cat-info .cat-name em { font-style: italic; color: var(--gold); }
+.agg-cat-row.subtotal .agg-input-cell .agg-input { font-size: 16px; font-weight: 700; color: var(--terra); border: none; background: transparent; }
+
+/* Notice band */
+.notice-band { background: var(--gold-bg); border: 1px solid var(--gold-soft); border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; }
+.notice-band .ic { width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 700; font-size: 11px; }
+.notice-band .body { font-size: 12px; color: var(--navy-2); line-height: 1.5; }
+.notice-band .body b { color: var(--navy); font-weight: 600; }
+.notice-band .body em { font-family: 'Fraunces', serif; font-style: italic; color: var(--gold); font-weight: 500; }
+
+/* Sticky save bar at bottom */
+.save-bar { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 14px 36px; display: flex; justify-content: space-between; align-items: center; margin: 24px -36px -60px; box-shadow: 0 -8px 24px -8px rgba(26,43,71,0.12); }
+.save-bar .left-info { font-size: 11px; color: var(--navy-3); }
+.save-bar .left-info b { color: var(--navy); font-weight: 600; }
+.save-bar .left-info em { font-family: 'Fraunces', serif; font-style: italic; color: var(--gold); font-weight: 500; }
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .agg-month-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Books · Expense entry</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Recording <em>what went out</em></h1>
+  <div class="gold-rule"></div>
+  <p>Two states matching the dual-mode design choice: the per-transaction ledger (detailed mode) for schools that record every expense as it happens, and the monthly aggregate entry (aggregate mode) for schools that summarise category totals at month-end. A school can switch from aggregate to detailed without losing historical data — old months stay as summaries, new months go into the ledger.</p>
+</header>
+
+<!-- ============ STATE A: DETAILED MODE LEDGER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Detailed mode · per-transaction ledger</div>
+    <div class="section-meta">For schools recording every expense · 47 entries this month</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / books / expenses</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Books<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub">Dashboard</div>
+          <div class="nav-item sub active">Expenses</div>
+          <div class="nav-item sub">Income</div>
+          <div class="nav-item sub">Fixed assets</div>
+          <div class="nav-item sub">Reports</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">JO</div>
+            <div><div class="meta-name">Joyce Owusu-Ansah</div><div class="meta-role">Accountant</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Books</a> / Expenses</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Expense <em>ledger</em></h1>
+                <div class="lede">October 2025 · <b>47 entries</b> recorded · GHS <b>32,840</b> total this month · last entry <b>2 hours ago</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn">Bulk import →</button>
+                <button class="btn primary">+ Record expense</button>
+              </div>
+            </div>
+            <div class="mode-switch-row">
+              <div class="mode-pills">
+                <div class="mode-pill active"><em>Detailed</em> · per transaction</div>
+                <div class="mode-pill">Aggregate · monthly totals</div>
+              </div>
+              <div class="mode-meta">Switching to aggregate keeps your historical entries · <b>only changes how new entries are recorded</b></div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <div class="toolbar">
+              <div class="toolbar-left">
+                <div class="results-count">Showing <em>47</em> of <b>47</b> entries · <b>GHS 32,840</b></div>
+              </div>
+              <div class="filter-pills">
+                <div class="filter-pill active">All<span class="count">47</span></div>
+                <div class="filter-pill">Salaries<span class="count">17</span></div>
+                <div class="filter-pill">Utilities<span class="count">6</span></div>
+                <div class="filter-pill">Supplies<span class="count">8</span></div>
+                <div class="filter-pill">Feeding<span class="count">5</span></div>
+                <div class="filter-pill">Repairs<span class="count">3</span></div>
+                <div class="filter-pill">Other<span class="count">8</span></div>
+              </div>
+            </div>
+
+            <div class="tx-card">
+              <table class="tx-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Description &amp; payee</th>
+                    <th>Method</th>
+                    <th>Receipt</th>
+                    <th class="num">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+
+                  <tr class="tx-day-row"><td colspan="6"><div class="tx-day-header"><b>Today · Wed 22 Oct</b><span>·</span><span class="day-total">GHS 1,840 · 4 entries</span></div></td></tr>
+
+                  <tr>
+                    <td><div class="tx-date">22 Oct<div class="day-name">2:14 PM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch utilities"></div><span class="cat-name">Utilities</span></div></td>
+                    <td><div class="tx-desc"><b>October ECG bill</b><span class="sub">Account #ACC-44829-ECG · Sept reading</span></div></td>
+                    <td><span class="tx-method bank">Bank transfer</span></td>
+                    <td><span class="tx-receipt attached">PDF · 84 KB</span></td>
+                    <td class="tx-amount">GHS 1,800.00</td>
+                  </tr>
+
+                  <tr>
+                    <td><div class="tx-date">22 Oct<div class="day-name">11:32 AM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch supplies"></div><span class="cat-name">Supplies</span></div></td>
+                    <td><div class="tx-desc">Photocopier toner cartridges<span class="sub">2 × black, 1 × colour · for staff room</span></div></td>
+                    <td><span class="tx-method momo">MoMo · MTN</span></td>
+                    <td><span class="tx-receipt attached">JPG · 412 KB</span></td>
+                    <td class="tx-amount">GHS 480.00</td>
+                  </tr>
+
+                  <tr>
+                    <td><div class="tx-date">22 Oct<div class="day-name">9:18 AM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch transport"></div><span class="cat-name">Transport</span></div></td>
+                    <td><div class="tx-desc">Petrol for school bus<span class="sub">Goil Adabraka · 35 litres</span></div></td>
+                    <td><span class="tx-method cash">Cash</span></td>
+                    <td><span class="tx-receipt attached">JPG · 280 KB</span></td>
+                    <td class="tx-amount">GHS 480.00</td>
+                  </tr>
+
+                  <tr>
+                    <td><div class="tx-date">22 Oct<div class="day-name">8:42 AM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch feeding"></div><span class="cat-name">Feeding</span></div></td>
+                    <td><div class="tx-desc">Caterer · weekly invoice<span class="sub"><b>Aunty Ama Catering</b> · 5 days · 312 students</span></div></td>
+                    <td><span class="tx-method bank">Bank transfer</span></td>
+                    <td><span class="tx-receipt missing">No receipt</span></td>
+                    <td class="tx-amount">GHS 1,560.00</td>
+                  </tr>
+
+                  <tr class="tx-day-row"><td colspan="6"><div class="tx-day-header"><b>Yesterday · Tue 21 Oct</b><span>·</span><span class="day-total">GHS 720 · 3 entries</span></div></td></tr>
+
+                  <tr>
+                    <td><div class="tx-date">21 Oct<div class="day-name">3:28 PM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch repairs"></div><span class="cat-name">Repairs</span></div></td>
+                    <td><div class="tx-desc">Plumber · JHS 2 toilet block<span class="sub">Mr. Tetteh · replaced 2 cisterns</span></div></td>
+                    <td><span class="tx-method cash">Cash</span></td>
+                    <td><span class="tx-receipt attached">JPG · 320 KB</span></td>
+                    <td class="tx-amount">GHS 380.00</td>
+                  </tr>
+
+                  <tr>
+                    <td><div class="tx-date">21 Oct<div class="day-name">1:12 PM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch supplies"></div><span class="cat-name">Supplies</span></div></td>
+                    <td><div class="tx-desc">Cleaning supplies<span class="sub">bleach · disinfectant · brooms</span></div></td>
+                    <td><span class="tx-method cash">Cash</span></td>
+                    <td><span class="tx-receipt attached">JPG · 192 KB</span></td>
+                    <td class="tx-amount">GHS 220.00</td>
+                  </tr>
+
+                  <tr>
+                    <td><div class="tx-date">21 Oct<div class="day-name">10:04 AM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch other"></div><span class="cat-name">Other</span></div></td>
+                    <td><div class="tx-desc">Staff appreciation lunch<span class="sub">Annual end-of-term thank-you · 17 staff</span></div></td>
+                    <td><span class="tx-method momo">MoMo · MTN</span></td>
+                    <td><span class="tx-receipt attached">JPG · 244 KB</span></td>
+                    <td class="tx-amount">GHS 120.00</td>
+                  </tr>
+
+                  <tr class="tx-day-row"><td colspan="6"><div class="tx-day-header"><b>Mon 20 Oct</b><span>·</span><span class="day-total">GHS 14,200 · 5 entries</span></div></td></tr>
+
+                  <tr>
+                    <td><div class="tx-date">20 Oct<div class="day-name">2:00 PM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch salaries"></div><span class="cat-name">Salaries</span></div></td>
+                    <td><div class="tx-desc"><b>October mid-month payroll</b><span class="sub">14 teaching · paid via bank</span></div></td>
+                    <td><span class="tx-method bank">Bank transfer</span></td>
+                    <td><span class="tx-receipt attached">PDF · 1.2 MB</span></td>
+                    <td class="tx-amount">GHS 12,400.00</td>
+                  </tr>
+
+                  <tr>
+                    <td><div class="tx-date">20 Oct<div class="day-name">11:48 AM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch utilities"></div><span class="cat-name">Utilities</span></div></td>
+                    <td><div class="tx-desc">GWCL water bill · September<span class="sub">Account #GWCL-228173</span></div></td>
+                    <td><span class="tx-method bank">Bank transfer</span></td>
+                    <td><span class="tx-receipt attached">PDF · 64 KB</span></td>
+                    <td class="tx-amount">GHS 240.00</td>
+                  </tr>
+
+                  <tr>
+                    <td><div class="tx-date">20 Oct<div class="day-name">10:32 AM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch utilities"></div><span class="cat-name">Utilities</span></div></td>
+                    <td><div class="tx-desc">Internet · MTN business · October<span class="sub">100 Mbps · Acct A-MTN-44183</span></div></td>
+                    <td><span class="tx-method momo">MoMo · MTN</span></td>
+                    <td><span class="tx-receipt attached">PDF · 48 KB</span></td>
+                    <td class="tx-amount">GHS 1,200.00</td>
+                  </tr>
+
+                  <tr>
+                    <td><div class="tx-date">20 Oct<div class="day-name">9:14 AM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch supplies"></div><span class="cat-name">Supplies</span></div></td>
+                    <td><div class="tx-desc">Stationery · staff room<span class="sub">A4 paper · pens · markers · staples</span></div></td>
+                    <td><span class="tx-method cash">Cash</span></td>
+                    <td><span class="tx-receipt attached">JPG · 308 KB</span></td>
+                    <td class="tx-amount">GHS 280.00</td>
+                  </tr>
+
+                  <tr>
+                    <td><div class="tx-date">20 Oct<div class="day-name">8:30 AM</div></div></td>
+                    <td><div class="tx-cat-cell"><div class="swatch feeding"></div><span class="cat-name">Feeding</span></div></td>
+                    <td><div class="tx-desc">Bulk rice · 2 sacks<span class="sub">Madina market · for week supplies</span></div></td>
+                    <td><span class="tx-method cash">Cash</span></td>
+                    <td><span class="tx-receipt missing">No receipt</span></td>
+                    <td class="tx-amount">GHS 80.00</td>
+                  </tr>
+
+                  <tr><td colspan="6" style="padding:14px 18px;background:var(--bg);text-align:center;font-size:11px;color:var(--navy-3);font-style:italic">35 more entries earlier this month · scroll to load</td></tr>
+
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Detailed mode</h4>
+      <ul>
+        <li><b>Mode pills sit just below the headline</b> with "Detailed · per transaction" active and a meta line: "Switching to aggregate keeps your historical entries · <b>only changes how new entries are recorded</b>." <b>Honest about the consequence of switching modes</b>; admin doesn't lose work by changing her mind.</li>
+        <li><b>Filter pills with counts per category</b> give Joyce one-click filtering to a category. Each pill shows the per-category count in mono — Salaries 17, Utilities 6, Supplies 8 etc. <b>Visible breakdown without drilling in</b>.</li>
+        <li><b>Day-grouped rows with day totals</b>: "Today · Wed 22 Oct · GHS 1,840 · 4 entries" header rows separate the ledger into operational chunks. <b>Days are how schools think about money flow</b>; flat chronological lists lose that rhythm.</li>
+        <li><b>Six-column table: Date / Category / Description &amp; payee / Method / Receipt / Amount.</b> Description column carries both line one (the what) and a sub-line (the why or context) — <b>"Caterer · weekly invoice / Aunty Ama Catering · 5 days · 312 students"</b>. Real Ghanaian operational specifics.</li>
+        <li><b>Method column uses three states with colour vocabulary:</b> Bank transfer (neutral), MoMo · MTN (gold-tinted matching the established MoMo identity), Cash (green-tinted). <b>Same payment method language as the billing/receipt module</b>.</li>
+        <li><b>Receipt column shows attachment state explicitly:</b> "PDF · 84 KB" (green-tinted, attached) or "No receipt" (warn-tinted, missing). <b>Missing receipts are a real audit risk</b>; surfacing the state at table level makes "fix the missing receipts" a discoverable task.</li>
+        <li><b>Realistic Ghanaian operational entries throughout:</b> ECG bill, GWCL water, Goil Adabraka petrol, Aunty Ama Catering, MTN business internet, Madina market bulk rice. <b>Same localisation depth as the rest of the system</b>; no generic SaaS placeholders.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE B: AGGREGATE MODE ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Aggregate mode · monthly totals</div>
+    <div class="section-meta">For schools summarising category totals at month-end</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / books / expenses</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar tall">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Books<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub">Dashboard</div>
+          <div class="nav-item sub active">Expenses</div>
+          <div class="nav-item sub">Income</div>
+          <div class="nav-item sub">Fixed assets</div>
+          <div class="nav-item sub">Reports</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">JO</div>
+            <div><div class="meta-name">Joyce Owusu-Ansah</div><div class="meta-role">Accountant</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Books</a> / Expenses</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Monthly <em>summary</em></h1>
+                <div class="lede">October 2025 in progress · enter category totals at month-end · <b>simpler for smaller schools</b> · still produces the same P&amp;L and balance sheet</div>
+              </div>
+              <div class="actions">
+                <button class="btn">View all months →</button>
+                <button class="btn primary">Save October</button>
+              </div>
+            </div>
+            <div class="mode-switch-row">
+              <div class="mode-pills">
+                <div class="mode-pill">Detailed · per transaction</div>
+                <div class="mode-pill active"><em>Aggregate</em> · monthly totals</div>
+              </div>
+              <div class="mode-meta">You can switch to detailed any time · <b>past months stay as summaries</b>, new entries go in the ledger</div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <!-- Month overview cards -->
+            <div class="agg-month-grid">
+              <div class="agg-month-card">
+                <div style="display:flex;justify-content:space-between;align-items:start"><div><div class="month-name display">August <em>2025</em></div><div class="month-meta">Term break · summer</div></div><div class="month-status complete">✓ Complete</div></div>
+                <div class="month-total-row">
+                  <div class="month-total"><span class="currency">GHS</span>14,200</div>
+                </div>
+              </div>
+              <div class="agg-month-card">
+                <div style="display:flex;justify-content:space-between;align-items:start"><div><div class="month-name display">September <em>2025</em></div><div class="month-meta">Term 1 begins</div></div><div class="month-status complete">✓ Complete</div></div>
+                <div class="month-total-row">
+                  <div class="month-total"><span class="currency">GHS</span>32,800</div>
+                </div>
+              </div>
+              <div class="agg-month-card current">
+                <div style="display:flex;justify-content:space-between;align-items:start"><div><div class="month-name display">October <em>2025</em></div><div class="month-meta">Term 1 in progress</div></div><div class="month-status current">In progress</div></div>
+                <div class="month-total-row">
+                  <div class="month-total"><span class="currency">GHS</span>32,840</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="notice-band">
+              <div class="ic">i</div>
+              <div class="body">
+                <em>How aggregate mode works:</em> Enter the <b>total amount you spent in each category</b> for the month. No need to record individual transactions — you decide once a month how much went where. Save once you've filled what you can; you can <b>come back and adjust</b> until you mark the month complete.
+              </div>
+            </div>
+
+            <div class="agg-entry-card">
+              <div class="agg-entry-head">
+                <div class="left">
+                  <div class="label">October 2025 · Term 1 · in progress</div>
+                  <div class="head-title display">Enter category <em>totals</em></div>
+                </div>
+                <div class="right">Last saved <b>2 hours ago</b> · auto-saved as draft</div>
+              </div>
+
+              <div class="agg-cat-row">
+                <div class="swatch salaries"></div>
+                <div class="cat-info">
+                  <div class="cat-name">Salaries &amp; wages</div>
+                  <div class="cat-sub">17 staff total · usually paid bi-monthly</div>
+                </div>
+                <div class="agg-input-cell">
+                  <span class="currency-prefix">GHS</span>
+                  <input type="text" class="agg-input filled" value="24,800.00" />
+                </div>
+                <div class="agg-meta-cell">
+                  Last month <b>GHS 24,400</b> · <span class="delta-up">↑ 1.6%</span> · <em>within range</em>
+                </div>
+              </div>
+
+              <div class="agg-cat-row">
+                <div class="swatch utilities"></div>
+                <div class="cat-info">
+                  <div class="cat-name">Utilities</div>
+                  <div class="cat-sub">ECG · GWCL · internet · phone</div>
+                </div>
+                <div class="agg-input-cell">
+                  <span class="currency-prefix">GHS</span>
+                  <input type="text" class="agg-input filled" value="3,240.00" />
+                </div>
+                <div class="agg-meta-cell">
+                  Last month <b>GHS 2,160</b> · <span class="delta-up">↑ 50%</span> · <em>flagged on dashboard</em>
+                </div>
+              </div>
+
+              <div class="agg-cat-row">
+                <div class="swatch supplies"></div>
+                <div class="cat-info">
+                  <div class="cat-name">Supplies &amp; materials</div>
+                  <div class="cat-sub">stationery · cleaning · ICT consumables</div>
+                </div>
+                <div class="agg-input-cell">
+                  <span class="currency-prefix">GHS</span>
+                  <input type="text" class="agg-input filled" value="2,100.00" />
+                </div>
+                <div class="agg-meta-cell">
+                  Last month <b>GHS 2,400</b> · <span class="delta-down">↓ 12.5%</span>
+                </div>
+              </div>
+
+              <div class="agg-cat-row">
+                <div class="swatch feeding"></div>
+                <div class="cat-info">
+                  <div class="cat-name">Feeding programme</div>
+                  <div class="cat-sub">caterer fees · ingredients</div>
+                </div>
+                <div class="agg-input-cell">
+                  <span class="currency-prefix">GHS</span>
+                  <input type="text" class="agg-input filled" value="1,640.00" />
+                </div>
+                <div class="agg-meta-cell">
+                  Last month <b>GHS 1,560</b> · <span class="delta-up">↑ 5.1%</span>
+                </div>
+              </div>
+
+              <div class="agg-cat-row">
+                <div class="swatch repairs"></div>
+                <div class="cat-info">
+                  <div class="cat-name">Repairs &amp; maintenance</div>
+                  <div class="cat-sub">building · furniture · ICT equipment</div>
+                </div>
+                <div class="agg-input-cell">
+                  <span class="currency-prefix">GHS</span>
+                  <input type="text" class="agg-input filled" value="380.00" />
+                </div>
+                <div class="agg-meta-cell">
+                  Last month <b>GHS 880</b> · <span class="delta-down">↓ 56.8%</span>
+                </div>
+              </div>
+
+              <div class="agg-cat-row">
+                <div class="swatch transport"></div>
+                <div class="cat-info">
+                  <div class="cat-name">Transport &amp; events</div>
+                  <div class="cat-sub">school bus fuel · trips · activities</div>
+                </div>
+                <div class="agg-input-cell">
+                  <span class="currency-prefix">GHS</span>
+                  <input type="text" class="agg-input filled" value="480.00" />
+                </div>
+                <div class="agg-meta-cell">
+                  Last month <b>GHS 760</b> · <span class="delta-down">↓ 36.8%</span>
+                </div>
+              </div>
+
+              <div class="agg-cat-row">
+                <div class="swatch fees"></div>
+                <div class="cat-info">
+                  <div class="cat-name">Bank &amp; payment fees</div>
+                  <div class="cat-sub">Hubtel charges · bank charges</div>
+                </div>
+                <div class="agg-input-cell">
+                  <span class="currency-prefix">GHS</span>
+                  <input type="text" class="agg-input filled" value="200.00" />
+                </div>
+                <div class="agg-meta-cell">
+                  Auto-tracked from Hubtel · <em>edit only if you have additional fees</em>
+                </div>
+              </div>
+
+              <div class="agg-cat-row">
+                <div class="swatch other"></div>
+                <div class="cat-info">
+                  <div class="cat-name">Other expenses</div>
+                  <div class="cat-sub">marketing · insurance · misc.</div>
+                </div>
+                <div class="agg-input-cell">
+                  <span class="currency-prefix">GHS</span>
+                  <input type="text" class="agg-input empty" value="" placeholder="—" />
+                </div>
+                <div class="agg-meta-cell">
+                  Last month <b>GHS 720</b> · <em style="color:var(--warn)">not yet entered</em>
+                </div>
+              </div>
+
+              <div class="agg-cat-row subtotal">
+                <div class="swatch"></div>
+                <div class="cat-info">
+                  <div class="cat-name">October <em>total</em></div>
+                </div>
+                <div class="agg-input-cell">
+                  <input type="text" class="agg-input" value="GHS 32,840" readonly />
+                </div>
+                <div class="agg-meta-cell">
+                  vs September <b>GHS 32,800</b> · <span class="delta-up">↑ 0.1%</span> · <em>steady</em>
+                </div>
+              </div>
+            </div>
+
+            <div class="save-bar">
+              <div class="left-info">
+                Auto-saved as draft · <b>1 category not yet entered</b> · mark complete when you've finished the month
+              </div>
+              <div class="actions">
+                <button class="btn">Save and continue later</button>
+                <button class="btn gold">Mark October complete →</button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Aggregate mode</h4>
+      <ul>
+        <li><b>Three month overview cards at the top:</b> August (Complete · GHS 14,200), September (Complete · GHS 32,800), October (current, gold-tinted, In progress · GHS 32,840). <b>Joyce sees the trail of past months</b> alongside the one she's working on.</li>
+        <li><b>"How aggregate mode works" notice band</b> explains the model in plain language: "Enter the <b>total amount you spent in each category</b>. No need to record individual transactions." <b>Sets expectations</b>; aggregate-mode users shouldn't feel guilty about not having a transaction-level ledger.</li>
+        <li><b>Eight category rows mirror the chart of accounts</b> from the dashboard. Each row has swatch / category name + sub-line / input field / context meta. <b>Same category vocabulary across all bookkeeping surfaces</b>.</li>
+        <li><b>Inputs use mono font with GHS currency prefix</b> outside the input. Filled inputs have gold border (the user-tunable signal); the empty "Other" row shows italic Fraunces "—" placeholder. <b>Visually consistent with all other amount inputs in the system</b>.</li>
+        <li><b>Context column on the right is the most useful design move:</b> "Last month GHS 24,400 · ↑ 1.6% · within range" / "Last month GHS 2,160 · ↑ 50% · flagged on dashboard". <b>Joyce sees deltas as she enters</b> — she can sanity-check the number while typing it. The "flagged on dashboard" link connects this entry to the anomaly callout on the dashboard.</li>
+        <li><b>"Auto-tracked from Hubtel" line on the Bank fees row</b> tells Joyce that Hubtel fees are populated automatically from the integration. She only edits if there are additional bank charges. <b>Cross-module integrity</b>; data flowing from one MVP2 surface into another.</li>
+        <li><b>Subtotal row at the bottom</b> is read-only with terra-coloured big total. "October total: GHS 32,840 · vs September GHS 32,800 · ↑ 0.1% · steady." <b>The total auto-computes</b>; admin can never make it not match the sum of inputs.</li>
+        <li><b>Sticky save bar with two actions:</b> "Save and continue later" (draft state) / "Mark October complete →" (gold-primary, finalises the month). <b>Two-state workflow</b>: drafts can be edited freely; complete months are append-only via void/correction (same audit principle as billing).</li>
+        <li><b>The notice "<b>past months stay as summaries</b>, new entries go in the ledger"</b> in the mode switch meta line confirms that the dual-mode design is non-destructive. <b>Schools migrate from aggregate to detailed when they're ready</b>; nothing forces them.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

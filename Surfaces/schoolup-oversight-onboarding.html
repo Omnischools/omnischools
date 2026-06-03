@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools Oversight — District director dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Omnischools Oversight — Director onboarding</title>
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:800px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Oversight uses a deeper navy app chrome to distinguish it from the operational app */
+.app-shell { display:grid; grid-template-columns:230px 1fr; background:var(--bg); }
+.sidebar { background:#13203A; color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1240px; }
+.sidebar.tall { min-height:1620px; }
+.sidebar.taller { min-height:1880px; }
+.sidebar .gov-mark { padding:0 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:8px; }
+.sidebar .gov-mark .crest { display:flex; gap:11px; align-items:center; }
+.sidebar .gov-mark .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; line-height:1; text-align:center; }
+.sidebar .gov-mark .crest-text .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.sidebar .gov-mark .crest-text .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.sidebar .scope-chip { margin:14px 20px 8px; padding:10px 12px; background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:8px; }
+.sidebar .scope-chip .sc-label { font-size:8.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.sidebar .scope-chip .sc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.sidebar .scope-chip .sc-meta { font-size:10px; color:var(--gold-soft); margin-top:1px; }
+.nav-group { padding:16px 24px 6px; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(200,151,91,0.6); font-weight:700; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.1); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; }
+.sidebar .footer .av { width:34px; height:34px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; flex-shrink:0; }
+.sidebar .footer .meta-name { font-weight:600; font-size:12px; }
+.sidebar .footer .meta-role { font-size:9.5px; color:var(--gold-soft); margin-top:1px; }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.5); font-weight:700; }
+.powered-by em { color:var(--gold); font-style:normal; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:820px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Data-period banner */
+.period-banner { display:flex; align-items:center; gap:14px; padding:12px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; margin-bottom:24px; }
+.period-banner .pb-icon { width:34px; height:34px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:15px; flex-shrink:0; }
+.period-banner .pb-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.period-banner .pb-text b { color:var(--navy); font-weight:700; }
+.period-banner .pb-aside { margin-left:auto; font-size:10px; letter-spacing:0.06em; color:var(--navy-3); font-weight:600; text-align:right; }
+
+/* KPI strip */
+.kpi-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.kpi-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.kpi-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.kpi-card .k-lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.kpi-card .k-val { font-family:'Fraunces', serif; font-size:33px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.kpi-card .k-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.kpi-card .k-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.kpi-card .k-sub { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.kpi-card .k-sub b { color:var(--navy-2); font-weight:700; }
+.kpi-card .k-delta { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; margin-top:8px; position:relative; }
+.kpi-card .k-delta.up { background:var(--green-bg); color:var(--green); }
+.kpi-card .k-delta.down { background:var(--terra-bg); color:var(--terra); }
+.kpi-card .k-delta.flat { background:var(--bg); color:var(--navy-3); }
+
+/* Panel */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.panel-head { padding:16px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; justify-content:space-between; }
+.panel-head .ph-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.panel-head .ph-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.panel-head .ph-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.panel-head .ph-link { font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; }
+.panel-body { padding:20px 22px; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* Bar rows for enrolment-by-sex etc */
+.bar-row { margin-bottom:14px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-row .br-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.bar-row .br-label { font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-label .br-sub { color:var(--navy-3); font-weight:500; font-size:10.5px; margin-left:6px; }
+.bar-row .br-value { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-track { height:9px; background:var(--bg); border-radius:100px; overflow:hidden; display:flex; }
+.bar-row .br-fill { height:100%; }
+.bar-row .br-fill.navy { background:var(--navy); }
+.bar-row .br-fill.gold { background:var(--gold); }
+.bar-row .br-fill.green { background:var(--green); }
+.bar-row .br-fill.terra { background:var(--terra); }
+.bar-row .br-fill.warn { background:var(--warn); }
+.split-legend { display:flex; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.split-legend .sl-item { display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--navy-2); font-weight:600; }
+.split-legend .sl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* Mini stat list */
+.stat-list { display:flex; flex-direction:column; }
+.stat-list .st-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.stat-list .st-row:last-child { border-bottom:none; }
+.stat-list .st-label { font-size:12px; color:var(--navy-2); font-weight:500; }
+.stat-list .st-label b { color:var(--navy); font-weight:700; }
+.stat-list .st-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stat-list .st-val .st-unit { font-size:10px; color:var(--navy-3); font-weight:500; }
+.stat-list .st-val.flag { color:var(--terra); }
+.stat-list .st-val.good { color:var(--green); }
+
+/* Performance band chart */
+.band-chart { display:flex; flex-direction:column; gap:10px; }
+.band-row { display:grid; grid-template-columns:78px 1fr 48px; gap:10px; align-items:center; }
+.band-row .bd-label { font-size:11px; font-weight:600; color:var(--navy-2); }
+.band-row .bd-track { height:20px; background:var(--bg); border-radius:5px; overflow:hidden; display:flex; }
+.band-row .bd-seg { height:100%; }
+.band-row .bd-pct { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.band-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.band-legend .bl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.band-legend .bl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* School list table */
+.school-table { width:100%; border-collapse:collapse; }
+.school-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.school-table th.c { text-align:center; }
+.school-table th.r { text-align:right; }
+.school-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.school-table tr:last-child td { border-bottom:none; }
+.school-table tr.drill { cursor:pointer; }
+.school-table tr.drill:hover td { background:var(--gold-bg); }
+.school-table td .sc-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.school-table td .sc-name .sc-badge { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.school-table td .sc-name .sc-badge.anchor { background:var(--gold); color:var(--navy); }
+.school-table td .sc-meta { font-size:9.5px; color:var(--navy-3); margin-top:1px; font-weight:500; }
+.school-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.school-table td .num.r { text-align:right; }
+.school-table td .ratio { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; }
+.school-table td .ratio.good { color:var(--green); }
+.school-table td .ratio.warn { color:var(--warn); }
+.school-table td .ratio.flag { color:var(--terra); }
+.school-table td .perf-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; }
+.school-table td .perf-pill.good { background:var(--green-bg); color:var(--green); }
+.school-table td .perf-pill.mid { background:var(--warn-bg); color:var(--warn); }
+.school-table td .perf-pill.low { background:var(--terra-bg); color:var(--terra); }
+.school-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.table-toolbar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.table-toolbar .tt-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.chip { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:5px 11px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.chip.compare { background:var(--gold-bg); border-color:var(--gold); color:var(--navy); margin-left:auto; }
+.chip.compare::before { content:"⊕ "; color:var(--gold); }
+
+/* Anomaly callouts */
+.flag-list { display:flex; flex-direction:column; gap:10px; }
+.flag-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.flag-item.warn { border-color:var(--warn); background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 60%); }
+.flag-item.terra { border-color:var(--terra); background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 60%); }
+.flag-item .fi-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.flag-item.warn .fi-icon { background:var(--warn); color:var(--bg); }
+.flag-item.terra .fi-icon { background:var(--terra); color:var(--bg); }
+.flag-item .fi-body .fi-title { font-size:12px; font-weight:700; color:var(--navy); }
+.flag-item .fi-body .fi-detail { font-size:10.5px; color:var(--navy-2); margin-top:2px; line-height:1.45; }
+.flag-item .fi-body .fi-detail b { color:var(--navy); font-weight:700; }
+.flag-item .fi-action { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:700; color:var(--navy); cursor:pointer; }
+
+/* Comparison teaser */
+.compare-strip { background:linear-gradient(135deg, #13203A 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:22px 26px; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.compare-strip::before { content:""; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.compare-strip .cs-body { position:relative; }
+.compare-strip .cs-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.compare-strip .cs-title { font-family:'Fraunces', serif; font-size:21px; font-weight:500; line-height:1.2; margin-bottom:6px; }
+.compare-strip .cs-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.compare-strip .cs-text { font-size:12px; color:var(--gold-soft); line-height:1.5; max-width:560px; }
+.compare-strip .cs-text b { color:var(--bg); font-weight:600; }
+.compare-strip .cs-action { position:relative; }
+
+/* Data provenance footer */
+.provenance { display:flex; gap:18px; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-top:18px; flex-wrap:wrap; }
+.provenance .pv-item { font-size:10.5px; color:var(--navy-3); font-weight:500; }
+.provenance .pv-item b { color:var(--navy-2); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .dash-grid { grid-template-columns:1fr; }
+  .compare-strip { grid-template-columns:1fr; }
+}
+
+/* ===== Onboarding-specific ===== */
+.signin-frame { background:linear-gradient(160deg, #13203A 0%, #1A2B47 55%, #243757 100%); min-height:1180px; display:flex; align-items:center; justify-content:center; padding:60px 40px; position:relative; overflow:hidden; }
+.signin-frame::before { content:""; position:absolute; top:-80px; left:-60px; width:340px; height:340px; border-radius:50%; background:rgba(200,151,91,0.06); }
+.signin-frame::after { content:""; position:absolute; bottom:-100px; right:-80px; width:400px; height:400px; border-radius:50%; background:rgba(200,151,91,0.05); }
+.signin-card { background:var(--surface); border-radius:18px; max-width:480px; width:100%; padding:40px 44px; position:relative; box-shadow:0 30px 80px -20px rgba(0,0,0,0.5); }
+.signin-card .sc-crest { display:flex; gap:12px; align-items:center; margin-bottom:28px; }
+.signin-card .sc-crest .crest-badge { width:44px; height:44px; border-radius:9px; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:14px; }
+.signin-card .sc-crest .ct-l1 { font-family:'Fraunces', serif; font-size:16px; font-weight:600; color:var(--navy); }
+.signin-card .sc-crest .ct-l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-top:1px; }
+.signin-card .sc-h { font-family:'Fraunces', serif; font-size:24px; font-weight:500; letter-spacing:-0.015em; line-height:1.15; margin-bottom:6px; }
+.signin-card .sc-h em { font-style:italic; color:var(--gold); font-weight:400; }
+.signin-card .sc-sub { font-size:12.5px; color:var(--navy-3); line-height:1.55; margin-bottom:24px; }
+.signin-card .field-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.signin-card .field-input { width:100%; background:var(--bg); border:1px solid var(--border-2); border-radius:8px; padding:12px 14px; font-size:13px; font-family:'JetBrains Mono', monospace; color:var(--navy); margin-bottom:16px; }
+.signin-card .field-input.filled { color:var(--navy); font-weight:600; }
+.signin-card .otp-row { display:flex; gap:8px; margin-bottom:8px; }
+.signin-card .otp-box { flex:1; aspect-ratio:1; background:var(--bg); border:1px solid var(--border-2); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono', monospace; font-size:20px; font-weight:600; color:var(--navy); }
+.signin-card .otp-box.filled { border-color:var(--gold); background:var(--gold-bg); }
+.signin-card .otp-box.cursor { border-color:var(--navy); }
+.signin-card .sc-note { font-size:11px; color:var(--navy-3); line-height:1.5; margin-bottom:20px; }
+.signin-card .sc-note b { color:var(--navy-2); font-weight:700; }
+.signin-card .btn-full { width:100%; justify-content:center; }
+.provisioned-by { margin-top:22px; padding-top:18px; border-top:1px solid var(--border); display:flex; gap:11px; align-items:flex-start; }
+.provisioned-by .pb-mark { width:30px; height:30px; border-radius:7px; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; flex-shrink:0; }
+.provisioned-by .pb-text { font-size:10.5px; color:var(--navy-3); line-height:1.5; }
+.provisioned-by .pb-text b { color:var(--navy-2); font-weight:700; }
+
+/* onboarding step wizard - vertical step nav per design system */
+.ob-shell { display:grid; grid-template-columns:268px 1fr; min-height:1180px; background:var(--bg); }
+.ob-steps { background:#13203A; padding:32px 0; }
+.ob-steps .obs-crest { padding:0 26px 22px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:20px; display:flex; gap:11px; align-items:center; }
+.ob-steps .obs-crest .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; }
+.ob-steps .obs-crest .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.ob-steps .obs-crest .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.ob-step { display:grid; grid-template-columns:auto 1fr; gap:13px; padding:13px 26px; align-items:start; }
+.ob-step .obs-dot { width:26px; height:26px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:rgba(250,247,242,0.5); }
+.ob-step.done .obs-dot { background:var(--green); border-color:var(--green); color:var(--bg); }
+.ob-step.active .obs-dot { background:var(--gold); border-color:var(--gold); color:var(--navy); }
+.ob-step .obs-label { font-size:12.5px; font-weight:600; color:rgba(250,247,242,0.55); padding-top:4px; }
+.ob-step.done .obs-label { color:rgba(250,247,242,0.8); }
+.ob-step.active .obs-label { color:var(--bg); }
+.ob-step .obs-label .obs-sub { display:block; font-size:10px; font-weight:500; color:rgba(200,151,91,0.7); margin-top:2px; }
+.ob-main { padding:40px 44px; }
+.ob-main .obm-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:10px; }
+.ob-main .obm-h { font-family:'Fraunces', serif; font-size:26px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; margin-bottom:8px; }
+.ob-main .obm-h em { font-style:italic; color:var(--gold); font-weight:400; }
+.ob-main .obm-lede { font-size:13px; color:var(--navy-3); line-height:1.6; margin-bottom:24px; max-width:600px; }
+
+.jur-card { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; padding:24px 28px; margin-bottom:20px; position:relative; }
+.jur-card .jc-lock { position:absolute; top:18px; right:20px; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; color:var(--navy-3); background:var(--bg); border:1px solid var(--border-2); padding:3px 9px; border-radius:100px; }
+.jur-card .jc-label { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.jur-card .jc-name { font-family:'Fraunces', serif; font-size:24px; font-weight:600; letter-spacing:-0.015em; }
+.jur-card .jc-meta { font-size:12px; color:var(--navy-3); margin-top:4px; }
+.jur-card .jc-detail { display:flex; gap:24px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+.jur-card .jc-stat .jcs-v { font-family:'Fraunces', serif; font-size:20px; font-weight:600; color:var(--navy); }
+.jur-card .jc-stat .jcs-l { font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-top:2px; }
+
+.brief-list { display:flex; flex-direction:column; gap:12px; margin-bottom:22px; }
+.brief-item { display:grid; grid-template-columns:auto 1fr; gap:14px; padding:16px 18px; background:var(--surface); border:1px solid var(--border); border-radius:11px; }
+.brief-item .bi-num { width:30px; height:30px; border-radius:8px; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; }
+.brief-item .bi-body .bi-title { font-family:'Fraunces', serif; font-size:14.5px; font-weight:600; color:var(--navy); margin-bottom:3px; }
+.brief-item .bi-body .bi-text { font-size:11.5px; color:var(--navy-2); line-height:1.55; }
+.brief-item .bi-body .bi-text b { color:var(--navy); font-weight:700; }
+
+.ack-box { background:var(--gold-bg); border:1.5px solid var(--gold-soft); border-radius:12px; padding:18px 22px; margin-bottom:20px; display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:center; }
+.ack-box .ab-check { width:24px; height:24px; border-radius:6px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; }
+.ack-box .ab-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.ack-box .ab-text b { color:var(--navy); font-weight:700; }
+
+.welcome-card { background:linear-gradient(135deg, var(--green-bg) 0%, var(--surface) 65%); border:2px solid var(--green); border-radius:16px; padding:32px 36px; margin-bottom:22px; display:grid; grid-template-columns:auto 1fr; gap:22px; align-items:center; }
+.welcome-card .wc-icon { width:64px; height:64px; border-radius:50%; background:var(--green); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:500; font-size:30px; }
+.welcome-card .wc-body h2 { font-family:'Fraunces', serif; font-size:24px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.welcome-card .wc-body h2 em { font-style:italic; color:var(--gold); font-weight:400; }
+.welcome-card .wc-body p { font-size:12.5px; color:var(--navy-2); line-height:1.55; }
+.welcome-card .wc-body p b { color:var(--navy); font-weight:700; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Omnischools Oversight · Batch 1 · surface 3 of 3</div>
+<div class="eyebrow">Omnischools Oversight · the first sign-in</div>
+<h1>A new director's <em>first day.</em></h1>
+<div class="gold-rule"></div>
+<p>An Oversight user is never self-registered. When GES appoints a new district director, a designated GES Oversight administrator provisions their account — bound to one named jurisdiction, the role decided before the person ever signs in. This surface is what the new director sees on first sign-in: they verify their GES-issued credentials, confirm the jurisdiction the account was created against, read a short briefing on what Oversight access does and does not permit, acknowledge the accountability terms, and arrive at their dashboard. The demo new director is D. Mensah-Bonsu, provisioned as District Director of Wassa Amenfi West.</p>
+</div>
+
+<!-- ============================================ SECTION 1 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">Sign in · the account already exists</div>
+<div class="section-meta">GES-provisioned · not self-registered</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / sign-in</div></div>
+
+<div class="signin-frame">
+<div class="signin-card">
+<div class="sc-crest">
+<div class="crest-badge">GES</div>
+<div><div class="ct-l1">Omnischools Oversight</div><div class="ct-l2">Ghana Education Service</div></div>
+</div>
+<div class="sc-h">Welcome, <em>Director.</em></div>
+<div class="sc-sub">Your Oversight account has been created by the GES Oversight administrator. Sign in with the phone number on your GES appointment record to continue.</div>
+
+<div class="field-label">GES-registered phone number</div>
+<div class="field-input filled">+233 24 ··· ·· 91</div>
+
+<div class="field-label">One-time code · sent by SMS</div>
+<div class="otp-row">
+<div class="otp-box filled">4</div>
+<div class="otp-box filled">0</div>
+<div class="otp-box filled">7</div>
+<div class="otp-box cursor">2</div>
+<div class="otp-box"></div>
+<div class="otp-box"></div>
+</div>
+<div class="sc-note">Code sent to the number GES holds for <b>D. Mensah-Bonsu</b>. If this is not your number, contact your GES Oversight administrator — you cannot change it here.</div>
+
+<button class="btn gold lg btn-full">Verify &amp; continue →</button>
+
+<div class="provisioned-by">
+<div class="pb-mark">P</div>
+<div class="pb-text">This account was provisioned on <b>11 May 2026</b> by <b>K. Asante, GES Oversight Administrator (National)</b>, and bound to the <b>Wassa Amenfi West</b> jurisdiction. You did not register it and you cannot change its role or jurisdiction — both are set by GES.</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div class="notes">
+<h4>Sign-in that reflects the provisioning model</h4>
+<ul>
+<li><b>There is no "create account" anywhere on this surface.</b> Oversight users are a separate, GES-provisioned pool (BUILD_STACK Decision 5). The new director's account already exists before they arrive; first sign-in is verification, not registration. The absence of a sign-up link is the design carrying the decision.</li>
+<li><b>The phone number is pre-filled and locked.</b> The account was bound to the number on the director's GES appointment record. They cannot type a different one — if it is wrong, only the GES administrator can fix it. This is what "authenticate against GES-held identity" looks like without a federated SSO existing.</li>
+<li><b>Same phone-OTP mechanism as the whole of Omnischools.</b> No new auth paradigm for Oversight — the operational app's phone-OTP flow, reused. Decision 5 said federation is abstracted-for-later, not built now; this surface uses what works in Ghana today.</li>
+<li><b>The "provisioned by" panel names names.</b> Who created the account, when, and which jurisdiction it was bound to. The new director sees their account's provenance on day one — and it states plainly that role and jurisdiction are GES-set and not user-changeable.</li>
+<li><b>Deep-navy sign-in frame, distinct from the operational app.</b> A GES officer signing into Oversight should feel they are entering the government oversight tool, not a school's app. The gradient frame and GES crest set that register before they are even signed in.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 2 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">Confirm jurisdiction &amp; read the access briefing</div>
+<div class="section-meta">Steps 2–3 · vertical step nav</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / welcome</div></div>
+
+<div class="ob-shell">
+<div class="ob-steps">
+<div class="obs-crest">
+<div class="crest-badge">GES</div>
+<div><div class="l1">Omnischools Oversight</div><div class="l2">First sign-in</div></div>
+</div>
+<div class="ob-step done"><div class="obs-dot">✓</div><div class="obs-label">Verify identity<span class="obs-sub">GES phone &amp; code</span></div></div>
+<div class="ob-step active"><div class="obs-dot">2</div><div class="obs-label">Confirm jurisdiction<span class="obs-sub">Wassa Amenfi West</span></div></div>
+<div class="ob-step"><div class="obs-dot">3</div><div class="obs-label">Access briefing<span class="obs-sub">what you can &amp; cannot do</span></div></div>
+<div class="ob-step"><div class="obs-dot">4</div><div class="obs-label">Acknowledge terms<span class="obs-sub">accountability</span></div></div>
+<div class="ob-step"><div class="obs-dot">5</div><div class="obs-label">Enter dashboard</div></div>
+</div>
+
+<div class="ob-main">
+<div class="obm-eyebrow">Step 2 of 5 · confirm jurisdiction</div>
+<div class="obm-h">This is the jurisdiction <em>you oversee.</em></div>
+<div class="obm-lede">Your account was bound to one jurisdiction when GES created it. Confirm it is correct. If it is not, stop here and contact your GES Oversight administrator — you cannot change it yourself.</div>
+
+<div class="jur-card">
+<div class="jc-lock">GES-set · locked</div>
+<div class="jc-label">Your jurisdiction</div>
+<div class="jc-name">Wassa Amenfi West</div>
+<div class="jc-meta">Municipal District · Western Region · capital Asankrangwa</div>
+<div class="jc-detail">
+<div class="jc-stat"><div class="jcs-v">District</div><div class="jcs-l">Tier</div></div>
+<div class="jc-stat"><div class="jcs-v">40</div><div class="jcs-l">Schools in district</div></div>
+<div class="jc-stat"><div class="jcs-v">34</div><div class="jcs-l">On Omnischools</div></div>
+<div class="jc-stat"><div class="jcs-v">129,882</div><div class="jcs-l">District population · 2021 GSS</div></div>
+</div>
+</div>
+
+<div class="ack-box">
+<div class="ab-check">✓</div>
+<div class="ab-text">As a <b>District Director</b>, you will see data for the <b>34 reporting schools in Wassa Amenfi West</b> only. You cannot see other districts. You can compare your district against <b>sibling districts in the Western Region</b>, but not other regions.</div>
+</div>
+
+<div style="display:flex; gap:10px;">
+<button class="btn ghost">This is not my jurisdiction</button>
+<button class="btn gold lg" style="margin-left:auto;">Yes, continue to briefing →</button>
+</div>
+</div>
+
+</div>
+
+</div>
+
+<div class="notes">
+<h4>Jurisdiction confirmation, before any data</h4>
+<ul>
+<li><b>The onboarding uses the canonical vertical step nav.</b> Per the design system convention locked in BUILD_STACK, multi-step guided flows use the wizard pattern — vertical steps, checkmarks for done, gold for active. Oversight onboarding is a guided flow, so it inherits that pattern rather than inventing one.</li>
+<li><b>Jurisdiction is confirmed, never chosen.</b> The card is marked "GES-set · locked." The director's only inputs are "yes, correct" or "this is not my jurisdiction" — the second is an escape hatch to the administrator, not a picker. A director must never be able to widen their own scope.</li>
+<li><b>The jurisdiction card front-loads the real numbers.</b> 40 schools, 34 on Omnischools, and the genuine 2021 GSS district population of 129,882. The director learns the shape of their patch — and its coverage gap — before they ever reach the dashboard.</li>
+<li><b>The access scope is stated in plain words at confirmation time.</b> "34 schools only, no other districts, compare within your region." The director acknowledges the boundary as part of onboarding, so the dashboard's scope-chip later is a reminder, not a surprise.</li>
+<li><b>The GSS population figure threads from here to the enrolment-vs-population surface.</b> The same 129,882 a director sees here is the denominator for the signature comparative analysis in Batch 2 — onboarding plants the number the analysis will pay off.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 3 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">The briefing, the acknowledgement &amp; arrival</div>
+<div class="section-meta">Steps 3–5 · into the dashboard</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / welcome</div></div>
+
+<div class="ob-shell">
+<div class="ob-steps">
+<div class="obs-crest">
+<div class="crest-badge">GES</div>
+<div><div class="l1">Omnischools Oversight</div><div class="l2">First sign-in</div></div>
+</div>
+<div class="ob-step done"><div class="obs-dot">✓</div><div class="obs-label">Verify identity<span class="obs-sub">GES phone &amp; code</span></div></div>
+<div class="ob-step done"><div class="obs-dot">✓</div><div class="obs-label">Confirm jurisdiction<span class="obs-sub">Wassa Amenfi West</span></div></div>
+<div class="ob-step active"><div class="obs-dot">3</div><div class="obs-label">Access briefing<span class="obs-sub">what you can &amp; cannot do</span></div></div>
+<div class="ob-step"><div class="obs-dot">4</div><div class="obs-label">Acknowledge terms<span class="obs-sub">accountability</span></div></div>
+<div class="ob-step"><div class="obs-dot">5</div><div class="obs-label">Enter dashboard</div></div>
+</div>
+
+<div class="ob-main">
+<div class="obm-eyebrow">Step 3 of 5 · access briefing</div>
+<div class="obm-h">What Oversight access <em>means.</em></div>
+<div class="obm-lede">Four things to understand before you begin. Oversight is a powerful lens on the schools you serve — and a bounded, accountable one.</div>
+
+<div class="brief-list">
+<div class="brief-item">
+<div class="bi-num">1.</div>
+<div class="bi-body">
+<div class="bi-title">You see schools that are on Omnischools</div>
+<div class="bi-text">Oversight can only show data for schools that <b>use Omnischools operationally</b> — that is what generates the figures. <b>34 of the 40</b> schools in your district's EMIS register are on Omnischools and report today. The other 6 are not yet on the platform and are invisible to Oversight; getting them onboarded is part of your work. (This is a platform-coverage gap, not a question of a school agreeing to GES oversight — GES governs all 40 regardless.)</div>
+</div>
+</div>
+<div class="brief-item">
+<div class="bi-num">2.</div>
+<div class="bi-body">
+<div class="bi-title">Almost everything you see is aggregate</div>
+<div class="bi-text">Dashboards, trends, comparisons — counts and rates, no individual identified. You can open these freely; they are not logged as record access.</div>
+</div>
+</div>
+<div class="brief-item">
+<div class="bi-num">3.</div>
+<div class="bi-body">
+<div class="bi-title">Named records need a stated reason</div>
+<div class="bi-text">To open an individual student's or teacher's record — for <b>Free SHS claim verification, anomaly investigation, or statutory audit</b> — you must state a reason. The access is logged and reviewable by GES leadership. Use this sparingly.</div>
+</div>
+</div>
+<div class="brief-item">
+<div class="bi-num">4.</div>
+<div class="bi-body">
+<div class="bi-title">Your activity is reviewable within GES</div>
+<div class="bi-text">Your named-record accesses are logged, and your <b>regional director, the national tier, and GES internal audit</b> can review them. Accountability runs upward within GES — the agency holds its own officers responsible for how access is used. This is normal for a governing body handling records of those it regulates.</div>
+</div>
+</div>
+</div>
+
+<div class="ack-box">
+<div class="ab-check">✓</div>
+<div class="ab-text">I understand that my Oversight access is <b>scoped to Wassa Amenfi West</b>, that <b>named-record access requires a logged justification</b>, and that <b>my activity is reviewable by GES regional, national, and internal-audit staff</b>.</div>
+</div>
+
+<div class="welcome-card">
+<div class="wc-icon">✓</div>
+<div class="wc-body">
+<h2>You're set up, <em>Director.</em></h2>
+<p>Your account is active and bound to <b>Wassa Amenfi West</b>. Your dashboard is ready — <b>34 schools, 14,820 pupils</b>, the 2025/26 academic year. Welcome to Omnischools Oversight.</p>
+</div>
+</div>
+
+<div style="display:flex; gap:10px;">
+<button class="btn ghost">Review briefing again</button>
+<button class="btn gold lg" style="margin-left:auto;">Enter my district dashboard →</button>
+</div>
+</div>
+
+</div>
+
+<div class="notes">
+<h4>The briefing is the trust model, taught on day one</h4>
+<ul>
+<li><b>The four briefing points are the four pillars of the access model.</b> Platform coverage, aggregate-by-default, justification-gated named records, GES-internal accountability. A director who has read these once will read the dashboard's scope-chip, the detail view's boundary block, and the compliance surface correctly — onboarding teaches the vocabulary the rest of the product assumes.</li>
+<li><b>Point 1 frames the coverage gap as the director's job — and is careful about why.</b> "6 schools not on Omnischools — onboarding them is part of your work." The gap is a platform-adoption gap, not a school declining GES oversight; the briefing says so explicitly, because a director must not mistake EMIS-register-minus-Omnischools for schools that have opted out of GES. The gap is handed over as a task, the same framing the dashboard's anomaly panel uses.</li>
+<li><b>Point 4 establishes that GES audits its own officers.</b> A director's access is reviewable by their regional director, national, and GES internal audit — accountability runs upward inside the agency. An earlier draft had schools reviewing GES activity; that wrongly implied a peer relationship between a regulator and the institutions it governs, and it was corrected. The legitimacy of an oversight tool comes from the governing body controlling how its own staff use access, not from the governed schools watching back.</li>
+<li><b>The acknowledgement is specific, not a blanket "I agree."</b> It names the three things that matter — jurisdiction scope, justification-gating, and GES-internal reviewability. The director acknowledges the actual model, so the consent is meaningful rather than a checkbox.</li>
+<li><b>Arrival hands off to the dashboard with its real numbers.</b> "34 schools, 14,820 pupils, 2025/26" — the same figures the district dashboard (surface 1) opens with. The three Batch 1 surfaces connect: onboarding ends where the dashboard begins, and the dashboard lists schools that drill into the detail view.</li>
+<li><b>This completes Oversight Batch 1.</b> Onboarding (provisioning &amp; the access model), the district dashboard (the anchor), and the school detail view (drill-down &amp; the boundary) are a coherent first slice — a new director can be provisioned, sign in, understand their remit, survey their district, and inspect any school, all within the model BUILD_STACK scoped.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+
+</div>
+</body>
+</html>

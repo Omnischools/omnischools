@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Special needs module</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1380px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item .new-tag { margin-left:auto; background:var(--gold); color:var(--navy); font-size:8px; font-weight:700; letter-spacing:0.06em; padding:1px 5px; border-radius:100px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; margin-bottom:14px; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:740px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.body { padding:28px 36px 60px; }
+
+.privacy-banner { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:14px 18px; margin-bottom:22px; display:grid; grid-template-columns:28px 1fr; gap:14px; align-items:start; }
+.privacy-banner .ic { width:26px; height:26px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; }
+.privacy-banner .body-text { font-size:12px; color:var(--navy-2); line-height:1.55; }
+.privacy-banner .heading { font-family:'Fraunces',serif; font-weight:600; font-size:13px; color:var(--navy); margin-bottom:3px; }
+.privacy-banner .heading em { font-style:italic; color:var(--gold); }
+.privacy-banner b { color:var(--navy); font-weight:600; }
+
+.hero-row { display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr; gap:14px; margin-bottom:24px; }
+.hero-main { background:var(--navy); color:var(--bg); border-radius:14px; padding:22px 26px; background-image:radial-gradient(circle at 90% 0%, rgba(200,151,91,0.16) 0%, transparent 55%); }
+.hero-main .lbl { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; margin-bottom:4px; }
+.hero-main .val { font-family:'Fraunces',serif; font-size:38px; font-weight:600; letter-spacing:-0.02em; line-height:1; color:var(--gold); }
+.hero-main .val em { font-style:italic; }
+.hero-main .meta { margin-top:12px; font-size:12px; color:rgba(232,212,184,0.85); line-height:1.55; }
+.hero-main .meta b { color:var(--bg); font-weight:600; }
+.hero-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; }
+.hero-tile .lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.hero-tile .val { font-family:'Fraunces',serif; font-size:22px; font-weight:600; letter-spacing:-0.018em; line-height:1.05; margin-top:4px; }
+.hero-tile .val em { font-style:italic; color:var(--gold); }
+.hero-tile .sub { font-size:11px; color:var(--navy-3); margin-top:4px; }
+.hero-tile .sub b { color:var(--navy-2); font-weight:600; }
+
+.census-preview { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; margin-bottom:22px; }
+.census-preview .top { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.census-preview .ic { width:28px; height:28px; border-radius:8px; background:var(--green-bg); color:var(--green); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:13px; }
+.census-preview .top-info .heading { font-family:'Fraunces',serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; }
+.census-preview .top-info .heading em { font-style:italic; color:var(--gold); }
+.census-preview .top-info .meta { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.census-preview .top-info .meta b { color:var(--navy-2); font-weight:600; }
+.census-preview .top-tag { margin-left:auto; padding:4px 10px; border-radius:100px; background:var(--green-bg); color:var(--green); font-size:9px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; }
+.census-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+.census-cell { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 10px; }
+.census-cell .cl { font-size:8px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:2px; }
+.census-cell .cv { font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--navy); font-size:14px; }
+
+.region { margin-bottom:32px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.005em; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+.filter-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+.filter-pill { padding:7px 13px; background:var(--surface); border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.filter-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.filter-pill .count { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; opacity:0.6; }
+.filter-pill.active .count { opacity:0.85; }
+
+.student-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.student-table { width:100%; border-collapse:collapse; }
+.student-table thead th { background:var(--bg); border-bottom:1px solid var(--border); padding:10px 16px; text-align:left; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.student-table tbody td { padding:14px 16px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.student-table tbody tr:last-child td { border-bottom:none; }
+.student-table tbody tr:hover { background:var(--bg); cursor:pointer; }
+
+.student-name-cell { display:grid; grid-template-columns:36px 1fr; gap:10px; align-items:center; }
+.student-av { width:32px; height:32px; border-radius:50%; background:var(--gold-bg); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:11px; }
+.student-name { font-weight:600; color:var(--navy); font-size:13px; }
+.student-name .meta { display:block; font-size:10px; color:var(--navy-3); font-weight:500; margin-top:1px; font-style:italic; }
+
+.category-tag { display:inline-flex; align-items:center; padding:3px 9px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; }
+.category-tag.visual { background:var(--gold-bg); color:var(--gold); }
+.category-tag.hearing { background:var(--green-bg); color:var(--green); }
+.category-tag.physical { background:var(--terra-bg); color:var(--terra); }
+.category-tag.intellectual { background:#E8E5F2; color:#5847B5; }
+.category-tag.speech { background:var(--warn-bg); color:var(--warn); }
+
+.severity-tag { display:inline-flex; align-items:center; padding:2px 7px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.04em; }
+.severity-tag.mild { background:var(--green-bg); color:var(--green); }
+.severity-tag.moderate { background:var(--warn-bg); color:var(--warn); }
+.severity-tag.severe { background:var(--terra-bg); color:var(--terra); }
+
+.support-cell { font-size:11px; color:var(--navy-2); line-height:1.45; }
+.support-cell b { color:var(--navy); font-weight:600; }
+.accom-tag { display:inline-block; padding:2px 6px; border-radius:4px; background:var(--bg); color:var(--navy-3); border:1px solid var(--border); font-size:9px; font-weight:600; margin-right:3px; margin-top:3px; }
+
+.diag-cell { font-size:11px; color:var(--navy-2); }
+.diag-cell .diag-by { display:block; font-size:10px; color:var(--navy-3); font-style:italic; margin-top:2px; }
+.diag-cell .diag-by b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.diag-cell .pending { color:var(--warn); font-weight:600; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .hero-row { grid-template-columns:1fr 1fr; }
+  .census-grid { grid-template-columns:repeat(3,1fr); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 2 · Special needs module</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span><span class="mvp-tag" style="background:var(--green);color:white">Statutory completeness</span>
+  <h1 class="display">Children who <em>need more</em></h1>
+  <div class="gold-rule"></div>
+  <p>Captures special needs enrolment that the GES annual census currently leaves as a hatched manual section. Once a school records this here, the census section auto-fills with counts by category and gender. Designed cautiously: privacy-first, parent-consented, with restrained vocabulary that avoids labelling-as-diagnosis when no formal diagnosis exists. The system tracks operational support needs, not medical conditions.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Special needs register</div>
+    <div class="section-meta">8 students · feeds the GES annual census · admin-only access</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / students / special-needs</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item active"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books<span class="new-tag">NEW</span></div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Students</a> / Special needs</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Special <em>needs register</em></h1>
+                <div class="lede">Tracks students who need additional support · feeds the GES annual census special needs section · <b>admin-only access</b> · parents must consent before recording</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Export anonymised stats →</button>
+                <button class="btn primary">+ Record support need</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <div class="privacy-banner">
+              <div class="ic">!</div>
+              <div class="body-text">
+                <div class="heading">Treated as <em>sensitive personal data</em></div>
+                Records here are visible only to <b>school administrators</b>, not teachers (unless an administrator explicitly grants access for accommodation planning). Parents must <b>provide written consent</b> before a record is created. Categories describe <b>support needs</b>, not medical diagnoses — formal diagnoses are recorded only when supplied by a qualified clinician. Schools that prefer not to record at student level can still complete the GES census section <b>by hand</b>; this module is opt-in.
+              </div>
+            </div>
+
+            <div class="hero-row">
+              <div class="hero-main">
+                <div class="lbl">Students with recorded support needs</div>
+                <div class="val"><em>8</em> of 312</div>
+                <div class="meta"><b>2.6%</b> of enrolment · <b>5 boys, 3 girls</b> · spread across all 3 year groups · <b>3 with formal diagnosis</b>, 5 with informal/observed need</div>
+              </div>
+              <div class="hero-tile">
+                <div class="lbl">By gender</div>
+                <div class="val"><em>5</em> boys · <em>3</em> girls</div>
+                <div class="sub">JHS 1: 3 · JHS 2: 3 · JHS 3: 2</div>
+              </div>
+              <div class="hero-tile">
+                <div class="lbl">Largest category</div>
+                <div class="val display">Visual</div>
+                <div class="sub"><b>3 students</b> · 2 wear glasses</div>
+              </div>
+              <div class="hero-tile">
+                <div class="lbl">Pending consent</div>
+                <div class="val"><em>1</em> family</div>
+                <div class="sub">In census aggregate <b>without student detail</b></div>
+              </div>
+            </div>
+
+            <div class="census-preview">
+              <div class="top">
+                <div class="ic">G</div>
+                <div class="top-info">
+                  <div class="heading display">Auto-fills the GES annual census <em>special needs</em> section</div>
+                  <div class="meta">12 hatched manual fields → counts derived from this register · <b>updated as you add records</b> · privacy preserved (no names exported)</div>
+                </div>
+                <div class="top-tag">✓ Auto · 12 of 12 cells</div>
+              </div>
+              <div class="census-grid">
+                <div class="census-cell"><div class="cl">Visual · boys</div><div class="cv">2</div></div>
+                <div class="census-cell"><div class="cl">Visual · girls</div><div class="cv">1</div></div>
+                <div class="census-cell"><div class="cl">Hearing · boys</div><div class="cv">1</div></div>
+                <div class="census-cell"><div class="cl">Hearing · girls</div><div class="cv">0</div></div>
+                <div class="census-cell"><div class="cl">Physical · boys</div><div class="cv">1</div></div>
+                <div class="census-cell"><div class="cl">Physical · girls</div><div class="cv">1</div></div>
+                <div class="census-cell"><div class="cl">Intellectual · boys</div><div class="cv">1</div></div>
+                <div class="census-cell"><div class="cl">Intellectual · girls</div><div class="cv">0</div></div>
+                <div class="census-cell"><div class="cl">Speech · boys</div><div class="cv">0</div></div>
+                <div class="census-cell"><div class="cl">Speech · girls</div><div class="cv">1</div></div>
+                <div class="census-cell"><div class="cl">Other · boys</div><div class="cv">0</div></div>
+                <div class="census-cell"><div class="cl">Other · girls</div><div class="cv">0</div></div>
+              </div>
+            </div>
+
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">Student <em>register</em></h2>
+                <div class="meta">Click any row for full record · accommodations · diagnosis &amp; consent files</div>
+              </div>
+
+              <div class="filter-row">
+                <div class="filter-pill active">All<span class="count">8</span></div>
+                <div class="filter-pill">Visual<span class="count">3</span></div>
+                <div class="filter-pill">Hearing<span class="count">1</span></div>
+                <div class="filter-pill">Physical<span class="count">2</span></div>
+                <div class="filter-pill">Intellectual<span class="count">1</span></div>
+                <div class="filter-pill">Speech<span class="count">1</span></div>
+              </div>
+
+              <div class="student-card">
+                <table class="student-table">
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Category</th>
+                      <th>Severity</th>
+                      <th>Support &amp; accommodations</th>
+                      <th>Diagnosis &amp; consent</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+
+                    <tr>
+                      <td><div class="student-name-cell"><div class="student-av">KA</div><div class="student-name">Kwame Antwi<span class="meta">JHS 3A · boy · age 14</span></div></div></td>
+                      <td><span class="category-tag visual">Visual</span></td>
+                      <td><span class="severity-tag mild">Mild</span></td>
+                      <td><div class="support-cell">Wears prescription glasses · seated front row<div><span class="accom-tag">Front-row seating</span><span class="accom-tag">Larger print</span></div></div></td>
+                      <td><div class="diag-cell"><b>Diagnosed</b> by ophthalmologist<div class="diag-by">Dr. Asare Eye Clinic · 2022 · <b>consent on file</b></div></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="student-name-cell"><div class="student-av">AO</div><div class="student-name">Akua Owusu-Ampofo<span class="meta">JHS 3B · girl · age 14</span></div></div></td>
+                      <td><span class="category-tag visual">Visual</span></td>
+                      <td><span class="severity-tag mild">Mild</span></td>
+                      <td><div class="support-cell">Glasses for reading<div><span class="accom-tag">Front-row seating</span></div></div></td>
+                      <td><div class="diag-cell"><b>Diagnosed</b> by optometrist<div class="diag-by">UGMC · 2024 · <b>consent on file</b></div></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="student-name-cell"><div class="student-av">SM</div><div class="student-name">Stephen Mensah<span class="meta">JHS 1A · boy · age 12</span></div></div></td>
+                      <td><span class="category-tag visual">Visual</span></td>
+                      <td><span class="severity-tag moderate">Moderate</span></td>
+                      <td><div class="support-cell">Suspected vision issue · referred for assessment<div><span class="accom-tag">Front-row seating</span><span class="accom-tag">Reading buddy</span></div></div></td>
+                      <td><div class="diag-cell">Observed by class teacher<div class="diag-by"><span class="pending">Diagnosis pending</span> · <b>consent on file</b></div></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="student-name-cell"><div class="student-av">YA</div><div class="student-name">Yaw Amponsah<span class="meta">JHS 2A · boy · age 13</span></div></div></td>
+                      <td><span class="category-tag hearing">Hearing</span></td>
+                      <td><span class="severity-tag mild">Mild</span></td>
+                      <td><div class="support-cell">Mild hearing loss in left ear<div><span class="accom-tag">Right side of class</span><span class="accom-tag">Visual cues during instruction</span></div></div></td>
+                      <td><div class="diag-cell"><b>Diagnosed</b> by audiologist<div class="diag-by">Korle Bu ENT · 2023 · <b>consent on file</b></div></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="student-name-cell"><div class="student-av">EA</div><div class="student-name">Esi Asante<span class="meta">JHS 3C · girl · age 14</span></div></div></td>
+                      <td><span class="category-tag physical">Physical</span></td>
+                      <td><span class="severity-tag moderate">Moderate</span></td>
+                      <td><div class="support-cell">Walks with crutches after polio<div><span class="accom-tag">Ground-floor classroom</span><span class="accom-tag">Extra time between periods</span></div></div></td>
+                      <td><div class="diag-cell"><b>Diagnosed</b> at infancy<div class="diag-by">Long-standing condition · <b>consent on file</b></div></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="student-name-cell"><div class="student-av">KO</div><div class="student-name">Kofi Okine<span class="meta">JHS 1C · boy · age 12</span></div></div></td>
+                      <td><span class="category-tag physical">Physical</span></td>
+                      <td><span class="severity-tag mild">Mild</span></td>
+                      <td><div class="support-cell">Limited fine motor control · right hand<div><span class="accom-tag">Extended writing time</span><span class="accom-tag">Oral assessment option</span></div></div></td>
+                      <td><div class="diag-cell">Observed since enrolment<div class="diag-by"><span class="pending">Diagnosis pending</span> · <b>consent on file</b></div></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="student-name-cell"><div class="student-av">FK</div><div class="student-name">Faith Kwakye<span class="meta">JHS 2B · girl · age 13</span></div></div></td>
+                      <td><span class="category-tag speech">Speech</span></td>
+                      <td><span class="severity-tag mild">Mild</span></td>
+                      <td><div class="support-cell">Stammer · receives weekly speech therapy<div><span class="accom-tag">Patience during oral answers</span><span class="accom-tag">No forced public reading</span></div></div></td>
+                      <td><div class="diag-cell">Speech &amp; language therapist<div class="diag-by">Private practice · 2024 · <b>consent on file</b></div></div></td>
+                    </tr>
+
+                    <tr>
+                      <td><div class="student-name-cell"><div class="student-av">SA</div><div class="student-name">Samuel Addo<span class="meta">JHS 1B · boy · age 13</span></div></div></td>
+                      <td><span class="category-tag intellectual">Intellectual</span></td>
+                      <td><span class="severity-tag moderate">Moderate</span></td>
+                      <td><div class="support-cell">Significant learning gap · individualised plan<div><span class="accom-tag">Modified curriculum</span><span class="accom-tag">Smaller-group instruction</span><span class="accom-tag">Extra exam time</span></div></div></td>
+                      <td><div class="diag-cell">Educational psychologist<div class="diag-by">Accra Psychology Centre · 2023 · <b>consent on file</b></div></div></td>
+                    </tr>
+
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Privacy banner is the first thing on the page.</b> "Treated as <em>sensitive personal data</em>" with explicit policy: admin-only by default, parents must consent, categories describe support needs not diagnoses, opt-in module. <b>Sets the boundary before the data appears</b>.</li>
+        <li><b>"Schools that prefer not to record at student level can still complete the GES census section by hand"</b> — the module is opt-in. <b>Some schools will reasonably decide</b> the privacy cost outweighs the auto-fill benefit. Honest about that choice.</li>
+        <li><b>Hero shows 8 of 312 (2.6%) with formal/observed split:</b> "3 with formal diagnosis, 5 with informal/observed need". <b>Distinguishes recorded medical fact from teacher observation</b>; both belong in the support register but only one is a "diagnosis." Important for honest GES reporting.</li>
+        <li><b>Census preview shows all 12 hatched cells from the annual census now auto-filled</b> with counts. Same 6×2 grid as appears in the GES census file. <b>Direct visual evidence</b> that adopting this module flips a manual census section to auto.</li>
+        <li><b>"Privacy preserved (no names exported)"</b> meta line — the GES export is aggregate counts only. Student-level data never leaves the school's instance. <b>Census needs counts, not names</b>; the system only exports what's needed.</li>
+        <li><b>5 categories: Visual / Hearing / Physical / Intellectual / Speech</b> with distinct colour vocabulary (visual gold, hearing green, physical terra, intellectual purple, speech warn). Matches the 5 GES census categories — <b>no expansion to clinical taxonomy</b>; the census defines the buckets.</li>
+        <li><b>3-tier severity: Mild / Moderate / Severe</b> in green/warn/terra. <b>Operationally meaningful for accommodation planning</b> without requiring clinical assessment. A teacher can describe severity without diagnosing.</li>
+        <li><b>Support &amp; accommodations column</b> uses small rounded tags: "Front-row seating / Larger print / Reading buddy / Right side of class / Ground-floor classroom / Extended writing time / Oral assessment option / Modified curriculum / Smaller-group instruction / Extra exam time / No forced public reading / Patience during oral answers". <b>Concrete operational accommodations</b> teachers can act on; not abstract.</li>
+        <li><b>Diagnosis column distinguishes formal vs observed:</b> "<b>Diagnosed</b> by ophthalmologist · Dr. Asare Eye Clinic · 2022" vs "Observed by class teacher · <b>Diagnosis pending</b>". <b>Honest about the source of the determination</b>; parents and reviewers see what's clinical and what's school-observed.</li>
+        <li><b>Consent state visible on every row:</b> "consent on file" appears on every record because the system enforces consent before record creation. <b>If consent isn't on file, the record doesn't exist</b>. Pending-consent families show up as a count in the hero ("1 family") with their child counted in census aggregates only without student-level detail.</li>
+        <li><b>Realistic Ghanaian clinical sources:</b> Dr. Asare Eye Clinic, UGMC (University of Ghana Medical Centre), Korle Bu ENT, Accra Psychology Centre. <b>Real institutions, not fictional</b>; supports operational realism for schools that recognise their own referral network.</li>
+        <li><b>"Walks with crutches after polio" / "Stammer" / "Limited fine motor control"</b> — plain-English descriptions of conditions. <b>The system uses everyday language</b> rather than clinical terminology, matching how Ghanaian teachers actually describe student needs.</li>
+        <li><b>What this module deliberately does NOT do:</b> No detailed clinical history, no medication tracking, no behavioural incident logs, no IEP (Individualised Education Programme) authoring. <b>Omnischools is not an SEN platform</b>; it captures the GES census-level facts plus practical accommodation context. Schools needing deeper SEN tracking would use a specialised system.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

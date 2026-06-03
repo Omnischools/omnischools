@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Send reminders confirmation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* Page background — blurred report behind */
+.report-bg {
+  position: relative;
+  min-height: 740px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.report-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(26,43,71,0.04) 0%, transparent 30%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 40px,
+      rgba(26,43,71,0.03) 41px,
+      rgba(26,43,71,0.03) 42px
+    );
+  filter: blur(0.5px);
+}
+.report-shadow-content {
+  padding: 32px 40px;
+  position: relative;
+  opacity: 0.4;
+  filter: blur(2px);
+  pointer-events: none;
+}
+.report-shadow-content .crumb-row {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 8px;
+}
+.report-shadow-content h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--navy);
+}
+.report-shadow-content p {
+  font-size: 13px; color: var(--navy-3);
+}
+
+.report-shadow-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 20px;
+  margin-bottom: 22px;
+}
+.report-shadow-kpi .k {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+.report-shadow-kpi .k .lbl {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.report-shadow-kpi .k .val {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+}
+.report-shadow-table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.report-shadow-table .row {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 14px;
+  font-size: 13px;
+}
+.report-shadow-table .row.head {
+  background: var(--bg);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--navy-3);
+}
+
+/* Modal scrim */
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(26,43,71,0.45);
+  backdrop-filter: blur(2px);
+  z-index: 5;
+}
+
+/* Drawer */
+.drawer {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 580px;
+  background: var(--surface);
+  box-shadow: -16px 0 40px -12px rgba(26,43,71,0.35);
+  z-index: 10;
+  display: flex; flex-direction: column;
+}
+.drawer-head {
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.drawer-head .top-line {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.drawer-head .eyebrow-tag {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.drawer-head .close {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  font-family: inherit;
+  font-weight: 600;
+}
+.drawer-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  margin-bottom: 6px;
+}
+.drawer-head h2 em { font-style: italic; color: var(--gold); }
+.drawer-head .sub {
+  font-size: 13px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+.drawer-head .sub b { color: var(--navy); font-weight: 600; }
+.drawer-head .sub .num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.drawer-section {
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-section:last-child { border-bottom: none; }
+.drawer-section .section-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.drawer-section .section-eyebrow .step-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.drawer-section .section-eyebrow .step-tag .num-circle {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.drawer-section .section-eyebrow .edit-link {
+  font-size: 10px;
+  color: var(--gold);
+  cursor: pointer;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+/* Recipients section */
+.recipients-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.recipient-bucket {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.recipient-bucket .rb-count {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+.recipient-bucket.warn .rb-count { color: var(--warn); }
+.recipient-bucket.terra .rb-count { color: var(--terra); }
+.recipient-bucket .rb-label {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 3px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.recipient-bucket .rb-amount {
+  font-size: 11px;
+  color: var(--navy-2);
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.sample-list {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--navy-2);
+}
+.sample-list .sl-head {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.sample-list .names {
+  font-style: italic;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.sample-list .names b { color: var(--navy); font-weight: 600; font-style: normal; }
+.sample-list .more-link {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.suppression-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.suppression-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 5px 12px 5px 8px;
+  font-size: 11px;
+  color: var(--navy-2);
+}
+.suppression-pill .ic {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--navy-3);
+  color: white;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.suppression-pill .num {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+/* Message preview */
+.preview-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.preview-card .pc-head {
+  padding: 8px 14px;
+  background: var(--navy);
+  color: var(--gold-soft);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.preview-card .pc-head .meta-tag {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+  color: var(--gold-soft);
+  font-weight: 500;
+  text-transform: none;
+  font-size: 10px;
+}
+.preview-card .pc-body {
+  padding: 16px 18px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  color: var(--navy);
+}
+.preview-card .pc-body .var-rendered {
+  background: var(--gold-bg);
+  color: var(--navy);
+  padding: 0 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.preview-card .pc-foot {
+  padding: 8px 14px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--navy-3);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.preview-card .pc-foot b {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.sample-context {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 8px;
+  font-style: italic;
+}
+.sample-context b { color: var(--navy-2); font-weight: 600; font-style: normal; }
+.sample-context a { color: var(--gold); font-weight: 600; cursor: pointer; }
+
+/* Channel & cost */
+.channel-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.channel-row .info {
+  display: flex; align-items: center; gap: 10px;
+}
+.channel-row .ch-ic {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.channel-row .ch-info {
+  font-size: 12px;
+}
+.channel-row .ch-info .ch-name {
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 13px;
+}
+.channel-row .ch-info .ch-detail {
+  color: var(--navy-3);
+  font-size: 11px;
+  margin-top: 1px;
+}
+.channel-row .ch-info .ch-detail b {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-2);
+  font-weight: 600;
+}
+.channel-row .cost {
+  text-align: right;
+}
+.channel-row .cost-amount {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--navy);
+  letter-spacing: -0.01em;
+}
+.channel-row .cost-detail {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+
+.mvp2-channel-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px dashed var(--border-2);
+  border-radius: 8px;
+  padding: 11px 14px;
+  margin-top: 8px;
+  opacity: 0.7;
+}
+.mvp2-channel-row .info {
+  display: flex; align-items: center; gap: 10px;
+}
+.mvp2-channel-row .ch-ic {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--navy-3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.mvp2-channel-row .ch-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-2);
+}
+.mvp2-channel-row .ch-detail {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.mvp2-tag {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--bg);
+  color: var(--navy-3);
+  padding: 3px 8px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+}
+
+/* Schedule section */
+.schedule-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.schedule-tile {
+  background: var(--bg);
+  border: 1.5px solid var(--border-2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  position: relative;
+}
+.schedule-tile.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.schedule-tile .st-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.schedule-tile .st-detail {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.schedule-tile .st-detail b { color: var(--navy-2); font-weight: 600; }
+
+.schedule-helper {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.schedule-helper .field-mini label {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 3px;
+}
+.schedule-helper .field-mini input,
+.schedule-helper .field-mini select {
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--navy);
+}
+
+/* Warnings */
+.warning-card {
+  background: var(--warn-bg);
+  border: 1px solid rgba(197,138,46,0.3);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.warning-card.terra {
+  background: var(--terra-bg);
+  border-color: rgba(184,74,57,0.25);
+}
+.warning-card .icon {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--warn);
+  color: white;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.warning-card.terra .icon { background: var(--terra); }
+.warning-card .body { font-size: 12px; line-height: 1.55; color: var(--navy-2); }
+.warning-card .body b { color: var(--navy); font-weight: 600; }
+.warning-card .body .heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+.warning-card.terra .body .heading { color: var(--terra); }
+.warning-card .actions {
+  margin-top: 10px;
+  display: flex; gap: 8px;
+}
+.warning-card .actions .review-btn {
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--warn);
+  color: var(--navy);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 100px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.warning-card.terra .actions .review-btn {
+  border-color: var(--terra);
+}
+.warning-card .actions .dismiss-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--navy-3);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 100px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Footer */
+.drawer-foot {
+  padding: 16px 28px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px;
+}
+.drawer-foot .left-group {
+  display: flex; flex-direction: column;
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.drawer-foot .left-group .total-cost {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+}
+.drawer-foot .left-group .recipient-summary {
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.drawer-foot .left-group .recipient-summary b {
+  color: var(--navy-2);
+  font-weight: 600;
+}
+.drawer-foot .actions {
+  display: flex; gap: 8px;
+}
+.btn {
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn.primary {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.btn.primary.terra-blocked {
+  background: var(--navy-3);
+  border-color: var(--navy-3);
+  cursor: not-allowed;
+}
+.btn.primary.terra-blocked:hover { background: var(--navy-3); }
+.btn.gold {
+  background: var(--gold);
+  color: var(--navy);
+  border-color: var(--gold);
+}
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Bulk action</div>
+  <h1 class="display">Before pressing <em>send</em></h1>
+  <div class="gold-rule"></div>
+  <p>Confirmation drawers for bulk actions earn their keep when admin is about to message dozens of parents at once. Each step on the way to the send button shows them what they're about to do, what it costs, who it reaches, and whether anything looks off — so the click is informed, not anxious.</p>
+</header>
+
+<!-- 01 CLEAN STATE — happy path -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Clean state · happy path</div>
+    <div class="section-meta">From outstanding balances · "Send reminders to all overdue"</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / outstanding-balances · send-reminders</div>
+      </div>
+      <div class="report-bg">
+
+        <!-- Blurred report behind -->
+        <div class="report-shadow-content">
+          <div class="crumb-row">Reports / Outstanding balances</div>
+          <h1>Outstanding balances</h1>
+          <p>64 parents owe a total of GHS 8,420.00 across overdue and upcoming invoices.</p>
+          <div class="report-shadow-kpi">
+            <div class="k"><div class="lbl">Outstanding</div><div class="val">GHS 8,420</div></div>
+            <div class="k"><div class="lbl">Overdue</div><div class="val">64 parents</div></div>
+            <div class="k"><div class="lbl">30+ days</div><div class="val">12 parents</div></div>
+            <div class="k"><div class="lbl">Last week</div><div class="val">+8 paid</div></div>
+          </div>
+          <div class="report-shadow-table">
+            <div class="row head"><div>Parent</div><div>Student</div><div>Owed</div><div>Overdue</div><div>Action</div></div>
+            <div class="row"><div>Patricia Boateng</div><div>Akosua B</div><div>GHS 340</div><div>14 days</div><div>...</div></div>
+            <div class="row"><div>Joseph Mensah</div><div>Linda M</div><div>GHS 220</div><div>8 days</div><div>...</div></div>
+            <div class="row"><div>Florence Acquah</div><div>James A</div><div>GHS 540</div><div>32 days</div><div>...</div></div>
+            <div class="row"><div>Stephen Owusu</div><div>Joana O</div><div>GHS 180</div><div>3 days</div><div>...</div></div>
+          </div>
+        </div>
+
+        <div class="scrim"></div>
+
+        <!-- Drawer -->
+        <aside class="drawer">
+          <div class="drawer-head">
+            <div class="top-line">
+              <div class="eyebrow-tag">Bulk action · fee reminders</div>
+              <button class="close">×</button>
+            </div>
+            <h2 class="display">Send <em>fee reminders</em></h2>
+            <div class="sub">You're about to message <span class="num">64</span> parents about overdue fees totalling <span class="num">GHS 8,420.00</span>. Review the breakdown below before sending.</div>
+          </div>
+
+          <div class="drawer-body">
+
+            <!-- 1. Recipients -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">1</span>Recipients</div>
+                <button class="edit-link">Customise list →</button>
+              </div>
+
+              <div class="recipients-row">
+                <div class="recipient-bucket">
+                  <div class="rb-count">21</div>
+                  <div class="rb-label">1–7 days overdue</div>
+                  <div class="rb-amount">GHS 2,140.00</div>
+                </div>
+                <div class="recipient-bucket warn">
+                  <div class="rb-count">31</div>
+                  <div class="rb-label">8–30 days overdue</div>
+                  <div class="rb-amount">GHS 4,180.00</div>
+                </div>
+                <div class="recipient-bucket terra">
+                  <div class="rb-count">12</div>
+                  <div class="rb-label">30+ days overdue</div>
+                  <div class="rb-amount">GHS 2,100.00</div>
+                </div>
+              </div>
+
+              <div class="sample-list">
+                <div class="sl-head">Sample of who'll receive this</div>
+                <div class="names"><b>Patricia Boateng</b>, <b>Joseph Mensah</b>, <b>Florence Acquah</b>, <b>Stephen Owusu</b>, <b>Mary Asante</b>, <b>Kwame Owusu</b>, <b>Esther Quaye</b>, and 57 others</div>
+                <div class="more-link">View full recipient list →</div>
+              </div>
+            </div>
+
+            <!-- 2. Message -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">2</span>Message</div>
+                <button class="edit-link">Edit message →</button>
+              </div>
+
+              <div class="preview-card">
+                <div class="pc-head">
+                  <div>SMS preview</div>
+                  <div class="meta-tag">fee_reminder_v2</div>
+                </div>
+                <div class="pc-body">Dear <span class="var-rendered">Patricia</span>, this is a reminder that fees of <span class="var-rendered">GHS 340.00</span> for <span class="var-rendered">Akosua Boateng</span> are <span class="var-rendered">14 days</span> overdue. Please pay via MoMo to 0244 555 100 or visit the office. Thank you.
+
+- Christ the King</div>
+                <div class="pc-foot">
+                  <div>Plain SMS · variables filled per recipient</div>
+                  <div><b>147 chars</b> · 1 part</div>
+                </div>
+              </div>
+
+              <div class="sample-context">Preview shows <b>Patricia Boateng's</b> message. Each parent receives the reminder personalised to their student and amount owed. <a>View 3 random samples →</a></div>
+            </div>
+
+            <!-- 3. Channel & cost -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">3</span>Channel &amp; cost</div>
+              </div>
+
+              <div class="channel-row">
+                <div class="info">
+                  <div class="ch-ic">SMS</div>
+                  <div class="ch-info">
+                    <div class="ch-name">SMS · sent to 64 numbers</div>
+                    <div class="ch-detail">Delivered immediately · <b>GHS 0.05</b> per message</div>
+                  </div>
+                </div>
+                <div class="cost">
+                  <div class="cost-amount">GHS 3.20</div>
+                  <div class="cost-detail">64 × GHS 0.05</div>
+                </div>
+              </div>
+
+              <div class="mvp2-channel-row">
+                <div class="info">
+                  <div class="ch-ic">WA</div>
+                  <div>
+                    <div class="ch-name">WhatsApp <span class="mvp2-tag" style="margin-left:6px">MVP2</span></div>
+                    <div class="ch-detail">Send via WhatsApp where parents have opted in · falls back to SMS otherwise</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. When -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">4</span>When</div>
+              </div>
+
+              <div class="schedule-row">
+                <div class="schedule-tile selected">
+                  <div class="st-name">Send now</div>
+                  <div class="st-detail">Today, <b>10:42 AM GMT</b> · within 2 minutes</div>
+                </div>
+                <div class="schedule-tile">
+                  <div class="st-name">Schedule</div>
+                  <div class="st-detail">Pick a date and time</div>
+                </div>
+              </div>
+
+              <div style="font-size:11px;color:var(--navy-3);font-style:italic;margin-top:8px">It's a Friday morning during school hours — a fine time to message parents about fees.</div>
+            </div>
+
+          </div>
+
+          <div class="drawer-foot">
+            <div class="left-group">
+              <div class="total-cost">GHS 3.20 · 64 SMS</div>
+              <div class="recipient-summary">to <b>64 parents</b> about <b>GHS 8,420.00</b> outstanding</div>
+            </div>
+            <div class="actions">
+              <button class="btn">Cancel</button>
+              <button class="btn primary">Send 64 reminders →</button>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Drawer not modal.</b> Drawer matches the Record Payment pattern already in the system — admin's mental model is "transactional flows slide in from the right." Modals interrupt; drawers compose. The blurred report behind stays visible so admin remembers <b>what</b> they're acting on.</li>
+        <li><b>Header carries the headline number.</b> "You're about to message <b>64</b> parents about overdue fees totalling <b>GHS 8,420.00</b>." Two numbers admin needs to anchor everything else against. Putting them in Fraunces gives them weight; the rest of the body is supporting detail.</li>
+        <li><b>Numbered sections (1, 2, 3, 4)</b> with gold circle tags create a scannable progression — Recipients → Message → Channel & cost → When. Admin can read top-to-bottom or jump to whichever section concerns them. The numbers are quiet; they're a navigational aid, not a wizard ladder.</li>
+        <li><b>Recipient buckets aligned to the aging-bucket pattern</b> from the outstanding-balances report. Same 1–7 / 8–30 / 30+ split, same gold/warn/terra colours. Visual continuity means admin's brain doesn't have to retranslate categories. The 30+ days bucket in terra is the clearest "these are the painful ones."</li>
+        <li><b>"Sample of who'll receive this"</b> shows seven actual parent names plus "and 57 others." Admin can spot-check — "wait, Patricia paid yesterday, why is she on this list?" The "View full recipient list" link is for when something looks wrong; most of the time the sample is enough.</li>
+        <li><b>"Customise list" link in the section eyebrow.</b> Admin can drop the 30+ days bucket if they want to send only to the recently-overdue, or remove specific parents. Out of scope to fully design here, but the entry point is preserved.</li>
+        <li><b>Message preview shows fully-rendered text</b> with one real sample's variables filled in. Variables are visually distinguished with gold-bg highlighting <span style="background:var(--gold-bg);padding:0 4px;border-radius:3px;font-weight:600">like this</span> so admin can see the templating without having to imagine it. Char count and parts in the footer (147 chars · 1 part) avoids surprise multi-part SMS billing.</li>
+        <li><b>Template name in the preview header</b> ("fee_reminder_v2") in mono — auditable identifier. If admin changes their mind about the message, "Edit message" link goes to template editor.</li>
+        <li><b>"Sample shows Patricia Boateng's message"</b> with link to view 3 random samples. Honest about whose data is filling the preview; offers the "show me a different one" affordance for when admin worries about edge cases (parents with very long names, large amounts, etc).</li>
+        <li><b>Channel row with cost on the right.</b> SMS is the only active channel in MVP1; the row shows the per-message cost (GHS 0.05), the recipient count (64 numbers), and the total (GHS 3.20). Math is shown explicitly: "64 × GHS 0.05" so admin doesn't have to do it in their head.</li>
+        <li><b>WhatsApp row shown but tagged MVP2.</b> Dashed border, lower opacity, "MVP2" pill. Reveals the future state without breaking the present one. Confirms WhatsApp will fall back to SMS for non-opted-in parents — important for admin to know the channel mix won't degrade reach.</li>
+        <li><b>Send timing as two tiles.</b> "Send now" selected by default with the actual time it'll go out ("Today, 10:42 AM GMT · within 2 minutes"). Schedule is the alternative. Two options not three — admin doesn't need to decide between "now" and "in 5 minutes." Notice the line below: <b>"It's a Friday morning during school hours — a fine time to message parents about fees."</b> A small contextual sanity check.</li>
+        <li><b>Footer is sticky.</b> Total cost + recipient summary on the left, action buttons on the right. The cost is in Fraunces 14px so it's bigger than the supporting text but smaller than the headline numbers up top. Admin's eye lands on it as the final check before clicking Send.</li>
+        <li><b>"Send 64 reminders →"</b> in navy primary. The number in the button matches the number in the header — same fact, surfaced where admin needs it most. The arrow signals forward motion.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 02 WARNINGS STATE -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Warnings state · attention required</div>
+    <div class="section-meta">Same flow · with unreconciled payments and recent reminders</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / outstanding-balances · send-reminders</div>
+      </div>
+      <div class="report-bg">
+
+        <div class="report-shadow-content">
+          <div class="crumb-row">Reports / Outstanding balances</div>
+          <h1>Outstanding balances</h1>
+          <p>64 parents owe a total of GHS 8,420.00 across overdue and upcoming invoices.</p>
+          <div class="report-shadow-kpi">
+            <div class="k"><div class="lbl">Outstanding</div><div class="val">GHS 8,420</div></div>
+            <div class="k"><div class="lbl">Overdue</div><div class="val">64 parents</div></div>
+            <div class="k"><div class="lbl">30+ days</div><div class="val">12 parents</div></div>
+            <div class="k"><div class="lbl">Last week</div><div class="val">+8 paid</div></div>
+          </div>
+          <div class="report-shadow-table">
+            <div class="row head"><div>Parent</div><div>Student</div><div>Owed</div><div>Overdue</div><div>Action</div></div>
+            <div class="row"><div>Patricia Boateng</div><div>Akosua B</div><div>GHS 340</div><div>14 days</div><div>...</div></div>
+            <div class="row"><div>Joseph Mensah</div><div>Linda M</div><div>GHS 220</div><div>8 days</div><div>...</div></div>
+          </div>
+        </div>
+
+        <div class="scrim"></div>
+
+        <aside class="drawer">
+          <div class="drawer-head">
+            <div class="top-line">
+              <div class="eyebrow-tag">Bulk action · fee reminders</div>
+              <button class="close">×</button>
+            </div>
+            <h2 class="display">Send <em>fee reminders</em></h2>
+            <div class="sub">You're about to message <span class="num">58</span> parents about overdue fees totalling <span class="num">GHS 7,640.00</span>. Two issues need your attention before sending.</div>
+          </div>
+
+          <div class="drawer-body">
+
+            <!-- WARNING 1: Unreconciled payments — terra, blocking-ish -->
+            <div class="drawer-section">
+              <div class="warning-card terra">
+                <div class="icon">!</div>
+                <div class="body">
+                  <div class="heading">5 parents may have already paid</div>
+                  These parents made MTN MoMo or Telecel Cash transfers in the last 24 hours that haven't been recorded against their invoices yet. Sending a reminder now would tell them their fees are overdue when they're not.
+                  <div style="margin-top:6px;font-size:11px;color:var(--navy-3);font-style:italic">Patricia Boateng, Mary Asante, Kwame Owusu, Esther Quaye, Joseph Mensah</div>
+                  <div class="actions">
+                    <button class="review-btn">Review pending payments →</button>
+                    <button class="dismiss-btn">Send anyway</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WARNING 2: Recent reminders — warn level -->
+            <div class="drawer-section">
+              <div class="warning-card">
+                <div class="icon">!</div>
+                <div class="body">
+                  <div class="heading">6 parents already received a reminder this week</div>
+                  These parents got the <b>fee_reminder_v2</b> SMS within the last 3 days. Sending again so soon may feel like harassment. They've been removed from this batch by default; you can include them if needed.
+                  <div class="actions">
+                    <button class="review-btn">View who's excluded →</button>
+                    <button class="dismiss-btn">Include them anyway</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 1. Recipients — adjusted -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">1</span>Recipients · adjusted</div>
+                <button class="edit-link">Customise list →</button>
+              </div>
+
+              <div class="recipients-row">
+                <div class="recipient-bucket">
+                  <div class="rb-count">19</div>
+                  <div class="rb-label">1–7 days overdue</div>
+                  <div class="rb-amount">GHS 1,940.00</div>
+                </div>
+                <div class="recipient-bucket warn">
+                  <div class="rb-count">28</div>
+                  <div class="rb-label">8–30 days overdue</div>
+                  <div class="rb-amount">GHS 3,790.00</div>
+                </div>
+                <div class="recipient-bucket terra">
+                  <div class="rb-count">11</div>
+                  <div class="rb-label">30+ days overdue</div>
+                  <div class="rb-amount">GHS 1,910.00</div>
+                </div>
+              </div>
+
+              <div class="suppression-row">
+                <div class="suppression-pill"><div class="ic">!</div>5 with <b>pending payments</b> · removed</div>
+                <div class="suppression-pill"><div class="ic">!</div>6 messaged in <b>last 3 days</b> · removed</div>
+                <div class="suppression-pill"><div class="ic">×</div>2 opted out of <b>SMS</b> · removed</div>
+              </div>
+            </div>
+
+            <!-- 2. Message — same -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">2</span>Message</div>
+                <button class="edit-link">Edit message →</button>
+              </div>
+
+              <div class="preview-card">
+                <div class="pc-head">
+                  <div>SMS preview</div>
+                  <div class="meta-tag">fee_reminder_v2</div>
+                </div>
+                <div class="pc-body">Dear <span class="var-rendered">Joseph</span>, this is a reminder that fees of <span class="var-rendered">GHS 220.00</span> for <span class="var-rendered">Linda Mensah</span> are <span class="var-rendered">8 days</span> overdue. Please pay via MoMo to 0244 555 100 or visit the office. Thank you.
+
+- Christ the King</div>
+                <div class="pc-foot">
+                  <div>Plain SMS · variables filled per recipient</div>
+                  <div><b>145 chars</b> · 1 part</div>
+                </div>
+              </div>
+
+              <div class="sample-context">Preview shows <b>Joseph Mensah's</b> message. <a>View 3 random samples →</a></div>
+            </div>
+
+            <!-- 3. Channel & cost — adjusted -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">3</span>Channel &amp; cost</div>
+              </div>
+
+              <div class="channel-row">
+                <div class="info">
+                  <div class="ch-ic">SMS</div>
+                  <div class="ch-info">
+                    <div class="ch-name">SMS · sent to 58 numbers</div>
+                    <div class="ch-detail">Delivered immediately · <b>GHS 0.05</b> per message</div>
+                  </div>
+                </div>
+                <div class="cost">
+                  <div class="cost-amount">GHS 2.90</div>
+                  <div class="cost-detail">58 × GHS 0.05</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. When -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">4</span>When</div>
+              </div>
+
+              <div class="schedule-row">
+                <div class="schedule-tile">
+                  <div class="st-name">Send now</div>
+                  <div class="st-detail">Today, <b>10:42 AM GMT</b> · within 2 minutes</div>
+                </div>
+                <div class="schedule-tile selected">
+                  <div class="st-name">Schedule</div>
+                  <div class="st-detail">Pick a date and time</div>
+                </div>
+              </div>
+
+              <div class="schedule-helper">
+                <div class="field-mini">
+                  <label>Date</label>
+                  <input type="text" value="Mon · 5 May 2026" />
+                </div>
+                <div class="field-mini">
+                  <label>Time (GMT)</label>
+                  <input type="text" value="08:30 AM" />
+                </div>
+              </div>
+
+              <div style="font-size:11px;color:var(--gold);font-style:italic;margin-top:8px;font-weight:600">Smart default: Monday 8:30 AM lets the unreconciled payments settle over the weekend.</div>
+            </div>
+
+          </div>
+
+          <div class="drawer-foot">
+            <div class="left-group">
+              <div class="total-cost">GHS 2.90 · 58 SMS</div>
+              <div class="recipient-summary">scheduled <b>Mon 5 May · 8:30 AM</b> · 13 removed</div>
+            </div>
+            <div class="actions">
+              <button class="btn">Cancel</button>
+              <button class="btn primary">Schedule 58 reminders →</button>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Warnings appear at the top of the drawer body</b> — before the main breakdown sections. Their job is to interrupt confidence before it becomes momentum. If admin scrolls past the warnings to send anyway, that's their choice; they don't get to claim they didn't see them.</li>
+        <li><b>Two warning levels: terra (urgent) and warn (caution).</b> Unreconciled payments are terra because sending a reminder to someone who already paid is a relationship-damaging error. Recent reminders are warn because it's annoying but not factually wrong.</li>
+        <li><b>The terra warning lists names inline.</b> "Patricia Boateng, Mary Asante, Kwame Owusu, Esther Quaye, Joseph Mensah" — five names is short enough to read; admin can recognise specific parents and judge whether the warning applies. This is the difference between "5 parents have unreconciled payments" (abstract) and "Patricia might already have paid" (concrete).</li>
+        <li><b>Each warning has two buttons:</b> "Review pending payments →" (the right thing to do) and "Send anyway" (the escape hatch). The right thing is the styled button; the escape hatch is a quiet text link. Admin can override but the override has friction proportional to the risk.</li>
+        <li><b>Header subtitle changes:</b> "Two issues need your attention before sending." The numbers also adjust: <b>58</b> not 64, <b>GHS 7,640.00</b> not 8,420. The drawer reflects the actual state after suppressions; admin doesn't have to do mental arithmetic.</li>
+        <li><b>Suppression pills below the recipient buckets</b> show what was removed and why. "5 with pending payments · removed", "6 messaged in last 3 days · removed", "2 opted out of SMS · removed". Each pill is a discrete fact admin can evaluate. Total: 13 removed (matches "58 not 64" math).</li>
+        <li><b>Section title becomes "Recipients · adjusted"</b> — the small additional word signals that this isn't the full original list. Continuity with the clean state but acknowledgment that something changed.</li>
+        <li><b>SMS opt-outs are always-removed and never overridden.</b> Unlike the other suppressions which have "include anyway" buttons, opt-out is final. Compliance — schools cannot legally message parents who explicitly said no. The pill shows the count without an action.</li>
+        <li><b>"When" tile defaults to Schedule</b> in the warnings state, not "Send now." Defensive default — when there are unreconciled payments, the right answer is usually to wait. The smart default for the scheduled time is <b>Monday 8:30 AM</b> with explanation: "lets the unreconciled payments settle over the weekend." This is the system being thoughtful so admin doesn't have to be.</li>
+        <li><b>Date and time fields appear when Schedule is selected.</b> "Mon · 5 May 2026" / "08:30 AM" with GMT explicit. Editable but pre-filled sensibly. Admin can override the smart default; the system isn't being prescriptive, just helpful.</li>
+        <li><b>Footer summary changes:</b> "scheduled Mon 5 May · 8:30 AM · 13 removed". The schedule and the suppression count are the two facts admin most likely wants to verify before clicking. Both surface in the footer.</li>
+        <li><b>Send button changes verb:</b> "Schedule 58 reminders →" instead of "Send 58 reminders →". The verb matches the timing choice. Small detail; reinforces that this isn't going out right now.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

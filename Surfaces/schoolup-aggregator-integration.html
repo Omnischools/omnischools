@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Aggregator integration · Hubtel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+  --hubtel-blue: #2F4DAC;
+  --mtn-yellow: #FFCC00;
+  --tcash-purple: #9C27B0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 680px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.mvp-tag {
+  display: inline-block;
+  background: var(--gold);
+  color: var(--navy);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+}
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* App shell shared */
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  background: var(--bg);
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar.tall { min-height: 1100px; }
+.sidebar.taller { min-height: 1480px; }
+.sidebar.tallest { min-height: 1820px; }
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--terra);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 100px;
+  min-width: 20px;
+  text-align: center;
+}
+.nav-item .badge.gold {
+  background: var(--gold);
+  color: var(--navy);
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main {
+  padding: 0;
+  background: var(--bg);
+}
+
+/* Main head */
+.main-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 36px 22px;
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 8px;
+}
+.main-head .crumb a { color: var(--gold); text-decoration: none; }
+.main-head .top-row {
+  display: flex; justify-content: space-between; align-items: end;
+}
+.main-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin-bottom: 6px;
+}
+.main-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.main-head .lede {
+  font-size: 13px;
+  color: var(--navy-3);
+}
+.main-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.main-head .actions {
+  display: flex; gap: 8px;
+}
+
+.btn {
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); font-weight: 700; }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); font-weight: 700; }
+
+.body-content {
+  padding: 28px 36px 60px;
+}
+
+.region {
+  margin-bottom: 36px;
+}
+.region-head {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 14px;
+}
+.region-head .num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.region-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.region-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.region-head .meta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.region-head .meta b { color: var(--navy-2); }
+
+/* ============ STATE A: PAYMENT REQUEST CREATION ============ */
+.flow-stage {
+  background: linear-gradient(180deg, #E8E1D2 0%, #DDD5C2 100%);
+  padding: 36px 28px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.flow-stage.three-up {
+  display: grid;
+  grid-template-columns: 320px 1fr 320px;
+  gap: 28px;
+  align-items: start;
+}
+
+/* Phone frame for the parent's view */
+.phone {
+  width: 320px;
+  height: 660px;
+  background: var(--navy);
+  border-radius: 32px;
+  padding: 10px;
+  position: relative;
+  box-shadow: 0 30px 60px -12px rgba(26,43,71,0.45);
+}
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.phone-notch {
+  position: absolute;
+  top: 12px; left: 50%;
+  transform: translateX(-50%);
+  width: 90px; height: 22px;
+  background: var(--navy);
+  border-radius: 0 0 12px 12px;
+  z-index: 100;
+}
+.status-bar {
+  height: 26px;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 18px 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--navy);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.status-bar .left { font-family: 'Fraunces', serif; }
+.status-bar .right { font-size: 9px; opacity: 0.7; }
+
+.phone-label {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.phone-label em {
+  display: block;
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--navy-2);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* SMS view */
+.sms-thread {
+  flex: 1;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  padding: 12px 14px;
+  gap: 8px;
+  overflow-y: auto;
+}
+.sms-header {
+  text-align: center;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin: -12px -14px 8px;
+  background: var(--surface);
+  padding-top: 14px;
+}
+.sms-header .sms-from {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.sms-header .sms-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+
+.sms-bubble {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--navy-2);
+  max-width: 90%;
+  align-self: flex-start;
+}
+.sms-bubble b { color: var(--navy); font-weight: 600; }
+.sms-bubble .sms-link {
+  color: var(--gold);
+  text-decoration: underline;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 4px;
+}
+.sms-time {
+  font-size: 9px;
+  color: var(--navy-3);
+  text-align: center;
+  margin: 4px 0;
+}
+
+/* Hubtel checkout view */
+.hubtel-frame {
+  flex: 1;
+  display: flex; flex-direction: column;
+  background: var(--surface);
+}
+.hubtel-header {
+  background: var(--hubtel-blue);
+  color: white;
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.hubtel-header .logo {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.hubtel-header .secure-badge {
+  margin-left: auto;
+  font-size: 9px;
+  background: rgba(255,255,255,0.2);
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.hubtel-content {
+  flex: 1;
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+.merchant-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.merchant-card .av {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--navy);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+.merchant-card .info .merchant-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.merchant-card .info .merchant-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+
+.amount-display {
+  text-align: center;
+  padding: 16px 0 18px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 18px;
+}
+.amount-display .label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.amount-display .amount {
+  font-family: 'Fraunces', serif;
+  font-size: 38px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+.amount-display .amount .currency {
+  font-size: 16px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-right: 4px;
+  letter-spacing: 0;
+}
+.amount-display .for-line {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 6px;
+}
+.amount-display .for-line b { color: var(--navy-2); font-weight: 600; }
+
+.payment-method-section .pm-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.pm-options {
+  display: flex; flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.pm-option {
+  border: 1.5px solid var(--border-2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 28px 1fr 16px;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  background: var(--surface);
+}
+.pm-option.selected {
+  border-color: var(--hubtel-blue);
+  background: #EEF1F9;
+}
+.pm-option .pm-logo {
+  width: 28px; height: 20px;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 9px;
+}
+.pm-option .pm-logo.mtn {
+  background: var(--mtn-yellow);
+  color: var(--navy);
+}
+.pm-option .pm-logo.tcash {
+  background: var(--tcash-purple);
+  color: white;
+}
+.pm-option .pm-logo.atigo {
+  background: var(--terra);
+  color: white;
+  font-size: 7px;
+}
+.pm-option .pm-logo.card {
+  background: var(--navy);
+  color: var(--gold);
+}
+.pm-option .pm-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.pm-option .pm-radio {
+  width: 14px; height: 14px;
+  border: 1.5px solid var(--border-2);
+  border-radius: 50%;
+  position: relative;
+}
+.pm-option.selected .pm-radio {
+  border-color: var(--hubtel-blue);
+}
+.pm-option.selected .pm-radio::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  background: var(--hubtel-blue);
+  border-radius: 50%;
+}
+
+.phone-input-group {
+  margin-bottom: 14px;
+}
+.phone-input-group .pi-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy-2);
+  margin-bottom: 4px;
+}
+.phone-input-field {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 6px;
+}
+.phone-input-field .country {
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: center;
+}
+.phone-input-field input {
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.pay-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--hubtel-blue);
+  color: white;
+  border: none;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.pay-btn .lock { font-size: 11px; opacity: 0.7; }
+
+.hubtel-footer {
+  text-align: center;
+  font-size: 9px;
+  color: var(--navy-3);
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.hubtel-footer b {
+  color: var(--hubtel-blue);
+  font-weight: 700;
+}
+
+/* ============ MIDDLE: PAYMENT REQUEST FROM SCHOOL'S SIDE ============ */
+.school-side {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex; flex-direction: column;
+  min-height: 660px;
+}
+.school-side .ss-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.school-side h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-bottom: 4px;
+}
+.school-side h3 em { font-style: italic; color: var(--gold); }
+.school-side .ss-sub {
+  font-size: 12px;
+  color: var(--navy-3);
+  margin-bottom: 18px;
+}
+
+.invoice-mini-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.invoice-mini-card .invoice-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  font-size: 11px;
+}
+.invoice-mini-card .invoice-row .lbl {
+  color: var(--navy-3);
+}
+.invoice-mini-card .invoice-row .val {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--navy);
+}
+.invoice-mini-card .invoice-row.total {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 6px;
+}
+.invoice-mini-card .invoice-row.total .val {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+/* Generated payment link card */
+.payment-link-card {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.payment-link-card .plc-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.qr-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.qr-code {
+  width: 80px;
+  height: 80px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  position: relative;
+  padding: 6px;
+}
+.qr-code .qr-pattern {
+  width: 100%; height: 100%;
+  background:
+    /* Three corner markers */
+    radial-gradient(circle at 12% 12%, transparent 5%, var(--navy) 5% 9%, transparent 9% 13%, var(--navy) 13% 17%, transparent 17%),
+    radial-gradient(circle at 88% 12%, transparent 5%, var(--navy) 5% 9%, transparent 9% 13%, var(--navy) 13% 17%, transparent 17%),
+    radial-gradient(circle at 12% 88%, transparent 5%, var(--navy) 5% 9%, transparent 9% 13%, var(--navy) 13% 17%, transparent 17%),
+    /* Random dot pattern */
+    repeating-conic-gradient(var(--navy) 0% 25%, transparent 25% 50%) 0 0/9px 9px,
+    var(--surface);
+  background-blend-mode: normal;
+  border-radius: 2px;
+  position: relative;
+}
+
+.qr-info .qr-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 4px;
+  letter-spacing: -0.005em;
+}
+.qr-info .qr-url {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--navy-3);
+  word-break: break-all;
+  background: var(--surface);
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  margin-top: 4px;
+  line-height: 1.3;
+}
+.qr-info .copy-btn {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+  margin-top: 5px;
+  cursor: pointer;
+  display: inline-block;
+}
+
+/* Channel options */
+.channel-section .ch-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.channel-options {
+  display: flex; flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.channel-option {
+  display: grid;
+  grid-template-columns: 30px 1fr 20px;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+.channel-option.checked {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.channel-option .ch-icon {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.channel-option .ch-icon.sms {
+  background: var(--gold);
+  color: var(--navy);
+}
+.channel-option .ch-icon.wa {
+  background: var(--wa-green);
+  color: white;
+}
+.channel-option .ch-icon.email {
+  background: var(--bg);
+  color: var(--navy);
+  border: 1px solid var(--border-2);
+}
+.channel-option .info { min-width: 0; }
+.channel-option .info .ch-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--navy);
+}
+.channel-option .info .ch-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.channel-option .check {
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: transparent;
+}
+.channel-option.checked .check {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+}
+
+.send-footer {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 8px;
+}
+.send-footer .btn {
+  flex: 1;
+}
+.send-footer .btn.primary {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+
+/* ============ STATE B: RECONCILIATION FEED ============ */
+.recon-stats-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.recon-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+.recon-tile.hero {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+  background-image: radial-gradient(circle at 100% 0%, rgba(200,151,91,0.12) 0%, transparent 50%);
+}
+.recon-tile .lbl {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.recon-tile.hero .lbl { color: rgba(232,212,184,0.7); }
+.recon-tile .val {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin-top: 4px;
+}
+.recon-tile.hero .val { color: var(--gold); font-size: 32px; }
+.recon-tile .val.green { color: var(--green); }
+.recon-tile .val.warn { color: var(--warn); }
+.recon-tile .val.terra { color: var(--terra); }
+.recon-tile .val .currency {
+  font-size: 13px;
+  color: var(--navy-3);
+  font-weight: 500;
+  letter-spacing: 0;
+  margin-right: 3px;
+}
+.recon-tile.hero .val .currency { color: rgba(232,212,184,0.6); }
+.recon-tile .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.recon-tile.hero .sub { color: rgba(232,212,184,0.75); }
+.recon-tile .sub b { color: var(--navy-2); font-weight: 600; }
+.recon-tile.hero .sub b { color: var(--bg); }
+
+/* Two-pane: feed + exceptions */
+.feed-layout {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 18px;
+}
+
+.feed-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.feed-card.exceptions {
+  border-color: rgba(184,74,57,0.3);
+}
+.feed-card-head {
+  padding: 14px 18px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.feed-card-head .left {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.feed-card-head .left em { font-style: italic; color: var(--gold); }
+.feed-card-head .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+.feed-card.exceptions .feed-card-head {
+  background: var(--terra-bg-soft);
+  border-bottom-color: rgba(184,74,57,0.2);
+}
+.feed-card.exceptions .feed-card-head .left em { color: var(--terra); }
+
+/* Live indicator */
+.live-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--green-bg);
+  color: var(--green);
+  padding: 3px 8px;
+  border-radius: 100px;
+}
+.live-tag::before {
+  content: "";
+  width: 6px; height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.feed-rows {
+  flex: 1;
+  overflow-y: auto;
+}
+.feed-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.feed-row:last-child { border-bottom: none; }
+.feed-row:hover { background: var(--bg); }
+.feed-row.just-arrived {
+  animation: just-arrived-flash 4s ease-out;
+}
+@keyframes just-arrived-flash {
+  0% { background: var(--green-bg); }
+  100% { background: var(--surface); }
+}
+.feed-row.just-arrived .feed-icon-wrap {
+  position: relative;
+}
+.feed-row.just-arrived .feed-icon-wrap::after {
+  content: "NEW";
+  position: absolute;
+  top: -4px; right: -8px;
+  background: var(--green);
+  color: white;
+  font-size: 7px;
+  letter-spacing: 0.06em;
+  padding: 1px 4px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+
+.feed-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+}
+.feed-icon.matched {
+  background: var(--green);
+  color: white;
+}
+.feed-icon.exception {
+  background: var(--terra);
+  color: white;
+}
+.feed-icon.in-progress {
+  background: var(--gold);
+  color: var(--navy);
+}
+
+.feed-body { min-width: 0; }
+.feed-body .top-line {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 2px;
+}
+.feed-body .student-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.feed-body .student-class {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+.feed-body .detail-line {
+  font-size: 11px;
+  color: var(--navy-2);
+}
+.feed-body .detail-line b { color: var(--navy); font-weight: 600; }
+.feed-body .meta-line {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  margin-top: 3px;
+  letter-spacing: 0.02em;
+}
+
+.feed-amount-block {
+  text-align: right;
+  display: flex; flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.feed-amount-block .amount {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  color: var(--navy);
+}
+.feed-amount-block .amount .currency {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-right: 2px;
+}
+.feed-amount-block .net {
+  font-size: 9px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+.feed-amount-block .time {
+  font-size: 9px;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Method tag inline */
+.method-tag {
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 100px;
+  text-transform: uppercase;
+}
+.method-tag.mtn { background: var(--mtn-yellow); color: var(--navy); }
+.method-tag.tcash { background: var(--tcash-purple); color: white; }
+.method-tag.atigo { background: var(--terra); color: white; font-size: 7px; }
+.method-tag.card { background: var(--navy); color: var(--gold); }
+
+/* Exception types */
+.exc-type {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: var(--terra-bg);
+  color: var(--terra);
+  margin-left: 6px;
+}
+.exc-type.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.action-row {
+  margin-top: 6px;
+  display: flex; gap: 4px;
+}
+.exc-action-btn {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 5px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  cursor: pointer;
+  font-family: inherit;
+}
+.exc-action-btn.primary {
+  background: var(--gold);
+  color: var(--navy);
+  border-color: var(--gold);
+}
+
+/* ============ STATE C: AGGREGATOR SETTINGS ============ */
+.connection-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 24px;
+  margin-bottom: 18px;
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 18px;
+  align-items: center;
+}
+.connection-card .hubtel-logo {
+  width: 56px; height: 56px;
+  background: var(--hubtel-blue);
+  color: white;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+.connection-card .info .row-1 {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 3px;
+}
+.connection-card .info .conn-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.connection-card .info .conn-name em {
+  font-style: italic;
+  color: var(--hubtel-blue);
+}
+.connection-card .info .live-pill {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--green-bg);
+  color: var(--green);
+  padding: 3px 8px;
+  border-radius: 100px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.connection-card .info .live-pill::before {
+  content: "";
+  width: 6px; height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+}
+.connection-card .info .conn-meta {
+  font-size: 12px;
+  color: var(--navy-3);
+}
+.connection-card .info .conn-meta b { color: var(--navy-2); font-weight: 600; }
+.connection-card .info .conn-meta .mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+.connection-card .actions {
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+
+/* Settings sections */
+.settings-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.settings-card h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-bottom: 4px;
+}
+.settings-card h3 em { font-style: italic; color: var(--gold); }
+.settings-card .sc-sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+.settings-card .sc-sub b { color: var(--navy-2); font-weight: 600; }
+
+/* Fee transparency block */
+.fee-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.fee-block .fee-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 12px;
+  border-top: 1px dashed var(--border);
+}
+.fee-block .fee-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.fee-block .fee-row.total {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  border-top: 1px solid var(--navy-3);
+  padding-top: 10px;
+  margin-top: 4px;
+  letter-spacing: -0.005em;
+}
+.fee-block .fee-row .label { color: var(--navy-2); }
+.fee-block .fee-row .value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--navy);
+}
+.fee-block .fee-row.fee .value { color: var(--terra); }
+.fee-block .fee-row.total .value {
+  font-family: 'Fraunces', serif;
+  color: var(--green);
+}
+
+.fee-meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  line-height: 1.55;
+  margin-top: 12px;
+  font-style: italic;
+}
+.fee-meta b { color: var(--navy-2); font-weight: 600; font-style: normal; }
+
+/* Method toggle list */
+.method-list {
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.method-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  align-items: center;
+}
+.method-row .m-logo {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.method-row .m-logo.mtn { background: var(--mtn-yellow); color: var(--navy); }
+.method-row .m-logo.tcash { background: var(--tcash-purple); color: white; }
+.method-row .m-logo.atigo { background: var(--terra); color: white; font-size: 8px; }
+.method-row .m-logo.card { background: var(--navy); color: var(--gold); }
+
+.method-row .info .m-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--navy);
+}
+.method-row .info .m-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.method-row .info .m-meta b { color: var(--navy-2); font-weight: 600; }
+.method-row .fee-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  padding: 3px 8px;
+  border-radius: 100px;
+  color: var(--navy-2);
+}
+
+.toggle-pill {
+  width: 40px; height: 22px;
+  background: var(--border-2);
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toggle-pill.on { background: var(--green); }
+.toggle-pill::after {
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  background: var(--surface);
+  border-radius: 50%;
+  transition: left 0.15s ease;
+}
+.toggle-pill.on::after { left: 21px; }
+
+/* Payout schedule */
+.schedule-row {
+  display: flex; gap: 6px;
+  margin-bottom: 12px;
+}
+.schedule-pill {
+  flex: 1;
+  padding: 10px 8px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+}
+.schedule-pill.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.schedule-pill .sp-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+}
+.schedule-pill.selected .sp-name { color: var(--gold); }
+.schedule-pill .sp-detail {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+
+.payout-summary {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.payout-summary b { color: var(--navy); font-weight: 600; }
+.payout-summary .next {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.bank-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.bank-row .bank-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--navy);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.bank-row .info .bank-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+}
+.bank-row .info .acct-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+/* Webhook health */
+.webhook-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.webhook-block .wh-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  padding: 6px 0;
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+}
+.webhook-block .wh-row:first-of-type {
+  border-top: none;
+}
+.webhook-block .wh-row .label {
+  color: var(--navy-3);
+}
+.webhook-block .wh-row .value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--navy);
+}
+.webhook-block .wh-row .value.green { color: var(--green); }
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .flow-stage.three-up { grid-template-columns: 1fr; }
+  .feed-layout { grid-template-columns: 1fr; }
+  .settings-row { grid-template-columns: 1fr; }
+  .recon-stats-row { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Aggregator integration</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Hubtel, <em>plumbed in</em></h1>
+  <div class="gold-rule"></div>
+  <p>The MVP1 manual flow doesn't go away — Joyce can still record cash payments and direct MoMo-to-MoMo transfers exactly as before. But for the 80%+ of payments that come in via Hubtel's checkout, the system handles the entire round trip: link to parent, parent pays, webhook fires, invoice is auto-matched, receipt is auto-sent. Joyce moves from data entry to oversight. Three states: how the parent gets the link, what Joyce sees when payments arrive, where the school connects their merchant account.</p>
+</header>
+
+<!-- ============ STATE A: PAYMENT REQUEST FLOW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The payment request · school to parent</div>
+    <div class="section-meta">SMS · WhatsApp · QR · school's view + parent's view</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="flow-stage three-up">
+
+        <!-- LEFT: SMS on parent's phone -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">10:14</div>
+                <div class="right">5G ▮</div>
+              </div>
+              <div class="sms-thread">
+                <div class="sms-header">
+                  <div class="sms-from display">CHRIST KING</div>
+                  <div class="sms-meta">SMS · today · 09:42 AM</div>
+                </div>
+
+                <div class="sms-time">Today, 09:42 AM</div>
+                <div class="sms-bubble">
+                  <b>James Mensah · JHS 2A · Term 1 fees</b><br>
+                  Balance due: <b>GHS 340.00</b>
+                  <br><br>
+                  Pay securely with MoMo or card:
+                  <a class="sms-link">pay.htl.gh/ck-q9x4m</a>
+                  <br><br>
+                  Reply HELP if you have questions. — Christ the King
+                </div>
+
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">Parent's phone — A<em>SMS with payment link</em></div>
+        </div>
+
+        <!-- MIDDLE: School's payment request creation -->
+        <div class="school-side">
+          <div class="ss-eyebrow">School view · billing</div>
+          <h3 class="display">Send a <em>payment link</em></h3>
+          <div class="ss-sub">Generates a Hubtel-hosted checkout that takes the parent through MoMo, Telecel, AirtelTigo, or card.</div>
+
+          <div class="invoice-mini-card">
+            <div class="invoice-row">
+              <div class="lbl">Student</div>
+              <div class="val">James Mensah · JHS 2A</div>
+            </div>
+            <div class="invoice-row">
+              <div class="lbl">Invoice</div>
+              <div class="val">INV-2025-0142</div>
+            </div>
+            <div class="invoice-row">
+              <div class="lbl">Amount due</div>
+              <div class="val">GHS 340.00</div>
+            </div>
+            <div class="invoice-row">
+              <div class="lbl">Guardian</div>
+              <div class="val">Mary Mensah</div>
+            </div>
+            <div class="invoice-row total">
+              <div class="lbl">Pays through Hubtel</div>
+              <div class="val">GHS 340.00</div>
+            </div>
+          </div>
+
+          <div class="payment-link-card">
+            <div class="plc-label">Payment link generated</div>
+            <div class="qr-row">
+              <div class="qr-code">
+                <div class="qr-pattern"></div>
+              </div>
+              <div class="qr-info">
+                <div class="qr-label display">Scannable QR + URL</div>
+                <div class="qr-url">pay.htl.gh/ck-q9x4m</div>
+                <span class="copy-btn">Copy link</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="channel-section">
+            <div class="ch-label">Send via</div>
+            <div class="channel-options">
+              <div class="channel-option checked">
+                <div class="ch-icon sms">SMS</div>
+                <div class="info">
+                  <div class="ch-name">SMS to Mary</div>
+                  <div class="ch-meta">+233 24 555 0421 · GHS 0.05</div>
+                </div>
+                <div class="check">✓</div>
+              </div>
+              <div class="channel-option checked">
+                <div class="ch-icon wa">W</div>
+                <div class="info">
+                  <div class="ch-name">WhatsApp to Mary</div>
+                  <div class="ch-meta">opted in · last seen 2h ago</div>
+                </div>
+                <div class="check">✓</div>
+              </div>
+              <div class="channel-option">
+                <div class="ch-icon email">@</div>
+                <div class="info">
+                  <div class="ch-name">Email · no address on file</div>
+                  <div class="ch-meta">add an email to enable</div>
+                </div>
+                <div class="check"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="send-footer">
+            <button class="btn">Cancel</button>
+            <button class="btn primary">Send link →</button>
+          </div>
+        </div>
+
+        <!-- RIGHT: Hubtel checkout on parent's phone -->
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="status-bar">
+                <div class="left">10:18</div>
+                <div class="right">5G ▮</div>
+              </div>
+              <div class="hubtel-frame">
+                <div class="hubtel-header">
+                  <div class="logo">Hubtel</div>
+                  <div class="secure-badge">🔒 SECURE</div>
+                </div>
+                <div class="hubtel-content">
+                  <div class="merchant-card">
+                    <div class="av">CK</div>
+                    <div class="info">
+                      <div class="merchant-name">Christ the King JHS</div>
+                      <div class="merchant-meta">verified merchant · Accra</div>
+                    </div>
+                  </div>
+
+                  <div class="amount-display">
+                    <div class="label">You're paying</div>
+                    <div class="amount display"><span class="currency">GHS</span>340.00</div>
+                    <div class="for-line">Term 1 fees · <b>James Mensah</b> · JHS 2A</div>
+                  </div>
+
+                  <div class="payment-method-section">
+                    <div class="pm-label">Choose payment method</div>
+                    <div class="pm-options">
+                      <div class="pm-option selected">
+                        <div class="pm-logo mtn">MTN</div>
+                        <div class="pm-name">MTN Mobile Money</div>
+                        <div class="pm-radio"></div>
+                      </div>
+                      <div class="pm-option">
+                        <div class="pm-logo tcash">T</div>
+                        <div class="pm-name">Telecel Cash</div>
+                        <div class="pm-radio"></div>
+                      </div>
+                      <div class="pm-option">
+                        <div class="pm-logo atigo">AT</div>
+                        <div class="pm-name">AirtelTigo Money</div>
+                        <div class="pm-radio"></div>
+                      </div>
+                      <div class="pm-option">
+                        <div class="pm-logo card">VISA</div>
+                        <div class="pm-name">Debit / credit card</div>
+                        <div class="pm-radio"></div>
+                      </div>
+                    </div>
+
+                    <div class="phone-input-group">
+                      <div class="pi-label">MTN MoMo number</div>
+                      <div class="phone-input-field">
+                        <div class="country">+233</div>
+                        <input value="24 555 0421" />
+                      </div>
+                    </div>
+
+                    <button class="pay-btn">Pay GHS 340.00 <span class="lock">🔒</span></button>
+                  </div>
+                </div>
+                <div class="hubtel-footer">
+                  Powered by <b>Hubtel</b> · PCI compliant
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">Parent's phone — B<em>Hubtel-hosted checkout</em></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Three views in one row tell the story end-to-end.</b> Parent receives SMS (left), school sees what they sent (middle), parent taps the link and lands on Hubtel's checkout (right). The middle panel is the only screen the school operator builds; the two phone views are the parent experience that the system enables.</li>
+        <li><b>SMS on the parent's phone is short and plain.</b> "James Mensah · JHS 2A · Term 1 fees · Balance due GHS 340.00 · Pay securely: pay.htl.gh/ck-q9x4m" — under 160 characters with the link as the call to action. <b>"Reply HELP if you have questions"</b> gives parents an out if something looks wrong; preserves the trust signal that the school is real.</li>
+        <li><b>The link uses a short Hubtel domain</b> (`pay.htl.gh/ck-q9x4m`) not the school's domain. <b>Parents recognise Hubtel</b>; "pay.christtheking.edu.gh" might look like phishing. Borrowing Hubtel's brand authority is a feature, not a compromise.</li>
+        <li><b>SMS sender ID "CHRIST KING"</b> uses the truncated 11-character pattern from the SMS sign-off rules already locked in. Parents recognise the school name; Hubtel's brand sits inside the message as the payment provider.</li>
+        <li><b>Middle panel: school view of payment request creation.</b> Eyebrow "School view · billing", headline "Send a payment link", sub-line explains what Hubtel will handle. The invoice mini-card at the top recaps what's being paid for so the operator can verify before sending.</li>
+        <li><b>"Pays through Hubtel: GHS 340.00"</b> in the invoice card matches the amount due. <b>Fees absorbed</b> means the parent sees and pays GHS 340 — the GHS 6.63 Hubtel fee is invisible to them and netted off the school's deposit. Honest with the operator about this exact amount the parent will see.</li>
+        <li><b>Generated payment link card in gold-tinted bg</b> with QR code on the left, URL + copy button on the right. <b>QR code matters because some parents prefer to scan from a printed receipt</b> rather than tap a link in SMS. Same payload, two delivery formats.</li>
+        <li><b>The QR is rendered as a real-looking QR pattern</b> with three corner markers and dot pattern. Not a placeholder square; design matters because the operator will see the actual QR and learn the visual pattern.</li>
+        <li><b>Channel options as checkbox cards: SMS / WhatsApp / Email.</b> SMS and WhatsApp pre-checked because both are available; Email greyed out because there's no address on file. <b>"add an email to enable"</b> tells operator how to unlock the option without forcing it.</li>
+        <li><b>Channel options show context per recipient:</b> "+233 24 555 0421 · GHS 0.05" for SMS (cost transparency), "opted in · last seen 2h ago" for WhatsApp (deliverability signal), "no address on file" for Email (operational gap). <b>Each channel surfaces what matters for that channel</b>.</li>
+        <li><b>Hubtel checkout uses Hubtel's actual brand colours and patterns.</b> Hubtel-blue header band with white "Hubtel" logo + "🔒 SECURE" badge. The page looks like Hubtel because it IS Hubtel — the school's brand identity steps back when the parent enters the payment surface. <b>Parents trust Hubtel as a known payment processor</b>; pretending it's still Omnischools would be confusing.</li>
+        <li><b>Merchant card at the top of checkout</b> shows Christ the King's identity in the school's brand styling (navy "CK" tile in gold) inside the Hubtel frame. <b>"verified merchant · Accra"</b> tells the parent they're paying the right entity. Visual marker that this is a legitimate transaction, not a scam.</li>
+        <li><b>Amount display dominates the checkout</b> — GHS 340.00 in big Fraunces with the term + student name underneath. <b>The parent's eye lands on what they're paying for</b> before the payment method choices. "Term 1 fees · James Mensah · JHS 2A" is the human-readable purpose.</li>
+        <li><b>Four payment methods: MTN, Telecel, AirtelTigo, Card.</b> MTN selected by default because it's the dominant Ghanaian network. <b>Each method shown with its actual brand colours</b> — yellow MTN, purple Telecel, terra AirtelTigo, navy card. Familiar visual language; parents pick what they have.</li>
+        <li><b>Phone input pre-filled with parent's MoMo number</b> from the school's records. <b>Reduces typos</b> on the most error-prone field. Parent can edit if they want to use a different number.</li>
+        <li><b>"Pay GHS 340.00" with lock icon</b> on the call-to-action button. <b>Amount in the button</b> reinforces what's about to happen; lock icon + "PCI compliant" footer build trust at the commit moment.</li>
+        <li><b>Footer: "Powered by Hubtel · PCI compliant"</b>. PCI compliance is meaningful even if most parents don't know what it means — banks and card issuers use the term, builds reflexive trust. The school doesn't need PCI compliance because the school never touches card data; Hubtel does.</li>
+        <li><b>What's not shown: the USSD prompt that follows.</b> After the parent taps Pay, MTN's USSD layer takes over (their phone gets a *170# style prompt asking for PIN). That's outside Omnischools's surface — the parent sees the same MoMo flow they always do. The system trusts the network here.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE B: RECONCILIATION FEED ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">The reconciliation feed</div>
+    <div class="section-meta">Joyce's new home base · live feed + exceptions queue</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing / reconciliation</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar tall">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item active"><div class="ic"></div>Billing<span class="badge">3</span></div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">JO</div>
+            <div><div class="meta-name">Joyce Owusu-Ansah</div><div class="meta-role">Accountant</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div class="crumb"><a href="#">Billing</a> / Reconciliation</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Reconciliation <em>feed</em></h1>
+                <div class="lede"><b>Today</b> · Wed 22 Oct · auto-matched payments arriving live · 3 exceptions need review</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Export day's batch</button>
+                <button class="btn">Record cash payment →</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body-content">
+
+            <!-- Stat strip -->
+            <div class="recon-stats-row">
+              <div class="recon-tile hero">
+                <div class="lbl">Today's collected · auto + manual</div>
+                <div class="val"><span class="currency">GHS</span>11,842.00</div>
+                <div class="sub">net deposit <b>GHS 11,610.96</b> · GHS 231.04 in fees</div>
+              </div>
+              <div class="recon-tile">
+                <div class="lbl">Auto-matched</div>
+                <div class="val green">28</div>
+                <div class="sub"><b>96%</b> match rate today</div>
+              </div>
+              <div class="recon-tile">
+                <div class="lbl">Exceptions</div>
+                <div class="val terra">3</div>
+                <div class="sub">need your review</div>
+              </div>
+              <div class="recon-tile">
+                <div class="lbl">In-progress</div>
+                <div class="val warn">1</div>
+                <div class="sub">awaiting USSD confirm</div>
+              </div>
+              <div class="recon-tile">
+                <div class="lbl">Manual entries</div>
+                <div class="val">2</div>
+                <div class="sub">cash payments today</div>
+              </div>
+            </div>
+
+            <!-- Two-pane layout -->
+            <div class="feed-layout">
+
+              <!-- LEFT: Live feed -->
+              <div class="feed-card">
+                <div class="feed-card-head">
+                  <div class="left display">Auto-matched <em>payments</em></div>
+                  <div class="live-tag">Live</div>
+                </div>
+
+                <div class="feed-rows">
+
+                  <div class="feed-row just-arrived">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon matched">✓</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">Akosua Boateng</div>
+                        <div class="student-class">JHS 2A · CTK-2024-018</div>
+                      </div>
+                      <div class="detail-line">Paid full term fees · receipt sent to <b>Patricia Boateng</b> via SMS + WhatsApp</div>
+                      <div class="meta-line">REF KMS-9TXP4 · INV-2025-0098 · matched on amount + phone</div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>340.00 <span class="method-tag mtn">MTN</span></div>
+                      <div class="net">net GHS 333.37</div>
+                      <div class="time">just now · 10:21</div>
+                    </div>
+                  </div>
+
+                  <div class="feed-row">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon matched">✓</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">Daniel Adjei</div>
+                        <div class="student-class">JHS 2A · CTK-2024-027</div>
+                      </div>
+                      <div class="detail-line">Paid full term fees · receipt sent to <b>Kofi Adjei</b> via SMS</div>
+                      <div class="meta-line">REF KMS-9TXP1 · INV-2025-0099 · matched on amount + phone</div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>340.00 <span class="method-tag mtn">MTN</span></div>
+                      <div class="net">net GHS 333.37</div>
+                      <div class="time">10:18</div>
+                    </div>
+                  </div>
+
+                  <div class="feed-row">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon in-progress">⏳</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">James Mensah</div>
+                        <div class="student-class">JHS 2A · CTK-2024-042</div>
+                      </div>
+                      <div class="detail-line">Awaiting USSD confirmation · Mary Mensah's phone · <b>4 min elapsed</b></div>
+                      <div class="meta-line">SESS-Q9X4M · INV-2025-0142 · started at 10:14 AM</div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>340.00 <span class="method-tag mtn">MTN</span></div>
+                      <div class="net">pending</div>
+                      <div class="time">10:14</div>
+                    </div>
+                  </div>
+
+                  <div class="feed-row">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon matched">✓</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">Faith Nuamah</div>
+                        <div class="student-class">JHS 1A · CTK-2024-077</div>
+                      </div>
+                      <div class="detail-line">2nd installment paid · balance now <b>GHS 0.00</b> · receipt sent</div>
+                      <div class="meta-line">REF TCH-7T3KN · INV-2025-0103 · matched on student ID</div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>170.00 <span class="method-tag tcash">TC</span></div>
+                      <div class="net">net GHS 166.69</div>
+                      <div class="time">9:42</div>
+                    </div>
+                  </div>
+
+                  <div class="feed-row">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon matched">✓</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">Yaa Boakye</div>
+                        <div class="student-class">JHS 2A · CTK-2024-074</div>
+                      </div>
+                      <div class="detail-line">Paid full term fees + transport · receipt sent</div>
+                      <div class="meta-line">REF KMS-9TWPK · INV-2025-0101 · matched on amount + phone</div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>485.00 <span class="method-tag mtn">MTN</span></div>
+                      <div class="net">net GHS 475.54</div>
+                      <div class="time">9:31</div>
+                    </div>
+                  </div>
+
+                  <div class="feed-row">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon matched">✓</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">Owusu Akoto</div>
+                        <div class="student-class">JHS 2A · CTK-2024-067</div>
+                      </div>
+                      <div class="detail-line">1st installment paid · balance <b>GHS 170.00</b> remains · receipt sent</div>
+                      <div class="meta-line">REF KMS-9TVKQ · INV-2025-0102 · matched on amount + phone</div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>170.00 <span class="method-tag mtn">MTN</span></div>
+                      <div class="net">net GHS 166.69</div>
+                      <div class="time">9:18</div>
+                    </div>
+                  </div>
+
+                  <div class="feed-row">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon matched">✓</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">Stephen Opoku</div>
+                        <div class="student-class">JHS 3A · CTK-2024-104</div>
+                      </div>
+                      <div class="detail-line">Paid full term fees · BECE registration included · receipt sent</div>
+                      <div class="meta-line">REF AT-8KQ2X · INV-2025-0094 · matched on amount + phone</div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>410.00 <span class="method-tag atigo">AT</span></div>
+                      <div class="net">net GHS 402.00</div>
+                      <div class="time">8:54</div>
+                    </div>
+                  </div>
+
+                  <div class="feed-row">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon matched">✓</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">Esi Asante</div>
+                        <div class="student-class">JHS 2A · CTK-2024-031</div>
+                      </div>
+                      <div class="detail-line">3rd installment paid · balance <b>GHS 0.00</b> · receipt sent</div>
+                      <div class="meta-line">REF VC-XL4P9 · INV-2025-0091 · matched on student ID</div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>110.00 <span class="method-tag card">CARD</span></div>
+                      <div class="net">net GHS 107.86</div>
+                      <div class="time">8:32</div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- RIGHT: Exceptions queue -->
+              <div class="feed-card exceptions">
+                <div class="feed-card-head">
+                  <div class="left display"><em>Exceptions</em> · need review</div>
+                  <div class="meta">3 today</div>
+                </div>
+
+                <div class="feed-rows">
+
+                  <div class="feed-row">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon exception">!</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">Unknown sender</div>
+                        <div class="exc-type">No match</div>
+                      </div>
+                      <div class="detail-line">Payment from <b>+233 27 412 8801</b> · phone not on guardian list</div>
+                      <div class="meta-line">REF KMS-9TWLM · MTN · 9:48 AM</div>
+                      <div class="action-row">
+                        <button class="exc-action-btn primary">Match to student</button>
+                        <button class="exc-action-btn">Refund</button>
+                      </div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>340.00</div>
+                    </div>
+                  </div>
+
+                  <div class="feed-row">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon exception">!</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">Mary Asante</div>
+                        <div class="student-class">JHS 2A · CTK-2024-053</div>
+                        <div class="exc-type warn">Amount mismatch</div>
+                      </div>
+                      <div class="detail-line">Paid <b>GHS 350</b>, expected <b>GHS 340</b> · GHS 10 overpayment</div>
+                      <div class="meta-line">REF TCH-7T3J2 · Telecel · 9:21 AM</div>
+                      <div class="action-row">
+                        <button class="exc-action-btn primary">Apply as credit</button>
+                        <button class="exc-action-btn">Refund GHS 10</button>
+                      </div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>350.00</div>
+                    </div>
+                  </div>
+
+                  <div class="feed-row">
+                    <div class="feed-icon-wrap">
+                      <div class="feed-icon exception">!</div>
+                    </div>
+                    <div class="feed-body">
+                      <div class="top-line">
+                        <div class="student-name">Felix Adu</div>
+                        <div class="exc-type">Multiple matches</div>
+                      </div>
+                      <div class="detail-line">Two children: <b>Kwame Adu (JHS 2A)</b> and <b>Akua Adu (JHS 1B)</b> · which to apply?</div>
+                      <div class="meta-line">REF KMS-9TVPL · MTN · 8:48 AM</div>
+                      <div class="action-row">
+                        <button class="exc-action-btn primary">Choose student</button>
+                        <button class="exc-action-btn">Split payment</button>
+                      </div>
+                    </div>
+                    <div class="feed-amount-block">
+                      <div class="amount"><span class="currency">GHS</span>340.00</div>
+                    </div>
+                  </div>
+
+                  <div style="padding:18px;text-align:center;font-size:11px;color:var(--navy-3);font-style:italic;border-top:1px solid var(--border)">
+                    <div style="font-family:'Fraunces',serif;font-weight:600;color:var(--navy-2);margin-bottom:4px;font-style:normal;font-size:12px">Match rate: 96% today</div>
+                    Exceptions are typically resolved within 24 hours
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>The reconciliation feed is Joyce's new home base.</b> In MVP1 she was navigating to the Record Payment drawer multiple times a day; in MVP2 she opens this page in the morning and watches it through the day. The visual rhythm is "auto-handled stuff scrolls past" + "exceptions sit waiting in the right pane." <b>Joyce's role shifts from data entry to oversight</b>.</li>
+        <li><b>5-tile stat strip leads with the hero "Today's collected"</b> in navy-gold treatment matching the dashboard pattern. <b>Subline "net deposit GHS 11,610.96 · GHS 231.04 in fees"</b> shows both gross and net at the headline level — Joyce sees both numbers without drilling. The fees figure makes the cost of automation visible.</li>
+        <li><b>"96% match rate today" sub-line on the auto-matched tile</b> tells Joyce the system is working as expected. <b>Match rate is a leading indicator of reconciliation health</b>; if it dropped to 70% one day, something would be off (parents using new phone numbers, an aggregator config issue, etc.).</li>
+        <li><b>Two-pane layout: live feed on the left (1.7fr), exceptions on the right (1fr).</b> The proportions reflect the work — most payments auto-match and just need to scroll past for awareness; exceptions need clicking. Wider feed for scanning, narrower exceptions for action.</li>
+        <li><b>"Live" tag on the feed card</b> with pulsing green dot. Visual signal that this view auto-updates as webhooks arrive. <b>Joyce doesn't need to refresh</b>; payments appear at the top as they happen.</li>
+        <li><b>Just-arrived row gets brief flash + NEW indicator.</b> The Akosua Boateng row at the top of the feed has a green "NEW" tag and a 4-second background flash from green-bg fading to surface. <b>Movement tells Joyce something happened</b> without being noisy — animation fades, the row settles into the steady-state feed.</li>
+        <li><b>Each feed row: status icon, student card, transaction details, amount block.</b> Status icons are saturated colour circles with letter — green ✓ for matched, gold ⏳ for in-progress, terra ! for exceptions. Same icon vocabulary as the attendance flag system; Joyce already knows what each colour means.</li>
+        <li><b>Detail line tells the human story:</b> "Paid full term fees · receipt sent to Patricia Boateng via SMS + WhatsApp" / "2nd installment paid · balance now GHS 0.00 · receipt sent" / "Awaiting USSD confirmation · Mary Mensah's phone · 4 min elapsed". <b>Each row is a sentence Joyce could read aloud</b> to explain what happened.</li>
+        <li><b>Meta line in mono with technical detail:</b> "REF KMS-9TXP4 · INV-2025-0098 · matched on amount + phone". For audit and debugging — when Joyce or the auditor needs to trace a payment, the Hubtel reference + invoice ID + match strategy is right there.</li>
+        <li><b>"matched on amount + phone" / "matched on student ID"</b> attribution explains how the system matched. <b>Joyce learns the matching logic by watching it work</b>; she can develop intuition for which payments will auto-match vs which won't (e.g., guardian-with-multiple-children using same phone for both = phone-only match is ambiguous, will need manual handling).</li>
+        <li><b>Amount block shows gross + net + method.</b> "GHS 340.00 [MTN] · net GHS 333.37". <b>Both gross and net visible</b> — gross is what the parent sees and what counts toward the school's collection; net is what hits the bank. Joyce can reconcile against the bank statement using net.</li>
+        <li><b>Method tags use brand colours:</b> yellow MTN, purple TC (Telecel), terra AT (AirtelTigo), navy CARD. Same vocabulary as the Hubtel checkout in State A. <b>Visual continuity</b> across the system; method colours mean the same thing wherever they appear.</li>
+        <li><b>In-progress row (James Mensah's pending payment)</b> in gold ⏳. "Awaiting USSD confirmation · Mary Mensah's phone · 4 min elapsed" tells Joyce a payment is mid-flight but not yet confirmed. <b>4 min is normal for USSD flows</b> (parents finding their phone, entering PIN, confirming); 15+ minutes would suggest abandonment.</li>
+        <li><b>The pending row uses session ID (SESS-Q9X4M) instead of payment ref (REF-XXX)</b>. Different identifier because the payment hasn't completed yet — there's no Hubtel reference to log. When (if) it completes, the row updates to the matched style with a real REF.</li>
+        <li><b>Exceptions queue on the right is the action pane.</b> Three exception types covered: <b>No match</b> (phone number not in guardian list), <b>Amount mismatch</b> (overpayment or underpayment), <b>Multiple matches</b> (parent has two children, ambiguous which invoice to apply). Each is a real edge case in Ghanaian school finance.</li>
+        <li><b>Each exception row has 2 action buttons inline.</b> "Match to student / Refund" for unknown sender; "Apply as credit / Refund GHS 10" for overpayment; "Choose student / Split payment" for multiple matches. <b>The two actions are always: do something with it, or send it back.</b> Joyce doesn't have to navigate elsewhere for routine exceptions.</li>
+        <li><b>Exception type pills are colour-coded:</b> "No match" terra (genuinely problematic), "Multiple matches" terra (needs decision), "Amount mismatch" warn (less urgent — money is in, just need to allocate). <b>Severity gradient inside exceptions</b> helps Joyce prioritise the queue.</li>
+        <li><b>Footer note in the exceptions card:</b> "Match rate 96% today · Exceptions are typically resolved within 24 hours". <b>Sets expectations</b> — Joyce knows that 3 exceptions today is normal; if she had 30, something would be wrong with the system.</li>
+        <li><b>"Record cash payment →" CTA in the page header</b> preserves the manual flow from MVP1. <b>Cash payments don't go through Hubtel</b> (parent walks in with bills, pays at the office); Joyce records those manually as before. The aggregator integration adds capability, doesn't remove the existing flow.</li>
+        <li><b>What's not here:</b> No payment reversal or chargeback handling on this surface — those are rare and go through a separate flow with admin approval. No bank reconciliation against Hubtel's statement (that's a month-end task with its own report). No fee analytics ("you've spent X on Hubtel fees this term") — that belongs in a finance report.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE C: AGGREGATOR SETTINGS ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Aggregator settings · Hubtel connection</div>
+    <div class="section-meta">Settings &gt; Payments &gt; Hubtel</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / payments / hubtel</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar tallest">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div class="crumb"><a href="#">Settings</a> / Payments / Hubtel</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Hubtel <em>integration</em></h1>
+                <div class="lede">Online payment aggregator · routes parent payments to your bank · <b>connected since 14 Mar 2025</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn">Test mode</button>
+                <button class="btn">View Hubtel docs ↗</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body-content">
+
+            <!-- Connection card -->
+            <div class="connection-card">
+              <div class="hubtel-logo">H</div>
+              <div class="info">
+                <div class="row-1">
+                  <div class="conn-name display">Hubtel <em>merchant account</em></div>
+                  <div class="live-pill">Live</div>
+                </div>
+                <div class="conn-meta">
+                  Merchant ID <span class="mono">HM-CK-44218</span> · API last verified <b>22 min ago</b> · webhook reachable
+                </div>
+              </div>
+              <div class="actions">
+                <button class="btn">Reconnect</button>
+                <button class="btn" style="color:var(--terra);border-color:var(--terra)">Disconnect</button>
+              </div>
+            </div>
+
+            <!-- Region 1 — Fee transparency -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">How fees <em>work</em></h2>
+                <div class="meta">Set once when you connect · doesn't change</div>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-card">
+                  <h3 class="display">Fees absorbed by <em>school</em></h3>
+                  <div class="sc-sub">Parents see and pay the face value of the invoice. Hubtel's processing fee comes out of the school's deposit before payout. <b>This is how Christ the King is configured.</b></div>
+
+                  <div class="fee-block">
+                    <div class="fee-row">
+                      <div class="label">Parent pays (face value)</div>
+                      <div class="value">GHS 340.00</div>
+                    </div>
+                    <div class="fee-row fee">
+                      <div class="label">Hubtel fee · 1.95%</div>
+                      <div class="value">−GHS 6.63</div>
+                    </div>
+                    <div class="fee-row total">
+                      <div class="label">School receives</div>
+                      <div class="value">GHS 333.37</div>
+                    </div>
+                  </div>
+
+                  <div class="fee-meta">
+                    On a typical term (312 students × GHS 340), Hubtel's cut is approximately <b>GHS 2,068</b>. This is the cost of automated reconciliation. <b>Cash payments and direct MoMo transfers are unaffected</b> — those still come in at face value.
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <h3 class="display">What this <em>buys</em> you</h3>
+                  <div class="sc-sub">Hubtel handles the routing, settlement, and reconciliation between parent's MoMo wallet, the network operator, and your bank.</div>
+
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <div style="display:grid;grid-template-columns:18px 1fr;gap:10px;font-size:12px;color:var(--navy-2);line-height:1.55">
+                      <div style="color:var(--green);font-weight:700">✓</div>
+                      <div><b style="color:var(--navy);font-weight:600">Auto-reconciliation</b> · payments match invoices automatically · no Joyce data entry for ~96% of payments</div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:18px 1fr;gap:10px;font-size:12px;color:var(--navy-2);line-height:1.55">
+                      <div style="color:var(--green);font-weight:700">✓</div>
+                      <div><b style="color:var(--navy);font-weight:600">All four methods at one rate</b> · MTN, Telecel, AirtelTigo, and cards all priced at 1.95% · simpler bookkeeping</div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:18px 1fr;gap:10px;font-size:12px;color:var(--navy-2);line-height:1.55">
+                      <div style="color:var(--green);font-weight:700">✓</div>
+                      <div><b style="color:var(--navy);font-weight:600">PCI-compliant card processing</b> · school never touches card numbers · regulatory burden on Hubtel</div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:18px 1fr;gap:10px;font-size:12px;color:var(--navy-2);line-height:1.55">
+                      <div style="color:var(--green);font-weight:700">✓</div>
+                      <div><b style="color:var(--navy);font-weight:600">Automatic receipts</b> · sent to parent immediately on confirmation · no chasing</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Region 2 — Methods -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display">Payment <em>methods</em></h2>
+                <div class="meta">All enabled · all priced at 1.95%</div>
+              </div>
+
+              <div class="settings-card">
+                <div class="method-list">
+                  <div class="method-row">
+                    <div class="m-logo mtn">MTN</div>
+                    <div class="info">
+                      <div class="m-name">MTN Mobile Money</div>
+                      <div class="m-meta">Most common in Ghana · <b>~70%</b> of mobile money transactions</div>
+                    </div>
+                    <div class="fee-pill">1.95%</div>
+                    <div class="toggle-pill on"></div>
+                  </div>
+                  <div class="method-row">
+                    <div class="m-logo tcash">T</div>
+                    <div class="info">
+                      <div class="m-name">Telecel Cash</div>
+                      <div class="m-meta">Formerly Vodafone Cash · <b>~18%</b> of mobile money transactions</div>
+                    </div>
+                    <div class="fee-pill">1.95%</div>
+                    <div class="toggle-pill on"></div>
+                  </div>
+                  <div class="method-row">
+                    <div class="m-logo atigo">AT</div>
+                    <div class="info">
+                      <div class="m-name">AirtelTigo Money</div>
+                      <div class="m-meta">Smaller share · serves specific regions strongly · <b>~10%</b></div>
+                    </div>
+                    <div class="fee-pill">1.95%</div>
+                    <div class="toggle-pill on"></div>
+                  </div>
+                  <div class="method-row">
+                    <div class="m-logo card">VISA</div>
+                    <div class="info">
+                      <div class="m-name">Debit / credit card</div>
+                      <div class="m-meta">Visa, Mastercard · used by <b>~2%</b> of parents · diaspora payments</div>
+                    </div>
+                    <div class="fee-pill">1.95%</div>
+                    <div class="toggle-pill on"></div>
+                  </div>
+                </div>
+
+                <div style="margin-top:14px;font-size:11px;color:var(--navy-3);font-style:italic;line-height:1.55">
+                  Disabling a method removes it from parent checkout pages. <b style="color:var(--navy-2);font-weight:600;font-style:normal">Recommended: leave all on</b> — parents who can't pay through their preferred method may delay or abandon the payment.
+                </div>
+              </div>
+            </div>
+
+            <!-- Region 3 — Payout schedule -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">03</div>
+                <h2 class="display">Payout <em>schedule</em></h2>
+                <div class="meta">When Hubtel transfers your collected funds to the school's bank</div>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-card">
+                  <h3 class="display">When you get <em>paid</em></h3>
+                  <div class="sc-sub">Hubtel holds funds briefly for chargeback protection, then settles to your bank account on this schedule.</div>
+
+                  <div class="schedule-row">
+                    <div class="schedule-pill">
+                      <div class="sp-name">Daily</div>
+                      <div class="sp-detail">next-day settlement</div>
+                    </div>
+                    <div class="schedule-pill selected">
+                      <div class="sp-name">Weekly</div>
+                      <div class="sp-detail">every Monday</div>
+                    </div>
+                    <div class="schedule-pill">
+                      <div class="sp-name">Monthly</div>
+                      <div class="sp-detail">1st of month</div>
+                    </div>
+                  </div>
+
+                  <div class="payout-summary">
+                    Funds collected through the week settle on <b>Monday morning</b>. <span class="next">Next payout: Mon 27 Oct · estimated GHS 18,400</span> based on this week's collection so far.
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <h3 class="display">Where it <em>lands</em></h3>
+                  <div class="sc-sub">Bank account on file with Hubtel · changing this requires verification through Hubtel directly.</div>
+
+                  <div class="bank-row">
+                    <div class="bank-icon">GCB</div>
+                    <div class="info">
+                      <div class="bank-name display">Ghana Commercial Bank</div>
+                      <div class="acct-num">**** **** **** 4218 · CTK Operations</div>
+                    </div>
+                    <div class="fee-pill" style="background:var(--green-bg);color:var(--green);border-color:rgba(47,107,71,0.2)">Verified</div>
+                  </div>
+
+                  <div style="margin-top:14px;font-size:11px;color:var(--navy-3);font-style:italic;line-height:1.55">
+                    To change this account, log into your Hubtel merchant dashboard and update the settlement bank. Changes propagate to Omnischools within an hour. <b style="color:var(--navy-2);font-weight:600;font-style:normal">For security, this can't be edited from inside Omnischools</b> — bank account changes are a common attack vector.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Region 4 — Webhook health -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">04</div>
+                <h2 class="display">Connection <em>health</em></h2>
+                <div class="meta">Technical status · usually nothing to do here</div>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-card">
+                  <h3 class="display">Webhook <em>delivery</em></h3>
+                  <div class="sc-sub">Hubtel notifies Omnischools when payments complete. If webhooks stop arriving, payments still happen but auto-matching pauses.</div>
+
+                  <div class="webhook-block">
+                    <div class="wh-row">
+                      <div class="label">Endpoint</div>
+                      <div class="value" style="font-size:10px">api.omnischools.gh/wh/hubtel</div>
+                    </div>
+                    <div class="wh-row">
+                      <div class="label">Last received</div>
+                      <div class="value green">22 min ago</div>
+                    </div>
+                    <div class="wh-row">
+                      <div class="label">Success rate · 7d</div>
+                      <div class="value green">99.94%</div>
+                    </div>
+                    <div class="wh-row">
+                      <div class="label">Failed deliveries · 7d</div>
+                      <div class="value">2 (auto-retried, succeeded)</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <h3 class="display">Reconciliation <em>safety net</em></h3>
+                  <div class="sc-sub">Even if a webhook is missed, Omnischools polls Hubtel's payment list every 15 minutes to catch anything that slipped through.</div>
+
+                  <div class="webhook-block">
+                    <div class="wh-row">
+                      <div class="label">Last poll</div>
+                      <div class="value green">3 min ago</div>
+                    </div>
+                    <div class="wh-row">
+                      <div class="label">Polling interval</div>
+                      <div class="value">every 15 min</div>
+                    </div>
+                    <div class="wh-row">
+                      <div class="label">Recovered via polling · 7d</div>
+                      <div class="value">2 payments</div>
+                    </div>
+                    <div class="wh-row">
+                      <div class="label">Total auto-matched · 7d</div>
+                      <div class="value green">214 payments</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Connection card at the top dominates the page.</b> Hubtel's actual brand colour (their distinctive blue) for the logo tile + green "Live" pill + merchant ID + last-verified timestamp. <b>The connection is the foundational fact</b> — if Hubtel isn't live, nothing else on this page matters.</li>
+        <li><b>Reconnect / Disconnect actions on the right.</b> Reconnect is the "I changed my Hubtel password and need to re-auth" path; Disconnect is in terra to signal it's significant — turning off Hubtel means going back to manual reconciliation. Asymmetric visual weight reflects asymmetric consequence.</li>
+        <li><b>Region 1 — Fee transparency leads.</b> Two side-by-side cards: "Fees absorbed by school" (the actual configuration with the fee math worked out) and "What this buys you" (the value proposition). <b>Cost transparency before benefit transparency</b> — the school has already paid for this; showing them what they get reinforces the decision.</li>
+        <li><b>Fee block shows the actual GHS-to-GHS math:</b> "Parent pays 340.00 → Hubtel fee −6.63 → School receives 333.37". <b>The arithmetic is undeniable</b>; admin sees exactly where each cedi goes. The total row uses Fraunces + green to highlight the school's net.</li>
+        <li><b>"GHS 2,068 per term" rough total in the fee-meta line.</b> Per-payment percentages obscure scale; the term-level number is honest. <b>Some schools will see 2,068 and decide it's worth it; others will reconsider.</b> The settings page enables the decision rather than burying the cost.</li>
+        <li><b>"Cash payments and direct MoMo transfers are unaffected" reassurance</b> in the fee-meta. The school can still accept cash without fees; Hubtel only kicks in for online payments. Honest scoping of where the cost applies.</li>
+        <li><b>"What this buys you" card uses 4 green-checkmark bullets.</b> Auto-reconciliation / All four methods at one rate / PCI-compliant card processing / Automatic receipts. <b>Concrete value delivered, not marketing language</b>. Each bullet is a real operational benefit Joyce experiences daily.</li>
+        <li><b>Region 2 — Methods listed with brand colours and market share.</b> "MTN ~70% / Telecel ~18% / AirtelTigo ~10% / Cards ~2%" gives admin context for which methods matter most. <b>All toggled on by default, with a "leave all on" recommendation</b> — disabling a method just creates friction for parents.</li>
+        <li><b>Single fee pill (1.95%) on every method</b> — Hubtel's pricing is uniform across methods. <b>This is a feature</b>: schools don't have to think "is MTN cheaper than Telecel?" Pricing simplicity.</li>
+        <li><b>Region 3 — Payout schedule with three pills.</b> Daily / Weekly (selected) / Monthly. <b>Most schools pick weekly</b> — daily is over-frequent for school finance flows; monthly delays cash too much. The selected schedule fills with gold to match the rest of the system's "this is the lever" convention.</li>
+        <li><b>Payout summary in plain language:</b> "Funds collected through the week settle on Monday morning. Next payout: Mon 27 Oct · estimated GHS 18,400." <b>The Fraunces italic gold "Next payout" phrase</b> sets expectations — admin knows when to expect the deposit and roughly how much.</li>
+        <li><b>Bank destination card</b> shows the actual bank, masked account number, and "Verified" green pill. <b>The card looks like a payment card</b> — bank logo tile in navy/gold, account number in JetBrains Mono with masked digits, account name. Familiar visual idiom.</li>
+        <li><b>"For security, this can't be edited from inside Omnischools"</b> warning under the bank card. Bank-account changes are a common attack vector — if a bad actor compromises a Omnischools admin account, redirecting payouts is the most damaging thing they could do. <b>Putting that change behind Hubtel's separate login</b> is a real security boundary, not theatre.</li>
+        <li><b>Region 4 — Connection health</b> is the technical-but-readable section. Two cards: webhook delivery + reconciliation safety net. <b>Both with mono-formatted stats</b> that look like a developer tool but read in plain language for a non-developer admin.</li>
+        <li><b>"99.94% success rate · 7d" with 2 failed (auto-retried, succeeded)" sub-line.</b> The system is honest that webhooks occasionally fail; equally honest that the retry mechanism caught both failures. <b>Trust through visible imperfection</b> — claiming 100% would be suspicious; showing 99.94% with the recovery story is credible.</li>
+        <li><b>Reconciliation safety net card explains the polling backup.</b> "Even if a webhook is missed, Omnischools polls Hubtel's payment list every 15 minutes." <b>This is real engineering reassurance</b> — webhooks are unreliable in practice; defensive polling catches what the push misses. Admin doesn't need to understand the technical detail, but the card establishes that the system is robust.</li>
+        <li><b>"Recovered via polling · 7d: 2 payments" stat</b> proves the safety net works. Same 2 number as the webhook failures — the polling caught exactly the ones that the webhook missed. <b>Symmetric numbers tell a coherent story</b>.</li>
+        <li><b>What's not here:</b> No fee comparison vs other aggregators ("Paystack would charge X" — invites second-guessing), no historical trend on match rate (one term of data is too little to chart), no test-payment console (defer to Hubtel's own test mode), no API key management (Hubtel handles that on their side, OAuth-style).</li>
+        <li><b>What's also not here:</b> No multi-tenant aggregator support. A school is connected to one Hubtel merchant account; switching providers (e.g., to Paystack) would mean disconnecting Hubtel and reconnecting to Paystack. Not common in practice; not worth the complexity.</li>
+        <li><b>"View Hubtel docs ↗" CTA in the page header</b> opens Hubtel's documentation in a new tab. <b>Omnischools doesn't try to embed Hubtel's docs</b>; if admin needs deeper detail (API specifics, edge cases), the right place is Hubtel's own docs maintained by Hubtel.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

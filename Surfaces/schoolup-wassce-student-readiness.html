@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Student readiness · Y. Aidoo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p.hero-positioning { margin-top:18px; padding:18px 22px; background:var(--gold-bg); border-left:3px solid var(--gold); font-size:15px; color:var(--navy); border-radius:0 6px 6px 0; }
+.page-header p.hero-positioning b { font-family:'Fraunces',serif; font-weight:600; font-style:italic; color:var(--gold); font-size:16px; display:block; margin-bottom:6px; letter-spacing:0.2px; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1900px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces', serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-group { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(232,212,184,0.5); padding:18px 24px 8px; font-weight:600; }
+.main { padding:0; background:var(--bg); }
+.head-row { background:var(--surface); border-bottom:1px solid var(--border); padding:20px 32px; display:flex; align-items:center; gap:20px; }
+.crumb { font-size:11px; color:var(--navy-3); letter-spacing:0.06em; }
+.crumb b { color:var(--navy); }
+.head-row h1 { font-family:'Fraunces', serif; font-size:24px; font-weight:500; flex:1; }
+.head-row h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.head-actions { display:flex; gap:8px; }
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:12px; font-weight:600; border-radius:6px; cursor:pointer; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); }
+.btn-primary { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.btn-gold { background:var(--gold); color:var(--navy); border-color:var(--gold); }
+.body-shell { padding:28px 32px 40px; }
+
+/* Medical disruption banner — sticky-style, top */
+.disruption-banner { background:linear-gradient(135deg, #B84A39 0%, #8B3829 100%); color:var(--bg); border-radius:12px; padding:24px 28px; margin-bottom:24px; box-shadow:0 12px 28px -8px rgba(184,74,57,0.4); }
+.db-head { display:flex; align-items:flex-start; gap:14px; margin-bottom:14px; }
+.db-icon { width:38px; height:38px; border-radius:8px; background:rgba(255,255,255,0.16); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.db-icon::before { content:"⚕"; font-family:'Fraunces', serif; font-size:18px; color:var(--bg); }
+.db-title { flex:1; }
+.db-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; opacity:0.7; margin-bottom:4px; font-weight:600; }
+.db-headline { font-family:'Fraunces', serif; font-size:20px; font-weight:500; line-height:1.3; }
+.db-headline em { font-style:italic; color:#F5D4C9; font-weight:400; }
+.db-pulse { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.12); padding:6px 14px; border-radius:100px; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; }
+.db-pulse-dot { width:8px; height:8px; border-radius:50%; background:#FFD4C9; box-shadow:0 0 0 0 rgba(255,212,201,0.7); animation:pulse 1.8s infinite; }
+@keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(255,212,201,0.7); } 70% { box-shadow:0 0 0 10px rgba(255,212,201,0); } 100% { box-shadow:0 0 0 0 rgba(255,212,201,0); } }
+.db-body { font-size:13px; line-height:1.6; opacity:0.92; max-width:860px; margin-bottom:18px; }
+.db-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:18px; }
+.db-cell { background:rgba(255,255,255,0.08); border-radius:8px; padding:12px 14px; }
+.db-cell-label { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; opacity:0.65; font-weight:600; margin-bottom:4px; }
+.db-cell-value { font-family:'Fraunces', serif; font-size:15px; font-weight:500; }
+.db-cell-meta { font-size:11px; opacity:0.7; margin-top:2px; }
+.db-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.db-btn { background:rgba(255,255,255,0.92); color:var(--terra); padding:8px 16px; font-size:12px; font-weight:700; border-radius:6px; letter-spacing:0.04em; }
+.db-btn-ghost { background:rgba(255,255,255,0.12); color:var(--bg); border:1px solid rgba(255,255,255,0.3); padding:8px 16px; font-size:12px; font-weight:600; border-radius:6px; }
+
+/* Student identity card */
+.student-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 28px; margin-bottom:24px; display:grid; grid-template-columns:auto 1fr auto; gap:24px; align-items:center; }
+.avatar { width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:26px; font-weight:500; color:var(--navy); }
+.sc-name { font-family:'Fraunces', serif; font-size:26px; font-weight:500; line-height:1.1; margin-bottom:6px; }
+.sc-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.sc-meta-row { display:flex; gap:18px; flex-wrap:wrap; font-size:12px; color:var(--navy-3); }
+.sc-meta-row b { color:var(--navy); font-weight:600; }
+.sc-pill { display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:3px 9px; border-radius:100px; font-weight:600; letter-spacing:0.04em; }
+.sc-pill.sci { background:#E5F0EB; color:#1E5A35; }
+.sc-pill.slessor { background:#E5EAF2; color:#2D3F5C; }
+.sc-aggregate { text-align:right; }
+.sc-agg-label { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:4px; }
+.sc-agg-value { font-family:'Fraunces', serif; font-size:48px; font-weight:500; color:var(--green); line-height:1; }
+.sc-agg-meta { font-size:11px; color:var(--navy-3); margin-top:4px; }
+
+/* Trajectory */
+.traj-strip { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:24px; }
+.traj-cell { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+.traj-stage { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:6px; }
+.traj-aggregate { display:flex; align-items:baseline; gap:8px; margin-bottom:4px; }
+.traj-aggregate .num { font-family:'Fraunces', serif; font-size:36px; font-weight:500; line-height:1; }
+.traj-aggregate .lbl { font-size:11px; color:var(--navy-3); }
+.traj-band { font-size:11px; color:var(--navy-3); margin-bottom:10px; }
+.traj-arrow { color:var(--green); font-weight:700; font-size:12px; }
+.traj-arrow.down { color:var(--terra); }
+.traj-bar { height:6px; background:var(--bg); border-radius:3px; overflow:hidden; position:relative; }
+.traj-bar-fill { height:100%; border-radius:3px; }
+.traj-bar-fill.t1 { background:var(--warn); width:35%; }
+.traj-bar-fill.t2 { background:var(--green); width:78%; }
+.traj-bar-fill.t3 { background:var(--gold); width:74%; }
+.traj-projected { background:linear-gradient(135deg, #F5EBDC 0%, var(--gold-bg) 100%); border-color:var(--gold-soft); }
+
+/* STPSHS submission status panel */
+.stpshs-panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-top:18px; padding:0; overflow:hidden; }
+.stpshs-head { padding:18px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:24px; }
+.stpshs-eyebrow { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.stpshs-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; color:var(--navy); line-height:1.3; }
+.stpshs-meta { font-size:10.5px; letter-spacing:0.06em; color:var(--navy-3); font-family:'JetBrains Mono', monospace; flex-shrink:0; padding-top:18px; }
+.stpshs-table { width:100%; border-collapse:collapse; font-size:11.5px; }
+.stpshs-table thead { background:var(--navy); color:var(--bg); }
+.stpshs-table th { padding:9px 8px; text-align:left; font-family:'Manrope', sans-serif; font-size:9.5px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.stpshs-table th.stp-yr, .stpshs-table th.stp-ref { text-align:center; }
+.stpshs-table tbody tr { border-top:1px solid var(--border); }
+.stpshs-table tbody tr:first-child { border-top:none; }
+.stpshs-table td { padding:11px 8px; vertical-align:middle; }
+.stpshs-table td.stp-subj { font-weight:600; color:var(--navy); padding-left:18px; font-size:12.5px; }
+.stpshs-table td.stp-subj .stp-alt { font-family:'Fraunces', serif; font-style:italic; font-size:10px; color:var(--gold); font-weight:500; margin-left:6px; }
+.stpshs-table td.stp-yr { text-align:center; }
+.stpshs-table td.stp-yr .yr-score { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stpshs-table td.stp-yr.pending { background:var(--gold-bg); }
+.stpshs-table td.stp-yr.pending .yr-score { color:var(--gold); }
+.stpshs-table td.stp-yr.blocked { background:var(--terra-bg); }
+.stpshs-table td.stp-yr.blocked { color:var(--terra); font-weight:700; }
+.stpshs-table td.stp-ref { font-family:'JetBrains Mono', monospace; font-size:9.5px; color:var(--navy-3); text-align:center; letter-spacing:-0.02em; }
+.stpshs-table td.stp-ref.pending { background:var(--gold-bg); color:var(--gold); font-weight:600; }
+.stpshs-table td.stp-ref.blocked { background:var(--terra-bg); color:var(--terra); font-weight:600; }
+.stpshs-table td.stp-state { font-size:11px; color:var(--navy-2); padding-right:18px; line-height:1.45; }
+.stpshs-table td.stp-state.state-ready { color:var(--green); }
+.stpshs-table td.stp-state.state-partial { color:var(--gold); }
+.stpshs-table td.stp-state.state-blocked { color:var(--terra); font-weight:600; }
+.stpshs-foot { padding:14px 22px 18px; background:var(--bg); border-top:1px solid var(--border); }
+.stpshs-foot-line { font-size:12px; color:var(--navy-2); line-height:1.55; padding:5px 0; display:flex; gap:10px; align-items:flex-start; }
+.stpshs-foot-line.muted { color:var(--navy-3); font-size:11.5px; font-style:italic; padding-top:12px; margin-top:8px; border-top:1px dashed var(--border-2); display:block; }
+.stpshs-foot-line.muted em { color:var(--gold); font-style:italic; }
+.stpshs-foot-line b { color:var(--navy); }
+.stpshs-foot-line .dot-ready, .stpshs-foot-line .dot-partial, .stpshs-foot-line .dot-blocked { width:9px; height:9px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+.stpshs-foot-line .dot-ready { background:var(--green); }
+.stpshs-foot-line .dot-partial { background:var(--gold); }
+.stpshs-foot-line .dot-blocked { background:var(--terra); }
+
+/* Ledger trajectory section · Section 4 */
+.lt-frame { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0; overflow:hidden; }
+.lt-frame-head { padding:18px 24px 16px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:24px; }
+.lt-frame-eyebrow { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.lt-frame-title { font-family:'Fraunces', serif; font-size:19px; font-weight:600; color:var(--navy); line-height:1.3; }
+.lt-frame-title em { font-style:italic; color:var(--gold); }
+.lt-frame-meta { font-size:10.5px; letter-spacing:0.06em; color:var(--navy-3); font-family:'JetBrains Mono', monospace; flex-shrink:0; padding-top:18px; line-height:1.45; text-align:right; }
+.lt-frame-meta b { color:var(--navy); display:block; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:13px; }
+.lt-grid-wrap { overflow-x:auto; padding:0; }
+.lt-grid { width:100%; min-width:780px; border-collapse:collapse; font-family:'JetBrains Mono', monospace; font-size:12px; }
+.lt-grid thead tr.terms { background:var(--navy); color:var(--bg); }
+.lt-grid thead tr.terms th { padding:10px 6px; text-align:center; font-family:'Manrope', sans-serif; font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.lt-grid thead tr.terms th.lt-cat-head { text-align:left; padding-left:20px; width:170px; background:var(--navy-2); }
+.lt-grid thead tr.terms th .lt-term-period { display:block; font-size:8.5px; font-weight:500; opacity:0.7; margin-top:2px; letter-spacing:0.04em; }
+.lt-grid thead tr.terms th.mock-1 { background:#3D5478; }
+.lt-grid thead tr.terms th.mock-2 { background:#4A6286; }
+.lt-grid thead tr.terms th.mock-1 .mock-tag,
+.lt-grid thead tr.terms th.mock-2 .mock-tag { display:block; font-family:'Fraunces', serif; font-style:italic; font-size:10px; font-weight:500; color:var(--gold-soft); margin-top:2px; letter-spacing:0; }
+.lt-grid tbody tr { border-top:1px solid var(--border); }
+.lt-grid tbody tr:first-child { border-top:none; }
+.lt-grid tbody td { padding:9px 6px; text-align:center; color:var(--navy-2); }
+.lt-grid tbody td.lt-cat-label { text-align:left; padding-left:20px; font-family:'Manrope', sans-serif; font-size:11.5px; font-weight:600; color:var(--navy); background:var(--bg); }
+.lt-grid tbody td.lt-cat-label .lt-cat-weight { display:block; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:500; color:var(--navy-3); margin-top:1px; letter-spacing:0; }
+.lt-grid tbody td.lt-score { font-weight:500; }
+.lt-grid tbody td.lt-score.empty { color:var(--navy-3); opacity:0.45; }
+.lt-grid tbody td.lt-score.mock-1-col { background:rgba(61,84,120,0.06); }
+.lt-grid tbody td.lt-score.mock-2-col { background:rgba(74,98,134,0.08); }
+.lt-grid tbody tr.lt-total-row { background:rgba(200,151,91,0.05); border-top:2px solid var(--border-2); }
+.lt-grid tbody tr.lt-total-row td { padding:11px 6px; }
+.lt-grid tbody tr.lt-total-row td.lt-cat-label { background:var(--gold-bg); font-family:'Fraunces', serif; font-style:italic; font-size:13px; font-weight:600; color:var(--gold); }
+.lt-grid tbody tr.lt-total-row td.lt-total-val { font-family:'Fraunces', serif; font-size:15px; font-weight:600; color:var(--gold); }
+.lt-grid tbody tr.lt-ref-row { background:var(--bg); }
+.lt-grid tbody tr.lt-ref-row td { padding:7px 6px; font-size:9.5px; color:var(--navy-3); letter-spacing:-0.02em; }
+.lt-grid tbody tr.lt-ref-row td.lt-cat-label { font-family:'Manrope', sans-serif; font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); }
+.lt-grid tbody tr.lt-stpshs-row { background:var(--bg); }
+.lt-grid tbody tr.lt-stpshs-row td { padding:9px 6px; font-size:11px; }
+.lt-grid tbody tr.lt-stpshs-row td.lt-cat-label { font-family:'Manrope', sans-serif; font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); }
+.lt-grid tbody tr.lt-stpshs-row td .stp-pip-ready { display:inline-block; padding:3px 8px; border-radius:100px; background:var(--green-bg); color:var(--green); font-family:'Manrope', sans-serif; font-size:9.5px; font-weight:700; letter-spacing:0.04em; }
+.lt-grid tbody tr.lt-stpshs-row td .stp-pip-pending { display:inline-block; padding:3px 8px; border-radius:100px; background:var(--gold-bg); color:var(--gold); font-family:'Manrope', sans-serif; font-size:9.5px; font-weight:700; letter-spacing:0.04em; }
+.lt-frame-foot { padding:0; border-top:1px solid var(--border); display:grid; grid-template-columns:1fr 1fr; }
+.lt-foot-col { padding:18px 22px; }
+.lt-foot-col.see-side { border-right:1px solid var(--border); background:var(--bg); }
+.lt-foot-col h5 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:8px; color:var(--navy); }
+.lt-foot-col h5 em { font-style:italic; color:var(--gold); }
+.lt-foot-col p { font-size:12px; color:var(--navy-2); line-height:1.6; margin-bottom:9px; }
+.lt-foot-col p:last-child { margin-bottom:0; }
+.lt-foot-col p b { color:var(--navy); }
+.lt-foot-cell-count { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:600; color:var(--gold); display:block; margin:6px 0 2px; line-height:1; }
+.lt-foot-cell-label { font-family:'Manrope', sans-serif; font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); }
+.lt-projection-callout { padding:18px 22px; background:linear-gradient(135deg, #F5EBDC 0%, var(--gold-bg) 100%); border-top:1px solid var(--gold-soft); }
+.lt-projection-callout h5 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; margin-bottom:8px; color:var(--navy); }
+.lt-projection-callout h5 em { font-style:italic; color:var(--gold); }
+.lt-projection-callout p { font-size:12px; color:var(--navy-2); line-height:1.6; }
+.lt-projection-callout p b { color:var(--navy); }
+
+/* WASSCE schedule × completion */
+.schedule-table { width:100%; background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:8px; }
+.sch-head { display:grid; grid-template-columns:90px 1fr 130px 130px 120px 110px; gap:12px; padding:12px 16px; background:var(--bg); border-bottom:1px solid var(--border); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.sch-row { display:grid; grid-template-columns:90px 1fr 130px 130px 120px 110px; gap:12px; padding:14px 16px; border-bottom:1px solid var(--border); font-size:13px; align-items:center; }
+.sch-row:last-child { border-bottom:none; }
+.sch-row.missed { background:#FBEBE7; }
+.sch-row.upcoming { background:#FAF7F2; }
+.sch-date { font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--navy-2); font-weight:600; }
+.sch-paper { font-weight:600; }
+.sch-paper-sub { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.sch-status { font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; display:inline-block; }
+.sch-status.missed { background:var(--terra-bg); color:var(--terra); }
+.sch-status.sat { background:var(--green-bg); color:var(--green); }
+.sch-status.upcoming { background:var(--gold-bg); color:var(--gold); }
+.sch-status.upcoming-far { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.sch-action { font-size:11px; color:var(--gold); font-weight:600; }
+.sch-summary { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-top:14px; }
+.sch-sum-cell { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; }
+.sch-sum-num { font-family:'Fraunces', serif; font-size:22px; font-weight:500; }
+.sch-sum-num.missed { color:var(--terra); }
+.sch-sum-num.sat { color:var(--green); }
+.sch-sum-num.upcoming { color:var(--gold); }
+.sch-sum-num.total { color:var(--navy); }
+.sch-sum-lbl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-top:2px; }
+
+/* Subject readiness grid */
+.subj-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; }
+.subj-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+.subj-card.core { border-top:3px solid var(--gold); }
+.subj-card.elective { border-top:3px solid var(--green); }
+.subj-head { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+.subj-name { font-family:'Fraunces', serif; font-size:16px; font-weight:500; }
+.subj-type { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-top:2px; }
+.subj-grades { display:flex; align-items:center; gap:8px; }
+.grade-chip { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--surface); flex-shrink:0; }
+.grade-chip.A1 { background:#1E5A35; }
+.grade-chip.B2 { background:#2F6B47; }
+.grade-chip.B3 { background:#3D8059; }
+.grade-chip.C4 { background:#7C9647; }
+.grade-chip.C5 { background:#B59B3D; }
+.grade-chip.C6 { background:var(--warn); }
+.grade-chip.D7 { background:#C58A2E; }
+.grade-chip.F9 { background:var(--terra); }
+.grade-chip.sm { width:28px; height:28px; font-size:11px; border-radius:6px; }
+.subj-arrow { font-size:14px; color:var(--navy-3); }
+.subj-traj-row { display:grid; grid-template-columns:60px 1fr 60px 1fr 60px; gap:6px; align-items:center; margin-bottom:14px; padding:10px; background:var(--bg); border-radius:6px; }
+.subj-traj-stage { font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.06em; text-align:center; }
+.subj-traj-grade { display:flex; justify-content:center; }
+.subj-traj-arrow { text-align:center; font-size:14px; color:var(--gold); font-weight:600; }
+.subj-comment { font-size:12px; color:var(--navy-2); line-height:1.5; padding-top:12px; border-top:1px solid var(--border); }
+.subj-comment b { color:var(--navy); }
+.subj-paper-meta { display:flex; gap:14px; font-size:11px; color:var(--navy-3); margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+.subj-paper-meta b { color:var(--navy); }
+
+/* Aggregate construction visualizer */
+.agg-builder { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:24px; }
+.agg-section { margin-bottom:20px; }
+.agg-section:last-child { margin-bottom:0; }
+.agg-section-title { font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:10px; color:var(--navy); }
+.agg-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+.agg-row:last-child { border-bottom:none; }
+.agg-row.dropped { opacity:0.45; }
+.agg-subj { flex:1; font-size:13px; }
+.agg-subj b { color:var(--navy); }
+.agg-points { font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--navy-2); font-weight:600; min-width:50px; text-align:right; }
+.agg-status { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; font-weight:600; padding:2px 8px; border-radius:100px; }
+.agg-status.counted { background:var(--green-bg); color:var(--green); }
+.agg-status.dropped { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.agg-total { display:flex; justify-content:space-between; align-items:baseline; padding-top:14px; margin-top:14px; border-top:2px solid var(--navy); }
+.agg-total-lbl { font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.agg-total-val { font-family:'Fraunces', serif; font-size:36px; font-weight:500; color:var(--green); }
+
+/* University match panel */
+.uni-match-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; }
+.uni-match { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; position:relative; overflow:hidden; }
+.uni-match.target { border-left:4px solid var(--gold); background:linear-gradient(to right, var(--gold-bg) 0%, var(--surface) 12%); }
+.uni-match-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.uni-match-name { font-family:'Fraunces', serif; font-size:15px; font-weight:500; }
+.uni-match-prog { font-size:12px; color:var(--navy-3); margin-top:2px; }
+.match-pill { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; padding:3px 9px; border-radius:100px; font-weight:600; }
+.match-pill.target { background:var(--gold); color:var(--navy); }
+.match-pill.comfortable { background:var(--green-bg); color:var(--green); }
+.match-pill.match { background:#E5EFE8; color:#1E5A35; }
+.match-pill.stretch { background:var(--warn-bg); color:var(--warn); }
+.match-pill.safety { background:#E5EAF2; color:#2D3F5C; }
+.uni-match-bar-row { display:grid; grid-template-columns:80px 1fr 80px; gap:10px; align-items:center; margin:10px 0; font-size:11px; }
+.uni-match-bar { position:relative; height:8px; background:var(--bg); border-radius:4px; }
+.uni-match-bar-fill { position:absolute; left:0; top:0; bottom:0; background:linear-gradient(to right, var(--green) 0%, var(--gold) 70%, var(--terra) 100%); border-radius:4px; }
+.uni-match-marker { position:absolute; top:-3px; width:2px; height:14px; }
+.uni-match-marker.you { background:var(--navy); }
+.uni-match-marker.cutoff { background:var(--terra); }
+.uni-match-marker-label { position:absolute; top:-22px; transform:translateX(-50%); font-size:9px; font-weight:600; white-space:nowrap; }
+.uni-match-marker-label.you { color:var(--navy); }
+.uni-match-marker-label.cutoff { color:var(--terra); }
+.uni-match-meta { font-size:11px; color:var(--navy-3); display:flex; gap:12px; padding-top:10px; border-top:1px solid var(--border); margin-top:10px; }
+.uni-match-meta b { color:var(--navy); }
+
+/* Pastoral / context strip */
+.context-strip { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+.context-cell { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.context-cell.flag { border-left:3px solid var(--warn); }
+.context-cell.linked { border-left:3px solid var(--gold); }
+.cc-label { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:6px; }
+.cc-value { font-family:'Fraunces', serif; font-size:16px; font-weight:500; margin-bottom:4px; }
+.cc-meta { font-size:12px; color:var(--navy-3); line-height:1.5; }
+.cc-meta a { color:var(--gold); font-weight:600; }
+.cc-meta b { color:var(--navy); }
+
+/* Parent acknowledgment */
+.parent-ack { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px 24px; }
+.pack-row { display:grid; grid-template-columns:auto 1fr auto; gap:20px; align-items:center; }
+.pack-icon { width:48px; height:48px; border-radius:10px; background:var(--green-bg); display:flex; align-items:center; justify-content:center; }
+.pack-icon::before { content:"✓"; color:var(--green); font-size:22px; font-weight:600; }
+.pack-title { font-family:'Fraunces', serif; font-size:16px; font-weight:500; margin-bottom:4px; }
+.pack-meta { font-size:12px; color:var(--navy-3); }
+.pack-meta b { color:var(--navy); }
+.pack-link { font-size:12px; color:var(--gold); font-weight:600; }
+
+/* Cross-module links */
+.xmod-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+.xmod { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.xmod-eyebrow { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:6px; }
+.xmod-title { font-family:'Fraunces', serif; font-size:15px; font-weight:500; margin-bottom:4px; }
+.xmod-meta { font-size:12px; color:var(--navy-3); line-height:1.5; }
+.xmod-meta b { color:var(--navy); }
+.xmod-link { font-size:11px; color:var(--gold); font-weight:600; margin-top:8px; display:inline-block; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">MVP2 · WASSCE-readiness · surface 3 of 5</div>
+<div class="eyebrow">Section 3 of 5 · The student deep-dive</div>
+<h1>Student <em>readiness</em>.<br>One candidate, one trajectory.</h1>
+<div class="gold-rule"></div>
+<p>The cohort dashboard shows distributions; the student page shows a person. For Y. Aidoo — Mock 1 aggregate 14, Mock 2 aggregate 10, target KNUST Biochemistry (cut-off 11), currently inpatient at Asankrangwa Government Hospital with severe malaria — this is what the Head of Academics, Form Master, and parent each open on Wednesday 14 May at 14:45 to see one trajectory, one set of teacher comments, one university match panel, one process for the missed papers. The medical disruption banner is sticky to the top while the case is live.</p>
+<p class="hero-positioning"><b>The predictor STPSHS structurally cannot run.</b> STPSHS is the WAEC regulator's terminal ledger — it captures each subject's final Year 1, 2, and 3 score, and that is its purpose. It holds no in-term trajectory: no F1 Semester 1 mid-sem, no Form 1 project work, no portfolio cadence across the three years. Omnischools holds all of it, in the same five-category structure (assignments, mid-semester exam, end-of-semester exam, project work, portfolio) the score ledger spec defines, and that structure is what makes the predictor possible. Aggregate 10 is not a guess against Mock 2 — it is read off Y. Aidoo's six-subject ledger across the six semesters of F1, F2, and F3 against the cohort's own historical Mock-to-WASSCE correlations. STPSHS will see the eventual A1–F9 grades when WAEC returns them; this surface is what helps the school act before then.</p>
+</div>
+
+<!-- ============================ SECTION 1 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">The student deep-dive</div>
+<div class="section-meta">Y. Aidoo · index 0184-0817 · F3 Slessor · Science</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/candidates/0184-0817</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mrs C. Owusu-Ansah · Head of Academics</div></div></div>
+<div class="nav-group">Academic</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Transcripts</div>
+<div class="nav-group">Student support</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-group">Operations</div>
+<div class="nav-item"><div class="ic"></div>Billing</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>People</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">WASSCE 2026 <b>›</b> Candidates <b>›</b> Y. Aidoo</div>
+<h1>Y. <em>Aidoo</em> · readiness</h1>
+<div class="head-actions">
+<div class="btn">Print profile</div>
+<div class="btn">Share with parent</div>
+<div class="btn btn-primary">Make-up scheduling</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<!-- MEDICAL DISRUPTION BANNER -->
+<div class="disruption-banner">
+<div class="db-head">
+<div class="db-icon"></div>
+<div class="db-title">
+<div class="db-eyebrow">Active medical disruption · WASSCE day 2</div>
+<div class="db-headline">Y. Aidoo missed <em>Oral English</em> (Tue) and <em>English Lang 1 + 2</em> (Wed) · WAEC SC-12 filed at 11:00 · make-up scheduling in progress</div>
+</div>
+<div class="db-pulse"><div class="db-pulse-dot"></div>Live case</div>
+</div>
+
+<div class="db-body">
+Admitted to Asankrangwa Govt Hospital Ward B bed 7 at 06:45 with severe malaria (NHIS-covered). Matron Mrs G. Bediako accompanied; clinician declared candidate "unfit to sit" before the 08:00 paper. WAEC special consideration form SC-12 filed by Mrs Owusu-Ansah at 11:00 with attached hospital admission slip and clinician's letter. WAEC Regional Office acknowledged 11:32. Make-up paper sitting expected within the WASSCE window per WAEC convention; date pending. All four parties (parent A. Aidoo, KNUST Admissions liaison, WAEC, school) are on the comms thread.
+</div>
+
+<div class="db-grid">
+<div class="db-cell">
+<div class="db-cell-label">Admitted</div>
+<div class="db-cell-value">Tue · 06:45</div>
+<div class="db-cell-meta">Ward B · bed 7</div>
+</div>
+<div class="db-cell">
+<div class="db-cell-label">Papers missed</div>
+<div class="db-cell-value">3 of 3 scheduled</div>
+<div class="db-cell-meta">Oral · Lang 1 · Lang 2</div>
+</div>
+<div class="db-cell">
+<div class="db-cell-label">SC-12 status</div>
+<div class="db-cell-value">Acknowledged</div>
+<div class="db-cell-meta">WAEC ref · SC-12-184-2026-0044</div>
+</div>
+<div class="db-cell">
+<div class="db-cell-label">Next paper</div>
+<div class="db-cell-value">Math · Wed 3 Jun</div>
+<div class="db-cell-meta">19 days · fit-to-sit pending</div>
+</div>
+</div>
+
+<div class="db-actions">
+<div class="db-btn">View SC-12 form</div>
+<div class="db-btn-ghost">Sickbay referral log</div>
+<div class="db-btn-ghost">Parent comms thread</div>
+<div class="db-btn-ghost">Hospital ward updates</div>
+</div>
+</div>
+
+<!-- STUDENT IDENTITY CARD -->
+<div class="student-card">
+<div class="avatar">YA</div>
+<div>
+<div class="sc-name">Yaa <em>Aidoo</em></div>
+<div class="sc-meta-row">
+<div><b>Index</b> · 0184-0817</div>
+<div><b>F3</b> · Slessor House</div>
+<div><span class="sc-pill sci">Science</span></div>
+<div><b>Form Master</b> · Mr S. Asiedu</div>
+<div><b>Born</b> · 12 Aug 2008 (17)</div>
+</div>
+<div class="sc-meta-row" style="margin-top:8px;">
+<div><b>Parent</b> · A. Aidoo (mother) · +233 24 487 6612</div>
+<div><b>NHIS</b> · 9842-1276-5503 (active to Mar 2027)</div>
+<div><b>Target</b> · KNUST Biochemistry</div>
+</div>
+</div>
+<div class="sc-aggregate">
+<div class="sc-agg-label">Projected aggregate</div>
+<div class="sc-agg-value">10</div>
+<div class="sc-agg-meta">Mock 2 actual · WASSCE in flight</div>
+</div>
+</div>
+
+<!-- TRAJECTORY STRIP -->
+<div class="traj-strip">
+<div class="traj-cell">
+<div class="traj-stage">Mock 1 · Nov 2025</div>
+<div class="traj-aggregate"><div class="num">14</div><div class="lbl">aggregate</div></div>
+<div class="traj-band">Very good band · 13–18</div>
+<div class="traj-bar"><div class="traj-bar-fill t1"></div></div>
+</div>
+<div class="traj-cell">
+<div class="traj-stage">Mock 2 · Mar 2026 <span class="traj-arrow">↑ 4 places</span></div>
+<div class="traj-aggregate"><div class="num">10</div><div class="lbl">aggregate</div></div>
+<div class="traj-band">Top tier · 6–12</div>
+<div class="traj-bar"><div class="traj-bar-fill t2"></div></div>
+</div>
+<div class="traj-cell traj-projected">
+<div class="traj-stage">WASSCE projected <span class="traj-arrow">→ holding</span></div>
+<div class="traj-aggregate"><div class="num">10</div><div class="lbl">aggregate</div></div>
+<div class="traj-band">Med-disruption risk on English papers</div>
+<div class="traj-bar"><div class="traj-bar-fill t3"></div></div>
+</div>
+</div>
+
+<!-- Trust line -->
+<div style="font-size:12px; color:var(--navy-3); padding:10px 4px 18px; line-height:1.6;">
+The Mock 2 → projected step is a holding projection. Omnischools does not adjust the projected aggregate based on the missed English papers until the SC-12 make-up sitting is scored — adjusting now would build false signal into university-target conversations. The aggregate band reads as projected; the disruption banner reads as live.
+</div>
+
+<!-- STPSHS SUBMISSION STATUS PANEL -->
+<div class="stpshs-panel">
+<div class="stpshs-head">
+<div>
+<div class="stpshs-eyebrow">WAEC STPSHS · regulator submission state</div>
+<div class="stpshs-title">8 subjects · per-year score submission · F1, F2 confirmed · F3 in flight</div>
+</div>
+<div class="stpshs-meta">Last sync · 28 May 2026 · 09:14 · automatic on score-ledger commit</div>
+</div>
+
+<table class="stpshs-table">
+<thead>
+<tr>
+<th class="stp-subj">Subject</th>
+<th class="stp-yr">F1 score</th>
+<th class="stp-ref">F1 ref</th>
+<th class="stp-yr">F2 score</th>
+<th class="stp-ref">F2 ref</th>
+<th class="stp-yr">F3 score</th>
+<th class="stp-ref">F3 ref</th>
+<th class="stp-state">STPSHS state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="stp-subj">English Language</td>
+<td class="stp-yr"><span class="yr-score">68</span></td><td class="stp-ref">REF-2024-0817-ENG</td>
+<td class="stp-yr"><span class="yr-score">72</span></td><td class="stp-ref">REF-2025-0817-ENG</td>
+<td class="stp-yr blocked">—</td><td class="stp-ref blocked">blocked</td>
+<td class="stp-state state-blocked">F3 blocked · missed papers · SC-12 pending</td>
+</tr>
+<tr>
+<td class="stp-subj">Mathematics (Core)</td>
+<td class="stp-yr"><span class="yr-score">66</span></td><td class="stp-ref">REF-2024-0817-MTH</td>
+<td class="stp-yr"><span class="yr-score">75</span></td><td class="stp-ref">REF-2025-0817-MTH</td>
+<td class="stp-yr"><span class="yr-score">81</span></td><td class="stp-ref">REF-2026-0817-MTH</td>
+<td class="stp-state state-ready">all three years submitted · ready for WAEC reconciliation</td>
+</tr>
+<tr>
+<td class="stp-subj">Integrated Science</td>
+<td class="stp-yr"><span class="yr-score">76</span></td><td class="stp-ref">REF-2024-0817-INT</td>
+<td class="stp-yr"><span class="yr-score">82</span></td><td class="stp-ref">REF-2025-0817-INT</td>
+<td class="stp-yr"><span class="yr-score">87</span></td><td class="stp-ref">REF-2026-0817-INT</td>
+<td class="stp-state state-ready">all three years submitted</td>
+</tr>
+<tr>
+<td class="stp-subj">Social Studies</td>
+<td class="stp-yr"><span class="yr-score">64</span></td><td class="stp-ref">REF-2024-0817-SOC</td>
+<td class="stp-yr"><span class="yr-score">70</span></td><td class="stp-ref">REF-2025-0817-SOC</td>
+<td class="stp-yr pending"><span class="yr-score">72</span></td><td class="stp-ref pending">REF-2026-0817-SOC</td>
+<td class="stp-state state-partial">F3 entered locally · awaiting end-of-term sync to STPSHS</td>
+</tr>
+<tr>
+<td class="stp-subj">Chemistry</td>
+<td class="stp-yr"><span class="yr-score">72</span></td><td class="stp-ref">REF-2024-0817-CHM</td>
+<td class="stp-yr"><span class="yr-score">79</span></td><td class="stp-ref">REF-2025-0817-CHM</td>
+<td class="stp-yr"><span class="yr-score">86</span></td><td class="stp-ref">REF-2026-0817-CHM</td>
+<td class="stp-state state-ready">all three years submitted</td>
+</tr>
+<tr>
+<td class="stp-subj">Physics</td>
+<td class="stp-yr"><span class="yr-score">68</span></td><td class="stp-ref">REF-2024-0817-PHY</td>
+<td class="stp-yr"><span class="yr-score">74</span></td><td class="stp-ref">REF-2025-0817-PHY</td>
+<td class="stp-yr"><span class="yr-score">80</span></td><td class="stp-ref">REF-2026-0817-PHY</td>
+<td class="stp-state state-ready">all three years submitted</td>
+</tr>
+<tr>
+<td class="stp-subj">Biology</td>
+<td class="stp-yr"><span class="yr-score">70</span></td><td class="stp-ref">REF-2024-0817-BIO</td>
+<td class="stp-yr"><span class="yr-score">76</span></td><td class="stp-ref">REF-2025-0817-BIO</td>
+<td class="stp-yr"><span class="yr-score">82</span></td><td class="stp-ref">REF-2026-0817-BIO</td>
+<td class="stp-state state-ready">all three years submitted</td>
+</tr>
+<tr>
+<td class="stp-subj">Elective Maths <span class="stp-alt">alternate</span></td>
+<td class="stp-yr"><span class="yr-score">71</span></td><td class="stp-ref">REF-2024-0817-EMT</td>
+<td class="stp-yr"><span class="yr-score">78</span></td><td class="stp-ref">REF-2025-0817-EMT</td>
+<td class="stp-yr"><span class="yr-score">85</span></td><td class="stp-ref">REF-2026-0817-EMT</td>
+<td class="stp-state state-ready">all three years submitted</td>
+</tr>
+</tbody>
+</table>
+
+<div class="stpshs-foot">
+<div class="stpshs-foot-line"><span class="dot-ready"></span><b>21 of 24 entries</b> (8 subjects × 3 years) submitted and Reference-ID'd in STPSHS · all WAEC reconciliation requirements met for those subjects</div>
+<div class="stpshs-foot-line"><span class="dot-partial"></span><b>1 entry</b> (Social Studies F3) entered into Omnischools ledger and awaiting term-close sync · expected to push automatically on 14 July 2026 when the window opens</div>
+<div class="stpshs-foot-line"><span class="dot-blocked"></span><b>2 entries</b> (English F3 Lang 1, Lang 2) blocked pending SC-12 make-up sitting · STPSHS does not accept partial-paper entries for a subject · re-opens on WAEC's notification of make-up date</div>
+<div class="stpshs-foot-line muted"><b>What STPSHS sees · what Omnischools sees.</b> The 21 ready entries above represent the <em>terminal</em> score per subject per year — the single weighted-total figure each Form's end-of-year produces. That number is what reaches the WAEC regulator. The <em>trajectory underneath each number</em> — the five-category in-semester ledger across the six semesters of F1, F2, and F3, with assignment averages, mid-semester exam scores, end-of-semester exam scores, project work, and portfolio entries — is what Omnischools holds and what enables the projection. Section 4 below shows Mathematics in full as the worked example.</div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>What this page is for</h4>
+<ul>
+<li><b>One candidate, one page.</b> Form Master, Head of Academics, parent each open the same URL.</li>
+<li><b>Disruption is sticky.</b> The medical banner stays at the top of the page until the SC-12 case closes — either by make-up sitting or by cancellation.</li>
+<li><b>Projection holds.</b> The aggregate does not adjust until make-up papers are scored. False precision is worse than no update.</li>
+<li><b>Cross-module links.</b> Sickbay referral, NHIS card, parent comms thread, SC-12 form — all one click from this page.</li>
+<li><b>Make-up scheduling is a separate process.</b> WAEC, not the school, owns the make-up date. School coordinates parent, candidate fitness, and centre logistics.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 2 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">WASSCE schedule × completion · paper-by-paper</div>
+<div class="section-meta">9 papers scheduled · 3 missed (medical) · 1 sat · 5 upcoming</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/candidates/0184-0817#schedule</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mrs C. Owusu-Ansah · Head of Academics</div></div></div>
+<div class="nav-group">Academic</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Transcripts</div>
+<div class="nav-group">Student support</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-group">Operations</div>
+<div class="nav-item"><div class="ic"></div>Billing</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>People</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">Y. Aidoo <b>›</b> WASSCE 2026 schedule</div>
+<h1>Paper-by-paper <em>completion</em></h1>
+<div class="head-actions">
+<div class="btn">Export schedule</div>
+<div class="btn">SC-12 make-up calendar</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<div class="sch-summary" style="margin-top:0; margin-bottom:20px;">
+<div class="sch-sum-cell"><div class="sch-sum-num total">9</div><div class="sch-sum-lbl">Papers · total</div></div>
+<div class="sch-sum-cell"><div class="sch-sum-num sat">1</div><div class="sch-sum-lbl">Sat</div></div>
+<div class="sch-sum-cell"><div class="sch-sum-num missed">3</div><div class="sch-sum-lbl">Missed · medical</div></div>
+<div class="sch-sum-cell"><div class="sch-sum-num upcoming">5</div><div class="sch-sum-lbl">Upcoming</div></div>
+</div>
+
+<div class="schedule-table">
+<div class="sch-head">
+<div>Date</div>
+<div>Paper</div>
+<div>Duration</div>
+<div>Type</div>
+<div>Status</div>
+<div>Action</div>
+</div>
+
+<div class="sch-row sat">
+<div class="sch-date">Mon 12 May<br>08:00</div>
+<div><div class="sch-paper">Social Studies 1</div><div class="sch-paper-sub">Objective · 60 questions</div></div>
+<div>1h 00m</div>
+<div>Objective</div>
+<div><span class="sch-status sat">Sat</span></div>
+<div class="sch-action">View attendance</div>
+</div>
+
+<div class="sch-row missed">
+<div class="sch-date">Tue 13 May<br>14:00</div>
+<div><div class="sch-paper">English Language · Oral</div><div class="sch-paper-sub">Practical · listening test</div></div>
+<div>45m</div>
+<div>Oral</div>
+<div><span class="sch-status missed">Missed · medical</span></div>
+<div class="sch-action">SC-12 filed</div>
+</div>
+
+<div class="sch-row missed">
+<div class="sch-date">Wed 14 May<br>08:00</div>
+<div><div class="sch-paper">English Language 1</div><div class="sch-paper-sub">Objective · 80 questions</div></div>
+<div>1h 00m</div>
+<div>Objective</div>
+<div><span class="sch-status missed">Missed · medical</span></div>
+<div class="sch-action">SC-12 filed</div>
+</div>
+
+<div class="sch-row missed">
+<div class="sch-date">Wed 14 May<br>10:30</div>
+<div><div class="sch-paper">English Language 2</div><div class="sch-paper-sub">Essay · 3 questions, 4 choices each</div></div>
+<div>1h 30m</div>
+<div>Essay</div>
+<div><span class="sch-status missed">Missed · medical</span></div>
+<div class="sch-action">SC-12 filed</div>
+</div>
+
+<div class="sch-row upcoming">
+<div class="sch-date">Wed 3 Jun<br>08:00</div>
+<div><div class="sch-paper">Mathematics (Core) 1</div><div class="sch-paper-sub">Objective · 50 questions</div></div>
+<div>1h 30m</div>
+<div>Objective</div>
+<div><span class="sch-status upcoming">Upcoming · 19 days</span></div>
+<div class="sch-action">Fit-to-sit assessment</div>
+</div>
+
+<div class="sch-row upcoming">
+<div class="sch-date">Wed 3 Jun<br>11:00</div>
+<div><div class="sch-paper">Mathematics (Core) 2</div><div class="sch-paper-sub">Essay · 13 questions, answer 10</div></div>
+<div>2h 30m</div>
+<div>Essay</div>
+<div><span class="sch-status upcoming">Upcoming · 19 days</span></div>
+<div class="sch-action">Fit-to-sit assessment</div>
+</div>
+
+<div class="sch-row">
+<div class="sch-date">Tue 26 May<br>08:00</div>
+<div><div class="sch-paper">Integrated Science 1 &amp; 2</div><div class="sch-paper-sub">Objective + essay combined</div></div>
+<div>2h 30m</div>
+<div>Combined</div>
+<div><span class="sch-status upcoming-far">Upcoming · 11 days</span></div>
+<div class="sch-action">View prep status</div>
+</div>
+
+<div class="sch-row">
+<div class="sch-date">Mon 8 Jun<br>08:00</div>
+<div><div class="sch-paper">Chemistry 1 &amp; 2</div><div class="sch-paper-sub">Theory · core elective</div></div>
+<div>3h 00m</div>
+<div>Theory</div>
+<div><span class="sch-status upcoming-far">Upcoming · 24 days</span></div>
+<div class="sch-action">View prep status</div>
+</div>
+
+<div class="sch-row">
+<div class="sch-date">Tue 9 Jun<br>11:00</div>
+<div><div class="sch-paper">Physics 1 &amp; 2</div><div class="sch-paper-sub">Theory · core elective</div></div>
+<div>3h 00m</div>
+<div>Theory</div>
+<div><span class="sch-status upcoming-far">Upcoming · 25 days</span></div>
+<div class="sch-action">View prep status</div>
+</div>
+
+</div>
+
+<div style="margin-top:18px; padding:16px 20px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:12px; color:var(--navy-2); line-height:1.6;">
+<b>SC-12 make-up convention.</b> WAEC offers make-up sittings for candidates with documented medical disruption within the live exam window. For Y. Aidoo, the three English papers will be rescheduled — typically within 10 working days of fitness restoration — at the regional WAEC office in Sefwi-Wiawso, not at the school centre. The school facilitates transport and a teacher accompaniment; the school does not set the date. WAEC Regional confirmed acknowledgement of the SC-12 packet at 11:32 today; clinician sign-off on fitness will be requested by WAEC before scheduling. Math 1 + 2 on Wed 3 Jun is the next paper at the school centre and remains scheduled pending fit-to-sit assessment by the matron + clinician on Mon 1 Jun.
+</div>
+
+<div class="sch-summary">
+<div class="sch-sum-cell"><div class="sch-sum-num" style="color:var(--navy-2);">5</div><div class="sch-sum-lbl">Cores · remaining</div></div>
+<div class="sch-sum-cell"><div class="sch-sum-num" style="color:var(--green);">3</div><div class="sch-sum-lbl">Electives · all upcoming</div></div>
+<div class="sch-sum-cell"><div class="sch-sum-num" style="color:var(--gold);">3</div><div class="sch-sum-lbl">Make-up sittings owed</div></div>
+<div class="sch-sum-cell"><div class="sch-sum-num" style="color:var(--navy);">19</div><div class="sch-sum-lbl">Jun · last paper</div></div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Schedule design rules</h4>
+<ul>
+<li><b>WAEC schedule is the source of truth.</b> Omnischools pulls the schedule from WAEC's published timetable and overlays each candidate's specific subjects.</li>
+<li><b>Three statuses, not five.</b> Sat · Missed · Upcoming. Granular sub-statuses (filed SC, awaiting reschedule, etc.) live in the action column.</li>
+<li><b>Make-up sittings are off-centre.</b> WAEC handles make-ups at regional offices, not at the school. Transport and accompaniment is the school's responsibility.</li>
+<li><b>Fit-to-sit is a clinician call.</b> Matron coordinates with the hospital clinician; the Head of Academics confirms scheduling. The candidate's parent is informed of all three steps.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 3 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">Subject-by-subject readiness · Mock 1 → Mock 2 → projected</div>
+<div class="section-meta">8 subjects · 4 cores · 4 electives (1 alternate)</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/candidates/0184-0817#subjects</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mrs C. Owusu-Ansah · Head of Academics</div></div></div>
+<div class="nav-group">Academic</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Transcripts</div>
+<div class="nav-group">Student support</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-group">Operations</div>
+<div class="nav-item"><div class="ic"></div>Billing</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>People</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">Y. Aidoo <b>›</b> Subject trajectory</div>
+<h1>Subjects · <em>Mock 1</em> → <em>Mock 2</em> → projected</h1>
+<div class="head-actions">
+<div class="btn">Compare to cohort</div>
+<div class="btn">Subject teachers</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<!-- 8 subject cards -->
+<div class="subj-grid">
+
+<!-- Core subjects -->
+<div class="subj-card core">
+<div class="subj-head">
+<div><div class="subj-name">English Language</div><div class="subj-type">Core · all programmes</div></div>
+<div class="subj-grades"><div class="grade-chip B3">B3</div></div>
+</div>
+<div class="subj-traj-row">
+<div class="subj-traj-stage">M1</div><div class="subj-traj-grade"><div class="grade-chip sm C4">C4</div></div>
+<div class="subj-traj-stage">M2</div><div class="subj-traj-grade"><div class="grade-chip sm B3">B3</div></div>
+<div class="subj-traj-stage">WASSCE</div>
+</div>
+<div class="subj-comment"><b>Mrs A. Pomaa (English HOD):</b> Strong essay structure; weaker on comprehension speed under time pressure. Mock 2 showed 18-point improvement on essay component. Missed all three English papers due to hospitalisation — projection held at B3 pending make-up sitting.</div>
+<div class="subj-paper-meta"><b>Oral · MISSED</b><b>·</b><b>Lang 1 · MISSED</b><b>·</b><b>Lang 2 · MISSED</b></div>
+</div>
+
+<div class="subj-card core">
+<div class="subj-head">
+<div><div class="subj-name">Mathematics (Core)</div><div class="subj-type">Core · all programmes</div></div>
+<div class="subj-grades"><div class="grade-chip B2">B2</div></div>
+</div>
+<div class="subj-traj-row">
+<div class="subj-traj-stage">M1</div><div class="subj-traj-grade"><div class="grade-chip sm B3">B3</div></div>
+<div class="subj-traj-stage">M2</div><div class="subj-traj-grade"><div class="grade-chip sm B2">B2</div></div>
+<div class="subj-traj-stage">WASSCE</div>
+</div>
+<div class="subj-comment"><b>Mr K. Asare (Math HOD):</b> Consistent improvement across 14 mock topics; algebra at A1 level, geometry at B2, statistics at C4. Recommend final-week focus on probability and bearings (per WAEC examiner's notes). Math 1+2 sit Wed 3 Jun.</div>
+<div class="subj-paper-meta"><b>Paper 1</b> · 3 Jun · 08:00<b>·</b><b>Paper 2</b> · 3 Jun · 11:00</div>
+</div>
+
+<div class="subj-card core">
+<div class="subj-head">
+<div><div class="subj-name">Integrated Science</div><div class="subj-type">Core · all programmes</div></div>
+<div class="subj-grades"><div class="grade-chip A1">A1</div></div>
+</div>
+<div class="subj-traj-row">
+<div class="subj-traj-stage">M1</div><div class="subj-traj-grade"><div class="grade-chip sm B2">B2</div></div>
+<div class="subj-traj-stage">M2</div><div class="subj-traj-grade"><div class="grade-chip sm A1">A1</div></div>
+<div class="subj-traj-stage">WASSCE</div>
+</div>
+<div class="subj-comment"><b>Mrs C. Owusu (Int Sci):</b> Strongest subject. Mock 2 raw score 89/100 — top quartile of the SCI cohort. No concerns. Paper sits Tue 26 May.</div>
+<div class="subj-paper-meta"><b>Paper 1+2 combined</b> · 26 May · 08:00</div>
+</div>
+
+<div class="subj-card core">
+<div class="subj-head">
+<div><div class="subj-name">Social Studies</div><div class="subj-type">Core · all programmes</div></div>
+<div class="subj-grades"><div class="grade-chip B3">B3</div></div>
+</div>
+<div class="subj-traj-row">
+<div class="subj-traj-stage">M1</div><div class="subj-traj-grade"><div class="grade-chip sm C4">C4</div></div>
+<div class="subj-traj-stage">M2</div><div class="subj-traj-grade"><div class="grade-chip sm B3">B3</div></div>
+<div class="subj-traj-stage">WASSCE</div>
+</div>
+<div class="subj-comment"><b>Mr E. Boateng (Social):</b> Essay component is the constraint. Strong on civic literacy and citizenship questions; weaker on environment and economy. Paper 1 sat Mon 12 May — performance pending. Paper 2 (essay) scheduled but not yet timetabled by WAEC.</div>
+<div class="subj-paper-meta"><b>Paper 1</b> · 12 May · SAT<b>·</b><b>Paper 2</b> · pending</div>
+</div>
+
+<!-- Elective subjects -->
+<div class="subj-card elective">
+<div class="subj-head">
+<div><div class="subj-name">Chemistry</div><div class="subj-type">Elective · Science programme</div></div>
+<div class="subj-grades"><div class="grade-chip A1">A1</div></div>
+</div>
+<div class="subj-traj-row">
+<div class="subj-traj-stage">M1</div><div class="subj-traj-grade"><div class="grade-chip sm B2">B2</div></div>
+<div class="subj-traj-stage">M2</div><div class="subj-traj-grade"><div class="grade-chip sm A1">A1</div></div>
+<div class="subj-traj-stage">WASSCE</div>
+</div>
+<div class="subj-comment"><b>Mr S. Asiedu (Chem · Form Master):</b> Best in cohort on organic chemistry (98% accuracy in Mock 2). Inorganic at A1 also. Physical chem the weakest area but still B-band. Recommended a final-fortnight focus on equilibria and electrochemistry. Paper sits Mon 8 Jun.</div>
+<div class="subj-paper-meta"><b>Paper 1+2 combined</b> · 8 Jun · 08:00</div>
+</div>
+
+<div class="subj-card elective">
+<div class="subj-head">
+<div><div class="subj-name">Physics</div><div class="subj-type">Elective · Science programme</div></div>
+<div class="subj-grades"><div class="grade-chip B2">B2</div></div>
+</div>
+<div class="subj-traj-row">
+<div class="subj-traj-stage">M1</div><div class="subj-traj-grade"><div class="grade-chip sm B3">B3</div></div>
+<div class="subj-traj-stage">M2</div><div class="subj-traj-grade"><div class="grade-chip sm B2">B2</div></div>
+<div class="subj-traj-stage">WASSCE</div>
+</div>
+<div class="subj-comment"><b>Mr D. Owusu (Phys):</b> Mechanics and waves at A1; electricity at C4. The final 4 weeks should weight electric circuits + magnetism. Paper sits Tue 9 Jun. Practical paper sat in April — no medical issue at that time.</div>
+<div class="subj-paper-meta"><b>Practical</b> · 22 Apr · SAT<b>·</b><b>Paper 1+2</b> · 9 Jun · 11:00</div>
+</div>
+
+<div class="subj-card elective">
+<div class="subj-head">
+<div><div class="subj-name">Biology</div><div class="subj-type">Elective · Science programme</div></div>
+<div class="subj-grades"><div class="grade-chip A1">A1</div></div>
+</div>
+<div class="subj-traj-row">
+<div class="subj-traj-stage">M1</div><div class="subj-traj-grade"><div class="grade-chip sm B2">B2</div></div>
+<div class="subj-traj-stage">M2</div><div class="subj-traj-grade"><div class="grade-chip sm A1">A1</div></div>
+<div class="subj-traj-stage">WASSCE</div>
+</div>
+<div class="subj-comment"><b>Mrs F. Annan (Bio):</b> Strongest core elective candidate; Mock 2 placed her in the top 5 of the SCI cohort. Practical work in April was excellent. Paper sits Thu 11 Jun.</div>
+<div class="subj-paper-meta"><b>Practical</b> · 24 Apr · SAT<b>·</b><b>Paper 1+2</b> · 11 Jun · 08:00</div>
+</div>
+
+<div class="subj-card elective">
+<div class="subj-head">
+<div><div class="subj-name">Elective Mathematics</div><div class="subj-type">Elective · Science programme · dropped</div></div>
+<div class="subj-grades"><div class="grade-chip C4">C4</div></div>
+</div>
+<div class="subj-traj-row">
+<div class="subj-traj-stage">M1</div><div class="subj-traj-grade"><div class="grade-chip sm C5">C5</div></div>
+<div class="subj-traj-stage">M2</div><div class="subj-traj-grade"><div class="grade-chip sm C4">C4</div></div>
+<div class="subj-traj-stage">WASSCE</div>
+</div>
+<div class="subj-comment"><b>Mr K. Asare (Elec Math):</b> Lower than the other electives; drops out of the best-3 calculation as a result. Calculus is weak; matrices strong. Recommended continued practice but this paper does not count for her aggregate per WAEC's best-3 rule.</div>
+<div class="subj-paper-meta"><b>Paper 1+2</b> · 13 Jun · 08:00 <b>·</b> not in best-3</div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>How to read this</h4>
+<ul>
+<li><b>Cores top, electives below.</b> Cards order matches the aggregate calculation.</li>
+<li><b>Subject teacher = comment author.</b> Comments are written by the named teacher, not generated. Append-only edits.</li>
+<li><b>Three trajectory grades.</b> Mock 1 → Mock 2 → projected WASSCE. WASSCE column populates after paper marking releases in August.</li>
+<li><b>Best-3 rule.</b> Of 4 electives, only 3 best count. Elec Math drops out for Y. Aidoo; the card stays visible so the reasoning is auditable.</li>
+<li><b>Paper status next to each subject.</b> Sat / pending / missed — visible in the metadata strip per card.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 4 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">Ledger trajectory · Mathematics · what the predictor sees that STPSHS does not</div>
+<div class="section-meta">Y. Aidoo · Mathematics (Core) · 6 semesters · F1 S1 → F3 S2</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/candidates/0184-0817#ledger-trajectory</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mrs C. Owusu-Ansah · Head of Academics</div></div></div>
+<div class="nav-group">Academic</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Transcripts</div>
+<div class="nav-group">Student support</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-group">Operations</div>
+<div class="nav-item"><div class="ic"></div>Billing</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>People</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">Y. Aidoo <b>›</b> Subject trajectory <b>›</b> Mathematics</div>
+<h1>Ledger · <em>Mathematics</em> · six semesters shown</h1>
+<div class="head-actions">
+<div class="btn">Switch subject</div>
+<div class="btn-ghost">Export trajectory</div>
+<div class="btn-ghost">Open in Path A</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<div class="lt-frame">
+
+<div class="lt-frame-head">
+<div>
+<div class="lt-frame-eyebrow">Five-category score ledger · Mr. K. Owusu · Mathematics (Core)</div>
+<div class="lt-frame-title">The <em>evidence underneath</em> · 30 cells of in-semester assessment, six weighted-total checkpoints, two mock placements, Mock-2 projection B2</div>
+</div>
+<div class="lt-frame-meta">
+<b>Asankrangwa SHS · Maths</b>
+weights 15/15/40/15/15<br>
+configured 2023-09-04<br>
+end-of-sem dominant
+</div>
+</div>
+
+<div class="lt-grid-wrap">
+<table class="lt-grid">
+<thead>
+<tr class="terms">
+<th class="lt-cat-head">Category · weight</th>
+<th>F1 S1<span class="lt-term-period">Oct 2023 – Feb 2024</span></th>
+<th>F1 S2<span class="lt-term-period">May 2024 – Aug 2024</span></th>
+<th>F2 S1<span class="lt-term-period">Oct 2024 – Feb 2025</span></th>
+<th>F2 S2<span class="lt-term-period">May 2025 – Aug 2025</span></th>
+<th class="mock-1">F3 S1<span class="lt-term-period">Nov 2025 – Feb 2026</span><span class="mock-tag">Mock 1</span></th>
+<th class="mock-2">F3 S2<span class="lt-term-period">Mar 2026 – Jun 2026</span><span class="mock-tag">Mock 2</span></th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td class="lt-cat-label">Assignments<span class="lt-cat-weight">15%</span></td>
+<td class="lt-score">60</td>
+<td class="lt-score">64</td>
+<td class="lt-score">68</td>
+<td class="lt-score">72</td>
+<td class="lt-score mock-1-col">78</td>
+<td class="lt-score mock-2-col">80</td>
+</tr>
+
+<tr>
+<td class="lt-cat-label">Mid-semester exam<span class="lt-cat-weight">15%</span></td>
+<td class="lt-score">58</td>
+<td class="lt-score">62</td>
+<td class="lt-score">66</td>
+<td class="lt-score">70</td>
+<td class="lt-score mock-1-col">76</td>
+<td class="lt-score mock-2-col">78</td>
+</tr>
+
+<tr>
+<td class="lt-cat-label">End-of-semester exam<span class="lt-cat-weight">40%</span></td>
+<td class="lt-score">62</td>
+<td class="lt-score">66</td>
+<td class="lt-score">72</td>
+<td class="lt-score">75</td>
+<td class="lt-score mock-1-col">80</td>
+<td class="lt-score mock-2-col">82</td>
+</tr>
+
+<tr>
+<td class="lt-cat-label">Project work<span class="lt-cat-weight">15%</span></td>
+<td class="lt-score">65</td>
+<td class="lt-score">68</td>
+<td class="lt-score">72</td>
+<td class="lt-score">76</td>
+<td class="lt-score mock-1-col">82</td>
+<td class="lt-score mock-2-col">84</td>
+</tr>
+
+<tr>
+<td class="lt-cat-label">Portfolio<span class="lt-cat-weight">15%</span></td>
+<td class="lt-score empty">—</td>
+<td class="lt-score">62</td>
+<td class="lt-score">68</td>
+<td class="lt-score">72</td>
+<td class="lt-score mock-1-col">78</td>
+<td class="lt-score mock-2-col">82</td>
+</tr>
+
+<tr class="lt-total-row">
+<td class="lt-cat-label">Weighted total</td>
+<td class="lt-total-val">61.5</td>
+<td class="lt-total-val">64.8</td>
+<td class="lt-total-val">69.9</td>
+<td class="lt-total-val">73.5</td>
+<td class="lt-total-val">79.1</td>
+<td class="lt-total-val">81.4</td>
+</tr>
+
+<tr class="lt-ref-row">
+<td class="lt-cat-label">Reference ID</td>
+<td>24-MTH-S1</td>
+<td>24-MTH-S2</td>
+<td>25-MTH-S1</td>
+<td>25-MTH-S2</td>
+<td>26-MTH-S1</td>
+<td>26-MTH-S2</td>
+</tr>
+
+<tr class="lt-stpshs-row">
+<td class="lt-cat-label">STPSHS state</td>
+<td colspan="2" style="text-align:center; border-right:1px solid var(--border);"><span class="stp-pip-ready">F1 submitted · weighted 66</span></td>
+<td colspan="2" style="text-align:center; border-right:1px solid var(--border);"><span class="stp-pip-ready">F2 submitted · weighted 75</span></td>
+<td colspan="2" style="text-align:center;"><span class="stp-pip-pending">F3 pending · expected 81 · auto-push 14 Jul 2026</span></td>
+</tr>
+
+</tbody>
+</table>
+</div>
+
+<div class="lt-frame-foot">
+<div class="lt-foot-col see-side">
+<h5>What <em>STPSHS</em> sees</h5>
+<span class="lt-foot-cell-count">3</span>
+<span class="lt-foot-cell-label">terminal weighted totals · one per year</span>
+<p style="margin-top:14px;"><b>F1 · 66 · F2 · 75 · F3 · 81 (projected).</b> The WAEC regulator's ledger receives one weighted figure per (subject × year) — the school's own end-of-year computation, terminal and externally moderated only by WAEC's later WASSCE result. There is no field for in-term cadence, no portfolio history, no record of how the F1 figure was built from assignments versus end-of-sem exam, no record of which terms the student was strong in mid-sem vs project work. STPSHS captures the destination, not the journey.</p>
+</div>
+<div class="lt-foot-col">
+<h5>What <em>Omnischools</em> sees</h5>
+<span class="lt-foot-cell-count">30</span>
+<span class="lt-foot-cell-label">in-semester cells · five categories × six semesters</span>
+<p style="margin-top:14px;"><b>The whole table above.</b> Every assignment-batch average, every mid-sem exam, every end-of-sem score, every project return, every portfolio entry across the six semesters of F1, F2, and F3 — captured in the score-ledger spec's five-category structure, weighted at Asankrangwa SHS's configured 15/15/40/15/15, audit-trailed by who-entered-what-when, surfaced through Path A, B, or C depending on how the subject teacher works. The trajectory's <em>slope</em> — 61.5 climbing to 81.4 with an acceleration in F3 — is what the predictor reads, and is what makes Mock 2's B2 projection hold even with the medical disruption on the English papers.</p>
+</div>
+</div>
+
+<div class="lt-projection-callout">
+<h5>How <em>this trajectory</em> produces the projected B2</h5>
+<p>The model that turns ledger trajectory into WASSCE-grade projection reads three signals from this table. <b>Level</b> — F3 S2 weighted total 81.4 sits squarely in the A1 / B2 boundary band given Asankrangwa SHS's historical Mock-to-WASSCE correlations. <b>Slope</b> — the F2-S2-to-F3-S2 acceleration (73.5 → 81.4 across three semesters) is itself predictive: students whose ledger climbs into F3 outperform their Mock 2 in over 70% of cases at this school. <b>Component shape</b> — end-of-sem scores (62 → 82) climbing faster than mid-sem (58 → 78) is the WASSCE-shaped profile, since WASSCE is itself a terminal exam. Three predictive signals, all reading from data STPSHS does not hold and is not asked to. Mock 2 said B2; the trajectory says B2 is the floor, not the ceiling. The projection holds the floor.</p>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Why this section is the structural answer to the STPSHS question</h4>
+<ul>
+<li><b>STPSHS is the regulator's ledger.</b> It captures the terminal weighted score per subject per year — three numbers per subject for the full three-year course — because that is what WAEC and the Ministry need for regulatory reconciliation. It is not designed for projection, and it is not weakened by that — it is correct for its purpose.</li>
+<li><b>The five-category ledger is the operational artifact underneath.</b> Every Ghanaian SHS, public or private, keeps it — most on paper, some digital, some both. NaCCA names the five categories in the Government Year 1 Teacher Manual; weights are configured per (subject × school) and shown on every report so a parent can see how the year-end figure was built.</li>
+<li><b>The 30-cell trajectory is what Omnischools captures structurally.</b> Path A populates from in-semester Omnischools entries; Path B from scanned paper-ledger with verification-first OCR; Path C from direct digital entry on the grid. The data model is the same across paths — six semesters × five categories per (student × subject) — and every cell has a path-of-record, an audit history, a Reference ID, and a sync state.</li>
+<li><b>The predictor reads slope and shape, not just level.</b> A flat-then-decline trajectory at the same Mock 2 score reads very differently from this climbing trajectory. STPSHS cannot make that distinction because it does not hold the data that produces it. Omnischools can.</li>
+<li><b>The Reference IDs match across systems.</b> Each term-row's Reference ID is the same identifier that appears on Y. Aidoo's STPSHS submission record. A teacher who wants to reconcile their digital trajectory with WAEC's regulator view can do it row by row — the IDs are the bridge.</li>
+<li><b>The 21-of-24 STPSHS state from Section 1 is the same data as the bottom row above.</b> The terminal F1 and F2 figures are submitted (the green pips); the F3 figure is locally complete but waits for the 14 July 2026 STPSHS window to auto-push. Same underlying record, two views — the terminal-state view in Section 1 for the operational status, the trajectory view here for the predictive reasoning.</li>
+</ul>
+</div>
+
+</div>
+
+<!-- ============================ SECTION 5 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">05</div>
+<div class="section-title display">Aggregate construction · the WAEC best-3 calculation</div>
+<div class="section-meta">Best 3 cores (English missing — projection) + best 3 electives</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/candidates/0184-0817#aggregate</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mrs C. Owusu-Ansah · Head of Academics</div></div></div>
+<div class="nav-group">Academic</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Transcripts</div>
+<div class="nav-group">Student support</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-group">Operations</div>
+<div class="nav-item"><div class="ic"></div>Billing</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>People</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">Y. Aidoo <b>›</b> Aggregate construction</div>
+<h1>Aggregate · <em>10</em> · construction shown</h1>
+<div class="head-actions">
+<div class="btn">WAEC rule</div>
+<div class="btn">Universe match panel</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<div class="layout" style="grid-template-columns:1fr 360px; gap:32px;">
+
+<div class="agg-builder">
+
+<div class="agg-section">
+<div class="agg-section-title">Cores · 4 subjects · best 3 count</div>
+<div class="agg-row"><div class="agg-subj"><b>English Language</b> · B3 (projected)</div><div class="agg-points">3 pts</div><div class="agg-status counted">Counted</div></div>
+<div class="agg-row"><div class="agg-subj"><b>Mathematics (Core)</b> · B2</div><div class="agg-points">2 pts</div><div class="agg-status counted">Counted</div></div>
+<div class="agg-row"><div class="agg-subj"><b>Integrated Science</b> · A1</div><div class="agg-points">1 pt</div><div class="agg-status counted">Counted</div></div>
+<div class="agg-row dropped"><div class="agg-subj"><b>Social Studies</b> · B3</div><div class="agg-points">3 pts</div><div class="agg-status dropped">Dropped — 4th core</div></div>
+</div>
+
+<div class="agg-section">
+<div class="agg-section-title">Electives · 4 subjects · best 3 count</div>
+<div class="agg-row"><div class="agg-subj"><b>Chemistry</b> · A1</div><div class="agg-points">1 pt</div><div class="agg-status counted">Counted</div></div>
+<div class="agg-row"><div class="agg-subj"><b>Biology</b> · A1</div><div class="agg-points">1 pt</div><div class="agg-status counted">Counted</div></div>
+<div class="agg-row"><div class="agg-subj"><b>Physics</b> · B2</div><div class="agg-points">2 pts</div><div class="agg-status counted">Counted</div></div>
+<div class="agg-row dropped"><div class="agg-subj"><b>Elective Mathematics</b> · C4</div><div class="agg-points">4 pts</div><div class="agg-status dropped">Dropped — lowest</div></div>
+</div>
+
+<div class="agg-total">
+<div class="agg-total-lbl">Aggregate · best 3 cores + best 3 electives</div>
+<div class="agg-total-val">10</div>
+</div>
+
+</div>
+
+<div>
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px 22px;">
+<div class="agg-section-title" style="margin-bottom:14px;">How aggregate works</div>
+<p style="font-size:12px; color:var(--navy-2); line-height:1.7; margin-bottom:14px;">WASSCE grades convert to points on a 1–9 scale: <b>A1=1, B2=2, B3=3, C4=4, C5=5, C6=6, D7=7, E8=8, F9=9</b>. A1–C6 are credit passes (count for university). D7–F9 do not count.</p>
+<p style="font-size:12px; color:var(--navy-2); line-height:1.7; margin-bottom:14px;">The <b>aggregate</b> is the sum of points from the best 3 cores plus the best 3 electives. The minimum possible is 6 (six A1s); the maximum is 54.</p>
+<p style="font-size:12px; color:var(--navy-2); line-height:1.7; margin-bottom:14px;">Lower aggregate = better. Universities publish a <b>cut-off</b>, which is the worst aggregate they admit for that programme. KNUST Biochemistry cut-off is 11 — Y. Aidoo's 10 is one place inside.</p>
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+<div class="grade-chip sm A1">A1</div>
+<div class="grade-chip sm B2">B2</div>
+<div class="grade-chip sm B3">B3</div>
+<div class="grade-chip sm C4">C4</div>
+<div class="grade-chip sm C5">C5</div>
+<div class="grade-chip sm C6">C6</div>
+<div class="grade-chip sm D7">D7</div>
+<div class="grade-chip sm F9">F9</div>
+</div>
+<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-top:14px; font-size:10px; color:var(--navy-3);">
+<div><b style="color:var(--green);">1–6</b> credit pass</div>
+<div><b style="color:var(--warn);">7–8</b> below credit</div>
+<div><b style="color:var(--terra);">9</b> fail</div>
+</div>
+</div>
+
+<div style="background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:16px 18px; margin-top:14px;">
+<div style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px;">Projection caveat</div>
+<p style="font-size:12px; color:var(--navy-2); line-height:1.6;">English Language is projected at B3 from Mock 2. If the SC-12 make-up sitting yields a different grade, aggregate updates automatically. Current projection holds at 10 until WAEC releases scores in mid-August.</p>
+</div>
+
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Aggregate rules</h4>
+<ul>
+<li><b>Best 3 + best 3.</b> The WAEC formula is universal across all five anglophone member countries.</li>
+<li><b>D7 doesn't count.</b> If a candidate has only D7 or below in a core, they cannot get a credit pass — university admission depends on credits.</li>
+<li><b>Dropped subjects stay visible.</b> The card grays out but the row stays, so the calculation is auditable.</li>
+<li><b>Projection updates on real data.</b> When WAEC releases scores (Aug), aggregate recomputes once. No manual adjustment.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 6 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">06</div>
+<div class="section-title display">University match · five programmes scored</div>
+<div class="section-meta">1 target · 1 comfortable · 2 stretch · 1 safety</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/candidates/0184-0817#match</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mrs C. Owusu-Ansah · Head of Academics</div></div></div>
+<div class="nav-group">Academic</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Transcripts</div>
+<div class="nav-group">Student support</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-group">Operations</div>
+<div class="nav-item"><div class="ic"></div>Billing</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>People</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">Y. Aidoo <b>›</b> University match</div>
+<h1>Five <em>programmes</em> · matched and ranked</h1>
+<div class="head-actions">
+<div class="btn">View cut-off table</div>
+<div class="btn">Add programme</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<div class="uni-match-grid">
+
+<!-- TARGET -->
+<div class="uni-match target">
+<div class="uni-match-head">
+<div>
+<div class="uni-match-name">KNUST · Biochemistry</div>
+<div class="uni-match-prog">B.Sc. · 4 years · Kumasi</div>
+</div>
+<div class="match-pill target">Target · primary choice</div>
+</div>
+<div class="uni-match-bar-row">
+<div>Best <b>6</b></div>
+<div class="uni-match-bar">
+<div class="uni-match-bar-fill" style="width:8%;"></div>
+<div class="uni-match-marker you" style="left:16%;"><div class="uni-match-marker-label you">You · 10</div></div>
+<div class="uni-match-marker cutoff" style="left:18%;"><div class="uni-match-marker-label cutoff">Cut-off · 11</div></div>
+</div>
+<div>Worst <b>54</b></div>
+</div>
+<div class="uni-match-meta">
+<div><b>Cut-off</b> · 11 (2025)</div>
+<div><b>Trend</b> · stable 3 yrs</div>
+<div><b>Margin</b> · 1 inside</div>
+<div><b>Prerequisites</b> · Chem + Bio credit · met</div>
+</div>
+</div>
+
+<!-- COMFORTABLE -->
+<div class="uni-match">
+<div class="uni-match-head">
+<div>
+<div class="uni-match-name">Legon · Biochemistry</div>
+<div class="uni-match-prog">B.Sc. · 4 years · Accra</div>
+</div>
+<div class="match-pill comfortable">Comfortable</div>
+</div>
+<div class="uni-match-bar-row">
+<div>Best <b>6</b></div>
+<div class="uni-match-bar">
+<div class="uni-match-bar-fill" style="width:8%;"></div>
+<div class="uni-match-marker you" style="left:16%;"><div class="uni-match-marker-label you">You · 10</div></div>
+<div class="uni-match-marker cutoff" style="left:22%;"><div class="uni-match-marker-label cutoff">Cut-off · 12</div></div>
+</div>
+<div>Worst <b>54</b></div>
+</div>
+<div class="uni-match-meta">
+<div><b>Cut-off</b> · 12 (2025)</div>
+<div><b>Margin</b> · 2 inside</div>
+<div><b>Prerequisites</b> · met</div>
+</div>
+</div>
+
+<!-- STRETCH -->
+<div class="uni-match">
+<div class="uni-match-head">
+<div>
+<div class="uni-match-name">KNUST · Pharmacy</div>
+<div class="uni-match-prog">PharmD · 6 years · Kumasi</div>
+</div>
+<div class="match-pill stretch">Stretch</div>
+</div>
+<div class="uni-match-bar-row">
+<div>Best <b>6</b></div>
+<div class="uni-match-bar">
+<div class="uni-match-bar-fill" style="width:4%;"></div>
+<div class="uni-match-marker cutoff" style="left:8%;"><div class="uni-match-marker-label cutoff">Cut-off · 8</div></div>
+<div class="uni-match-marker you" style="left:16%;"><div class="uni-match-marker-label you">You · 10</div></div>
+</div>
+<div>Worst <b>54</b></div>
+</div>
+<div class="uni-match-meta">
+<div><b>Cut-off</b> · 8 (2025)</div>
+<div><b>Gap</b> · 2 outside</div>
+<div><b>Likely outcome</b> · waitlist</div>
+</div>
+</div>
+
+<!-- STRETCH 2 -->
+<div class="uni-match">
+<div class="uni-match-head">
+<div>
+<div class="uni-match-name">Legon · Medicine</div>
+<div class="uni-match-prog">MB ChB · 6 years · Accra</div>
+</div>
+<div class="match-pill stretch">Stretch · highly competitive</div>
+</div>
+<div class="uni-match-bar-row">
+<div>Best <b>6</b></div>
+<div class="uni-match-bar">
+<div class="uni-match-bar-fill" style="width:2%;"></div>
+<div class="uni-match-marker cutoff" style="left:6%;"><div class="uni-match-marker-label cutoff">Cut-off · 6</div></div>
+<div class="uni-match-marker you" style="left:16%;"><div class="uni-match-marker-label you">You · 10</div></div>
+</div>
+<div>Worst <b>54</b></div>
+</div>
+<div class="uni-match-meta">
+<div><b>Cut-off</b> · 6 (2025)</div>
+<div><b>Gap</b> · 4 outside</div>
+<div><b>Likely outcome</b> · unlikely · interview required</div>
+</div>
+</div>
+
+<!-- SAFETY -->
+<div class="uni-match">
+<div class="uni-match-head">
+<div>
+<div class="uni-match-name">UCC · Biochemistry</div>
+<div class="uni-match-prog">B.Sc. · 4 years · Cape Coast</div>
+</div>
+<div class="match-pill safety">Safety</div>
+</div>
+<div class="uni-match-bar-row">
+<div>Best <b>6</b></div>
+<div class="uni-match-bar">
+<div class="uni-match-bar-fill" style="width:8%;"></div>
+<div class="uni-match-marker you" style="left:16%;"><div class="uni-match-marker-label you">You · 10</div></div>
+<div class="uni-match-marker cutoff" style="left:28%;"><div class="uni-match-marker-label cutoff">Cut-off · 14</div></div>
+</div>
+<div>Worst <b>54</b></div>
+</div>
+<div class="uni-match-meta">
+<div><b>Cut-off</b> · 14 (2025)</div>
+<div><b>Margin</b> · 4 inside</div>
+<div><b>Prerequisites</b> · met</div>
+</div>
+</div>
+
+<!-- ADD MORE TILE -->
+<div class="uni-match" style="background:var(--bg); border-style:dashed; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:160px;">
+<div style="font-family:'Fraunces', serif; font-size:14px; color:var(--navy-3); font-weight:500; margin-bottom:6px;">+ Add programme</div>
+<div style="font-size:11px; color:var(--navy-3); text-align:center; max-width:240px;">SHS guidance counsellor and candidate together. 3–5 programmes is the norm; 1 target, 1 comfortable, 1–2 stretch, 1 safety.</div>
+</div>
+
+</div>
+
+<div style="margin-top:24px; padding:18px 22px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:10px;">Match logic — five-tier band</div>
+<div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; font-size:11px;">
+<div><span class="match-pill target">Target</span><br><span style="color:var(--navy-3); margin-top:6px; display:block;">The primary choice; cut-off within 2 of projected.</span></div>
+<div><span class="match-pill comfortable">Comfortable</span><br><span style="color:var(--navy-3); margin-top:6px; display:block;">Cut-off 2–4 above projected aggregate.</span></div>
+<div><span class="match-pill match">Match</span><br><span style="color:var(--navy-3); margin-top:6px; display:block;">Cut-off equal to projected ± 1.</span></div>
+<div><span class="match-pill stretch">Stretch</span><br><span style="color:var(--navy-3); margin-top:6px; display:block;">Cut-off 2+ below projected. Worth applying; not realistic outcome.</span></div>
+<div><span class="match-pill safety">Safety</span><br><span style="color:var(--navy-3); margin-top:6px; display:block;">Cut-off 4+ above projected. Comfort floor.</span></div>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>How matching works</h4>
+<ul>
+<li><b>Cut-off is the worst aggregate admitted.</b> Lower = more competitive.</li>
+<li><b>Trend is 3 years.</b> Cut-offs shift modestly; Omnischools keeps the rolling 3-year history.</li>
+<li><b>Prerequisites are subject-checked.</b> Biochem needs Chem + Bio credit at C6 or better — flagged in candidate's match.</li>
+<li><b>Five-tier band.</b> Target · Comfortable · Match · Stretch · Safety. The guidance counsellor lands a candidate on one target plus 3–5 supporting choices.</li>
+<li><b>Parent visibility.</b> Parent sees this exact panel via the parent portal — same data, simpler chrome.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================ SECTION 7 ============================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">07</div>
+<div class="section-title display">Context · pastoral, financial, parent acknowledgment</div>
+<div class="section-meta">Three layers · cross-module surfacing</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">omnischools.gh/asankrangwa/wassce/candidates/0184-0817#context</div></div>
+<div class="app-shell">
+
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">A</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Mrs C. Owusu-Ansah · Head of Academics</div></div></div>
+<div class="nav-group">Academic</div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Classes &amp; courses</div>
+<div class="nav-item"><div class="ic"></div>Gradebook</div>
+<div class="nav-item active"><div class="ic"></div>WASSCE 2026</div>
+<div class="nav-item"><div class="ic"></div>Transcripts</div>
+<div class="nav-group">Student support</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item"><div class="ic"></div>Sickbay</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-group">Operations</div>
+<div class="nav-item"><div class="ic"></div>Billing</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>People</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+</div>
+
+<div class="main">
+<div class="head-row">
+<div class="crumb">Y. Aidoo <b>›</b> Context</div>
+<h1>Pastoral &middot; <em>financial</em> &middot; acknowledgment</h1>
+<div class="head-actions">
+<div class="btn">Add note</div>
+</div>
+</div>
+
+<div class="body-shell">
+
+<!-- Context strip -->
+<div class="context-strip" style="margin-bottom:20px;">
+<div class="context-cell">
+<div class="cc-label">Attendance · Semester 2</div>
+<div class="cc-value">98.4%</div>
+<div class="cc-meta">2 absences before today's hospitalisation. Both routine sickbay visits.</div>
+</div>
+<div class="context-cell">
+<div class="cc-label">Discipline · last 12 mo.</div>
+<div class="cc-value">No record</div>
+<div class="cc-meta">F3 discipline ladder paused during WASSCE per school policy.</div>
+</div>
+<div class="context-cell linked">
+<div class="cc-label">Sickbay history · this year</div>
+<div class="cc-value">3 visits</div>
+<div class="cc-meta">2 routine (headache, common cold) + 1 referral today. <a href="#">View log →</a></div>
+</div>
+<div class="context-cell">
+<div class="cc-label">Fees · Semester 2</div>
+<div class="cc-value">Paid in full</div>
+<div class="cc-meta">Free SHS · GHS 0 outstanding. WASSCE exam fees absorbed by GES.</div>
+</div>
+<div class="context-cell">
+<div class="cc-label">VLC character paragraph</div>
+<div class="cc-value">Drafted</div>
+<div class="cc-meta">FM Mr Asiedu finalising. Pending parent review at school-leaver.</div>
+</div>
+<div class="context-cell linked">
+<div class="cc-label">NHIS status</div>
+<div class="cc-value">Active</div>
+<div class="cc-meta">Card 9842-1276-5503 · valid to Mar 2027 · used at admission today.</div>
+</div>
+</div>
+
+<!-- Parent acknowledgment -->
+<div class="parent-ack" style="margin-bottom:20px;">
+<div class="pack-row">
+<div class="pack-icon"></div>
+<div>
+<div class="pack-title">Parent acknowledged Mock 2 readiness statement on 28 Mar 2026</div>
+<div class="pack-meta"><b>A. Aidoo</b> · phone-OTP signature · agreed with KNUST Biochemistry as primary target · agreed with three supporting programmes · expressed concern about commute distance to KNUST</div>
+</div>
+<div><a href="#" class="pack-link">View signed PDF →</a></div>
+</div>
+</div>
+
+<!-- Communications log preview -->
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px 24px;">
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:14px;">Today's parent communications · A. Aidoo (mother)</div>
+
+<div style="display:grid; grid-template-columns:90px 1fr auto; gap:14px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; align-items:center;">
+<div class="mono" style="font-size:11px; color:var(--navy-2); font-weight:600;">06:52</div>
+<div>Tier 3 phone — Matron Mrs Bediako called. Admission to Asankrangwa Govt Hospital confirmed. Mother en route from Tarkwa.</div>
+<div style="font-size:10px; color:var(--green); font-weight:600; letter-spacing:0.06em;">PHONE · DELIVERED</div>
+</div>
+
+<div style="display:grid; grid-template-columns:90px 1fr auto; gap:14px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; align-items:center;">
+<div class="mono" style="font-size:11px; color:var(--navy-2); font-weight:600;">07:14</div>
+<div>SMS confirmation of admission, ward, bed, and that Oral English will be missed.</div>
+<div style="font-size:10px; color:var(--green); font-weight:600; letter-spacing:0.06em;">SMS · DELIVERED</div>
+</div>
+
+<div style="display:grid; grid-template-columns:90px 1fr auto; gap:14px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; align-items:center;">
+<div class="mono" style="font-size:11px; color:var(--navy-2); font-weight:600;">11:00</div>
+<div>Tier 3 phone — Mrs Owusu-Ansah called. SC-12 form filed with WAEC. Make-up sitting will be scheduled. Mother arrived hospital 10:48.</div>
+<div style="font-size:10px; color:var(--green); font-weight:600; letter-spacing:0.06em;">PHONE · DELIVERED</div>
+</div>
+
+<div style="display:grid; grid-template-columns:90px 1fr auto; gap:14px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; align-items:center;">
+<div class="mono" style="font-size:11px; color:var(--navy-2); font-weight:600;">11:32</div>
+<div>SMS — SC-12 acknowledged by WAEC Regional. Ref SC-12-184-2026-0044.</div>
+<div style="font-size:10px; color:var(--green); font-weight:600; letter-spacing:0.06em;">SMS · DELIVERED</div>
+</div>
+
+<div style="display:grid; grid-template-columns:90px 1fr auto; gap:14px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; align-items:center;">
+<div class="mono" style="font-size:11px; color:var(--navy-2); font-weight:600;">14:30</div>
+<div>Tier 3 phone — Matron Mrs Bediako called. Ward round complete. Clinician confirms responding to IV artesunate. Awake, comfortable. NHIS itemised.</div>
+<div style="font-size:10px; color:var(--green); font-weight:600; letter-spacing:0.06em;">PHONE · DELIVERED</div>
+</div>
+
+<div style="display:grid; grid-template-columns:90px 1fr auto; gap:14px; padding:10px 0; font-size:13px; align-items:center;">
+<div class="mono" style="font-size:11px; color:var(--navy-2); font-weight:600;">21:00</div>
+<div>Tier 3 SMS · scheduled · evening ward round summary.</div>
+<div style="font-size:10px; color:var(--gold); font-weight:600; letter-spacing:0.06em;">SMS · SCHEDULED</div>
+</div>
+
+</div>
+
+<!-- Cross-module -->
+<div style="margin-top:24px;">
+<div style="font-family:'Fraunces', serif; font-size:14px; font-weight:500; margin-bottom:12px;">Linked across Omnischools</div>
+<div class="xmod-grid">
+<div class="xmod">
+<div class="xmod-eyebrow">Sickbay</div>
+<div class="xmod-title">Referral · severe malaria</div>
+<div class="xmod-meta">Mrs G. Bediako (matron) · admission 06:45 · Ward B bed 7 · IV artesunate started 07:20.</div>
+<a href="#" class="xmod-link">Open referral log →</a>
+</div>
+<div class="xmod">
+<div class="xmod-eyebrow">WAEC</div>
+<div class="xmod-title">SC-12 special consideration</div>
+<div class="xmod-meta">Form filed 11:00 by Mrs Owusu-Ansah · acknowledged 11:32 · ref SC-12-184-2026-0044.</div>
+<a href="#" class="xmod-link">View form PDF →</a>
+</div>
+<div class="xmod">
+<div class="xmod-eyebrow">Billing</div>
+<div class="xmod-title">NHIS itemised reconciliation</div>
+<div class="xmod-meta">IV artesunate covered · ward bed covered · meals not covered (GHS 24 line).</div>
+<a href="#" class="xmod-link">Open billing →</a>
+</div>
+<div class="xmod">
+<div class="xmod-eyebrow">Boarding</div>
+<div class="xmod-title">Slessor House · prep absence</div>
+<div class="xmod-meta">HM Mr E. Boateng excused all evening prep and Saturday inspection until further notice.</div>
+<a href="#" class="xmod-link">View house log →</a>
+</div>
+<div class="xmod">
+<div class="xmod-eyebrow">VLC</div>
+<div class="xmod-title">Character paragraph</div>
+<div class="xmod-meta">Drafted from 22 reflections + 3 FM notes + 8 PG observations · pending FM finalisation.</div>
+<a href="#" class="xmod-link">View draft →</a>
+</div>
+<div class="xmod">
+<div class="xmod-eyebrow">Transcripts</div>
+<div class="xmod-title">Pre-WASSCE transcript</div>
+<div class="xmod-meta">Final 3-year academic record · already drafted for university applications · finalised post-WASSCE.</div>
+<a href="#" class="xmod-link">View draft →</a>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Why this section sits here</h4>
+<ul>
+<li><b>Context isn't decoration.</b> When a candidate is in distress, the page shows everything in one place — academic, pastoral, financial, parent.</li>
+<li><b>Cross-module links are one click.</b> Sickbay, WAEC SC-12, billing, boarding, VLC, transcripts — all on the same student.</li>
+<li><b>Parent comms log preview.</b> Not the full thread (that lives in comms), but the day's events at a glance.</li>
+<li><b>Acknowledgment is a signed artefact.</b> Phone-OTP signature on the Mock 2 readiness statement; pinned here for evidence.</li>
+<li><b>Free SHS shown explicitly.</b> Fees-as-blocker is not a question. The page makes that visible to all viewers.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

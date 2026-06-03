@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — School type selection</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+/* Wizard frame */
+.wizard-frame { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.wizard-bar { background:var(--navy); padding:18px 28px; display:flex; align-items:center; gap:20px; }
+.wizard-bar .brand { display:flex; align-items:center; gap:12px; }
+.wizard-bar .logo-mini { width:36px; height:36px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:14px; }
+.wizard-bar .brand-name { font-family:'Fraunces',serif; font-size:15px; color:var(--bg); font-weight:500; letter-spacing:-0.005em; }
+.wizard-bar .brand-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.wizard-bar .progress { margin-left:auto; display:flex; align-items:center; gap:14px; }
+.wizard-bar .progress-text { font-size:11px; color:rgba(250,247,242,0.7); letter-spacing:0.08em; font-weight:600; }
+.wizard-bar .progress-text b { color:var(--gold); font-weight:700; }
+.wizard-bar .progress-bar { width:200px; height:5px; background:rgba(255,255,255,0.1); border-radius:100px; overflow:hidden; }
+.wizard-bar .progress-fill { background:var(--gold); height:100%; width:28%; border-radius:100px; }
+
+.steps-bar { background:var(--bg); border-bottom:1px solid var(--border); padding:14px 28px; display:flex; gap:8px; overflow-x:auto; }
+.step-pill { display:flex; align-items:center; gap:8px; padding:7px 13px; border-radius:100px; font-size:11px; font-weight:600; background:var(--surface); border:1px solid var(--border); color:var(--navy-3); flex-shrink:0; }
+.step-pill.done { background:var(--green-bg); border-color:var(--green); color:var(--green); }
+.step-pill.active { background:var(--navy); border-color:var(--navy); color:var(--bg); }
+.step-pill .num { width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,0.08); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:10px; }
+.step-pill.done .num { background:var(--green); color:var(--bg); }
+.step-pill.active .num { background:var(--gold); color:var(--navy); }
+
+.wizard-body { padding:48px 56px 36px; }
+.step-head { margin-bottom:36px; }
+.step-eyebrow { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:10px; }
+.step-head h2 { font-family:'Fraunces',serif; font-size:38px; font-weight:500; letter-spacing:-0.02em; line-height:1.1; margin-bottom:12px; }
+.step-head h2 em { font-style:italic; color:var(--gold); font-weight:400; }
+.step-head .lede { font-size:15px; color:var(--navy-3); max-width:680px; line-height:1.65; }
+.step-head .lede b { color:var(--navy-2); font-weight:600; }
+
+/* Option cards */
+.options-stack { display:flex; flex-direction:column; gap:14px; margin-bottom:28px; }
+.option-card { background:var(--surface); border:1.5px solid var(--border); border-radius:14px; padding:22px 26px; cursor:pointer; transition:border-color 0.15s ease; display:grid; grid-template-columns:48px 1fr 180px; gap:22px; align-items:start; }
+.option-card:hover { border-color:var(--border-2); }
+.option-card.selected { border-color:var(--gold); background:var(--gold-bg); }
+.option-card .radio { width:22px; height:22px; border-radius:50%; border:2px solid var(--border-2); background:var(--surface); position:relative; margin-top:4px; }
+.option-card.selected .radio { border-color:var(--gold); background:var(--gold); }
+.option-card.selected .radio::after { content:""; position:absolute; top:5px; left:5px; width:8px; height:8px; border-radius:50%; background:var(--surface); }
+.option-card .icon-shape { width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:18px; }
+.option-card.opt-basic .icon-shape { background:var(--navy); color:var(--bg); }
+.option-card.opt-senior .icon-shape { background:var(--gold); color:var(--navy); }
+.option-card.opt-multi .icon-shape { background:var(--surface); color:var(--navy); border:2px solid var(--navy); }
+.option-card .body h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; margin-bottom:4px; line-height:1.2; }
+.option-card .body h3 em { font-style:italic; color:var(--gold); }
+.option-card .body .sub { font-size:13px; color:var(--navy-3); margin-bottom:12px; line-height:1.5; }
+.option-card .body .sub b { color:var(--navy-2); font-weight:600; }
+.option-card .body .what-included { font-size:12px; color:var(--navy-2); line-height:1.6; }
+.option-card .body .what-included b { color:var(--navy); font-weight:600; }
+.option-card .body .what-included em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.option-card .quick-stats { display:flex; flex-direction:column; gap:10px; }
+.option-card .quick-stat { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:9px 12px; }
+.option-card.selected .quick-stat { background:rgba(255,255,255,0.6); border-color:var(--gold-soft); }
+.option-card .quick-stat .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:3px; }
+.option-card .quick-stat .val { font-family:'Fraunces',serif; font-size:15px; font-weight:600; color:var(--navy); letter-spacing:-0.005em; }
+.option-card .quick-stat .val em { font-style:italic; color:var(--gold); }
+.option-card .quick-stat .val .currency { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; }
+
+/* Reassurance card */
+.reassure { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; display:flex; gap:14px; align-items:start; }
+.reassure .ic { width:28px; height:28px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; flex-shrink:0; }
+.reassure .text { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.reassure .text b { color:var(--navy); font-weight:600; }
+.reassure .text em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+
+/* Footer bar */
+.wizard-foot { background:var(--bg); border-top:1px solid var(--border); padding:18px 28px; display:flex; justify-content:space-between; align-items:center; }
+.wizard-foot .left { font-size:12px; color:var(--navy-3); font-style:italic; }
+.wizard-foot .left b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.wizard-foot .right { display:flex; gap:10px; }
+.btn { padding:11px 18px; border-radius:7px; font-size:13px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+/* Variant - mobile */
+.phone-stage { background:linear-gradient(180deg, #2D3F5C 0%, #1A2B47 100%); border-radius:14px; padding:36px 24px; display:grid; grid-template-columns:1fr 380px 1fr; gap:18px; align-items:start; }
+.phone-frame { width:380px; background:var(--surface); border-radius:34px; padding:14px 8px; box-shadow:0 24px 60px -20px rgba(0,0,0,0.5); border:8px solid #1a1a1a; position:relative; }
+.phone-notch { position:absolute; top:14px; left:50%; transform:translateX(-50%); width:120px; height:18px; background:#1a1a1a; border-radius:0 0 14px 14px; }
+.phone-screen { background:var(--bg); border-radius:24px; overflow:hidden; min-height:680px; padding-top:34px; }
+.phone-status { display:flex; justify-content:space-between; padding:0 20px 6px; font-size:11px; font-weight:600; color:var(--navy); }
+.phone-content { padding:14px 18px 22px; }
+.phone-progress { display:flex; gap:3px; margin-bottom:18px; }
+.phone-progress span { flex:1; height:3px; border-radius:100px; background:var(--border); }
+.phone-progress span.done { background:var(--green); }
+.phone-progress span.active { background:var(--gold); }
+.phone-step-meta { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.phone-content h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; letter-spacing:-0.018em; line-height:1.15; margin-bottom:6px; }
+.phone-content h3 em { font-style:italic; color:var(--gold); }
+.phone-content .lede { font-size:12px; color:var(--navy-3); line-height:1.55; margin-bottom:20px; }
+.phone-option { background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; display:flex; gap:12px; align-items:start; }
+.phone-option.sel { border-color:var(--gold); background:var(--gold-bg); }
+.phone-option .ic-sm { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:13px; flex-shrink:0; }
+.phone-option.basic .ic-sm { background:var(--navy); color:var(--bg); }
+.phone-option.senior .ic-sm { background:var(--gold); color:var(--navy); }
+.phone-option.multi .ic-sm { background:var(--surface); color:var(--navy); border:1.5px solid var(--navy); }
+.phone-option .body { flex:1; }
+.phone-option .body h4 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; margin-bottom:3px; }
+.phone-option .body h4 em { font-style:italic; color:var(--gold); }
+.phone-option .body .desc { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.phone-option .radio-sm { width:18px; height:18px; border-radius:50%; border:2px solid var(--border-2); background:var(--surface); flex-shrink:0; margin-top:2px; }
+.phone-option.sel .radio-sm { border-color:var(--gold); background:var(--gold); position:relative; }
+.phone-option.sel .radio-sm::after { content:""; position:absolute; top:3px; left:3px; width:6px; height:6px; border-radius:50%; background:var(--surface); }
+.phone-foot-btn { background:var(--navy); color:var(--bg); padding:13px; border-radius:8px; text-align:center; font-size:13px; font-weight:700; margin-top:14px; }
+
+.phone-label { color:var(--gold-soft); font-size:11px; font-weight:600; letter-spacing:0.04em; padding-top:24px; }
+.phone-label h4 { font-family:'Fraunces',serif; font-style:italic; font-size:14px; color:var(--gold); font-weight:500; margin-bottom:6px; letter-spacing:-0.005em; }
+.phone-label p { color:rgba(250,247,242,0.65); line-height:1.55; font-size:11px; font-style:italic; }
+.phone-label p b { color:var(--bg); font-weight:600; font-style:normal; }
+
+/* Editorial card */
+.principle-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:20px; }
+.principle-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.principle-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.principle-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.principle-card p b { color:var(--navy); font-weight:600; }
+
+/* Cascade preview */
+.cascade-preview { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.cascade-head { background:var(--bg); border-bottom:1px solid var(--border); padding:14px 22px; display:flex; align-items:baseline; gap:12px; }
+.cascade-head h4 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; }
+.cascade-head h4 em { font-style:italic; color:var(--gold); }
+.cascade-head .meta { font-size:11px; color:var(--navy-3); font-style:italic; margin-left:auto; }
+.cascade-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+.cascade-body { padding:18px 22px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.cascade-col h5 { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--gold-soft); }
+.cascade-col ul { list-style:none; }
+.cascade-col li { font-size:12px; color:var(--navy-2); padding:5px 0 5px 16px; position:relative; line-height:1.5; }
+.cascade-col li::before { content:"→"; position:absolute; left:0; top:5px; color:var(--gold); font-size:11px; font-weight:700; }
+.cascade-col li b { color:var(--navy); font-weight:600; }
+.cascade-col li em { font-style:italic; color:var(--gold); }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Batch 0 · Structural foundation</div>
+  <span class="mvp-tag">MVP 1 · onboarding</span>
+  <span class="related-tag">Pairs with wizard-all-steps</span>
+  <h1 class="display">Step 2 · <em>What kind of school</em>?</h1>
+  <div class="gold-rule"></div>
+  <p>One question, three answers, an enormous downstream impact. The school-type selection in the onboarding wizard determines which modules activate, which surfaces appear in nav, which compliance rails the school is plugged into. <b>Get this right at minute three</b> and everything else falls into place; get it wrong and admin reconfigures painfully later. The design has to feel calm even though the choice is significant.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The choice · three options, one screen</div>
+    <div class="section-meta">Step 2 of 7 · added between identity and branding</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="wizard-frame">
+        <div class="wizard-bar">
+          <div class="brand">
+            <div class="logo-mini">SU</div>
+            <div class="brand-name display">School<em>Up</em></div>
+          </div>
+          <div class="progress">
+            <div class="progress-text">Step <b>2</b> of 7</div>
+            <div class="progress-bar"><div class="progress-fill"></div></div>
+          </div>
+        </div>
+
+        <div class="steps-bar">
+          <div class="step-pill done"><span class="num">1</span>Your school</div>
+          <div class="step-pill active"><span class="num">2</span>School type</div>
+          <div class="step-pill"><span class="num">3</span>Branding</div>
+          <div class="step-pill"><span class="num">4</span>Academic year</div>
+          <div class="step-pill"><span class="num">5</span>Classes</div>
+          <div class="step-pill"><span class="num">6</span>Term fees</div>
+          <div class="step-pill"><span class="num">7</span>Staff</div>
+        </div>
+
+        <div class="wizard-body">
+          <div class="step-head">
+            <div class="step-eyebrow">Step 2 of 7</div>
+            <h2 class="display">What kind of school are <em>you running</em>?</h2>
+            <p class="lede">Omnischools adapts to your school's structure. Pick the closest match — we'll set up the right pages, terminology, and reports for that level. <b>You can change this later</b> if your school changes, but most schools pick once and stay.</p>
+          </div>
+
+          <div class="options-stack">
+
+            <div class="option-card opt-basic">
+              <div class="radio"></div>
+              <div class="icon-shape">B</div>
+              <div class="body">
+                <h3 class="display">Basic education · <em>KG · Primary · JHS</em></h3>
+                <div class="sub">For schools running kindergarten through junior high — single curriculum, classes by year, all students follow the same subject path. <b>The most common school type in Ghana.</b></div>
+                <div class="what-included">Includes: attendance · billing · parent SMS · GES termly return · annual census · MoE-aligned reports. <em>Free SHS rails not activated.</em></div>
+              </div>
+              <div class="quick-stats">
+                <div class="quick-stat">
+                  <div class="lab">Pricing</div>
+                  <div class="val display"><em>GHS</em> <span class="currency">50–200</span><span style="font-size:10px; color:var(--navy-3); font-weight:400; font-family:'Manrope',sans-serif; display:block; margin-top:2px;">per month · by size</span></div>
+                </div>
+                <div class="quick-stat">
+                  <div class="lab">Setup time</div>
+                  <div class="val display">~15<em>m</em></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="option-card opt-senior selected">
+              <div class="radio"></div>
+              <div class="icon-shape">S</div>
+              <div class="body">
+                <h3 class="display">Senior high · <em>SHS · SHTS</em></h3>
+                <div class="sub">For three-year senior high schools running multiple programmes (General Arts, Science, Business, Agric, Home Economics, Visual Arts, Technical). <b>Students assigned to both a class and a House.</b></div>
+                <div class="what-included">Everything in Basic, plus: programmes &amp; subjects · House system · multi-tier PTA · PLC sessions &amp; CPD points · VLC sessions · boarding operations · <em>WASSCE readiness reports</em>.</div>
+              </div>
+              <div class="quick-stats">
+                <div class="quick-stat">
+                  <div class="lab">Pricing</div>
+                  <div class="val display"><em>GHS</em> <span class="currency">400–1,500</span><span style="font-size:10px; color:var(--navy-3); font-weight:400; font-family:'Manrope',sans-serif; display:block; margin-top:2px;">per month · by size</span></div>
+                </div>
+                <div class="quick-stat">
+                  <div class="lab">Setup time</div>
+                  <div class="val display">~45<em>m</em></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="option-card opt-multi">
+              <div class="radio"></div>
+              <div class="icon-shape">M</div>
+              <div class="body">
+                <h3 class="display">Multi-tier school · <em>Basic + Senior under one admin</em></h3>
+                <div class="sub">For school groups, complexes, or campuses that run both basic and senior under one administration. <b>One subscription, both feature sets, unified reporting.</b></div>
+                <div class="what-included">Everything in Senior, plus: cross-tier student records (the same child progressing JHS → SHS) · unified billing across tiers · group-level dashboards · separate per-tier admin permissions.</div>
+              </div>
+              <div class="quick-stats">
+                <div class="quick-stat">
+                  <div class="lab">Pricing</div>
+                  <div class="val display"><em>GHS</em> <span class="currency">600–2,200</span><span style="font-size:10px; color:var(--navy-3); font-weight:400; font-family:'Manrope',sans-serif; display:block; margin-top:2px;">per month · by total enrolment</span></div>
+                </div>
+                <div class="quick-stat">
+                  <div class="lab">Setup time</div>
+                  <div class="val display">~60<em>m</em></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="reassure">
+            <div class="ic">i</div>
+            <div class="text">
+              <b>Not sure?</b> Pick what fits today. Omnischools lets you <em>upgrade later</em> with no data migration — if your basic school adds a senior section in 2027, we promote your account to Multi-tier with one click. <b>No throwaway setup work.</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="wizard-foot">
+          <div class="left">Christ the King School · <b>Step 2 of 7</b> · auto-saving</div>
+          <div class="right">
+            <button class="btn ghost">← Back</button>
+            <button class="btn primary">Continue →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Why this is Step 2, not Step 1</div>
+        <p>Step 1 captures who the admin is and the school's legal name — facts they can fill in instantly. Step 2 asks them to <b>think about their school's structure</b>, which deserves the moment of attention. Putting it first would feel interrogative; putting it after identity creates a natural rhythm: <em>here is me, here is what I run, here is how it looks</em>. The lede acknowledges the choice can be changed, removing decision pressure.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li><b>Three options, not seven.</b> Real Ghanaian school types span KG-only, Primary-only, JHS-only, SHS, SHTS, Vocational Institutes, and combinations. Reducing to three options trades configurability for clarity — admin doesn't see "KG-only" as a separate choice because under the hood it's a Basic school with only KG classes activated.</li>
+        <li><b>Pricing is shown.</b> Hiding price until checkout breaks trust. Admin sees the range, knows they're in the right tier, no surprise at the end.</li>
+        <li><b>Setup time estimates</b> (15m / 45m / 60m) are honest, not aspirational. SHS is meaningfully more complex to set up because programmes and Houses need configuration — surface that upfront so admin sets aside the time.</li>
+        <li><b>The "Senior" option is gold-highlighted as selected by default in this mock</b> — in production, no option is pre-selected. Admin must actively choose. The mock shows what it looks like when selected.</li>
+        <li>"Multi-tier school" is the right framing for school groups/complexes — <em>Multi-tenant SaaS terminology</em> ("multi-school account") would confuse admins. Multi-tier means <b>multi-level</b> in education-speak, which is exactly what it is.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">The cascade · what each choice unlocks downstream</div>
+    <div class="section-meta">How Step 2 reshapes Steps 3–7</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="cascade-preview">
+        <div class="cascade-head">
+          <h4 class="display">If admin picks each <em>option</em>, the rest of the wizard adapts</h4>
+          <div class="meta">configures by school type · <b>no manual toggling</b></div>
+        </div>
+        <div class="cascade-body">
+
+          <div class="cascade-col">
+            <h5>Basic · KG / Primary / JHS</h5>
+            <ul>
+              <li><b>Step 4 · Academic year</b> · 3 terms, standard GES calendar</li>
+              <li><b>Step 5 · Classes</b> · year-based (KG1 → JHS3) with optional sections</li>
+              <li><b>Step 5 · Subjects</b> · GES basic-school curriculum pre-loaded</li>
+              <li><b>Step 6 · Fees</b> · single fee structure per year</li>
+              <li><b>Step 7 · Staff</b> · single role per teacher</li>
+              <li>Nav after setup: <em>Dashboard · Students · Classes · Attendance · Billing · Comms · Reports · Settings</em></li>
+            </ul>
+          </div>
+
+          <div class="cascade-col">
+            <h5>Senior · SHS / SHTS</h5>
+            <ul>
+              <li><b>Step 3.5 (new) · Programmes &amp; Houses</b> · admin activates 1–7 programmes, defines House list</li>
+              <li><b>Step 4 · Academic year</b> · 3 terms, SHS-specific exam windows</li>
+              <li><b>Step 5 · Classes</b> · Form × Programme × Section (e.g. "Form 1 General Arts A")</li>
+              <li><b>Step 5 · Subjects</b> · core block + electives per programme</li>
+              <li><b>Step 6 · Fees</b> · Free SHS toggle · boarding vs day fee split</li>
+              <li><b>Step 7 · Staff</b> · multi-role + GES rank fields</li>
+              <li>Nav: adds <em>Programmes · Houses · PLC · CPD · VLC · Boarding</em></li>
+            </ul>
+          </div>
+
+          <div class="cascade-col">
+            <h5>Multi-tier · Basic + Senior</h5>
+            <ul>
+              <li><b>Step 2.5 (new) · Tier configuration</b> · admin sets which tiers run, optionally names campuses</li>
+              <li>Steps 3–7 split: <b>separate setup per tier</b>, shared identity and branding</li>
+              <li>Cross-tier reports activated · group-level dashboard at root</li>
+              <li>Admin permissions can be <em>scoped per tier</em> (a basic-school admin doesn't see SHS data)</li>
+              <li>Billing supports family-level invoicing across tiers (a parent with a JHS3 child and an SHS1 child gets one invoice if they want)</li>
+              <li>Nav: <em>root dashboard</em> with per-tier nav inside</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">The principle · activate, don't surface</div>
+        <p>Admin doesn't see this cascade. <b>The wizard just adapts</b>. Picking Senior at Step 2 silently injects "Step 3.5 · Programmes &amp; Houses" into the flow; picking Multi-tier injects "Step 2.5 · Tier configuration" before branding. <em>The user experience is "the wizard knew what to ask next"</em> — not "I checked 4 sub-options on a configuration page". Adaptation that feels like attentiveness, not menus.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>"Step 3.5" and "Step 2.5" are illustrative — in production the steps just renumber. <b>The wizard never shows fractional steps to admin</b>. Internal naming for design clarity only.</li>
+        <li>Multi-tier <b>shared identity</b> is the right default — most school groups have one brand (Christ the King Schools), one set of contact details, one set of admin staff. The complexity is in operations, not branding.</li>
+        <li>The basic school nav is shorter than SHS nav by design — <b>features hidden by school type are not greyed-out, they're absent</b>. A basic-school admin should never see "PLC" anywhere because PLC doesn't apply to them.</li>
+        <li>The "Free SHS toggle" in the senior cascade matters — public SHS schools have all fees absorbed by government; private SHS schools charge normally. <em>This is one checkbox</em> but it cascades through billing significantly.</li>
+        <li>Cross-tier family invoicing in Multi-tier is the trust-significant feature — one MoMo prompt covers fees for both children. Builds parent goodwill in ways the school feels indirectly.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Mobile · the same question, narrower</div>
+    <div class="section-meta">Wizard works on phone too · for admins onboarding on the go</div>
+  </div>
+
+  <div class="layout">
+    <div class="phone-stage">
+      <div class="phone-label">
+        <h4 class="display">The mobile reality</h4>
+        <p>Some admins will onboard on their phone — the SMS link with the setup magic-link opens on whatever device they're holding. The wizard must work on a 380px-wide screen.</p>
+        <p style="margin-top:14px;"><b>One option per row, full width.</b> The horizontal stats panel from desktop becomes a single-line meta under each option. The cascade preview doesn't show on mobile — it's a desktop affordance for the admin who wants to understand the implications. Mobile users trust the wizard to ask the right next questions.</p>
+      </div>
+
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="phone-status">
+            <span>9:42 AM</span>
+            <span>•••• MTN</span>
+          </div>
+          <div class="phone-content">
+
+            <div class="phone-progress">
+              <span class="done"></span>
+              <span class="active"></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+
+            <div class="phone-step-meta">Step 2 of 7</div>
+            <h3 class="display">What kind of school are <em>you running</em>?</h3>
+            <div class="lede">Pick the closest match. We'll set up the right pages for that level. You can change this later if needed.</div>
+
+            <div class="phone-option basic">
+              <div class="ic-sm">B</div>
+              <div class="body">
+                <h4 class="display">Basic · <em>KG · Primary · JHS</em></h4>
+                <div class="desc">Single curriculum · classes by year · GHS 50–200/month</div>
+              </div>
+              <div class="radio-sm"></div>
+            </div>
+
+            <div class="phone-option senior sel">
+              <div class="ic-sm">S</div>
+              <div class="body">
+                <h4 class="display">Senior high · <em>SHS · SHTS</em></h4>
+                <div class="desc">Programmes &amp; Houses · WASSCE-ready · GHS 400–1,500/month</div>
+              </div>
+              <div class="radio-sm"></div>
+            </div>
+
+            <div class="phone-option multi">
+              <div class="ic-sm">M</div>
+              <div class="body">
+                <h4 class="display">Multi-tier · <em>Both, one admin</em></h4>
+                <div class="desc">Basic + Senior unified · GHS 600–2,200/month</div>
+              </div>
+              <div class="radio-sm"></div>
+            </div>
+
+            <div class="phone-foot-btn">Continue →</div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-label">
+        <h4 class="display">What's stripped</h4>
+        <p>Gone from mobile: the <b>"what's included"</b> bullets, the <b>setup time estimate</b>, the cascade preview. The reassurance message also moves below the fold.</p>
+        <p style="margin-top:14px;">What stays: the <em>option name</em>, a single descriptor line, the price range, the radio selector. Everything else can be discovered or trusted.</p>
+        <p style="margin-top:14px;"><b>The mobile flow is for an admin who already knows roughly what they want.</b> Detailed comparison is a desktop affordance.</p>
+      </div>
+    </div>
+
+    <div class="principle-card">
+      <div class="eb">Mobile-first vs mobile-fallback</div>
+      <p>Omnischools is mobile-first for parents and teachers but <b>desktop-natural for admin work</b>. The wizard is an admin task — most admins will run it from a desk or staff-room computer. Mobile support is a fallback for the admin who started the process on their phone after getting the SMS invite. <em>Make it work, don't make it primary</em>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Edge cases · changing your mind</div>
+    <div class="section-meta">After onboarding · when school type needs to change</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="cascade-preview">
+        <div class="cascade-head">
+          <h4 class="display">Three scenarios · three answers</h4>
+          <div class="meta">all routable from <b>Settings → School type</b></div>
+        </div>
+        <div class="cascade-body" style="grid-template-columns:1fr 1fr; gap:18px;">
+
+          <div class="cascade-col" style="padding:14px 16px; background:var(--green-bg); border:1px solid #C8DDC9; border-radius:8px;">
+            <h5 style="color:var(--green); border-color:#C8DDC9;">Easy · pick wrong, change early</h5>
+            <ul>
+              <li><b>Admin set up as Basic, realises it's actually Senior</b> · within first 7 days, before students enrolled</li>
+              <li>One-click change from Settings → School type</li>
+              <li>Wizard <b>re-runs from Step 2.5</b> (Programmes &amp; Houses) onward · keeps identity and branding</li>
+              <li>No data lost · audit log records the change</li>
+            </ul>
+          </div>
+
+          <div class="cascade-col" style="padding:14px 16px; background:var(--warn-bg); border:1px solid #E5D4A8; border-radius:8px;">
+            <h5 style="color:var(--warn); border-color:#E5D4A8;">Awkward · already in use</h5>
+            <ul>
+              <li><b>School has been operational for weeks, type now needs to change</b> · students enrolled, fees paid, attendance recorded</li>
+              <li>Omnischools accepts the change but <b>flags fields that need manual reconciliation</b></li>
+              <li>Example: Basic → Senior · existing classes need to map to Form/Programme/Section · admin walks through a guided reconciliation</li>
+              <li>Audit log records reconciliation steps · old data stays</li>
+            </ul>
+          </div>
+
+          <div class="cascade-col" style="padding:14px 16px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:8px; grid-column:1/-1;">
+            <h5 style="color:var(--gold); border-color:var(--gold-soft);">Promotion · adding a tier · the natural growth case</h5>
+            <ul>
+              <li><b>Basic school adds a Senior section</b> · the most common reason for type change · happens often in growing schools</li>
+              <li>One-click promotion from Basic → Multi-tier · <b>keeps everything in the Basic side untouched</b></li>
+              <li>Omnischools adds a new wizard flow for the Senior tier · admin sets up Senior programmes, Houses, classes</li>
+              <li>Pricing changes from monthly Basic rate to Multi-tier rate · prorated for the current billing month</li>
+              <li>Existing students stay in their Basic classes · new students can be admitted to Senior · the JHS3 cohort gets a "Promote to Form 1" flow at end of year</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">The principle · types are not commitments</div>
+        <p>School-type selection is meaningful but not permanent. Ghanaian schools <em>grow, restructure, merge, split, add boarding, add new levels</em> — the product has to accommodate that reality. The wizard's <b>"you can change this later"</b> language is not a polite lie; the change paths exist and are designed honestly. The hardest case is "awkward · already in use" and it's still solvable, just slower.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li><b>The "promotion" case is the most common</b> in our target market — a private basic school sees demand and adds a senior section. Omnischools's natural growth path supports this without forcing the school to migrate to a new account.</li>
+        <li>Manual reconciliation for "Awkward" cases is a <em>guided flow</em>, not a free-text form. Admin walks through each class and assigns it to a Form/Programme/Section. Omnischools suggests defaults based on class name ("JHS 3 maps to Form 1? Or do you mean it stays as a Basic class?").</li>
+        <li>The <b>"audit log records the change"</b> line matters — type change is one of the highest-impact admin actions; auditors will want to know who did it and why. Same forward-only audit pattern used throughout Omnischools.</li>
+        <li>Pricing change on promotion is <b>prorated</b>, not retroactive — the school doesn't get billed for Multi-tier rate for the past 3 months. Builds trust by being fair on the seam.</li>
+        <li>"Demotion" (Senior → Basic) is technically possible but vanishingly rare and not worth surfacing as an obvious path. Goes through support if needed, not self-service. <em>Don't make easy something that's rarely the right answer.</em></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

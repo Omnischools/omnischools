@@ -1,0 +1,2630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — GES annual census</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --paper: #FBFAF6;
+  --paper-line: #C9C2B0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 680px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* ============ DRAWER STAGE ============ */
+.drawer-stage {
+  background: linear-gradient(180deg, #E8E1D2 0%, #DDD5C2 100%);
+  padding: 24px;
+  position: relative;
+  min-height: 1180px;
+}
+
+.drawer-bg {
+  position: absolute;
+  inset: 24px;
+  background: var(--bg);
+  border-radius: 8px;
+  opacity: 0.42;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+}
+.drawer-bg-side { background: var(--navy); border-radius: 8px 0 0 8px; }
+
+.drawer-overlay {
+  position: absolute;
+  inset: 24px;
+  background: rgba(26,43,71,0.32);
+  border-radius: 8px;
+}
+
+.drawer {
+  position: absolute;
+  top: 24px; bottom: 24px; right: 24px;
+  width: 540px;
+  background: var(--surface);
+  border-radius: 8px 0 0 8px;
+  display: flex; flex-direction: column;
+  box-shadow: -16px 0 40px -8px rgba(26,43,71,0.35);
+  overflow: hidden;
+}
+
+.drawer-head {
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.drawer-head .top-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.drawer-head .eyebrow-tag {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.drawer-head .close-btn {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.drawer-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+  margin-bottom: 4px;
+}
+.drawer-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.drawer-head .lede {
+  font-size: 12px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+.drawer-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 28px;
+}
+
+.drawer-section {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-section:last-child { border-bottom: none; }
+
+.section-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.step-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.num-circle {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+}
+
+/* Year selector */
+.year-selector-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+.year-selector-row .year-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.year-selector-row .year-value {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.year-selector-row .year-value em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+}
+.year-selector-row .year-meta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--navy-3);
+  text-align: right;
+}
+.year-selector-row .year-meta b { color: var(--navy-2); font-weight: 600; }
+
+/* Identification preview block */
+.id-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.id-preview .id-row .lbl {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.id-preview .id-row .val {
+  font-size: 12px;
+  color: var(--navy);
+  font-weight: 600;
+}
+.id-preview .id-row .val.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+/* Auto-fill summary band */
+.fill-summary {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.fill-summary .fs-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.fill-summary .fs-bar-row {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 6px;
+}
+.fill-summary .fs-pct {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: -0.018em;
+  line-height: 1;
+}
+.fill-summary .fs-pct em { font-style: italic; }
+.fill-summary .fs-text {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.fill-summary .fs-text b { color: var(--navy); font-weight: 600; }
+.fill-summary .progress-bar {
+  height: 8px;
+  background: var(--surface);
+  border-radius: 100px;
+  overflow: hidden;
+  display: flex;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+}
+.fill-summary .progress-bar .bar-auto {
+  background: var(--green);
+}
+.fill-summary .progress-bar .bar-manual {
+  background-image: repeating-linear-gradient(45deg, var(--warn-bg), var(--warn-bg) 4px, var(--warn) 4px, var(--warn) 5px);
+}
+
+/* Checklist with longer rows */
+.checklist {
+  display: flex; flex-direction: column;
+  gap: 4px;
+}
+.checklist-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  align-items: start;
+}
+.checklist-row.warn {
+  background: var(--warn-bg);
+  border-color: rgba(197,138,46,0.3);
+}
+.checklist-row.disabled {
+  opacity: 0.5;
+}
+.checklist-row .check-mark {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.checklist-row.warn .check-mark {
+  background: var(--warn);
+  color: white;
+}
+.checklist-row.disabled .check-mark {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+}
+.checklist-row .body .name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 1px;
+}
+.checklist-row .body .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+.checklist-row .body .meta b { color: var(--navy-2); font-weight: 600; }
+.checklist-row .status-tag {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 100px;
+  white-space: nowrap;
+  align-self: center;
+}
+.checklist-row .status-tag.ready {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.checklist-row .status-tag.partial {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid rgba(197,138,46,0.3);
+}
+.checklist-row .status-tag.manual {
+  background: var(--bg);
+  color: var(--navy-3);
+  border: 1px solid var(--border);
+}
+
+/* Section headers within checklist */
+.checklist-section-header {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin: 14px 0 6px;
+  display: flex; align-items: center; gap: 8px;
+}
+.checklist-section-header .h-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.checklist-section-header b {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--gold);
+}
+
+/* Output card */
+.output-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.output-card .pdf-tag {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: var(--terra);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+}
+.output-card .info .out-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.output-card .info .out-meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+.output-card .info .out-meta .filename {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-2);
+  font-weight: 600;
+}
+
+.drawer-foot {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 16px 28px;
+  flex-shrink: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px;
+}
+.drawer-foot .summary {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.drawer-foot .summary em { font-style: italic; color: var(--gold); }
+.drawer-foot .meta-line {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.drawer-foot .actions {
+  display: flex; gap: 8px;
+}
+.btn {
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn.primary {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+  font-weight: 700;
+}
+
+/* ============ PDF PREVIEW STAGE ============ */
+.preview-stage {
+  background: linear-gradient(180deg, #E8E1D2 0%, #DDD5C2 100%);
+  padding: 36px 32px;
+  display: flex; flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  min-height: 800px;
+}
+
+/* PDF page */
+.pdf-page {
+  width: 760px;
+  background: var(--paper);
+  box-shadow: 0 8px 24px -8px rgba(26,43,71,0.3), 0 1px 0 rgba(0,0,0,0.05);
+  position: relative;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* Top GES band */
+.pdf-ges-band {
+  background: var(--navy);
+  color: var(--gold-soft);
+  padding: 6px 28px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.pdf-ges-band .crest {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 8px;
+}
+.pdf-ges-band em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+/* Cover page */
+.pdf-cover {
+  padding: 60px 56px 48px;
+  text-align: center;
+  border-bottom: 2px solid var(--paper-line);
+}
+.pdf-cover .ges-line {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--navy-2);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.pdf-cover h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: -0.022em;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.pdf-cover h1 em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 400;
+}
+.pdf-cover .academic-year {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-style: italic;
+  color: var(--navy-3);
+  margin-bottom: 32px;
+  font-weight: 500;
+}
+
+.pdf-cover .crest-block {
+  width: 70px; height: 70px;
+  margin: 28px auto;
+  border-radius: 14px;
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 26px;
+}
+.pdf-cover .school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  margin-bottom: 4px;
+  line-height: 1.1;
+}
+.pdf-cover .school-name em {
+  font-style: italic;
+  color: var(--gold);
+}
+.pdf-cover .school-tagline {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-bottom: 28px;
+}
+.pdf-cover .school-tagline .mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--navy-2);
+}
+
+/* Cover stats */
+.cover-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 32px 0 20px;
+  padding: 18px 14px;
+  background: var(--surface);
+  border: 1px solid var(--paper-line);
+  border-radius: 4px;
+}
+.cover-stat .lbl {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.cover-stat .val {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1;
+}
+.cover-stat .val.gold { color: var(--gold); font-style: italic; font-weight: 500; }
+.cover-stat .meta {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.cover-foot {
+  border-top: 1px dashed var(--paper-line);
+  margin-top: 32px;
+  padding-top: 16px;
+  font-size: 10px;
+  color: var(--navy-3);
+  display: flex; justify-content: space-between;
+}
+.cover-foot .filed {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+/* PDF content pages */
+.pdf-page-band {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 8px 28px;
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+.pdf-page-band .crest-mini {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 9px;
+}
+.pdf-page-band .school {
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+.pdf-page-band .return-type {
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  font-weight: 700;
+}
+.pdf-page-band .ges-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.pdf-content {
+  padding: 28px 36px 32px;
+}
+
+.pdf-section-head {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  margin: 20px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid var(--paper-line);
+}
+.pdf-section-head:first-child { margin-top: 0; }
+.pdf-section-head .num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--gold);
+}
+.pdf-section-head .title {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pdf-section-head .source {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--navy-3);
+  font-style: italic;
+}
+
+/* PDF tables */
+.pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  font-size: 11px;
+}
+.pdf-table thead th {
+  background: var(--bg);
+  border: 1px solid var(--paper-line);
+  padding: 6px 10px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--navy);
+  text-align: left;
+}
+.pdf-table thead th.num { text-align: right; }
+.pdf-table tbody td {
+  border: 1px solid var(--paper-line);
+  padding: 6px 10px;
+  color: var(--navy-2);
+}
+.pdf-table tbody td.num {
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--navy);
+}
+.pdf-table tbody tr.total {
+  background: var(--bg);
+  font-weight: 700;
+}
+.pdf-table tbody tr.total td { color: var(--navy); }
+.pdf-table tbody tr.subtotal {
+  background: rgba(229,223,211,0.3);
+  font-weight: 600;
+}
+
+/* Auto cell indicator */
+.auto-cell {
+  position: relative;
+}
+.auto-cell::after {
+  content: "·";
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 5px; height: 5px;
+  background: var(--green);
+  border-radius: 50%;
+  font-size: 0;
+}
+
+/* Pdf identification grid */
+.pdf-id-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--paper-line);
+  margin-top: 6px;
+}
+.pdf-id-cell {
+  padding: 8px 12px;
+  border-right: 1px solid var(--paper-line);
+  border-bottom: 1px solid var(--paper-line);
+}
+.pdf-id-cell:nth-child(2n) { border-right: none; }
+.pdf-id-cell:nth-last-child(-n+2) { border-bottom: none; }
+.pdf-id-cell .lbl {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.pdf-id-cell .val {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--navy);
+}
+.pdf-id-cell .val.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* Manual fill blocks */
+.manual-fill {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--bg),
+    var(--bg) 6px,
+    rgba(217,211,194,0.4) 6px,
+    rgba(217,211,194,0.4) 12px
+  );
+  border: 1px dashed var(--paper-line);
+  padding: 12px 16px;
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.manual-fill .ic {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--warn);
+  color: white;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.manual-fill .body {
+  font-size: 10px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.manual-fill .body .heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--navy);
+  margin-bottom: 3px;
+}
+.manual-fill .body b { color: var(--navy); font-weight: 600; }
+
+/* Auto-fill block (for system-fed) */
+.auto-fill-block {
+  background: var(--surface);
+  border: 1px solid var(--paper-line);
+  padding: 12px 16px;
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.auto-fill-block .ic {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.auto-fill-block .body {
+  font-size: 10px;
+  color: var(--navy-2);
+  line-height: 1.5;
+}
+.auto-fill-block .body .heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--navy);
+  margin-bottom: 3px;
+  display: flex; align-items: center; gap: 8px;
+}
+.auto-fill-block .body .heading .auto-pill {
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--green-bg);
+  color: var(--green);
+  padding: 2px 6px;
+  border-radius: 100px;
+  font-family: 'Manrope', sans-serif;
+}
+
+/* Manual fields with hand-fill underlines */
+.manual-fields-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.manual-field {
+  border: 1px solid var(--paper-line);
+  background: var(--surface);
+  padding: 8px 12px 6px;
+}
+.manual-field .mf-label {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.manual-field .mf-blank {
+  border-bottom: 1px solid var(--navy-3);
+  height: 14px;
+}
+
+/* INFRASTRUCTURE — special checkbox grid layouts */
+.infra-block {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.infra-card {
+  background: var(--surface);
+  border: 1px solid var(--paper-line);
+  padding: 10px 12px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--surface),
+    var(--surface) 6px,
+    var(--bg) 6px,
+    var(--bg) 12px
+  );
+  border-style: dashed;
+}
+.infra-card .inf-label {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.infra-card .inf-options {
+  display: flex; flex-wrap: wrap;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--navy-2);
+}
+.infra-card .inf-opt {
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.infra-card .checkbox-empty {
+  width: 11px; height: 11px;
+  border: 1.5px solid var(--navy-3);
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: var(--surface);
+}
+.infra-card .checkbox-circle {
+  width: 12px; height: 12px;
+  border: 1.5px solid var(--navy-3);
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+/* Count fields */
+.infra-counts-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.infra-count-cell {
+  background: var(--surface);
+  border: 1px solid var(--paper-line);
+  border-style: dashed;
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--surface),
+    var(--surface) 6px,
+    var(--bg) 6px,
+    var(--bg) 12px
+  );
+  padding: 8px 12px;
+}
+.infra-count-cell .ic-label {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.infra-count-cell .ic-blank {
+  border-bottom: 1px solid var(--navy-3);
+  height: 18px;
+  background: var(--surface);
+}
+
+/* Provenance line */
+.provenance {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 8px;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  background: var(--bg);
+  padding: 6px 10px;
+  border-left: 2px solid var(--gold);
+}
+.provenance b {
+  font-family: 'JetBrains Mono', monospace;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--navy-2);
+}
+
+/* PDF declaration */
+.pdf-declaration {
+  background: var(--surface);
+  border: 1px solid var(--paper-line);
+  padding: 18px 24px 22px;
+  margin-top: 20px;
+}
+.pdf-declaration .dec-text {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.65;
+  margin-bottom: 24px;
+}
+.pdf-declaration .dec-text b { color: var(--navy); font-weight: 600; }
+
+.dec-signature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 12px;
+}
+.dec-sig-block {
+  border-top: 1px solid var(--navy-3);
+  padding-top: 6px;
+  position: relative;
+}
+.dec-sig-block .sig-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.dec-sig-block .sig-name {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 12px;
+  letter-spacing: -0.005em;
+}
+.dec-sig-block .sig-meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.dec-sig-block .sig-meta .mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--navy-2);
+}
+
+/* Simulated signature */
+.sig-mark {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 22px;
+  color: var(--navy);
+  position: absolute;
+  top: -22px;
+  left: 8px;
+  font-weight: 500;
+  transform: rotate(-3deg);
+  letter-spacing: -0.01em;
+}
+
+/* School stamp */
+.school-stamp {
+  position: absolute;
+  top: 6px; right: 8px;
+  width: 78px; height: 78px;
+  border: 2.5px solid var(--terra);
+  border-radius: 50%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  background: rgba(184,74,57,0.06);
+  transform: rotate(-8deg);
+  padding: 4px;
+}
+.school-stamp .stamp-line-1 {
+  font-family: 'Fraunces', serif;
+  font-size: 7.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--terra);
+  line-height: 1.1;
+}
+.school-stamp .stamp-line-2 {
+  font-family: 'Fraunces', serif;
+  font-size: 6px;
+  font-style: italic;
+  color: var(--terra);
+  margin-top: 2px;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.school-stamp .stamp-line-3 {
+  font-size: 5.5px;
+  color: var(--terra);
+  margin-top: 2px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* PDF foot */
+.pdf-foot-band {
+  background: var(--bg);
+  border-top: 1px solid var(--paper-line);
+  padding: 8px 28px;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 10px;
+  align-items: center;
+  font-size: 9px;
+  color: var(--navy-3);
+  letter-spacing: 0.04em;
+}
+.pdf-foot-band .footer-pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+.pdf-foot-band .footer-mid {
+  text-align: center;
+}
+.pdf-foot-band .footer-mid span {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-2);
+  font-weight: 600;
+}
+.pdf-foot-band .powered {
+  text-align: right;
+  font-style: italic;
+}
+.pdf-foot-band .powered em {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  color: var(--gold);
+  font-style: italic;
+}
+.pdf-page-num {
+  position: absolute;
+  bottom: 6px; left: 0; right: 0;
+  text-align: center;
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 9px;
+  color: var(--navy-3);
+}
+.pdf-page-num span {
+  font-family: 'JetBrains Mono', monospace;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* PDF page narrow notes */
+.body-text {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.55;
+  margin-top: 6px;
+}
+.body-text b { color: var(--navy); font-weight: 600; }
+
+/* Filing instructions */
+.filing-block {
+  margin-top: 32px;
+  padding: 14px 18px;
+  background: var(--bg);
+  border: 1px solid var(--paper-line);
+  font-size: 10px;
+  color: var(--navy-3);
+  line-height: 1.6;
+}
+.filing-block .head {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.filing-block ol {
+  padding-left: 18px;
+  margin: 0;
+}
+.filing-block li {
+  margin-bottom: 4px;
+}
+
+/* Inline auto pill */
+.inline-pill {
+  display: inline-block;
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 100px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.inline-pill.auto {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.inline-pill.manual {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+/* Table with mixed auto/manual columns */
+.staff-table tbody td.manual-col {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--surface),
+    var(--surface) 5px,
+    var(--bg) 5px,
+    var(--bg) 9px
+  );
+  border-style: dashed;
+}
+.staff-table tbody td.manual-col .blank {
+  border-bottom: 1px solid var(--navy-3);
+  height: 11px;
+  display: block;
+  margin: 0 -4px;
+}
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Statutory filing · Annual census</div>
+  <h1 class="display">The <em>annual</em>, larger</h1>
+  <div class="gold-rule"></div>
+  <p>The termly return is operational; the annual census is structural. Filed once a year (typically September), it captures everything in the termly return PLUS infrastructure (classrooms, latrines, water, electricity), detailed staff records (qualifications, certifications, GES vs private), special needs enrolment, age-by-class breakdowns, and dropout patterns. It's the document that informs national education planning and budget allocation. Two states: the generation drawer (longer checklist than the termly return) and the multi-page PDF preview.</p>
+</header>
+
+<!-- ============ STATE A: GENERATION DRAWER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Generation drawer · annual census</div>
+    <div class="section-meta">Reports &gt; Statutory &gt; Generate annual census · 71% auto-filled</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / statutory / generate-annual-census</div>
+      </div>
+
+      <div class="drawer-stage">
+        <div class="drawer-bg">
+          <div class="drawer-bg-side"></div>
+          <div></div>
+        </div>
+        <div class="drawer-overlay"></div>
+
+        <div class="drawer">
+
+          <div class="drawer-head">
+            <div class="top-row">
+              <div class="eyebrow-tag">Annual census · 2025/26</div>
+              <button class="close-btn">×</button>
+            </div>
+            <h1 class="display">Generate <em>annual census</em></h1>
+            <div class="lede">The big one · filed once a year to GES · 10 pages · combines enrolment, staff, attendance, performance, and <b>infrastructure</b>. Most data auto-fills from Omnischools; some sections still need your hand.</div>
+          </div>
+
+          <div class="drawer-body">
+
+            <!-- 1. Year selection -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">1</span>Academic year</div>
+              </div>
+              <div class="year-selector-row">
+                <div>
+                  <div class="year-label">Filing for</div>
+                  <div class="year-value display">Academic year <em>2025/26</em></div>
+                </div>
+                <div class="year-meta">
+                  Term 1 in progress · <b>day 47 of 187</b><br>
+                  Census window: 1 Sep — 31 Oct
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Identification -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">2</span>School identification</div>
+              </div>
+              <div class="id-preview">
+                <div class="id-row">
+                  <div class="lbl">School name</div>
+                  <div class="val">Christ the King JHS</div>
+                </div>
+                <div class="id-row">
+                  <div class="lbl">GES School ID</div>
+                  <div class="val mono">4-2305-018</div>
+                </div>
+                <div class="id-row">
+                  <div class="lbl">District</div>
+                  <div class="val">Accra Metro</div>
+                </div>
+                <div class="id-row">
+                  <div class="lbl">Circuit</div>
+                  <div class="val">Korle Klottey</div>
+                </div>
+                <div class="id-row">
+                  <div class="lbl">Region</div>
+                  <div class="val">Greater Accra</div>
+                </div>
+                <div class="id-row">
+                  <div class="lbl">Year established</div>
+                  <div class="val mono">1962</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Auto-fill summary band -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">3</span>What's included &amp; auto-fill status</div>
+              </div>
+
+              <div class="fill-summary">
+                <div class="fs-label">Census auto-fill progress</div>
+                <div class="fs-bar-row">
+                  <div class="fs-pct display"><em>71%</em></div>
+                  <div class="fs-text">of sections auto-filled by Omnischools · <b>5 sections</b> still need your hand · estimated <b>20 minutes</b> of manual entry</div>
+                </div>
+                <div class="progress-bar">
+                  <div class="bar-auto" style="width:71%"></div>
+                  <div class="bar-manual" style="width:29%"></div>
+                </div>
+              </div>
+
+              <!-- Section A: enrolment & demographics -->
+              <div class="checklist-section-header">
+                <span>Section A</span>
+                <b>Enrolment &amp; demographics</b>
+                <div class="h-rule"></div>
+              </div>
+              <div class="checklist">
+                <div class="checklist-row">
+                  <div class="check-mark">✓</div>
+                  <div class="body">
+                    <div class="name">Enrolment by class &amp; gender</div>
+                    <div class="meta"><b>312 students</b> · 9 classes · <b>157 boys, 155 girls</b></div>
+                  </div>
+                  <div class="status-tag ready">Auto</div>
+                </div>
+                <div class="checklist-row">
+                  <div class="check-mark">✓</div>
+                  <div class="body">
+                    <div class="name">Age-by-class distribution</div>
+                    <div class="meta">Computed from student DOBs · ages 12—17 across JHS 1—3</div>
+                  </div>
+                  <div class="status-tag ready">Auto</div>
+                </div>
+                <div class="checklist-row warn">
+                  <div class="check-mark">!</div>
+                  <div class="body">
+                    <div class="name">Special needs enrolment</div>
+                    <div class="meta">Not yet captured in Omnischools · <b>blank fields will be left for manual entry</b></div>
+                  </div>
+                  <div class="status-tag manual">Manual</div>
+                </div>
+                <div class="checklist-row">
+                  <div class="check-mark">✓</div>
+                  <div class="body">
+                    <div class="name">Movement (admissions, withdrawals, transfers)</div>
+                    <div class="meta">Year-to-date · <b>+18 admissions · −6 withdrawals · ±5 transfers</b></div>
+                  </div>
+                  <div class="status-tag ready">Auto</div>
+                </div>
+                <div class="checklist-row">
+                  <div class="check-mark">✓</div>
+                  <div class="body">
+                    <div class="name">Repetition by class</div>
+                    <div class="meta">From last year's promotion records · <b>14 repeaters across 9 classes</b></div>
+                  </div>
+                  <div class="status-tag ready">Auto</div>
+                </div>
+              </div>
+
+              <!-- Section B: staff -->
+              <div class="checklist-section-header">
+                <span>Section B</span>
+                <b>Staff</b>
+                <div class="h-rule"></div>
+              </div>
+              <div class="checklist">
+                <div class="checklist-row">
+                  <div class="check-mark">✓</div>
+                  <div class="body">
+                    <div class="name">Teaching staff list</div>
+                    <div class="meta"><b>14 teachers</b> · names, roles, gender, subjects</div>
+                  </div>
+                  <div class="status-tag ready">Auto</div>
+                </div>
+                <div class="checklist-row warn">
+                  <div class="check-mark">!</div>
+                  <div class="body">
+                    <div class="name">Staff qualifications &amp; certifications</div>
+                    <div class="meta">8 of 14 staff have qualifications captured · <b>6 still need entry</b></div>
+                  </div>
+                  <div class="status-tag partial">Partial</div>
+                </div>
+                <div class="checklist-row">
+                  <div class="check-mark">✓</div>
+                  <div class="body">
+                    <div class="name">Non-teaching staff</div>
+                    <div class="meta"><b>3 non-teaching</b> · accountant, secretary, caretaker</div>
+                  </div>
+                  <div class="status-tag ready">Auto</div>
+                </div>
+                <div class="checklist-row warn">
+                  <div class="check-mark">!</div>
+                  <div class="body">
+                    <div class="name">Salary status (GES / private / unpaid)</div>
+                    <div class="meta">Not captured in Omnischools · <b>hand-fill against your school's records</b></div>
+                  </div>
+                  <div class="status-tag manual">Manual</div>
+                </div>
+              </div>
+
+              <!-- Section C: attendance & academic -->
+              <div class="checklist-section-header">
+                <span>Section C</span>
+                <b>Attendance &amp; academic</b>
+                <div class="h-rule"></div>
+              </div>
+              <div class="checklist">
+                <div class="checklist-row">
+                  <div class="check-mark">✓</div>
+                  <div class="body">
+                    <div class="name">Attendance rate</div>
+                    <div class="meta">Last full term: <b>93.5%</b> · current term to date: <b>93.8%</b></div>
+                  </div>
+                  <div class="status-tag ready">Auto</div>
+                </div>
+                <div class="checklist-row">
+                  <div class="check-mark">✓</div>
+                  <div class="body">
+                    <div class="name">BECE results · last year</div>
+                    <div class="meta">From assessment module · 33 graduates · <b>aggregate 18 average</b></div>
+                  </div>
+                  <div class="status-tag ready">Auto</div>
+                </div>
+                <div class="checklist-row">
+                  <div class="check-mark">✓</div>
+                  <div class="body">
+                    <div class="name">Academic performance · all classes</div>
+                    <div class="meta">End-of-term averages by class &amp; subject</div>
+                  </div>
+                  <div class="status-tag ready">Auto</div>
+                </div>
+              </div>
+
+              <!-- Section D: infrastructure -->
+              <div class="checklist-section-header">
+                <span>Section D</span>
+                <b>Infrastructure</b>
+                <div class="h-rule"></div>
+              </div>
+              <div class="checklist">
+                <div class="checklist-row warn">
+                  <div class="check-mark">!</div>
+                  <div class="body">
+                    <div class="name">Classrooms (count &amp; condition)</div>
+                    <div class="meta">Not tracked in Omnischools · count + condition per block</div>
+                  </div>
+                  <div class="status-tag manual">Manual</div>
+                </div>
+                <div class="checklist-row warn">
+                  <div class="check-mark">!</div>
+                  <div class="body">
+                    <div class="name">Water, electricity, sanitation</div>
+                    <div class="meta">Source, status, latrine count by gender</div>
+                  </div>
+                  <div class="status-tag manual">Manual</div>
+                </div>
+                <div class="checklist-row warn">
+                  <div class="check-mark">!</div>
+                  <div class="body">
+                    <div class="name">Library, ICT lab, kitchen</div>
+                    <div class="meta">Presence, equipment counts, condition</div>
+                  </div>
+                  <div class="status-tag manual">Manual</div>
+                </div>
+              </div>
+
+              <!-- Section E: programmes -->
+              <div class="checklist-section-header">
+                <span>Section E</span>
+                <b>Programmes &amp; resources</b>
+                <div class="h-rule"></div>
+              </div>
+              <div class="checklist">
+                <div class="checklist-row warn">
+                  <div class="check-mark">!</div>
+                  <div class="body">
+                    <div class="name">School feeding programme</div>
+                    <div class="meta">Participation status, meals served, supplier · hand-fill</div>
+                  </div>
+                  <div class="status-tag manual">Manual</div>
+                </div>
+                <div class="checklist-row warn">
+                  <div class="check-mark">!</div>
+                  <div class="body">
+                    <div class="name">Textbook availability</div>
+                    <div class="meta">Inventory by subject &amp; class · hand-fill from stockroom</div>
+                  </div>
+                  <div class="status-tag manual">Manual</div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 4. Output -->
+            <div class="drawer-section">
+              <div class="section-eyebrow">
+                <div class="step-tag"><span class="num-circle">4</span>Output</div>
+              </div>
+              <div class="output-card">
+                <div class="pdf-tag">PDF</div>
+                <div class="info">
+                  <div class="out-title">A4 portrait · 10 pages</div>
+                  <div class="out-meta">Filename: <span class="filename">CTK_GES_Census_2025-26.pdf</span></div>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--navy-3);font-style:italic;margin-top:10px;line-height:1.55">After download, complete the manual sections in pen, sign, apply your school stamp, and submit two copies to the District Education Office before <b style="color:var(--navy-2);font-weight:600;font-style:normal">31 Oct 2025</b>.</div>
+            </div>
+
+          </div>
+
+          <div class="drawer-foot">
+            <div>
+              <div class="summary display">11 of 16 sections <em>auto-filled</em></div>
+              <div class="meta-line">Christ the King JHS · 2025/26 census</div>
+            </div>
+            <div class="actions">
+              <button class="btn">Cancel</button>
+              <button class="btn primary">Generate PDF →</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Drawer follows the same 4-section pattern as the termly return</b> (year/identification/checklist/output) so admin who's filed the termly return already knows the flow. The differences are scope — bigger checklist, longer manual list — not structure.</li>
+        <li><b>"The big one · filed once a year" lede</b> sets the tone honestly. The annual census is significantly more work than the termly return; admin who's never filed one before should know what they're getting into. <b>10 pages, 16 sections, ~20 minutes of manual entry</b> — concrete expectations.</li>
+        <li><b>Year selector simpler than termly return's term selector</b> — there's only one current academic year. "Filing for: Academic year 2025/26 · Term 1 in progress · day 47 of 187" gives temporal context. The "census window: 1 Sep — 31 Oct" reminder is operationally critical because filing late triggers GES penalties.</li>
+        <li><b>Identification preview mirrors the GES form fields exactly:</b> School name / GES School ID / District / Circuit / Region / Year established. Six fields in a 2×3 grid, mono for ID and year. <b>Same identification pattern as the termly return</b> — admin learns it once, applies it everywhere.</li>
+        <li><b>Auto-fill progress band as the headline.</b> "71% of sections auto-filled · 5 sections still need your hand · estimated 20 minutes." <b>Big italic gold "71%"</b> in display Fraunces, with a green-and-hatched progress bar showing auto vs manual proportions visually. Admin sees the workload before drilling into details.</li>
+        <li><b>The progress bar uses two textures:</b> green solid for auto, warn-coloured hatched for manual. <b>The hatched pattern is the same as the manual-fill blocks in the PDF</b> — visual consistency across the document and the drawer. Admin sees "29% hatched" in the bar and recognises that as the same pattern she'll see in the PDF preview.</li>
+        <li><b>Checklist organised into 5 sections (A through E)</b> mirroring the GES census form structure. Section A: Enrolment &amp; demographics / B: Staff / C: Attendance &amp; academic / D: Infrastructure / E: Programmes &amp; resources. <b>Each section header in italic Fraunces gold</b> with a horizontal rule trailing — visual divider that matches GES form conventions.</li>
+        <li><b>16 checklist rows total</b>, far more than the termly return's 8. The longer list is honest about the breadth of the census without being overwhelming because of the section grouping. <b>Admin can scan section by section</b> rather than facing a wall of rows.</li>
+        <li><b>Three status states: Auto (green) / Partial (warn-bordered) / Manual (warn-tinted with manual tag).</b> "Partial" is new vs the termly return — used for staff qualifications where 8 of 14 are captured but 6 need filling. <b>Honest about partial completeness</b> rather than calling it Auto or Manual.</li>
+        <li><b>Section A: Enrolment &amp; demographics</b> — 5 rows, 4 auto + 1 manual (special needs). The auto rows show specific numbers in their meta lines: "312 students · 9 classes · 157 boys, 155 girls" / "+18 admissions · −6 withdrawals · ±5 transfers" / "14 repeaters across 9 classes." <b>Inline data verification</b> at the checklist level.</li>
+        <li><b>Section B: Staff</b> — 4 rows showing the system's partial coverage of staff data. Teaching staff list is auto (names, roles, gender, subjects); qualifications are partial (8 of 14 captured); non-teaching is auto (3 staff); salary status is manual (not in Omnischools). <b>The granularity of the breakdown is meaningful</b> — admin sees that staff data is mostly there but not entirely.</li>
+        <li><b>Section C: Attendance &amp; academic</b> — 3 rows, all auto. "Attendance rate · last full term: 93.5% · current term to date: 93.8%" is the annual figure that the termly return only touched on briefly. BECE results auto-pull from the previous academic year. Academic performance auto-fills.</li>
+        <li><b>Section D: Infrastructure</b> — 3 rows, all manual with warn-tinted bg. Classrooms, water/electricity/sanitation, library/ICT/kitchen. <b>This entire section is manual</b> because Omnischools doesn't track facilities. The visual cluster of warn-tinted rows in this section makes the workload concrete — "this is the section that takes time."</li>
+        <li><b>Section E: Programmes &amp; resources</b> — 2 rows, both manual. Feeding programme and textbook availability. <b>Smaller section but important operationally</b>; both are funded externally (feeding by gov, textbooks by GES) and the census records what's actually being delivered.</li>
+        <li><b>Output card with terra PDF tag</b> matches the termly return drawer. "A4 portrait · 10 pages · CTK_GES_Census_2025-26.pdf." <b>The 10 pages is honest</b> — the termly return was 6, this is 10, admin knows what to expect.</li>
+        <li><b>Filing deadline reminder: "submit two copies before 31 Oct 2025"</b> in the output footer. <b>Operational urgency</b> — annual census deadlines are statutory; missing them has consequences. The bold deadline date sits at the bottom of the drawer where admin's eye lands before clicking Generate.</li>
+        <li><b>Drawer footer: "11 of 16 sections auto-filled" with italic gold "auto-filled"</b>. Compresses the checklist into one digestible fact, same pattern as the termly return's footer ("6 sections auto-filled · 1 left blank" updated). <b>Different denominator (16 vs 7) reflects the bigger document</b>.</li>
+        <li><b>What's not in the drawer:</b> No options to skip sections (you file the whole census, not parts of it). No alternate output format (GES expects PDF). No upload-to-GES button (SRIMPR portal upload is outside Omnischools's scope; admin uploads the generated PDF themselves).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE B: PDF PREVIEW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">PDF preview · 10 pages</div>
+    <div class="section-meta">A4 portrait · CTK_GES_Census_2025-26.pdf</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / statutory / preview · CTK_GES_Census_2025-26.pdf</div>
+      </div>
+
+      <div class="preview-stage">
+
+        <!-- ============ PAGE 1 — COVER ============ -->
+        <div class="pdf-page">
+          <div class="pdf-ges-band">
+            <div class="crest">G</div>
+            <span>Republic of Ghana · Ministry of Education</span>
+            <em>Ghana Education Service</em>
+          </div>
+          <div class="pdf-cover">
+            <div class="ges-line">Annual School Census</div>
+            <h1 class="display">Annual <em>Census</em></h1>
+            <div class="academic-year">Academic year 2025/26</div>
+
+            <div class="crest-block">CK</div>
+            <div class="school-name display">Christ the King <em>JHS</em></div>
+            <div class="school-tagline">Junior High School · Korle Klottey Circuit · GES School ID <span class="mono">4-2305-018</span></div>
+
+            <div class="cover-stats">
+              <div class="cover-stat">
+                <div class="lbl">Enrolment</div>
+                <div class="val">312</div>
+                <div class="meta">students</div>
+              </div>
+              <div class="cover-stat">
+                <div class="lbl">Teaching staff</div>
+                <div class="val">14</div>
+                <div class="meta">8 male · 6 female</div>
+              </div>
+              <div class="cover-stat">
+                <div class="lbl">Attendance rate</div>
+                <div class="val gold">93.5%</div>
+                <div class="meta">last full term</div>
+              </div>
+              <div class="cover-stat">
+                <div class="lbl">Established</div>
+                <div class="val">1962</div>
+                <div class="meta">63 years</div>
+              </div>
+            </div>
+
+            <div class="cover-foot">
+              <div>Filed by Florence Addo · Headmistress</div>
+              <div class="filed">Census window 1 Sep — 31 Oct 2025</div>
+            </div>
+          </div>
+          <div class="pdf-page-num">Page <span>1</span> of 10</div>
+        </div>
+
+        <!-- ============ PAGE 2 — IDENTIFICATION + ENROLMENT ============ -->
+        <div class="pdf-page">
+          <div class="pdf-page-band">
+            <div class="crest-mini">CK</div>
+            <div class="school">Christ the King JHS</div>
+            <div class="return-type">Annual Census 2025/26</div>
+            <div class="ges-id">GES 4-2305-018</div>
+          </div>
+
+          <div class="pdf-content">
+
+            <div class="pdf-section-head">
+              <div class="num">1</div>
+              <div class="title">School identification</div>
+              <div class="source">from school settings</div>
+            </div>
+
+            <div class="pdf-id-grid">
+              <div class="pdf-id-cell">
+                <div class="lbl">School name</div>
+                <div class="val">Christ the King JHS</div>
+              </div>
+              <div class="pdf-id-cell">
+                <div class="lbl">GES School ID</div>
+                <div class="val mono">4-2305-018</div>
+              </div>
+              <div class="pdf-id-cell">
+                <div class="lbl">School type</div>
+                <div class="val">Junior High School · public</div>
+              </div>
+              <div class="pdf-id-cell">
+                <div class="lbl">Year established</div>
+                <div class="val mono">1962</div>
+              </div>
+              <div class="pdf-id-cell">
+                <div class="lbl">District</div>
+                <div class="val">Accra Metropolitan</div>
+              </div>
+              <div class="pdf-id-cell">
+                <div class="lbl">Circuit</div>
+                <div class="val">Korle Klottey</div>
+              </div>
+              <div class="pdf-id-cell">
+                <div class="lbl">Region</div>
+                <div class="val">Greater Accra</div>
+              </div>
+              <div class="pdf-id-cell">
+                <div class="lbl">Headteacher</div>
+                <div class="val">Florence Addo</div>
+              </div>
+            </div>
+
+            <div class="pdf-section-head">
+              <div class="num">2</div>
+              <div class="title">Enrolment by class &amp; gender</div>
+              <div class="source">from student records · as of 22 Oct</div>
+            </div>
+
+            <table class="pdf-table">
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th class="num">Boys</th>
+                  <th class="num">Girls</th>
+                  <th class="num">Total</th>
+                  <th class="num">Last yr</th>
+                  <th class="num">Δ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>JHS 1A</td><td class="num">18</td><td class="num">17</td><td class="num auto-cell">35</td><td class="num">32</td><td class="num" style="color:var(--green)">+3</td></tr>
+                <tr><td>JHS 1B</td><td class="num">19</td><td class="num">17</td><td class="num auto-cell">36</td><td class="num">34</td><td class="num" style="color:var(--green)">+2</td></tr>
+                <tr><td>JHS 1C</td><td class="num">18</td><td class="num">17</td><td class="num auto-cell">35</td><td class="num">36</td><td class="num" style="color:var(--terra)">−1</td></tr>
+                <tr class="subtotal"><td>JHS 1 total</td><td class="num">55</td><td class="num">51</td><td class="num">106</td><td class="num">102</td><td class="num" style="color:var(--green)">+4</td></tr>
+                <tr><td>JHS 2A</td><td class="num">19</td><td class="num">17</td><td class="num auto-cell">36</td><td class="num">35</td><td class="num" style="color:var(--green)">+1</td></tr>
+                <tr><td>JHS 2B</td><td class="num">17</td><td class="num">17</td><td class="num auto-cell">34</td><td class="num">36</td><td class="num" style="color:var(--terra)">−2</td></tr>
+                <tr><td>JHS 2C</td><td class="num">18</td><td class="num">16</td><td class="num auto-cell">34</td><td class="num">33</td><td class="num" style="color:var(--green)">+1</td></tr>
+                <tr class="subtotal"><td>JHS 2 total</td><td class="num">54</td><td class="num">50</td><td class="num">104</td><td class="num">104</td><td class="num" style="color:var(--navy-3)">—</td></tr>
+                <tr><td>JHS 3A</td><td class="num">17</td><td class="num">17</td><td class="num auto-cell">34</td><td class="num">35</td><td class="num" style="color:var(--terra)">−1</td></tr>
+                <tr><td>JHS 3B</td><td class="num">18</td><td class="num">17</td><td class="num auto-cell">35</td><td class="num">34</td><td class="num" style="color:var(--green)">+1</td></tr>
+                <tr><td>JHS 3C</td><td class="num">13</td><td class="num">20</td><td class="num auto-cell">33</td><td class="num">32</td><td class="num" style="color:var(--green)">+1</td></tr>
+                <tr class="subtotal"><td>JHS 3 total</td><td class="num">48</td><td class="num">54</td><td class="num">102</td><td class="num">101</td><td class="num" style="color:var(--green)">+1</td></tr>
+                <tr class="total"><td>School total</td><td class="num">157</td><td class="num">155</td><td class="num">312</td><td class="num">307</td><td class="num" style="color:var(--green)">+5</td></tr>
+              </tbody>
+            </table>
+
+          </div>
+          <div class="pdf-foot-band">
+            <div class="footer-pre">CTK · GES Census</div>
+            <div class="footer-mid">Christ the King JHS · <span>GES 4-2305-018</span></div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>2</span> of 10</div>
+        </div>
+
+        <!-- ============ PAGE 3 — AGE BY CLASS + REPETITION ============ -->
+        <div class="pdf-page">
+          <div class="pdf-page-band">
+            <div class="crest-mini">CK</div>
+            <div class="school">Christ the King JHS</div>
+            <div class="return-type">Annual Census 2025/26</div>
+            <div class="ges-id">GES 4-2305-018</div>
+          </div>
+
+          <div class="pdf-content">
+
+            <div class="pdf-section-head">
+              <div class="num">3</div>
+              <div class="title">Age distribution by class</div>
+              <div class="source">computed from student dates of birth</div>
+            </div>
+
+            <table class="pdf-table">
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th class="num">Age 11</th>
+                  <th class="num">Age 12</th>
+                  <th class="num">Age 13</th>
+                  <th class="num">Age 14</th>
+                  <th class="num">Age 15</th>
+                  <th class="num">Age 16</th>
+                  <th class="num">Age 17+</th>
+                  <th class="num">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>JHS 1</td><td class="num">8</td><td class="num auto-cell">82</td><td class="num">14</td><td class="num">2</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">106</td></tr>
+                <tr><td>JHS 2</td><td class="num">—</td><td class="num">3</td><td class="num auto-cell">76</td><td class="num">21</td><td class="num">4</td><td class="num">—</td><td class="num">—</td><td class="num">104</td></tr>
+                <tr><td>JHS 3</td><td class="num">—</td><td class="num">—</td><td class="num">2</td><td class="num auto-cell">68</td><td class="num">26</td><td class="num">5</td><td class="num">1</td><td class="num">102</td></tr>
+                <tr class="total"><td>School total</td><td class="num">8</td><td class="num">85</td><td class="num">92</td><td class="num">91</td><td class="num">30</td><td class="num">5</td><td class="num">1</td><td class="num">312</td></tr>
+              </tbody>
+            </table>
+
+            <div class="body-text">Modal age for each year group falls within the GES expected range (12 for JHS 1, 13 for JHS 2, 14 for JHS 3). <b>Over-aged students</b> (above 15 in JHS 3): <b>6 students</b> · these are typically late starters or repeaters.</div>
+
+            <div class="pdf-section-head">
+              <div class="num">4</div>
+              <div class="title">Repetition &amp; promotion</div>
+              <div class="source">from year-end records · 2024/25</div>
+            </div>
+
+            <table class="pdf-table">
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th class="num">End of yr</th>
+                  <th class="num">Promoted</th>
+                  <th class="num">Repeated</th>
+                  <th class="num">Withdrew</th>
+                  <th class="num">Repetition rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>JHS 1 → JHS 2</td><td class="num">102</td><td class="num">96</td><td class="num auto-cell">5</td><td class="num">1</td><td class="num">4.9%</td></tr>
+                <tr><td>JHS 2 → JHS 3</td><td class="num">104</td><td class="num">96</td><td class="num auto-cell">7</td><td class="num">1</td><td class="num">6.7%</td></tr>
+                <tr><td>JHS 3 (graduated)</td><td class="num">101</td><td class="num">98</td><td class="num auto-cell">2</td><td class="num">1</td><td class="num">2.0%</td></tr>
+                <tr class="total"><td>All transitions</td><td class="num">307</td><td class="num">290</td><td class="num">14</td><td class="num">3</td><td class="num">4.6%</td></tr>
+              </tbody>
+            </table>
+
+            <div class="body-text">Overall repetition rate of <b>4.6%</b> is within the GES national benchmark of 5%. Highest repetition in JHS 2 → JHS 3 transition (6.7%) reflects the rigour of preparation for BECE entry.</div>
+
+          </div>
+          <div class="pdf-foot-band">
+            <div class="footer-pre">CTK · GES Census</div>
+            <div class="footer-mid">Christ the King JHS · <span>GES 4-2305-018</span></div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>3</span> of 10</div>
+        </div>
+
+        <!-- ============ PAGE 4 — SPECIAL NEEDS (MANUAL) ============ -->
+        <div class="pdf-page">
+          <div class="pdf-page-band">
+            <div class="crest-mini">CK</div>
+            <div class="school">Christ the King JHS</div>
+            <div class="return-type">Annual Census 2025/26</div>
+            <div class="ges-id">GES 4-2305-018</div>
+          </div>
+
+          <div class="pdf-content">
+
+            <div class="pdf-section-head">
+              <div class="num">5</div>
+              <div class="title">Special needs enrolment</div>
+              <div class="source">manual entry</div>
+            </div>
+
+            <div class="manual-fill">
+              <div class="ic">!</div>
+              <div class="body">
+                <div class="heading">To be filled by hand</div>
+                Enter the count of students by category. Use <b>0</b> if there are none. <b>Omnischools does not yet capture special needs data</b>; this section will be added in a future update.
+              </div>
+            </div>
+
+            <div class="manual-fields-grid">
+              <div class="manual-field">
+                <div class="mf-label">Visual impairment · boys</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Visual impairment · girls</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Hearing impairment · boys</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Hearing impairment · girls</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Physical disability · boys</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Physical disability · girls</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Intellectual disability · boys</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Intellectual disability · girls</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Speech impairment · boys</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Speech impairment · girls</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Other (specify) · boys</div>
+                <div class="mf-blank"></div>
+              </div>
+              <div class="manual-field">
+                <div class="mf-label">Other (specify) · girls</div>
+                <div class="mf-blank"></div>
+              </div>
+            </div>
+
+            <div class="pdf-section-head">
+              <div class="num">6</div>
+              <div class="title">Movement during the year</div>
+              <div class="source">from admissions &amp; withdrawals records</div>
+            </div>
+
+            <table class="pdf-table">
+              <thead>
+                <tr>
+                  <th>Movement type</th>
+                  <th class="num">Boys</th>
+                  <th class="num">Girls</th>
+                  <th class="num">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Admissions (new enrolments)</td><td class="num">10</td><td class="num">8</td><td class="num auto-cell">18</td></tr>
+                <tr><td>Withdrawals · relocation</td><td class="num">2</td><td class="num">1</td><td class="num auto-cell">3</td></tr>
+                <tr><td>Withdrawals · financial</td><td class="num">1</td><td class="num">1</td><td class="num auto-cell">2</td></tr>
+                <tr><td>Withdrawals · other</td><td class="num">1</td><td class="num">0</td><td class="num auto-cell">1</td></tr>
+                <tr><td>Transfers in (from other schools)</td><td class="num">2</td><td class="num">1</td><td class="num auto-cell">3</td></tr>
+                <tr><td>Transfers out (to other schools)</td><td class="num">1</td><td class="num">1</td><td class="num auto-cell">2</td></tr>
+                <tr class="total"><td>Net change</td><td class="num">+7</td><td class="num">+6</td><td class="num">+13</td></tr>
+              </tbody>
+            </table>
+
+          </div>
+          <div class="pdf-foot-band">
+            <div class="footer-pre">CTK · GES Census</div>
+            <div class="footer-mid">Christ the King JHS · <span>GES 4-2305-018</span></div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>4</span> of 10</div>
+        </div>
+
+        <!-- ============ PAGE 5 — TEACHING STAFF (mixed auto/manual) ============ -->
+        <div class="pdf-page">
+          <div class="pdf-page-band">
+            <div class="crest-mini">CK</div>
+            <div class="school">Christ the King JHS</div>
+            <div class="return-type">Annual Census 2025/26</div>
+            <div class="ges-id">GES 4-2305-018</div>
+          </div>
+
+          <div class="pdf-content">
+
+            <div class="pdf-section-head">
+              <div class="num">7</div>
+              <div class="title">Teaching staff</div>
+              <div class="source">from staff records · qualifications partial</div>
+            </div>
+
+            <div class="body-text"><b>14 teaching staff</b> total · 8 male, 6 female · qualifications fields with hatched background need hand-fill against your school's records.</div>
+
+            <table class="pdf-table staff-table" style="font-size:10px;margin-top:8px">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Sex</th>
+                  <th>Role</th>
+                  <th>Qualification <span class="inline-pill manual">Manual</span></th>
+                  <th>Salary <span class="inline-pill manual">Manual</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>1</td><td>Florence Addo</td><td>F</td><td>Headmistress</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>2</td><td>Joseph Mensah</td><td>M</td><td>Asst. Headteacher · Math</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>3</td><td>Grace Boateng</td><td>F</td><td>English · JHS 1A homeroom</td><td>B.Ed. English</td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>4</td><td>Daniel Owusu</td><td>M</td><td>Math · JHS 2A homeroom</td><td>B.Sc. Math</td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>5</td><td>Sarah Asante</td><td>F</td><td>Science · JHS 1B homeroom</td><td>B.Ed. Science</td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>6</td><td>Patrick Kwakye</td><td>M</td><td>Social Studies · JHS 3A</td><td>Diploma Education</td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>7</td><td>Mary Adjei</td><td>F</td><td>Religious &amp; Moral · JHS 2B</td><td>B.A. Religion</td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>8</td><td>Stephen Antwi</td><td>M</td><td>French · JHS 1C homeroom</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>9</td><td>Veronica Ofori</td><td>F</td><td>ICT · JHS 3B homeroom</td><td>HND Computer Sci</td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>10</td><td>Robert Nuamah</td><td>M</td><td>Ghanaian Lang · JHS 3C</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>11</td><td>Patience Owusu-Ampofo</td><td>F</td><td>Creative Arts · JHS 2C</td><td>B.Ed. Visual Arts</td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>12</td><td>Charles Boateng</td><td>M</td><td>P.E. &amp; Sports</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>13</td><td>Akua Mensah</td><td>F</td><td>Career Tech · JHS 3</td><td>B.Ed. Home Econ</td><td class="manual-col"><span class="blank"></span></td></tr>
+                <tr><td>14</td><td>Ekow Antwi</td><td>M</td><td>Math · JHS 2C support</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td></tr>
+              </tbody>
+            </table>
+
+            <div class="body-text" style="margin-top:14px"><b>Pupil-teacher ratio:</b> 312 students ÷ 14 teachers = <b>22.3 to 1</b> · within GES recommended range for JHS (≤ 25:1).</div>
+
+          </div>
+          <div class="pdf-foot-band">
+            <div class="footer-pre">CTK · GES Census</div>
+            <div class="footer-mid">Christ the King JHS · <span>GES 4-2305-018</span></div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>5</span> of 10</div>
+        </div>
+
+        <!-- ============ PAGE 6 — INFRASTRUCTURE (FULL MANUAL) ============ -->
+        <div class="pdf-page">
+          <div class="pdf-page-band">
+            <div class="crest-mini">CK</div>
+            <div class="school">Christ the King JHS</div>
+            <div class="return-type">Annual Census 2025/26</div>
+            <div class="ges-id">GES 4-2305-018</div>
+          </div>
+
+          <div class="pdf-content">
+
+            <div class="pdf-section-head">
+              <div class="num">8</div>
+              <div class="title">Infrastructure &amp; facilities</div>
+              <div class="source">manual entry · all sections</div>
+            </div>
+
+            <div class="manual-fill">
+              <div class="ic">!</div>
+              <div class="body">
+                <div class="heading">To be filled by hand · entire section</div>
+                Omnischools does not yet track facilities. Walk through the school grounds and complete the fields below before signing the declaration. <b>Tick boxes for status, write counts in the underlined fields.</b>
+              </div>
+            </div>
+
+            <!-- Classrooms -->
+            <div style="margin-top:14px;font-family:'Fraunces',serif;font-weight:600;font-size:12px;letter-spacing:-0.005em;color:var(--navy)">A. Classrooms</div>
+            <div class="infra-counts-grid">
+              <div class="infra-count-cell">
+                <div class="ic-label">Total classrooms</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">In good condition</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">Needing repair</div>
+                <div class="ic-blank"></div>
+              </div>
+            </div>
+
+            <!-- Water -->
+            <div style="margin-top:14px;font-family:'Fraunces',serif;font-weight:600;font-size:12px;letter-spacing:-0.005em;color:var(--navy)">B. Water source</div>
+            <div class="infra-block">
+              <div class="infra-card" style="grid-column:1/-1">
+                <div class="inf-label">Primary water source · tick one</div>
+                <div class="inf-options">
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Borehole</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Piped (GWCL)</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Hand-dug well</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Rainwater harvesting</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Tanker delivery</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>None</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Electricity -->
+            <div style="margin-top:14px;font-family:'Fraunces',serif;font-weight:600;font-size:12px;letter-spacing:-0.005em;color:var(--navy)">C. Electricity</div>
+            <div class="infra-block">
+              <div class="infra-card" style="grid-column:1/-1">
+                <div class="inf-label">Electricity supply · tick one</div>
+                <div class="inf-options">
+                  <div class="inf-opt"><div class="checkbox-circle"></div>National grid (ECG)</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Solar</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Generator only</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>None</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sanitation -->
+            <div style="margin-top:14px;font-family:'Fraunces',serif;font-weight:600;font-size:12px;letter-spacing:-0.005em;color:var(--navy)">D. Sanitation</div>
+            <div class="infra-counts-grid">
+              <div class="infra-count-cell">
+                <div class="ic-label">Latrines · boys</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">Latrines · girls</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">Latrines · staff</div>
+                <div class="ic-blank"></div>
+              </div>
+            </div>
+            <div class="infra-block" style="margin-top:6px">
+              <div class="infra-card" style="grid-column:1/-1">
+                <div class="inf-label">Latrine type · tick</div>
+                <div class="inf-options">
+                  <div class="inf-opt"><div class="checkbox-empty"></div>Water closet (flush)</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>KVIP / VIP</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>Pit latrine</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>None</div>
+                </div>
+              </div>
+              <div class="infra-card" style="grid-column:1/-1">
+                <div class="inf-label">Hand-washing facilities · tick all that apply</div>
+                <div class="inf-options">
+                  <div class="inf-opt"><div class="checkbox-empty"></div>Tippy taps</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>Wash basins with running water</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>Veronica buckets</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>None</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div class="pdf-foot-band">
+            <div class="footer-pre">CTK · GES Census</div>
+            <div class="footer-mid">Christ the King JHS · <span>GES 4-2305-018</span></div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>6</span> of 10</div>
+        </div>
+
+        <!-- ============ PAGE 7 — INFRASTRUCTURE CONTINUED ============ -->
+        <div class="pdf-page">
+          <div class="pdf-page-band">
+            <div class="crest-mini">CK</div>
+            <div class="school">Christ the King JHS</div>
+            <div class="return-type">Annual Census 2025/26</div>
+            <div class="ges-id">GES 4-2305-018</div>
+          </div>
+
+          <div class="pdf-content">
+
+            <div class="pdf-section-head">
+              <div class="num">8</div>
+              <div class="title">Infrastructure &amp; facilities (continued)</div>
+              <div class="source">manual entry</div>
+            </div>
+
+            <!-- Library -->
+            <div style="margin-top:6px;font-family:'Fraunces',serif;font-weight:600;font-size:12px;letter-spacing:-0.005em;color:var(--navy)">E. Library</div>
+            <div class="infra-block">
+              <div class="infra-card" style="grid-column:1/-1">
+                <div class="inf-label">Library status</div>
+                <div class="inf-options">
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Dedicated library room</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Shared room / corner</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>None</div>
+                </div>
+              </div>
+              <div class="infra-card">
+                <div class="inf-label">Approx. book count</div>
+                <div style="border-bottom:1px solid var(--navy-3);height:18px;background:var(--surface);margin-top:4px"></div>
+              </div>
+              <div class="infra-card">
+                <div class="inf-label">Library staff (FTE)</div>
+                <div style="border-bottom:1px solid var(--navy-3);height:18px;background:var(--surface);margin-top:4px"></div>
+              </div>
+            </div>
+
+            <!-- ICT lab -->
+            <div style="margin-top:14px;font-family:'Fraunces',serif;font-weight:600;font-size:12px;letter-spacing:-0.005em;color:var(--navy)">F. ICT lab</div>
+            <div class="infra-block">
+              <div class="infra-card" style="grid-column:1/-1">
+                <div class="inf-label">ICT lab status</div>
+                <div class="inf-options">
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Functional · all working</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Partial · some working</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Computers but no power / connectivity</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>No ICT lab</div>
+                </div>
+              </div>
+              <div class="infra-card">
+                <div class="inf-label">Total computers</div>
+                <div style="border-bottom:1px solid var(--navy-3);height:18px;background:var(--surface);margin-top:4px"></div>
+              </div>
+              <div class="infra-card">
+                <div class="inf-label">Working computers</div>
+                <div style="border-bottom:1px solid var(--navy-3);height:18px;background:var(--surface);margin-top:4px"></div>
+              </div>
+              <div class="infra-card" style="grid-column:1/-1">
+                <div class="inf-label">Internet · tick</div>
+                <div class="inf-options">
+                  <div class="inf-opt"><div class="checkbox-empty"></div>Broadband</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>Mobile data</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>None</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kitchen -->
+            <div style="margin-top:14px;font-family:'Fraunces',serif;font-weight:600;font-size:12px;letter-spacing:-0.005em;color:var(--navy)">G. Kitchen / feeding facilities</div>
+            <div class="infra-block">
+              <div class="infra-card" style="grid-column:1/-1">
+                <div class="inf-label">Kitchen status</div>
+                <div class="inf-options">
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Dedicated kitchen building</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Open-air cooking area</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Caterer prepares off-site</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>No on-site feeding</div>
+                </div>
+              </div>
+              <div class="infra-card" style="grid-column:1/-1">
+                <div class="inf-label">Cooking fuel · tick all</div>
+                <div class="inf-options">
+                  <div class="inf-opt"><div class="checkbox-empty"></div>LPG (gas)</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>Firewood</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>Charcoal</div>
+                  <div class="inf-opt"><div class="checkbox-empty"></div>Electric</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Furniture -->
+            <div style="margin-top:14px;font-family:'Fraunces',serif;font-weight:600;font-size:12px;letter-spacing:-0.005em;color:var(--navy)">H. Furniture &amp; equipment</div>
+            <div class="infra-counts-grid">
+              <div class="infra-count-cell">
+                <div class="ic-label">Student desks · usable</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">Student desks · broken</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">Teacher desks</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">Chalkboards</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">Whiteboards</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">Projectors</div>
+                <div class="ic-blank"></div>
+              </div>
+            </div>
+
+          </div>
+          <div class="pdf-foot-band">
+            <div class="footer-pre">CTK · GES Census</div>
+            <div class="footer-mid">Christ the King JHS · <span>GES 4-2305-018</span></div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>7</span> of 10</div>
+        </div>
+
+        <!-- ============ PAGE 8 — ATTENDANCE + ACADEMIC ============ -->
+        <div class="pdf-page">
+          <div class="pdf-page-band">
+            <div class="crest-mini">CK</div>
+            <div class="school">Christ the King JHS</div>
+            <div class="return-type">Annual Census 2025/26</div>
+            <div class="ges-id">GES 4-2305-018</div>
+          </div>
+
+          <div class="pdf-content">
+
+            <div class="pdf-section-head">
+              <div class="num">9</div>
+              <div class="title">Attendance · annual</div>
+              <div class="source">from attendance module</div>
+            </div>
+
+            <div class="auto-fill-block">
+              <div class="ic">✓</div>
+              <div class="body">
+                <div class="heading">Attendance auto-filled <span class="auto-pill">Auto</span></div>
+                Computed from <b>187 marked school days</b> over the 2024/25 academic year. Includes excused absences per GES guidance.
+              </div>
+            </div>
+
+            <table class="pdf-table" style="margin-top:8px">
+              <thead>
+                <tr>
+                  <th>Term</th>
+                  <th class="num">School days</th>
+                  <th class="num">Boys avg</th>
+                  <th class="num">Girls avg</th>
+                  <th class="num">Total avg</th>
+                  <th class="num">Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Term 1 · 2024/25</td><td class="num">62</td><td class="num">147.8</td><td class="num">144.9</td><td class="num auto-cell">292.7</td><td class="num">93.8%</td></tr>
+                <tr><td>Term 2 · 2024/25</td><td class="num">63</td><td class="num">146.2</td><td class="num">143.8</td><td class="num auto-cell">290.0</td><td class="num">93.0%</td></tr>
+                <tr><td>Term 3 · 2024/25</td><td class="num">62</td><td class="num">148.4</td><td class="num">145.9</td><td class="num auto-cell">294.3</td><td class="num">94.3%</td></tr>
+                <tr class="total"><td>Year average</td><td class="num">187</td><td class="num">147.5</td><td class="num">144.9</td><td class="num">292.3</td><td class="num">93.7%</td></tr>
+              </tbody>
+            </table>
+
+            <div class="body-text">Annual rate of <b>93.7%</b> meets the GES target of 90%+. Term 3 had the highest attendance, typical of the academic year approaching exams.</div>
+
+            <div class="pdf-section-head">
+              <div class="num">10</div>
+              <div class="title">BECE results · 2024/25 graduating cohort</div>
+              <div class="source">from assessment module</div>
+            </div>
+
+            <table class="pdf-table">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th class="num">Sat</th>
+                  <th class="num">Pass (≤ 6)</th>
+                  <th class="num">Pass rate</th>
+                  <th class="num">Avg grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>English Language</td><td class="num">33</td><td class="num auto-cell">29</td><td class="num">87.9%</td><td class="num">3.8</td></tr>
+                <tr><td>Math</td><td class="num">33</td><td class="num auto-cell">26</td><td class="num">78.8%</td><td class="num">4.4</td></tr>
+                <tr><td>Integrated Science</td><td class="num">33</td><td class="num auto-cell">28</td><td class="num">84.8%</td><td class="num">4.0</td></tr>
+                <tr><td>Social Studies</td><td class="num">33</td><td class="num auto-cell">30</td><td class="num">90.9%</td><td class="num">3.5</td></tr>
+                <tr><td>Religious &amp; Moral Education</td><td class="num">33</td><td class="num auto-cell">31</td><td class="num">93.9%</td><td class="num">3.2</td></tr>
+                <tr><td>French</td><td class="num">33</td><td class="num auto-cell">22</td><td class="num">66.7%</td><td class="num">5.1</td></tr>
+                <tr class="total"><td>Aggregate average</td><td colspan="3"></td><td class="num">4.0</td></tr>
+              </tbody>
+            </table>
+
+            <div class="body-text"><b>BECE scale reminder:</b> grades 1—9 where 1 is highest and 9 is lowest · pass threshold is 6 · aggregate is the sum of best 6 subjects. CTK aggregate average of <b>4.0</b> is competitive for Greater Accra public JHS.</div>
+
+          </div>
+          <div class="pdf-foot-band">
+            <div class="footer-pre">CTK · GES Census</div>
+            <div class="footer-mid">Christ the King JHS · <span>GES 4-2305-018</span></div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>8</span> of 10</div>
+        </div>
+
+        <!-- ============ PAGE 9 — PROGRAMMES & TEXTBOOKS ============ -->
+        <div class="pdf-page">
+          <div class="pdf-page-band">
+            <div class="crest-mini">CK</div>
+            <div class="school">Christ the King JHS</div>
+            <div class="return-type">Annual Census 2025/26</div>
+            <div class="ges-id">GES 4-2305-018</div>
+          </div>
+
+          <div class="pdf-content">
+
+            <div class="pdf-section-head">
+              <div class="num">11</div>
+              <div class="title">School feeding programme</div>
+              <div class="source">manual entry</div>
+            </div>
+
+            <div class="manual-fill">
+              <div class="ic">!</div>
+              <div class="body">
+                <div class="heading">To be filled by hand</div>
+                <b>Ghana School Feeding Programme</b> participation, meal counts, and supplier details. Omnischools does not yet integrate with the GSFP register.
+              </div>
+            </div>
+
+            <div class="infra-block">
+              <div class="infra-card" style="grid-column:1/-1">
+                <div class="inf-label">GSFP participation status · tick one</div>
+                <div class="inf-options">
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Active participant</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Suspended (specify reason in notes)</div>
+                  <div class="inf-opt"><div class="checkbox-circle"></div>Never enrolled</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="infra-counts-grid">
+              <div class="infra-count-cell">
+                <div class="ic-label">Meals served · last term</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">Pupils fed · daily avg</div>
+                <div class="ic-blank"></div>
+              </div>
+              <div class="infra-count-cell">
+                <div class="ic-label">Caterer / supplier name</div>
+                <div class="ic-blank"></div>
+              </div>
+            </div>
+
+            <div class="pdf-section-head">
+              <div class="num">12</div>
+              <div class="title">Textbook availability</div>
+              <div class="source">manual entry · stockroom</div>
+            </div>
+
+            <div class="manual-fill">
+              <div class="ic">!</div>
+              <div class="body">
+                <div class="heading">To be filled by hand</div>
+                Count the textbooks available in stockroom <b>by subject and class</b>. Used by GES to plan supplementary distribution.
+              </div>
+            </div>
+
+            <table class="pdf-table" style="margin-top:8px">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th class="num">JHS 1 books</th>
+                  <th class="num">JHS 2 books</th>
+                  <th class="num">JHS 3 books</th>
+                  <th class="num">Need (per pupil)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>English Language</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="num">312</td></tr>
+                <tr><td>Math</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="num">312</td></tr>
+                <tr><td>Integrated Science</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="num">312</td></tr>
+                <tr><td>Social Studies</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="num">312</td></tr>
+                <tr><td>R.M.E.</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="num">312</td></tr>
+                <tr><td>French</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="num">312</td></tr>
+                <tr><td>Ghanaian Language</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="num">312</td></tr>
+                <tr><td>Career Tech</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="num">312</td></tr>
+                <tr><td>Creative Arts</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="num">312</td></tr>
+                <tr><td>ICT</td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="manual-col"><span class="blank"></span></td><td class="num">312</td></tr>
+              </tbody>
+            </table>
+
+            <div class="provenance">
+              <b>Note for the headteacher:</b> "Need" column is computed from current enrolment (312 students). Fill the boxes with the number of books actually in stock for that class. The District Officer uses this to plan supplementary distribution.
+            </div>
+
+          </div>
+          <div class="pdf-foot-band">
+            <div class="footer-pre">CTK · GES Census</div>
+            <div class="footer-mid">Christ the King JHS · <span>GES 4-2305-018</span></div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>9</span> of 10</div>
+        </div>
+
+        <!-- ============ PAGE 10 — DECLARATION + FILING ============ -->
+        <div class="pdf-page">
+          <div class="pdf-page-band">
+            <div class="crest-mini">CK</div>
+            <div class="school">Christ the King JHS</div>
+            <div class="return-type">Annual Census 2025/26</div>
+            <div class="ges-id">GES 4-2305-018</div>
+          </div>
+
+          <div class="pdf-content">
+
+            <div class="pdf-section-head">
+              <div class="num">13</div>
+              <div class="title">Declaration &amp; signature</div>
+              <div class="source"></div>
+            </div>
+
+            <div class="pdf-declaration">
+              <div class="dec-text">
+                I, the undersigned headteacher of <b>Christ the King JHS</b>, GES School ID <b>4-2305-018</b>, certify that the information contained in this annual census for the academic year <b>2025/26</b> is, to the best of my knowledge, accurate and complete. I understand that <b>auto-filled sections</b> derived from Omnischools records and <b>manually-completed sections</b> filled in by hand are equally my responsibility. I confirm that this census has been prepared in accordance with the directives of the Ghana Education Service and that the school's records support every figure reported herein.
+              </div>
+
+              <div class="dec-signature-grid">
+                <div class="dec-sig-block">
+                  <div class="sig-mark">Florence Addo</div>
+                  <div class="sig-label">Headteacher</div>
+                  <div class="sig-name">Florence Addo</div>
+                  <div class="sig-meta">Date: <span class="mono">______ Oct 2025</span></div>
+                  <div class="school-stamp">
+                    <div class="stamp-line-1">Christ the King</div>
+                    <div class="stamp-line-2">Junior High School</div>
+                    <div class="stamp-line-3">ACCRA · 1962</div>
+                  </div>
+                </div>
+                <div class="dec-sig-block">
+                  <div class="sig-label">District Education Officer</div>
+                  <div class="sig-name" style="color:var(--navy-3);font-style:italic;font-weight:500">To be filled at submission</div>
+                  <div class="sig-meta">Receiving date: ___________________</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="filing-block">
+              <div class="head">Filing instructions</div>
+              <ol>
+                <li>Print this census on A4 paper, double-sided where possible.</li>
+                <li>Walk through the school grounds with a clipboard and complete <b>Section 8 (Infrastructure)</b> — classrooms, water, electricity, sanitation, library, ICT, kitchen, furniture.</li>
+                <li>Complete <b>Section 5 (Special needs)</b> from school records.</li>
+                <li>Complete <b>Section 7 (Staff qualifications &amp; salary)</b> using personnel files; the staff list is auto-filled but qualifications and salary status need hand entry.</li>
+                <li>Complete <b>Sections 11 (Feeding) and 12 (Textbooks)</b> from your stockroom records and GSFP correspondence.</li>
+                <li>Verify the auto-filled sections against your physical records before signing.</li>
+                <li>Sign the declaration above and apply the school stamp where indicated.</li>
+                <li>Submit <b>two copies</b> to the District Education Office before <b>31 October 2025</b>, or upload the scanned signed PDF via the SRIMPR portal.</li>
+                <li>Retain a signed copy in the school's records for a minimum of <b>five years</b>.</li>
+              </ol>
+            </div>
+
+          </div>
+          <div class="pdf-foot-band">
+            <div class="footer-pre">CTK · GES Census</div>
+            <div class="footer-mid">Christ the King JHS · <span>GES 4-2305-018</span></div>
+            <div class="powered">Generated by <em>Omnischools</em></div>
+          </div>
+          <div class="pdf-page-num">Page <span>10</span> of 10</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>10 pages instead of 6.</b> Annual census needs more sections than the termly return. Each page focuses on a coherent topic — cover, identification + enrolment, age + repetition, special needs + movement, teaching staff, infrastructure (2 pages), attendance + BECE, programmes + textbooks, declaration + filing.</li>
+        <li><b>Cover page anchors the document.</b> Larger crest, "Annual Census" title, academic year, school identification, then a 4-stat summary (enrolment / teaching staff / attendance / established). <b>The cover stat block lets the District Officer triage the census in one glance</b> before turning the page.</li>
+        <li><b>"Established 1962 · 63 years" stat</b> is small but meaningful. Schools with long histories carry institutional weight; the District Officer reading dozens of these can sense the school's tenure from the cover. <b>Honest historical context</b> framed as data.</li>
+        <li><b>Page 2: identification grid in 2×4</b> instead of the termly return's 2×5. Annual census includes "Headteacher" name (a stable annual fact) where the termly return doesn't repeat it. <b>Same identification pattern, slightly different field set</b>.</li>
+        <li><b>Enrolment table includes "Last yr" and "Δ" columns</b> mirroring the termly return but at the year level. Subtotals per year group (JHS 1 / 2 / 3) help the District Officer see the school as three cohorts. <b>Auto-cell green dots</b> on the Total column — same convention as termly return for "this number came from the system."</li>
+        <li><b>Page 3: age distribution by class.</b> The most under-used GES form section in practice but operationally important — over-aged students are a flag for late starters or repeaters. <b>"Over-aged students (above 15 in JHS 3): 6 students"</b> contextual note explains what the data means. Without that note, the District Officer would compute it themselves; with it, the school has done the homework.</li>
+        <li><b>Page 3 also: repetition table with year-end transitions.</b> "JHS 1 → JHS 2 · 96 promoted, 5 repeated, 1 withdrew, 4.9% repetition." <b>Three transitions, one summary row.</b> The "Repetition rate" column is the metric GES tracks; the system computes it.</li>
+        <li><b>"Overall repetition 4.6% within GES national benchmark of 5%" interpretive note</b> tells the school they're within range. <b>Same kind of contextual interpretation as the GES return's anomaly callouts</b> — the system surfaces benchmarks.</li>
+        <li><b>Page 4: special needs as full hatched manual block.</b> 12 fields in a 2×6 grid (visual / hearing / physical / intellectual / speech / other × boys/girls). Same hatched aesthetic as termly return; <b>identical visual language for "this is the section that's manual"</b>. Admin who filed termly return knows immediately how to interpret the hatched block.</li>
+        <li><b>Page 4 also: movement during the year.</b> Auto-filled, broken down by reason (admissions, withdrawals · relocation/financial/other, transfers in/out). Same pattern as termly return but at the annual scale. <b>Net change row</b> at the bottom in total style.</li>
+        <li><b>Page 5: teaching staff list as a 14-row table.</b> Names, sex, role, qualification, salary. <b>Qualification and salary columns marked with "Manual" inline pills in the header</b> — admin scanning the column understands those cells need hand-fill. <b>Column-level auto/manual distinction</b> rather than just row-level.</li>
+        <li><b>Manual cells in the staff table use hatched diagonal background</b> with thin underline blanks. Same texture as the manual-fill blocks but applied at the cell level. Some cells have data (qualifications captured during onboarding), some don't — visually mixed within the same table. <b>"Partial" status from the drawer made concrete in the PDF</b>.</li>
+        <li><b>"Pupil-teacher ratio: 312 ÷ 14 = 22.3 to 1 · within GES recommended range for JHS (≤ 25:1)"</b> contextual note. Same as termly return — saves the District Officer doing the calculation, gives admin protective context for what the number means.</li>
+        <li><b>Pages 6-7: infrastructure across two pages.</b> 8 sub-sections (A through H): classrooms / water / electricity / sanitation / library / ICT / kitchen / furniture. <b>Two pages because infrastructure is the largest manual section</b>; cramming it onto one page would make hand-fill clumsy.</li>
+        <li><b>Each infrastructure sub-section has its own micro-design.</b> Counts use hatched count cells with underlined blanks; categorical choices use checkbox grids (circles for "tick one", squares for "tick all"); free-form labels use small headed cards. <b>Form vocabulary varies by data shape</b> — appropriate input for each kind of fact.</li>
+        <li><b>Water source uses radio-circles ("tick one") for 6 options:</b> Borehole / Piped (GWCL) / Hand-dug well / Rainwater harvesting / Tanker delivery / None. <b>Real Ghanaian water source categories</b> — GWCL is Ghana Water Company Limited, real categorical labels not generic SaaS placeholders.</li>
+        <li><b>Electricity: 4 options (National grid (ECG) / Solar / Generator only / None).</b> ECG is Electricity Company of Ghana — same real-Ghana naming. Acknowledges that schools may have solar or generator-only setups, common in rural areas.</li>
+        <li><b>Sanitation breaks into 2 parts:</b> latrine counts (numerical) + latrine type (categorical: Water closet / KVIP-VIP / Pit latrine / None) + hand-washing facilities (multi-select: tippy taps / wash basins / Veronica buckets / none). <b>Veronica buckets are real Ghanaian hygiene infrastructure</b> — common at school entrances during COVID and still used. Local vocabulary throughout.</li>
+        <li><b>Library has 3 fields:</b> status (3 options) + book count + library staff FTE. <b>Realistic granularity</b> — no need for "library books by subject"; the District Officer just needs a rough scale.</li>
+        <li><b>ICT lab combines status + counts + connectivity.</b> Status options include "Computers but no power / connectivity" — a real failure mode where schools received computers from GES but can't run them. <b>Honest about the realities</b> rather than assuming binary "have/don't have" ICT lab.</li>
+        <li><b>Kitchen / feeding facilities</b> separates kitchen status from cooking fuel. Cooking fuel is multi-select because schools often use multiple (LPG when funded, firewood as backup). <b>Real operational complexity</b> reflected in the form.</li>
+        <li><b>Page 8: attendance auto-block with year-by-term breakdown.</b> Three terms shown plus year average. <b>"Year average 93.7%" within "GES target 90%+" context</b>. The attendance section was new in the termly return and now appears in the annual census in the same auto-fill style.</li>
+        <li><b>BECE results on page 8</b> with subject-by-subject pass rates and average grade. <b>"BECE scale reminder: grades 1—9 where 1 is highest and 9 is lowest · pass threshold is 6 · aggregate is sum of best 6 subjects"</b> — same scale-reminder pattern as the school stats academic page. Anyone unfamiliar with BECE conventions could misread without it.</li>
+        <li><b>Page 9: programmes and textbooks.</b> Feeding programme (manual) + textbook count (manual table). <b>Need column auto-filled with 312 (the enrolment count)</b> so admin only fills the in-stock count. The system computes what's needed; admin reports what's actually there.</li>
+        <li><b>Textbook table by subject × class × need.</b> Real Ghanaian JHS subject list (English, Math, Integrated Science, Social Studies, R.M.E., French, Ghanaian Language, Career Tech, Creative Arts, ICT). 10 subjects × 3 classes = 30 cells to hand-fill. <b>Tedious but operationally important</b>; this is the data that drives supplementary book distribution.</li>
+        <li><b>Provenance note on textbook table</b> in gold-bordered small italic: "Need column is computed from current enrolment (312 students). Fill the boxes with the number of books actually in stock." <b>Tells admin exactly what the form expects</b>; no ambiguity about whether the column is targets or stock.</li>
+        <li><b>Page 10: declaration with explicit auto vs manual responsibility.</b> "I understand that auto-filled sections derived from Omnischools records and manually-completed sections filled in by hand are equally my responsibility." <b>This sentence is critical</b> — acknowledges the hybrid document while preserving full headteacher accountability. Auto-fill doesn't reduce signing responsibility.</li>
+        <li><b>Filing instructions expanded to 9 numbered steps</b> (vs termly return's 5). More steps because the annual census has more manual sections to walk through. <b>Step 2 specifically tells admin to "walk through the school grounds with a clipboard"</b> — operationally concrete instruction. Not abstract "complete infrastructure section"; the system tells admin <i>how</i>.</li>
+        <li><b>"Retain a signed copy for a minimum of 5 years"</b> in the filing instructions. Annual census has a longer retention requirement than termly return (3 years) because it's the structural record. <b>Honest about the legal requirements</b> the school is taking on.</li>
+        <li><b>Stamp + signature pattern identical to termly return.</b> Terra circular stamp at -8°, simulated handwritten "Florence Addo" in italic Fraunces. <b>Visual continuity</b> across statutory documents — admin filing both knows the signature block looks the same.</li>
+        <li><b>What's not in this PDF:</b> No school finances or budget reporting (separate to GES, goes to a different ministry). No staff salary amounts (privacy + the form only asks for status not amount). No student-level data (privacy; aggregate only). No photos of facilities (would require image upload; outside MVP scope).</li>
+        <li><b>What's also not here:</b> No comparison to district or national averages. No graphs or charts. <b>The annual census is a record, not a dashboard.</b> Charts belong in the school stats report; this is a form GES processes into their own analytics.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

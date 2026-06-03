@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Daily life · the boarding day</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.browser-bar .live-dot { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:10px; color:var(--gold); font-weight:700; letter-spacing:0.1em; }
+.browser-bar .live-dot::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--gold); animation:pulse 1.6s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+/* House strip (Aggrey, red) */
+.house-strip { background:#B43A2F; color:var(--bg); padding:18px 36px; display:flex; align-items:center; gap:20px; border-bottom:1px solid var(--border); }
+.house-strip .crest { width:48px; height:48px; border-radius:10px; background:var(--bg); color:#B43A2F; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:22px; font-weight:700; flex-shrink:0; }
+.house-strip .info { flex:1; }
+.house-strip .info .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.7); font-weight:700; margin-bottom:2px; }
+.house-strip .info h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; line-height:1.15; }
+.house-strip .info h3 em { font-style:italic; color:var(--bg); opacity:0.85; }
+.house-strip .stats { display:flex; gap:18px; font-size:11px; }
+.house-strip .stats .st { text-align:right; }
+.house-strip .stats .st .l { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(255,255,255,0.6); font-weight:700; }
+.house-strip .stats .st .v { font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-top:2px; }
+
+/* Now-strip showing current moment */
+.now-strip { padding:18px 36px; background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); display:flex; align-items:center; gap:20px; }
+.now-strip .now-pill { background:var(--gold); color:var(--navy); padding:6px 12px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.1em; display:flex; align-items:center; gap:6px; }
+.now-strip .now-pill::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--navy); animation:pulse 1.6s infinite; }
+.now-strip .info { flex:1; }
+.now-strip .info .lab { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.now-strip .info h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; line-height:1.2; }
+.now-strip .info h4 em { font-style:italic; color:var(--gold); }
+.now-strip .info .sub { font-size:11px; color:var(--navy-2); margin-top:3px; }
+.now-strip .info .sub b { color:var(--navy); font-weight:700; }
+.now-strip .time { font-family:'JetBrains Mono',monospace; font-size:24px; color:var(--navy); font-weight:600; }
+.now-strip .time .sub { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); margin-top:3px; font-weight:700; }
+
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.sum-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.sum-card.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-card.warn { background:var(--warn-bg); border-color:var(--warn); }
+.sum-card.green { background:var(--green-bg); border-color:var(--green); }
+.sum-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-card.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-card.warn .lab { color:var(--warn); }
+.sum-card.green .lab { color:var(--green); }
+.sum-card .big { font-family:'Fraunces',serif; font-size:26px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-card .big em { font-style:italic; color:var(--gold); }
+.sum-card.warn .big em { color:var(--warn); }
+.sum-card.green .big em { color:var(--green); }
+.sum-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-card.featured .sub { color:rgba(232,212,184,0.6); }
+.sum-card .sub b { color:var(--navy-2); font-weight:600; }
+.sum-card.featured .sub b { color:var(--gold); }
+
+.body-shell { padding:32px 36px 36px; }
+
+.block { margin-bottom:32px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+.block-head .actions { display:flex; gap:8px; }
+
+/* Day timeline */
+.day-timeline { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; }
+.dt-rail { display:flex; gap:0; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:14px; position:relative; }
+.dt-slot { flex:1; padding:8px 6px; text-align:center; border-right:1px dashed var(--border); position:relative; }
+.dt-slot:last-child { border-right:none; }
+.dt-slot.done { background:var(--green-bg); }
+.dt-slot.now { background:var(--gold-bg); border-bottom:3px solid var(--gold); }
+.dt-slot.upcoming { opacity:0.65; }
+.dt-slot .t { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.dt-slot.done .t { color:var(--green); }
+.dt-slot.now .t { color:var(--navy); font-weight:700; }
+.dt-slot .a { font-family:'Fraunces',serif; font-size:11px; font-weight:600; margin-top:4px; line-height:1.2; color:var(--navy-2); }
+.dt-slot.now .a { color:var(--navy); }
+.dt-slot .a em { font-style:italic; color:var(--gold); }
+.dt-rail-foot { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+.dt-mini { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+.dt-mini .l { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.dt-mini .v { font-family:'Fraunces',serif; font-size:13px; font-weight:600; margin-top:3px; }
+.dt-mini .v em { font-style:italic; color:var(--gold); }
+.dt-mini .sub { font-size:10px; color:var(--navy-3); margin-top:2px; }
+.dt-mini .sub b { color:var(--navy-2); }
+
+/* Inspection results grid */
+.insp-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+.insp-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.insp-card.pass { border-left:3px solid var(--green); }
+.insp-card.partial { border-left:3px solid var(--warn); background:var(--warn-bg); }
+.insp-card.fail { border-left:3px solid var(--terra); background:var(--terra-bg); }
+.insp-card .ih { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed var(--border); }
+.insp-card .ih h5 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; }
+.insp-card .ih h5 em { font-style:italic; color:var(--gold); }
+.insp-card .ih .sub { font-size:9px; color:var(--navy-3); margin-top:2px; }
+.insp-card .pill { padding:3px 8px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; }
+.insp-card .pill.pass { background:var(--green); color:var(--bg); }
+.insp-card .pill.partial { background:var(--warn); color:var(--bg); }
+.insp-card .pill.fail { background:var(--terra); color:var(--bg); }
+.insp-card .score { display:flex; align-items:flex-end; gap:8px; margin-bottom:8px; }
+.insp-card .score .num { font-family:'Fraunces',serif; font-size:22px; font-weight:600; line-height:1; }
+.insp-card .score .num em { font-style:italic; color:var(--gold); }
+.insp-card .score .of { font-size:11px; color:var(--navy-3); padding-bottom:2px; font-weight:600; }
+.insp-card .findings { font-size:10px; color:var(--navy-3); line-height:1.4; }
+.insp-card .findings b { color:var(--navy-2); font-weight:700; }
+
+/* Prep tonight card */
+.prep-card { background:var(--navy); color:var(--bg); border-radius:14px; padding:24px 28px; }
+.prep-card .ph { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); }
+.prep-card .ph .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.prep-card .ph h4 { font-family:'Fraunces',serif; font-size:20px; font-weight:500; }
+.prep-card .ph h4 em { font-style:italic; color:var(--gold); }
+.prep-card .ph .when { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--gold-soft); font-weight:600; }
+.prep-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:18px; }
+.prep-cell { background:rgba(255,255,255,0.04); border:1px solid rgba(232,212,184,0.15); border-radius:8px; padding:14px 16px; }
+.prep-cell .l { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,212,184,0.6); font-weight:700; }
+.prep-cell .v { font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-top:4px; line-height:1.2; }
+.prep-cell .v em { font-style:italic; color:var(--gold); }
+.prep-cell .sub { font-size:10px; color:rgba(232,212,184,0.65); margin-top:4px; line-height:1.4; }
+.prep-cell .sub b { color:var(--bg); font-weight:600; }
+.prep-foot { padding:12px 16px; background:rgba(232,212,184,0.06); border-radius:8px; font-size:11px; color:rgba(232,212,184,0.75); line-height:1.5; }
+.prep-foot b { color:var(--bg); font-weight:600; }
+.prep-foot em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+/* Wednesday flag */
+.wed-card { background:var(--warn-bg); border:1.5px solid var(--warn); border-radius:12px; padding:18px 22px; display:flex; align-items:center; gap:18px; }
+.wed-card .icon { width:48px; height:48px; border-radius:12px; background:var(--warn); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:20px; font-weight:600; flex-shrink:0; }
+.wed-card .info { flex:1; }
+.wed-card .info .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--warn); font-weight:700; margin-bottom:3px; }
+.wed-card .info h4 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; line-height:1.2; }
+.wed-card .info h4 em { font-style:italic; color:var(--warn); }
+.wed-card .info .sub { font-size:11px; color:var(--navy-2); margin-top:3px; line-height:1.4; }
+.wed-card .info .sub b { color:var(--navy); font-weight:700; }
+
+/* Sick bay placeholder card */
+.sb-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; }
+.sb-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; padding-bottom:10px; border-bottom:1px dashed var(--border); }
+.sb-head .info h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; }
+.sb-head .info h4 em { font-style:italic; color:var(--gold); }
+.sb-head .info .sub { font-size:10px; color:var(--navy-3); margin-top:3px; }
+.sb-head .badge { padding:3px 9px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.sb-list { display:flex; flex-direction:column; gap:6px; }
+.sb-entry { display:grid; grid-template-columns:60px 1fr 90px 80px; gap:14px; padding:8px 0; border-bottom:1px dashed var(--border); font-size:11px; align-items:center; }
+.sb-entry:last-child { border-bottom:none; }
+.sb-entry .time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); font-weight:600; }
+.sb-entry .what b { color:var(--navy); font-weight:700; }
+.sb-entry .what { color:var(--navy-2); }
+.sb-entry .status { font-size:10px; font-weight:600; letter-spacing:0.04em; }
+.sb-entry .status.in { color:var(--terra); }
+.sb-entry .status.cleared { color:var(--green); }
+.sb-entry .status.watch { color:var(--warn); }
+.sb-entry .action button { padding:3px 8px; font-size:9px; }
+.sb-note { margin-top:14px; padding:10px 14px; background:var(--bg); border-radius:8px; font-size:11px; color:var(--navy-2); line-height:1.5; border-left:3px solid var(--gold); }
+.sb-note b { color:var(--navy); font-weight:700; }
+.sb-note em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Boarding batch · 04 of 07</div>
+  <span class="mvp-tag">SHS · Housemaster · live operational</span>
+  <span class="related-tag">Aggrey House · Mr A. Mensah · Wed 14 May 2026 · 3:14 PM</span>
+  <h1 class="display">The boarding day · <em>fifteen transitions, one screen</em></h1>
+  <div class="gold-rule"></div>
+  <p>Mr Mensah's screen on a regular Wednesday afternoon. Semester 2 Week 2. <b>This morning's daily inspection at 6:10 ran on time</b> — 7 dorms passed clean, Dorm D had a partial (Form 2's locker discipline still settling after the break), Dorm C is fully clear. Siesta started 13 minutes ago and the House is still. <em>Tonight's prep starts at 7 PM</em> and the Prep Prefect has the roster ready. Wednesday afternoon brings mid-week scrubbing at 4 PM. The sick bay shows three students this morning, two cleared. <b>The day moves in fifteen state transitions and the surface holds them all.</b></p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Aggrey House · Wednesday · the live boarding day</div>
+    <div class="section-meta">Boarding → Houses → Aggrey → Today</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / boarding / houses / aggrey / today / 2026-05-14</div>
+        <div class="live-dot">LIVE · 3:14 PM</div>
+      </div>
+
+      <div class="house-strip">
+        <div class="crest">A</div>
+        <div class="info">
+          <div class="eb">AGGREY HOUSE · MR A. MENSAH · WED 14 MAY 2026 · SEMESTER 2 WK 2</div>
+          <h3 class="display">Today, by the half-hour <em>· the operating rhythm</em></h3>
+        </div>
+        <div class="stats">
+          <div class="st"><div class="l">In House now</div><div class="v">119</div></div>
+          <div class="st"><div class="l">Sick bay</div><div class="v">1</div></div>
+          <div class="st"><div class="l">Exeats today</div><div class="v">0</div></div>
+          <div class="st"><div class="l">Lights out</div><div class="v">21:30</div></div>
+        </div>
+      </div>
+
+      <div class="now-strip">
+        <div class="now-pill">NOW</div>
+        <div class="info">
+          <div class="lab">CURRENT ACTIVITY · 13 MINUTES IN · 46 MINUTES REMAINING</div>
+          <h4 class="display">Siesta <em>· mandatory rest, no movement</em></h4>
+          <div class="sub">Began <b>3:00 PM</b> · ends 4:00 PM · 119 of 119 in House · Sick Bay Prefect F. Tetteh on duty · <b>silent across all 8 dorms</b> · zero SoD escalations</div>
+        </div>
+        <div class="time">
+          15:13
+          <div class="sub">SIESTA · 46 MIN LEFT</div>
+        </div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Boarding &amp; residential life · Houses · Aggrey · Today's operational view</div>
+          <h2 class="display">Wednesday <em>· 14 May 2026 · Semester 2 Week 2</em></h2>
+          <div class="lede">Day 12 of Semester 2 · 99 days until vacation (21 Aug) · this morning's inspection passed 7 of 8 dorms · this evening's prep set up · Wed mid-week scrubbing flag active · 1 student in sick bay (M. Akoto, fever, since 11:30)</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Yesterday's day</button>
+          <button class="btn">View week</button>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-card featured">
+          <div class="lab">In House right now</div>
+          <div class="big display"><em>119</em> / 119</div>
+          <div class="sub"><b>All present</b> · 1 in sick bay · 0 on exeat</div>
+        </div>
+        <div class="sum-card green">
+          <div class="lab">Morning inspection</div>
+          <div class="big display"><em>7</em> of 8 pass</div>
+          <div class="sub">Conducted 06:10 today · Dorm D partial · all others clean</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Tonight's prep</div>
+          <div class="big display"><em>7:00</em> PM</div>
+          <div class="sub">2 hours · E. Mensah supervising · 4 classrooms allocated</div>
+        </div>
+        <div class="sum-card warn">
+          <div class="lab">Mid-week scrubbing</div>
+          <div class="big display"><em>4:00</em> PM</div>
+          <div class="sub">Wednesdays only · House yards, dining hall · 60 min</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Sick bay queue</div>
+          <div class="big display"><em>1</em> active</div>
+          <div class="sub">3 today total · 2 cleared by lunch · M. Akoto resting</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- Day timeline -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">The day timeline · what has happened, what is happening, what is coming</div>
+              <h3 class="display">Today, by the half-hour <em>· 4:30 AM to 9:30 PM</em></h3>
+            </div>
+            <div class="meta"><b>Done</b> green · <b>NOW</b> gold · <b>upcoming</b> faded · click any slot for detail</div>
+          </div>
+
+          <div class="day-timeline">
+            <div class="dt-rail">
+              <div class="dt-slot done"><div class="t">04:30</div><div class="a display">Rising</div></div>
+              <div class="dt-slot done"><div class="t">05:00</div><div class="a display">Bathing</div></div>
+              <div class="dt-slot done"><div class="t">05:30</div><div class="a display">Duties</div></div>
+              <div class="dt-slot done"><div class="t">06:10</div><div class="a display">Inspection <em>· 7/8</em></div></div>
+              <div class="dt-slot done"><div class="t">06:30</div><div class="a display">Assembly</div></div>
+              <div class="dt-slot done"><div class="t">07:00</div><div class="a display">Classes</div></div>
+              <div class="dt-slot done"><div class="t">14:20</div><div class="a display">Lunch</div></div>
+              <div class="dt-slot now"><div class="t">15:00</div><div class="a display">Siesta <em>· now</em></div></div>
+              <div class="dt-slot upcoming"><div class="t">16:00</div><div class="a display">Scrubbing <em>· Wed</em></div></div>
+              <div class="dt-slot upcoming"><div class="t">17:30</div><div class="a display">Supper</div></div>
+              <div class="dt-slot upcoming"><div class="t">19:00</div><div class="a display">Prep</div></div>
+              <div class="dt-slot upcoming"><div class="t">21:00</div><div class="a display">Night prayer</div></div>
+              <div class="dt-slot upcoming"><div class="t">21:30</div><div class="a display">Lights out</div></div>
+            </div>
+            <div class="dt-rail-foot">
+              <div class="dt-mini">
+                <div class="l">Wed accent</div>
+                <div class="v display"><em>Scrubbing</em> 4-5 PM</div>
+                <div class="sub">House yards · dining hall · 60 min</div>
+              </div>
+              <div class="dt-mini">
+                <div class="l">Wed accent</div>
+                <div class="v display"><em>Washing</em> 3-4:30 PM</div>
+                <div class="sub">Personal laundry (overlap with siesta)</div>
+              </div>
+              <div class="dt-mini">
+                <div class="l">F3 only</div>
+                <div class="v display"><em>Prep ext</em> 21:00-22:00</div>
+                <div class="sub">WASSCE prep · F3 stays 1 hr late</div>
+              </div>
+              <div class="dt-mini">
+                <div class="l">Tonight</div>
+                <div class="v display">Club <em>· Thu only</em></div>
+                <div class="sub">No club tonight · clubs are Thursdays</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- This morning's inspection -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">This morning · 06:10 inspection · 7 of 8 dorms passed clean</div>
+              <h3 class="display">Daily inspection <em>· bunks, lockers, attire</em></h3>
+            </div>
+            <div class="meta">Conducted by HM with House Prefects · Saturday weekly inspection is separate cadence (whole-house, 8 AM, deeper)</div>
+          </div>
+
+          <div class="insp-grid">
+
+            <div class="insp-card pass">
+              <div class="ih">
+                <div>
+                  <h5 class="display">Dorm A <em>· F3</em></h5>
+                  <div class="sub">Head's dorm · D. Adjei</div>
+                </div>
+                <div class="pill pass">PASS</div>
+              </div>
+              <div class="score">
+                <div class="num display"><em>15</em></div>
+                <div class="of">/ 15 bunks clean</div>
+              </div>
+              <div class="findings">All bunks made · lockers in order · attire complete · <b>D. Adjei's standard upheld</b></div>
+            </div>
+
+            <div class="insp-card pass">
+              <div class="ih">
+                <div>
+                  <h5 class="display">Dorm B <em>· F3</em></h5>
+                  <div class="sub">S. Owusu's dorm</div>
+                </div>
+                <div class="pill pass">PASS</div>
+              </div>
+              <div class="score">
+                <div class="num display"><em>15</em></div>
+                <div class="of">/ 15 bunks clean</div>
+              </div>
+              <div class="findings">All bunks made · windows opened by 6 AM · <b>F. Bediako reminded</b> about uniform shoes</div>
+            </div>
+
+            <div class="insp-card pass">
+              <div class="ih">
+                <div>
+                  <h5 class="display">Dorm C <em>· F3</em></h5>
+                  <div class="sub">Sanitation · K. Boateng</div>
+                </div>
+                <div class="pill pass">PASS</div>
+              </div>
+              <div class="score">
+                <div class="num display"><em>10</em></div>
+                <div class="of">/ 10 bunks clean</div>
+              </div>
+              <div class="findings">Small F3 cohort · all bunks clean · <b>spare bunks tidy</b> for upcoming dorm reshuffle</div>
+            </div>
+
+            <div class="insp-card partial">
+              <div class="ih">
+                <div>
+                  <h5 class="display">Dorm D <em>· F2 partial</em></h5>
+                  <div class="sub">J. Manu in here · 14 bunks</div>
+                </div>
+                <div class="pill partial">PARTIAL</div>
+              </div>
+              <div class="score">
+                <div class="num display"><em>11</em></div>
+                <div class="of">/ 14 bunks clean</div>
+              </div>
+              <div class="findings"><b>Bunks 6, 9, 13</b> made carelessly · <b>locker 9 untidy</b> · spoken to · <b>J. Manu's bunk clean</b> as ever · note logged</div>
+            </div>
+
+            <div class="insp-card pass">
+              <div class="ih">
+                <div>
+                  <h5 class="display">Dorm E <em>· F3</em></h5>
+                  <div class="sub">Prep · E. Mensah</div>
+                </div>
+                <div class="pill pass">PASS</div>
+              </div>
+              <div class="score">
+                <div class="num display"><em>15</em></div>
+                <div class="of">/ 15 bunks clean</div>
+              </div>
+              <div class="findings">All clean · <b>floor swept twice</b> · ventilation good · F3 prep dorm standard</div>
+            </div>
+
+            <div class="insp-card pass">
+              <div class="ih">
+                <div>
+                  <h5 class="display">Dorm F <em>· F1</em></h5>
+                  <div class="sub">Sick Bay · F. Tetteh</div>
+                </div>
+                <div class="pill pass">PASS</div>
+              </div>
+              <div class="score">
+                <div class="num display"><em>15</em></div>
+                <div class="of">/ 15 bunks clean</div>
+              </div>
+              <div class="findings">F1 dorm holding steady · all 15 mosquito nets up · <b>F. Tetteh's mentoring visible</b></div>
+            </div>
+
+            <div class="insp-card pass">
+              <div class="ih">
+                <div>
+                  <h5 class="display">Dorm G <em>· F1</em></h5>
+                  <div class="sub">Form 1</div>
+                </div>
+                <div class="pill pass">PASS</div>
+              </div>
+              <div class="score">
+                <div class="num display"><em>15</em></div>
+                <div class="of">/ 15 bunks clean</div>
+              </div>
+              <div class="findings">Improvement on yesterday · <b>F1 routine now bedded in</b> · A. Gyamfi managing dorm well</div>
+            </div>
+
+            <div class="insp-card pass">
+              <div class="ih">
+                <div>
+                  <h5 class="display">Dorm H <em>· F2</em></h5>
+                  <div class="sub">Form 2</div>
+                </div>
+                <div class="pill pass">PASS</div>
+              </div>
+              <div class="score">
+                <div class="num display"><em>15</em></div>
+                <div class="of">/ 15 bunks clean</div>
+              </div>
+              <div class="findings">Clean across · <b>tightness improving</b> · A. Henrik's leadership visible · no issues</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Tonight's prep -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Tonight · prep at 7 PM · the supervised study period</div>
+              <h3 class="display">Tonight's prep <em>· two hours · four classrooms</em></h3>
+            </div>
+            <div class="meta">F3 stays an extra hour (WASSCE prep ext) · attendance taken at 19:00 sharp · silence enforced</div>
+          </div>
+
+          <div class="prep-card">
+            <div class="ph">
+              <div>
+                <div class="eb">PREP TONIGHT · WED 14 MAY · STARTS IN 3 HRS 46 MIN</div>
+                <h4 class="display">Two hours, one hundred and nineteen students <em>· four supervisors</em></h4>
+              </div>
+              <div class="when">19:00 — 21:00 · F3 ext 22:00</div>
+            </div>
+            <div class="prep-grid">
+              <div class="prep-cell">
+                <div class="l">Form 1 prep room</div>
+                <div class="v display">Cls Block A <em>· R1</em></div>
+                <div class="sub"><b>40 F1 students</b> · supervisor Mr Acquah (T1 rota)</div>
+              </div>
+              <div class="prep-cell">
+                <div class="l">Form 2 prep room</div>
+                <div class="v display">Cls Block A <em>· R2</em></div>
+                <div class="sub"><b>39 F2 students</b> · supervisor Mr Mensah (HM, also FM GA A)</div>
+              </div>
+              <div class="prep-cell">
+                <div class="l">Form 3 prep room</div>
+                <div class="v display">Cls Block B <em>· R5</em></div>
+                <div class="sub"><b>40 F3 students</b> · supervisor Mrs Asare (WASSCE prep ext)</div>
+              </div>
+            </div>
+            <div class="prep-foot"><b>Prep prefect E. Mensah</b> manages attendance roll &amp; silence. SoD tonight is <b>K. Boateng</b> (Sanitation Prefect, rotates). <em>If a student is more than 5 minutes late, prep prefect logs it; HM reviews at 9 PM.</em></div>
+          </div>
+        </div>
+
+        <!-- Wed afternoon scrubbing -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Wednesday accent · the mid-week cleaning beat</div>
+              <h3 class="display">Mid-week scrubbing <em>· starts in 47 minutes</em></h3>
+            </div>
+            <div class="meta">Wednesday-only · 60 minutes · House yards, dining hall, washroom block · led by Sanitation Prefect</div>
+          </div>
+
+          <div class="wed-card">
+            <div class="icon">SCB</div>
+            <div class="info">
+              <div class="eb">SCRUBBING · 16:00 — 17:00 · K. BOATENG LEADS</div>
+              <h4 class="display">House yards, dining hall, washroom block <em>· 60 minutes</em></h4>
+              <div class="sub">Mid-week cleaning beat layered on top of daily morning duties. Form 1 mostly does House yards; Form 2 the washroom block; Form 3 supervisory. <b>Wed and Fri afternoons</b> are also washing days (3 — 4:30 PM, personal laundry, overlaps with siesta hour for F2-3 who can wash after lunch).</div>
+            </div>
+            <button class="btn">Attendance for scrubbing</button>
+          </div>
+        </div>
+
+        <!-- Sick bay light card -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Sick bay · light log · full module coming in separate batch</div>
+              <h3 class="display">Sick bay <em>· today's traffic</em></h3>
+            </div>
+            <div class="meta">Placeholder until sick bay/matron batch ships · F. Tetteh (Sick Bay Prefect) escorts · matron decides admission</div>
+          </div>
+
+          <div class="sb-card">
+            <div class="sb-head">
+              <div class="info">
+                <h4 class="display">3 visits today <em>· 1 admitted</em></h4>
+                <div class="sub">Light log · full sick bay module separates patient records, parent notifications, matron's running log</div>
+              </div>
+              <div class="badge">LIGHT · PLACEHOLDER</div>
+            </div>
+            <div class="sb-list">
+              <div class="sb-entry">
+                <div class="time">11:30</div>
+                <div class="what"><b>M. Akoto</b> · F3 GA · Dorm A · fever 38.4°C · headache · matron admitted · <b>resting in sick bay</b> · parent informed by HM</div>
+                <div class="status in">ADMITTED</div>
+                <div class="action"><button class="btn">View</button></div>
+              </div>
+              <div class="sb-entry">
+                <div class="time">09:18</div>
+                <div class="what"><b>L. Buabeng</b> · F2 GS · Dorm B · stomach ache · matron observed 30 min, no fever, returned to class · <b>cleared 09:50</b></div>
+                <div class="status cleared">CLEARED</div>
+                <div class="action"><button class="btn">View</button></div>
+              </div>
+              <div class="sb-entry">
+                <div class="time">07:48</div>
+                <div class="what"><b>I. Aboasi</b> · F3 GS · Dorm A · cough &amp; sore throat · matron prescribed lozenges and rest · <b>back to class · watch list</b></div>
+                <div class="status watch">WATCH</div>
+                <div class="action"><button class="btn">View</button></div>
+              </div>
+            </div>
+            <div class="sb-note">The light log <b>captures the boarding-day relevant fact</b>: who is not in their usual place during scheduled activities? <em>The matron's medical record</em> — symptoms, treatment, family history, parent calls — is owned by the sick bay module, which gets its own batch. The boarding day surface only needs the operational fact: M. Akoto is in sick bay, not in Dorm A, not at prep tonight unless cleared.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What this surface compresses</h4>
+      <ul>
+        <li><b>The inspection register.</b> Previously a paper book held by the HM in their bungalow. Now searchable, time-stamped, parent-visible.</li>
+        <li><b>The prep roll.</b> Previously a clipboard at the prep room door. Now auto-populated from the House roster, late-flags fire to HM phone.</li>
+        <li><b>The siesta enforcement notice.</b> Previously a sign on the wall. Now a check on whether any of the 119 students moved out of their dorm during the silent hour (door sensor feed, future).</li>
+        <li><b>The sick bay slip.</b> Previously a triplicate carbon book — student, matron, parent. Now a digital log with parent SMS automatic.</li>
+      </ul>
+      <h4 style="margin-top:24px;">Why the inspection is daily and weekly</h4>
+      <ul>
+        <li><b>Daily inspection (06:10, 15 min)</b> is the quick check — bunks made, lockers shut, attire complete. Pass/partial/fail per dorm. Patterns matter more than any single failure.</li>
+        <li><b>Weekly inspection (Sat 8 AM, 60 min)</b> is the deep check — whole-House, including spaces no student visits daily (washrooms, drying lines, the chop box storage room, the bicycle shed). Separate dataset, separate cadence.</li>
+        <li><em>Don't conflate them.</em> A school that only does the weekly version misses the daily-attire drift; one that only does the daily misses the structural rot.</li>
+      </ul>
+      <h4 style="margin-top:24px;">J. Manu today</h4>
+      <ul>
+        <li><b>His bunk passed inspection clean</b> at 6:17 AM. <em>The boarding system continues to hold him steadily.</em> His pastoral case is owned by VLC; his boarding life is owned by here.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why daily life is the surface used most</div>
+    <div class="section-meta">Editorial · the everyday as the architectural test</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The Housemaster's homepage</div>
+        <h3 class="display">If a Housemaster only ever opens one surface, <em>it's this one.</em></h3>
+        <p>The resumption-day surface is dramatic and gets two days a year. The discipline ladder is consequential and gets used when needed. The bunk allocation is foundational and gets reviewed once a term. But <b>this surface — the boarding day in progress — is the Housemaster's homepage.</b> Every day, twice a day, three times a day, Mr Mensah opens this and looks at it. It is the surface that decides whether the software gets opened or abandoned.</p>
+        <p>The design challenge is the opposite of resumption day. There, we had to compress one chaotic day into a single screen. Here, we have to make a screen that is <em>quiet enough to be background</em> when the day is going well, and <em>noisy enough to be foreground</em> when something is going wrong. The "NOW" strip is gold and pulsing when something is happening. The summary tiles flip from green to warn when an inspection slips. The Wednesday flag fires only on Wednesdays. <em>The surface earns the Housemaster's attention only when there is something to attend to.</em></p>
+        <p>One thing this surface deliberately does <b>not</b> do: it does not try to be the matron's surface, the dean's surface, or the headmaster's surface. The matron's full sick bay log — symptoms, treatment, medication, parent calls — is a separate module that gets its own batch. From here, we see only the operational fact: <em>who is not in their usual place during scheduled activities</em>. The dean's pastoral view — VLC, FM notes, character paragraph — is held in VLC, not here. The headmaster's dashboard pulls from this surface but does not live in it. <b>Surface separation is what makes any one surface usable.</b></p>
+        <p>The fifteen state transitions per day — rising, bathing, duties, inspection, roll call, assembly, classes, lunch, siesta, wash-down, readwide, supper, prep, night prayer, lights out — are all on this screen, but only one is highlighted at any moment. The "NOW" pattern was designed for this surface and earned its place. The Housemaster glances at the screen, sees "Siesta · 46 minutes remaining", knows the House is silent, and can return to whatever else is on her mind. That is the design success: <em>the screen does not require attention, it offers it.</em></p>
+        <p>One small but defendable choice: <b>the day timeline reads left-to-right with the past in green, NOW in gold, future faded.</b> This is not a metaphor we invented — it's the universal direction of human time-perception. The Housemaster does not need to learn it. The green slots have happened; the gold slot is happening; the faded slots are coming. The clipboard is gone, the WhatsApp group is gone, the carbon-copy book is gone, and in its place is a one-screen status of one hundred and nineteen young people, half of whom are sleeping, all of whom are accounted for.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>The screen earns its place by</h4>
+      <ul>
+        <li><b>Being honest.</b> If inspection partially failed Dorm D, the surface says so. It does not soften, hide, or aggregate the issue into a green bar.</li>
+        <li><b>Being current.</b> NOW is NOW. Not "as of 6 AM today." Not "last refreshed 3 hours ago." Live.</li>
+        <li><b>Being quiet when nothing is wrong.</b> A clean inspection day shows seven green tiles and one gold-NOW pulse. The eye glances and moves on.</li>
+        <li><b>Being loud when something is wrong.</b> A failed inspection turns terra. A missing student at prep fires an alert. The Wednesday flag fires only on Wednesdays.</li>
+      </ul>
+      <h4 style="margin-top:24px;">Where this surface fails gracefully</h4>
+      <ul>
+        <li><b>Offline.</b> The Housemaster's phone is the source of truth at the dorm — internet is unreliable in the bungalow. The mobile version of this surface queues updates and sync when reconnected. Audit catches the gap.</li>
+        <li><b>Tomorrow.</b> The same surface, scrolled forward one day, shows yesterday's history. Pattern detection across days is one click further.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

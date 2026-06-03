@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Accountant role</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 640px; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* Wizard frame */
+.wizard-shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 700px;
+}
+.wizard-rail {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 32px 24px;
+}
+.wizard-rail .brand-mini {
+  font-family: 'Fraunces', serif;
+  font-size: 16px; font-weight: 500;
+  margin-bottom: 4px;
+}
+.wizard-rail .brand-mini em { color: var(--gold); font-style: italic; }
+.wizard-rail .rail-school {
+  font-size: 11px; color: var(--gold-soft);
+  margin-bottom: 32px; padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.wizard-rail .rail-title {
+  font-size: 10px; letter-spacing: 0.14em;
+  color: var(--gold); font-weight: 700; margin-bottom: 14px;
+}
+.steps { list-style: none; }
+.step {
+  display: flex; gap: 12px; padding: 11px 0; position: relative; font-size: 12px;
+}
+.step + .step::before {
+  content: ""; position: absolute; left: 11px; top: -8px;
+  width: 1px; height: 18px;
+  background: rgba(200,151,91,0.25);
+}
+.step .num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  color: rgba(250,247,242,0.6);
+  font-family: 'Fraunces', serif;
+  font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.step.done .num { background: var(--gold); color: var(--navy); }
+.step.done .num::before { content: "✓"; }
+.step.done .num span { display: none; }
+.step.active .num { background: var(--bg); color: var(--navy); border: 2px solid var(--gold); }
+.step .lbl {
+  color: rgba(250,247,242,0.6);
+  font-weight: 500;
+  padding-top: 3px;
+}
+.step.active .lbl { color: var(--bg); font-weight: 600; }
+.step.done .lbl { color: rgba(250,247,242,0.8); }
+
+.rail-tip {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 11px;
+  color: rgba(232,212,184,0.7);
+  line-height: 1.5;
+}
+
+.wizard-main {
+  padding: 36px 44px;
+  background: var(--bg);
+  overflow-y: auto;
+  max-height: 700px;
+}
+.wcrumb {
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700; margin-bottom: 8px;
+}
+.wizard-main h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 500; letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.wizard-main h2 em { font-style: italic; color: var(--gold); }
+.wizard-main .lede {
+  font-size: 14px; color: var(--navy-3); max-width: 540px; margin-bottom: 28px;
+}
+
+/* Choice card */
+.choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.choice-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 22px 22px 20px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s;
+}
+.choice-card:hover { border-color: var(--gold-soft); }
+.choice-card.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.choice-card.selected::after {
+  content: "✓";
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+}
+.choice-card .icon-row {
+  display: flex; gap: 6px; margin-bottom: 14px;
+}
+.choice-card .role-pill {
+  padding: 5px 10px;
+  background: var(--navy);
+  color: var(--gold);
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.choice-card .role-pill.alt {
+  background: var(--gold);
+  color: var(--navy);
+}
+.choice-card .role-pill.empty {
+  background: transparent;
+  border: 1px dashed var(--border-2);
+  color: var(--navy-3);
+}
+.choice-card h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px; font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.choice-card .desc {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.choice-card .who-list {
+  font-size: 11px;
+  color: var(--navy-3);
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-2);
+}
+.choice-card .who-list b { color: var(--navy); font-weight: 700; }
+
+/* Accountant invite card (revealed when separated is selected) */
+.acc-invite-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 24px;
+}
+.acc-invite-card .ai-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 4px;
+}
+.acc-invite-card h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px; font-weight: 600;
+}
+.acc-invite-card .ai-sub {
+  font-size: 12px; color: var(--navy-3);
+  margin-bottom: 18px;
+}
+.acc-invite-card .role-tag {
+  padding: 3px 8px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  border-radius: 100px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.field { margin-bottom: 14px; }
+.field label {
+  display: block;
+  font-size: 11px; color: var(--navy-2); font-weight: 600;
+  margin-bottom: 5px; letter-spacing: 0.02em;
+}
+.field label .hint { color: var(--navy-3); font-weight: 400; margin-left: 4px; font-size: 10px; }
+.input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  font-family: inherit; font-size: 13px;
+  color: var(--navy);
+}
+.input::placeholder { color: var(--navy-3); font-style: italic; opacity: 1; }
+.input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Permission summary */
+.perm-summary {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 14px;
+}
+.perm-summary .ps-head {
+  font-size: 9px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--gold); font-weight: 700;
+  margin-bottom: 10px;
+}
+.perm-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+}
+.perm-item {
+  display: flex; gap: 8px; align-items: center;
+  font-size: 11px;
+  color: var(--navy-2);
+}
+.perm-item .ic {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700;
+  flex-shrink: 0;
+}
+.perm-item .ic.yes { background: var(--green-bg); color: var(--green); }
+.perm-item .ic.read { background: var(--gold-bg); color: var(--gold); }
+.perm-item .ic.no { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border-2); }
+
+.wizard-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.subtle { background: transparent; border-color: transparent; color: var(--navy-3); }
+.saved {
+  font-size: 11px; color: var(--navy-3);
+  display: flex; align-items: center; gap: 6px;
+}
+.saved .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+/* Accountant app shell */
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 660px;
+  background: var(--bg);
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.nav-item.read-only::after {
+  content: "VIEW";
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--gold-soft);
+  margin-left: auto;
+  background: rgba(200,151,91,0.12);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.kpi .label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-3); font-weight: 600; margin-bottom: 8px; }
+.kpi .v {
+  font-family: 'Fraunces', serif;
+  font-size: 24px; font-weight: 500; letter-spacing: -0.02em;
+}
+.kpi .v.green { color: var(--green); }
+.kpi .v.terra { color: var(--terra); }
+.kpi .v.gold { color: var(--gold); }
+.kpi .delta { font-size: 11px; color: var(--navy-3); margin-top: 3px; }
+
+.welcome-banner {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  display: flex; gap: 12px; align-items: start;
+}
+.welcome-banner .av-big {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 14px;
+  flex-shrink: 0;
+}
+.welcome-banner .body .t1 {
+  font-family: 'Fraunces', serif;
+  font-size: 14px; font-weight: 600;
+  margin-bottom: 2px;
+}
+.welcome-banner .body .t2 {
+  font-size: 12px; color: var(--navy-2);
+  line-height: 1.5;
+}
+.welcome-banner .body .t2 b { color: var(--navy); font-weight: 700; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .wizard-shell, .app-shell { grid-template-columns: 1fr; }
+  .choice-grid, .row-2, .kpis, .perm-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Roles</div>
+  <h1 class="display">The <em>Accountant</em> role</h1>
+  <div class="gold-rule"></div>
+  <p>Larger schools separate finance from administration. Two screens: where the school decides during onboarding, and what the accountant's view looks like once the role is in use.</p>
+</header>
+
+<!-- ============ STATE 1: WIZARD CHOICE ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Onboarding · the choice</div>
+    <div class="section-meta">Inserted between steps 5 &amp; 6</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / setup / billing-handler</div>
+      </div>
+      <div class="wizard-shell">
+        <aside class="wizard-rail">
+          <div class="brand-mini">Omnischools<em>.</em></div>
+          <div class="rail-school">Christ the King JHS</div>
+          <div class="rail-title">Setup · 6 of 7</div>
+          <ul class="steps">
+            <li class="step done"><div class="num"><span>1</span></div><div class="lbl">Welcome</div></li>
+            <li class="step done"><div class="num"><span>2</span></div><div class="lbl">School logo &amp; brand</div></li>
+            <li class="step done"><div class="num"><span>3</span></div><div class="lbl">Academic structure</div></li>
+            <li class="step done"><div class="num"><span>4</span></div><div class="lbl">Classes &amp; subjects</div></li>
+            <li class="step done"><div class="num"><span>5</span></div><div class="lbl">Fee structure</div></li>
+            <li class="step active"><div class="num">6</div><div class="lbl">Who handles billing</div></li>
+            <li class="step"><div class="num">7</div><div class="lbl">Invite teachers</div></li>
+          </ul>
+          <div class="rail-tip">You can change this anytime from school settings — adding or removing the accountant role doesn't affect your existing payment records.</div>
+        </aside>
+
+        <div class="wizard-main">
+          <div class="wcrumb">Step 6 of 7</div>
+          <h2>Who handles <em>billing</em>?</h2>
+          <p class="lede">Some schools combine administration and finance. Others have a dedicated accountant or bursar. Pick what matches yours.</p>
+
+          <div class="choice-grid">
+            <!-- Combined -->
+            <div class="choice-card">
+              <div class="icon-row">
+                <div class="role-pill">Admin</div>
+                <div class="role-pill alt">+ Billing</div>
+              </div>
+              <h3>I'll handle it myself</h3>
+              <div class="desc">Admin role includes full access to billing, fees, and payments. Best for smaller schools.</div>
+              <div class="who-list">Typical for schools with <b>up to ~250 students</b> or where the headmaster runs everything.</div>
+            </div>
+
+            <!-- Separated -->
+            <div class="choice-card selected">
+              <div class="icon-row">
+                <div class="role-pill">Admin</div>
+                <div class="role-pill empty">+</div>
+                <div class="role-pill alt">Accountant</div>
+              </div>
+              <h3>We have an accountant</h3>
+              <div class="desc">A separate Accountant role with billing-only access. Admin still oversees but day-to-day finance is delegated.</div>
+              <div class="who-list">Typical for schools with a <b>dedicated bursar</b> or <b>250+ students</b>. Recommended for cleaner audit separation.</div>
+            </div>
+          </div>
+
+          <!-- Reveal: invite accountant fields, only when separated is selected -->
+          <div class="acc-invite-card">
+            <div class="ai-head">
+              <h4>Invite your accountant</h4>
+              <div class="role-tag">Accountant</div>
+            </div>
+            <div class="ai-sub">They'll get an email with a secure link to set their password. You can also do this later from Settings → Roles.</div>
+
+            <div class="row-2">
+              <div class="field">
+                <label>Full name</label>
+                <input class="input" placeholder="e.g. Joseph Owusu" />
+              </div>
+              <div class="field">
+                <label>Phone <span class="hint">— optional</span></label>
+                <input class="input" placeholder="e.g. +233 24 ..." />
+              </div>
+            </div>
+            <div class="field">
+              <label>Email</label>
+              <input class="input" placeholder="e.g. accounts@christtheking.edu.gh" />
+            </div>
+
+            <!-- Permission summary -->
+            <div class="perm-summary">
+              <div class="ps-head">What an accountant can do</div>
+              <div class="perm-grid">
+                <div class="perm-item"><div class="ic yes">✓</div>Record &amp; void payments</div>
+                <div class="perm-item"><div class="ic yes">✓</div>Apply discounts to students</div>
+                <div class="perm-item"><div class="ic yes">✓</div>Generate invoices &amp; receipts</div>
+                <div class="perm-item"><div class="ic yes">✓</div>Run financial reports</div>
+                <div class="perm-item"><div class="ic read">i</div>View students (read only)</div>
+                <div class="perm-item"><div class="ic read">i</div>View classes (read only)</div>
+                <div class="perm-item"><div class="ic no">✕</div>Manage staff or settings</div>
+                <div class="perm-item"><div class="ic no">✕</div>Post announcements</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="wizard-footer">
+            <div class="saved"><div class="dot"></div>Saved · just now</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">← Back</button>
+              <button class="btn primary">Continue to teachers →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Two-card binary choice</b> with concrete recommendations. Headmistress doesn't need to think abstractly about role models — she picks the one that matches her school.</li>
+        <li><b>Card 2 (separated) is selected by default</b> only as a wireframe convention. In production, no default — make her actively choose. Either choice should feel right; neither is "the upsell."</li>
+        <li><b>"Typical for schools with..."</b> footnote on each card gives a soft anchor. Schools self-identify by size; the description does the role-design work for them.</li>
+        <li><b>Accountant invite fields revealed below,</b> not in a separate step. Reduces clicks — if the school has an accountant, they probably already know the email.</li>
+        <li><b>Permission summary surfaced upfront,</b> not buried in a "learn more" link. Headmistress sees exactly what the accountant will and won't be able to do before sending the invite. Trust by transparency.</li>
+        <li><b>Three permission states:</b> ✓ green (full action), i gold (read-only), ✕ neutral (no access). The gold mid-state matters — accountant needs to <i>see</i> students to invoice them but not edit student records.</li>
+        <li><b>Step count went from 6 to 7.</b> Adding this question cleanly without burying it is worth the extra step. Headmistress can skip the accountant invite by leaving fields blank — just enables the role for later.</li>
+        <li><b>"You can change this anytime"</b> reassurance in the rail. Adding/removing the accountant role doesn't migrate data, just toggles permissions.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATE 2: ACCOUNTANT VIEW ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">The accountant's view</div>
+    <div class="section-meta">First login · billing dashboard</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / billing</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item read-only"><div class="ic"></div>Students</div>
+          <div class="nav-item read-only"><div class="ic"></div>Classes</div>
+          <div class="nav-item active"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Profile</div>
+          <div class="footer">
+            <div class="av">JO</div>
+            <div class="meta"><div class="n">Joseph Owusu</div><div class="r">Accountant</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb">Billing / Term 1 · 2026</div>
+              <h2 class="display">Fees <em>collection</em></h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export</button>
+              <button class="btn gold">+ Record payment</button>
+            </div>
+          </div>
+
+          <!-- Welcome banner shows once on first login -->
+          <div class="welcome-banner">
+            <div class="av-big">JO</div>
+            <div class="body">
+              <div class="t1">Welcome, Joseph.</div>
+              <div class="t2">You've been added as <b>Accountant</b> at Christ the King JHS by Florence Addo. You have full access to <b>billing, fees, payments &amp; reports</b>. Sidebar items marked <span style="font-size:9px;background:rgba(200,151,91,0.18);padding:2px 5px;border-radius:3px;font-weight:700;letter-spacing:0.08em;color:var(--gold)">VIEW</span> are read-only — useful for context.</div>
+            </div>
+          </div>
+
+          <div class="kpis">
+            <div class="kpi">
+              <div class="label">Total billed</div>
+              <div class="v">GHS 152,400.00</div>
+              <div class="delta">381 invoices</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Collected</div>
+              <div class="v green">GHS 94,830.00</div>
+              <div class="delta">62%</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Outstanding</div>
+              <div class="v terra">GHS 57,570.00</div>
+              <div class="delta">142 students</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Overdue &gt; 30d</div>
+              <div class="v gold">GHS 18,200.00</div>
+              <div class="delta">29 students</div>
+            </div>
+          </div>
+
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div>
+                <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:600">Today's payments</div>
+                <div style="font-size:12px;color:var(--navy-3);margin-top:1px">3 recorded · GHS 1,140.00 total</div>
+              </div>
+              <a style="font-size:11px;color:var(--gold);font-weight:600;text-decoration:none">See all →</a>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:10px 12px;background:var(--bg);border-radius:6px;font-size:12px">
+                <div>
+                  <div style="font-weight:600">Akosua Boateng</div>
+                  <div style="font-size:10px;color:var(--navy-3);margin-top:1px">10:24 AM · MTN MoMo</div>
+                </div>
+                <div style="font-family:'Fraunces',serif;font-weight:600;color:var(--green)">GHS 440.00</div>
+                <div style="font-size:10px;color:var(--navy-3)">RCT-2026-0541</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:10px 12px;background:var(--bg);border-radius:6px;font-size:12px">
+                <div>
+                  <div style="font-weight:600">Esi Odoom</div>
+                  <div style="font-size:10px;color:var(--navy-3);margin-top:1px">9:18 AM · Cash</div>
+                </div>
+                <div style="font-family:'Fraunces',serif;font-weight:600;color:var(--green)">GHS 400.00</div>
+                <div style="font-size:10px;color:var(--navy-3)">RCT-2026-0540</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:10px 12px;background:var(--bg);border-radius:6px;font-size:12px">
+                <div>
+                  <div style="font-weight:600">Kofi Owusu</div>
+                  <div style="font-size:10px;color:var(--navy-3);margin-top:1px">8:42 AM · Bank transfer</div>
+                </div>
+                <div style="font-family:'Fraunces',serif;font-weight:600;color:var(--green)">GHS 300.00</div>
+                <div style="font-size:10px;color:var(--navy-3)">RCT-2026-0539</div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Same shell as admin,</b> different sidebar. Joseph navigates the app the way Florence does — same drawer, same buttons, same MoMo flows. Only the available items differ.</li>
+        <li><b>Six sidebar items, not nine.</b> Dashboard, Students (view), Classes (view), Billing (active), Reports, Profile. No Staff, no Announcements, no Achievements, no Settings. Reduces cognitive load and prevents accidental incursions into admin territory.</li>
+        <li><b>"VIEW" badge on read-only items</b> sets expectation up front. Joseph knows tapping Students will let him see students but not edit them — no surprise click into an empty form.</li>
+        <li><b>"Reports" gets its own top-level item</b> for the accountant. For admins it can live under Billing; for accountants it's the second most-used screen. Match the surface to the user.</li>
+        <li><b>Welcome banner on first login</b> says exactly what role he has, who invited him, and what the badge convention means. Shows once, dismissable.</li>
+        <li><b>"Today's payments" card</b> is a small but specific accountant feature. Headmistress wants term totals; accountant wants today's tally to balance against the cash drawer at end-of-day.</li>
+        <li><b>Same KPIs as admin billing.</b> No reason to fragment — total billed / collected / outstanding / overdue are the four numbers that matter to anyone in finance.</li>
+        <li><b>Footer shows "Accountant"</b> not "Admin." Important for Joseph's own confidence ("yes, this is my account") and for any colleague glancing at his screen.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

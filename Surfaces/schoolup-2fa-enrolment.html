@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — 2FA enrolment</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:720px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1480px; }
+.brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar-footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar-footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar-footer .meta-name { font-weight:600; }
+.sidebar-footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:680px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.body { padding:28px 36px 60px; }
+
+/* Status overview card */
+.status-card { background:var(--navy); color:var(--bg); border-radius:14px; padding:24px 28px; margin-bottom:26px; background-image:radial-gradient(circle at 95% 0%, rgba(200,151,91,0.18) 0%, transparent 55%); display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:24px; align-items:center; }
+.status-card .lbl { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; margin-bottom:6px; }
+.status-card .headline { font-family:'Fraunces',serif; font-size:22px; font-weight:500; letter-spacing:-0.018em; line-height:1.2; }
+.status-card .headline em { font-style:italic; color:var(--gold); }
+.status-card .meta { font-size:11px; color:rgba(232,212,184,0.85); margin-top:8px; line-height:1.5; }
+.status-card .meta b { color:var(--bg); font-weight:600; }
+.status-card .stat .num { font-family:'Fraunces',serif; font-size:28px; font-weight:600; line-height:1; letter-spacing:-0.018em; color:var(--gold); }
+.status-card .stat .num em { font-style:italic; }
+.status-card .stat .num.green { color:#7DBF96; }
+.status-card .stat .stat-meta { font-size:10px; color:rgba(232,212,184,0.85); margin-top:4px; line-height:1.4; }
+.status-card .stat .stat-meta b { color:var(--bg); font-weight:600; }
+
+/* Region structure */
+.region { margin-bottom:36px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Walkthrough card */
+.walkthrough { background:var(--surface); border:1.5px solid var(--gold); border-radius:14px; overflow:hidden; }
+.wt-head { background:var(--gold-bg); padding:18px 24px; border-bottom:1px solid var(--gold-soft); }
+.wt-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.wt-head h3 { font-family:'Fraunces',serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; }
+.wt-head h3 em { font-style:italic; color:var(--gold); }
+.wt-head .desc { font-size:12px; color:var(--navy-2); margin-top:6px; line-height:1.55; max-width:640px; }
+.wt-head .desc b { color:var(--navy); font-weight:600; }
+
+.wt-body { display:grid; grid-template-columns:1fr 1fr; }
+.wt-explainer { padding:24px; border-right:1px solid var(--border); }
+.wt-explainer h4 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; margin-bottom:10px; }
+.wt-explainer h4 em { font-style:italic; color:var(--gold); }
+.wt-explainer p { font-size:12px; color:var(--navy-2); line-height:1.6; margin-bottom:10px; }
+.wt-explainer p b { color:var(--navy); font-weight:600; }
+.wt-explainer p em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+.wt-explainer .takeaway { background:var(--bg); border-left:3px solid var(--gold); padding:10px 14px; margin-top:12px; font-size:12px; color:var(--navy-2); border-radius:0 6px 6px 0; line-height:1.55; }
+.wt-explainer .takeaway b { color:var(--navy); font-weight:600; }
+
+/* Steps in walkthrough */
+.wt-steps { padding:24px; background:var(--bg); }
+.wt-step { display:grid; grid-template-columns:30px 1fr; gap:14px; padding:14px 0; border-bottom:1px solid var(--border); }
+.wt-step:first-child { padding-top:0; }
+.wt-step:last-child { border-bottom:none; padding-bottom:0; }
+.wt-step.active { background:var(--surface); padding:14px; border-radius:10px; border:1.5px solid var(--gold); }
+.wt-step .step-num { width:24px; height:24px; border-radius:50%; background:var(--surface); border:1.5px solid var(--border-2); color:var(--navy-3); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.wt-step.done .step-num { background:var(--green); border-color:var(--green); color:white; }
+.wt-step.active .step-num { background:var(--gold); border-color:var(--gold); color:var(--navy); }
+.wt-step .step-name { font-family:'Fraunces',serif; font-size:13px; font-weight:600; letter-spacing:-0.005em; }
+.wt-step .step-name em { font-style:italic; color:var(--gold); }
+.wt-step .step-desc { font-size:11px; color:var(--navy-3); margin-top:3px; line-height:1.5; }
+.wt-step .step-desc b { color:var(--navy-2); font-weight:600; }
+.wt-step .step-desc em { font-family:'Fraunces',serif; font-style:italic; color:var(--gold); font-weight:500; }
+
+/* QR + code panel */
+.qr-panel { padding:24px; background:var(--gold-bg); border-radius:10px; margin-top:16px; display:grid; grid-template-columns:120px 1fr; gap:18px; align-items:center; }
+.qr-block { width:120px; height:120px; background:white; border:1px solid var(--gold-soft); border-radius:8px; padding:10px; display:flex; align-items:center; justify-content:center; }
+.qr-pattern { width:100%; height:100%; background-image:repeating-linear-gradient(0deg,var(--navy) 0,var(--navy) 4px,white 4px,white 8px),repeating-linear-gradient(90deg,var(--navy) 0,var(--navy) 4px,white 4px,white 8px); background-blend-mode:multiply; opacity:0.85; }
+.qr-info .lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.qr-info .key { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:600; color:var(--navy); margin-top:6px; letter-spacing:0.12em; word-break:break-all; }
+.qr-info .help { font-size:11px; color:var(--navy-2); margin-top:8px; line-height:1.55; }
+.qr-info .help b { color:var(--navy); font-weight:600; }
+
+/* OTP input mock */
+.otp-input { display:flex; gap:8px; margin-top:14px; }
+.otp-input .digit { width:38px; height:48px; border:1.5px solid var(--border-2); border-radius:8px; background:var(--surface); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:600; color:var(--navy); }
+.otp-input .digit.filled { border-color:var(--gold); background:var(--gold-bg); }
+.otp-input .digit.cursor { border-color:var(--gold); }
+.otp-input .digit.cursor::after { content:""; display:inline-block; width:2px; height:18px; background:var(--gold); animation:blink 1s infinite; }
+@keyframes blink { 50% { opacity:0; } }
+
+/* Recovery codes panel */
+.recovery-panel { background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:12px; padding:20px 24px; margin-top:20px; }
+.recovery-panel .head { display:flex; justify-content:space-between; align-items:start; margin-bottom:12px; }
+.recovery-panel .head h4 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
+.recovery-panel .head h4 em { font-style:italic; color:var(--terra); }
+.recovery-panel .head .meta { font-size:10px; color:var(--terra); font-weight:700; letter-spacing:0.06em; }
+.recovery-panel .desc { font-size:12px; color:var(--navy-2); line-height:1.55; margin-bottom:14px; }
+.recovery-panel .desc b { color:var(--navy); font-weight:600; }
+.recovery-codes { display:grid; grid-template-columns:repeat(2,1fr); gap:6px 12px; padding:14px 18px; background:var(--surface); border:1px dashed var(--terra); border-radius:8px; }
+.recovery-codes .code { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; color:var(--navy); letter-spacing:0.06em; }
+.recovery-codes .code .num { color:var(--navy-3); font-size:10px; margin-right:8px; }
+.recovery-actions { display:flex; gap:8px; margin-top:14px; }
+.recovery-actions .btn-r { padding:7px 12px; background:var(--surface); border:1px solid var(--terra); border-radius:6px; font-size:11px; font-weight:700; color:var(--terra); cursor:pointer; font-family:inherit; }
+
+/* Roles config */
+.roles-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.role-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; }
+.role-card.required { border-color:var(--terra); border-width:1.5px; }
+.role-card.optional { border-color:var(--gold); border-width:1.5px; }
+.role-card .head-row { display:flex; justify-content:space-between; align-items:start; margin-bottom:8px; }
+.role-card .role-name { font-family:'Fraunces',serif; font-size:15px; font-weight:600; }
+.role-card .role-name em { font-style:italic; color:var(--gold); }
+.role-card .level-tag { font-size:9px; font-weight:700; letter-spacing:0.06em; padding:2px 8px; border-radius:100px; }
+.role-card .level-tag.required { background:var(--terra); color:white; }
+.role-card .level-tag.optional { background:var(--gold-bg); color:var(--gold); }
+.role-card .level-tag.off { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.role-card .role-desc { font-size:11px; color:var(--navy-3); line-height:1.6; }
+.role-card .role-desc b { color:var(--navy-2); font-weight:600; }
+.role-card .reasons { margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+.role-card .reasons .reason { display:flex; gap:6px; font-size:10px; color:var(--navy-3); padding:2px 0; line-height:1.5; }
+.role-card .reasons .reason::before { content:"→"; color:var(--gold); flex-shrink:0; }
+.role-card .reasons .reason b { color:var(--navy-2); font-weight:600; }
+
+/* Recovery scenarios */
+.recovery-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.scenario-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.scenario-card .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); font-weight:600; }
+.scenario-card .title { font-family:'Fraunces',serif; font-size:14px; font-weight:600; margin-top:6px; line-height:1.3; }
+.scenario-card .title em { font-style:italic; color:var(--gold); }
+.scenario-card .body-text { font-size:11px; color:var(--navy-2); line-height:1.55; margin-top:8px; }
+.scenario-card .body-text b { color:var(--navy); font-weight:600; }
+.scenario-card .steps-mini { margin-top:12px; padding-top:10px; border-top:1px dashed var(--border); }
+.scenario-card .steps-mini .step { display:flex; gap:8px; font-size:10px; color:var(--navy-3); padding:3px 0; line-height:1.5; align-items:start; }
+.scenario-card .steps-mini .step .nm { font-family:'Fraunces',serif; font-weight:700; color:var(--gold); flex-shrink:0; min-width:14px; }
+.scenario-card .steps-mini .step b { color:var(--navy-2); font-weight:600; }
+
+/* Save bar */
+.save-bar { background:var(--surface); border:1px solid var(--gold); border-radius:12px; padding:18px 24px; margin-top:22px; display:grid; grid-template-columns:1fr auto; gap:24px; align-items:center; box-shadow:0 8px 20px -8px rgba(200,151,91,0.3); }
+.save-bar .summary { font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
+.save-bar .summary em { font-style:italic; color:var(--gold); }
+.save-bar .meta { font-size:11px; color:var(--navy-3); margin-top:4px; }
+.save-bar .meta b { color:var(--navy-2); font-weight:600; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .status-card { grid-template-columns:1fr 1fr; }
+  .wt-body { grid-template-columns:1fr; }
+  .roles-grid { grid-template-columns:1fr; }
+  .recovery-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Tier 4 · Operational parity</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">An extra step — <em>once a day</em></h1>
+  <div class="gold-rule"></div>
+  <p>Two-factor authentication is required for admins (Florence and Joyce touch financial records and student data) but not surfaced for parents and students (the user base is mobile-first and many have basic phones — forcing 2FA would lock people out). The interesting design moments are the plain-English walkthrough for admins who haven't set this up before, the recovery flow when a phone is lost or stolen, and the grace period that prevents day-of lockouts. Editorial commitment: respect the user, <b>frame as protection</b>, never as alarm.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">2FA enrolment · admin walkthrough &amp; school config</div>
+    <div class="section-meta">Florence · Settings → Security &amp; 2FA · 2 of 3 admins enrolled</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / security / 2fa</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="nav-item sub">School info</div>
+          <div class="nav-item sub">Term &amp; calendar</div>
+          <div class="nav-item sub">Fee structure</div>
+          <div class="nav-item sub">Users &amp; roles</div>
+          <div class="nav-item sub">Communications</div>
+          <div class="nav-item sub">Bookkeeping</div>
+          <div class="nav-item sub">Retention policy</div>
+          <div class="nav-item sub">Audit log</div>
+          <div class="nav-item sub">Data export</div>
+          <div class="nav-item sub active">Security &amp; 2FA</div>
+          <div class="sidebar-footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Settings</a> / Security &amp; 2FA</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Security &amp; <em>two-factor authentication</em></h1>
+                <div class="lede">An extra step at sign-in protects the school's records · <b>required for admins</b>, optional for teachers, not asked of parents · grace period of 14 days after enabling so no one is locked out on day 1</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Recovery options</button>
+                <button class="btn primary">Add new admin</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <!-- Status overview -->
+            <div class="status-card">
+              <div class="left">
+                <div class="lbl">School-wide 2FA status</div>
+                <div class="headline display">2 of 3 admins <em>enrolled</em> — Joyce pending</div>
+                <div class="meta">Florence enrolled 18 Sep · Felix enrolled 20 Sep · <b>Joyce has 9 days remaining in grace period</b> · school is <b>not yet</b> fully protected · once Joyce enrols, the green check appears on the school dashboard for parent-facing trust signal</div>
+              </div>
+              <div class="stat">
+                <div class="lbl">Admins required</div>
+                <div class="num display green"><em>2</em>/3</div>
+                <div class="stat-meta">Enrolled · <b>67%</b></div>
+              </div>
+              <div class="stat">
+                <div class="lbl">Teachers opt-in</div>
+                <div class="num display"><em>4</em>/12</div>
+                <div class="stat-meta">Voluntary · <b>33%</b> · encouraged not required</div>
+              </div>
+              <div class="stat">
+                <div class="lbl">Grace remaining</div>
+                <div class="num display"><em>9</em>d</div>
+                <div class="stat-meta">For Joyce · <b>auto-enforced</b> after</div>
+              </div>
+            </div>
+
+            <!-- Walkthrough -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">Joyce's <em>first-time</em> enrolment · plain-English walkthrough</h2>
+                <div class="meta">First-time setup for admins who haven't done this before · <b>4 steps</b> · 2 minutes</div>
+              </div>
+
+              <div class="walkthrough">
+
+                <div class="wt-head">
+                  <div class="eb">Walkthrough · enrolling Joyce Owusu-Ansah</div>
+                  <h3 class="display">Set up <em>two-factor authentication</em> · step 2 of 4</h3>
+                  <div class="desc">A small extra step protects your school's records from anyone who might guess or steal your password · <b>once set up, you'll do this once a day</b> when you first sign in from a device · trusted devices remember you for 30 days</div>
+                </div>
+
+                <div class="wt-body">
+
+                  <div class="wt-explainer">
+                    <h4 class="display">What is <em>two-factor authentication?</em></h4>
+                    <p>When you sign in, instead of just typing your password, you also enter a <b>6-digit number</b> that changes every 30 seconds.</p>
+                    <p>That number comes from an app on your phone — <em>Google Authenticator</em> or <em>Authy</em> — which generates the codes locally · no internet needed · works even if your data bundle is finished.</p>
+                    <p>Even if someone learns your password, they can't sign in without your phone in their hand. <b>Your password becomes useless on its own</b>; the phone is the second key.</p>
+                    <div class="takeaway"><b>Why we ask:</b> admins record payments, void invoices, edit student records · those actions need an extra layer of protection that parents and teachers don't need.</div>
+                  </div>
+
+                  <div class="wt-steps">
+
+                    <div class="wt-step done">
+                      <div class="step-num">✓</div>
+                      <div>
+                        <div class="step-name display"><em>Install</em> an authenticator app</div>
+                        <div class="step-desc">Joyce installed <b>Google Authenticator</b> from the Play Store · <em>completed Tue 21 Oct</em> · also works: Authy, Microsoft Authenticator, 1Password</div>
+                      </div>
+                    </div>
+
+                    <div class="wt-step active">
+                      <div class="step-num">2</div>
+                      <div>
+                        <div class="step-name display"><em>Scan</em> the QR code</div>
+                        <div class="step-desc">Open the app, tap <b>"+"</b>, then scan the code below · <em>or type the secret key manually</em> if your phone's camera isn't working · the app will show a 6-digit number that refreshes every 30 seconds</div>
+
+                        <div class="qr-panel">
+                          <div class="qr-block">
+                            <div class="qr-pattern"></div>
+                          </div>
+                          <div class="qr-info">
+                            <div class="lbl">Or type this key manually</div>
+                            <div class="key">JBSWY3DPEHPK3PXP</div>
+                            <div class="help"><b>Account label:</b> Omnischools · joyce@christtheking.edu.gh</div>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+
+                    <div class="wt-step">
+                      <div class="step-num">3</div>
+                      <div>
+                        <div class="step-name display"><em>Enter</em> the 6-digit number</div>
+                        <div class="step-desc">Type the code your app is showing right now · this <b>confirms the link</b> between your phone and your account · the code must be entered before it expires (30 seconds)</div>
+                        <div class="otp-input">
+                          <div class="digit"></div>
+                          <div class="digit"></div>
+                          <div class="digit"></div>
+                          <div class="digit"></div>
+                          <div class="digit"></div>
+                          <div class="digit"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="wt-step">
+                      <div class="step-num">4</div>
+                      <div>
+                        <div class="step-name display"><em>Save</em> your recovery codes</div>
+                        <div class="step-desc">10 one-use backup codes · <b>print them or write them down</b> · keep them somewhere safe · use one if you ever lose your phone · <em>never share with anyone</em> · each code works exactly once</div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                </div>
+
+                <!-- Recovery codes panel -->
+                <div style="padding:20px 24px;background:var(--surface);border-top:1px solid var(--border)">
+                  <div class="recovery-panel">
+                    <div class="head">
+                      <h4 class="display">10 <em>recovery codes</em> · save before continuing</h4>
+                      <span class="meta">SHOWN ONCE · NEVER AGAIN</span>
+                    </div>
+                    <div class="desc">If you lose your phone, use one of these codes to sign in instead of the 6-digit number. <b>Each code works once</b>. Print this list and keep it with the school's important documents — <b>not in your email or phone</b>, where someone might find it.</div>
+                    <div class="recovery-codes">
+                      <div class="code"><span class="num">01</span>4892-3017-6248</div>
+                      <div class="code"><span class="num">06</span>9381-5024-7716</div>
+                      <div class="code"><span class="num">02</span>7314-8052-1937</div>
+                      <div class="code"><span class="num">07</span>2856-1493-8021</div>
+                      <div class="code"><span class="num">03</span>1827-4906-3528</div>
+                      <div class="code"><span class="num">08</span>6049-2783-1845</div>
+                      <div class="code"><span class="num">04</span>5063-9482-7104</div>
+                      <div class="code"><span class="num">09</span>3725-8016-4953</div>
+                      <div class="code"><span class="num">05</span>8419-2756-0381</div>
+                      <div class="code"><span class="num">10</span>1574-6308-2479</div>
+                    </div>
+                    <div class="recovery-actions">
+                      <button class="btn-r">↓ DOWNLOAD AS PDF</button>
+                      <button class="btn-r">🖨 PRINT NOW</button>
+                      <button class="btn-r">📋 COPY ALL</button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="save-bar">
+                <div>
+                  <div class="summary display">Continue to <em>step 3 · enter the code</em>?</div>
+                  <div class="meta">Once Joyce confirms the code, 2FA becomes active on her account · she'll be prompted on her next sign-in · <b>she can enrol up to 3 trusted devices</b></div>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn">← Back to step 1</button>
+                  <button class="btn gold">Continue → step 3</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Roles & policy -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display">2FA <em>policy</em> · who needs it, who doesn't</h2>
+                <div class="meta">School-wide settings · matched to risk profile of each role</div>
+              </div>
+
+              <div class="roles-grid">
+
+                <div class="role-card required">
+                  <div class="head-row">
+                    <div class="role-name display">Admins</div>
+                    <span class="level-tag required">REQUIRED</span>
+                  </div>
+                  <div class="role-desc"><b>Florence (Headmistress) · Joyce (Accountant) · Felix (Asst. Head)</b> · access to financial records, student data, settings, audit log</div>
+                  <div class="reasons">
+                    <div class="reason"><b>Risk:</b> can void invoices, edit transcripts, see audit log</div>
+                    <div class="reason"><b>Grace:</b> 14 days from feature launch · then enforced</div>
+                    <div class="reason"><b>Cannot self-disable</b> · requires Anthropic-style support flow</div>
+                  </div>
+                </div>
+
+                <div class="role-card optional">
+                  <div class="head-row">
+                    <div class="role-name display">Teachers</div>
+                    <span class="level-tag optional">ENCOURAGED</span>
+                  </div>
+                  <div class="role-desc"><b>12 teachers</b> · access to attendance &amp; grades within their classes only · no financial access · no settings access</div>
+                  <div class="reasons">
+                    <div class="reason"><b>Risk:</b> moderate · access scoped to class · no financial</div>
+                    <div class="reason"><b>Surfaced as a banner</b> on first login · dismissible · 4 of 12 enrolled</div>
+                    <div class="reason"><b>Can self-disable</b> from their account settings</div>
+                  </div>
+                </div>
+
+                <div class="role-card">
+                  <div class="head-row">
+                    <div class="role-name display">Parents &amp; students</div>
+                    <span class="level-tag off">NOT SURFACED</span>
+                  </div>
+                  <div class="role-desc"><b>312 parents · 312 students</b> · view-only access to own data · cannot edit financial or grade records</div>
+                  <div class="reasons">
+                    <div class="reason"><b>Mobile-first, basic phones</b> · forcing 2FA would lock users out</div>
+                    <div class="reason"><b>OTP-on-every-login</b> already provides 2FA-like protection</div>
+                    <div class="reason"><b>Available in advanced settings</b> for power users · not promoted</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Recovery scenarios -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">03</div>
+                <h2 class="display">When something <em>goes wrong</em> · recovery scenarios</h2>
+                <div class="meta">Phones get lost, stolen, replaced · these flows keep the school running</div>
+              </div>
+
+              <div class="recovery-grid">
+
+                <div class="scenario-card">
+                  <div class="num">A</div>
+                  <div class="title display"><em>Lost phone</em>, recovery codes available</div>
+                  <div class="body-text">Joyce loses her phone but printed her recovery codes at enrolment · she can sign in using one code · most common &amp; cleanest path</div>
+                  <div class="steps-mini">
+                    <div class="step"><span class="nm">1</span><span>Sign in screen · click <b>"Use recovery code instead"</b></span></div>
+                    <div class="step"><span class="nm">2</span><span>Enter one unused code from the printed list</span></div>
+                    <div class="step"><span class="nm">3</span><span>Re-enrol on new phone · <b>old codes invalidated</b> · 10 new ones generated</span></div>
+                    <div class="step"><span class="nm">4</span><span>Audit log records the recovery event</span></div>
+                  </div>
+                </div>
+
+                <div class="scenario-card">
+                  <div class="num">B</div>
+                  <div class="title display"><em>Lost phone</em>, no recovery codes</div>
+                  <div class="body-text">Joyce loses both phone and recovery codes · the second admin (Florence) approves a reset · dual-control protects against impersonation</div>
+                  <div class="steps-mini">
+                    <div class="step"><span class="nm">1</span><span>Joyce contacts Florence in person · confirms identity</span></div>
+                    <div class="step"><span class="nm">2</span><span>Florence opens <b>Settings → Users → Joyce → Reset 2FA</b></span></div>
+                    <div class="step"><span class="nm">3</span><span>Joyce receives a <b>one-time reset link via SMS</b> to her verified phone number</span></div>
+                    <div class="step"><span class="nm">4</span><span>Joyce re-enrols · audit log records both Florence's approval and the reset</span></div>
+                  </div>
+                </div>
+
+                <div class="scenario-card">
+                  <div class="num">C</div>
+                  <div class="title display"><em>Solo admin</em> locked out</div>
+                  <div class="body-text">Sunrise Basic (one admin only) can't use the dual-control flow · Esther goes through Omnischools support · email + SMS verification · longest path</div>
+                  <div class="steps-mini">
+                    <div class="step"><span class="nm">1</span><span>Email <b>support@omnischools.gh</b> from school's verified address</span></div>
+                    <div class="step"><span class="nm">2</span><span>SMS verification to verified phone · <b>same number on file</b></span></div>
+                    <div class="step"><span class="nm">3</span><span>School registration document re-verified by support · 2-3 business days</span></div>
+                    <div class="step"><span class="nm">4</span><span>Reset link emailed · re-enrol · audit log records support intervention</span></div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>H1 framing intentionally light</b>: "An extra step — <em>once a day</em>." <b>Editorial commitment to non-alarm</b> · the typical SaaS framing ("YOUR ACCOUNT IS AT RISK!") is rejected here · 2FA is presented as protection, not as response to threat. Page lede continues this: "An extra step at sign-in protects the school's records." Calm, factual, dignified.</li>
+        <li><b>Sidebar lists "Security &amp; 2FA"</b> as the final Settings sub-item · sister to Audit log, Data export, Retention policy. <b>Settings sub-nav is now full</b>: 10 items reflecting the operational depth of the platform · admin learns the mental model once and finds related controls.</li>
+        <li><b>Status overview card mirrors the audit-log hero</b> — same navy-with-radial-gold treatment, same pillar-plus-3-stats layout. <b>Visual consistency across Settings sub-pages</b>; admin recognises "this is a status overview" pattern from the moment they land.</li>
+        <li><b>Status framing leads with the not-yet-complete state</b>: "2 of 3 admins <em>enrolled</em> — Joyce pending." <b>Not "67% complete!"</b> — that's a SaaS dashboard tell · instead names Joyce specifically, says she has 9 days remaining, lists the consequence ("school is <b>not yet</b> fully protected"). <b>The action is concrete</b>; admin knows what to do.</li>
+        <li><b>Three stats: required progress / teacher opt-in / grace remaining</b>. <b>Grace remaining is the most operationally useful</b>; Florence sees "9d" and knows when Joyce will be auto-enforced if she hasn't enrolled.</li>
+        <li><b>Walkthrough section is the heart of the file</b> · 4-step plain-English flow demonstrating step 2 (QR code scan) actively. <b>Editorial commitment</b>: every step is explained for an admin who has never set up 2FA before · this is most Ghanaian basic school admins.</li>
+        <li><b>Walkthrough head copy</b>: "<b>Once set up, you'll do this once a day</b> when you first sign in from a device · trusted devices remember you for 30 days." <b>Friction expectations stated upfront</b>; admin doesn't fear that 2FA will block them every minute.</li>
+        <li><b>Left explainer panel</b>: "What is two-factor authentication?" with 3 paragraphs of clear English. <b>The "becomes useless on its own" framing is critical</b>: explains the security property in user terms · "Even if someone learns your password, they can't sign in without your phone in their hand."</li>
+        <li><b>"Why we ask" takeaway box</b>: "admins record payments, void invoices, edit student records · those actions need an extra layer of protection that parents and teachers don't need." <b>Justifies the asymmetry</b> · Joyce learns why she has 2FA but the parents don't · the answer is risk-proportional, not arbitrary.</li>
+        <li><b>QR panel with both QR and manual key</b>: "Or type this key manually if your phone's camera isn't working." <b>Important in environments with older phones</b>; some Android cameras struggle with QR · the manual fallback is structurally equivalent and doesn't feel like a degraded path.</li>
+        <li><b>Account label shown next to manual key</b>: "Omnischools · joyce@christtheking.edu.gh." <b>Joyce sees what the authenticator app will display</b> when she opens it later · so she can find the right entry among other 2FA codes.</li>
+        <li><b>OTP input mock with 6 separate digit boxes</b> · matches the OTP-on-login pattern from the auth file · <b>same 6-box visual everywhere OTP is entered</b> · admin and parent OTP feel like the same primitive.</li>
+        <li><b>Recovery codes panel in terra-tinted card</b> with strong visual emphasis · "SHOWN ONCE · NEVER AGAIN" badge · 10 codes in 2-column grid with mono font · numbered 01—10 for tracking which have been used. <b>Three save actions</b>: PDF download, Print now, Copy all · admin chooses what fits their preservation habit.</li>
+        <li><b>"Print this list and keep it with the school's important documents — not in your email or phone"</b> · <b>operationally specific advice</b>; tells admin where to NOT keep the codes · prevents the most common mistake of "I have them in WhatsApp."</li>
+        <li><b>"Each code works once"</b> stated explicitly · the surface specifies behaviour rather than letting admin discover it under pressure.</li>
+        <li><b>Three role cards with colour-coded borders</b>: Admins (terra REQUIRED) / Teachers (gold ENCOURAGED) / Parents &amp; students (neutral NOT SURFACED). <b>Tier of friction matches tier of risk</b>; this is the policy stated visually.</li>
+        <li><b>Each role card has 3 reasons</b> · risk profile, surfacing approach, self-disable rules. <b>The asymmetry between roles is justified each time</b>; admin reading this card understands why this isn't capricious gating.</li>
+        <li><b>"OTP-on-every-login already provides 2FA-like protection" for parents</b> · the parents already get an OTP every time they log in (their phone is the auth factor) · <b>2FA on top would be redundant friction</b>. Editorial framing acknowledges that parents are already 2FA'd by the design of the parent portal · the asymmetry is principled, not lazy.</li>
+        <li><b>"Available in advanced settings for power users · not promoted" for parents</b> · <b>opt-in path exists for the rare technically-savvy parent</b> · we don't gate, we just don't push.</li>
+        <li><b>Three recovery scenarios as cards</b>: A (lost phone, codes available) / B (lost phone, no codes) / C (solo admin locked out). <b>Each scenario has 4 numbered mini-steps</b> · admin understands the path before they're under pressure.</li>
+        <li><b>Scenario B uses dual-control via second admin</b> · cross-references the segregation-of-duties pattern from the activation file · <b>same dual-control philosophy applied to recovery</b>; the second admin is the school's escape hatch.</li>
+        <li><b>Scenario C (solo admin) requires support intervention with school registration document re-verification</b> · 2-3 business days · <b>longest recovery path</b>. The cost of being a single-admin school is paid here · this is a real consequence that should encourage second-admin enrolment over time.</li>
+        <li><b>"SMS verification to verified phone · <b>same number on file</b>"</b> in scenario C · <b>defends against SIM swap attacks</b>; an attacker who SIM-swaps Esther's number can't trigger reset because the support flow also requires the school registration document.</li>
+        <li><b>Audit log mention in every scenario</b>: "audit log records the recovery event" / "audit log records both Florence's approval and the reset" / "audit log records support intervention." <b>2FA flows are part of the audit narrative</b>; recovery events are the highest-stakes auth events and deserve full audit visibility.</li>
+        <li><b>Save bar at the bottom of section 01</b>: "Continue to <em>step 3 · enter the code</em>?" with meta line about trusted-device enrolment ("up to 3 trusted devices"). <b>Standard Omnischools save bar pattern</b>; the user is mid-flow and the save bar shows what comes next.</li>
+        <li><b>Trusted device count limited to 3</b> · admin's phone, tablet, school computer · <b>not unlimited</b>; if a 4th device tries to enrol, oldest gets bumped · prevents creep where every machine the admin has ever used is trusted.</li>
+        <li><b>"Trusted devices remember you for 30 days"</b> · the friction window · admin signs in once a month per device · doesn't OTP on every action. <b>Calibrated against operational reality</b>; school admins use the same laptop/phone every day · forcing daily OTP would be friction without security gain.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,6 @@
+Concrete recommended path
+Phase 0–2 (now through MVP): Stick with BUILD_STACK.md exactly as written. Vercel + Supabase + Drizzle. Your highest-value time is shipping features, not optimizing infra at <50 schools.
+At ~50 schools or when Vercel hits $300/month: Add Cloudflare in front. This alone probably buys you another 6-12 months on Vercel. Zero code changes.
+At ~200 schools or when Vercel hits $600/month: Migrate hosting to Hetzner + Coolify. Keep Supabase. This is a ~1 week migration if you've kept the app stateless and used environment variables properly. Your bill drops to ~$50/month for hosting plus Supabase, freeing budget for growth.
+At ~500 schools or when Supabase hits $300/month: Evaluate Neon for the database, with Lucia or Better-Auth replacing Supabase Auth. This is a harder migration — auth is intrusive — and you should hire at this point if you haven't.
+At 1000+ schools: Self-hosted Postgres on a separate Hetzner box with proper backups, full Hetzner stack with Cloudflare for CDN. Total infra cost: ~$150-300/month for serving 1000 schools, vs $1500+/month on the original stack. By this point you have revenue to justify the engineering time.

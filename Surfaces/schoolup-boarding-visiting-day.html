@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Visiting day operations</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:760px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+.btn.terra { background:var(--terra); color:var(--bg); border-color:var(--terra); font-weight:700; }
+
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.18); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.browser-bar .ctx { margin-left:auto; font-size:10px; letter-spacing:0.12em; color:rgba(232,212,184,0.6); font-weight:600; text-transform:uppercase; }
+
+.head-row { padding:24px 36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; gap:32px; }
+.head-row .crumb { font-size:11px; color:var(--navy-3); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; }
+.head-row h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.015em; margin-bottom:6px; }
+.head-row h2 em { font-style:italic; color:var(--gold); }
+.head-row .lede { font-size:13px; color:var(--navy-3); max-width:660px; line-height:1.5; }
+
+/* Countdown strip */
+.countdown-strip { padding:22px 36px; background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); display:grid; grid-template-columns:auto 1fr auto; gap:28px; align-items:center; }
+.countdown-strip .calbox { width:96px; height:96px; border-radius:18px; background:var(--surface); border:2px solid var(--gold); display:flex; flex-direction:column; align-items:center; justify-content:center; flex-shrink:0; }
+.countdown-strip .calbox .day { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--gold); font-weight:700; letter-spacing:0.16em; }
+.countdown-strip .calbox .num { font-family:'Fraunces',serif; font-size:34px; font-weight:600; color:var(--navy); line-height:1; margin:2px 0; }
+.countdown-strip .calbox .mon { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--gold); font-weight:700; }
+.countdown-strip .center .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:5px; }
+.countdown-strip .center h3 { font-family:'Fraunces',serif; font-size:26px; font-weight:500; line-height:1.15; }
+.countdown-strip .center h3 em { font-style:italic; color:var(--gold); }
+.countdown-strip .center .sub { font-size:12px; color:var(--navy-2); margin-top:4px; }
+.countdown-strip .center .sub b { color:var(--navy); font-weight:700; }
+.countdown-strip .right .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.countdown-strip .right .big { font-family:'Fraunces',serif; font-size:42px; font-weight:600; letter-spacing:-0.02em; line-height:1; margin-top:4px; }
+.countdown-strip .right .big em { font-style:italic; color:var(--gold); }
+.countdown-strip .right .sub { font-size:11px; color:var(--navy-3); margin-top:6px; }
+
+.summary-strip { padding:22px 36px; background:var(--bg); border-bottom:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+.sum-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+.sum-card.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.sum-card .lab { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.sum-card.featured .lab { color:rgba(232,212,184,0.7); }
+.sum-card .big { font-family:'Fraunces',serif; font-size:26px; font-weight:600; letter-spacing:-0.015em; line-height:1; margin-bottom:5px; }
+.sum-card .big em { font-style:italic; color:var(--gold); }
+.sum-card .sub { font-size:11px; color:var(--navy-3); line-height:1.4; }
+.sum-card.featured .sub { color:rgba(232,212,184,0.6); }
+.sum-card .sub b { color:var(--navy-2); font-weight:600; }
+.sum-card.featured .sub b { color:var(--gold); }
+
+.body-shell { padding:32px 36px 36px; }
+
+.block { margin-bottom:32px; }
+.block-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.block-head .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.block-head h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:600; }
+.block-head h3 em { font-style:italic; color:var(--gold); }
+.block-head .meta { font-size:11px; color:var(--navy-3); }
+.block-head .meta b { color:var(--navy-2); font-weight:700; }
+.block-head .actions { display:flex; gap:8px; }
+
+/* RSVP card */
+.rsvp-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 26px; }
+.rsvp-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+.rsvp-cell { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.rsvp-cell .l { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.rsvp-cell .v { font-family:'Fraunces',serif; font-size:24px; font-weight:600; margin-top:5px; line-height:1; }
+.rsvp-cell .v em { font-style:italic; color:var(--gold); }
+.rsvp-cell .bar { height:6px; background:var(--border); border-radius:100px; overflow:hidden; margin-top:10px; }
+.rsvp-cell .bar .fill { height:100%; background:var(--gold); }
+.rsvp-cell .sub { font-size:11px; color:var(--navy-3); margin-top:8px; line-height:1.4; }
+.rsvp-cell .sub b { color:var(--navy-2); font-weight:600; }
+.rsvp-cell.featured { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.rsvp-cell.featured .l { color:rgba(232,212,184,0.7); }
+.rsvp-cell.featured .v em { color:var(--gold); }
+.rsvp-cell.featured .sub { color:rgba(232,212,184,0.7); }
+.rsvp-cell.featured .sub b { color:var(--gold); }
+
+/* House-by-house RSVP breakdown */
+.house-rsvp-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+.hr-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; display:flex; gap:12px; align-items:center; }
+.hr-card .band { width:6px; align-self:stretch; border-radius:100px; flex-shrink:0; }
+.hr-card .info { flex:1; }
+.hr-card .info .nm { font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
+.hr-card .info .nm em { font-style:italic; color:var(--gold); }
+.hr-card .info .sub { font-size:10px; color:var(--navy-3); margin-top:2px; }
+.hr-card .count { text-align:right; }
+.hr-card .count .num { font-family:'Fraunces',serif; font-size:18px; font-weight:600; line-height:1; }
+.hr-card .count .num em { font-style:italic; color:var(--gold); }
+.hr-card .count .sub { font-size:10px; color:var(--navy-3); margin-top:2px; }
+
+/* Pre-arrival list (Aggrey indicated visits) */
+.prearrival-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.pa-head { padding:14px 22px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.pa-head .info h5 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; }
+.pa-head .info h5 em { font-style:italic; color:var(--gold); }
+.pa-head .info .sub { font-size:10px; color:var(--navy-3); margin-top:2px; }
+.pa-head .badge { padding:3px 10px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; background:var(--gold-bg); color:var(--gold); }
+.pa-row { display:grid; grid-template-columns:1fr 1fr 90px 100px 100px; padding:11px 22px; gap:12px; border-bottom:1px solid var(--border); font-size:12px; align-items:center; }
+.pa-row:last-child { border-bottom:none; }
+.pa-row.flagged { background:var(--terra-bg); }
+.pa-row.header { background:var(--bg); padding:8px 22px; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.pa-row .student { display:flex; align-items:center; gap:8px; }
+.pa-row .student .av { width:26px; height:26px; border-radius:50%; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:9px; font-weight:700; }
+.pa-row.flagged .student .av { background:var(--terra); color:var(--bg); }
+.pa-row .student .info .nm { font-weight:700; font-size:12px; }
+.pa-row .student .info .sub { font-size:9px; color:var(--navy-3); }
+.pa-row .visitor { font-size:11px; color:var(--navy-2); line-height:1.4; }
+.pa-row .visitor b { color:var(--navy); font-weight:700; }
+.pa-row .rel { font-size:10px; color:var(--navy-3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; }
+.pa-row .approved { font-size:10px; font-weight:700; }
+.pa-row .approved.yes { color:var(--green); }
+.pa-row .approved.add { color:var(--gold); }
+.pa-row .action button { padding:4px 8px; font-size:10px; }
+
+/* Approved visitors list (per student detail) */
+.av-list-card { background:var(--gold-bg); border:1px solid var(--gold); border-radius:12px; padding:18px 22px; }
+.av-list-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed var(--gold); }
+.av-list-head .info h4 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; line-height:1.2; }
+.av-list-head .info h4 em { font-style:italic; color:var(--gold); }
+.av-list-head .info .sub { font-size:11px; color:var(--navy-2); margin-top:3px; }
+.av-list-head .badge { padding:3px 10px; border-radius:100px; font-size:9px; font-weight:700; letter-spacing:0.08em; background:var(--gold); color:var(--navy); }
+.av-list-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }
+.av-row { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; display:flex; gap:10px; align-items:center; font-size:11px; }
+.av-row .av { width:30px; height:30px; border-radius:50%; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:10px; font-weight:700; flex-shrink:0; }
+.av-row .info { flex:1; min-width:0; }
+.av-row .info .nm { font-weight:700; font-size:11px; }
+.av-row .info .sub { font-size:10px; color:var(--navy-3); }
+.av-row .id { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--navy-3); font-weight:600; }
+
+/* Visitor area allocation */
+.zones-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 26px; }
+.zones-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+.zone { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.zone .l { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.zone .v { font-family:'Fraunces',serif; font-size:16px; font-weight:600; margin-top:5px; line-height:1.2; }
+.zone .v em { font-style:italic; color:var(--gold); }
+.zone .where { font-size:11px; color:var(--navy-3); margin-top:5px; line-height:1.4; }
+.zone .where b { color:var(--navy-2); font-weight:600; }
+.zone .capacity { margin-top:10px; padding-top:8px; border-top:1px dashed var(--border); font-size:10px; color:var(--navy-3); display:flex; justify-content:space-between; }
+.zone .capacity .cap-num { font-family:'Fraunces',serif; font-weight:600; color:var(--navy); }
+
+/* Out-of-bounds zones */
+.oob-card { background:var(--terra-bg); border:1.5px solid var(--terra); border-radius:12px; padding:18px 22px; display:flex; align-items:center; gap:18px; }
+.oob-card .icon { width:48px; height:48px; border-radius:12px; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:18px; font-weight:600; flex-shrink:0; }
+.oob-card .info { flex:1; }
+.oob-card .info .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--terra); font-weight:700; margin-bottom:3px; }
+.oob-card .info h4 { font-family:'Fraunces',serif; font-size:17px; font-weight:600; line-height:1.2; }
+.oob-card .info h4 em { font-style:italic; color:var(--terra); }
+.oob-card .info .sub { font-size:11px; color:var(--navy-2); margin-top:3px; line-height:1.4; }
+.oob-card .info .sub b { color:var(--navy); font-weight:700; }
+
+.editorial { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 36px; }
+.editorial .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.editorial h3 { font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:14px; line-height:1.25; }
+.editorial h3 em { font-style:italic; color:var(--gold); }
+.editorial p { font-size:13px; color:var(--navy-2); line-height:1.7; margin-bottom:12px; }
+.editorial p b { color:var(--navy); font-weight:600; }
+.editorial p em { color:var(--gold); font-style:italic; font-family:'Fraunces',serif; font-weight:500; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Boarding batch · 06 of 07</div>
+  <span class="mvp-tag">SHS · Senior Housemaster · monthly cadence</span>
+  <span class="related-tag">Sun 17 May 2026 · in 3 days · the next visiting Sunday</span>
+  <h1 class="display">Visiting Sunday <em>· the school's front door, opened monthly</em></h1>
+  <div class="gold-rule"></div>
+  <p>Once a month — the second Sunday — Asankrangwa's gates open to parents and guardians from <b>noon to 4 PM</b>. Lunch moves earlier (11:30) to clear the dining hall. Dormitories remain out of bounds. Students meet families in designated visitor areas. <em>The Senior Housemaster runs this from the digital Visitor's Book</em> — a replacement for the paper register that the Student on Duty has held for sixty years. This view shows the run-up: <b>three days out</b>, with parent RSVPs accumulating, approved-visitor lists pulled per student, and visitor area capacity being managed.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Visiting day · Sun 17 May 2026 · pre-arrival setup</div>
+    <div class="section-meta">Boarding → Operations → Visiting day · T-3 days</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / boarding / operations / visiting-day / 2026-05-17</div>
+        <div class="ctx">PRE-ARRIVAL · T-3 DAYS · RSVPs OPEN</div>
+      </div>
+
+      <!-- Countdown strip -->
+      <div class="countdown-strip">
+        <div class="calbox">
+          <div class="day">SUN</div>
+          <div class="num">17</div>
+          <div class="mon">MAY</div>
+        </div>
+        <div class="center">
+          <div class="eb">VISITING SUNDAY · 3 DAYS · 4-HOUR WINDOW</div>
+          <h3 class="display">Asankrangwa opens its gate <em>· 12:00 — 16:00 · this Sunday</em></h3>
+          <div class="sub"><b>Lunch served 11:30</b> · visiting begins noon · lunch with families until 1 PM · supervised time in visitor areas until 4 PM · gate-close strict</div>
+        </div>
+        <div class="right">
+          <div class="lab">RSVP'd parents so far</div>
+          <div class="big display"><em>418</em></div>
+          <div class="sub">59% of boarders' families · still 3 days for more</div>
+        </div>
+      </div>
+
+      <div class="head-row">
+        <div>
+          <div class="crumb">Boarding &amp; residential life · Operations · Visiting day · 2026-05-17 setup</div>
+          <h2 class="display">Pre-arrival <em>· readying the front door</em></h2>
+          <div class="lede">Mrs G. Asante (Senior HM) reviews · approved-visitor lists pulled · visitor zones allocated · dining hall lunch shift coordinated with kitchen · SoD on duty Sunday is K. Boateng (Aggrey, rotates this week) · this view replaces the paper Visitor's Book held by SoD for sixty years</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost">Send RSVP reminder</button>
+          <button class="btn">View live (Sunday)</button>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="sum-card featured">
+          <div class="lab">RSVPs received</div>
+          <div class="big display"><em>418</em></div>
+          <div class="sub"><b>59%</b> of boarders · typical for T-3 · last month closed at 624 (88%)</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Boarders expecting visitors</div>
+          <div class="big display"><em>418</em></div>
+          <div class="sub">Of 712 boarders · 294 not RSVP'd yet</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Approved visitor names</div>
+          <div class="big display"><em>1,247</em></div>
+          <div class="sub">3 per boarder average · max 6 names per student</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">New visitor approvals</div>
+          <div class="big display"><em>14</em></div>
+          <div class="sub">Pending HM review · 5 grandparents, 9 siblings</div>
+        </div>
+        <div class="sum-card">
+          <div class="lab">Visitor zones</div>
+          <div class="big display"><em>3</em> zones</div>
+          <div class="sub">Main lawn, dining annex, library quad · 1,200 cap total</div>
+        </div>
+      </div>
+
+      <div class="body-shell">
+
+        <!-- RSVP breakdown -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">RSVPs by House · running counter · T-3</div>
+              <h3 class="display">Six Houses, six counters <em>· Slessor leads, Form 1 lags</em></h3>
+            </div>
+            <div class="meta">Parents RSVP via SMS link · school sends invitation 7 days before · 2nd reminder T-3 (today) · 3rd reminder T-1</div>
+          </div>
+
+          <div class="rsvp-card">
+            <div class="rsvp-grid">
+
+              <div class="rsvp-cell">
+                <div class="l">Aggrey House</div>
+                <div class="v display"><em>72</em> / 119</div>
+                <div class="bar"><div class="fill" style="width:61%;"></div></div>
+                <div class="sub"><b>61% RSVP</b> · 24 F3 · 23 F2 · 25 F1 · <b>J. Manu</b>'s mother indicated yes</div>
+              </div>
+
+              <div class="rsvp-cell">
+                <div class="l">Guggisberg House</div>
+                <div class="v display"><em>67</em> / 118</div>
+                <div class="bar"><div class="fill" style="width:57%;"></div></div>
+                <div class="sub"><b>57% RSVP</b> · evenly split across forms · 1 special visitor pending HM review</div>
+              </div>
+
+              <div class="rsvp-cell">
+                <div class="l">Fraser House</div>
+                <div class="v display"><em>69</em> / 117</div>
+                <div class="bar"><div class="fill" style="width:59%;"></div></div>
+                <div class="sub"><b>59% RSVP</b> · 22 F3 · 23 F2 · 24 F1</div>
+              </div>
+
+              <div class="rsvp-cell featured">
+                <div class="l">Slessor House · top</div>
+                <div class="v display"><em>78</em> / 120</div>
+                <div class="bar"><div class="fill" style="width:65%;"></div></div>
+                <div class="sub"><b>65% RSVP</b> · highest in school · <b>F3 100% RSVP</b> (last visiting before WASSCE)</div>
+              </div>
+
+              <div class="rsvp-cell">
+                <div class="l">Kingsley House</div>
+                <div class="v display"><em>70</em> / 119</div>
+                <div class="bar"><div class="fill" style="width:59%;"></div></div>
+                <div class="sub"><b>59% RSVP</b> · steady curve · F1 girls still building family contact</div>
+              </div>
+
+              <div class="rsvp-cell">
+                <div class="l">Aryee House</div>
+                <div class="v display"><em>62</em> / 119</div>
+                <div class="bar"><div class="fill" style="width:52%;"></div></div>
+                <div class="sub"><b>52% RSVP</b> · lowest · House youngest, fewer alumni networks · reminder SMS scheduled tonight</div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Aggrey indicated visitors -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Aggrey House · RSVP'd visitors so far · 72 of 119</div>
+              <h3 class="display">Indicated arrivals <em>· per student preview</em></h3>
+            </div>
+            <div class="meta">Shows 8 of 72 · click <b>View all</b> for the full list · J. Manu's mother flagged for special HM attention</div>
+          </div>
+
+          <div class="prearrival-card">
+            <div class="pa-head">
+              <div class="info">
+                <h5 class="display">8 of 72 Aggrey arrivals <em>· sorted by RSVP recency</em></h5>
+                <div class="sub">All approved against the visitor list · 1 student (J. Manu) has special pastoral notification active for Senior HM</div>
+              </div>
+              <div class="badge">AGGREY</div>
+            </div>
+
+            <div class="pa-row header">
+              <div>Student</div>
+              <div>Visitor</div>
+              <div>Relationship</div>
+              <div>Approved</div>
+              <div>Action</div>
+            </div>
+
+            <div class="pa-row flagged">
+              <div class="student">
+                <div class="av">JM</div>
+                <div class="info"><div class="nm">J. Manu</div><div class="sub">F2 GA A · D-D-03</div></div>
+              </div>
+              <div class="visitor"><b>Mrs E. Manu</b> · ID Card GHA-7841-2025 · mobile +233 24 *** *** 91</div>
+              <div class="rel">MOTHER</div>
+              <div class="approved yes">VERIFIED</div>
+              <div class="action"><button class="btn">View · HM note</button></div>
+            </div>
+
+            <div class="pa-row">
+              <div class="student">
+                <div class="av">PO</div>
+                <div class="info"><div class="nm">Prince Otoo</div><div class="sub">F2 GA A · D-D-10</div></div>
+              </div>
+              <div class="visitor"><b>Mr &amp; Mrs Otoo</b> · 2 visitors · NHIS + Ghana Card verified</div>
+              <div class="rel">PARENTS</div>
+              <div class="approved yes">VERIFIED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+            <div class="pa-row">
+              <div class="student">
+                <div class="av">DA</div>
+                <div class="info"><div class="nm">D. Adjei</div><div class="sub">F3 GS · A-01 · Head of House</div></div>
+              </div>
+              <div class="visitor"><b>Mrs S. Adjei</b> + sister Akua (15) · sister on approved list since 2024</div>
+              <div class="rel">MOTHER + SIB</div>
+              <div class="approved yes">VERIFIED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+            <div class="pa-row">
+              <div class="student">
+                <div class="av">SO</div>
+                <div class="info"><div class="nm">S. Owusu</div><div class="sub">F3 GA · B-01 · Dining Prefect</div></div>
+              </div>
+              <div class="visitor"><b>Pastor B. Owusu</b> · uncle &amp; guardian · listed since Form 1</div>
+              <div class="rel">UNCLE/GUARD</div>
+              <div class="approved yes">VERIFIED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+            <div class="pa-row">
+              <div class="student">
+                <div class="av">KB</div>
+                <div class="info"><div class="nm">K. Boateng</div><div class="sub">F3 BUS · C-01 · Sanitation</div></div>
+              </div>
+              <div class="visitor"><b>Mr E. Boateng</b> · father · Ghana Card verified</div>
+              <div class="rel">FATHER</div>
+              <div class="approved yes">VERIFIED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+            <div class="pa-row">
+              <div class="student">
+                <div class="av">EM</div>
+                <div class="info"><div class="nm">E. Mensah</div><div class="sub">F3 GS · E-01 · Prep Prefect</div></div>
+              </div>
+              <div class="visitor"><b>Aunt R. Mensah</b> · listed since Form 1 · also <b>cousin Felix</b> · cousin needs new approval</div>
+              <div class="rel">AUNT + COUSIN</div>
+              <div class="approved add">+1 NEEDS REVIEW</div>
+              <div class="action"><button class="btn terra">Review</button></div>
+            </div>
+
+            <div class="pa-row">
+              <div class="student">
+                <div class="av">FT</div>
+                <div class="info"><div class="nm">F. Tetteh</div><div class="sub">F3 GS · F-01 · Sick Bay</div></div>
+              </div>
+              <div class="visitor"><b>Father &amp; mother</b> · long journey from Wa · arriving 11:00 for lunch</div>
+              <div class="rel">PARENTS</div>
+              <div class="approved yes">VERIFIED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+            <div class="pa-row">
+              <div class="student">
+                <div class="av">AK</div>
+                <div class="info"><div class="nm">A. Kufuor</div><div class="sub">F3 BUS · A-08</div></div>
+              </div>
+              <div class="visitor"><b>Mr K. Kufuor</b> · father · solo · NHIS verified</div>
+              <div class="rel">FATHER</div>
+              <div class="approved yes">VERIFIED</div>
+              <div class="action"><button class="btn">View</button></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- J. Manu approved-visitor list (cross-link to VLC/pastoral) -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">J. Manu's approved visitors · cross-linked to pastoral case</div>
+              <h3 class="display">The list of names <em>· per-student, max 6, on student record</em></h3>
+            </div>
+            <div class="meta">HM-curated · parents nominate · Dean approves for pastoral-sensitive cases · J. Manu's list pruned in February</div>
+          </div>
+
+          <div class="av-list-card">
+            <div class="av-list-head">
+              <div class="info">
+                <h4 class="display">J. Manu <em>· 5 approved visitors · pastoral active</em></h4>
+                <div class="sub">List updated 23 Feb 2026 after bereavement · father removed (deceased) · grandfather added · sister Margaret added at Dean's recommendation</div>
+              </div>
+              <div class="badge">SENIOR HM REVIEWED</div>
+            </div>
+            <div class="av-list-grid">
+              <div class="av-row">
+                <div class="av">EM</div>
+                <div class="info">
+                  <div class="nm">Mrs Esi Manu</div>
+                  <div class="sub">Mother · primary contact · home Kumasi · attending Sunday</div>
+                </div>
+                <div class="id">VIS-001-MOTHER</div>
+              </div>
+              <div class="av-row">
+                <div class="av">DM</div>
+                <div class="info">
+                  <div class="nm">Mr Daniel Manu</div>
+                  <div class="sub">Grandfather (paternal) · added 23 Feb · Adum, Kumasi</div>
+                </div>
+                <div class="id">VIS-002-GRDF</div>
+              </div>
+              <div class="av-row">
+                <div class="av">MM</div>
+                <div class="info">
+                  <div class="nm">Margaret Manu (19)</div>
+                  <div class="sub">Sister · Form 4 KNUST · added 23 Feb at Dean rec</div>
+                </div>
+                <div class="id">VIS-003-SIB</div>
+              </div>
+              <div class="av-row">
+                <div class="av">AB</div>
+                <div class="info">
+                  <div class="nm">Mrs A. Boateng</div>
+                  <div class="sub">Aunt (maternal) · since Form 1 · Sunyani</div>
+                </div>
+                <div class="id">VIS-004-AUNT</div>
+              </div>
+              <div class="av-row">
+                <div class="av">RB</div>
+                <div class="info">
+                  <div class="nm">Pastor R. Boamah</div>
+                  <div class="sub">Family pastor · since Form 1 · only attends with mother</div>
+                </div>
+                <div class="id">VIS-005-PASTOR</div>
+              </div>
+              <div class="av-row" style="opacity:0.5;">
+                <div class="av">—</div>
+                <div class="info">
+                  <div class="nm">Slot 6 · empty</div>
+                  <div class="sub">Available to add (max 6 per student)</div>
+                </div>
+                <div class="id">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visitor zones -->
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <div class="eb">Visitor zones · where families meet students Sunday noon to 4 PM</div>
+              <h3 class="display">Three zones <em>· 1,200 capacity</em></h3>
+            </div>
+            <div class="meta">Dormitories out of bounds · cars in designated parking · students introduce visitors to HM as a courtesy</div>
+          </div>
+
+          <div class="zones-card">
+            <div class="zones-grid">
+              <div class="zone">
+                <div class="l">ZONE 1 · MAIN LAWN</div>
+                <div class="v display">Main lawn <em>· in front of admin block</em></div>
+                <div class="where"><b>For all Houses</b> · shaded benches · sit on grass or own mats · most parents bring food</div>
+                <div class="capacity">
+                  <span>Capacity</span>
+                  <span class="cap-num">~700</span>
+                </div>
+              </div>
+              <div class="zone">
+                <div class="l">ZONE 2 · DINING ANNEX</div>
+                <div class="v display">Dining annex <em>· adjacent to dining hall</em></div>
+                <div class="where"><b>For weather backup</b> · indoor tables &amp; chairs · families having lunch with students</div>
+                <div class="capacity">
+                  <span>Capacity</span>
+                  <span class="cap-num">~300</span>
+                </div>
+              </div>
+              <div class="zone">
+                <div class="l">ZONE 3 · LIBRARY QUAD</div>
+                <div class="v display">Library quad <em>· quieter, shaded</em></div>
+                <div class="where"><b>For private conversations</b> · grandparents · pastoral conversations · J. Manu's family allocated here</div>
+                <div class="capacity">
+                  <span>Capacity</span>
+                  <span class="cap-num">~200</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Out of bounds reminder -->
+        <div class="block">
+          <div class="oob-card">
+            <div class="icon">OOB</div>
+            <div class="info">
+              <div class="eb">DORMITORIES &amp; STAFF QUARTERS · OUT OF BOUNDS · STRICT</div>
+              <h4 class="display">No visitor may enter a dormitory <em>· or any staff bungalow</em></h4>
+              <div class="sub"><b>Students may not sit in visitors' cars.</b> Cars in designated parking only. Beyond 4 PM, no visitor may remain on campus. <b>Past 4:15 PM, SoD logs visitor as overstaying</b> and HM is notified. Past 4:30, Senior HM intervenes directly. <em>The rule is what makes the visiting day feel safe, especially for the youngest boarders.</em></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>What this surface replaces</h4>
+      <ul>
+        <li><b>The Visitor's Book.</b> A physical hardback ledger held by the Student on Duty at the gate. Each entry: parent name, student name, relationship, time-in, time-out, signature. <em>Sixty years of operation. Illegible by Year 3.</em></li>
+        <li><b>The clipboard at the kitchen.</b> Coordinating early-lunch shift with the catering team. Now flows from the RSVP system.</li>
+        <li><b>The phone call to the parent.</b> "Did you get the SMS about Sunday?" Now the SMS is the RSVP, with read-receipts.</li>
+      </ul>
+      <h4 style="margin-top:24px;">Approved visitor list mechanics</h4>
+      <ul>
+        <li><b>Max 6 visitors per student.</b> Forces parents to think carefully about the list.</li>
+        <li><b>Nominated by parent / guardian.</b> Approved by Housemaster after age/relationship verification.</li>
+        <li><b>Pastoral-sensitive cases require Dean approval.</b> J. Manu's list was reviewed by the Dean after his father's death.</li>
+        <li><b>Names persist across years</b> · siblings, grandparents, family pastors remain approved unless removed</li>
+        <li><b>Verified at gate</b> via Ghana Card or NHIS · ID checked, name matched to list, time stamped</li>
+      </ul>
+      <h4 style="margin-top:24px;">J. Manu's Sunday</h4>
+      <ul>
+        <li><b>Mother RSVP'd Monday.</b> She has indicated she will attend.</li>
+        <li><b>Allocated Zone 3 · library quad.</b> Quieter, private, by HM design.</li>
+        <li><b>HM Mr Mensah will personally check in with them</b> at 12:30, as is the gentle convention for pastoral-active students.</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Why a digital Visitor's Book matters more than it seems</div>
+    <div class="section-meta">Editorial · the front-door problem</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="editorial">
+        <div class="eb">The Visitor's Book as a security surface</div>
+        <h3 class="display">A school's front door is its <em>most important security surface</em>. The visiting Sunday is when that door is most open.</h3>
+        <p>Twelve hours of the school year are when the school's gate is wide open to people who are not staff and not students. Four hours per visiting Sunday, once a month, eight months of the academic year (no visiting in vacation; sometimes adjusted in WASSCE weeks). During those twelve hours, between four hundred and seven hundred adult visitors flow through a campus full of teenagers. <b>The Visitor's Book is what makes that flow auditable.</b></p>
+        <p>The paper version is failing. Not because anyone is malicious — schools largely run on goodwill — but because the SoD writing the book at 1:30 PM cannot remember whether the third Mrs Mensah of the day is actually approved to visit student JKL or whether they are the wrong Mrs Mensah. The book records "Mrs Mensah · mother · noon · 3:45 PM" and that's what it has. <em>There is no cross-reference to whether this Mrs Mensah is on JKL's approved visitor list.</em> If a non-approved visitor enters under a common name, the book records it as if it were fine.</p>
+        <p>The digital approach reverses this. The student's approved-visitor list is pulled at gate sign-in. The visitor's name is matched. The relationship is verified. If the visitor's not on the list, the gate flags it — sometimes legitimately (new aunt visiting from abroad, never met) but the resolution is the SoD calling the HM for verbal authorisation, not the SoD writing down a name without checking. <b>The gate becomes a list-check rather than a list-record.</b></p>
+        <p>There is a quieter benefit to surfacing this data: <em>schools start to see patterns.</em> Which students get visited every month? Which students never get visited? Which Houses have stronger parent engagement? Which families travel from Kumasi vs. from Accra vs. from Wa? The Senior HM running this surface for three years has data the paper book never produced — about which Form 1 boarders haven't had a single visit (a pastoral flag), which families have logistical struggles getting here (a transport coordination opportunity), which months have lighter visiting (potential to expand to also include the third Sunday in WASSCE term).</p>
+        <p>One design decision worth defending: <b>the surface does not display visit photos or videos.</b> No QR scanning in front of the parent. The check is done by the SoD with a tablet, name spoken aloud, parent ID checked once, the green tick happens out of the parent's sight. Visiting day is a moment of family connection. <em>The technology stays behind the scenes; the warmth stays in front.</em> The Visitor's Book worked for sixty years not because it was a great record-keeping system but because it was background. The digital version aims to preserve that.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h4>Cross-batch link</h4>
+      <ul>
+        <li><b>Mrs Manu's visit Sunday</b> will be logged on this surface. The HM note that Mr Mensah will record afterwards goes to the VLC pastoral journal (not here). <em>The two systems remain separate; only the student's record holds both.</em></li>
+      </ul>
+      <h4 style="margin-top:24px;">What the live surface (Sunday) adds</h4>
+      <ul>
+        <li><b>Live arrival counter</b> · 200 of 418 RSVPs arrived by 1 PM</li>
+        <li><b>Zone occupancy</b> · Main lawn 423 of 700 capacity</li>
+        <li><b>Overstayers warning</b> · fires at 16:15 if visitor still on campus</li>
+        <li><b>Pastoral cases flag</b> · J. Manu's mother arrived 12:24, HM Mr Mensah notified at 12:25</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

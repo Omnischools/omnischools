@@ -1,0 +1,10 @@
+{
+  "name": "Omnischools",
+  "short_name": "Omnischools",
+  "description": "School management for Ghana — Basic, Senior & Oversight.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#1A2B47",
+  "icons": [{ "src": "/favicon.ico", "sizes": "48x48", "type": "image/x-icon" }]
+}

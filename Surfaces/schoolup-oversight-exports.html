@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools Oversight — District director dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Omnischools Oversight — Exports</title>
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:800px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Oversight uses a deeper navy app chrome to distinguish it from the operational app */
+.app-shell { display:grid; grid-template-columns:230px 1fr; background:var(--bg); }
+.sidebar { background:#13203A; color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1240px; }
+.sidebar.tall { min-height:1620px; }
+.sidebar.taller { min-height:1880px; }
+.sidebar .gov-mark { padding:0 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:8px; }
+.sidebar .gov-mark .crest { display:flex; gap:11px; align-items:center; }
+.sidebar .gov-mark .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; line-height:1; text-align:center; }
+.sidebar .gov-mark .crest-text .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.sidebar .gov-mark .crest-text .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.sidebar .scope-chip { margin:14px 20px 8px; padding:10px 12px; background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:8px; }
+.sidebar .scope-chip .sc-label { font-size:8.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.sidebar .scope-chip .sc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.sidebar .scope-chip .sc-meta { font-size:10px; color:var(--gold-soft); margin-top:1px; }
+.nav-group { padding:16px 24px 6px; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(200,151,91,0.6); font-weight:700; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.1); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; }
+.sidebar .footer .av { width:34px; height:34px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; flex-shrink:0; }
+.sidebar .footer .meta-name { font-weight:600; font-size:12px; }
+.sidebar .footer .meta-role { font-size:9.5px; color:var(--gold-soft); margin-top:1px; }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.5); font-weight:700; }
+.powered-by em { color:var(--gold); font-style:normal; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:820px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Data-period banner */
+.period-banner { display:flex; align-items:center; gap:14px; padding:12px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; margin-bottom:24px; }
+.period-banner .pb-icon { width:34px; height:34px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:15px; flex-shrink:0; }
+.period-banner .pb-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.period-banner .pb-text b { color:var(--navy); font-weight:700; }
+.period-banner .pb-aside { margin-left:auto; font-size:10px; letter-spacing:0.06em; color:var(--navy-3); font-weight:600; text-align:right; }
+
+/* KPI strip */
+.kpi-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.kpi-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.kpi-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.kpi-card .k-lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.kpi-card .k-val { font-family:'Fraunces', serif; font-size:33px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.kpi-card .k-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.kpi-card .k-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.kpi-card .k-sub { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.kpi-card .k-sub b { color:var(--navy-2); font-weight:700; }
+.kpi-card .k-delta { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; margin-top:8px; position:relative; }
+.kpi-card .k-delta.up { background:var(--green-bg); color:var(--green); }
+.kpi-card .k-delta.down { background:var(--terra-bg); color:var(--terra); }
+.kpi-card .k-delta.flat { background:var(--bg); color:var(--navy-3); }
+
+/* Panel */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.panel-head { padding:16px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; justify-content:space-between; }
+.panel-head .ph-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.panel-head .ph-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.panel-head .ph-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.panel-head .ph-link { font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; }
+.panel-body { padding:20px 22px; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* Bar rows for enrolment-by-sex etc */
+.bar-row { margin-bottom:14px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-row .br-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.bar-row .br-label { font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-label .br-sub { color:var(--navy-3); font-weight:500; font-size:10.5px; margin-left:6px; }
+.bar-row .br-value { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-track { height:9px; background:var(--bg); border-radius:100px; overflow:hidden; display:flex; }
+.bar-row .br-fill { height:100%; }
+.bar-row .br-fill.navy { background:var(--navy); }
+.bar-row .br-fill.gold { background:var(--gold); }
+.bar-row .br-fill.green { background:var(--green); }
+.bar-row .br-fill.terra { background:var(--terra); }
+.bar-row .br-fill.warn { background:var(--warn); }
+.split-legend { display:flex; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.split-legend .sl-item { display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--navy-2); font-weight:600; }
+.split-legend .sl-dot { width:9px; height:9px; border-radius:2px; }
+.bar-row.parent .br-label { display:flex; align-items:center; gap:7px; }
+.bar-row.parent .drill-chip { font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; color:var(--gold); background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:100px; padding:2px 7px; cursor:pointer; }
+.bar-row.child { margin-left:18px; padding-left:12px; border-left:2px solid var(--border); }
+.bar-row.child .br-label { font-weight:500; color:var(--navy-2); font-size:11.5px; }
+.bar-row.child .br-value { font-size:11px; color:var(--navy-2); }
+.bar-row.child .br-track { height:7px; }
+.subtotal-note { font-size:10px; color:var(--navy-3); font-weight:600; margin:3px 0 10px 30px; font-style:italic; }
+.fee-row { margin-bottom:14px; }
+.fee-row:last-child { margin-bottom:0; }
+.fee-row .fr-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.fee-row .fr-level { font-size:12px; font-weight:700; color:var(--navy); }
+.fee-row .fr-total { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.fee-row .fr-bar { height:16px; border-radius:4px; overflow:hidden; display:flex; }
+.fee-row .fr-seg { height:100%; }
+.fee-legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.fee-legend .fl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.fee-legend .fl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* Mini stat list */
+.stat-list { display:flex; flex-direction:column; }
+.stat-list .st-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.stat-list .st-row:last-child { border-bottom:none; }
+.stat-list .st-label { font-size:12px; color:var(--navy-2); font-weight:500; }
+.stat-list .st-label b { color:var(--navy); font-weight:700; }
+.stat-list .st-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stat-list .st-val .st-unit { font-size:10px; color:var(--navy-3); font-weight:500; }
+.stat-list .st-val.flag { color:var(--terra); }
+.stat-list .st-val.good { color:var(--green); }
+
+/* Performance band chart */
+.band-chart { display:flex; flex-direction:column; gap:10px; }
+.band-row { display:grid; grid-template-columns:78px 1fr 48px; gap:10px; align-items:center; }
+.band-row .bd-label { font-size:11px; font-weight:600; color:var(--navy-2); }
+.band-row .bd-track { height:20px; background:var(--bg); border-radius:5px; overflow:hidden; display:flex; }
+.band-row .bd-seg { height:100%; }
+.band-row .bd-pct { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.band-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.band-legend .bl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.band-legend .bl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* School list table */
+.school-table { width:100%; border-collapse:collapse; }
+.school-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.school-table th.c { text-align:center; }
+.school-table th.r { text-align:right; }
+.school-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.school-table tr:last-child td { border-bottom:none; }
+.school-table tr.drill { cursor:pointer; }
+.school-table tr.drill:hover td { background:var(--gold-bg); }
+.school-table td .sc-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.school-table td .sc-name .sc-badge { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.school-table td .sc-name .sc-badge.anchor { background:var(--gold); color:var(--navy); }
+.school-table td .sc-meta { font-size:9.5px; color:var(--navy-3); margin-top:1px; font-weight:500; }
+.school-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.school-table td .num.r { text-align:right; }
+.school-table td .ratio { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; }
+.school-table td .ratio.good { color:var(--green); }
+.school-table td .ratio.warn { color:var(--warn); }
+.school-table td .ratio.flag { color:var(--terra); }
+.school-table td .perf-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; }
+.school-table td .perf-pill.good { background:var(--green-bg); color:var(--green); }
+.school-table td .perf-pill.mid { background:var(--warn-bg); color:var(--warn); }
+.school-table td .perf-pill.low { background:var(--terra-bg); color:var(--terra); }
+.school-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.table-toolbar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.table-toolbar .tt-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.chip { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:5px 11px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.chip.compare { background:var(--gold-bg); border-color:var(--gold); color:var(--navy); margin-left:auto; }
+.chip.compare::before { content:"⊕ "; color:var(--gold); }
+
+/* Anomaly callouts */
+.flag-list { display:flex; flex-direction:column; gap:10px; }
+.flag-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.flag-item.warn { border-color:var(--warn); background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 60%); }
+.flag-item.terra { border-color:var(--terra); background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 60%); }
+.flag-item .fi-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.flag-item.warn .fi-icon { background:var(--warn); color:var(--bg); }
+.flag-item.terra .fi-icon { background:var(--terra); color:var(--bg); }
+.flag-item .fi-body .fi-title { font-size:12px; font-weight:700; color:var(--navy); }
+.flag-item .fi-body .fi-detail { font-size:10.5px; color:var(--navy-2); margin-top:2px; line-height:1.45; }
+.flag-item .fi-body .fi-detail b { color:var(--navy); font-weight:700; }
+.flag-item .fi-action { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:700; color:var(--navy); cursor:pointer; }
+
+/* Comparison teaser */
+.compare-strip { background:linear-gradient(135deg, #13203A 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:22px 26px; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.compare-strip::before { content:""; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.compare-strip .cs-body { position:relative; }
+.compare-strip .cs-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.compare-strip .cs-title { font-family:'Fraunces', serif; font-size:21px; font-weight:500; line-height:1.2; margin-bottom:6px; }
+.compare-strip .cs-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.compare-strip .cs-text { font-size:12px; color:var(--gold-soft); line-height:1.5; max-width:560px; }
+.compare-strip .cs-text b { color:var(--bg); font-weight:600; }
+.compare-strip .cs-action { position:relative; }
+
+/* Data provenance footer */
+.provenance { display:flex; gap:18px; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-top:18px; flex-wrap:wrap; }
+.provenance .pv-item { font-size:10.5px; color:var(--navy-3); font-weight:500; }
+.provenance .pv-item b { color:var(--navy-2); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .dash-grid { grid-template-columns:1fr; }
+  .compare-strip { grid-template-columns:1fr; }
+}
+
+/* ===== Exports specific ===== */
+.export-build { display:grid; grid-template-columns:1fr 300px; gap:18px; align-items:start; }
+.build-row { margin-bottom:18px; }
+.build-row .br-label { font-size:11px; letter-spacing:0.04em; font-weight:700; color:var(--navy); margin-bottom:8px; }
+.build-row .br-hint { font-size:10.5px; color:var(--navy-3); font-weight:500; margin-bottom:9px; line-height:1.5; }
+.source-opts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.source-opt { display:flex; align-items:flex-start; gap:9px; padding:12px 14px; border:1px solid var(--border-2); border-radius:9px; cursor:pointer; }
+.source-opt.selected { border-color:var(--gold); background:var(--gold-bg); }
+.source-opt .so-radio { width:16px; height:16px; border-radius:50%; border:1.5px solid var(--border-2); flex-shrink:0; margin-top:1px; }
+.source-opt.selected .so-radio { border-color:var(--gold); border-width:5px; }
+.source-opt .so-title { font-size:11.5px; font-weight:700; color:var(--navy); }
+.source-opt .so-desc { font-size:10px; color:var(--navy-3); margin-top:2px; line-height:1.4; }
+.fmt-opts { display:flex; gap:8px; }
+.fmt-opt { flex:1; display:flex; align-items:center; gap:10px; padding:13px 15px; border:1px solid var(--border-2); border-radius:9px; cursor:pointer; }
+.fmt-opt.selected { border-color:var(--gold); background:var(--gold-bg); }
+.fmt-opt .fo-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; flex-shrink:0; }
+.fmt-opt .fo-icon.csv { background:var(--green-bg); color:var(--green); }
+.fmt-opt .fo-icon.pdf { background:var(--terra-bg); color:var(--terra); }
+.fmt-opt .fo-title { font-size:12px; font-weight:700; color:var(--navy); }
+.fmt-opt .fo-desc { font-size:9.5px; color:var(--navy-3); margin-top:1px; }
+.toggle-row { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border:1px solid var(--border); border-radius:9px; margin-bottom:8px; }
+.toggle-row .tr-body .tr-title { font-size:11.5px; font-weight:700; color:var(--navy); }
+.toggle-row .tr-body .tr-desc { font-size:10px; color:var(--navy-3); margin-top:1px; line-height:1.4; }
+.toggle-pill { width:38px; height:21px; border-radius:100px; background:var(--border-2); position:relative; flex-shrink:0; }
+.toggle-pill.on { background:var(--green); }
+.toggle-pill::after { content:""; position:absolute; top:2px; left:2px; width:17px; height:17px; border-radius:50%; background:var(--surface); }
+.toggle-pill.on::after { left:19px; }
+/* preview / summary card */
+.export-summary { background:var(--bg); border:1px solid var(--border); border-radius:11px; padding:16px 18px; }
+.export-summary .es-title { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:10px; }
+.export-summary .es-row { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:11px; }
+.export-summary .es-row:last-of-type { border-bottom:none; }
+.export-summary .es-k { color:var(--navy-3); font-weight:600; }
+.export-summary .es-v { color:var(--navy); font-weight:700; text-align:right; }
+/* coverage stamp */
+.cov-stamp { display:flex; gap:11px; padding:14px 16px; background:var(--warn-bg); border:1px solid var(--warn); border-radius:11px; margin-top:12px; }
+.cov-stamp .cs-icon { width:30px; height:30px; border-radius:7px; background:var(--warn); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.cov-stamp .cs-text { font-size:10.5px; color:var(--navy-2); line-height:1.55; }
+.cov-stamp .cs-text b { color:var(--navy); font-weight:700; }
+/* named-record warning */
+.named-warn { display:grid; grid-template-columns:auto 1fr; gap:12px; background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 70%); border:1.5px solid var(--terra); border-radius:12px; padding:16px 20px; margin-bottom:18px; }
+.named-warn .nw-icon { width:38px; height:38px; border-radius:9px; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:17px; }
+.named-warn .nw-title { font-family:'Fraunces', serif; font-size:15px; font-weight:600; margin-bottom:4px; }
+.named-warn .nw-text { font-size:11px; color:var(--navy-2); line-height:1.55; }
+.named-warn .nw-text b { color:var(--navy); font-weight:700; }
+/* export history */
+.exp-table { width:100%; border-collapse:collapse; }
+.exp-table th { background:var(--bg); padding:10px 12px; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.exp-table td { padding:11px 12px; font-size:11.5px; border-bottom:1px solid var(--border); color:var(--navy-2); }
+.exp-table tr:last-child td { border-bottom:none; }
+.exp-table td .ex-name { font-weight:700; color:var(--navy); }
+.exp-table td .ex-when { font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--navy-3); }
+.exp-table td .ex-fmt { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:9px; font-weight:700; padding:2px 7px; border-radius:100px; }
+.exp-table td .ex-fmt.csv { background:var(--green-bg); color:var(--green); }
+.exp-table td .ex-fmt.pdf { background:var(--terra-bg); color:var(--terra); }
+.exp-table td .ex-tag { font-size:9px; letter-spacing:0.04em; text-transform:uppercase; font-weight:700; color:var(--navy-3); }
+.exp-table td .ex-tag.logged { color:var(--terra); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Omnischools Oversight · Batch 3 · surface 5 of 5</div>
+<div class="eyebrow">Omnischools Oversight · data leaves the platform</div>
+<h1>Taking a view <em>out.</em></h1>
+<div class="gold-rule"></div>
+<p>GES work does not stay inside a dashboard — figures go into ministerial briefs, regional reports, budget submissions, parliamentary answers. The exports surface is where any Oversight view becomes a CSV or a PDF a director can carry into that work. But an export is the moment data leaves the platform's controls, so this surface carries forward two disciplines the rest of Oversight established. The coverage caveat travels with the data — an exported file states, on its face, that it reflects a known share of schools, so a figure can never be quoted downstream as if complete. And exporting named records goes through the very same audit logging as viewing them on screen — leaving the platform is not a way around the gate. The demo is a district director exporting the Wassa Amenfi West enrolment analysis. This is the final surface of the Oversight product line.</p>
+</div>
+
+<!-- ============================================ SECTION 1 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">Build an export · source, format, and what travels with it</div>
+<div class="section-meta">CSV or PDF</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/exports/new</div></div>
+
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records &amp; audit</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item active"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Exports · New export</div>
+<div class="top-row">
+<div>
+<h1>New <em>export.</em></h1>
+<div class="lede">Choose a view, a format, and what travels with the file. Coverage context is always included.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Cancel</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="export-build">
+
+<div>
+<div class="build-row">
+<div class="br-label">What to export</div>
+<div class="br-hint">Any Oversight view you can see. Exports stay within your jurisdiction — a district director exports district views, not other districts.</div>
+<div class="source-opts">
+<div class="source-opt selected">
+<div class="so-radio"></div>
+<div><div class="so-title">Enrolment vs population</div><div class="so-desc">Stage rates, the unmeasured gap, by circuit</div></div>
+</div>
+<div class="source-opt">
+<div class="so-radio"></div>
+<div><div class="so-title">Academic performance</div><div class="so-desc">BECE/WASSCE and internal results</div></div>
+</div>
+<div class="source-opt">
+<div class="so-radio"></div>
+<div><div class="so-title">District dashboard</div><div class="so-desc">All five themes, headline figures</div></div>
+</div>
+<div class="source-opt">
+<div class="so-radio"></div>
+<div><div class="so-title">School list</div><div class="so-desc">Per-school table, all 34 schools</div></div>
+</div>
+</div>
+</div>
+
+<div class="build-row">
+<div class="br-label">Format</div>
+<div class="br-hint">CSV for working with the numbers; PDF for a report-ready document with the method and caveats laid out.</div>
+<div class="fmt-opts">
+<div class="fmt-opt selected">
+<div class="fo-icon csv">CSV</div>
+<div><div class="fo-title">CSV data file</div><div class="fo-desc">Spreadsheet · for analysis</div></div>
+</div>
+<div class="fmt-opt">
+<div class="fo-icon pdf">PDF</div>
+<div><div class="fo-title">PDF report</div><div class="fo-desc">Formatted · for circulation</div></div>
+</div>
+</div>
+</div>
+
+<div class="build-row">
+<div class="br-label">What travels with the file</div>
+<div class="br-hint">Some of this is fixed — the coverage stamp cannot be switched off.</div>
+<div class="toggle-row">
+<div class="tr-body"><div class="tr-title">Coverage stamp <span style="color:var(--terra); font-weight:700;">· required</span></div><div class="tr-desc">States the school coverage behind every figure · cannot be removed</div></div>
+<div class="toggle-pill on"></div>
+</div>
+<div class="toggle-row">
+<div class="tr-body"><div class="tr-title">Method note</div><div class="tr-desc">The stage-for-stage age-matched method, in the file</div></div>
+<div class="toggle-pill on"></div>
+</div>
+<div class="toggle-row">
+<div class="tr-body"><div class="tr-title">As-of date &amp; data sources</div><div class="tr-desc">Sync date, GSS census vintage, WAEC extract</div></div>
+<div class="toggle-pill on"></div>
+</div>
+<div class="toggle-row">
+<div class="tr-body"><div class="tr-title">Circuit-level breakdown</div><div class="tr-desc">Include the per-circuit rows, not just district totals</div></div>
+<div class="toggle-pill"></div>
+</div>
+</div>
+</div>
+
+<div>
+<div class="export-summary">
+<div class="es-title">This export</div>
+<div class="es-row"><div class="es-k">View</div><div class="es-v">Enrolment vs population</div></div>
+<div class="es-row"><div class="es-k">Jurisdiction</div><div class="es-v">Wassa Amenfi West</div></div>
+<div class="es-row"><div class="es-k">Format</div><div class="es-v">CSV data file</div></div>
+<div class="es-row"><div class="es-k">Rows</div><div class="es-v">4 stages × 1 district</div></div>
+<div class="es-row"><div class="es-k">Named records</div><div class="es-v" style="color:var(--green);">None — aggregate</div></div>
+<div class="es-row"><div class="es-k">As of</div><div class="es-v">22 May 2026 sync</div></div>
+</div>
+
+<div class="cov-stamp">
+<div class="cs-icon">!</div>
+<div class="cs-text">The file will carry a <b>coverage stamp</b> in its header: <i>"Reflects 34 of 40 schools (85%) in Wassa Amenfi West. Figures are not a complete district count."</i> This travels with the data so no one downstream can quote it as complete.</div>
+</div>
+
+<button class="btn" style="width:100%; margin-top:12px; background:var(--navy); color:var(--bg); font-weight:700;">Generate export →</button>
+<div style="font-size:9.5px; color:var(--navy-3); text-align:center; margin-top:8px; line-height:1.5;">An aggregate export is not audit-logged · it carries no named records</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>An export carries the platform's discipline with it</h4>
+<ul>
+<li><b>The coverage stamp cannot be switched off.</b> Every other toggle is optional; the coverage stamp is fixed on. An exported file states on its face that it reflects 34 of 40 schools — because the moment data leaves the platform, the surrounding context that kept it honest is gone, so the caveat has to be inside the file itself.</li>
+<li><b>The stamp is specific, not a disclaimer.</b> It names the actual numbers — 34 of 40, 85%, this district — and says plainly the figure is not a complete count. A vague "data may be incomplete" footer would be ignored; a specific stamp is something a reader in a ministry brief has to reckon with.</li>
+<li><b>Method and provenance can travel too.</b> The stage-for-stage method note, the GSS census vintage, the WAEC extract date — optional toggles, on by default. An enrolment figure quoted without its method invites misreading; the export can carry its own explanation.</li>
+<li><b>The summary names whether the export contains named records.</b> "None — aggregate" here, in green. Before a single file is generated, the officer sees whether they are exporting an aggregate view or named data — because those two cases are governed completely differently, as section 2 shows.</li>
+<li><b>An aggregate export is not audit-logged — and the surface says so.</b> Aggregate data leaving the platform is ordinary GES reporting; it carries no named records and needs no log entry. The surface is precise about the line: the logging discipline attaches to named records specifically, not to exporting in general.</li>
+<li><b>Exports stay within jurisdiction.</b> A district director exports district views — the same ceiling as every other surface. The export path is not a gap in the scope model; it inherits it.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 2 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">Named records leaving the platform · the gate still applies</div>
+<div class="section-meta">Export history &amp; logging</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / district/wassa-amenfi-west/exports</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Wassa Amenfi West</div>
+<div class="sc-meta">Municipal District · Western Region</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>District dashboard</div>
+<div class="nav-item"><div class="ic"></div>Schools</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records &amp; audit</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item active"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">DM</div><div><div class="meta-name">D. Mensah-Bonsu</div><div class="meta-role">District Director · WAW</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Wassa Amenfi West · Exports</div>
+<div class="top-row">
+<div>
+<h1>Export <em>history.</em></h1>
+<div class="lede">What has left the platform — and which exports were audit-logged.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">Filter</button>
+<button class="btn primary">New export →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="named-warn">
+<div class="nw-icon">!</div>
+<div>
+<div class="nw-title">Exporting a named record is the same action as viewing one</div>
+<div class="nw-text">If an export includes any named student or teacher record, it goes through the <b>identical justification gate</b> as the compliance record view, and it writes the <b>same entry</b> to the Oversight access &amp; audit log. Putting a name into a CSV is not a way around the gate — the file leaving the platform is exactly what the gate exists to control. Aggregate exports are unaffected; this applies only when a name is in the file.</div>
+</div>
+</div>
+
+<div class="panel" style="margin-bottom:0;">
+<div class="panel-head">
+<div class="ph-title">Recent <em>exports</em></div>
+<div class="ph-meta">Wassa Amenfi West · last 90 days</div>
+</div>
+<table class="exp-table">
+<thead><tr>
+<th>Export</th>
+<th>Format</th>
+<th>By</th>
+<th>When</th>
+<th>Audit log</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><div class="ex-name">Enrolment vs population</div><div class="ex-when">aggregate · 34 schools</div></td>
+<td><span class="ex-fmt csv">CSV</span></td>
+<td>D. Mensah-Bonsu</td>
+<td><div class="ex-when">22 May 2026</div></td>
+<td><span class="ex-tag">Not logged · aggregate</span></td>
+</tr>
+<tr>
+<td><div class="ex-name">District dashboard brief</div><div class="ex-when">aggregate · all themes</div></td>
+<td><span class="ex-fmt pdf">PDF</span></td>
+<td>D. Mensah-Bonsu</td>
+<td><div class="ex-when">14 May 2026</div></td>
+<td><span class="ex-tag">Not logged · aggregate</span></td>
+</tr>
+<tr>
+<td><div class="ex-name">Compliance record · R-0094</div><div class="ex-when">1 named student record</div></td>
+<td><span class="ex-fmt pdf">PDF</span></td>
+<td>D. Mensah-Bonsu</td>
+<td><div class="ex-when">21 May 2026</div></td>
+<td><span class="ex-tag logged">Logged · R-0094</span></td>
+</tr>
+<tr>
+<td><div class="ex-name">Academic performance</div><div class="ex-when">aggregate · BECE/WASSCE</div></td>
+<td><span class="ex-fmt csv">CSV</span></td>
+<td>D. Mensah-Bonsu</td>
+<td><div class="ex-when">02 May 2026</div></td>
+<td><span class="ex-tag">Not logged · aggregate</span></td>
+</tr>
+</tbody>
+</table>
+<div style="text-align:center; padding:14px; font-size:11px; color:var(--navy-3); font-style:italic; border-top:1px solid var(--border);">4 exports · 3 aggregate, not logged · <b>1 carried a named record and is logged as R-0094</b></div>
+</div>
+
+<div class="onboard-cta" style="display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:center; background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 70%); border:1px solid var(--gold-soft); border-radius:12px; padding:18px 22px; margin-top:18px;">
+<div style="width:40px; height:40px; border-radius:10px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-style:italic; font-weight:600; font-size:17px;">✓</div>
+<div>
+<div style="font-family:'Fraunces',serif; font-size:15px; font-weight:600; color:var(--navy); margin-bottom:3px;">One rule, wherever data leaves</div>
+<div style="font-size:11px; color:var(--navy-2); line-height:1.55;">Whether a name is read on screen or carried out in a PDF, it passes the same gate and writes the same log entry. The export R-0094 above and the on-screen access R-0094 in the audit log are <b>the same logged event</b> — the platform does not care which exit the data takes.</div>
+</div>
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Aggregate export</b> · coverage-stamped · not audit-logged</div>
+<div class="pv-item"><b>Named-record export</b> · justification-gated · logged like an on-screen access</div>
+<div class="pv-item"><b>One log</b> · the access &amp; audit log holds both on-screen and exported accesses</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Leaving the platform is not leaving the rules</h4>
+<ul>
+<li><b>The export path is not a loophole.</b> The obvious gap in any oversight tool is "view is controlled, but export is not" — so a determined user pulls a CSV instead. This surface closes that: a named-record export hits the identical gate and writes the identical log entry as viewing the record. The file leaving is exactly the event the gate governs.</li>
+<li><b>The export history names which exports were logged.</b> Three aggregate exports marked "not logged," one named-record export marked "Logged · R-0094." The history itself shows the rule operating — the officer and any reviewer can see at a glance which exports carried names and were therefore logged.</li>
+<li><b>The on-screen access and the export are the same event.</b> R-0094 in the compliance record view, R-0094 in the audit log, R-0094 here as a PDF export — one logged event, not three. The platform records the access to the named record; the format it left in is just an attribute of that one event.</li>
+<li><b>Aggregate and named-record exports are treated differently, and the line is clear.</b> Aggregate data is coverage-stamped but not logged — ordinary reporting. Named-record data is gated and logged. The surface never blurs the two; the discipline is proportionate to what is actually in the file.</li>
+<li><b>This surface completes Oversight Batch 3, and the Oversight product line.</b> Build an export with its coverage stamp (section 1) and the export history with named-record logging (section 2) — the last of the thirteen Oversight surfaces. Across three batches, Oversight now runs from a district director's first sign-in through the signature analyses, the regional and national tiers, and the full compliance and audit apparatus — every figure coverage-honest, every named-record access gated and logged.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

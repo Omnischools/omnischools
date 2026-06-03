@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Offline mode</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+/* Hero card */
+.principle-hero { background:linear-gradient(135deg, var(--navy) 0%, #243652 100%); color:var(--bg); border-radius:14px; padding:32px 36px; margin-bottom:24px; display:grid; grid-template-columns:1fr 320px; gap:36px; align-items:center; }
+.principle-hero .hero-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:10px; }
+.principle-hero h2 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.02em; line-height:1.15; margin-bottom:14px; max-width:560px; }
+.principle-hero h2 em { font-style:italic; color:var(--gold); }
+.principle-hero p { font-size:13px; color:rgba(250,247,242,0.78); line-height:1.65; margin-bottom:10px; max-width:560px; }
+.principle-hero p b { color:var(--bg); font-weight:600; }
+.connectivity-stat { background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.3); border-radius:10px; padding:18px 22px; }
+.connectivity-stat .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.connectivity-stat .val { font-family:'Fraunces',serif; font-size:32px; font-weight:500; letter-spacing:-0.02em; line-height:1; margin-bottom:6px; }
+.connectivity-stat .val em { font-style:italic; color:var(--gold); }
+.connectivity-stat .desc { font-size:11px; color:rgba(250,247,242,0.65); line-height:1.45; }
+
+/* Capability matrix */
+.matrix { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.matrix-row { display:grid; grid-template-columns:240px 110px 1fr 110px; gap:18px; padding:14px 22px; border-bottom:1px solid var(--border); align-items:center; }
+.matrix-row:last-child { border-bottom:none; }
+.matrix-row.head { background:var(--bg); padding:11px 22px; }
+.matrix-row.head div { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.matrix-row.section-divider { background:var(--gold-bg); padding:9px 22px; border-bottom:1px solid var(--gold-soft); }
+.matrix-row.section-divider .div-label { font-family:'Fraunces',serif; font-size:13px; font-weight:600; color:var(--gold); font-style:italic; grid-column:1/-1; }
+.matrix-row.section-divider .div-label b { color:var(--navy); font-style:normal; font-weight:700; }
+.mat-op { font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
+.mat-op .sub { display:block; font-family:'Manrope',sans-serif; font-size:11px; color:var(--navy-3); font-weight:400; margin-top:3px; line-height:1.4; }
+.mat-cap { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.mat-cap.green { background:var(--green-bg); color:var(--green); }
+.mat-cap.warn { background:var(--warn-bg); color:var(--warn); }
+.mat-cap.terra { background:var(--terra-bg); color:var(--terra); }
+.mat-cap .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.mat-detail { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.mat-detail b { color:var(--navy); font-weight:600; }
+.mat-detail em { font-style:italic; color:var(--gold); }
+.mat-storage { font-size:10px; color:var(--navy-3); text-align:right; font-style:italic; }
+.mat-storage b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Connection state cards */
+.state-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+.state-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.state-card .head { padding:14px 20px; display:flex; gap:12px; align-items:center; }
+.state-card .indicator { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; }
+.state-card.online .indicator { background:var(--green-bg); color:var(--green); }
+.state-card.offline .indicator { background:var(--warn-bg); color:var(--warn); }
+.state-card.syncing .indicator { background:var(--gold-bg); color:var(--gold); }
+.state-card.error .indicator { background:var(--terra-bg); color:var(--terra); }
+.state-card .head .ti { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.state-card .head .ti em { font-style:italic; color:var(--gold); }
+.state-card .head .meta { font-size:10px; color:var(--navy-3); margin-top:1px; font-style:italic; }
+.state-card .pill-display { padding:14px 20px; background:var(--bg); border-top:1px solid var(--border); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
+.state-pill { display:inline-flex; align-items:center; gap:8px; padding:7px 13px; border-radius:100px; font-size:11px; font-weight:600; }
+.state-pill.online { background:var(--green-bg); color:var(--green); border:1px solid var(--green); }
+.state-pill.offline { background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn); }
+.state-pill.syncing { background:var(--gold-bg); color:var(--gold); border:1px solid var(--gold); }
+.state-pill.error { background:var(--terra-bg); color:var(--terra); border:1px solid var(--terra); }
+.state-pill .dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+.state-pill .dot.pulse { animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+.state-card .body { padding:14px 20px 18px; }
+.state-card .when { font-size:11px; color:var(--gold); font-weight:600; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
+.state-card .desc { font-size:12px; color:var(--navy-2); line-height:1.6; }
+.state-card .desc b { color:var(--navy); font-weight:600; }
+.state-card .desc em { font-style:italic; color:var(--gold); }
+
+/* Sync queue */
+.queue-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.queue-head { background:var(--gold-bg); border-bottom:1px solid var(--gold-soft); padding:16px 22px; display:flex; align-items:center; gap:14px; }
+.queue-head .ic { width:32px; height:32px; border-radius:50%; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:14px; }
+.queue-head .text { flex:1; }
+.queue-head .text h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.queue-head .text h4 em { font-style:italic; color:var(--gold); }
+.queue-head .text .meta { font-size:11px; color:var(--navy-3); margin-top:2px; }
+.queue-head .text .meta b { color:var(--navy-2); font-weight:600; }
+.queue-head .progress { display:flex; flex-direction:column; align-items:end; }
+.queue-head .progress .num { font-family:'Fraunces',serif; font-size:20px; font-weight:600; }
+.queue-head .progress .num em { font-style:italic; color:var(--gold); }
+.queue-head .progress .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+
+.queue-bar { height:4px; background:var(--bg); position:relative; }
+.queue-bar .fill { position:absolute; left:0; top:0; height:100%; background:var(--gold); width:62%; }
+
+.queue-row { display:grid; grid-template-columns:36px 1fr 110px 110px; gap:14px; padding:13px 22px; border-bottom:1px solid var(--border); align-items:center; }
+.queue-row:last-child { border-bottom:none; }
+.queue-row.head { background:var(--bg); padding:10px 22px; }
+.queue-row.head div { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.queue-row .check { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:11px; }
+.queue-row .check.done { background:var(--green-bg); color:var(--green); }
+.queue-row .check.syncing { background:var(--gold); color:var(--navy); animation:pulse 1.2s infinite; }
+.queue-row .check.pending { background:var(--bg); color:var(--navy-3); border:1px dashed var(--border-2); }
+.queue-row .check.failed { background:var(--terra-bg); color:var(--terra); }
+.queue-row .desc { font-size:13px; color:var(--navy-2); line-height:1.4; }
+.queue-row .desc b { color:var(--navy); font-family:'Fraunces',serif; font-size:14px; font-weight:600; display:block; margin-bottom:2px; letter-spacing:-0.005em; }
+.queue-row .desc .sub { font-size:11px; color:var(--navy-3); }
+.queue-row .desc .sub b { display:inline; color:var(--navy-2); font-family:inherit; font-size:11px; margin:0; font-weight:600; }
+.queue-row .when { font-size:11px; color:var(--navy-3); font-style:italic; font-family:'JetBrains Mono',monospace; }
+.queue-row .when b { color:var(--navy-2); font-style:normal; font-weight:600; }
+.queue-row .status { font-size:10px; font-weight:700; letter-spacing:0.04em; text-align:right; }
+.queue-row .status.done { color:var(--green); }
+.queue-row .status.syncing { color:var(--gold); }
+.queue-row .status.pending { color:var(--navy-3); font-style:italic; }
+.queue-row .status.failed { color:var(--terra); }
+.queue-row .status .sub-line { display:block; font-weight:400; font-style:italic; font-size:10px; color:var(--navy-3); margin-top:3px; letter-spacing:0; text-transform:none; }
+
+/* Conflict resolution */
+.conflict-card { background:var(--surface); border:1px solid var(--terra); border-left:4px solid var(--terra); border-radius:12px; overflow:hidden; margin-bottom:14px; }
+.conflict-head { background:var(--terra-bg); padding:16px 22px; display:flex; gap:14px; align-items:start; }
+.conflict-head .ic { width:32px; height:32px; border-radius:50%; background:var(--terra); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:16px; flex-shrink:0; }
+.conflict-head .txt h4 { font-family:'Fraunces',serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; line-height:1.25; margin-bottom:3px; }
+.conflict-head .txt h4 em { font-style:italic; color:var(--gold); }
+.conflict-head .txt .sub { font-size:11px; color:var(--navy-2); }
+.conflict-head .txt .sub b { color:var(--navy); font-weight:600; }
+.conflict-body { padding:18px 22px; }
+.conflict-versions { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+.version { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+.version.recommended { border-color:var(--gold); border-width:1.5px; background:var(--gold-bg); }
+.version .v-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.version .v-head .who { font-family:'Fraunces',serif; font-size:13px; font-weight:600; }
+.version .v-head .who em { font-style:italic; color:var(--gold); }
+.version .v-head .when { font-size:10px; color:var(--navy-3); font-family:'JetBrains Mono',monospace; }
+.version .v-data { font-size:12px; color:var(--navy-2); line-height:1.55; padding:10px 12px; background:var(--surface); border-radius:6px; border:1px solid var(--border); }
+.version .v-data b { color:var(--navy); font-weight:600; }
+.version .v-data .changed { background:var(--gold-bg); padding:1px 4px; border-radius:3px; font-weight:600; color:var(--navy); }
+.version .v-foot { margin-top:10px; font-size:10px; color:var(--navy-3); font-style:italic; }
+.version.recommended .v-foot { color:var(--gold); font-weight:600; }
+.conflict-actions { display:flex; gap:8px; padding-top:14px; border-top:1px solid var(--border); }
+.conflict-actions .left-group { display:flex; gap:8px; }
+.conflict-actions .right-group { margin-left:auto; display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+/* Editorial card */
+.principle-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:20px; }
+.principle-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.principle-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.principle-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.principle-card p b { color:var(--navy); font-weight:600; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Deferred surface</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Connectivity is a <em>question</em>, not an answer</h1>
+  <div class="gold-rule"></div>
+  <p>Rural Ghanaian schools are at the end of patchy 3G networks; power cuts kill routers; metered mobile data makes admin think twice before opening anything. Omnischools's offline mode isn't a "fallback" — it's the design starting point for the operations that <b>have to work when the network doesn't</b>. Attendance is the flagship case. Marking 312 students absent because the network dropped is not a feature.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">What works offline · what doesn't</div>
+    <div class="section-meta">10 operations · 3 capability tiers</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="principle-hero">
+        <div>
+          <div class="hero-eyebrow">The principle</div>
+          <h2 class="display">Some operations are local first. <em>Others can't be.</em></h2>
+          <p>Omnischools installs as a Progressive Web App — capable of caching the school's roster, attendance form, and gradebook locally. Operations that <b>only need the school's own data</b> (mark attendance, save grades, draft a parent message) work offline against the cache. Operations that <b>need the outside world</b> (send SMS via MNO, process MoMo payment, fetch a new student transfer record) wait for connectivity.</p>
+          <p>The capability map below tells admin <em>which is which, before they need to know</em>.</p>
+        </div>
+        <div class="connectivity-stat">
+          <div class="lab">Local-first cache</div>
+          <div class="val display"><em>~28 MB</em></div>
+          <div class="desc">Your school's roster, this term's attendance, this term's gradebook · stored on-device · re-synced on reconnect.</div>
+        </div>
+      </div>
+
+      <div class="matrix">
+        <div class="matrix-row head">
+          <div>Operation</div>
+          <div>Capability</div>
+          <div>Behaviour offline</div>
+          <div>Storage</div>
+        </div>
+
+        <div class="matrix-row section-divider">
+          <div class="div-label"><b>Tier A</b> · Works offline · syncs on reconnect</div>
+        </div>
+
+        <div class="matrix-row">
+          <div class="mat-op">Take attendance<span class="sub">the flagship case · taken every morning</span></div>
+          <div><span class="mat-cap green"><span class="dot"></span>Offline-first</span></div>
+          <div class="mat-detail">Roster cached, attendance saves to local store. <b>Up to 14 days of attendance</b> can queue before syncing — covers a full power-and-network outage.</div>
+          <div class="mat-storage">~2 KB <b>per day</b></div>
+        </div>
+
+        <div class="matrix-row">
+          <div class="mat-op">Save grades / coursework<span class="sub">teacher updates per assignment</span></div>
+          <div><span class="mat-cap green"><span class="dot"></span>Offline-first</span></div>
+          <div class="mat-detail">Gradebook for current term cached. Edits queue locally. <em>Last-edit-wins</em> on sync if no conflict; conflict UI if two devices touched the same row.</div>
+          <div class="mat-storage">~80 KB <b>per term</b></div>
+        </div>
+
+        <div class="matrix-row">
+          <div class="mat-op">Draft parent messages<span class="sub">SMS or WhatsApp templates</span></div>
+          <div><span class="mat-cap green"><span class="dot"></span>Offline-first</span></div>
+          <div class="mat-detail">Drafts save locally · <b>send queues until reconnect</b>. Admin sees the queue with delivery still pending. Templates cached.</div>
+          <div class="mat-storage">~6 KB <b>per draft</b></div>
+        </div>
+
+        <div class="matrix-row">
+          <div class="mat-op">Look up student records<span class="sub">profile, attendance history, billing summary</span></div>
+          <div><span class="mat-cap green"><span class="dot"></span>Offline-first</span></div>
+          <div class="mat-detail">Full roster + this-term data cached. <b>Older history (previous terms) requires connectivity</b> — banner explains.</div>
+          <div class="mat-storage">~22 MB <b>full school</b></div>
+        </div>
+
+        <div class="matrix-row section-divider">
+          <div class="div-label"><b>Tier B</b> · Works partially · degraded but useful</div>
+        </div>
+
+        <div class="matrix-row">
+          <div class="mat-op">Record cash payment<span class="sub">parent pays at school office</span></div>
+          <div><span class="mat-cap warn"><span class="dot"></span>Cache + queue</span></div>
+          <div class="mat-detail">Receipt number reserved from local pool · payment record queues for sync. <b>Receipt PDF generates on reconnect</b> — admin can print a handwritten interim slip.</div>
+          <div class="mat-storage">~4 KB <b>per payment</b></div>
+        </div>
+
+        <div class="matrix-row">
+          <div class="mat-op">Generate report card<span class="sub">term-end PDF for one student</span></div>
+          <div><span class="mat-cap warn"><span class="dot"></span>Cache + queue</span></div>
+          <div class="mat-detail">If grades are cached and complete: <b>generates locally</b>. If reliant on cross-class averages or rankings: queues for server-side generation.</div>
+          <div class="mat-storage">~140 KB <b>per PDF</b></div>
+        </div>
+
+        <div class="matrix-row section-divider">
+          <div class="div-label"><b>Tier C</b> · Requires connectivity · greys out cleanly</div>
+        </div>
+
+        <div class="matrix-row">
+          <div class="mat-op">Send SMS / WhatsApp<span class="sub">message reaches MNO</span></div>
+          <div><span class="mat-cap terra"><span class="dot"></span>Online only</span></div>
+          <div class="mat-detail">SMS gateway requires connectivity. <b>Message queues locally</b> with a "will send when online" tag · admin sees pending count in the inbox.</div>
+          <div class="mat-storage">queue only</div>
+        </div>
+
+        <div class="matrix-row">
+          <div class="mat-op">Process MoMo payment<span class="sub">parent pays via mobile money</span></div>
+          <div><span class="mat-cap terra"><span class="dot"></span>Online only</span></div>
+          <div class="mat-detail">MNO payment gateway requires real-time connectivity. <b>Cannot be queued</b> — admin tells parent to retry or accept cash for now.</div>
+          <div class="mat-storage">—</div>
+        </div>
+
+        <div class="matrix-row">
+          <div class="mat-op">Cross-school operations<span class="sub">student transfers, MoE returns</span></div>
+          <div><span class="mat-cap terra"><span class="dot"></span>Online only</span></div>
+          <div class="mat-detail">Anything that needs another school's data or government endpoints. <b>Greyed-out with explanation</b> · admin sees what's missing.</div>
+          <div class="mat-storage">—</div>
+        </div>
+
+        <div class="matrix-row">
+          <div class="mat-op">Initial app load<span class="sub">first-time install or after cache clear</span></div>
+          <div><span class="mat-cap terra"><span class="dot"></span>Online only</span></div>
+          <div class="mat-detail">First load needs to fetch the roster and term data. <b>One good connection is enough</b> — after that, the app survives offline for weeks.</div>
+          <div class="mat-storage">—</div>
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Why these tiers, not "online vs offline"</div>
+        <p>A binary <em>"the app is offline"</em> banner is wrong because it suggests <b>nothing works</b> — when in fact most of the day's work (taking attendance, saving grades, looking up Akosua) works fine. Tier-aware design lets the system grey out only what truly can't work, while keeping everything else <em>silently functional</em>. The teacher takes attendance during the morning power cut; she only notices something different when she tries to send a message.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li><b>14 days of queued attendance</b> covers worst-case scenarios — a school with no power for two weeks (rare but real). Beyond 14 days, admin sees a warning to reconnect or risk data loss.</li>
+        <li>Cache size <b>~28 MB total</b> is calibrated for cheap Android devices with limited storage. Larger schools (1000+ students) auto-tune the cache to keep only the active term's gradebook.</li>
+        <li>Cash payments queue with a <b>locally-reserved receipt number</b> from a pre-allocated pool. When the queue syncs, the numbers are committed in order. <em>No duplicate receipt numbers</em> — the chain stays intact for GRA.</li>
+        <li>MoMo payments <b>cannot queue</b> — pretending they could would create false expectations. The honest answer is "MoMo needs network; tell the parent to retry or accept cash."</li>
+        <li>This file describes <b>what offline mode does</b>. The product decision <em>whether it's an MVP1 or MVP2 feature</em> remains open — for a flagship attendance system in rural Ghana, MVP1 may be the right answer.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Connection states · how the system signals</div>
+    <div class="section-meta">4 states · the pill is always at the top of the screen</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="state-grid">
+
+        <div class="state-card online">
+          <div class="head">
+            <div class="indicator">✓</div>
+            <div>
+              <div class="ti display">Online · <em>nominal</em></div>
+              <div class="meta">connection is good · everything is current</div>
+            </div>
+          </div>
+          <div class="pill-display">
+            <div class="state-pill online"><span class="dot"></span>Online · synced just now</div>
+          </div>
+          <div class="body">
+            <div class="when">When admin sees this</div>
+            <div class="desc">Default state. Pill sits quietly in the top-right of the navigation bar — <b>visible but not loud</b>. After 60 seconds of nothing happening, the pill fades to gold-soft <em>"synced 1m ago"</em> language.</div>
+          </div>
+        </div>
+
+        <div class="state-card offline">
+          <div class="head">
+            <div class="indicator">i</div>
+            <div>
+              <div class="ti display">Offline · <em>working locally</em></div>
+              <div class="meta">connection lost · cache active</div>
+            </div>
+          </div>
+          <div class="pill-display">
+            <div class="state-pill offline"><span class="dot"></span>Offline · 4 changes queued</div>
+          </div>
+          <div class="body">
+            <div class="when">When admin sees this</div>
+            <div class="desc">Network drops or admin enters airplane mode. Pill shifts to warn-tinted with <b>queue count</b>. Tier C operations grey out. Attendance, grades, drafts — all keep working. <em>No alarms, no red banners.</em></div>
+          </div>
+        </div>
+
+        <div class="state-card syncing">
+          <div class="head">
+            <div class="indicator">⟳</div>
+            <div>
+              <div class="ti display">Syncing · <em>catching up</em></div>
+              <div class="meta">reconnected · uploading queue</div>
+            </div>
+          </div>
+          <div class="pill-display">
+            <div class="state-pill syncing"><span class="dot pulse"></span>Syncing · 13 of 21 changes uploaded</div>
+          </div>
+          <div class="body">
+            <div class="when">When admin sees this</div>
+            <div class="desc">Connection returns. Pulse animation on the dot. Pill shows <b>progress through the queue</b>. Sync continues in background — admin can keep working while the queue drains.</div>
+          </div>
+        </div>
+
+        <div class="state-card error">
+          <div class="head">
+            <div class="indicator">!</div>
+            <div>
+              <div class="ti display">Sync error · <em>needs your attention</em></div>
+              <div class="meta">conflict or rejection · review required</div>
+            </div>
+          </div>
+          <div class="pill-display">
+            <div class="state-pill error"><span class="dot"></span>2 changes need review</div>
+          </div>
+          <div class="body">
+            <div class="when">When admin sees this</div>
+            <div class="desc">Some queued changes failed to sync — usually a conflict (two devices edited the same row). Pill shifts terra. Clicking opens the queue inspector with the failing items. <b>Most of the queue still synced</b> · only the conflicts wait.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Why the pill, not the banner</div>
+        <p>A full-width red banner saying <em>"YOU ARE OFFLINE"</em> is what most apps do. It's wrong for Omnischools because it implies the app is broken — but the teacher is fine, attendance is being taken, grades are being saved. <b>The pill is honest without being alarmist</b>: connection is one part of the system; here is its current state. <em>Calm signal beats panic banner</em>, especially in environments where the offline state is the default state.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>Pill placement: <b>top right of the nav bar</b>, near the user avatar. Not in the breadcrumb, not as a banner. Calm location for calm signal.</li>
+        <li>The pulse animation on the syncing dot is <b>1.5s opacity cycle</b> — slow enough to be peripheral, fast enough to read as "active". Faster pulses read as alarms.</li>
+        <li>The terra "needs your attention" state explicitly does <b>not</b> use the word "error" in the pill itself — <em>"2 changes need review"</em> is a task, not a failure. Helps admin act without panic.</li>
+        <li>Connection state is checked <b>every 30 seconds</b> when active, <b>every 5 minutes</b> when idle. Mobile data isn't free — we don't poll aggressively.</li>
+        <li>Sync queue persists across browser refreshes. Admin can close the tab, the queue waits, sync resumes when they reopen on connection.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">The sync queue · what's pending, what failed</div>
+    <div class="section-meta">Click the offline pill · see the queue · troubleshoot</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="queue-card">
+        <div class="queue-head">
+          <div class="ic">⟳</div>
+          <div class="text">
+            <h4 class="display">Sync queue · <em>21 changes</em></h4>
+            <div class="meta">Last good sync: <b>2 May at 06:42 AM</b> · 1h 54m ago · <b>13 uploaded</b>, 6 pending, 2 need review</div>
+          </div>
+          <div class="progress">
+            <div class="num display"><em>13</em>/21</div>
+            <div class="lab">Uploaded</div>
+          </div>
+        </div>
+        <div class="queue-bar"><div class="fill"></div></div>
+
+        <div class="queue-row head">
+          <div></div>
+          <div>Change</div>
+          <div>Captured</div>
+          <div>Status</div>
+        </div>
+
+        <div class="queue-row">
+          <div class="check done">✓</div>
+          <div class="desc">
+            <b>Attendance · JHS 1A · 06:48</b>
+            <div class="sub"><b>32 of 32 students</b> · Mrs Ama · 28 present, 4 absent</div>
+          </div>
+          <div class="when"><b>06:48</b><br>1h 48m ago</div>
+          <div class="status done">UPLOADED<span class="sub-line">synced 08:36</span></div>
+        </div>
+
+        <div class="queue-row">
+          <div class="check done">✓</div>
+          <div class="desc">
+            <b>Grade entry · JHS 2A maths · 07:14</b>
+            <div class="sub"><b>14 students</b> · midterm test scores · Mrs Abena</div>
+          </div>
+          <div class="when"><b>07:14</b><br>1h 22m ago</div>
+          <div class="status done">UPLOADED<span class="sub-line">synced 08:36</span></div>
+        </div>
+
+        <div class="queue-row">
+          <div class="check syncing">⟳</div>
+          <div class="desc">
+            <b>Cash payment · GHS 240.00</b>
+            <div class="sub">Mrs Mensah · Term 2 first instalment · receipt <b>RC-2025-0847</b></div>
+          </div>
+          <div class="when"><b>07:55</b><br>41m ago</div>
+          <div class="status syncing">SYNCING<span class="sub-line">receipt PDF generating</span></div>
+        </div>
+
+        <div class="queue-row">
+          <div class="check syncing">⟳</div>
+          <div class="desc">
+            <b>SMS · 47 parents</b>
+            <div class="sub">Term 2 visiting day reminder · queued during outage</div>
+          </div>
+          <div class="when"><b>08:02</b><br>34m ago</div>
+          <div class="status syncing">SYNCING<span class="sub-line">3 of 47 dispatched</span></div>
+        </div>
+
+        <div class="queue-row">
+          <div class="check pending">·</div>
+          <div class="desc">
+            <b>Grade entry · JHS 3A english · 08:18</b>
+            <div class="sub"><b>26 students</b> · essay scores · Mr Joe</div>
+          </div>
+          <div class="when"><b>08:18</b><br>18m ago</div>
+          <div class="status pending">PENDING<span class="sub-line">waiting for slot</span></div>
+        </div>
+
+        <div class="queue-row" style="background:var(--terra-bg);">
+          <div class="check failed">!</div>
+          <div class="desc">
+            <b>Attendance edit · Akosua Asantewaa · 06:51</b>
+            <div class="sub">marked <b>Late</b> by Mrs Akua · server has <b>Present</b> recorded by another device</div>
+          </div>
+          <div class="when"><b>06:51</b><br>1h 45m ago</div>
+          <div class="status failed">CONFLICT<span class="sub-line">needs review →</span></div>
+        </div>
+
+        <div class="queue-row" style="background:var(--terra-bg);">
+          <div class="check failed">!</div>
+          <div class="desc">
+            <b>Grade edit · Kwame Sarpong · maths · 07:22</b>
+            <div class="sub">marked <b>72%</b> · server already has <b>78%</b> from Mrs Abena</div>
+          </div>
+          <div class="when"><b>07:22</b><br>1h 14m ago</div>
+          <div class="status failed">CONFLICT<span class="sub-line">needs review →</span></div>
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">The queue is the trust artefact</div>
+        <p>Most of the time admin doesn't need to look at the sync queue — the system just works. But on the rare day when something doesn't sync, <b>the queue gives admin a complete picture</b>: what was captured, when, by whom, what happened. <em>No black boxes.</em> If two changes fail, the rest of the day's work is still uploaded — partial sync is normal, not a failure.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The queue shows changes <b>in capture order</b>, not sync order. Helps admin reason about "what was happening this morning" — not "what got lucky with the network first".</li>
+        <li>Cash payment queued at 07:55 with receipt number <b>RC-2025-0847</b> — that number is committed locally and won't be reused. <em>Receipt chain stays intact</em> even when admin records cash during an outage.</li>
+        <li>SMS sync row shows <b>"3 of 47 dispatched"</b> — the MNO accepts in batches. Admin can see real-time progress through the bulk send.</li>
+        <li>Conflict rows are <b>terra-tinted in their entirety</b>, not just the badge. The whole row signals "this one needs your attention" — clicking opens the conflict resolution UI (Section 04).</li>
+        <li>Successful uploads stay in the queue for <b>24 hours</b> before being trimmed — long enough that admin can audit "did everything sync?", short enough that the queue stays scannable.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">04</div>
+    <div class="section-title display">Conflict resolution · two devices, one record</div>
+    <div class="section-meta">When merge isn't automatic · admin chooses</div>
+  </div>
+
+  <div class="layout">
+    <div>
+
+      <div class="conflict-card">
+        <div class="conflict-head">
+          <div class="ic">!</div>
+          <div class="txt">
+            <h4 class="display">Akosua Asantewaa · attendance · <em>06:51</em></h4>
+            <div class="sub">Two devices recorded <b>different attendance states</b> for the same student. Pick the one to keep, or combine.</div>
+          </div>
+        </div>
+        <div class="conflict-body">
+          <div class="conflict-versions">
+            <div class="version recommended">
+              <div class="v-head">
+                <div class="who display">Mrs Akua · <em>this device</em></div>
+                <div class="when">06:51</div>
+              </div>
+              <div class="v-data">
+                Akosua Asantewaa · JHS 2A · <span class="changed">Late</span> (arrived 07:14)
+                <br><br>Note: <em>"Bus broke down on Spintex Rd, mother called to explain."</em>
+              </div>
+              <div class="v-foot">More recent · has note · recommended</div>
+            </div>
+            <div class="version">
+              <div class="v-head">
+                <div class="who display">Mr Ebo · <em>desktop</em></div>
+                <div class="when">06:48</div>
+              </div>
+              <div class="v-data">
+                Akosua Asantewaa · JHS 2A · <span class="changed">Present</span>
+                <br><br>Note: <em>"—"</em>
+              </div>
+              <div class="v-foot">3 minutes earlier · no note</div>
+            </div>
+          </div>
+          <div class="conflict-actions">
+            <div class="left-group">
+              <button class="btn">Compare side-by-side</button>
+            </div>
+            <div class="right-group">
+              <button class="btn ghost">Keep server (Present)</button>
+              <button class="btn gold">Use Mrs Akua's edit (Late) →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="conflict-card">
+        <div class="conflict-head">
+          <div class="ic">!</div>
+          <div class="txt">
+            <h4 class="display">Kwame Sarpong · maths grade · <em>07:22</em></h4>
+            <div class="sub">Two teachers entered <b>different scores</b> for the same student. Likely one entered the raw test, the other the adjusted score.</div>
+          </div>
+        </div>
+        <div class="conflict-body">
+          <div class="conflict-versions">
+            <div class="version">
+              <div class="v-head">
+                <div class="who display">Mrs Abena · <em>desktop</em></div>
+                <div class="when">06:30</div>
+              </div>
+              <div class="v-data">
+                Kwame Sarpong · maths · midterm · <span class="changed">78%</span>
+                <br><br>Note: <em>"Adjusted +5 for participation per term policy."</em>
+              </div>
+              <div class="v-foot">52 minutes earlier · has explanation</div>
+            </div>
+            <div class="version">
+              <div class="v-head">
+                <div class="who display">Mr Yaw · <em>this device</em></div>
+                <div class="when">07:22</div>
+              </div>
+              <div class="v-data">
+                Kwame Sarpong · maths · midterm · <span class="changed">72%</span>
+                <br><br>Note: <em>"Marked from raw test paper."</em>
+              </div>
+              <div class="v-foot">More recent · raw test score</div>
+            </div>
+          </div>
+          <div class="conflict-actions">
+            <div class="left-group">
+              <button class="btn">Show test paper history</button>
+              <button class="btn">Talk to Mrs Abena</button>
+            </div>
+            <div class="right-group">
+              <button class="btn ghost">Keep 72% (raw)</button>
+              <button class="btn ghost">Keep 78% (adjusted)</button>
+              <button class="btn gold">Decide together →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">Why admin chooses · not the system</div>
+        <p>The technically easy path is <b>last-write-wins</b> — newest edit silently overwrites the older one. Omnischools doesn't do that for records that matter (attendance, grades, financial lines) because <em>"newest" is not the same as "right"</em>. Mrs Akua's later edit is probably right (she has the note about the bus). Mr Yaw's later edit is probably <b>wrong</b> (he didn't know about the participation adjustment). The system's job is to <em>surface the conflict honestly</em>; the school decides what's true.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The <b>recommended</b> version (gold border) uses simple heuristics: more recent, has explanatory note, came from the device closer to the source of truth (form teacher for attendance, subject teacher for grades).</li>
+        <li>The <b>"Decide together"</b> button on the grade conflict opens a <em>shared resolution thread</em> — Mrs Abena and Mr Yaw can chat about which score is right before either one is committed. Useful for non-trivial conflicts.</li>
+        <li>Omnischools <b>does not auto-merge</b> for records with audit weight. Free-text notes can be merged (concatenate); structured fields with conflicts need a human decision.</li>
+        <li>The conflict UI is reachable <b>only from the queue inspector</b> — not pushed as a modal interruption. Admin reviews when ready, not when the system decides.</li>
+        <li>Once resolved, the audit log records both versions and the decision: <em>"Conflict resolved: Mrs Akua's Late kept, Mr Ebo's Present discarded by Florence A. on 2 May 08:42 — reason: bus delay confirmed."</em> Forward-only audit trail; no edit erased.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

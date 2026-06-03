@@ -1,0 +1,1895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Attendance · alerts &amp; follow-up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* SECTION 01 — three columns of surfaces */
+.three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px;
+  background: linear-gradient(180deg, #E8E1D2 0%, #DDD5C2 100%);
+  padding: 36px 28px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.surface-card {
+  background: var(--surface);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  box-shadow: 0 12px 28px -10px rgba(26,43,71,0.2);
+}
+.surface-head {
+  padding: 14px 18px;
+  background: var(--navy);
+  color: var(--bg);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.surface-head .left {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.surface-head .right {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(232,212,184,0.7);
+  font-weight: 600;
+}
+.surface-title {
+  padding: 14px 18px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.surface-title h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.surface-title h3 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.surface-title .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+
+/* ---- COLUMN 1: DETECTION RULES ---- */
+.rules-body {
+  padding: 16px 18px;
+  flex: 1;
+}
+.rule-group {
+  margin-bottom: 18px;
+}
+.rule-group:last-child { margin-bottom: 0; }
+.rule-group .group-head {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex; align-items: baseline; gap: 6px;
+}
+.rule-group .group-head .icon {
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+}
+.rule-group .group-head .icon.long { background: var(--terra); color: white; }
+.rule-group .group-head .icon.below { background: var(--warn); color: white; }
+.rule-group .group-head .icon.pattern { background: var(--gold); color: var(--navy); }
+
+.rule-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+.rule-row .threshold {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.rule-row .threshold .num {
+  color: var(--gold);
+  font-style: italic;
+}
+.rule-row .arrow {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.rule-row .severity {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 100px;
+}
+.rule-row .severity.watching {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.rule-row .severity.critical {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.rule-row .desc {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.45;
+}
+.rule-row .desc b { color: var(--navy); font-weight: 600; }
+
+.rules-foot {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 11px;
+  color: var(--navy-3);
+  line-height: 1.5;
+  font-style: italic;
+}
+.rules-foot a {
+  color: var(--gold);
+  font-weight: 700;
+  cursor: pointer;
+  font-style: normal;
+  text-decoration: none;
+}
+
+/* ---- COLUMN 2: BELL DROPDOWN ---- */
+.bell-context {
+  background: var(--bg);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 10px; align-items: center;
+}
+.bell-context .browser-mini {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+.bell-icon-wrap {
+  position: relative;
+  width: 32px; height: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--navy);
+}
+.bell-icon-wrap::after {
+  content: "3";
+  position: absolute;
+  top: -4px; right: -4px;
+  background: var(--terra);
+  color: white;
+  font-family: 'Manrope', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 100px;
+  border: 2px solid var(--surface);
+  min-width: 18px;
+  text-align: center;
+}
+
+.feed-list {
+  flex: 1;
+  overflow-y: auto;
+}
+.feed-tabs {
+  display: flex;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 0;
+}
+.feed-tab {
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.feed-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--gold);
+}
+.feed-tab .count {
+  background: var(--terra);
+  color: white;
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: 100px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.feed-item {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  position: relative;
+}
+.feed-item.unread::before {
+  content: "";
+  position: absolute;
+  left: 4px; top: 50%;
+  transform: translateY(-50%);
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.feed-item:hover { background: var(--bg); }
+
+.feed-item .av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  position: relative;
+}
+.feed-item .av .severity-dot {
+  position: absolute;
+  bottom: -2px; right: -2px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--surface);
+}
+.feed-item .av .severity-dot.critical { background: var(--terra); }
+.feed-item .av .severity-dot.watching { background: var(--warn); }
+.feed-item .av .severity-dot.resolved { background: var(--green); }
+
+.feed-item .body { min-width: 0; }
+.feed-item .body .top-line {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 2px;
+}
+.feed-item .body .name {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--navy);
+}
+.feed-item .body .time {
+  font-size: 9px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+.feed-item .body .preview {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.4;
+}
+.feed-item .body .preview b { color: var(--navy); font-weight: 600; }
+.feed-item .body .preview em {
+  font-style: normal;
+  font-weight: 600;
+}
+.feed-item .body .preview em.terra { color: var(--terra); }
+.feed-item .body .preview em.warn { color: var(--warn); }
+.feed-item .body .preview em.green { color: var(--green); }
+
+.feed-foot {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  text-align: center;
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---- COLUMN 3: MORNING DIGEST ---- */
+.digest-preview {
+  flex: 1;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  padding: 18px;
+}
+.digest-paper {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 22px;
+  flex: 1;
+  display: flex; flex-direction: column;
+  box-shadow: 0 6px 18px -6px rgba(26,43,71,0.15);
+}
+.digest-header {
+  text-align: center;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.digest-header .crest {
+  display: inline-block;
+  width: 32px; height: 32px;
+  border: 2px solid var(--gold);
+  border-radius: 4px;
+  background: var(--navy);
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 8px;
+}
+.digest-header h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.digest-header h4 em { font-style: italic; color: var(--gold); }
+.digest-header .date {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.digest-greeting {
+  font-size: 12px;
+  color: var(--navy-2);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+.digest-greeting b { color: var(--navy); font-weight: 600; }
+
+.digest-section {
+  margin-bottom: 14px;
+}
+.digest-section .section-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+.digest-stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.digest-stat {
+  text-align: center;
+  padding: 8px 6px;
+  background: var(--bg);
+  border-radius: 6px;
+}
+.digest-stat .num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.digest-stat .num.green { color: var(--green); }
+.digest-stat .num.terra { color: var(--terra); }
+.digest-stat .lbl {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-top: 3px;
+}
+
+.digest-flag {
+  background: var(--terra-bg);
+  border-left: 2px solid var(--terra);
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 0 6px 6px 0;
+}
+.digest-flag.warn {
+  background: var(--warn-bg);
+  border-left-color: var(--warn);
+}
+.digest-flag.new {
+  background: var(--terra-bg);
+  border-left-color: var(--terra);
+}
+.digest-flag .name {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--navy);
+  margin-bottom: 1px;
+}
+.digest-flag .reason {
+  font-size: 10px;
+  color: var(--navy-2);
+  line-height: 1.4;
+}
+.digest-flag .reason b { color: var(--navy); font-weight: 600; }
+.digest-flag .new-tag {
+  display: inline-block;
+  font-size: 7px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: var(--terra);
+  color: white;
+  padding: 1px 5px;
+  border-radius: 100px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.digest-link {
+  display: block;
+  text-align: center;
+  padding: 10px 14px;
+  background: var(--navy);
+  color: var(--bg);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  margin-top: 10px;
+}
+.digest-link em { color: var(--gold); font-style: normal; }
+
+.digest-footer {
+  padding-top: 12px;
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 9px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+
+/* ============ SECTION 02 — FOLLOW-UP DRAWER ============ */
+.drawer-stage {
+  background: linear-gradient(180deg, #E8E1D2 0%, #DDD5C2 100%);
+  padding: 36px 28px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.drawer-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px;
+}
+
+.drawer-frame {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 18px 40px -10px rgba(26,43,71,0.3);
+  display: flex; flex-direction: column;
+  min-height: 920px;
+}
+
+.drawer-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.drawer-head .top-line {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.drawer-head .eyebrow-tag {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}
+.drawer-head .close-btn {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.drawer-student {
+  display: flex; gap: 14px; align-items: center;
+  margin-bottom: 12px;
+}
+.drawer-student .av {
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.drawer-student .info { flex: 1; min-width: 0; }
+.drawer-student .name {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.drawer-student .meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 2px;
+}
+.drawer-student .meta b { color: var(--navy-2); font-weight: 600; }
+
+.flag-banner {
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+  align-items: start;
+  margin-top: 4px;
+}
+.flag-banner.terra {
+  background: var(--terra-bg);
+  border: 1px solid rgba(184,74,57,0.25);
+}
+.flag-banner.warn {
+  background: var(--warn-bg);
+  border: 1px solid rgba(197,138,46,0.3);
+}
+.flag-banner.green {
+  background: var(--green-bg);
+  border: 1px solid rgba(47,107,71,0.3);
+}
+.flag-banner .icon {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  color: white;
+}
+.flag-banner.terra .icon { background: var(--terra); }
+.flag-banner.warn .icon { background: var(--warn); }
+.flag-banner.green .icon { background: var(--green); }
+.flag-banner .body {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.flag-banner .body .heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+  letter-spacing: -0.005em;
+}
+.flag-banner.terra .body .heading { color: var(--terra); }
+.flag-banner.warn .body .heading { color: var(--warn); }
+.flag-banner.green .body .heading { color: var(--green); }
+.flag-banner .body .detail { color: var(--navy-2); }
+.flag-banner .body .detail b { color: var(--navy); font-weight: 600; }
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.drawer-section {
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-section:last-child { border-bottom: none; }
+.drawer-section .section-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.drawer-section .section-eyebrow .step-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.drawer-section .section-eyebrow .num-circle {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.drawer-section .section-eyebrow .view-link {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+/* Sparkline expanded */
+.attendance-sparkline-big {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.attendance-sparkline-big .stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border);
+}
+.attendance-sparkline-big .mini-stat .lbl {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.attendance-sparkline-big .mini-stat .val {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.005em;
+}
+.attendance-sparkline-big .mini-stat .val.terra { color: var(--terra); }
+.attendance-sparkline-big .mini-stat .val.warn { color: var(--warn); }
+.attendance-sparkline-big .mini-stat .val.green { color: var(--green); }
+
+.spark-grid {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  margin-bottom: 6px;
+}
+.spark-grid .day {
+  flex: 1;
+  height: 28px;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 9px;
+}
+.spark-grid .day.present { background: var(--green); color: white; }
+.spark-grid .day.late { background: var(--gold); color: var(--navy); }
+.spark-grid .day.excused { background: var(--warn); color: white; }
+.spark-grid .day.absent { background: var(--terra); color: white; }
+.spark-grid .day.weekend {
+  background: var(--bg);
+  border: 1px dashed var(--border-2);
+  height: 14px;
+  align-self: flex-end;
+}
+.spark-axis {
+  display: flex;
+  gap: 2px;
+  font-size: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.spark-axis .lbl {
+  flex: 1;
+  text-align: center;
+}
+.spark-axis .lbl.weekend { color: var(--border-2); }
+
+/* Contact methods */
+.contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.contact-tile {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 10px;
+  cursor: pointer;
+  text-align: center;
+}
+.contact-tile:hover {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.contact-tile .ic-circle {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 6px;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: white;
+}
+.contact-tile.phone .ic-circle { background: var(--navy); color: var(--gold); }
+.contact-tile.whatsapp .ic-circle { background: var(--wa-green); }
+.contact-tile.sms .ic-circle { background: var(--gold); color: var(--navy); }
+.contact-tile .ct-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+  margin-bottom: 1px;
+}
+.contact-tile .ct-detail {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+.contact-tile .ct-status {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 3px;
+  font-style: italic;
+}
+
+/* History timeline */
+.history-empty {
+  padding: 20px 18px;
+  text-align: center;
+  background: var(--bg);
+  border: 1px dashed var(--border-2);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--navy-3);
+  font-style: italic;
+  line-height: 1.5;
+}
+.history-empty b {
+  font-family: 'Fraunces', serif;
+  color: var(--navy-2);
+  font-weight: 600;
+  font-style: normal;
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.history-timeline {
+  display: flex; flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+.history-entry {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  position: relative;
+}
+.history-entry::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 32px;
+  bottom: -6px;
+  width: 1px;
+  background: var(--border);
+}
+.history-entry:last-child::before { display: none; }
+
+.history-entry .he-icon {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1.5px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--gold);
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.history-entry .he-icon.phone { background: var(--navy); color: var(--gold); border-color: var(--navy); }
+.history-entry .he-icon.whatsapp { background: var(--wa-green); color: white; border-color: var(--wa-green); }
+.history-entry .he-icon.note { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.history-entry .he-icon.system { background: var(--bg); color: var(--navy-3); border-color: var(--border); }
+
+.history-entry .he-body {
+  padding-top: 3px;
+  min-width: 0;
+}
+.history-entry .he-top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 2px;
+}
+.history-entry .he-action {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.history-entry .he-action b { color: var(--navy); font-weight: 700; }
+.history-entry .he-action em { font-style: normal; }
+.history-entry .he-action em.green { color: var(--green); font-weight: 700; }
+.history-entry .he-action em.terra { color: var(--terra); font-weight: 700; }
+.history-entry .he-time {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.history-entry .he-note {
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.5;
+  margin-top: 4px;
+  background: var(--bg);
+  border-left: 2px solid var(--gold);
+  padding: 6px 10px;
+  border-radius: 0 4px 4px 0;
+  font-style: italic;
+}
+.history-entry .he-note b { color: var(--navy); font-weight: 600; font-style: normal; }
+.history-entry .he-author {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.history-entry .he-author b { color: var(--navy-2); font-weight: 600; }
+
+/* Quick action buttons */
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.quick-action-btn {
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  display: flex; align-items: center; gap: 6px;
+}
+.quick-action-btn:hover {
+  background: var(--gold-bg);
+  border-color: var(--gold);
+}
+.quick-action-btn .qa-ic {
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.note-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--navy);
+  resize: vertical;
+  min-height: 70px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.note-input::placeholder { color: var(--navy-3); font-style: italic; }
+.note-input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+/* Resolution row */
+.resolution-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+.resolution-tile {
+  padding: 10px 8px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+.resolution-tile.selected.green {
+  border-color: var(--green);
+  background: var(--green-bg);
+}
+.resolution-tile.selected.warn {
+  border-color: var(--warn);
+  background: var(--warn-bg);
+}
+.resolution-tile.selected.gold {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.resolution-tile .rt-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 2px;
+  letter-spacing: -0.005em;
+}
+.resolution-tile.selected.green .rt-name { color: var(--green); }
+.resolution-tile.selected.warn .rt-name { color: var(--warn); }
+.resolution-tile.selected.gold .rt-name { color: var(--gold); }
+.resolution-tile .rt-detail {
+  font-size: 9px;
+  color: var(--navy-3);
+  line-height: 1.3;
+}
+
+.checkin-helper {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.checkin-helper .label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.checkin-helper input {
+  padding: 5px 9px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--navy);
+  font-weight: 600;
+  width: 100%;
+}
+
+/* Drawer footer */
+.drawer-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.drawer-footer .left-info {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.drawer-footer .left-info b {
+  font-family: 'Fraunces', serif;
+  color: var(--navy);
+  font-weight: 600;
+  font-size: 12px;
+  display: block;
+  margin-bottom: 1px;
+}
+.drawer-footer .actions {
+  display: flex; gap: 6px;
+}
+.btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn.primary {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.btn.green-primary {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+}
+
+.drawer-label {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.drawer-label em {
+  display: block;
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--navy-2);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .three-col { grid-template-columns: 1fr; }
+  .drawer-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Attendance · Alerts &amp; follow-up</div>
+  <h1 class="display">When the system <em>speaks up</em></h1>
+  <div class="gold-rule"></div>
+  <p>Attendance flags don't watch themselves. The system detects three patterns — long absences, low percentages, sudden shifts — and surfaces them across three places where admin already looks. Then the follow-up drawer turns the flag into a phone call, a WhatsApp message, a logged note, and a resolution. The dashboard ends with names; this is what happens after admin clicks one.</p>
+</header>
+
+<!-- ============ 01 PATTERN ALERTS — DETECTION + SURFACES ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Pattern alerts · detection &amp; where they show</div>
+    <div class="section-meta">Three connected surfaces · rules → in-app feed → morning digest</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="three-col">
+
+        <!-- COLUMN 1: DETECTION RULES -->
+        <div class="surface-card">
+          <div class="surface-head">
+            <div class="left">Settings · Attendance rules</div>
+            <div class="right">configurable</div>
+          </div>
+          <div class="surface-title">
+            <h3>What triggers a <em>flag</em></h3>
+            <div class="sub">Three categories with default thresholds. Adjust per school.</div>
+          </div>
+          <div class="rules-body">
+
+            <div class="rule-group">
+              <div class="group-head">
+                <div class="icon long">L</div>
+                Long absence
+              </div>
+              <div class="rule-row">
+                <div class="threshold"><span class="num">3</span> days</div>
+                <div class="desc"><b>Watching</b> · 3+ consecutive absent days</div>
+                <div class="severity watching">Watching</div>
+              </div>
+              <div class="rule-row">
+                <div class="threshold"><span class="num">5</span> days</div>
+                <div class="desc"><b>Critical</b> · 5+ consecutive absent days</div>
+                <div class="severity critical">Critical</div>
+              </div>
+            </div>
+
+            <div class="rule-group">
+              <div class="group-head">
+                <div class="icon below">B</div>
+                Below threshold
+              </div>
+              <div class="rule-row">
+                <div class="threshold"><span class="num">70%</span></div>
+                <div class="desc"><b>Watching</b> · term attendance drops below 70%</div>
+                <div class="severity watching">Watching</div>
+              </div>
+              <div class="rule-row">
+                <div class="threshold"><span class="num">60%</span></div>
+                <div class="desc"><b>Critical</b> · term attendance drops below 60%</div>
+                <div class="severity critical">Critical</div>
+              </div>
+            </div>
+
+            <div class="rule-group">
+              <div class="group-head">
+                <div class="icon pattern">P</div>
+                Pattern shift
+              </div>
+              <div class="rule-row">
+                <div class="threshold"><span class="num">−30%</span></div>
+                <div class="desc"><b>Watching</b> · drop of 30%+ over rolling 14 days</div>
+                <div class="severity watching">Watching</div>
+              </div>
+              <div class="rule-row">
+                <div class="threshold"><span class="num">4 / 6</span></div>
+                <div class="desc"><b>Watching</b> · same-day-of-week pattern</div>
+                <div class="severity watching">Watching</div>
+              </div>
+            </div>
+
+          </div>
+          <div class="rules-foot">
+            Rules are evaluated end-of-day, after registers close. New flags appear next morning. <a>Adjust thresholds →</a>
+          </div>
+        </div>
+
+        <!-- COLUMN 2: BELL DROPDOWN -->
+        <div class="surface-card">
+          <div class="surface-head">
+            <div class="left">Header · notification feed</div>
+            <div class="right">live</div>
+          </div>
+
+          <div class="bell-context">
+            <div class="bell-icon-wrap">🔔</div>
+            <div class="browser-mini">click bell · feed drops down</div>
+          </div>
+
+          <div class="surface-title">
+            <h3>Recent <em>flags</em> &amp; activity</h3>
+            <div class="sub">3 unread · 8 in last 7 days</div>
+          </div>
+
+          <div class="feed-tabs">
+            <div class="feed-tab active">Flags <span class="count">3</span></div>
+            <div class="feed-tab">Edits</div>
+            <div class="feed-tab">All</div>
+          </div>
+
+          <div class="feed-list">
+
+            <div class="feed-item unread">
+              <div class="av">
+                JM
+                <div class="severity-dot critical"></div>
+              </div>
+              <div class="body">
+                <div class="top-line">
+                  <div class="name">James Mensah</div>
+                  <div class="time">just now</div>
+                </div>
+                <div class="preview">Escalated to <em class="terra">Critical</em> · <b>5 consecutive</b> absent days · still no contact from Mary Mensah</div>
+              </div>
+            </div>
+
+            <div class="feed-item unread">
+              <div class="av">
+                FN
+                <div class="severity-dot watching"></div>
+              </div>
+              <div class="body">
+                <div class="top-line">
+                  <div class="name">Faith Nuamah</div>
+                  <div class="time">7:30 AM</div>
+                </div>
+                <div class="preview">New flag · <em class="warn">Pattern shift</em> · 95% → 71% over last 2 weeks</div>
+              </div>
+            </div>
+
+            <div class="feed-item unread">
+              <div class="av">
+                SO
+                <div class="severity-dot watching"></div>
+              </div>
+              <div class="body">
+                <div class="top-line">
+                  <div class="name">Stephen Opoku</div>
+                  <div class="time">7:30 AM</div>
+                </div>
+                <div class="preview">New flag · <em class="warn">Below 70%</em> · term attendance now <b>66%</b> · BECE candidate</div>
+              </div>
+            </div>
+
+            <div class="feed-item">
+              <div class="av">
+                YA
+                <div class="severity-dot resolved"></div>
+              </div>
+              <div class="body">
+                <div class="top-line">
+                  <div class="name">Yaa Amponsah</div>
+                  <div class="time">Yesterday</div>
+                </div>
+                <div class="preview">Marked <em class="green">Resolved</em> by you · doctor's note received · returning Mon</div>
+              </div>
+            </div>
+
+            <div class="feed-item">
+              <div class="av">
+                EA
+                <div class="severity-dot watching"></div>
+              </div>
+              <div class="body">
+                <div class="top-line">
+                  <div class="name">Esi Asante</div>
+                  <div class="time">Wed 30 Apr</div>
+                </div>
+                <div class="preview">Continuing to watch · pattern unchanged · <b>4 of last 4 Fridays</b></div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="feed-foot">View all 8 flags →</div>
+        </div>
+
+        <!-- COLUMN 3: MORNING DIGEST -->
+        <div class="surface-card">
+          <div class="surface-head">
+            <div class="left">7:30 AM · digest</div>
+            <div class="right">email · WhatsApp</div>
+          </div>
+
+          <div class="digest-preview">
+            <div class="digest-paper">
+              <div class="digest-header">
+                <div class="crest">CK</div>
+                <h4 class="display">Morning <em>digest</em></h4>
+                <div class="date">FRI 2 MAY · 7:30 AM</div>
+              </div>
+
+              <div class="digest-greeting">
+                Good morning Florence. <b>Yesterday's attendance was 91.1%</b> across 9 classes. Three things you may want to know about before students arrive:
+              </div>
+
+              <div class="digest-section">
+                <div class="section-label">Yesterday's numbers</div>
+                <div class="digest-stat-row">
+                  <div class="digest-stat">
+                    <div class="num green">91.1%</div>
+                    <div class="lbl">Attended</div>
+                  </div>
+                  <div class="digest-stat">
+                    <div class="num">285</div>
+                    <div class="lbl">Present</div>
+                  </div>
+                  <div class="digest-stat">
+                    <div class="num terra">28</div>
+                    <div class="lbl">Absent</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="digest-section">
+                <div class="section-label">New this morning</div>
+                <div class="digest-flag new">
+                  <div class="name">James Mensah · JHS 2A <span class="new-tag">Escalated</span></div>
+                  <div class="reason"><b>Critical</b> · 5 consecutive days absent. Was at "Watching" yesterday; crossed threshold overnight.</div>
+                </div>
+                <div class="digest-flag new">
+                  <div class="name">Faith Nuamah · JHS 1A <span class="new-tag">New</span></div>
+                  <div class="reason"><b>Pattern shift</b> · attendance dropped from 95% to 71% over last 2 weeks.</div>
+                </div>
+                <div class="digest-flag new">
+                  <div class="name">Stephen Opoku · JHS 3A <span class="new-tag">New</span></div>
+                  <div class="reason"><b>Below 70%</b> · BECE candidate now at 66% term attendance.</div>
+                </div>
+              </div>
+
+              <div class="digest-section">
+                <div class="section-label">Still being watched</div>
+                <div class="digest-flag warn">
+                  <div class="name">Esi Asante · JHS 2A</div>
+                  <div class="reason"><b>Pattern</b> · misses every Friday · 6 of last 6 weeks. No follow-up logged this week.</div>
+                </div>
+              </div>
+
+              <a href="#" class="digest-link">Open <em>full dashboard</em> →</a>
+
+              <div class="digest-footer">
+                Sent because you're the headteacher of <b style="color:var(--navy-2);font-weight:600;font-style:normal">Christ the King JHS</b><br>
+                Adjust digest in Settings → Notifications
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Three connected surfaces, one row.</b> Detection rules feed the bell feed and the morning digest; same flag system, three places admin encounters it. Showing them side-by-side makes the data flow obvious — flags aren't a feature of any single surface, they're a system that surfaces in multiple places.</li>
+        <li><b>Detection rules visualised as readable thresholds, not toggles.</b> Each rule shows the threshold ("3 days", "70%", "−30%") in Fraunces with the gold italic number, the consequence (Watching / Critical), and a plain-language description. Admin can see the whole logic at a glance — no wading through nested settings.</li>
+        <li><b>Three rule categories with iconographic markers</b> — Long absence (terra L), Below threshold (warn B), Pattern shift (gold P). Same colour mapping as the dashboard's flag types, so admin already knows what they're looking at when they get here.</li>
+        <li><b>Watching → Critical escalation is two-tier.</b> First trigger creates a "watching" flag (yellow). If the situation worsens, it escalates to "critical" (red). <b>This matches how problems actually develop</b> — gradually, not in single jumps. James's flag started watching on his second consecutive absence, escalated to critical when he hit five.</li>
+        <li><b>Bell dropdown shows the live activity stream.</b> Three unread flags at the top with gold left-edge dots. Severity dots on avatars (terra critical, warn watching, green resolved) so admin can scan the stream and see proportions at a glance.</li>
+        <li><b>Each feed item has time, name, severity-coloured tag inline:</b> "Escalated to <em class="terra">Critical</em>" / "New flag · <em class="warn">Pattern shift</em>" / "Marked <em class="green">Resolved</em> by you." <b>The verb tells the story</b>; admin scanning the feed sees what changed, not just what is.</li>
+        <li><b>Resolved entries show in green</b> for completion. Yaa Amponsah's flag was marked resolved — green dot, "Resolved by you" attribution, brief reason. <b>Closure feels earned</b> when the system shows it cleanly.</li>
+        <li><b>"Continuing to watch · pattern unchanged"</b> entries (like Esi's) acknowledge that some flags stay open. Not every flag needs to close; some are slow-burn situations admin keeps an eye on. The feed reflects this without nagging.</li>
+        <li><b>Three tabs: Flags / Edits / All.</b> Edits is the register edit-request stream from the admin dashboard — same notification system, different content type. "All" is the firehose for completists. Flags is the default because that's the most-actionable category.</li>
+        <li><b>Morning digest is the proactive surface.</b> 7:30 AM email or WhatsApp message — admin sees it before reaching the office, before the dashboard, before students arrive. <b>The digest is the "are there fires today?" briefing</b> over coffee.</li>
+        <li><b>Digest paper styling mirrors the receipt and GES return.</b> Navy crest, school name in Fraunces with gold italic, date in mono caps. Visual consistency across all the system's official-looking documents. Even though this is an email, it reads as authoritative.</li>
+        <li><b>Greeting addresses the reader by name and gives the headline number first.</b> "Good morning Florence. Yesterday's attendance was 91.1% across 9 classes." <b>Headline before details</b> — admin who skims has the answer to "how was yesterday?" in the first line.</li>
+        <li><b>"Three things you may want to know about" frames the rest of the email.</b> Conversational, not data-dumpy. The system is your assistant briefing you, not your dashboard yelling.</li>
+        <li><b>Yesterday's stat strip in the digest</b> uses 3-cell layout with the same colour mapping (green attended, navy present count, terra absent count). <b>Tighter than the dashboard's pulse strip</b> because email screen real estate is limited; same semantic colours so admin recognises the language.</li>
+        <li><b>"New this morning" section uses terra-bordered cards with severity tags ("Escalated", "New").</b> Tags are tiny terra pills inside the name line — one-glance recognition that this is fresh, not last week's news.</li>
+        <li><b>"Escalated" vs "New" distinction matters.</b> James was already on watching; he's now escalated to critical. Faith and Stephen are brand new flags. Different urgency, different mental response. The tag tells admin which bucket she's looking at without reading the body.</li>
+        <li><b>"Still being watched" section calls out flags with no recent follow-up activity.</b> "Esi Asante · No follow-up logged this week." <b>The system gently reminds admin of open items</b> without being naggy. If admin acted yesterday, no reminder; if a week passed silently, a small prod.</li>
+        <li><b>"Open full dashboard" CTA at the bottom of the digest</b> in navy with gold italic. <b>The digest is the briefing; the dashboard is the workspace</b>. Click-through is the natural next step when admin reaches her desk.</li>
+        <li><b>Footer explains why the digest exists.</b> "Sent because you're the headteacher of Christ the King JHS · Adjust digest in Settings → Notifications." Compliance + opt-out path. Schools that don't want morning digests can turn them off; the digest itself tells you how.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 FOLLOW-UP DRAWER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Follow-up drawer · what "Follow up" does</div>
+    <div class="section-meta">Three states · fresh flag, in-progress, resolution</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="drawer-stage">
+        <div class="drawer-row">
+
+          <!-- DRAWER A: FRESH FLAG -->
+          <div>
+            <div class="drawer-frame">
+              <div class="drawer-head">
+                <div class="top-line">
+                  <div class="eyebrow-tag">Attendance flag · follow up</div>
+                  <button class="close-btn">×</button>
+                </div>
+                <div class="drawer-student">
+                  <div class="av">JM</div>
+                  <div class="info">
+                    <div class="name display">James Mensah</div>
+                    <div class="meta">JHS 2A · CTK-2024-042 · class teacher <b>Mr. Mensah</b></div>
+                  </div>
+                </div>
+                <div class="flag-banner terra">
+                  <div class="icon">!</div>
+                  <div class="body">
+                    <div class="heading">Long absence · 3 consecutive days</div>
+                    <div class="detail">First flagged <b>Wed 30 Apr</b>. No contact from guardian Mary Mensah. Term attendance now <b>61%</b>.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="drawer-body">
+
+                <!-- Attendance pattern -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">1</span>Recent attendance</div>
+                    <button class="view-link">Full register →</button>
+                  </div>
+
+                  <div class="attendance-sparkline-big">
+                    <div class="stats-row">
+                      <div class="mini-stat">
+                        <div class="lbl">Term</div>
+                        <div class="val terra">61%</div>
+                      </div>
+                      <div class="mini-stat">
+                        <div class="lbl">Last 14d</div>
+                        <div class="val terra">36%</div>
+                      </div>
+                      <div class="mini-stat">
+                        <div class="lbl">Streak</div>
+                        <div class="val terra">3 abs</div>
+                      </div>
+                      <div class="mini-stat">
+                        <div class="lbl">Last seen</div>
+                        <div class="val">Mon</div>
+                      </div>
+                    </div>
+                    <div class="spark-grid">
+                      <div class="day present">P</div>
+                      <div class="day absent">A</div>
+                      <div class="day absent">A</div>
+                      <div class="day absent">A</div>
+                      <div class="day present">P</div>
+                      <div class="day weekend"></div>
+                      <div class="day weekend"></div>
+                      <div class="day absent">A</div>
+                      <div class="day present">P</div>
+                      <div class="day absent">A</div>
+                      <div class="day absent">A</div>
+                      <div class="day absent">A</div>
+                      <div class="day weekend"></div>
+                      <div class="day weekend"></div>
+                    </div>
+                    <div class="spark-axis">
+                      <div class="lbl">M 21</div>
+                      <div class="lbl">T 22</div>
+                      <div class="lbl">W 23</div>
+                      <div class="lbl">T 24</div>
+                      <div class="lbl">F 25</div>
+                      <div class="lbl weekend">S</div>
+                      <div class="lbl weekend">S</div>
+                      <div class="lbl">M 28</div>
+                      <div class="lbl">T 29</div>
+                      <div class="lbl">W 30</div>
+                      <div class="lbl">T 1</div>
+                      <div class="lbl">F 2</div>
+                      <div class="lbl weekend">S</div>
+                      <div class="lbl weekend">S</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Contact methods -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">2</span>Contact guardian</div>
+                  </div>
+
+                  <div class="contact-row">
+                    <div class="contact-tile phone">
+                      <div class="ic-circle">📞</div>
+                      <div class="ct-name">Phone</div>
+                      <div class="ct-detail">+233 24 555 0421</div>
+                      <div class="ct-status">Mary Mensah</div>
+                    </div>
+                    <div class="contact-tile whatsapp">
+                      <div class="ic-circle">W</div>
+                      <div class="ct-name">WhatsApp</div>
+                      <div class="ct-detail">opted in</div>
+                      <div class="ct-status">Avg reply 14 min</div>
+                    </div>
+                    <div class="contact-tile sms">
+                      <div class="ic-circle">S</div>
+                      <div class="ct-name">SMS</div>
+                      <div class="ct-detail">GHS 0.05</div>
+                      <div class="ct-status">Always reaches</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- History -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">3</span>Follow-up history</div>
+                  </div>
+
+                  <div class="history-empty">
+                    <b>No follow-ups yet</b>
+                    This flag opened 2 days ago. Use the buttons above to contact Mary, then log what happened below.
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="drawer-footer">
+                <div class="left-info">
+                  <b>Flag opened</b>
+                  Wed 30 Apr · 3:42 PM
+                </div>
+                <div class="actions">
+                  <button class="btn">Continue watching</button>
+                </div>
+              </div>
+            </div>
+            <div class="drawer-label">State A<em>Fresh flag · just opened</em></div>
+          </div>
+
+          <!-- DRAWER B: IN-PROGRESS, ADDING NEW FOLLOW-UP -->
+          <div>
+            <div class="drawer-frame">
+              <div class="drawer-head">
+                <div class="top-line">
+                  <div class="eyebrow-tag">Attendance flag · follow up</div>
+                  <button class="close-btn">×</button>
+                </div>
+                <div class="drawer-student">
+                  <div class="av">JM</div>
+                  <div class="info">
+                    <div class="name display">James Mensah</div>
+                    <div class="meta">JHS 2A · CTK-2024-042 · class teacher <b>Mr. Mensah</b></div>
+                  </div>
+                </div>
+                <div class="flag-banner terra">
+                  <div class="icon">!</div>
+                  <div class="body">
+                    <div class="heading">Long absence · 3 consecutive days</div>
+                    <div class="detail">Flagged <b>Wed 30 Apr</b> · 2 follow-ups so far · still no resolution.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="drawer-body">
+
+                <!-- Quick actions for logging -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">1</span>Log a follow-up</div>
+                  </div>
+
+                  <div class="quick-actions-grid">
+                    <button class="quick-action-btn"><span class="qa-ic">📞</span>Called · reached</button>
+                    <button class="quick-action-btn" style="background:var(--gold-bg);border-color:var(--gold);color:var(--navy)"><span class="qa-ic" style="background:var(--gold);color:var(--navy)">📞</span>Called · no answer</button>
+                    <button class="quick-action-btn"><span class="qa-ic">📞</span>Left voicemail</button>
+                    <button class="quick-action-btn"><span class="qa-ic">W</span>WhatsApp sent</button>
+                    <button class="quick-action-btn"><span class="qa-ic">S</span>SMS sent</button>
+                    <button class="quick-action-btn"><span class="qa-ic">+</span>Other note</button>
+                  </div>
+
+                  <textarea class="note-input" placeholder="Optional · what happened or what's next">Tried Mary's number — rang out twice. Will try again at 4 PM after school closes.</textarea>
+                </div>
+
+                <!-- History -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">2</span>Earlier follow-ups</div>
+                  </div>
+
+                  <div class="history-timeline">
+
+                    <div class="history-entry">
+                      <div class="he-icon system">+</div>
+                      <div class="he-body">
+                        <div class="he-top">
+                          <div class="he-action">Flag <b>opened</b> by system</div>
+                          <div class="he-time">Wed 30 Apr · 3:42 PM</div>
+                        </div>
+                        <div class="he-author">3 consecutive absent days · auto-detected</div>
+                      </div>
+                    </div>
+
+                    <div class="history-entry">
+                      <div class="he-icon phone">📞</div>
+                      <div class="he-body">
+                        <div class="he-top">
+                          <div class="he-action"><b>Called · no answer</b></div>
+                          <div class="he-time">Thu 1 May · 9:14 AM</div>
+                        </div>
+                        <div class="he-note">
+                          Number rang out twice. Will try again later in the day.
+                        </div>
+                        <div class="he-author">— <b>Florence Addo</b> · Headmistress</div>
+                      </div>
+                    </div>
+
+                    <div class="history-entry">
+                      <div class="he-icon whatsapp">W</div>
+                      <div class="he-body">
+                        <div class="he-top">
+                          <div class="he-action"><b>WhatsApp message sent</b></div>
+                          <div class="he-time">Thu 1 May · 2:30 PM</div>
+                        </div>
+                        <div class="he-note">
+                          "Hello Mary, James has been absent 2 days now. Hope all is well — please give us a call when you can. — Christ the King JHS"
+                        </div>
+                        <div class="he-author">— <b>Florence Addo</b> · Headmistress · message delivered, not yet read</div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="drawer-footer">
+                <div class="left-info">
+                  <b>2 follow-ups</b>
+                  Last action 18 hours ago
+                </div>
+                <div class="actions">
+                  <button class="btn primary">Save follow-up</button>
+                </div>
+              </div>
+            </div>
+            <div class="drawer-label">State B<em>Logging · with prior history</em></div>
+          </div>
+
+          <!-- DRAWER C: RESOLUTION -->
+          <div>
+            <div class="drawer-frame">
+              <div class="drawer-head">
+                <div class="top-line">
+                  <div class="eyebrow-tag">Attendance flag · resolve</div>
+                  <button class="close-btn">×</button>
+                </div>
+                <div class="drawer-student">
+                  <div class="av">JM</div>
+                  <div class="info">
+                    <div class="name display">James Mensah</div>
+                    <div class="meta">JHS 2A · CTK-2024-042 · class teacher <b>Mr. Mensah</b></div>
+                  </div>
+                </div>
+                <div class="flag-banner green">
+                  <div class="icon">✓</div>
+                  <div class="body">
+                    <div class="heading">Reached Mary · ready to resolve</div>
+                    <div class="detail">She confirmed James is sick · doctor visit Tuesday · expected back <b>Wed 7 May</b>.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="drawer-body">
+
+                <!-- Resolution choice -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">1</span>How to close this flag</div>
+                  </div>
+
+                  <div class="resolution-row">
+                    <div class="resolution-tile">
+                      <div class="rt-name">Resolved</div>
+                      <div class="rt-detail">Done · close the flag</div>
+                    </div>
+                    <div class="resolution-tile selected gold">
+                      <div class="rt-name">Watching</div>
+                      <div class="rt-detail">Stay open · check again later</div>
+                    </div>
+                    <div class="resolution-tile">
+                      <div class="rt-name">Escalate</div>
+                      <div class="rt-detail">Notify district officer</div>
+                    </div>
+                  </div>
+
+                  <div class="checkin-helper">
+                    <div class="label">Check back on</div>
+                    <input type="text" value="Wed · 7 May 2026" />
+                  </div>
+
+                  <textarea class="note-input" placeholder="Why this resolution">Sick — doctor visit Tuesday. Mary will message us when James returns. Mark absences as excused for these days going forward.</textarea>
+                </div>
+
+                <!-- Last follow-up summary -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">2</span>What just happened</div>
+                  </div>
+
+                  <div class="history-timeline">
+                    <div class="history-entry">
+                      <div class="he-icon phone">📞</div>
+                      <div class="he-body">
+                        <div class="he-top">
+                          <div class="he-action"><b>Called · reached Mary</b></div>
+                          <div class="he-time">just now</div>
+                        </div>
+                        <div class="he-note">
+                          James has had fever since Saturday. Mary kept him home; doctor's appointment Tuesday morning. She apologised for not calling — said she "didn't want to bother us." Expected back Wed 7 May. Will message us if anything changes.
+                        </div>
+                        <div class="he-author">— <b>Florence Addo</b> · Headmistress · 4:18 PM today</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- What happens next -->
+                <div class="drawer-section">
+                  <div class="section-eyebrow">
+                    <div class="step-tag"><span class="num-circle">3</span>What this resolution does</div>
+                  </div>
+
+                  <div style="background:var(--bg);border-left:2px solid var(--gold);padding:10px 14px;border-radius:0 6px 6px 0;font-size:11px;color:var(--navy-2);line-height:1.6">
+                    <div style="font-family:'Fraunces',serif;font-weight:600;color:var(--navy);margin-bottom:6px;font-size:12px">Watching · check back Wed 7 May</div>
+                    Flag stays open in your dashboard with a "checking back Wednesday" note. If James returns by then, the flag closes automatically; if he doesn't, you'll get a reminder Wednesday morning. Today's note is added to the audit trail.
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="drawer-footer">
+                <div class="left-info">
+                  <b>Resolution</b>
+                  Watching · check Wed 7 May
+                </div>
+                <div class="actions">
+                  <button class="btn">Cancel</button>
+                  <button class="btn green-primary">Save &amp; close →</button>
+                </div>
+              </div>
+            </div>
+            <div class="drawer-label">State C<em>Resolution · check-in scheduled</em></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Three states show the drawer's lifecycle</b> in one view: fresh open (no history), logging (adding follow-up to existing thread), resolution (closing the loop). Reading left-to-right is a 3-day journey through how James's case actually unfolds.</li>
+        <li><b>Drawer header carries student identity + flag banner.</b> Avatar, name in big Fraunces, class + ID + teacher. Below: a flag banner in the severity colour (terra for active, green for ready-to-resolve). <b>The banner state changes</b> as admin works through the flag — terra "no contact yet" becomes green "reached Mary" once a contact succeeds.</li>
+        <li><b>Banner text changes with progress.</b> State A: "First flagged Wed 30 Apr. No contact from guardian." State B: "Flagged Wed 30 Apr · 2 follow-ups so far · still no resolution." State C: "Reached Mary · ready to resolve." The system narrates progress without admin re-reading the whole thread.</li>
+        <li><b>Recent attendance section uses the same expanded sparkline</b> from the dashboard's attention list, but bigger. Four mini-stats above (Term / Last 14d / Streak / Last seen), then a 14-day grid where each day is a saturated colour block with letter inside. <b>Same colour vocabulary as the rest of the system</b>; admin doesn't relearn anything.</li>
+        <li><b>Day axis shows date stubs in mono</b> ("M 21", "T 22", "W 23"…) so admin can correlate the pattern with calendar dates. James's streak is visible as five terra blocks ending at today; the Tuesday absence two weeks ago shows as another terra block. Pattern detection visible.</li>
+        <li><b>Three contact tiles: Phone, WhatsApp, SMS.</b> Each shows the actual number/method, status, and an attribution. <b>Phone with brand-styled handset icon, WhatsApp in WA-green with W mark, SMS in gold</b>. Click any tile to launch into the existing flow (phone dial, open WhatsApp inbox, draft SMS).</li>
+        <li><b>Contact tiles show context-relevant detail:</b> "opted in / Avg reply 14 min" for WhatsApp tells admin the channel works and is responsive. "Always reaches" for SMS reminds admin SMS is the lowest-tech but most-reliable channel. "+233 24 555 0421" on Phone is the direct number, ready to dial.</li>
+        <li><b>Empty history state in State A</b> uses dashed-border card with explainer: "No follow-ups yet · This flag opened 2 days ago. Use the buttons above to contact Mary, then log what happened below." <b>Tells admin what to do</b> rather than just showing emptiness. The dashed border signals "this will fill up over time."</li>
+        <li><b>State B opens with Quick-Action grid</b> — six chip buttons covering 95% of follow-up types: Called reached / Called no answer / Left voicemail / WhatsApp sent / SMS sent / Other. <b>One click logs an action</b>; the optional note field below lets admin add detail if there's any. The middle "Called · no answer" button is shown selected (gold-tinted) — admin clicked it to log her latest attempt.</li>
+        <li><b>Note input pre-populated with example text</b> "Tried Mary's number — rang out twice. Will try again at 4 PM after school closes." <b>Example shows the right level of detail</b> — short, factual, includes next-step intent. Admin can edit or accept.</li>
+        <li><b>History timeline uses left-rail icons connected by a vertical line.</b> Three entry types: system (grey "+" for "flag opened"), phone (navy with handset), WhatsApp (WA-green with W). <b>Iconography matches the contact tiles</b> so admin recognises actions across the surfaces.</li>
+        <li><b>Each history entry shows action + timestamp + note + author.</b> "Called · no answer · Thu 1 May · 9:14 AM" with the note in italic gold-bordered block, then "— Florence Addo · Headmistress" attribution. <b>Audit trail is human</b>: who did what, when, with what result.</li>
+        <li><b>WhatsApp entry includes message status:</b> "message delivered, not yet read." Pulls in real WhatsApp delivery state into the audit log. Admin who sent a WhatsApp Thursday afternoon and is now Friday morning sees that Mary still hasn't read it — informs the next action.</li>
+        <li><b>State C is the resolution state.</b> Banner now green with checkmark icon. The system has detected (from State B's logged "Called · reached" action) that contact succeeded, and proactively flips the drawer into resolution mode. <b>The drawer adapts to the situation</b>; admin doesn't have to navigate to a different screen to close out.</li>
+        <li><b>Three resolution tiles: Resolved / Watching / Escalate.</b> Watching selected (gold-tinted) because Mary said James will be back next Wednesday — not closed, but expected to close on a known date. <b>Resolved is for "this is fully done"</b>; Watching is for "I've handled this for now, let me check back"; Escalate is for "this needs district-level attention" (a rare path for genuine welfare concerns).</li>
+        <li><b>Check-in helper appears under the Watching tile</b> — gold-tinted card with date input. "Check back on · Wed · 7 May 2026" auto-populated based on Mary's expected return date. <b>Lightweight implementation of "schedule next check-in"</b> as you specified — one date input, no calendar module.</li>
+        <li><b>Resolution note populated with structured summary:</b> "Sick — doctor visit Tuesday. Mary will message us when James returns. Mark absences as excused for these days going forward." <b>Captures the operational decision</b>, not just narrative — the "mark as excused" instruction is a real policy choice that affects the term attendance percentage.</li>
+        <li><b>"What just happened" section</b> shows only the most-recent contact (the call where Florence reached Mary). Truncated history because admin who's about to resolve doesn't need the whole thread visible — they need confirmation of the latest action that led to the resolution.</li>
+        <li><b>"What this resolution does" section explains the consequences in plain language.</b> "Flag stays open in your dashboard with a 'checking back Wednesday' note. If James returns by then, the flag closes automatically; if he doesn't, you'll get a reminder Wednesday morning. Today's note is added to the audit trail." <b>Contracts the future state</b> so admin clicks Save with informed confidence.</li>
+        <li><b>Save button uses green-primary styling</b> for resolution actions. Visual distinction from the navy "Submit" buttons used for ordinary commits — resolution is a positive state change worth celebrating.</li>
+        <li><b>Footer carries the resolution decision summary on the left.</b> "Resolution · Watching · check Wed 7 May" so admin can verify before clicking Save. Two-line format matches the recipient summary on the send-reminders drawer.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

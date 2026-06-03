@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Voids &amp; refunds report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+/* App shell */
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head .crumb a { color: var(--gold); text-decoration: none; }
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+
+/* Period bar */
+.period-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 22px;
+}
+.period-bar .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-right: 4px;
+}
+.period-bar .period-pill {
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+}
+.period-bar .period-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.period-bar .period-pill .sub {
+  font-size: 9px;
+  margin-left: 4px;
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+/* KPI strip */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.kpi.featured {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.kpi.featured-terra {
+  background: var(--terra-bg);
+  border-color: rgba(184,74,57,0.3);
+  border-left: 3px solid var(--terra);
+}
+.kpi .l {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700;
+  margin-bottom: 6px;
+}
+.kpi.featured .l { color: var(--gold-soft); }
+.kpi.featured-terra .l { color: var(--terra); }
+.kpi .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.025em;
+  color: var(--navy);
+  line-height: 1;
+}
+.kpi.featured .v { color: var(--bg); }
+.kpi.featured-terra .v { color: var(--terra); }
+.kpi .change {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 8px;
+  display: flex; align-items: center; gap: 4px;
+}
+.kpi.featured .change { color: var(--gold-soft); }
+.kpi.featured-terra .change { color: var(--navy-2); }
+.kpi .change b { color: var(--navy); font-weight: 600; }
+.kpi.featured .change b { color: var(--bg); font-weight: 600; }
+.kpi .change .arrow {
+  display: inline-flex;
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  background: var(--green-bg);
+  color: var(--green);
+  font-weight: 700;
+  font-size: 11px;
+  align-items: center; justify-content: center;
+}
+.kpi .change .arrow.down {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+
+/* Card wrapper */
+.report-card-big {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.rcb-head {
+  padding: 16px 22px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.rcb-head .label {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 3px;
+}
+.rcb-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.rcb-head .ctx {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.rcb-head .ctx b { color: var(--navy); font-weight: 600; }
+.rcb-body { padding: 20px 22px 22px; }
+
+/* Two-column body */
+.report-body {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+/* ============ TREND CHART ============ */
+.trend-chart {
+  height: 200px;
+  display: flex; align-items: flex-end;
+  gap: 6px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.trend-chart .grid-line {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 1px dashed var(--border);
+}
+.trend-chart .grid-line .gl-label {
+  position: absolute;
+  left: -8px;
+  top: -7px;
+  transform: translateX(-100%);
+  font-size: 9px;
+  color: var(--navy-3);
+  font-family: 'JetBrains Mono', monospace;
+}
+.trend-bar-col {
+  flex: 1;
+  display: flex; flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  position: relative;
+}
+.trend-bar-col .seg {
+  width: 70%;
+  margin: 0 auto;
+}
+.trend-bar-col .seg.void { background: var(--terra); opacity: 0.7; }
+.trend-bar-col .seg.refund { background: var(--terra); }
+.trend-bar-col .seg:last-child { border-radius: 3px 3px 0 0; }
+.trend-bar-col .x-label {
+  font-size: 9px;
+  color: var(--navy-3);
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+}
+.trend-legend {
+  display: flex; gap: 16px; margin-top: 14px;
+  font-size: 11px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.trend-legend .li {
+  display: flex; gap: 6px; align-items: center;
+}
+.trend-legend .swatch {
+  width: 11px; height: 11px;
+  border-radius: 2px;
+}
+.trend-legend .swatch.void { background: var(--terra); opacity: 0.7; }
+.trend-legend .swatch.refund { background: var(--terra); }
+.trend-legend .li b { color: var(--navy); font-weight: 600; }
+.trend-legend .li span { color: var(--navy-3); }
+.trend-legend .li.compare {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--navy-3);
+}
+.trend-legend .li.compare b { color: var(--green); font-family: 'Fraunces',serif; }
+
+/* ============ REASON BREAKDOWN ============ */
+.reason-list {
+  display: flex; flex-direction: column;
+  gap: 10px;
+}
+.reason-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.reason-row:last-child { border-bottom: none; padding-bottom: 0; }
+.reason-row .swatch {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+}
+.reason-row .swatch.entry { background: var(--gold); }
+.reason-row .swatch.dispute { background: var(--terra); }
+.reason-row .swatch.withdrawal { background: var(--navy); }
+.reason-row .swatch.duplicate { background: var(--gold); opacity: 0.6; }
+.reason-row .swatch.overpayment { background: var(--green); }
+.reason-row .swatch.policy { background: var(--navy-3); }
+.reason-row .body .name {
+  font-size: 12px; font-weight: 600;
+}
+.reason-row .body .meta {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+}
+.reason-row .body .meta b { color: var(--navy); font-weight: 600; }
+.reason-row .pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--navy);
+  text-align: right;
+}
+.reason-row .amt {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--terra);
+  margin-top: 1px;
+  text-align: right;
+}
+
+/* ============ VOID VS REFUND SPLIT ============ */
+.split-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.split-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 22px;
+  position: relative;
+  overflow: hidden;
+}
+.split-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+}
+.split-card.void::before { background: var(--terra); opacity: 0.6; }
+.split-card.refund::before { background: var(--terra); }
+
+.split-card .sc-head {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 16px;
+}
+.split-card .sc-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--terra-bg);
+  color: var(--terra);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.split-card .sc-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.005em;
+}
+.split-card .sc-tagline {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 1px;
+  font-style: italic;
+}
+.split-card .sc-amount {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 28px;
+  color: var(--terra);
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+.split-card .sc-count {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 6px;
+}
+.split-card .sc-count b { color: var(--navy); font-weight: 600; }
+
+.split-card .sc-detail {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.split-card .sc-detail-row {
+  display: flex; justify-content: space-between;
+  padding: 5px 0;
+  font-size: 11px;
+}
+.split-card .sc-detail-row .l { color: var(--navy-3); }
+.split-card .sc-detail-row .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 12px;
+}
+
+.money-moved-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 8px;
+}
+.money-moved-tag.no { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+.money-moved-tag.yes { background: var(--terra-bg); color: var(--terra); }
+
+/* ============ RECORDED-BY ANALYSIS ============ */
+.recorder-table-head {
+  display: grid;
+  grid-template-columns: 1fr 80px 80px 130px 80px;
+  gap: 14px;
+  padding: 12px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.recorder-table-head .right { text-align: right; }
+.recorder-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 80px 130px 80px;
+  gap: 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+}
+.recorder-row:last-child { border-bottom: none; }
+.recorder-row:hover { background: var(--bg); }
+
+.recorder-row .person {
+  display: flex; gap: 10px; align-items: center;
+}
+.recorder-row .av {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.recorder-row .person .body .name {
+  font-weight: 600;
+  font-size: 13px;
+}
+.recorder-row .person .body .role {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+.recorder-row .num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: right;
+}
+.recorder-row .ratio-bar {
+  display: flex; align-items: center; gap: 8px;
+}
+.recorder-row .ratio-line {
+  flex: 1;
+  height: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.recorder-row .ratio-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 100px;
+}
+.recorder-row .ratio-fill.high { background: var(--terra); }
+.recorder-row .ratio-pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--navy);
+  min-width: 38px;
+  text-align: right;
+}
+.recorder-row .ratio-pct.high { color: var(--terra); }
+.recorder-row .flag-pill {
+  display: inline-flex;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 100px;
+}
+.recorder-row .flag-pill.normal { background: var(--green-bg); color: var(--green); }
+.recorder-row .flag-pill.review { background: var(--gold-bg); color: var(--gold); }
+
+/* ============ EVENT LIST ============ */
+.filter-strip {
+  display: flex; gap: 8px;
+  margin-bottom: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filter-pill {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter-pill.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.filter-pill .count {
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+.filter-divider {
+  height: 18px;
+  width: 1px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.filter-search {
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-family: inherit;
+  width: 240px;
+  color: var(--navy);
+}
+.filter-search::placeholder { color: var(--navy-3); font-style: italic; }
+
+.event-table-head {
+  display: grid;
+  grid-template-columns: 110px 90px 1fr 110px 130px 90px;
+  gap: 14px;
+  padding: 12px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.event-table-head .right { text-align: right; }
+.event-row {
+  display: grid;
+  grid-template-columns: 110px 90px 1fr 110px 130px 90px;
+  gap: 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+}
+.event-row:last-child { border-bottom: none; }
+.event-row:hover { background: var(--bg); }
+.event-row.refund-row { background: var(--terra-bg-soft); }
+.event-row.refund-row:hover { background: var(--terra-bg); }
+
+.event-row .when {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.event-row .when .date {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 12px;
+  display: block;
+}
+
+.event-tag {
+  display: inline-flex; align-items: center;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-weight: 700;
+}
+.event-tag.void { background: var(--terra-bg); color: var(--terra); opacity: 0.85; }
+.event-tag.refund { background: var(--terra); color: var(--bg); }
+
+.event-row .desc {
+  font-size: 12px;
+}
+.event-row .desc .student {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+.event-row .desc .reason {
+  font-size: 11px;
+  color: var(--navy-2);
+  margin-top: 2px;
+  font-style: italic;
+}
+.event-row .desc .receipt {
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 3px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.event-row .desc .receipt b { color: var(--gold); font-weight: 700; }
+
+.event-row .amount {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  text-align: right;
+  color: var(--terra);
+  font-size: 13px;
+}
+
+.event-row .by {
+  font-size: 11px;
+}
+.event-row .by .name { font-weight: 600; }
+.event-row .by .role-tag {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-top: 1px;
+}
+.event-row .actions { text-align: right; }
+.event-row .ghost-btn {
+  font-size: 9px; letter-spacing: 0.04em;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  padding: 4px 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.event-row .ghost-btn:hover { color: var(--gold); border-color: var(--gold-soft); }
+
+/* Healthy / cautionary annotation banners */
+.health-banner {
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.health-banner.good {
+  background: var(--green-bg);
+  border: 1px solid rgba(47,107,71,0.2);
+  border-left: 3px solid var(--green);
+}
+.health-banner.attention {
+  background: var(--warn-bg);
+  border: 1px solid rgba(197,138,46,0.3);
+  border-left: 3px solid var(--warn);
+}
+.health-banner .ic {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  color: var(--bg);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.health-banner.good .ic { background: var(--green); }
+.health-banner.attention .ic { background: var(--warn); }
+.health-banner .body {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+}
+.health-banner .body .t1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  margin-bottom: 3px;
+}
+.health-banner.good .body .t1 { color: var(--green); }
+.health-banner.attention .body .t1 { color: var(--warn); }
+.health-banner .body b { color: var(--navy); font-weight: 600; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .kpi-strip { grid-template-columns: 1fr 1fr; }
+  .report-body { grid-template-columns: 1fr; }
+  .split-row { grid-template-columns: 1fr; }
+  .recorder-table-head, .recorder-row { grid-template-columns: 1fr; gap: 6px; }
+  .event-table-head, .event-row { grid-template-columns: 1fr; gap: 6px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Reports</div>
+  <h1 class="display">Voids &amp; <em>refunds</em></h1>
+  <div class="gold-rule"></div>
+  <p>The corrections — payments voided as wrong records, money refunded to parents. Headmistress checks the volume and concentration; accountant cites the total on the P&amp;L; auditor traces every event to a reason and replacement. Low numbers are healthy; spikes warrant a closer look.</p>
+</header>
+
+<!-- ============ VOIDS & REFUNDS DETAIL ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Voids &amp; refunds · detail</div>
+    <div class="section-meta">Admin / accountant · Reports &gt; Voids &amp; refunds</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / reports / voids-refunds</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Reports</a> / Voids &amp; refunds</div>
+              <h2 class="display">Voids &amp; <em>refunds</em> · Term 1 · 2026</h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Export CSV</button>
+              <button class="btn">Export PDF</button>
+            </div>
+          </div>
+
+          <!-- Period bar -->
+          <div class="period-bar">
+            <div class="label">Period</div>
+            <div class="period-pill">This week</div>
+            <div class="period-pill">This month</div>
+            <div class="period-pill active">Term 1 · 2026 <span class="sub">11 weeks</span></div>
+            <div class="period-pill">Academic year</div>
+            <div class="period-pill">Custom...</div>
+          </div>
+
+          <!-- Health banner: under 1% reads as healthy -->
+          <div class="health-banner good">
+            <div class="ic">✓</div>
+            <div class="body">
+              <div class="t1">Healthy reversal rate · 0.78% of collected</div>
+              Omnischools's benchmark for well-run school billing is <b>under 2%</b> reversal rate. Christ the King is <b>well within healthy range</b> this term. <b>3 events</b> over 11 weeks · no concerning patterns detected.
+            </div>
+          </div>
+
+          <!-- KPI strip -->
+          <div class="kpi-strip">
+            <div class="kpi featured-terra">
+              <div class="l">Total reversed</div>
+              <div class="v">−GHS 740.00</div>
+              <div class="change"><b>0.78%</b> of GHS 94,830.00 collected</div>
+            </div>
+            <div class="kpi">
+              <div class="l">Voids</div>
+              <div class="v">2</div>
+              <div class="change">data entry corrections · <b>GHS 400.00</b> total</div>
+            </div>
+            <div class="kpi">
+              <div class="l">Refunds</div>
+              <div class="v">1</div>
+              <div class="change">money returned to parents · <b>GHS 340.00</b></div>
+            </div>
+            <div class="kpi">
+              <div class="l">Avg per event</div>
+              <div class="v">GHS 246.67</div>
+              <div class="change">in line with avg payment size</div>
+            </div>
+          </div>
+
+          <!-- Two-column: trend + reasons -->
+          <div class="report-body">
+            <div class="report-card-big" style="margin-bottom:0">
+              <div class="rcb-head">
+                <div>
+                  <div class="label">Trend across the term</div>
+                  <h3>When reversals happened</h3>
+                </div>
+                <div class="ctx">Most concentrated in <b>weeks 4-5</b> · post-fee-issue corrections</div>
+              </div>
+              <div class="rcb-body">
+                <div class="trend-chart">
+                  <div class="grid-line" style="bottom:75%"><div class="gl-label">600</div></div>
+                  <div class="grid-line" style="bottom:50%"><div class="gl-label">400</div></div>
+                  <div class="grid-line" style="bottom:25%"><div class="gl-label">200</div></div>
+                  <div class="grid-line" style="bottom:0%"><div class="gl-label">0</div></div>
+
+                  <div class="trend-bar-col"><div class="x-label">W1</div></div>
+                  <div class="trend-bar-col"><div class="x-label">W2</div></div>
+                  <div class="trend-bar-col"><div class="x-label">W3</div></div>
+                  <div class="trend-bar-col">
+                    <div class="seg void" style="height:100px"></div>
+                    <div class="x-label">W4</div>
+                  </div>
+                  <div class="trend-bar-col">
+                    <div class="seg void" style="height:0"></div>
+                    <div class="x-label">W5</div>
+                  </div>
+                  <div class="trend-bar-col">
+                    <div class="seg refund" style="height:85px"></div>
+                    <div class="x-label">W6</div>
+                  </div>
+                  <div class="trend-bar-col"><div class="x-label">W7</div></div>
+                  <div class="trend-bar-col"><div class="x-label">W8</div></div>
+                  <div class="trend-bar-col"><div class="x-label">W9</div></div>
+                  <div class="trend-bar-col"><div class="x-label">W10</div></div>
+                  <div class="trend-bar-col"><div class="x-label">W11</div></div>
+                </div>
+                <div class="trend-legend">
+                  <div class="li"><div class="swatch void"></div><b>Voids</b><span>· record corrections</span></div>
+                  <div class="li"><div class="swatch refund"></div><b>Refunds</b><span>· money returned</span></div>
+                  <div class="li compare">vs <b>5 events</b> in Term 3 · 2025 last year</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="report-card-big" style="margin-bottom:0">
+              <div class="rcb-head">
+                <div>
+                  <div class="label">Why reversals happened</div>
+                  <h3>By reason category</h3>
+                </div>
+              </div>
+              <div class="rcb-body">
+                <div class="reason-list">
+                  <div class="reason-row">
+                    <div class="swatch dispute"></div>
+                    <div class="body">
+                      <div class="name">Parent disputed charge</div>
+                      <div class="meta">refund · MTN reversal</div>
+                    </div>
+                    <div>
+                      <div class="pct">1</div>
+                      <div class="amt">GHS 340.00</div>
+                    </div>
+                  </div>
+                  <div class="reason-row">
+                    <div class="swatch duplicate"></div>
+                    <div class="body">
+                      <div class="name">Duplicate payment record</div>
+                      <div class="meta">void · same MoMo TXN twice</div>
+                    </div>
+                    <div>
+                      <div class="pct">1</div>
+                      <div class="amt">GHS 400.00</div>
+                    </div>
+                  </div>
+                  <div class="reason-row">
+                    <div class="swatch entry"></div>
+                    <div class="body">
+                      <div class="name">Wrong amount entered</div>
+                      <div class="meta">void · re-recorded correctly</div>
+                    </div>
+                    <div>
+                      <div class="pct">1</div>
+                      <div class="amt">GHS 0.00<span style="display:block;font-size:9px;color:var(--navy-3);font-style:italic;font-weight:500;letter-spacing:0">net effect</span></div>
+                    </div>
+                  </div>
+                  <div class="reason-row" style="opacity:0.5">
+                    <div class="swatch withdrawal"></div>
+                    <div class="body">
+                      <div class="name">Student withdrew</div>
+                      <div class="meta">refund · prorated balance</div>
+                    </div>
+                    <div>
+                      <div class="pct">0</div>
+                      <div class="amt">—</div>
+                    </div>
+                  </div>
+                  <div class="reason-row" style="opacity:0.5">
+                    <div class="swatch overpayment"></div>
+                    <div class="body">
+                      <div class="name">Overpayment refund</div>
+                      <div class="meta">refund · excess over balance</div>
+                    </div>
+                    <div>
+                      <div class="pct">0</div>
+                      <div class="amt">—</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Void vs Refund split -->
+          <div class="split-row">
+            <div class="split-card void">
+              <div class="sc-head">
+                <div class="sc-icon">V</div>
+                <div>
+                  <div class="sc-name">Voids · 2 events</div>
+                  <div class="sc-tagline">"the record was wrong"</div>
+                </div>
+              </div>
+              <div class="sc-amount">GHS 400.00</div>
+              <div class="sc-count"><b>54%</b> of total reversed value</div>
+
+              <div class="sc-detail">
+                <div class="sc-detail-row">
+                  <div class="l">Duplicate records</div>
+                  <div class="v">1 · GHS 400.00</div>
+                </div>
+                <div class="sc-detail-row">
+                  <div class="l">Wrong amount</div>
+                  <div class="v">1 · GHS 0.00 net</div>
+                </div>
+                <div class="sc-detail-row">
+                  <div class="l">Wrong student</div>
+                  <div class="v" style="color:var(--navy-3);font-weight:500;font-style:italic">none this term</div>
+                </div>
+                <span class="money-moved-tag no">Money usually didn't move</span>
+              </div>
+            </div>
+
+            <div class="split-card refund">
+              <div class="sc-head">
+                <div class="sc-icon">R</div>
+                <div>
+                  <div class="sc-name">Refunds · 1 event</div>
+                  <div class="sc-tagline">"we sent money back"</div>
+                </div>
+              </div>
+              <div class="sc-amount">GHS 340.00</div>
+              <div class="sc-count"><b>46%</b> of total reversed value</div>
+
+              <div class="sc-detail">
+                <div class="sc-detail-row">
+                  <div class="l">Parent disputes</div>
+                  <div class="v">1 · GHS 340.00</div>
+                </div>
+                <div class="sc-detail-row">
+                  <div class="l">Withdrawals</div>
+                  <div class="v" style="color:var(--navy-3);font-weight:500;font-style:italic">none this term</div>
+                </div>
+                <div class="sc-detail-row">
+                  <div class="l">Overpayments</div>
+                  <div class="v" style="color:var(--navy-3);font-weight:500;font-style:italic">none this term</div>
+                </div>
+                <span class="money-moved-tag yes">Money actually went back</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recorded by -->
+          <div class="report-card-big">
+            <div class="rcb-head">
+              <div>
+                <div class="label">Who recorded the reversals</div>
+                <h3>By person</h3>
+              </div>
+              <div class="ctx">Helps spot training opportunities · only flags above <b>50%</b> concentration</div>
+            </div>
+            <div class="recorder-table-head">
+              <div>Person</div>
+              <div class="right">Voids</div>
+              <div class="right">Refunds</div>
+              <div>Share of reversals</div>
+              <div></div>
+            </div>
+
+            <div class="recorder-row">
+              <div class="person">
+                <div class="av">FA</div>
+                <div class="body">
+                  <div class="name">Florence Addo</div>
+                  <div class="role">Headmistress</div>
+                </div>
+              </div>
+              <div class="num">1</div>
+              <div class="num">1</div>
+              <div class="ratio-bar">
+                <div class="ratio-line"><div class="ratio-fill" style="width:67%"></div></div>
+                <div class="ratio-pct">67%</div>
+              </div>
+              <div><span class="flag-pill normal">Normal</span></div>
+            </div>
+
+            <div class="recorder-row">
+              <div class="person">
+                <div class="av">JO</div>
+                <div class="body">
+                  <div class="name">Joseph Owusu</div>
+                  <div class="role">Accountant</div>
+                </div>
+              </div>
+              <div class="num">1</div>
+              <div class="num">0</div>
+              <div class="ratio-bar">
+                <div class="ratio-line"><div class="ratio-fill" style="width:33%"></div></div>
+                <div class="ratio-pct">33%</div>
+              </div>
+              <div><span class="flag-pill normal">Normal</span></div>
+            </div>
+          </div>
+
+          <!-- Full event list -->
+          <div style="margin-top:22px">
+            <!-- Filter strip -->
+            <div class="filter-strip">
+              <div class="filter-pill active">All events <span class="count">3</span></div>
+              <div class="filter-divider"></div>
+              <div class="filter-pill">Voids <span class="count">2</span></div>
+              <div class="filter-pill">Refunds <span class="count">1</span></div>
+              <div class="filter-divider"></div>
+              <input class="filter-search" placeholder="Search by student, receipt, or reason..." />
+            </div>
+
+            <div class="report-card-big">
+              <div class="rcb-head">
+                <div>
+                  <div class="label">Every event this term</div>
+                  <h3>Detail with reasons &amp; audit links</h3>
+                </div>
+                <div class="ctx">Click any row to open the payment detail and full audit timeline</div>
+              </div>
+              <div class="event-table-head">
+                <div>When</div>
+                <div>Type</div>
+                <div>Student &amp; reason</div>
+                <div class="right">Amount</div>
+                <div>Recorded by</div>
+                <div></div>
+              </div>
+
+              <div class="event-row refund-row">
+                <div class="when">
+                  <span class="date">2 May 2026</span>
+                  14:08
+                </div>
+                <div><span class="event-tag refund">Refund</span></div>
+                <div class="desc">
+                  <div class="student">Akosua Boateng · JHS 2A</div>
+                  <div class="reason">"Parent disputed MoMo charge — investigation confirmed unauthorised transaction. Refund issued via MTN reversal."</div>
+                  <div class="receipt">Original <b>RCT-2026-0541</b> · refund <b>RCT-R-2026-0042</b></div>
+                </div>
+                <div class="amount">−GHS 340.00</div>
+                <div class="by">
+                  <div class="name">Florence Addo</div>
+                  <div class="role-tag">Headmistress</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">Open</button></div>
+              </div>
+
+              <div class="event-row">
+                <div class="when">
+                  <span class="date">1 May 2026</span>
+                  09:42
+                </div>
+                <div><span class="event-tag void">Void</span></div>
+                <div class="desc">
+                  <div class="student">Yaw Asante · JHS 2A</div>
+                  <div class="reason">"Duplicate payment record — same MoMo TXN78199 had been recorded twice. Voided the duplicate."</div>
+                  <div class="receipt">Voided <b>RCT-2026-0538</b> · replacement <b>RCT-2026-0539</b></div>
+                </div>
+                <div class="amount">−GHS 400.00</div>
+                <div class="by">
+                  <div class="name">Joseph Owusu</div>
+                  <div class="role-tag">Accountant</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">Open</button></div>
+              </div>
+
+              <div class="event-row">
+                <div class="when">
+                  <span class="date">22 Apr 2026</span>
+                  11:14
+                </div>
+                <div><span class="event-tag void">Void</span></div>
+                <div class="desc">
+                  <div class="student">Esi Odoom · JHS 2A</div>
+                  <div class="reason">"Wrong amount typed — entered GHS 4000 instead of GHS 400. Voided and re-recorded correctly."</div>
+                  <div class="receipt">Voided <b>RCT-2026-0501</b> · replacement <b>RCT-2026-0502</b></div>
+                </div>
+                <div class="amount">−GHS 4,000.00<span style="display:block;font-size:9px;color:var(--navy-3);font-style:italic;margin-top:1px">net effect: GHS 0.00 after re-record</span></div>
+                <div class="by">
+                  <div class="name">Florence Addo</div>
+                  <div class="role-tag">Headmistress</div>
+                </div>
+                <div class="actions"><button class="ghost-btn">Open</button></div>
+              </div>
+
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Health banner at the top</b> sets interpretive frame before any numbers. <b>"Healthy reversal rate · 0.78% of collected"</b> with a green checkmark immediately tells the headmistress this isn't a problem term. The benchmark (under 2%) is named so admin knows where the line is. If reversals exceed 2%, the banner flips to a warn-styled "needs attention" treatment.</li>
+        <li><b>Featured KPI in terra-bordered card</b> instead of the usual navy. Voids/refunds are inherently negative-flow events; the colour signals that without exaggerating. The headline number "−GHS 740.00" makes the cedi impact immediate.</li>
+        <li><b>Voids and refunds split into separate KPI cards</b>, not blended. They're conceptually different (per the void/refund flow earlier — void = wrong record, refund = money returned). Blending would lose the distinction the rest of the product preserves.</li>
+        <li><b>"Avg per event GHS 246.67 · in line with avg payment size"</b> — a reassurance sentence. If the average reversal were GHS 4,000 in a school where typical payments are GHS 400, that pattern would warrant alarm. Surfacing the comparison answers the question before it's asked.</li>
+        <li><b>Trend chart shows weeks with separated void/refund segments.</b> Stacked bars within each week column. Most weeks are empty (zero reversals); the few with activity stand out. Same x-axis as the term-collection chart so the eye can compare timing.</li>
+        <li><b>Comparison annotation in the legend</b> — "vs 5 events in Term 3 · 2025 last year" — lets the reader contextualise. 3 this term vs 5 last term reads as improving without needing a separate trend page.</li>
+        <li><b>Reason categories surfaced as a list,</b> not a donut. Six categories are too many for a donut to read clearly; the list ranks by count with cedi values. Empty categories ("Withdrew · 0 · —") shown at reduced opacity so the audience knows the system tracks them, just none happened.</li>
+        <li><b>"Wrong amount entered · GHS 0.00 net effect"</b> — the void was for GHS 4,000 (the wrong entry) but a correct GHS 400 was re-recorded immediately, so net cash impact is zero. The annotation prevents the reader thinking the school lost GHS 4,000.</li>
+        <li><b>Void vs refund split cards</b> show the two streams side-by-side with their tag-lines ("the record was wrong" / "we sent money back"). Each has its own breakdown by sub-category. The "Money usually didn't move" / "Money actually went back" pills are the pedagogical reminder of what the difference means.</li>
+        <li><b>Recorded-by analysis with concentration threshold.</b> Headmistress sees who recorded each reversal — useful for training. Threshold for the warning flag is 50% concentration; below that, both people are flagged "Normal" green. With 3 events, single-person concentrations are statistically meaningless, so the threshold prevents false alarms.</li>
+        <li><b>"Helps spot training opportunities"</b> framing — not "blame the staff." The right framing matters here. Nobody likes being singled out; the language and the high threshold protect against weaponising the report.</li>
+        <li><b>Event list with full reason text in italic.</b> Each row carries the actual reason recorded at void time. Auditor scans the column and reads why each reversal happened without clicking through. The receipt/replacement IDs are mono-font and gold for the receipt number — same convention as audit log.</li>
+        <li><b>Refund row has soft-red row tint</b> to distinguish from voids. Voids are corrections; refunds involve actual money movement. Visual signal reinforces the distinction.</li>
+        <li><b>"Open" button per row</b> goes to the payment detail page (already designed) where the full audit timeline lives. Report links into existing surfaces; doesn't recreate them.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

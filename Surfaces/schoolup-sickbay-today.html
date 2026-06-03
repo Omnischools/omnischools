@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Today's sickbay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:720px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1640px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces', serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item.sub { padding-left:44px; font-size:12px; color:rgba(250,247,242,0.55); }
+.nav-item.sub.active { color:var(--bg); background:rgba(200,151,91,0.08); }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; background:var(--navy); border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:720px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.body { padding:28px 36px 60px; }
+.live-strip { display:grid; grid-template-columns:repeat(5, 1fr); gap:14px; margin-bottom:24px; }
+.live-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; position:relative; }
+.live-tile.active { border-color:var(--gold); border-width:1.5px; background:linear-gradient(180deg, var(--surface) 0%, var(--gold-bg) 100%); }
+.live-tile.alert { border-color:var(--terra); border-width:1.5px; background:linear-gradient(180deg, var(--surface) 0%, var(--terra-bg) 100%); }
+.live-tile .lbl { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.live-tile .val { font-family:'Fraunces', serif; font-size:32px; font-weight:600; letter-spacing:-0.018em; margin-top:3px; line-height:1.05; }
+.live-tile .val em { font-style:italic; color:var(--gold); }
+.live-tile .val .sub-num { font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--navy-3); font-weight:500; }
+.live-tile .meta { font-size:10px; color:var(--navy-3); margin-top:4px; font-style:italic; }
+.live-tile .meta b { color:var(--navy-2); font-style:normal; font-weight:600; }
+.live-tile .now-dot { position:absolute; top:14px; right:14px; width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 0 4px var(--green-bg); }
+.live-tile.alert .now-dot { background:var(--terra); box-shadow:0 0 0 4px var(--terra-bg); }
+.col-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:24px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.card.featured { border-color:var(--gold); border-width:1.5px; }
+.card-head { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:baseline; gap:14px; }
+.card-head .ch-title { font-family:'Fraunces', serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.card-head .ch-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.card-head .ch-meta { font-size:10px; color:var(--navy-3); font-weight:600; letter-spacing:0.06em; flex-shrink:0; }
+.queue-row { display:grid; grid-template-columns:70px 1fr 130px 80px 80px; gap:14px; padding:14px 20px; align-items:center; border-bottom:1px solid var(--border); }
+.queue-row:last-child { border-bottom:none; }
+.queue-row .q-time { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.queue-row .q-time .wait { display:block; font-size:9px; color:var(--gold); font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; font-family:'Manrope', sans-serif; }
+.queue-row .q-student .qs-name { font-weight:600; font-size:13px; color:var(--navy); margin-bottom:1px; }
+.queue-row .q-student .qs-meta { font-size:11px; color:var(--navy-3); }
+.queue-row .q-student .qs-meta b { color:var(--navy-2); font-weight:600; }
+.queue-row .q-complaint { font-size:12px; color:var(--navy-2); }
+.queue-row .q-complaint .triage { display:inline-block; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; margin-top:4px; padding:2px 7px; border-radius:100px; }
+.queue-row .q-complaint .triage.routine { background:var(--green-bg); color:var(--green); }
+.queue-row .q-flag { font-size:10px; color:var(--navy-3); }
+.queue-row .q-action { text-align:right; }
+.queue-row .q-action .btn-sm { padding:6px 11px; font-size:11px; font-weight:600; border-radius:5px; border:1px solid var(--gold); background:var(--gold); color:var(--navy); cursor:pointer; font-family:inherit; }
+.bed-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; padding:18px 20px; }
+.bed { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px; position:relative; min-height:100px; display:flex; flex-direction:column; gap:6px; }
+.bed.empty { background:var(--surface); border-style:dashed; }
+.bed.empty .bed-num { color:var(--navy-3); }
+.bed.empty .bed-state { color:var(--navy-3); font-style:italic; font-size:11px; margin-top:auto; }
+.bed.occupied { background:linear-gradient(180deg, var(--surface) 0%, var(--gold-bg) 100%); border-color:var(--gold); border-width:1.5px; }
+.bed.isolation { border-color:var(--terra); border-style:dashed; }
+.bed.isolation.empty { background:var(--surface); }
+.bed .bed-num { font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-2); font-weight:700; }
+.bed .bed-num .iso-tag { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:100px; background:var(--terra-bg); color:var(--terra); font-size:8px; letter-spacing:0.08em; font-weight:700; }
+.bed .bed-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; color:var(--navy); }
+.bed .bed-meta { font-size:10px; color:var(--navy-3); }
+.bed .bed-meta b { color:var(--navy-2); font-weight:600; }
+.bed .bed-condition { font-size:10px; color:var(--terra); font-weight:700; letter-spacing:0.06em; text-transform:uppercase; margin-top:auto; padding-top:6px; border-top:1px solid var(--gold-soft); }
+.round-row { display:grid; grid-template-columns:110px 1fr 110px; gap:18px; padding:16px 20px; align-items:center; border-bottom:1px solid var(--border); }
+.round-row:last-child { border-bottom:none; }
+.round-row.done { background:linear-gradient(90deg, var(--green-bg) 0%, transparent 60%); }
+.round-row.due-now { background:linear-gradient(90deg, var(--gold-bg) 0%, transparent 60%); }
+.round-row .r-time { font-family:'Fraunces', serif; font-size:22px; font-weight:600; color:var(--navy); }
+.round-row .r-time em { font-style:italic; color:var(--gold); font-weight:400; }
+.round-row .r-time .r-label { display:block; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-top:2px; font-family:'Manrope', sans-serif; }
+.round-row .r-list { font-size:12px; color:var(--navy-2); line-height:1.6; }
+.round-row .r-list .r-stu { font-weight:600; color:var(--navy); }
+.round-row .r-list .r-stu + .r-stu::before { content:" · "; color:var(--gold); font-weight:700; }
+.round-row .r-list .r-helper { display:block; font-size:10px; color:var(--navy-3); font-style:italic; margin-top:4px; }
+.round-row .r-list .r-helper b { color:var(--green); font-style:normal; font-weight:600; }
+.round-row .r-status { text-align:right; }
+.round-row .r-status .pill { display:inline-block; padding:4px 10px; border-radius:100px; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; }
+.round-row .r-status .pill.done { background:var(--green-bg); color:var(--green); }
+.round-row .r-status .pill.due-soon { background:var(--gold-bg); color:var(--gold); }
+.round-row .r-status .pill.pending { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.visit-row { display:grid; grid-template-columns:74px 1fr 150px 110px; gap:14px; padding:12px 20px; align-items:center; border-bottom:1px solid var(--border); font-size:12px; }
+.visit-row:last-child { border-bottom:none; }
+.visit-row .v-time { font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--navy-2); font-weight:600; }
+.visit-row .v-time .v-day { display:block; font-size:9px; color:var(--gold); letter-spacing:0.08em; text-transform:uppercase; font-weight:700; font-family:'Manrope', sans-serif; margin-top:1px; }
+.visit-row .v-stu .vs-name { font-weight:600; font-size:12px; color:var(--navy); }
+.visit-row .v-stu .vs-complaint { font-size:11px; color:var(--navy-3); margin-top:1px; line-height:1.5; }
+.visit-row .v-stu .vs-complaint b { color:var(--navy-2); font-weight:600; }
+.visit-row .v-action { font-size:11px; color:var(--navy-2); line-height:1.5; }
+.visit-row .v-disposition { text-align:right; }
+.visit-row .v-disposition .d-pill { display:inline-block; padding:3px 9px; border-radius:100px; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; }
+.d-pill.discharge { background:var(--green-bg); color:var(--green); }
+.d-pill.admit { background:var(--gold-bg); color:var(--gold); }
+.d-pill.refer { background:var(--terra-bg); color:var(--terra); }
+.referral-card { background:var(--surface); border:1.5px solid var(--terra); border-radius:12px; overflow:hidden; }
+.referral-card .rc-head { background:linear-gradient(135deg, var(--terra) 0%, #9A3D2F 100%); color:var(--bg); padding:14px 18px; }
+.referral-card .rc-head .rc-eyebrow { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; margin-bottom:4px; }
+.referral-card .rc-head h4 { font-family:'Fraunces', serif; font-size:16px; font-weight:600; letter-spacing:-0.005em; }
+.referral-card .rc-head h4 em { font-style:italic; color:var(--gold-soft); font-weight:400; }
+.referral-card .rc-body { padding:16px 18px; font-size:12px; }
+.referral-card .rc-row { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px dashed var(--border); }
+.referral-card .rc-row:last-child { border-bottom:none; }
+.referral-card .rc-row .lbl { color:var(--navy-3); font-size:11px; }
+.referral-card .rc-row .val { color:var(--navy); font-weight:600; font-size:11px; text-align:right; }
+.referral-card .rc-row .val.mono { font-family:'JetBrains Mono', monospace; }
+.referral-card .rc-status { padding:12px 18px; background:var(--terra-bg); font-size:11px; color:var(--terra); font-weight:600; display:flex; justify-content:space-between; align-items:center; }
+.referral-card .rc-status .rc-pulse { width:8px; height:8px; border-radius:50%; background:var(--terra); display:inline-block; margin-right:6px; vertical-align:middle; }
+.outbreak-row { display:grid; grid-template-columns:1fr 80px 100px 110px; gap:14px; padding:12px 20px; align-items:center; border-bottom:1px solid var(--border); }
+.outbreak-row:last-child { border-bottom:none; }
+.outbreak-row .o-cond { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); letter-spacing:-0.005em; }
+.outbreak-row .o-cond .o-sub { display:block; font-size:10px; color:var(--navy-3); font-style:italic; font-family:'Manrope', sans-serif; font-weight:400; margin-top:1px; }
+.outbreak-row .o-count { font-family:'JetBrains Mono', monospace; font-size:18px; font-weight:600; color:var(--navy); text-align:right; }
+.outbreak-row .o-count em { font-style:italic; color:var(--gold); font-weight:500; font-size:9px; display:block; font-family:'Manrope', sans-serif; letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; }
+.outbreak-row .o-trend { font-size:11px; color:var(--navy-2); font-weight:600; }
+.outbreak-row .o-trend.up { color:var(--warn); }
+.outbreak-row .o-trend.flat { color:var(--navy-3); }
+.outbreak-row .o-trend.down { color:var(--green); }
+.outbreak-row .o-status { text-align:right; }
+.outbreak-row .o-status .pill { display:inline-block; padding:3px 9px; border-radius:100px; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; }
+.outbreak-row .o-status .pill.monitor { background:var(--warn-bg); color:var(--warn); }
+.outbreak-row .o-status .pill.normal { background:var(--green-bg); color:var(--green); }
+.adwoa-block { padding:20px 24px; background:linear-gradient(180deg, var(--gold-bg) 0%, var(--surface) 100%); border:1.5px solid var(--gold); border-radius:14px; margin-bottom:24px; }
+.adwoa-block .ab-head { display:flex; justify-content:space-between; align-items:start; margin-bottom:10px; gap:14px; }
+.adwoa-block .ab-info .ab-name { font-family:'Fraunces', serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; }
+.adwoa-block .ab-info .ab-name em { font-style:italic; color:var(--gold); font-weight:400; }
+.adwoa-block .ab-info .ab-meta { font-size:11px; color:var(--navy-3); margin-top:3px; }
+.adwoa-block .ab-info .ab-meta b { color:var(--navy-2); font-weight:600; }
+.adwoa-block .ab-tags { display:flex; gap:6px; flex-wrap:wrap; flex-shrink:0; }
+.ab-tag { padding:3px 9px; border-radius:100px; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; }
+.ab-tag.chronic { background:var(--terra); color:var(--bg); }
+.ab-tag.admitted { background:var(--gold); color:var(--navy); }
+.adwoa-block .ab-vitals { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-top:14px; padding:12px; background:var(--surface); border:1px solid var(--gold-soft); border-radius:8px; }
+.adwoa-block .ab-vital { text-align:center; }
+.adwoa-block .ab-vital .vl { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.adwoa-block .ab-vital .vv { font-family:'JetBrains Mono', monospace; font-size:14px; font-weight:600; color:var(--navy); margin-top:3px; }
+.adwoa-block .ab-vital .vv.warn { color:var(--warn); }
+.adwoa-block .ab-vital .vt { font-size:9px; color:var(--navy-3); margin-top:2px; font-style:italic; }
+.adwoa-block .ab-line { font-size:12px; color:var(--navy-2); margin-top:12px; padding-top:10px; border-top:1px dashed var(--gold-soft); line-height:1.6; }
+.adwoa-block .ab-line b { color:var(--navy); font-weight:600; }
+.adwoa-block .ab-line .arrow { color:var(--gold); margin:0 4px; }
+.hm-strip { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-top:18px; }
+.hm-strip .hs-head { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:10px; }
+.hm-strip .hs-rows { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; }
+.hm-row { display:flex; gap:10px; align-items:center; font-size:11px; padding:7px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; }
+.hm-row .hm-house { font-family:'Fraunces', serif; font-style:italic; font-size:12px; color:var(--gold); font-weight:600; }
+.hm-row .hm-text { color:var(--navy-2); flex:1; }
+.hm-row .hm-text b { color:var(--navy); font-weight:600; }
+.hm-row .hm-time { font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--navy-3); }
+.body-shell { background:var(--surface); border-radius:14px; overflow:hidden; border:1px solid var(--border); }
+.head-row { padding:18px 22px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:end; background:linear-gradient(180deg, var(--bg) 0%, var(--surface) 100%); gap:14px; }
+.head-row .hr-l h3 { font-family:'Fraunces', serif; font-size:20px; font-weight:600; letter-spacing:-0.01em; }
+.head-row .hr-l h3 em { font-style:italic; color:var(--gold); font-weight:400; }
+.head-row .hr-l p { font-size:12px; color:var(--navy-3); margin-top:3px; }
+.head-row .hr-l p b { color:var(--navy-2); font-weight:600; }
+.head-row .hr-r { display:flex; gap:10px; align-items:center; flex-shrink:0; }
+.live-clock { font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--navy); font-weight:600; padding:5px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; }
+.live-clock .lc-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--green); margin-right:6px; vertical-align:middle; }
+.thread-entry { padding:14px 20px; border-bottom:1px solid var(--border); font-size:12px; }
+.thread-entry:last-child { border-bottom:none; }
+.thread-entry .te-head { display:flex; justify-content:space-between; margin-bottom:6px; gap:12px; }
+.thread-entry .te-head .te-who { color:var(--navy); font-weight:600; }
+.thread-entry .te-head .te-time { font-family:'JetBrains Mono', monospace; color:var(--navy-3); font-size:10px; }
+.thread-entry .te-body { color:var(--navy-2); line-height:1.55; }
+.thread-entry .te-body b { color:var(--navy); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="page">
+<header class="page-header">
+<div class="mvp-tag">MVP2 · Sickbay · Boarding · Surface 2 of 5</div>
+<h1>Today's <em>sickbay</em></h1>
+<div class="gold-rule"></div>
+<p>The matron's live operational view. Current queue, admitted patients with bedside vitals, today's medication rounds, the last 24 hours of visits, active referrals out, and the outbreak monitor — one page she keeps open beside the dispensing bench from morning round to lights-out.</p>
+</header>
+
+<section class="section">
+<div class="section-head">
+<span class="section-num">01</span>
+<h2 class="section-title">Live situation · admissions, queue, key vitals</h2>
+<span class="section-meta">Now · Wed 14 May 14:45</span>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/sickbay/today</div></div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">S</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Wassa Amenfi · WR</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Academics</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub active">Today</div>
+<div class="nav-item sub">Visit records</div>
+<div class="nav-item sub">Chronic register</div>
+<div class="nav-item sub">Referrals &amp; comms</div>
+<div class="nav-item sub">Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Billing &amp; fees</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">Mrs A. Bediako</div><div class="meta-role">Matron · N&amp;MC 04827</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a>Sickbay</a> · Today</div>
+<div class="top-row">
+<div>
+<h1>Today's <em>sickbay</em> · Wed 14 May 2026</h1>
+<div class="lede"><b>1 admitted</b> · <b>3 in queue</b> · <b>5 visits</b> earlier today · <b>1 active referral</b> (D. Sarpong · Wassa Akropong) · URTI mild cluster watch</div>
+</div>
+<div class="actions"><button class="btn">Print day sheet</button><button class="btn">New visit</button><button class="btn primary">Admit patient</button></div>
+</div>
+</div>
+<div class="body">
+<div class="live-strip">
+<div class="live-tile active"><div class="now-dot"></div><div class="lbl">Admitted now</div><div class="val">1 <span class="sub-num">/ 8 beds</span></div><div class="meta"><b>A. Mensa</b> · bed 3 · SCD crisis</div></div>
+<div class="live-tile active"><div class="now-dot"></div><div class="lbl">In queue</div><div class="val">3</div><div class="meta">avg wait <b>4 min</b> · oldest 7 min</div></div>
+<div class="live-tile"><div class="lbl">Visits today</div><div class="val">5</div><div class="meta">3 discharged · 1 admitted · 1 awaiting</div></div>
+<div class="live-tile"><div class="lbl">Active referrals</div><div class="val">1</div><div class="meta"><b>D. Sarpong</b> · post-op Akropong</div></div>
+<div class="live-tile alert"><div class="now-dot"></div><div class="lbl">Cluster watch</div><div class="val">URTI</div><div class="meta"><b>6 cases</b> past 7 days · monitor</div></div>
+</div>
+
+<div class="adwoa-block">
+<div class="ab-head">
+<div class="ab-info">
+<div class="ab-name">Adwoa <em>Mensa</em> · admitted bed 3</div>
+<div class="ab-meta">F1 General Arts · <b>Slessor House</b> · Adm. #2025/F1/0214 · admitted <b>09:14 today</b> by Mrs Bediako · 5h 31m on bed</div>
+</div>
+<div class="ab-tags"><span class="ab-tag chronic">Sickle cell SS</span><span class="ab-tag admitted">Admitted</span></div>
+</div>
+<div class="ab-vitals">
+<div class="ab-vital"><div class="vl">Temp</div><div class="vv">37.1°C</div><div class="vt">13:00 last</div></div>
+<div class="ab-vital"><div class="vl">Pulse</div><div class="vv">88 bpm</div><div class="vt">13:00 last</div></div>
+<div class="ab-vital"><div class="vl">BP</div><div class="vv">108/68</div><div class="vt">13:00 last</div></div>
+<div class="ab-vital"><div class="vl">SpO₂</div><div class="vv">98%</div><div class="vt">13:00 last</div></div>
+<div class="ab-vital"><div class="vl">Pain score</div><div class="vv warn">4 / 10</div><div class="vt">down from 7</div></div>
+</div>
+<div class="ab-line">Mild vaso-occlusive pain crisis · right shoulder &amp; knee. Hydration started 09:25 (oral, 200ml/h target). Paracetamol 1g <span class="arrow">→</span> 09:30 and 12:30. Hydroxyurea continued. <b>Pain trending down 7 → 4</b> over 5 hours · hold admission, recheck vitals 17:00, plan discharge tomorrow morning if pain ≤ 2 and no fever. Parent (Mrs Mensa) notified <b>09:22</b> via SMS + phone call.</div>
+</div>
+
+<div class="col-2" style="grid-template-columns:1.4fr 1fr;">
+<div class="card featured">
+<div class="card-head">
+<div><span class="ch-title">Queue · <em>waiting now</em></span></div>
+<span class="ch-meta">3 students · refresh 15s</span>
+</div>
+<div>
+<div class="queue-row">
+<div class="q-time">14:38<span class="wait">7 min wait</span></div>
+<div class="q-student"><div class="qs-name">K. Asante</div><div class="qs-meta">F2 SCI · <b>Aggrey House</b> · #2024/F2/0188</div></div>
+<div class="q-complaint">Headache, since after lunch<br><span class="triage routine">Routine</span></div>
+<div class="q-flag">No chronic flag</div>
+<div class="q-action"><button class="btn-sm">Begin visit</button></div>
+</div>
+<div class="queue-row">
+<div class="q-time">14:41<span class="wait">4 min wait</span></div>
+<div class="q-student"><div class="qs-name">P. Owusu</div><div class="qs-meta">F3 GA · <b>Slessor House</b> · #2023/F3/0067</div></div>
+<div class="q-complaint">Knee scrape · sports field<br><span class="triage routine">Routine</span></div>
+<div class="q-flag">No chronic flag</div>
+<div class="q-action"><button class="btn-sm">Begin visit</button></div>
+</div>
+<div class="queue-row">
+<div class="q-time">14:43<span class="wait">2 min wait</span></div>
+<div class="q-student"><div class="qs-name">Y. Boateng</div><div class="qs-meta">F1 BUS · <b>Kufuor House</b> · #2025/F1/0091</div></div>
+<div class="q-complaint">Menstrual cramps<br><span class="triage routine">Routine</span></div>
+<div class="q-flag">No chronic flag</div>
+<div class="q-action"><button class="btn-sm">Begin visit</button></div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div><span class="ch-title">Beds · <em>occupancy</em></span></div>
+<span class="ch-meta">1 / 8 · 7 empty</span>
+</div>
+<div class="bed-grid">
+<div class="bed empty"><div class="bed-num">Bed 01</div><div class="bed-state">Empty</div></div>
+<div class="bed empty"><div class="bed-num">Bed 02</div><div class="bed-state">Empty</div></div>
+<div class="bed occupied"><div class="bed-num">Bed 03</div><div class="bed-name">A. Mensa</div><div class="bed-meta">F1 · <b>Slessor</b></div><div class="bed-condition">SCD · 5h 31m</div></div>
+<div class="bed empty"><div class="bed-num">Bed 04</div><div class="bed-state">Empty</div></div>
+<div class="bed empty"><div class="bed-num">Bed 05</div><div class="bed-state">Empty</div></div>
+<div class="bed empty"><div class="bed-num">Bed 06</div><div class="bed-state">Empty</div></div>
+<div class="bed isolation empty"><div class="bed-num">Bed 07 <span class="iso-tag">Iso</span></div><div class="bed-state">Empty</div></div>
+<div class="bed isolation empty"><div class="bed-num">Bed 08 <span class="iso-tag">Iso</span></div><div class="bed-state">Empty</div></div>
+</div>
+</div>
+</div>
+
+<div class="hm-strip">
+<div class="hs-head">Housemaster awareness · auto-notified of admissions</div>
+<div class="hs-rows">
+<div class="hm-row"><div class="hm-house">Slessor</div><div class="hm-text"><b>Mr Owusu</b> notified · student in sickbay (medical detail withheld)</div><div class="hm-time">09:17</div></div>
+<div class="hm-row"><div class="hm-house">Office</div><div class="hm-text"><b>Mr Asare-Mensah</b> (HM) auto-notified of admission</div><div class="hm-time">09:17</div></div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<aside class="notes">
+<h4>Why this view</h4>
+<ul>
+<li><b>One page, full picture.</b> Queue + beds + vitals visible without clicking — the matron is dispensing, treating, and triaging in the same physical room</li>
+<li><b>Live status tiles</b> use gold to mark active, terra to flag the cluster watch · quiet day vs busy day reads instantly</li>
+<li><b>Admitted-patient block</b> shows the only patient on a bed at full detail, including pain-score trend · the single most clinically important piece of information</li>
+<li><b>HM awareness strip</b> shows the HM and Slessor housemaster were notified of admission without seeing the diagnosis · privacy preserved</li>
+<li><b>Three in queue</b> all routine triage · the matron picks the order; sports injury and cramps queued behind a 7-minute headache wait</li>
+</ul>
+</aside>
+</div>
+</section>
+
+<section class="section">
+<div class="section-head">
+<span class="section-num">02</span>
+<h2 class="section-title">Today's medication rounds · scheduled dispensing</h2>
+<span class="section-meta">06:30 / 12:30 / 17:00 / 21:00</span>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/sickbay/today/rounds</div></div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">S</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Wassa Amenfi · WR</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Academics</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub active">Today</div>
+<div class="nav-item sub">Visit records</div>
+<div class="nav-item sub">Chronic register</div>
+<div class="nav-item sub">Referrals &amp; comms</div>
+<div class="nav-item sub">Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Billing &amp; fees</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">Mrs A. Bediako</div><div class="meta-role">Matron · N&amp;MC 04827</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a>Sickbay</a> · <a>Today</a> · Medication rounds</div>
+<div class="top-row">
+<div>
+<h1>Medication <em>rounds</em> · today</h1>
+<div class="lede"><b>06:30 ✓</b> 4 students · <b>12:30 ✓</b> 1 student · <b>17:00</b> due 2h 15m · <b>21:00</b> due 6h 15m</div>
+</div>
+<div class="actions"><button class="btn">View 7-day history</button><button class="btn primary">Mark 17:00 ready</button></div>
+</div>
+</div>
+<div class="body">
+<div class="body-shell">
+<div class="head-row">
+<div class="hr-l">
+<h3>Four <em>rounds</em> · today's dispensing schedule</h3>
+<p>Standing rule from sickbay setup · all chronic-condition meds dispensed by matron in person · <b>F. Tetteh</b> (Sick Bay Prefect, Aggrey) assists with 06:30 round check-off</p>
+</div>
+<div class="hr-r"><div class="live-clock"><span class="lc-dot"></span>14:45 GMT</div></div>
+</div>
+<div>
+<div class="round-row done">
+<div class="r-time">06:30<span class="r-label">Morning · pre-breakfast</span></div>
+<div class="r-list"><span class="r-stu">A. Mensa</span><span class="r-stu">Y. Mensah</span><span class="r-stu">B. Antwi</span><span class="r-stu">K. Adusah</span><span class="r-helper">Dispensed by Mrs Bediako · <b>F. Tetteh (Sick Bay Prefect, Aggrey)</b> assisted with check-off · 06:30 to 06:47</span></div>
+<div class="r-status"><span class="pill done">✓ Done · 06:47</span></div>
+</div>
+<div class="round-row done">
+<div class="r-time">12:30<span class="r-label">Lunch · post-meal</span></div>
+<div class="r-list"><span class="r-stu">A. Mensa</span> (in-bed dose · paracetamol 1g)<span class="r-helper">Dispensed bedside · 12:32</span></div>
+<div class="r-status"><span class="pill done">✓ Done · 12:32</span></div>
+</div>
+<div class="round-row due-now">
+<div class="r-time">17:00<span class="r-label">Evening · pre-prep</span></div>
+<div class="r-list"><span class="r-stu">A. Mensa</span> (bedside · hydroxyurea check, paracetamol PRN)<span class="r-stu">Y. Mensah</span> (Keppra 500mg · second dose)<span class="r-helper">Y. Mensah will report after prep ends 16:30 · A. Mensa is on bed 3</span></div>
+<div class="r-status"><span class="pill due-soon">Due in 2h 15m</span></div>
+</div>
+<div class="round-row">
+<div class="r-time">21:00<span class="r-label">Night · post-prep</span></div>
+<div class="r-list"><span class="r-stu">B. Antwi</span> (Cetirizine 10mg)<span class="r-stu">A. Mensa</span> (if still admitted · evening vitals check)<span class="r-helper">Asst Matron <b>Ms G. Antwi</b> on duty for 21:00 round</span></div>
+<div class="r-status"><span class="pill pending">Pending</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<aside class="notes">
+<h4>Round mechanics</h4>
+<ul>
+<li><b>06:30 pre-breakfast</b> is the canonical Ghanaian boarding standing rule · students surrender meds on arrival, matron dispenses</li>
+<li>Each round is <b>append-only</b> · every dispense logged with time, student, drug, dose, dispenser, and witness</li>
+<li><b>F. Tetteh</b> as Sick Bay Prefect assists with check-off but never handles meds · only the matron dispenses</li>
+<li><b>Asst Matron Ms Antwi</b> covers 21:00 and weekends · second clinical signature on the schedule</li>
+<li><b>A. Mensa</b> appears in three rounds today because she is admitted and on hydroxyurea + paracetamol cycle</li>
+</ul>
+</aside>
+</div>
+</section>
+
+<section class="section">
+<div class="section-head">
+<span class="section-num">03</span>
+<h2 class="section-title">Recent visits · last 24 hours</h2>
+<span class="section-meta">Yesterday 19:40 → Now</span>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/sickbay/today/visits</div></div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">S</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Wassa Amenfi · WR</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Academics</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub active">Today</div>
+<div class="nav-item sub">Visit records</div>
+<div class="nav-item sub">Chronic register</div>
+<div class="nav-item sub">Referrals &amp; comms</div>
+<div class="nav-item sub">Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Billing &amp; fees</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">Mrs A. Bediako</div><div class="meta-role">Matron · N&amp;MC 04827</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a>Sickbay</a> · <a>Today</a> · Recent visits</div>
+<div class="top-row">
+<div>
+<h1>Recent <em>visits</em> · 24-hour log</h1>
+<div class="lede"><b>6 visits</b> in last 24 hours · <b>4 discharged</b> · <b>1 admitted</b> (A. Mensa still on bed 3) · <b>1 referred out</b> (E. Owusu, returned today)</div>
+</div>
+<div class="actions"><button class="btn">Filter by house</button><button class="btn">Export day report</button></div>
+</div>
+</div>
+<div class="body">
+<div class="body-shell">
+<div class="head-row">
+<div class="hr-l">
+<h3>Six <em>visits</em> · chronological</h3>
+<p>Most recent at top · click any row to open the full visit record</p>
+</div>
+<div class="hr-r"><div class="live-clock"><span class="lc-dot"></span>14:45 GMT</div></div>
+</div>
+<div>
+<div class="visit-row">
+<div class="v-time">14:22<span class="v-day">Today</span></div>
+<div class="v-stu"><div class="vs-name">D. Mensah</div><div class="vs-complaint">F2 BUS · <b>Nkrumah</b> · cut on left hand from carpentry workshop</div></div>
+<div class="v-action">Cleaned, dressed, tetanus current</div>
+<div class="v-disposition"><span class="d-pill discharge">Discharged 14:35</span></div>
+</div>
+<div class="visit-row">
+<div class="v-time">13:50<span class="v-day">Today</span></div>
+<div class="v-stu"><div class="vs-name">S. Owusu</div><div class="vs-complaint">F3 SCI · <b>Aggrey</b> · period pain · routine, no fever</div></div>
+<div class="v-action">Paracetamol 1g · rest 45 min</div>
+<div class="v-disposition"><span class="d-pill discharge">Discharged 14:35</span></div>
+</div>
+<div class="visit-row">
+<div class="v-time">11:12<span class="v-day">Today</span></div>
+<div class="v-stu"><div class="vs-name">L. Adjei</div><div class="vs-complaint">F1 BUS · <b>Slessor</b> · fever 37.8°C, headache · malaria RDT negative</div></div>
+<div class="v-action">Paracetamol 1g · rest 1h · ORS</div>
+<div class="v-disposition"><span class="d-pill discharge">Discharged 12:30</span></div>
+</div>
+<div class="visit-row">
+<div class="v-time">09:14<span class="v-day">Today</span></div>
+<div class="v-stu"><div class="vs-name">A. Mensa</div><div class="vs-complaint">F1 GA · <b>Slessor</b> · sickle cell pain crisis · right shoulder, knee · pain 7/10</div></div>
+<div class="v-action">Hydroxyurea continued · paracetamol · hydration · bed 3</div>
+<div class="v-disposition"><span class="d-pill admit">Admitted</span></div>
+</div>
+<div class="visit-row">
+<div class="v-time">07:18<span class="v-day">Today</span></div>
+<div class="v-stu"><div class="vs-name">K. Adusah</div><div class="vs-complaint">F3 GA · <b>Aggrey</b> · forgot AM inhaler dose · asthma chronic</div></div>
+<div class="v-action">Salbutamol 2 puffs · counselled</div>
+<div class="v-disposition"><span class="d-pill discharge">Discharged 07:24</span></div>
+</div>
+<div class="visit-row">
+<div class="v-time">19:40<span class="v-day">Yesterday</span></div>
+<div class="v-stu"><div class="vs-name">E. Owusu</div><div class="vs-complaint">F2 GA · <b>Aggrey</b> · wrist pain after inter-house football · swelling</div></div>
+<div class="v-action">Referred to Asankrangwa Govt for x-ray</div>
+<div class="v-disposition"><span class="d-pill refer">Referred</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<aside class="notes">
+<h4>Day rhythm</h4>
+<ul>
+<li><b>Six visits in 24h</b> for a 1,200-student school is a typical mid-week pattern · busier on Monday and post-weekend</li>
+<li><b>Slessor House over-represented</b> today (3 of 6) · worth a passing note but not yet a pattern; Mr Owusu's house</li>
+<li><b>E. Owusu's referral</b> from yesterday evening returned today 11:00 with negative x-ray and soft cast · closed in the referral log</li>
+<li>Click any row to open the visit record (surface 3 in this batch)</li>
+<li><b>K. Adusah's 07:18 visit</b> is exactly the "forgot AM inhaler" case the morning round is designed to prevent · note for chronic register review</li>
+</ul>
+</aside>
+</div>
+</section>
+
+<section class="section">
+<div class="section-head">
+<span class="section-num">04</span>
+<h2 class="section-title">Active referrals out · students currently at hospital</h2>
+<span class="section-meta">1 active</span>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/sickbay/today/referrals-active</div></div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">S</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Wassa Amenfi · WR</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Academics</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub active">Today</div>
+<div class="nav-item sub">Visit records</div>
+<div class="nav-item sub">Chronic register</div>
+<div class="nav-item sub">Referrals &amp; comms</div>
+<div class="nav-item sub">Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Billing &amp; fees</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">Mrs A. Bediako</div><div class="meta-role">Matron · N&amp;MC 04827</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a>Sickbay</a> · <a>Today</a> · Active referrals</div>
+<div class="top-row">
+<div>
+<h1>Active <em>referrals</em></h1>
+<div class="lede"><b>1 student</b> currently at hospital · expected return 3–5 days · parent on site with student</div>
+</div>
+<div class="actions"><button class="btn">Open full referral log</button><button class="btn primary">Log new referral</button></div>
+</div>
+</div>
+<div class="body">
+<div class="col-2" style="grid-template-columns:1fr 1.4fr; align-items:start;">
+<div class="referral-card">
+<div class="rc-head">
+<div class="rc-eyebrow">Active referral · day 1</div>
+<h4>D. Sarpong · <em>post-op</em></h4>
+</div>
+<div class="rc-body">
+<div class="rc-row"><span class="lbl">Student</span><span class="val">D. Sarpong · F3 SCI</span></div>
+<div class="rc-row"><span class="lbl">House</span><span class="val">Kufuor</span></div>
+<div class="rc-row"><span class="lbl">Adm. #</span><span class="val mono">2023/F3/0142</span></div>
+<div class="rc-row"><span class="lbl">Condition</span><span class="val">Acute appendicitis</span></div>
+<div class="rc-row"><span class="lbl">Hospital</span><span class="val">Wassa Akropong District</span></div>
+<div class="rc-row"><span class="lbl">Departed</span><span class="val mono">Tue 13 May 16:20</span></div>
+<div class="rc-row"><span class="lbl">Transport</span><span class="val">School pickup truck</span></div>
+<div class="rc-row"><span class="lbl">Accompanied by</span><span class="val">Mrs Bediako (Matron)</span></div>
+<div class="rc-row"><span class="lbl">Surgery</span><span class="val">Tue 23:14 · Dr Akoto</span></div>
+<div class="rc-row"><span class="lbl">Parent with student</span><span class="val">Mrs Sarpong · since 21:10 Tue</span></div>
+<div class="rc-row"><span class="lbl">Expected return</span><span class="val">Sat 17 May / Sun 18 May</span></div>
+<div class="rc-row"><span class="lbl">NHIS used</span><span class="val">Yes · valid card</span></div>
+</div>
+<div class="rc-status"><span><span class="rc-pulse"></span>Recovering · day 1 post-op</span><span style="font-family:'JetBrains Mono', monospace; font-weight:600;">22h elapsed</span></div>
+</div>
+
+<div class="card">
+<div class="card-head">
+<div><span class="ch-title">Communication <em>thread</em> · D. Sarpong</span></div>
+<span class="ch-meta">5 entries · 22h</span>
+</div>
+<div>
+<div class="thread-entry">
+<div class="te-head"><span class="te-who">Mrs Bediako → Mrs Sarpong (parent)</span><span class="te-time">Tue 16:35</span></div>
+<div class="te-body">Phone call · 8 min. Explained suspected appendicitis, transport to Wassa Akropong District, advised parent to meet at hospital. Mrs Sarpong confirmed she would travel from Tarkwa immediately.</div>
+</div>
+<div class="thread-entry">
+<div class="te-head"><span class="te-who">Mrs Bediako → Mr Asare-Mensah (HM)</span><span class="te-time">Tue 16:48</span></div>
+<div class="te-body">SMS · referral notification logged. HM acknowledged 16:51, authorised matron absence from sickbay during transport. Asst Matron Ms Antwi on duty.</div>
+</div>
+<div class="thread-entry">
+<div class="te-head"><span class="te-who">Wassa Akropong → Mrs Bediako</span><span class="te-time">Tue 23:35</span></div>
+<div class="te-body">Hospital handoff confirmation · Dr Akoto. Surgery successful 23:14, student stable, recovery ward. Mother present. ER handoff notes attached (uncomplicated appendectomy, 4-night stay anticipated, NHIS card processed).</div>
+</div>
+<div class="thread-entry">
+<div class="te-head"><span class="te-who">Mrs Sarpong → Mrs Bediako</span><span class="te-time">Wed 08:02 today</span></div>
+<div class="te-body">SMS · <b>"He had a quiet night, eating soft food this morning. Doctor says he can sit up. Thank you Madam."</b> Logged automatically into parent thread.</div>
+</div>
+<div class="thread-entry">
+<div class="te-head"><span class="te-who">Mrs Bediako → Mrs Sarpong</span><span class="te-time">Wed 12:10 today</span></div>
+<div class="te-body">SMS · acknowledgement and follow-up check-in. Asked for daily update; arranged for academic notes from F3 SCI tutor (Mr Boateng) to be carried back when student returns.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<aside class="notes">
+<h4>Why a separate active-referral block</h4>
+<ul>
+<li>Active referrals are <b>the highest-stakes events</b> on the matron's desk · a student is at hospital, not on campus</li>
+<li>The communication thread is the spine of the case · every parent call and hospital handoff is logged here, not buried in messaging</li>
+<li><b>NHIS card status</b> is captured because cost reconciliation flows downstream to billing</li>
+<li><b>Mr Asare-Mensah</b> (HM) sign-off is recorded because matron leaving site mid-shift requires Headmaster authorisation</li>
+<li>Full referral history (closed and active) lives in surface 5 · this view is "what's open right now"</li>
+</ul>
+</aside>
+</div>
+</section>
+
+<section class="section">
+<div class="section-head">
+<span class="section-num">05</span>
+<h2 class="section-title">Outbreak monitor · 7-day cluster watch</h2>
+<span class="section-meta">URTI cluster · low alert</span>
+</div>
+<div class="layout">
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">app.omnischools.gh/sickbay/today/outbreak</div></div>
+<div class="app-shell">
+<div class="sidebar">
+<div class="brand"><div class="logo-mini">S</div><div><div class="school-name">Asankrangwa SHS</div><div class="school-meta">Wassa Amenfi · WR</div></div></div>
+<div class="nav-item"><div class="ic"></div>Dashboard</div>
+<div class="nav-item"><div class="ic"></div>Students</div>
+<div class="nav-item"><div class="ic"></div>Academics</div>
+<div class="nav-item"><div class="ic"></div>Boarding</div>
+<div class="nav-item active"><div class="ic"></div>Sickbay</div>
+<div class="nav-item sub active">Today</div>
+<div class="nav-item sub">Visit records</div>
+<div class="nav-item sub">Chronic register</div>
+<div class="nav-item sub">Referrals &amp; comms</div>
+<div class="nav-item sub">Setup</div>
+<div class="nav-item"><div class="ic"></div>Discipline</div>
+<div class="nav-item"><div class="ic"></div>VLC</div>
+<div class="nav-item"><div class="ic"></div>Communications</div>
+<div class="nav-item"><div class="ic"></div>Billing &amp; fees</div>
+<div class="nav-item"><div class="ic"></div>Reports</div>
+<div class="footer"><div class="av">AB</div><div><div class="meta-name">Mrs A. Bediako</div><div class="meta-role">Matron · N&amp;MC 04827</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+<div class="main">
+<div class="page-head">
+<div class="crumb"><a>Sickbay</a> · <a>Today</a> · Outbreak monitor</div>
+<div class="top-row">
+<div>
+<h1>Outbreak <em>monitor</em> · 7-day window</h1>
+<div class="lede">URTI cluster at <b>6 cases</b> past 7 days · above the 4-case threshold for "monitor". No malaria spike. No GI cluster. Skin clean.</div>
+</div>
+<div class="actions"><button class="btn">Notify GHS-Amenfi (district health)</button><button class="btn">Configure thresholds</button></div>
+</div>
+</div>
+<div class="body">
+<div class="body-shell">
+<div class="head-row">
+<div class="hr-l">
+<h3>Six <em>conditions</em> tracked · district-aligned categories</h3>
+<p>Categories align with Ghana Health Service district surveillance · matron escalates to <b>Wassa Amenfi GHS</b> on amber cluster (8+ cases or 50% rise week-over-week)</p>
+</div>
+<div class="hr-r"><div class="live-clock"><span class="lc-dot"></span>14:45 GMT</div></div>
+</div>
+<div>
+<div class="outbreak-row">
+<div class="o-cond">Upper respiratory tract<span class="o-sub">cough, sore throat, mild fever, runny nose</span></div>
+<div class="o-count">6<em>past 7 days</em></div>
+<div class="o-trend up">↑ from 2</div>
+<div class="o-status"><span class="pill monitor">Monitor</span></div>
+</div>
+<div class="outbreak-row">
+<div class="o-cond">Malaria suspected<span class="o-sub">fever ≥ 38°C with RDT or referral for blood film</span></div>
+<div class="o-count">1<em>past 7 days</em></div>
+<div class="o-trend flat">↔ steady</div>
+<div class="o-status"><span class="pill normal">Normal</span></div>
+</div>
+<div class="outbreak-row">
+<div class="o-cond">Diarrhoea / vomiting<span class="o-sub">acute GI symptoms · key sentinel for food-related outbreak</span></div>
+<div class="o-count">0<em>past 7 days</em></div>
+<div class="o-trend flat">↔ baseline</div>
+<div class="o-status"><span class="pill normal">Normal</span></div>
+</div>
+<div class="outbreak-row">
+<div class="o-cond">Skin · rash, scabies, ringworm<span class="o-sub">dorm-spread risk · monthly inspection in boarding</span></div>
+<div class="o-count">0<em>past 7 days</em></div>
+<div class="o-trend flat">↔ baseline</div>
+<div class="o-status"><span class="pill normal">Normal</span></div>
+</div>
+<div class="outbreak-row">
+<div class="o-cond">Eye · conjunctivitis<span class="o-sub">"Apollo" · high contagion risk in boarding houses</span></div>
+<div class="o-count">0<em>past 7 days</em></div>
+<div class="o-trend flat">↔ baseline</div>
+<div class="o-status"><span class="pill normal">Normal</span></div>
+</div>
+<div class="outbreak-row">
+<div class="o-cond">Sports injury · sprain, strain, fracture<span class="o-sub">tracked separately from infectious watch · safety review trigger</span></div>
+<div class="o-count">3<em>past 7 days</em></div>
+<div class="o-trend flat">↔ from 4</div>
+<div class="o-status"><span class="pill normal">Normal</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<aside class="notes">
+<h4>How the cluster watch works</h4>
+<ul>
+<li><b>Six district-aligned categories</b> match what Ghana Health Service tracks for school-age surveillance</li>
+<li><b>Thresholds</b>: 4+ cases / 7 days triggers <em>monitor</em>; 8+ or 50% week-over-week rise triggers <em>amber</em> and prompts notification to Wassa Amenfi GHS</li>
+<li><b>URTI at 6 cases</b> is in monitor zone · not yet amber, but the matron has informally flagged dorm 4 boys (3 of the 6) for the housemaster</li>
+<li><b>Apollo (conjunctivitis)</b> kept on the watch list explicitly · past Ghana-wide outbreaks have spread fast in boarding schools</li>
+<li><b>Sports injury</b> tracked here so a sudden spike triggers a campus safety review · separate from infectious surveillance</li>
+</ul>
+</aside>
+</div>
+</section>
+
+</div>
+</body>
+</html>

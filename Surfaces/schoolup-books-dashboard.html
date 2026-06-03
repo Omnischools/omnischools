@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Bookkeeping dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1480px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 680px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.mvp-tag {
+  display: inline-block;
+  background: var(--gold);
+  color: var(--navy);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+}
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  background: var(--bg);
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+  min-height: 1880px;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.nav-item.sub {
+  padding-left: 44px;
+  font-size: 12px;
+  color: rgba(250,247,242,0.55);
+}
+.nav-item.sub.active {
+  color: var(--bg);
+  background: rgba(200,151,91,0.08);
+}
+.nav-item .new-tag {
+  margin-left: auto;
+  background: var(--gold);
+  color: var(--navy);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 100px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta-name { font-weight: 600; }
+.sidebar .footer .meta-role { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main {
+  padding: 0;
+  background: var(--bg);
+}
+
+/* ============ DASHBOARD HEAD ============ */
+.dash-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 36px 22px;
+}
+.dash-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 8px;
+}
+.dash-head .crumb a { color: var(--gold); text-decoration: none; }
+
+.dash-head .top-row {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 18px;
+}
+.dash-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin-bottom: 4px;
+}
+.dash-head h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.dash-head .lede {
+  font-size: 13px;
+  color: var(--navy-3);
+}
+.dash-head .lede b { color: var(--navy-2); font-weight: 600; }
+
+.actions { display: flex; gap: 8px; }
+.btn {
+  padding: 9px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); font-weight: 700; }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); font-weight: 700; }
+
+/* Period selector + mode tag */
+.period-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 8px;
+}
+.period-pills {
+  display: flex; gap: 4px;
+}
+.period-pill {
+  padding: 6px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-style: normal;
+}
+.period-pill.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--bg);
+}
+.period-pill.active em { font-style: italic; color: var(--gold); }
+.period-pill em { font-style: italic; color: var(--gold); }
+
+.mode-indicator {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 12px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mode-indicator .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.mode-indicator em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--gold);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+
+/* ============ DASHBOARD BODY ============ */
+.dash-body {
+  padding: 28px 36px 60px;
+}
+
+.region {
+  margin-bottom: 36px;
+}
+.region-head {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 14px;
+}
+.region-head .num {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--gold);
+  font-weight: 500;
+}
+.region-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.region-head h2 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.region-head .meta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 600;
+}
+.region-head .meta b { color: var(--navy-2); }
+
+/* ============ REGION 01 — SURPLUS HERO ============ */
+.surplus-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 14px;
+}
+.surplus-hero {
+  background: var(--navy);
+  color: var(--bg);
+  border: 1px solid var(--navy);
+  border-radius: 14px;
+  padding: 24px 28px;
+  background-image: radial-gradient(circle at 90% 0%, rgba(200,151,91,0.16) 0%, transparent 55%);
+  position: relative;
+  overflow: hidden;
+}
+.surplus-hero .lbl {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.surplus-hero .val {
+  font-family: 'Fraunces', serif;
+  font-size: 52px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  color: var(--gold);
+}
+.surplus-hero .val em { font-style: italic; }
+.surplus-hero .val .currency {
+  font-size: 22px;
+  color: rgba(232,212,184,0.7);
+  font-weight: 500;
+  letter-spacing: 0;
+  margin-right: 4px;
+}
+.surplus-hero .surplus-tag {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: rgba(47,107,71,0.3);
+  color: #8FCBA0;
+}
+.surplus-hero .surplus-tag.deficit {
+  background: rgba(184,74,57,0.3);
+  color: #E5A299;
+}
+.surplus-hero .delta-row {
+  margin-top: 14px;
+  font-size: 12px;
+  color: rgba(232,212,184,0.85);
+  line-height: 1.5;
+}
+.surplus-hero .delta-row b {
+  color: var(--bg);
+  font-weight: 600;
+}
+.surplus-hero .delta-row .up {
+  color: #8FCBA0;
+  font-weight: 700;
+}
+.surplus-hero .delta-row .down {
+  color: #E5A299;
+  font-weight: 700;
+}
+
+/* Side tiles */
+.surplus-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 22px;
+  display: flex; flex-direction: column;
+  gap: 4px;
+}
+.surplus-tile .lbl {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+.surplus-tile .val {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.1;
+  margin-top: 4px;
+}
+.surplus-tile .val .currency {
+  font-size: 13px;
+  color: var(--navy-3);
+  font-weight: 500;
+  letter-spacing: 0;
+  margin-right: 3px;
+}
+.surplus-tile .val.green { color: var(--green); }
+.surplus-tile .val.terra { color: var(--terra); }
+.surplus-tile .val em { font-style: italic; color: var(--gold); }
+.surplus-tile .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  margin-top: 4px;
+}
+.surplus-tile .sub b { color: var(--navy-2); font-weight: 600; }
+.surplus-tile .sub .delta-up {
+  color: var(--green);
+  font-weight: 700;
+}
+.surplus-tile .sub .delta-down {
+  color: var(--terra);
+  font-weight: 700;
+}
+
+/* ============ REGION 02 — INCOME VS EXPENSES ============ */
+.io-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.io-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.io-side {
+  padding: 24px 28px 22px;
+}
+.io-side.income { border-right: 1px solid var(--border); }
+.io-side .side-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px;
+}
+.io-side .side-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+}
+.io-side.income .side-icon {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.io-side.expenses .side-icon {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.io-side .side-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.io-side .side-name em { font-style: italic; color: var(--gold); }
+.io-side .side-tag {
+  margin-left: auto;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+}
+
+.io-total-row {
+  display: flex; align-items: baseline;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.io-total-row .total-val {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1;
+}
+.io-total-row .total-val .currency {
+  font-size: 13px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-right: 3px;
+  letter-spacing: 0;
+}
+.io-side.income .io-total-row .total-val { color: var(--green); }
+.io-side.expenses .io-total-row .total-val { color: var(--terra); }
+.io-total-row .total-meta {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+.io-total-row .total-meta b { color: var(--navy-2); font-weight: 600; font-style: normal; }
+
+/* Line items */
+.line-list {
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.line-item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+}
+.line-item .swatch {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  background: var(--gold);
+}
+.line-item .name {
+  color: var(--navy-2);
+  font-weight: 500;
+}
+.line-item .name b {
+  color: var(--navy);
+  font-weight: 600;
+}
+.line-item .name .sub {
+  display: block;
+  font-size: 10px;
+  color: var(--navy-3);
+  margin-top: 1px;
+  font-style: italic;
+}
+.line-item .amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 12px;
+}
+.line-item .pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* GES staff footnote */
+.ges-footnote {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px dashed var(--border-2);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 10px;
+  align-items: start;
+  font-size: 11px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+.ges-footnote .fn-icon {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+}
+.ges-footnote b { color: var(--navy-2); font-weight: 600; }
+.ges-footnote em {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 500;
+  font-size: 12px;
+}
+.ges-footnote .fn-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--navy-2);
+  font-size: 11px;
+}
+
+/* ============ REGION 03 — EXPENSE BREAKDOWN ============ */
+.breakdown-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 26px;
+}
+.breakdown-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 18px;
+}
+.breakdown-head .left .label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.breakdown-head .left .head-title {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.breakdown-head .left .head-title em { font-style: italic; color: var(--gold); }
+.breakdown-head .right {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+
+/* Stacked horizontal bar */
+.stack-bar {
+  display: flex;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+}
+.stack-segment {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  position: relative;
+  border-right: 2px solid var(--surface);
+}
+.stack-segment:last-child { border-right: none; }
+.stack-segment.salaries { background: var(--navy); }
+.stack-segment.utilities { background: var(--gold); color: var(--navy); }
+.stack-segment.supplies { background: var(--green); }
+.stack-segment.feeding { background: var(--warn); color: var(--navy); }
+.stack-segment.repairs { background: var(--terra); }
+.stack-segment.transport { background: var(--navy-3); }
+.stack-segment.fees { background: var(--gold-soft); color: var(--navy); }
+.stack-segment.other { background: var(--border-2); color: var(--navy-2); }
+
+/* Category list */
+.category-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 32px;
+}
+.category-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+.category-row:nth-of-type(1),
+.category-row:nth-of-type(2) {
+  border-top: none;
+  padding-top: 0;
+}
+.category-row .swatch {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+}
+.category-row .swatch.salaries { background: var(--navy); }
+.category-row .swatch.utilities { background: var(--gold); }
+.category-row .swatch.supplies { background: var(--green); }
+.category-row .swatch.feeding { background: var(--warn); }
+.category-row .swatch.repairs { background: var(--terra); }
+.category-row .swatch.transport { background: var(--navy-3); }
+.category-row .swatch.fees { background: var(--gold-soft); }
+.category-row .swatch.other { background: var(--border-2); }
+.category-row .cat-name {
+  color: var(--navy);
+  font-weight: 600;
+  font-size: 12px;
+}
+.category-row .cat-name .sub {
+  display: block;
+  font-size: 10px;
+  color: var(--navy-3);
+  font-weight: 500;
+  margin-top: 1px;
+  font-style: italic;
+}
+.category-row .cat-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: right;
+  color: var(--navy);
+}
+.category-row .cat-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--navy-3);
+  text-align: right;
+  min-width: 38px;
+}
+
+/* ============ REGION 04 — TREND CHART ============ */
+.trend-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 26px 18px;
+}
+.trend-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 18px;
+}
+.trend-head .left .label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.trend-head .left .head-title {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.trend-head .left .head-title em { font-style: italic; color: var(--gold); }
+.trend-head .right {
+  display: flex; gap: 14px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--navy-2);
+}
+.legend-mini {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.legend-mini .swatch {
+  width: 14px; height: 3px;
+  border-radius: 2px;
+}
+.legend-mini .swatch.income { background: var(--green); }
+.legend-mini .swatch.expenses { background: var(--terra); }
+.legend-mini .swatch.surplus { background: var(--gold); }
+
+.trend-wrap {
+  position: relative;
+  height: 220px;
+}
+.trend-y {
+  position: absolute;
+  left: 0; top: 0; bottom: 28px;
+  width: 56px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-3);
+  font-weight: 600;
+  text-align: right;
+  padding-right: 10px;
+}
+.trend-svg-wrap {
+  position: absolute;
+  left: 56px; right: 0; top: 0; bottom: 28px;
+}
+.trend-svg-wrap svg {
+  width: 100%; height: 100%;
+}
+.trend-x {
+  position: absolute;
+  left: 56px; right: 0;
+  bottom: 0;
+  height: 24px;
+  display: flex; justify-content: space-between;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--navy-3);
+  font-weight: 600;
+  padding-top: 6px;
+}
+
+/* ============ REGION 05 — ANOMALIES ============ */
+.anomalies-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.anomalies-head {
+  padding: 14px 22px;
+  background: var(--gold-bg);
+  border-bottom: 1px solid var(--gold-soft);
+}
+.anomalies-head .at {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.anomalies-head .ah {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.anomalies-head .ah em { font-style: italic; color: var(--gold); }
+
+.anomaly-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.anomaly-row:last-child { border-bottom: none; }
+.anomaly-row .anomaly-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+.anomaly-row .anomaly-icon.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.anomaly-row .anomaly-icon.terra {
+  background: var(--terra-bg);
+  color: var(--terra);
+}
+.anomaly-row .anomaly-icon.green {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.anomaly-row .body .heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  margin-bottom: 2px;
+}
+.anomaly-row .body .heading em { font-style: italic; color: var(--gold); }
+.anomaly-row .body .detail {
+  font-size: 11px;
+  color: var(--navy-3);
+  line-height: 1.5;
+}
+.anomaly-row .body .detail b { color: var(--navy-2); font-weight: 600; }
+.anomaly-row .body .detail .mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--navy-2);
+}
+.anomaly-row .anomaly-action {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+
+/* Two-column layout for trend + anomalies */
+.two-col {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 1fr; }
+  .surplus-row { grid-template-columns: 1fr 1fr; }
+  .io-grid { grid-template-columns: 1fr; }
+  .io-side.income { border-right: none; border-bottom: 1px solid var(--border); }
+  .category-list { grid-template-columns: 1fr; }
+  .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Bookkeeping · Dashboard</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Where the <em>money</em> is</h1>
+  <div class="gold-rule"></div>
+  <p>The headmistress's home for school finances. Surplus or deficit at a glance, where the money came from, where it went, what's trending, and what looks unusual. Optimised for internal management — Florence understanding her own school's finances. Bank-ready statements get exported from here as a separate output, but this dashboard isn't a statement; it's a thinking tool.</p>
+</header>
+
+<!-- ============ BOOKKEEPING DASHBOARD ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Bookkeeping dashboard · Term 1 view</div>
+    <div class="section-meta">Florence Addo · headmistress · detailed mode</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / books / dashboard</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item active"><div class="ic"></div>Books<span class="new-tag">NEW</span></div>
+          <div class="nav-item sub active">Dashboard</div>
+          <div class="nav-item sub">Expenses</div>
+          <div class="nav-item sub">Income</div>
+          <div class="nav-item sub">Fixed assets</div>
+          <div class="nav-item sub">Reports</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+
+          <!-- Dash head -->
+          <div class="dash-head">
+            <div class="crumb"><a href="#">Books</a> / Dashboard</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">School <em>finances</em></h1>
+                <div class="lede">Term 1 · 2025/26 · week <b>6 of 15</b> · all figures in <b>GHS</b> · last entry: utility bill <b>2 hours ago</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn">+ Record expense</button>
+                <button class="btn">Export reports →</button>
+              </div>
+            </div>
+            <div class="period-row">
+              <div class="period-pills">
+                <div class="period-pill">This month</div>
+                <div class="period-pill active">Term <em>1</em></div>
+                <div class="period-pill">Year-to-date</div>
+                <div class="period-pill">Last term</div>
+                <div class="period-pill">Custom →</div>
+              </div>
+              <div class="mode-indicator">
+                <div class="dot"></div>
+                <em>Detailed mode</em>
+              </div>
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div class="dash-body">
+
+            <!-- ============ REGION 01 — SURPLUS HERO ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">How the school is <em>doing</em></h2>
+                <div class="meta">Term 1 · <b>22 Oct 2025</b></div>
+              </div>
+
+              <div class="surplus-row">
+                <!-- Hero: surplus -->
+                <div class="surplus-hero">
+                  <div class="lbl">Term 1 surplus · so far</div>
+                  <div class="val"><span class="currency">GHS</span>42,072</div>
+                  <div class="surplus-tag">Surplus · running ahead</div>
+                  <div class="delta-row">
+                    <span class="up">↑ 18%</span> vs Term 1 last year (<b>GHS 35,640</b>) at this point in term · driven by <b>fewer repair costs</b> and <b>BECE registration income</b>
+                  </div>
+                </div>
+
+                <!-- Income tile -->
+                <div class="surplus-tile">
+                  <div class="lbl">Income · Term 1</div>
+                  <div class="val green"><span class="currency">GHS</span>254,240</div>
+                  <div class="sub"><span class="delta-up">↑ 4%</span> vs last term · <b>97%</b> from school fees</div>
+                </div>
+
+                <!-- Expenses tile -->
+                <div class="surplus-tile">
+                  <div class="lbl">Expenses · Term 1</div>
+                  <div class="val terra"><span class="currency">GHS</span>212,168</div>
+                  <div class="sub"><span class="delta-up">↑ 2%</span> vs last term · within historical range</div>
+                </div>
+
+                <!-- Bank balance tile -->
+                <div class="surplus-tile">
+                  <div class="lbl">Bank balance · today</div>
+                  <div class="val"><span class="currency">GHS</span>84,200</div>
+                  <div class="sub"><b>5.2 weeks</b> of operating runway at current burn</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 02 — INCOME VS EXPENSES ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display">Where money <em>came from</em>, where it <em>went</em></h2>
+                <div class="meta">All Term 1 entries</div>
+              </div>
+
+              <div class="io-card">
+                <div class="io-grid">
+
+                  <!-- Income side -->
+                  <div class="io-side income">
+                    <div class="side-head">
+                      <div class="side-icon">↓</div>
+                      <div class="side-name display">Income · what came <em>in</em></div>
+                      <div class="side-tag">5 sources</div>
+                    </div>
+
+                    <div class="io-total-row">
+                      <div class="total-val"><span class="currency">GHS</span>254,240</div>
+                      <div class="total-meta">100% of inflow · <b>312 students</b> contributing</div>
+                    </div>
+
+                    <div class="line-list">
+                      <div class="line-item">
+                        <div class="swatch" style="background:var(--green)"></div>
+                        <div class="name"><b>School fees</b><span class="sub">tuition · transport · books</span></div>
+                        <div class="amount">GHS 246,400</div>
+                        <div class="pct">96.9%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:#5C8B6B"></div>
+                        <div class="name">BECE registration <span class="sub">JHS 3 only · external fee</span></div>
+                        <div class="amount">GHS 4,200</div>
+                        <div class="pct">1.7%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:#88AB95"></div>
+                        <div class="name">PTA contributions <span class="sub">parent-teacher fund</span></div>
+                        <div class="amount">GHS 2,400</div>
+                        <div class="pct">0.9%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:#B5CCBE"></div>
+                        <div class="name">Donations <span class="sub">2 contributors · no restrictions</span></div>
+                        <div class="amount">GHS 800</div>
+                        <div class="pct">0.3%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:#D2E2DA"></div>
+                        <div class="name">Other <span class="sub">facility rental · misc.</span></div>
+                        <div class="amount">GHS 440</div>
+                        <div class="pct">0.2%</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Expenses side -->
+                  <div class="io-side expenses">
+                    <div class="side-head">
+                      <div class="side-icon">↑</div>
+                      <div class="side-name display">Expenses · what went <em>out</em></div>
+                      <div class="side-tag">8 categories</div>
+                    </div>
+
+                    <div class="io-total-row">
+                      <div class="total-val"><span class="currency">GHS</span>212,168</div>
+                      <div class="total-meta">83% of income · <b>17% retained as surplus</b></div>
+                    </div>
+
+                    <div class="line-list">
+                      <div class="line-item">
+                        <div class="swatch" style="background:var(--navy)"></div>
+                        <div class="name"><b>Salaries &amp; wages</b><span class="sub">14 teaching · 3 non-teaching</span></div>
+                        <div class="amount">GHS 170,500</div>
+                        <div class="pct">80.4%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:var(--gold)"></div>
+                        <div class="name">Utilities <span class="sub">ECG · GWCL · internet</span></div>
+                        <div class="amount">GHS 12,400</div>
+                        <div class="pct">5.8%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:var(--green)"></div>
+                        <div class="name">Supplies &amp; materials <span class="sub">stationery · cleaning · ICT</span></div>
+                        <div class="amount">GHS 8,200</div>
+                        <div class="pct">3.9%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:var(--warn)"></div>
+                        <div class="name">Feeding programme <span class="sub">caterer · ingredients</span></div>
+                        <div class="amount">GHS 6,400</div>
+                        <div class="pct">3.0%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:var(--terra)"></div>
+                        <div class="name">Repairs &amp; maintenance <span class="sub">building · furniture · ICT</span></div>
+                        <div class="amount">GHS 4,600</div>
+                        <div class="pct">2.2%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:var(--navy-3)"></div>
+                        <div class="name">Transport &amp; events <span class="sub">school bus fuel · trips</span></div>
+                        <div class="amount">GHS 3,800</div>
+                        <div class="pct">1.8%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:var(--gold-soft)"></div>
+                        <div class="name">Bank &amp; payment fees <span class="sub">Hubtel 1.95% · bank charges</span></div>
+                        <div class="amount">GHS 2,068</div>
+                        <div class="pct">1.0%</div>
+                      </div>
+                      <div class="line-item">
+                        <div class="swatch" style="background:var(--border-2)"></div>
+                        <div class="name">Other <span class="sub">marketing · insurance · misc.</span></div>
+                        <div class="amount">GHS 4,200</div>
+                        <div class="pct">2.0%</div>
+                      </div>
+                    </div>
+
+                    <div class="ges-footnote">
+                      <div class="fn-icon">i</div>
+                      <div>
+                        <em>Public school context:</em> Although Christ the King is private, schools running this module as <b>public</b> would also see a footnote line for staff effectively compensated by GES — those salaries don't appear above because they don't hit the school's books, but they're <b>not zero</b> in the school's true cost picture.
+                      </div>
+                      <div class="fn-amount">—</div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 03 — EXPENSE BREAKDOWN ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">03</div>
+                <h2 class="display">Expense <em>composition</em></h2>
+                <div class="meta">Where each cedi went · this term</div>
+              </div>
+
+              <div class="breakdown-card">
+                <div class="breakdown-head">
+                  <div class="left">
+                    <div class="label">Term 1 expenses · GHS 212,168 across 8 categories</div>
+                    <div class="head-title display">Salaries are <em>80%</em> of operating cost</div>
+                  </div>
+                  <div class="right">Click any category for transaction-level detail</div>
+                </div>
+
+                <!-- Stacked bar -->
+                <div class="stack-bar">
+                  <div class="stack-segment salaries" style="width:80.4%">80.4%</div>
+                  <div class="stack-segment utilities" style="width:5.8%">5.8%</div>
+                  <div class="stack-segment supplies" style="width:3.9%"></div>
+                  <div class="stack-segment feeding" style="width:3.0%"></div>
+                  <div class="stack-segment repairs" style="width:2.2%"></div>
+                  <div class="stack-segment transport" style="width:1.8%"></div>
+                  <div class="stack-segment fees" style="width:1.0%"></div>
+                  <div class="stack-segment other" style="width:1.9%"></div>
+                </div>
+
+                <div class="category-list">
+                  <div class="category-row">
+                    <div class="swatch salaries"></div>
+                    <div class="cat-name">Salaries &amp; wages<span class="sub">17 staff total</span></div>
+                    <div class="cat-amount">GHS 170,500</div>
+                    <div class="cat-pct">80.4%</div>
+                  </div>
+                  <div class="category-row">
+                    <div class="swatch feeding"></div>
+                    <div class="cat-name">Feeding programme<span class="sub">caterer + ingredients</span></div>
+                    <div class="cat-amount">GHS 6,400</div>
+                    <div class="cat-pct">3.0%</div>
+                  </div>
+                  <div class="category-row">
+                    <div class="swatch utilities"></div>
+                    <div class="cat-name">Utilities<span class="sub">ECG · GWCL · internet</span></div>
+                    <div class="cat-amount">GHS 12,400</div>
+                    <div class="cat-pct">5.8%</div>
+                  </div>
+                  <div class="category-row">
+                    <div class="swatch repairs"></div>
+                    <div class="cat-name">Repairs &amp; maintenance<span class="sub">building + ICT</span></div>
+                    <div class="cat-amount">GHS 4,600</div>
+                    <div class="cat-pct">2.2%</div>
+                  </div>
+                  <div class="category-row">
+                    <div class="swatch supplies"></div>
+                    <div class="cat-name">Supplies &amp; materials<span class="sub">stationery + cleaning</span></div>
+                    <div class="cat-amount">GHS 8,200</div>
+                    <div class="cat-pct">3.9%</div>
+                  </div>
+                  <div class="category-row">
+                    <div class="swatch transport"></div>
+                    <div class="cat-name">Transport &amp; events<span class="sub">bus fuel + trips</span></div>
+                    <div class="cat-amount">GHS 3,800</div>
+                    <div class="cat-pct">1.8%</div>
+                  </div>
+                  <div class="category-row">
+                    <div class="swatch fees"></div>
+                    <div class="cat-name">Bank &amp; payment fees<span class="sub">Hubtel + bank charges</span></div>
+                    <div class="cat-amount">GHS 2,068</div>
+                    <div class="cat-pct">1.0%</div>
+                  </div>
+                  <div class="category-row">
+                    <div class="swatch other"></div>
+                    <div class="cat-name">Other<span class="sub">misc + insurance</span></div>
+                    <div class="cat-amount">GHS 4,200</div>
+                    <div class="cat-pct">2.0%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ REGION 04 + 05 — TREND + ANOMALIES ============ -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">04</div>
+                <h2 class="display">Trend &amp; <em>signals</em></h2>
+                <div class="meta">12 months · what's worth noticing</div>
+              </div>
+
+              <div class="two-col">
+
+                <!-- Trend chart -->
+                <div class="trend-card">
+                  <div class="trend-head">
+                    <div class="left">
+                      <div class="label">Monthly · Sep 2024 — Oct 2025</div>
+                      <div class="head-title display">Income, expenses &amp; <em>monthly surplus</em></div>
+                    </div>
+                    <div class="right">
+                      <div class="legend-mini"><div class="swatch income"></div>Income</div>
+                      <div class="legend-mini"><div class="swatch expenses"></div>Expenses</div>
+                      <div class="legend-mini"><div class="swatch surplus"></div>Surplus</div>
+                    </div>
+                  </div>
+                  <div class="trend-wrap">
+                    <div class="trend-y">
+                      <div>120k</div>
+                      <div>90k</div>
+                      <div>60k</div>
+                      <div>30k</div>
+                      <div>0</div>
+                    </div>
+                    <div class="trend-svg-wrap">
+                      <svg viewBox="0 0 1000 220" preserveAspectRatio="none">
+                        <line x1="0" y1="0" x2="1000" y2="0" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+                        <line x1="0" y1="55" x2="1000" y2="55" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+                        <line x1="0" y1="110" x2="1000" y2="110" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+                        <line x1="0" y1="165" x2="1000" y2="165" stroke="#E5DFD3" stroke-width="0.5" stroke-dasharray="2 4"/>
+
+                        <!-- Term boundaries -->
+                        <line x1="333" y1="0" x2="333" y2="220" stroke="#C8975B" stroke-width="0.4" stroke-dasharray="3 3" opacity="0.4"/>
+                        <line x1="666" y1="0" x2="666" y2="220" stroke="#C8975B" stroke-width="0.4" stroke-dasharray="3 3" opacity="0.4"/>
+
+                        <!-- Income line - green - simulates 12 months -->
+                        <polyline
+                          points="0,30 83,55 167,80 250,90 333,42 417,68 500,95 583,90 666,38 750,72 833,90 917,82 1000,76"
+                          fill="none"
+                          stroke="#2F6B47"
+                          stroke-width="2.2"
+                          stroke-linejoin="round"
+                          stroke-linecap="round"
+                        />
+
+                        <!-- Expenses line - terra -->
+                        <polyline
+                          points="0,80 83,90 167,100 250,108 333,85 417,95 500,108 583,114 666,82 750,98 833,110 917,108 1000,102"
+                          fill="none"
+                          stroke="#B84A39"
+                          stroke-width="2.2"
+                          stroke-linejoin="round"
+                          stroke-linecap="round"
+                        />
+
+                        <!-- Surplus line - gold (income - expenses) -->
+                        <polyline
+                          points="0,160 83,170 167,180 250,180 333,150 417,170 500,180 583,180 666,148 750,170 833,180 917,180 1000,172"
+                          fill="none"
+                          stroke="#C8975B"
+                          stroke-width="2.5"
+                          stroke-linejoin="round"
+                          stroke-linecap="round"
+                        />
+
+                        <!-- Current point -->
+                        <circle cx="1000" cy="172" r="4" fill="#C8975B" stroke="#FAF7F2" stroke-width="2"/>
+
+                        <!-- Term tags -->
+                        <text x="167" y="14" font-family="Manrope" font-size="8" fill="#C8975B" font-weight="700" letter-spacing="0.08em" text-anchor="middle">TERM 1 · 2024/25</text>
+                        <text x="500" y="14" font-family="Manrope" font-size="8" fill="#C8975B" font-weight="700" letter-spacing="0.08em" text-anchor="middle">TERM 2</text>
+                        <text x="833" y="14" font-family="Manrope" font-size="8" fill="#C8975B" font-weight="700" letter-spacing="0.08em" text-anchor="middle">TERM 3 · 2025/26 BEGINS</text>
+                      </svg>
+                    </div>
+                    <div class="trend-x">
+                      <div>Sep</div>
+                      <div>Oct</div>
+                      <div>Nov</div>
+                      <div>Dec</div>
+                      <div>Jan</div>
+                      <div>Feb</div>
+                      <div>Mar</div>
+                      <div>Apr</div>
+                      <div>May</div>
+                      <div>Jun</div>
+                      <div>Jul</div>
+                      <div>Sep</div>
+                      <div>Oct</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Anomalies -->
+                <div class="anomalies-card">
+                  <div class="anomalies-head">
+                    <div class="at">Worth your attention</div>
+                    <div class="ah display">Things <em>Omnischools noticed</em></div>
+                  </div>
+
+                  <div class="anomaly-row">
+                    <div class="anomaly-icon warn">!</div>
+                    <div class="body">
+                      <div class="heading">Utilities up <em>50%</em> in October</div>
+                      <div class="detail"><b>GHS 1,800 ECG bill</b> vs usual range <b>GHS 800—1,200</b>. Could be the new ICT lab drawing power, or a billing irregularity worth checking with ECG.</div>
+                    </div>
+                    <div class="anomaly-action">Review →</div>
+                  </div>
+
+                  <div class="anomaly-row">
+                    <div class="anomaly-icon green">↑</div>
+                    <div class="body">
+                      <div class="heading">Repairs <em>down</em> vs last term</div>
+                      <div class="detail">Term 1 repairs <b>GHS 4,600</b> vs Term 1 last year <b>GHS 8,200</b>. Cap-ex on the new roof in June seems to have paid off.</div>
+                    </div>
+                    <div class="anomaly-action">Detail →</div>
+                  </div>
+
+                  <div class="anomaly-row">
+                    <div class="anomaly-icon terra">!</div>
+                    <div class="body">
+                      <div class="heading">Bank balance <em>tightening</em></div>
+                      <div class="detail">5.2 weeks of operating runway · usual is 8+ weeks at this point in term. <b>Outstanding fees of GHS 67,980</b> would restore comfortable buffer if collected.</div>
+                    </div>
+                    <div class="anomaly-action">Open →</div>
+                  </div>
+
+                  <div class="anomaly-row">
+                    <div class="anomaly-icon warn">·</div>
+                    <div class="body">
+                      <div class="heading">3 entries <em>uncategorised</em></div>
+                      <div class="detail">Recorded with category <b>"Other"</b> totalling <b>GHS 1,840</b>. Reviewing them now keeps your books cleaner for year-end reporting.</div>
+                    </div>
+                    <div class="anomaly-action">Open →</div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>"Where the <em>money</em> is" page headline.</b> Five regions vertically stacked answering five distinct questions: how the school is doing (surplus or deficit), where money came from and went (composition), how each cedi was spent (breakdown), how things are trending (chart), what's unusual (anomalies). The headmistress can scroll the page top-to-bottom and have her five biggest financial questions answered.</li>
+        <li><b>Sidebar shows new "Books" parent nav with 5 sub-items</b> (Dashboard, Expenses, Income, Fixed assets, Reports) and a small gold "NEW" tag. <b>The hierarchical navigation accommodates the breadth of the bookkeeping module</b> without flooding the top-level sidebar. Subsequent files in this MVP2 work package live under this same parent.</li>
+        <li><b>"Detailed mode" indicator pill in gold-tinted card next to period selector.</b> Same gold-italic value convention as user-tunable parameters elsewhere. <b>Florence sees at a glance which mode her school is in</b> — affects the granularity of drill-through she can do. The pill is also a navigation hint; clicking it would take her to the bookkeeping settings.</li>
+        <li><b>Period pills: This month / Term 1 (active, italic gold) / Year-to-date / Last term / Custom.</b> Five common time windows, with Term 1 default because that's the most operationally-relevant view at this point in the year. <b>"Custom" trails the row</b> with arrow because it's the escape hatch for non-standard ranges.</li>
+        <li><b>Region 01 — Surplus hero in navy/gold matches the dashboard pattern</b> from collection trend and admin attendance. <b>This is the most important question on the page</b> ("are we making money?") and gets the biggest visual weight. The hero shows GHS 42,072 in big italic gold with "Surplus · running ahead" tag in green-tinted pill.</li>
+        <li><b>Hero delta line in editorial language:</b> "↑ 18% vs Term 1 last year (GHS 35,640) at this point in term · driven by fewer repair costs and BECE registration income". <b>Specific causal explanation</b> rather than just the number. Tells Florence not just that surplus is up but why — same kind of interpretive framing as the collection trend report.</li>
+        <li><b>Three side tiles to the right of hero: Income / Expenses / Bank balance.</b> Sub-text on each tile is editorial and operationally meaningful: "97% from school fees" tells her about income concentration; "within historical range" reassures about expenses; <b>"5.2 weeks of operating runway at current burn"</b> — the runway figure is a leading indicator banks watch and Florence rarely hears framed this way.</li>
+        <li><b>"5.2 weeks runway" is the most commercially valuable number on this page.</b> A school operator who internalises runway thinking makes better decisions about timing of major expenses, urgency of fee collection, and whether to seek bridging finance. <b>Translating bank balance into runway is genuine financial education</b> embedded in the dashboard.</li>
+        <li><b>Region 02 — Income vs expenses split into two side-by-side panels</b> within a single card. Income panel has green-tinted icon and total; expenses panel has terra-tinted icon and total. <b>Visual symmetry enforces "these are the two sides"</b>; the split-view layout is more honest than separate cards because it shows the relationship.</li>
+        <li><b>Each side has a total row with editorial meta:</b> Income "100% of inflow · 312 students contributing"; Expenses "83% of income · 17% retained as surplus". The percentage-of-income framing on expenses tells the headmistress what fraction of her income she's spending — a useful structural insight.</li>
+        <li><b>Income line items reveal the school's revenue concentration risk:</b> School fees 96.9% / BECE registration 1.7% / PTA 0.9% / Donations 0.3% / Other 0.2%. <b>The 96.9% concentration is itself an insight</b> — one bad year on enrolment and the school is in trouble. Banks look at this; honest dashboards should too.</li>
+        <li><b>Expense line items have realistic Ghanaian school sub-categories:</b> "Salaries · 14 teaching · 3 non-teaching" / "Utilities · ECG · GWCL · internet" / "Bank &amp; payment fees · Hubtel 1.95% · bank charges". <b>Real categories, real vendors, real fee structures</b> — same localisation depth as the GES annual census.</li>
+        <li><b>Hubtel fees as their own line</b> ("GHS 2,068 · 1.0%") connects this dashboard to the aggregator integration designed earlier. The fee absorbed by the school shows up here as a real expense category. <b>Operational consistency across MVP2 surfaces</b>; what was promised in aggregator settings ("GHS 2,068/term") materialises here as actual expense data.</li>
+        <li><b>GES staff footnote</b> in dashed-bordered card explains the public school context: "schools running this module as <b>public</b> would also see a footnote line for staff effectively compensated by GES — those salaries don't appear above because they don't hit the school's books, but they're <b>not zero</b> in the school's true cost picture." <b>Honest about the dual-mode design</b> even when showing a private school's view.</li>
+        <li><b>Region 03 — Stacked horizontal bar showing all 8 categories</b> as proportional segments. Salaries dominates at 80.4% and gets the navy treatment; smaller categories stack in the remaining 20%. <b>The visual proportion is the headline</b> — Florence sees that salaries are 4/5 of her cost structure and everything else combined is 1/5.</li>
+        <li><b>"Salaries are <em>80%</em> of operating cost" headline</b> in italic gold display Fraunces. <b>The system tells the story rather than just showing data</b>. Same editorial framing as collection trend's "the curve is flatter" headline.</li>
+        <li><b>Category list in 2-column grid below the bar</b> with colour swatches matching the stacked bar segments. Each row: swatch / category name + sub-line / amount in mono / percentage. <b>Two-up rather than full-width</b> to keep the page scannable; admin doesn't need to scan a long thin column.</li>
+        <li><b>Region 04 — 12-month trend chart</b> showing income (green), expenses (terra), and surplus (gold) lines monthly across the past year. <b>Term boundary markers</b> in dashed gold separate Term 1 / Term 2 / Term 3 / Term 1 again. Vertical school-fee surge pattern visible at term starts (income jumps), expense pattern relatively flat, surplus oscillates.</li>
+        <li><b>The trend reveals the cyclical nature of school finances:</b> income spikes at term starts, smooths through the term, then surges again. Expenses are more linear. <b>Surplus is highest at term starts and tightens through the term</b> — visible in the gold line dipping at term ends. This pattern is invisible in any single month's view.</li>
+        <li><b>Region 05 — Anomalies panel side-by-side with the trend</b> in a 1.4fr / 1fr layout. <b>Trend is visual and historical; anomalies are textual and recent</b>. The two together cover "what's the long arc?" and "what's happening right now?"</li>
+        <li><b>Anomaly cards use 4 distinct icon states:</b> warn (caution), terra (concerning), green (positive), neutral dot (housekeeping). The first three match the locked colour vocabulary; the fourth is for benign maintenance items like uncategorised entries.</li>
+        <li><b>Anomaly headlines are editorial:</b> "Utilities up <em>50%</em> in October" / "Repairs <em>down</em> vs last term" / "Bank balance <em>tightening</em>" / "3 entries <em>uncategorised</em>". <b>Italic gold on the operative phrase</b> in each headline matches the system's "this is what to look at" visual signature.</li>
+        <li><b>Each anomaly has a hypothesis rather than just an alert.</b> Utilities anomaly: "Could be the new ICT lab drawing power, or a billing irregularity worth checking with ECG." <b>The system surfaces the issue and gestures at possible causes</b>; the headmistress decides what to investigate. Same interpretive style as JHS 3C in the GES return and the collection trend interpretive callouts.</li>
+        <li><b>Bank balance anomaly cross-references collection trend:</b> "Outstanding fees of GHS 67,980 would restore comfortable buffer if collected." <b>The dashboard knows about the rest of the system</b>; finance anomalies link to operational levers. Florence reads this and immediately thinks "I should look at outstanding balances and consider sending reminders."</li>
+        <li><b>Anomaly action links in italic gold</b> ("Review →" / "Detail →" / "Open →") drill into the relevant detail page. Each anomaly is a hypothesis the system raises; the action is to investigate it. <b>Same anomaly-with-action pattern as the attendance alerts page</b>.</li>
+        <li><b>What's not on this page:</b> No tax projection (schools handle tax through external accountants), no cash-flow forecast (predictive, harder to do honestly), no multi-school comparison ("how does CTK compare to other schools?" — privacy-violating and creates wrong incentives), no scenario planning ("what if we hire 2 more teachers?" — over-engineered for MVP).</li>
+        <li><b>What's also not here:</b> No depreciation summary (lives in fixed assets module), no payroll detail (lives in staff compensation module), no chart-of-accounts editing (lives in books settings), no detailed transaction list (drill-through from any line item shows it). <b>The dashboard is a summary surface</b>; details are one click away.</li>
+        <li><b>Bank-ready statement export is reachable from the page header</b> as "Export reports →". This dashboard is for internal management; the bank-ready PDF (P&L + balance sheet, formatted for external readers) is a separate output format. Both produced from the same underlying data.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

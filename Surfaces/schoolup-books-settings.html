@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Bookkeeping settings &amp; activation</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:700px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1480px; }
+.sidebar.tall { min-height:1680px; }
+.sidebar .brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.nav-item .new-tag { margin-left:auto; background:var(--gold); color:var(--navy); font-size:8px; font-weight:700; letter-spacing:0.06em; padding:1px 5px; border-radius:100px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar .footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar .footer .meta-name { font-weight:600; }
+.sidebar .footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head h1 { font-family:'Fraunces',serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:4px; max-width:700px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.body { padding:28px 36px 60px; }
+
+/* Activation hero */
+.activation-hero { background:linear-gradient(180deg,var(--navy) 0%,#0F1B30 100%); color:var(--bg); border-radius:14px; padding:36px 44px; margin-bottom:24px; background-image:radial-gradient(circle at 88% 12%,rgba(200,151,91,0.18) 0%,transparent 50%); }
+.activation-hero .eyebrow-tag { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
+.activation-hero h2 { font-family:'Fraunces',serif; font-size:32px; font-weight:500; letter-spacing:-0.02em; line-height:1.1; max-width:600px; margin-bottom:12px; }
+.activation-hero h2 em { font-style:italic; color:var(--gold); }
+.activation-hero p { font-size:14px; color:rgba(232,212,184,0.85); line-height:1.55; max-width:560px; }
+.activation-hero p b { color:var(--bg); font-weight:600; }
+
+/* Mode choice cards */
+.mode-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:24px; }
+.mode-card { background:var(--surface); border:1.5px solid var(--border); border-radius:14px; padding:22px 24px 20px; cursor:pointer; position:relative; }
+.mode-card.recommended { border-color:var(--gold); background:linear-gradient(180deg,var(--gold-bg) 0%,var(--surface) 60%); }
+.mode-card.selected { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-soft); }
+.mode-card.off { border-style:dashed; }
+
+.mode-card .recommended-tag { position:absolute; top:-10px; left:20px; background:var(--gold); color:var(--navy); font-size:9px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 9px; border-radius:100px; }
+.mode-card .header { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.mode-card .ic { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:15px; }
+.mode-card.off .ic { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.mode-card.aggregate .ic { background:var(--gold-bg); color:var(--gold); }
+.mode-card.detailed .ic { background:var(--navy); color:var(--gold); }
+.mode-card .name { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.01em; }
+.mode-card .name em { font-style:italic; color:var(--gold); }
+.mode-card .tagline { font-size:12px; color:var(--navy-3); font-style:italic; margin-bottom:14px; }
+.mode-card .tagline b { color:var(--navy-2); font-style:normal; font-weight:600; }
+.mode-card .features { display:flex; flex-direction:column; gap:7px; padding-top:12px; border-top:1px solid var(--border); }
+.mode-card .feat { display:grid; grid-template-columns:14px 1fr; gap:8px; font-size:11px; color:var(--navy-2); line-height:1.45; align-items:start; }
+.mode-card .feat .check { font-family:'Fraunces',serif; font-weight:700; color:var(--green); font-size:12px; }
+.mode-card .feat .x { font-family:'Fraunces',serif; font-weight:700; color:var(--navy-3); font-size:12px; }
+.mode-card .feat b { color:var(--navy); font-weight:600; }
+.mode-card .feat .key { color:var(--gold); font-weight:600; }
+.mode-card .ideal { margin-top:14px; padding:10px 12px; background:var(--bg); border-radius:8px; font-size:10px; color:var(--navy-3); line-height:1.5; }
+.mode-card.recommended .ideal { background:rgba(255,255,255,0.7); }
+.mode-card .ideal b { color:var(--navy-2); font-weight:600; }
+
+/* Region heads */
+.region { margin-bottom:32px; }
+.region-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+.region-head .num { font-family:'Fraunces',serif; font-style:italic; font-size:18px; color:var(--gold); }
+.region-head h2 { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.005em; }
+.region-head h2 em { font-style:italic; color:var(--gold); }
+.region-head .meta { margin-left:auto; font-size:11px; color:var(--navy-3); font-style:italic; }
+.region-head .meta b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Backfill option cards */
+.backfill-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.backfill-card { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:20px 22px; cursor:pointer; }
+.backfill-card.selected { border-color:var(--gold); background:var(--gold-bg); box-shadow:0 0 0 3px var(--gold-soft); }
+.backfill-card .top { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.backfill-card .radio { width:18px; height:18px; border-radius:50%; border:2px solid var(--border-2); flex-shrink:0; position:relative; }
+.backfill-card.selected .radio { border-color:var(--gold); }
+.backfill-card.selected .radio::after { content:""; position:absolute; top:3px; left:3px; width:8px; height:8px; border-radius:50%; background:var(--gold); }
+.backfill-card .opt-name { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.backfill-card .opt-name em { font-style:italic; color:var(--gold); }
+.backfill-card .desc { font-size:12px; color:var(--navy-3); line-height:1.55; padding-left:28px; }
+.backfill-card .desc b { color:var(--navy-2); font-weight:600; }
+
+/* Chart of accounts editor */
+.coa-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.coa-head { padding:14px 22px; border-bottom:1px solid var(--border); background:var(--bg); display:flex; justify-content:space-between; align-items:center; }
+.coa-head .left { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.coa-head .left em { font-style:italic; color:var(--gold); }
+.coa-head .right { font-size:11px; color:var(--navy-3); font-style:italic; }
+.coa-head .right b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+.coa-section { padding:14px 22px; border-bottom:1px solid var(--border); }
+.coa-section:last-child { border-bottom:none; }
+.coa-section .sec-name { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:10px; }
+.coa-cat-row { display:grid; grid-template-columns:14px 1fr 100px auto; gap:14px; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border); }
+.coa-cat-row:last-child { border-bottom:none; }
+.coa-cat-row .swatch { width:12px; height:12px; border-radius:3px; }
+.coa-cat-row .cat-name { font-weight:600; color:var(--navy); font-size:13px; }
+.coa-cat-row .cat-name .sub { font-size:10px; color:var(--navy-3); font-weight:500; margin-top:1px; font-style:italic; display:block; }
+.coa-cat-row .cat-type { font-size:9px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; padding:2px 8px; border-radius:100px; }
+.coa-cat-row .cat-type.locked { background:var(--bg); color:var(--navy-3); border:1px solid var(--border); }
+.coa-cat-row .cat-type.custom { background:var(--gold-bg); color:var(--gold); }
+.coa-cat-row .cat-type.added { background:var(--green-bg); color:var(--green); }
+.coa-cat-row .cat-actions { display:flex; gap:4px; }
+.coa-cat-row .action-btn { width:24px; height:24px; border-radius:6px; background:var(--bg); border:1px solid var(--border); color:var(--navy-3); font-size:11px; cursor:pointer; font-family:inherit; font-weight:600; display:flex; align-items:center; justify-content:center; }
+.coa-cat-row .action-btn.disabled { opacity:0.3; cursor:not-allowed; }
+
+.add-cat-row { background:var(--gold-bg); border:1px dashed var(--gold); border-radius:8px; padding:8px 14px; margin-top:10px; font-size:11px; color:var(--gold); font-weight:700; letter-spacing:0.04em; text-align:center; cursor:pointer; }
+
+/* Toggle settings */
+.settings-list { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.settings-row { display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; padding:14px 22px; border-bottom:1px solid var(--border); }
+.settings-row:last-child { border-bottom:none; }
+.settings-row .info .label { font-family:'Fraunces',serif; font-weight:600; font-size:14px; letter-spacing:-0.005em; }
+.settings-row .info .label em { font-style:italic; color:var(--gold); }
+.settings-row .info .desc { font-size:11px; color:var(--navy-3); margin-top:3px; line-height:1.5; }
+.settings-row .info .desc b { color:var(--navy-2); font-weight:600; }
+.toggle-pill { width:42px; height:24px; background:var(--border-2); border-radius:100px; position:relative; cursor:pointer; flex-shrink:0; }
+.toggle-pill.on { background:var(--green); }
+.toggle-pill::after { content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; background:var(--surface); border-radius:50%; }
+.toggle-pill.on::after { left:21px; }
+.toggle-pill.locked { opacity:0.5; cursor:not-allowed; }
+.settings-row .value-pick { display:flex; gap:4px; }
+.value-pill { padding:5px 11px; background:var(--bg); border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.value-pill.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.value-pill.active em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+
+/* Confirm bar */
+.confirm-bar { background:var(--surface); border:1px solid var(--gold); border-radius:12px; padding:18px 24px; margin-top:24px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 8px 20px -8px rgba(200,151,91,0.3); }
+.confirm-bar .left .summary { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.confirm-bar .left .summary em { font-style:italic; color:var(--gold); }
+.confirm-bar .left .meta { font-size:11px; color:var(--navy-3); margin-top:3px; }
+.confirm-bar .actions { display:flex; gap:8px; }
+.btn { padding:10px 18px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; padding:10px 22px; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .mode-row { grid-template-columns:1fr; }
+  .backfill-row { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Books · Settings &amp; activation</div>
+  <span class="mvp-tag">MVP 2 · post-launch</span>
+  <h1 class="display">Turning <em>books on</em></h1>
+  <div class="gold-rule"></div>
+  <p>The activation flow when a school enables the bookkeeping module for the first time. Three primary decisions: which mode to start in (off / aggregate / detailed), whether to backfill prior months, and whether to customise the chart of accounts beyond the system defaults. Plus the ongoing settings page admin returns to when she wants to change mode or adjust categories.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Settings &amp; activation</div>
+    <div class="section-meta">First-time activation OR ongoing settings · same screen, different state</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / books</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar tall">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King JHS</div>
+              <div class="school-meta">JHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Books<span class="new-tag">NEW</span></div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Inbox</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div><div class="meta-name">Florence Addo</div><div class="meta-role">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div class="crumb"><a href="#">Settings</a> / Books</div>
+            <h1 class="display">Bookkeeping <em>setup</em></h1>
+            <div class="lede">Configure how Omnischools tracks your school's finances · choose mode, customise categories, decide on backfill · <b>changes here propagate</b> to expense entry, income entry, and reports</div>
+          </div>
+
+          <div class="body">
+
+            <!-- Activation hero -->
+            <div class="activation-hero">
+              <div class="eyebrow-tag">First-time setup</div>
+              <h2 class="display">Let's set up <em>your school's books</em> properly</h2>
+              <p>Three decisions take about <b>5 minutes</b>: how detailed your records should be, whether to enter past months from memory, and which expense categories matter for your school. <b>You can change all of this later.</b></p>
+            </div>
+
+            <!-- 01 · Mode choice -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">01</div>
+                <h2 class="display">Choose your <em>recording mode</em></h2>
+                <div class="meta">You can switch later · <b>past months stay as they are</b></div>
+              </div>
+
+              <div class="mode-row">
+
+                <div class="mode-card off">
+                  <div class="header">
+                    <div class="ic">×</div>
+                    <div class="name display">Books <em>off</em></div>
+                  </div>
+                  <div class="tagline">Don't use bookkeeping at all. <b>Billing still works</b>; you just won't get a P&amp;L or balance sheet.</div>
+                  <div class="features">
+                    <div class="feat"><span class="check">✓</span><span>Billing &amp; fee collection unchanged</span></div>
+                    <div class="feat"><span class="x">×</span><span>No P&amp;L or balance sheet</span></div>
+                    <div class="feat"><span class="x">×</span><span>No financial dashboard</span></div>
+                    <div class="feat"><span class="x">×</span><span>Annual census infrastructure stays manual</span></div>
+                  </div>
+                  <div class="ideal"><b>Ideal for:</b> Very small schools or schools with an external accountant who keeps separate books.</div>
+                </div>
+
+                <div class="mode-card aggregate selected recommended">
+                  <div class="recommended-tag">Recommended for new schools</div>
+                  <div class="header">
+                    <div class="ic">A</div>
+                    <div class="name display">Aggregate <em>mode</em></div>
+                  </div>
+                  <div class="tagline">Enter <b>monthly totals per category</b>. No transaction-level detail. Quickest to set up.</div>
+                  <div class="features">
+                    <div class="feat"><span class="check">✓</span><span>P&amp;L and balance sheet produced</span></div>
+                    <div class="feat"><span class="check">✓</span><span><b>One screen per month</b> · 8 categories</span></div>
+                    <div class="feat"><span class="check">✓</span><span>Bank-ready PDF export</span></div>
+                    <div class="feat"><span class="check">✓</span><span><span class="key">Upgrade to detailed any time</span></span></div>
+                  </div>
+                  <div class="ideal"><b>Ideal for:</b> Schools without a dedicated accountant · headmistress-led recording · fewer than ~150 students.</div>
+                </div>
+
+                <div class="mode-card detailed">
+                  <div class="header">
+                    <div class="ic">D</div>
+                    <div class="name display">Detailed <em>mode</em></div>
+                  </div>
+                  <div class="tagline">Record <b>every transaction</b> as it happens · receipts attached · drill-through to every cedi.</div>
+                  <div class="features">
+                    <div class="feat"><span class="check">✓</span><span>Everything aggregate has, plus...</span></div>
+                    <div class="feat"><span class="check">✓</span><span>Per-transaction ledger with payees</span></div>
+                    <div class="feat"><span class="check">✓</span><span>Receipt attachments &amp; audit trail</span></div>
+                    <div class="feat"><span class="check">✓</span><span>Audit-grade detail for bank loans</span></div>
+                  </div>
+                  <div class="ideal"><b>Ideal for:</b> Schools with a dedicated accountant (like Joyce) · seeking external financing · 150+ students.</div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- 02 · Backfill -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">02</div>
+                <h2 class="display">Backfill <em>past months</em>?</h2>
+                <div class="meta">Optional · enables full-year reporting now</div>
+              </div>
+
+              <div class="backfill-row">
+                <div class="backfill-card selected">
+                  <div class="top">
+                    <div class="radio"></div>
+                    <div class="opt-name display">Backfill from <em>1 September 2025</em></div>
+                  </div>
+                  <div class="desc">Enter <b>monthly summary totals</b> for the academic year so far. Term 1 P&amp;L will be complete from day one. Backfill entries are clearly tagged "<b>backfilled · admin estimate</b>" in audit trails — bank reviewers can distinguish them from contemporaneously-recorded entries.</div>
+                </div>
+
+                <div class="backfill-card">
+                  <div class="top">
+                    <div class="radio"></div>
+                    <div class="opt-name display">Start <em>fresh from today</em></div>
+                  </div>
+                  <div class="desc">Books begin from <b>22 October 2025</b>. Term 1 P&amp;L will be partial until next year. Cleaner audit trail because every entry is recorded contemporaneously, but no current-year comparative for your first 12 months.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 03 · Chart of accounts -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">03</div>
+                <h2 class="display">Chart of <em>accounts</em></h2>
+                <div class="meta">10 standard categories each · <b>add up to 5 custom</b> per side</div>
+              </div>
+
+              <div class="coa-card">
+                <div class="coa-head">
+                  <div class="left display">Categories <em>used in your books</em></div>
+                  <div class="right">Locked categories cannot be removed · they're required for <b>P&amp;L &amp; balance sheet structure</b></div>
+                </div>
+
+                <div class="coa-section">
+                  <div class="sec-name">Income · 5 categories</div>
+
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:var(--green)"></div>
+                    <div class="cat-name">School fees<span class="sub">tuition · transport · books · auto from billing</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:#5C8B6B"></div>
+                    <div class="cat-name">Government subvention<span class="sub">capitation grant · for public schools</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:#88AB95"></div>
+                    <div class="cat-name">PTA contributions<span class="sub">parent-teacher fund · auto from billing if invoiced</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:#B5CCBE"></div>
+                    <div class="cat-name">Donations<span class="sub">individual or institutional gifts</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:#D2E2DA"></div>
+                    <div class="cat-name">Other income<span class="sub">rental · interest · misc</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+
+                  <div class="add-cat-row">+ ADD CUSTOM INCOME CATEGORY · UP TO 5</div>
+                </div>
+
+                <div class="coa-section">
+                  <div class="sec-name">Expenses · 8 standard + 1 custom = 9 categories</div>
+
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:var(--navy)"></div>
+                    <div class="cat-name">Salaries &amp; wages<span class="sub">auto from staff compensation module</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:var(--gold)"></div>
+                    <div class="cat-name">Utilities<span class="sub">ECG · GWCL · internet · phone</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:var(--green)"></div>
+                    <div class="cat-name">Supplies &amp; materials<span class="sub">stationery · cleaning · ICT consumables</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:var(--warn)"></div>
+                    <div class="cat-name">Feeding programme<span class="sub">caterer · ingredients</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:var(--terra)"></div>
+                    <div class="cat-name">Repairs &amp; maintenance<span class="sub">building · furniture · ICT</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:var(--navy-3)"></div>
+                    <div class="cat-name">Transport &amp; events<span class="sub">school bus fuel · trips</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:var(--gold-soft)"></div>
+                    <div class="cat-name">Bank &amp; payment fees<span class="sub">Hubtel + bank charges · auto-tracked</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:var(--border-2)"></div>
+                    <div class="cat-name">Other expenses<span class="sub">marketing · insurance · misc</span></div>
+                    <div class="cat-type locked">Locked</div>
+                    <div class="cat-actions"><button class="action-btn disabled">✎</button><button class="action-btn disabled">×</button></div>
+                  </div>
+                  <div class="coa-cat-row">
+                    <div class="swatch" style="background:#7A4F66"></div>
+                    <div class="cat-name">Examination expenses<span class="sub">BECE invigilator stipends · supplies</span></div>
+                    <div class="cat-type added">Custom</div>
+                    <div class="cat-actions"><button class="action-btn">✎</button><button class="action-btn">×</button></div>
+                  </div>
+
+                  <div class="add-cat-row">+ ADD CUSTOM EXPENSE CATEGORY · 4 REMAINING</div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- 04 · Other settings -->
+            <div class="region">
+              <div class="region-head">
+                <div class="num">04</div>
+                <h2 class="display">Other <em>preferences</em></h2>
+                <div class="meta">Defaults you can change later</div>
+              </div>
+
+              <div class="settings-list">
+                <div class="settings-row">
+                  <div class="info">
+                    <div class="label display">Fiscal year <em>boundary</em></div>
+                    <div class="desc">Most Ghanaian schools align with the academic year (Sep — Aug). Calendar year (Jan — Dec) is also supported for tax-aligned reporting.</div>
+                  </div>
+                  <div class="value-pick">
+                    <button class="value-pill active"><em>Academic</em> · Sep — Aug</button>
+                    <button class="value-pill">Calendar · Jan — Dec</button>
+                  </div>
+                </div>
+                <div class="settings-row">
+                  <div class="info">
+                    <div class="label display">Depreciation <em>method</em></div>
+                    <div class="desc">Straight-line is the simplest and what most Ghanaian schools use. Declining balance is more aggressive in early years; recommended only if your accountant uses it.</div>
+                  </div>
+                  <div class="value-pick">
+                    <button class="value-pill active"><em>Straight-line</em></button>
+                    <button class="value-pill">Declining balance</button>
+                  </div>
+                </div>
+                <div class="settings-row">
+                  <div class="info">
+                    <div class="label display">Audit trail · <em>append-only</em></div>
+                    <div class="desc">Every change creates a new entry rather than overwriting the old one. <b>Cannot be disabled</b> · this protects you and demonstrates integrity to bank reviewers.</div>
+                  </div>
+                  <div class="toggle-pill on locked"></div>
+                </div>
+                <div class="settings-row">
+                  <div class="info">
+                    <div class="label display">Anomaly <em>alerts</em></div>
+                    <div class="desc">Flag unusual entries on the dashboard (utility spike, repairs anomaly, low bank runway). On by default.</div>
+                  </div>
+                  <div class="toggle-pill on"></div>
+                </div>
+                <div class="settings-row">
+                  <div class="info">
+                    <div class="label display">Auto-categorise from billing &amp; staff</div>
+                    <div class="desc">When salaries are run, fee invoices are paid, or Hubtel fees are deducted — auto-create matching ledger entries. <b>Saves rekeying</b>; entries can still be edited.</div>
+                  </div>
+                  <div class="toggle-pill on"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="confirm-bar">
+              <div class="left">
+                <div class="summary display">Activate books in <em>aggregate mode</em> · backfilled from 1 Sep 2025</div>
+                <div class="meta">9 expense categories · 5 income categories · academic fiscal year · audit trail on</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Save as draft</button>
+                <button class="btn gold">Activate &amp; start using →</button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Activation hero in navy/gold gradient</b> with editorial framing: "Three decisions take about <b>5 minutes</b>." <b>Sets the tone</b>: this is a guided 5-minute setup, not a 50-page accounting wizard. Removes intimidation around the bookkeeping concept.</li>
+        <li><b>Three mode cards (Off / Aggregate / Detailed)</b> with feature comparison and "Ideal for" footer on each. <b>Aggregate marked "Recommended for new schools"</b> with gold gradient + tag — the safest starting point that doesn't force commitment to detailed transaction recording.</li>
+        <li><b>Each mode card lists what's included with check/X marks.</b> Off mode honestly says "no P&amp;L or balance sheet · annual census infrastructure stays manual" — <b>not selling the choice; describing it</b>. Lets schools self-select.</li>
+        <li><b>Backfill choice as 2 radio cards</b>: backfill from 1 Sep (selected by default) or start fresh from today. <b>The selected option's description acknowledges the audit-trail concern</b>: backfilled entries are tagged "backfilled · admin estimate" so bank reviewers can distinguish them from contemporaneously-recorded data.</li>
+        <li><b>Chart of accounts editor with 5 income + 8 expense locked categories + custom slots.</b> Locked categories cannot be deleted because they're "required for P&amp;L &amp; balance sheet structure" — comparison across schools and standardised reports require a stable backbone. <b>Custom categories supplement, never replace</b>.</li>
+        <li><b>Custom category example: "Examination expenses"</b> for BECE invigilator stipends &amp; supplies. <b>Realistic Ghanaian school nuance</b>: BECE-related costs are large and recurring for JHS schools; some operators want them as a distinct category, others bucket them in Other. Choice respected.</li>
+        <li><b>"Add custom income category · up to 5"</b> caps customisation — preventing the chart of accounts from sprawling into 30 fragmented categories that defeat the purpose of having structure. <b>Limits with explanation</b>.</li>
+        <li><b>Other preferences: fiscal year boundary / depreciation method / audit trail / anomaly alerts / auto-categorise.</b> Most defaults match Ghanaian school norms (academic year, straight-line, audit on). <b>Audit trail toggle is forced-on with greyed lock</b> — non-negotiable; the language explains why ("protects you and demonstrates integrity to bank reviewers").</li>
+        <li><b>Confirm bar in gold-bordered card with editorial summary</b>: "Activate books in <em>aggregate mode</em> · backfilled from 1 Sep 2025" then meta-line with 4 secondary settings. <b>One sentence captures the choices</b>; admin reads aloud and decides.</li>
+        <li><b>"Save as draft" alongside "Activate &amp; start using →"</b> — admin can configure now and activate later. The activation is intentional, not accidental. <b>Two-step pattern protects against premature commitment</b>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

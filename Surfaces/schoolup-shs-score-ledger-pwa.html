@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools Senior — Score ledger PWA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:800px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Oversight uses a deeper navy app chrome to distinguish it from the operational app */
+.app-shell { display:grid; grid-template-columns:230px 1fr; background:var(--bg); }
+.sidebar { background:#13203A; color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1240px; }
+.sidebar.tall { min-height:1620px; }
+.sidebar.taller { min-height:1880px; }
+.sidebar .gov-mark { padding:0 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:8px; }
+.sidebar .gov-mark .crest { display:flex; gap:11px; align-items:center; }
+.sidebar .gov-mark .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; line-height:1; text-align:center; }
+.sidebar .gov-mark .crest-text .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.sidebar .gov-mark .crest-text .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.sidebar .scope-chip { margin:14px 20px 8px; padding:10px 12px; background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:8px; }
+.sidebar .scope-chip .sc-label { font-size:8.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.sidebar .scope-chip .sc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.sidebar .scope-chip .sc-meta { font-size:10px; color:var(--gold-soft); margin-top:1px; }
+.nav-group { padding:16px 24px 6px; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(200,151,91,0.6); font-weight:700; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.1); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; }
+.sidebar .footer .av { width:34px; height:34px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; flex-shrink:0; }
+.sidebar .footer .meta-name { font-weight:600; font-size:12px; }
+.sidebar .footer .meta-role { font-size:9.5px; color:var(--gold-soft); margin-top:1px; }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.5); font-weight:700; }
+.powered-by em { color:var(--gold); font-style:normal; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:820px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Data-period banner */
+.period-banner { display:flex; align-items:center; gap:14px; padding:12px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; margin-bottom:24px; }
+.period-banner .pb-icon { width:34px; height:34px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:15px; flex-shrink:0; }
+.period-banner .pb-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.period-banner .pb-text b { color:var(--navy); font-weight:700; }
+.period-banner .pb-aside { margin-left:auto; font-size:10px; letter-spacing:0.06em; color:var(--navy-3); font-weight:600; text-align:right; }
+
+/* KPI strip */
+.kpi-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.kpi-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.kpi-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.kpi-card .k-lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.kpi-card .k-val { font-family:'Fraunces', serif; font-size:33px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.kpi-card .k-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.kpi-card .k-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.kpi-card .k-sub { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.kpi-card .k-sub b { color:var(--navy-2); font-weight:700; }
+.kpi-card .k-delta { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; margin-top:8px; position:relative; }
+.kpi-card .k-delta.up { background:var(--green-bg); color:var(--green); }
+.kpi-card .k-delta.down { background:var(--terra-bg); color:var(--terra); }
+.kpi-card .k-delta.flat { background:var(--bg); color:var(--navy-3); }
+
+/* Panel */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.panel-head { padding:16px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; justify-content:space-between; }
+.panel-head .ph-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.panel-head .ph-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.panel-head .ph-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.panel-head .ph-link { font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; }
+.panel-body { padding:20px 22px; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* Bar rows for enrolment-by-sex etc */
+.bar-row { margin-bottom:14px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-row .br-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.bar-row .br-label { font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-label .br-sub { color:var(--navy-3); font-weight:500; font-size:10.5px; margin-left:6px; }
+.bar-row .br-value { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-track { height:9px; background:var(--bg); border-radius:100px; overflow:hidden; display:flex; }
+.bar-row .br-fill { height:100%; }
+.bar-row .br-fill.navy { background:var(--navy); }
+.bar-row .br-fill.gold { background:var(--gold); }
+.bar-row .br-fill.green { background:var(--green); }
+.bar-row .br-fill.terra { background:var(--terra); }
+.bar-row .br-fill.warn { background:var(--warn); }
+.split-legend { display:flex; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.split-legend .sl-item { display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--navy-2); font-weight:600; }
+.split-legend .sl-dot { width:9px; height:9px; border-radius:2px; }
+.bar-row.parent .br-label { display:flex; align-items:center; gap:7px; }
+.bar-row.parent .drill-chip { font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; color:var(--gold); background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:100px; padding:2px 7px; cursor:pointer; }
+.bar-row.child { margin-left:18px; padding-left:12px; border-left:2px solid var(--border); }
+.bar-row.child .br-label { font-weight:500; color:var(--navy-2); font-size:11.5px; }
+.bar-row.child .br-value { font-size:11px; color:var(--navy-2); }
+.bar-row.child .br-track { height:7px; }
+.subtotal-note { font-size:10px; color:var(--navy-3); font-weight:600; margin:3px 0 10px 30px; font-style:italic; }
+.fee-row { margin-bottom:14px; }
+.fee-row:last-child { margin-bottom:0; }
+.fee-row .fr-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.fee-row .fr-level { font-size:12px; font-weight:700; color:var(--navy); }
+.fee-row .fr-total { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.fee-row .fr-bar { height:16px; border-radius:4px; overflow:hidden; display:flex; }
+.fee-row .fr-seg { height:100%; }
+.fee-legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.fee-legend .fl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.fee-legend .fl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* Mini stat list */
+.stat-list { display:flex; flex-direction:column; }
+.stat-list .st-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.stat-list .st-row:last-child { border-bottom:none; }
+.stat-list .st-label { font-size:12px; color:var(--navy-2); font-weight:500; }
+.stat-list .st-label b { color:var(--navy); font-weight:700; }
+.stat-list .st-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stat-list .st-val .st-unit { font-size:10px; color:var(--navy-3); font-weight:500; }
+.stat-list .st-val.flag { color:var(--terra); }
+.stat-list .st-val.good { color:var(--green); }
+
+/* Performance band chart */
+.band-chart { display:flex; flex-direction:column; gap:10px; }
+.band-row { display:grid; grid-template-columns:78px 1fr 48px; gap:10px; align-items:center; }
+.band-row .bd-label { font-size:11px; font-weight:600; color:var(--navy-2); }
+.band-row .bd-track { height:20px; background:var(--bg); border-radius:5px; overflow:hidden; display:flex; }
+.band-row .bd-seg { height:100%; }
+.band-row .bd-pct { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.band-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.band-legend .bl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.band-legend .bl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* School list table */
+.school-table { width:100%; border-collapse:collapse; }
+.school-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.school-table th.c { text-align:center; }
+.school-table th.r { text-align:right; }
+.school-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.school-table tr:last-child td { border-bottom:none; }
+.school-table tr.drill { cursor:pointer; }
+.school-table tr.drill:hover td { background:var(--gold-bg); }
+.school-table td .sc-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.school-table td .sc-name .sc-badge { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.school-table td .sc-name .sc-badge.anchor { background:var(--gold); color:var(--navy); }
+.school-table td .sc-meta { font-size:9.5px; color:var(--navy-3); margin-top:1px; font-weight:500; }
+.school-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.school-table td .num.r { text-align:right; }
+.school-table td .ratio { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; }
+.school-table td .ratio.good { color:var(--green); }
+.school-table td .ratio.warn { color:var(--warn); }
+.school-table td .ratio.flag { color:var(--terra); }
+.school-table td .perf-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; }
+.school-table td .perf-pill.good { background:var(--green-bg); color:var(--green); }
+.school-table td .perf-pill.mid { background:var(--warn-bg); color:var(--warn); }
+.school-table td .perf-pill.low { background:var(--terra-bg); color:var(--terra); }
+.school-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.table-toolbar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.table-toolbar .tt-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.chip { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:5px 11px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.chip.compare { background:var(--gold-bg); border-color:var(--gold); color:var(--navy); margin-left:auto; }
+.chip.compare::before { content:"⊕ "; color:var(--gold); }
+
+/* Anomaly callouts */
+.flag-list { display:flex; flex-direction:column; gap:10px; }
+.flag-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.flag-item.warn { border-color:var(--warn); background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 60%); }
+.flag-item.terra { border-color:var(--terra); background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 60%); }
+.flag-item .fi-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.flag-item.warn .fi-icon { background:var(--warn); color:var(--bg); }
+.flag-item.terra .fi-icon { background:var(--terra); color:var(--bg); }
+.flag-item .fi-body .fi-title { font-size:12px; font-weight:700; color:var(--navy); }
+.flag-item .fi-body .fi-detail { font-size:10.5px; color:var(--navy-2); margin-top:2px; line-height:1.45; }
+.flag-item .fi-body .fi-detail b { color:var(--navy); font-weight:700; }
+.flag-item .fi-action { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:700; color:var(--navy); cursor:pointer; }
+
+/* Comparison teaser */
+.compare-strip { background:linear-gradient(135deg, #13203A 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:22px 26px; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.compare-strip::before { content:""; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.compare-strip .cs-body { position:relative; }
+.compare-strip .cs-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.compare-strip .cs-title { font-family:'Fraunces', serif; font-size:21px; font-weight:500; line-height:1.2; margin-bottom:6px; }
+.compare-strip .cs-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.compare-strip .cs-text { font-size:12px; color:var(--gold-soft); line-height:1.5; max-width:560px; }
+.compare-strip .cs-text b { color:var(--bg); font-weight:600; }
+.compare-strip .cs-action { position:relative; }
+
+/* Data provenance footer */
+.provenance { display:flex; gap:18px; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-top:18px; flex-wrap:wrap; }
+.provenance .pv-item { font-size:10.5px; color:var(--navy-3); font-weight:500; }
+.provenance .pv-item b { color:var(--navy-2); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .dash-grid { grid-template-columns:1fr; }
+  .compare-strip { grid-template-columns:1fr; }
+}
+
+/* ============================================================
+ * Senior-specific overrides — school-internal product, not Oversight
+ * ============================================================ */
+.app-shell .sidebar { background: var(--navy); }  /* regular navy, not Oversight deep-navy */
+.app-shell .sidebar .gov-mark .crest-badge { background: var(--gold); color: var(--navy); }  /* gold school mark instead of GES */
+.app-shell .sidebar .scope-chip { background: rgba(200,151,91,0.10); border-color: rgba(200,151,91,0.25); }
+
+/* Path chooser — three big choice cards */
+.path-chooser { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+.path-card { background: var(--surface); border: 1.5px solid var(--border-2); border-radius: 12px; padding: 18px 20px; cursor: pointer; position: relative; transition: all 0.15s; }
+.path-card:hover { border-color: var(--gold-soft); }
+.path-card.active { border-color: var(--gold); background: linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 60%); }
+.path-card.active::after { content: "Active"; position: absolute; top: 12px; right: 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+.path-card .pc-letter { font-family: 'Fraunces', serif; font-style: italic; font-size: 22px; font-weight: 600; color: var(--gold); margin-bottom: 6px; }
+.path-card .pc-name { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+.path-card .pc-desc { font-size: 10.5px; color: var(--navy-3); line-height: 1.5; }
+
+/* Five-category ledger grid */
+.ledger-grid { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.ledger-grid thead th { background: var(--bg); color: var(--navy-3); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; padding: 11px 10px; text-align: center; border-bottom: 1px solid var(--border-2); }
+.ledger-grid thead th.cat-asgn { color: var(--green); }
+.ledger-grid thead th.cat-mid { color: var(--navy-2); }
+.ledger-grid thead th.cat-end { color: var(--navy-2); }
+.ledger-grid thead th.cat-proj { color: var(--green); }
+.ledger-grid thead th.cat-port { color: var(--terra); }
+.ledger-grid thead th.cat-total { background: var(--navy); color: var(--bg); }
+.ledger-grid thead th.student-col { text-align: left; padding-left: 14px; }
+.ledger-grid thead th .cat-weight { display: block; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--navy-3); font-weight: 600; margin-top: 3px; letter-spacing: 0.04em; text-transform: none; }
+.ledger-grid tbody td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--navy); }
+.ledger-grid tbody td.student-name { text-align: left; padding-left: 14px; font-family: 'Manrope', sans-serif; font-weight: 600; color: var(--navy); }
+.ledger-grid tbody td.student-name .student-ref { display: block; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--navy-3); font-weight: 500; margin-top: 1px; letter-spacing: 0.03em; }
+.ledger-grid tbody td.score-cell { background: var(--surface); }
+.ledger-grid tbody td.score-cell.computed { background: var(--green-bg); color: var(--green); font-weight: 700; }
+.ledger-grid tbody td.score-cell.manual { background: var(--gold-bg); color: var(--navy); font-weight: 700; }
+.ledger-grid tbody td.score-cell.empty { color: var(--border-2); }
+.ledger-grid tbody td.score-cell.low-conf { background: var(--warn-bg); color: var(--warn); font-weight: 700; position: relative; }
+.ledger-grid tbody td.score-cell.low-conf::after { content: "?"; position: absolute; top: 2px; right: 5px; font-size: 9px; color: var(--warn); font-weight: 700; }
+.ledger-grid tbody td.total { background: var(--navy); color: var(--bg); font-weight: 700; font-size: 13px; }
+.ledger-grid tbody tr:hover td { background-color: var(--gold-bg); }
+.ledger-grid tbody tr:hover td.total { background: var(--navy-deep); }
+
+.legend { display: flex; gap: 16px; padding: 12px 0; font-size: 10px; color: var(--navy-3); flex-wrap: wrap; }
+.legend .swatch { display: inline-flex; align-items: center; gap: 6px; }
+.legend .sw-box { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border-2); }
+.legend .sw-box.computed { background: var(--green-bg); border-color: var(--green); }
+.legend .sw-box.manual { background: var(--gold-bg); border-color: var(--gold); }
+.legend .sw-box.low-conf { background: var(--warn-bg); border-color: var(--warn); }
+
+/* Term progress card */
+.term-progress { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 18px 20px; }
+.term-progress .tp-title { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; margin-bottom: 12px; }
+.cat-progress { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.cat-progress:last-child { border-bottom: none; }
+.cat-progress .cp-label { flex: 1; font-size: 11.5px; color: var(--navy-2); }
+.cat-progress .cp-status { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 100px; }
+.cat-progress .cp-status.done { background: var(--green-bg); color: var(--green); }
+.cat-progress .cp-status.partial { background: var(--gold-bg); color: var(--gold); }
+.cat-progress .cp-status.pending { background: var(--bg); color: var(--navy-3); }
+
+/* Scan & diff panel */
+.scan-panel { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 16px; }
+.scan-image { background: var(--bg); border: 1.5px dashed var(--border-2); border-radius: 10px; padding: 16px; aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; position: relative; }
+.scan-image .scan-mock { width: 100%; height: 100%; background: var(--surface); border-radius: 6px; padding: 14px; font-family: 'Caveat', 'Comic Sans MS', cursive; font-size: 11px; color: var(--navy-2); position: relative; }
+.scan-image .scan-mock::before { content: ""; position: absolute; inset: 8px; border: 1px solid var(--border); border-radius: 3px; pointer-events: none; }
+.handwritten-row { display: grid; grid-template-columns: 1.5fr repeat(5, 1fr); gap: 4px; padding: 5px 4px; border-bottom: 1px dotted var(--border-2); align-items: center; font-size: 11.5px; }
+.handwritten-row .hw-name { font-weight: 500; }
+.scan-corner-stamp { position: absolute; top: 12px; right: 14px; font-family: 'JetBrains Mono', monospace; font-size: 9px; background: var(--gold); color: var(--navy); padding: 3px 8px; border-radius: 4px; font-weight: 700; letter-spacing: 0.04em; }
+
+/* Diff flag panel */
+.diff-flag { display: flex; gap: 12px; padding: 13px 16px; background: var(--warn-bg); border: 1px solid var(--warn); border-radius: 10px; margin-bottom: 10px; }
+.diff-flag .df-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--warn); color: var(--bg); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+.diff-flag .df-text { font-size: 11px; color: var(--navy-2); line-height: 1.55; flex: 1; }
+.diff-flag .df-text b { color: var(--navy); font-weight: 700; }
+.diff-flag .df-choices { display: flex; gap: 6px; flex-shrink: 0; }
+.diff-flag .df-choice { font-size: 10px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-2); background: var(--surface); cursor: pointer; font-weight: 600; color: var(--navy-2); }
+.diff-flag .df-choice.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+
+/* STPSHS export readiness card */
+.stpshs-ready { background: linear-gradient(135deg, var(--green-bg) 0%, var(--surface) 70%); border: 1.5px solid var(--green); border-radius: 12px; padding: 16px 20px; display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; }
+.stpshs-ready.pending { background: linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 70%); border-color: var(--gold); }
+.stpshs-ready .sr-icon { width: 36px; height: 36px; border-radius: 9px; background: var(--green); color: var(--bg); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 16px; }
+.stpshs-ready.pending .sr-icon { background: var(--gold); color: var(--navy); }
+.stpshs-ready .sr-text { font-size: 12px; color: var(--navy-2); line-height: 1.5; }
+.stpshs-ready .sr-text b { color: var(--navy); font-weight: 700; }
+
+/* ============================================================
+ * PWA-specific — phone mockup frame and mobile-form UI
+ * ============================================================ */
+.phone-frame-row { display: flex; gap: 32px; align-items: flex-start; justify-content: center; padding: 24px 0; }
+.phone-stack { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.phone-frame {
+  width: 360px;
+  background: #0F1B30;
+  border-radius: 38px;
+  padding: 14px;
+  box-shadow: 0 30px 80px -25px rgba(15, 27, 48, 0.5), 0 0 0 1.5px #232f47;
+  position: relative;
+  flex-shrink: 0;
+}
+.phone-screen {
+  background: var(--bg);
+  border-radius: 26px;
+  overflow: hidden;
+  height: 720px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.phone-notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 110px;
+  height: 22px;
+  background: #0F1B30;
+  border-radius: 0 0 14px 14px;
+  z-index: 10;
+}
+.phone-statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 24px 4px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  background: var(--bg);
+}
+.phone-statusbar .time { font-feature-settings: "tnum"; }
+.phone-statusbar .indicators { display: flex; gap: 4px; align-items: center; }
+.phone-statusbar .indicators .sig { width: 14px; height: 8px; background: var(--navy); border-radius: 2px; opacity: 0.85; }
+.phone-statusbar .indicators .wifi { width: 12px; height: 10px; border-right: 2px solid var(--navy); border-top: 2px solid var(--navy); transform: rotate(45deg); opacity: 0.4; }
+.phone-statusbar .indicators .batt { width: 24px; height: 11px; border: 1.5px solid var(--navy); border-radius: 3px; padding: 1px; position: relative; }
+.phone-statusbar .indicators .batt::after { content: ""; display: block; width: 60%; height: 100%; background: var(--gold); border-radius: 1px; }
+.phone-statusbar .indicators .batt::before { content: ""; position: absolute; right: -3px; top: 3px; width: 2px; height: 4px; background: var(--navy); border-radius: 0 1px 1px 0; }
+
+.pwa-header {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 16px 20px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(200,151,91,0.2);
+}
+.pwa-header .ph-brand { display: flex; align-items: center; gap: 9px; }
+.pwa-header .ph-brand-mark { width: 26px; height: 26px; border-radius: 7px; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 13px; }
+.pwa-header .ph-brand-text { font-family: 'Fraunces', serif; font-style: italic; font-size: 14px; font-weight: 600; }
+.pwa-header .ph-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+.pwa-context {
+  background: var(--surface);
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.pwa-context .pc-class { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: var(--navy); margin-bottom: 2px; }
+.pwa-context .pc-class em { font-style: italic; color: var(--gold); }
+.pwa-context .pc-meta { font-size: 11px; color: var(--navy-3); }
+
+.pwa-sync-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--green-bg);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(47,107,71,0.18);
+}
+.pwa-sync-strip.offline { background: var(--gold-bg); color: var(--gold); border-color: rgba(200,151,91,0.25); }
+.pwa-sync-strip .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.pwa-sync-strip.offline .sync-dot { background: var(--gold); }
+
+/* student card stack on PWA */
+.pwa-body { flex: 1; overflow-y: auto; padding: 16px 20px 20px; background: var(--bg); }
+.pwa-student-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; box-shadow: 0 4px 14px -8px rgba(26,43,71,0.08); }
+.pwa-student-card .psc-name { font-weight: 700; color: var(--navy); font-size: 14px; }
+.pwa-student-card .psc-ref { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--navy-3); margin-top: 2px; margin-bottom: 12px; letter-spacing: 0.04em; }
+.pwa-cat-row { display: grid; grid-template-columns: 1fr 70px; gap: 12px; align-items: center; padding: 6px 0; }
+.pwa-cat-row .pcr-label { font-size: 11.5px; color: var(--navy-2); font-weight: 500; }
+.pwa-cat-row .pcr-label .pcr-weight { color: var(--navy-3); font-size: 9.5px; margin-left: 4px; font-family: 'JetBrains Mono', monospace; }
+.pwa-input { width: 100%; padding: 8px 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; text-align: center; border: 1.5px solid var(--border-2); border-radius: 7px; color: var(--navy); background: var(--surface); }
+.pwa-input:focus { outline: none; border-color: var(--gold); background: var(--gold-bg); }
+.pwa-input.pending-sync { background: var(--gold-bg); border-color: var(--gold); }
+.pwa-input.empty { color: var(--border-2); }
+.pwa-total-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.pwa-total-row .ptr-label { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--navy-3); font-weight: 700; }
+.pwa-total-row .ptr-val { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--navy); }
+.pwa-total-row .ptr-val em { font-style: italic; color: var(--gold); }
+
+.pwa-bottombar {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px 16px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.pwa-tab { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; font-size: 9.5px; font-weight: 600; color: var(--navy-3); border-radius: 8px; }
+.pwa-tab.active { color: var(--gold); }
+.pwa-tab .pt-icon { width: 22px; height: 22px; border-radius: 6px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 11px; color: var(--navy); }
+.pwa-tab.active .pt-icon { background: var(--gold); color: var(--navy); }
+
+.phone-caption {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--navy-2);
+  text-align: center;
+  margin-top: 18px;
+  max-width: 360px;
+}
+
+.connectivity-rail { display: flex; flex-direction: column; gap: 10px; flex: 1; max-width: 360px; padding-top: 20px; }
+.conn-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.conn-card .cc-phase { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; color: var(--gold); margin-bottom: 4px; }
+.conn-card .cc-title { font-family: 'Fraunces', serif; font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+.conn-card .cc-desc { font-size: 11px; color: var(--navy-3); line-height: 1.5; }
+.conn-card.v1 { border-color: var(--gold); background: var(--gold-bg); }
+.conn-card.v1 .cc-phase::after { content: " · ships with v1"; color: var(--green); }
+.conn-card.future .cc-phase { color: var(--navy-3); }
+.conn-card.future { opacity: 0.7; }
+
+/* Dual-view: card vs grid toggle */
+.pwa-view-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin: 12px 14px 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.vt-btn {
+  flex: 1;
+  text-align: center;
+  padding: 7px 10px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--navy-3);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.vt-btn.active {
+  background: var(--navy);
+  color: var(--bg);
+}
+.vt-btn .vt-icon {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  background: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  opacity: 0.8;
+}
+.vt-btn .vt-glyph {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Grid table view on phone */
+.pwa-grid-wrap {
+  margin: 12px 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.pwa-grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.pwa-grid-table thead {
+  background: var(--navy);
+  color: var(--bg);
+}
+.pwa-grid-table th {
+  padding: 8px 3px;
+  text-align: center;
+  font-family: 'Manrope', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pwa-grid-table th.gh-student {
+  text-align: left;
+  padding-left: 10px;
+  width: 28%;
+}
+.pwa-grid-table th.gh-wt {
+  background: var(--gold);
+  color: var(--navy);
+  width: 17%;
+}
+.pwa-grid-table th .gh-weight {
+  display: block;
+  font-size: 8px;
+  font-weight: 500;
+  margin-top: 2px;
+  opacity: 0.7;
+}
+.pwa-grid-table tbody tr {
+  border-top: 1px solid var(--border);
+}
+.pwa-grid-table tbody tr:first-child {
+  border-top: none;
+}
+.pwa-grid-table td {
+  padding: 7px 3px;
+  text-align: center;
+  color: var(--navy-2);
+}
+.pwa-grid-table td.gc-student {
+  text-align: left;
+  padding-left: 10px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.pwa-grid-table td.gc-student .gc-ref {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8.5px;
+  font-weight: 400;
+  color: var(--navy-3);
+  margin-top: 1px;
+  letter-spacing: -0.02em;
+}
+.pwa-grid-table td.gc-score {
+  font-weight: 500;
+}
+.pwa-grid-table td.gc-score.empty {
+  color: var(--navy-3);
+  opacity: 0.5;
+}
+.pwa-grid-table td.gc-score.pending {
+  background: var(--gold-bg);
+  color: var(--navy);
+  font-weight: 600;
+}
+.pwa-grid-table td.gc-wt {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--gold);
+  background: rgba(200,151,91,0.06);
+}
+.pwa-grid-foot {
+  padding: 9px 12px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--navy-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg);
+}
+.pwa-grid-foot .gf-page {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 600;
+}
+.pwa-grid-foot .gf-hint {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 10px;
+  opacity: 0.75;
+}
+
+/* Class switcher affordance — chevron + multi-class indicator */
+.pwa-context.tappable {
+  position: relative;
+  border-radius: 8px;
+}
+.pwa-context .pc-chevron {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--gold);
+  font-size: 14px;
+  margin-left: 5px;
+  font-weight: 400;
+}
+.pwa-context .pc-class-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 100px;
+  background: var(--gold-bg);
+  color: var(--navy);
+  font-family: 'Manrope', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+
+/* Bottom sheet for class switcher (open state) */
+.pwa-dim-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(26, 43, 71, 0.45);
+  z-index: 5;
+  border-radius: 0;
+}
+.pwa-bottom-sheet {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  background: var(--surface);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  padding: 12px 14px 60px;
+  box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.16);
+  z-index: 10;
+  max-height: 78%;
+  overflow: hidden;
+}
+.pwa-bs-handle {
+  width: 38px;
+  height: 4px;
+  background: var(--border-2);
+  border-radius: 2px;
+  margin: 0 auto 12px;
+}
+.pwa-bs-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 11px;
+  padding: 0 2px;
+}
+.pwa-class-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  margin-bottom: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.pwa-class-option.active {
+  background: var(--gold-bg);
+  border-color: var(--gold);
+}
+.pwa-class-option .pco-main {
+  flex: 1;
+  min-width: 0;
+}
+.pwa-class-option .pco-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 3px;
+  line-height: 1.2;
+}
+.pwa-class-option .pco-name em {
+  font-style: italic;
+  color: var(--gold);
+}
+.pwa-class-option .pco-meta {
+  font-size: 9.5px;
+  color: var(--navy-3);
+  line-height: 1.35;
+}
+.pwa-class-option .pco-status {
+  align-self: center;
+  flex-shrink: 0;
+  font-family: 'Manrope', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 100px;
+}
+.pwa-class-option .pco-status.current { background: var(--gold); color: var(--navy); }
+.pwa-class-option .pco-status.ready { background: var(--green-bg); color: var(--green); }
+.pwa-class-option .pco-status.behind { background: var(--warn-bg); color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Omnischools Senior · The Score Ledger PWA</div>
+<div class="eyebrow">Omnischools Senior · the ledger on the teacher's phone</div>
+<h1>The ledger, <em>in your pocket.</em></h1>
+<div class="gold-rule"></div>
+<p>Path C — direct digital entry — is the case the PWA is built for. A teacher marks an end-of-semester exam paper, picks up their phone, taps the score in. No paper book to keep, no individual-assignment workflow to track, just the five-category grid one student at a time. The PWA is the regular Omnischools web app surfaced as installable on the phone home screen — same data, same audit trail, same five categories — but laid out for a phone screen. Section 1 shows the online state. Section 2 shows the same surface with a connection drop, and how the sync strip honestly reports it. Section 3 names what ships in v1 and what is deliberately deferred, because over-promising "works offline" is the failure mode that creates angry users when extended offline doesn't behave the way the marketing implied.</p>
+</div>
+
+<!-- ============================================ SECTION 1 — Online ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">Online · two views, one toggle, same data underneath</div>
+<div class="section-meta">PWA installed on a teacher's Android phone</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop" style="background: var(--bg); border: none; box-shadow: none; padding: 20px 0;">
+
+<div class="phone-frame-row">
+
+<div class="phone-stack">
+<div class="phone-frame">
+<div class="phone-notch"></div>
+<div class="phone-screen">
+
+<div class="phone-statusbar">
+<div class="time">10:42</div>
+<div class="indicators">
+<div class="sig"></div>
+<div class="batt"></div>
+</div>
+</div>
+
+<div class="pwa-header">
+<div class="ph-brand">
+<div class="ph-brand-mark">O</div>
+<div class="ph-brand-text">Omnischools</div>
+</div>
+<div class="ph-avatar">KO</div>
+</div>
+
+<div class="pwa-context tappable">
+<div class="pc-class">Form 2 Science · <em>Maths</em> <span class="pc-chevron">▾</span><span class="pc-class-count">1 of 2</span></div>
+<div class="pc-meta">Semester 2 · 2025/26 · 37 students</div>
+</div>
+
+<div class="pwa-sync-strip">
+<div class="sync-dot"></div>
+<div>All scores synced · last 2 minutes ago</div>
+</div>
+
+<div class="pwa-view-toggle">
+<div class="vt-btn active"><span class="vt-glyph">▤</span>Card</div>
+<div class="vt-btn"><span class="vt-glyph">▦</span>Grid</div>
+</div>
+
+<div class="pwa-body">
+
+<div class="pwa-student-card">
+<div class="psc-name">Abena Mensah</div>
+<div class="psc-ref">REF-2024-0142 · 14 of 37</div>
+<div class="pwa-cat-row"><div class="pcr-label">Assignments <span class="pcr-weight">15%</span></div><input class="pwa-input" value="72"></div>
+<div class="pwa-cat-row"><div class="pcr-label">Mid-sem exam <span class="pcr-weight">15%</span></div><input class="pwa-input" value="68"></div>
+<div class="pwa-cat-row"><div class="pcr-label">End-of-sem <span class="pcr-weight">40%</span></div><input class="pwa-input" value="81"></div>
+<div class="pwa-cat-row"><div class="pcr-label">Project work <span class="pcr-weight">15%</span></div><input class="pwa-input" value="75"></div>
+<div class="pwa-cat-row"><div class="pcr-label">Portfolio <span class="pcr-weight">15%</span></div><input class="pwa-input empty" placeholder="—"></div>
+<div class="pwa-total-row">
+<div class="ptr-label">Weighted total</div>
+<div class="ptr-val"><em>76.1</em><span style="font-size: 11px; color: var(--navy-3); margin-left: 6px;">+ portfolio</span></div>
+</div>
+</div>
+
+<div class="pwa-student-card">
+<div class="psc-name">Akwasi Boateng</div>
+<div class="psc-ref">REF-2024-0143 · 15 of 37</div>
+<div class="pwa-cat-row"><div class="pcr-label">Assignments <span class="pcr-weight">15%</span></div><input class="pwa-input" value="65"></div>
+<div class="pwa-cat-row"><div class="pcr-label">Mid-sem exam <span class="pcr-weight">15%</span></div><input class="pwa-input" value="71"></div>
+<div class="pwa-cat-row"><div class="pcr-label">End-of-sem <span class="pcr-weight">40%</span></div><input class="pwa-input" value="69"></div>
+<div class="pwa-cat-row"><div class="pcr-label">Project work <span class="pcr-weight">15%</span></div><input class="pwa-input" value="80"></div>
+<div class="pwa-cat-row"><div class="pcr-label">Portfolio <span class="pcr-weight">15%</span></div><input class="pwa-input empty" placeholder="—"></div>
+<div class="pwa-total-row">
+<div class="ptr-label">Weighted total</div>
+<div class="ptr-val"><em>70.6</em><span style="font-size: 11px; color: var(--navy-3); margin-left: 6px;">+ portfolio</span></div>
+</div>
+</div>
+
+</div>
+
+<div class="pwa-bottombar">
+<div class="pwa-tab"><div class="pt-icon">T</div>Today</div>
+<div class="pwa-tab"><div class="pt-icon">C</div>Classes</div>
+<div class="pwa-tab active"><div class="pt-icon">L</div>Ledger</div>
+<div class="pwa-tab"><div class="pt-icon">M</div>More</div>
+</div>
+
+</div>
+</div>
+
+<div class="phone-caption">Card view · one student at a time · swipe between students within the class.</div>
+</div>
+
+<div class="phone-stack">
+<div class="phone-frame">
+<div class="phone-notch"></div>
+<div class="phone-screen">
+
+<div class="phone-statusbar">
+<div class="time">10:42</div>
+<div class="indicators">
+<div class="sig"></div>
+<div class="batt"></div>
+</div>
+</div>
+
+<div class="pwa-header">
+<div class="ph-brand">
+<div class="ph-brand-mark">O</div>
+<div class="ph-brand-text">Omnischools</div>
+</div>
+<div class="ph-avatar">KO</div>
+</div>
+
+<div class="pwa-context tappable">
+<div class="pc-class">Form 2 Science · <em>Maths</em> <span class="pc-chevron">▾</span><span class="pc-class-count">1 of 2</span></div>
+<div class="pc-meta">Semester 2 · 2025/26 · 37 students</div>
+</div>
+
+<div class="pwa-sync-strip">
+<div class="sync-dot"></div>
+<div>All scores synced · last 2 minutes ago</div>
+</div>
+
+<div class="pwa-view-toggle">
+<div class="vt-btn"><span class="vt-glyph">▤</span>Card</div>
+<div class="vt-btn active"><span class="vt-glyph">▦</span>Grid</div>
+</div>
+
+<div class="pwa-grid-wrap">
+<table class="pwa-grid-table">
+<thead>
+<tr>
+<th class="gh-student">Student</th>
+<th>Asg<span class="gh-weight">15</span></th>
+<th>Mid<span class="gh-weight">15</span></th>
+<th>End<span class="gh-weight">40</span></th>
+<th>Pro<span class="gh-weight">15</span></th>
+<th>Por<span class="gh-weight">15</span></th>
+<th class="gh-wt">Wt<span class="gh-weight">total</span></th>
+</tr>
+</thead>
+<tbody>
+<tr><td class="gc-student">Abena M.<span class="gc-ref">0142</span></td><td class="gc-score">72</td><td class="gc-score">68</td><td class="gc-score">81</td><td class="gc-score">75</td><td class="gc-score empty">—</td><td class="gc-wt">76.1</td></tr>
+<tr><td class="gc-student">Akwasi B.<span class="gc-ref">0143</span></td><td class="gc-score">65</td><td class="gc-score">71</td><td class="gc-score">69</td><td class="gc-score">80</td><td class="gc-score empty">—</td><td class="gc-wt">70.6</td></tr>
+<tr><td class="gc-student">Ama A.<span class="gc-ref">0144</span></td><td class="gc-score">88</td><td class="gc-score">85</td><td class="gc-score">89</td><td class="gc-score">92</td><td class="gc-score empty">—</td><td class="gc-wt">88.6</td></tr>
+<tr><td class="gc-student">Daniel O.<span class="gc-ref">0145</span></td><td class="gc-score">58</td><td class="gc-score">62</td><td class="gc-score">55</td><td class="gc-score">66</td><td class="gc-score empty">—</td><td class="gc-wt">58.7</td></tr>
+<tr><td class="gc-student">Efua A.<span class="gc-ref">0146</span></td><td class="gc-score">79</td><td class="gc-score">74</td><td class="gc-score">82</td><td class="gc-score">78</td><td class="gc-score empty">—</td><td class="gc-wt">79.4</td></tr>
+<tr><td class="gc-student">Emmanuel T.<span class="gc-ref">0147</span></td><td class="gc-score">71</td><td class="gc-score">69</td><td class="gc-score">73</td><td class="gc-score">70</td><td class="gc-score empty">—</td><td class="gc-wt">71.4</td></tr>
+<tr><td class="gc-student">Esi C.<span class="gc-ref">0148</span></td><td class="gc-score">84</td><td class="gc-score">88</td><td class="gc-score">86</td><td class="gc-score">90</td><td class="gc-score empty">—</td><td class="gc-wt">86.7</td></tr>
+<tr><td class="gc-student">Kojo M.<span class="gc-ref">0149</span></td><td class="gc-score">62</td><td class="gc-score">58</td><td class="gc-score">64</td><td class="gc-score">61</td><td class="gc-score empty">—</td><td class="gc-wt">62.1</td></tr>
+</tbody>
+</table>
+<div class="pwa-grid-foot">
+<div class="gf-page">8 of 37 · scroll for more</div>
+<div class="gf-hint">tap any cell to edit</div>
+</div>
+</div>
+
+<div class="pwa-bottombar">
+<div class="pwa-tab"><div class="pt-icon">T</div>Today</div>
+<div class="pwa-tab"><div class="pt-icon">C</div>Classes</div>
+<div class="pwa-tab active"><div class="pt-icon">L</div>Ledger</div>
+<div class="pwa-tab"><div class="pt-icon">M</div>More</div>
+</div>
+
+</div>
+</div>
+
+<div class="phone-caption">Grid view · whole class at a glance · scroll for more rows, tap any cell to edit.</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Two views, one toggle, the class chevron always at hand</h4>
+<ul>
+<li><b>The PWA is the web app, surfaced on the home screen.</b> Same authentication, same data, same audit trail as the desktop ledger view. A score entered on the phone appears immediately in the web app and vice versa — there is no separate "mobile app" with its own state to keep in sync with the server. This is the discipline a PWA gives that a native app does not, and it is the right architectural choice for a product where the desktop and mobile cases are equivalent.</li>
+<li><b>Two view modes, one toggle pill, switchable in one tap.</b> <em>Card view</em> shows one student at a time with five large input fields — the right shape for entering scores as you mark, where a teacher wants the visual confirmation that this row is for <em>this</em> student. <em>Grid view</em> shows the whole class in a compact table — the right shape for scanning, spotting outliers, or doing a final review before STPSHS export. Both views read and write the same underlying data; switching is non-destructive. The teacher's last choice persists across sessions per (subject × class × semester) — a teacher who prefers grid view on a class roster of 37 doesn't get pushed back to card view tomorrow.</li>
+<li><b>The class chevron beside the class name is the switch between classes.</b> Almost no teacher teaches one class. Mr. Owusu has two Form 2 Maths classes; an Integrated Science teacher might teach four; an English teacher across forms might teach six. The chevron and the "1 of 2" pill make plain that more classes are available — tap to open the bottom sheet showing the full list with each class's status. Section 2 covers the switcher in detail.</li>
+<li><b>The green sync strip is the trust surface.</b> Every PWA in v1 shows a clear sync indicator. Green means server-confirmed and last-synced timestamp; the teacher can see at a glance that the scores they just entered are safely on the server. The strip is intentionally always visible — it is not tucked into settings.</li>
+<li><b>The Assessment Reference ID rides along, on every card and every row.</b> The same REF-2024-XXXX shows up in card view, grid view, the desktop ledger, and the STPSHS export sheet. The phone is not a different system; it is the same record displayed differently.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+<!-- ============================================ SECTION 2 — Class switcher ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">Multiple classes · the chevron, the bottom sheet, two taps to switch</div>
+<div class="section-meta">Mr. Owusu teaches two Form 2 Maths classes · most teachers teach more</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop" style="background: var(--bg); border: none; box-shadow: none; padding: 20px 0;">
+
+<div class="phone-frame-row">
+
+<div class="phone-stack">
+<div class="phone-frame">
+<div class="phone-notch"></div>
+<div class="phone-screen" style="position: relative;">
+
+<div class="phone-statusbar">
+<div class="time">10:43</div>
+<div class="indicators">
+<div class="sig"></div>
+<div class="batt"></div>
+</div>
+</div>
+
+<div class="pwa-header">
+<div class="ph-brand">
+<div class="ph-brand-mark">O</div>
+<div class="ph-brand-text">Omnischools</div>
+</div>
+<div class="ph-avatar">KO</div>
+</div>
+
+<div class="pwa-context tappable">
+<div class="pc-class">Form 2 Science · <em>Maths</em> <span class="pc-chevron">▾</span><span class="pc-class-count">1 of 2</span></div>
+<div class="pc-meta">Semester 2 · 2025/26 · 37 students</div>
+</div>
+
+<div class="pwa-sync-strip">
+<div class="sync-dot"></div>
+<div>All scores synced · last 2 minutes ago</div>
+</div>
+
+<div class="pwa-view-toggle">
+<div class="vt-btn active"><span class="vt-glyph">▤</span>Card</div>
+<div class="vt-btn"><span class="vt-glyph">▦</span>Grid</div>
+</div>
+
+<div class="pwa-body" style="filter: blur(0.5px); opacity: 0.5;">
+<div class="pwa-student-card">
+<div class="psc-name">Abena Mensah</div>
+<div class="psc-ref">REF-2024-0142 · 14 of 37</div>
+<div class="pwa-cat-row"><div class="pcr-label">Assignments <span class="pcr-weight">15%</span></div><input class="pwa-input" value="72"></div>
+<div class="pwa-cat-row"><div class="pcr-label">Mid-sem exam <span class="pcr-weight">15%</span></div><input class="pwa-input" value="68"></div>
+<div class="pwa-cat-row"><div class="pcr-label">End-of-sem <span class="pcr-weight">40%</span></div><input class="pwa-input" value="81"></div>
+</div>
+</div>
+
+<div class="pwa-dim-overlay"></div>
+
+<div class="pwa-bottom-sheet">
+<div class="pwa-bs-handle"></div>
+<div class="pwa-bs-title">Switch class · Mr. K. Owusu · Semester 2</div>
+
+<div class="pwa-class-option active">
+<div class="pco-main">
+<div class="pco-name">Form 2 Science · <em>Maths</em></div>
+<div class="pco-meta">37 students · Path A · 4 of 5 categories · portfolio pending · STPSHS in 17 days</div>
+</div>
+<div class="pco-status current">current</div>
+</div>
+
+<div class="pwa-class-option">
+<div class="pco-main">
+<div class="pco-name">Form 2 General · <em>Maths</em></div>
+<div class="pco-meta">29 students · Path A · 4 of 5 categories · portfolio pending · STPSHS in 17 days</div>
+</div>
+<div class="pco-status behind">behind</div>
+</div>
+
+</div>
+
+<div class="pwa-bottombar">
+<div class="pwa-tab"><div class="pt-icon">T</div>Today</div>
+<div class="pwa-tab"><div class="pt-icon">C</div>Classes</div>
+<div class="pwa-tab active"><div class="pt-icon">L</div>Ledger</div>
+<div class="pwa-tab"><div class="pt-icon">M</div>More</div>
+</div>
+
+</div>
+</div>
+
+<div class="phone-caption">Tap the chevron beside the class name · the bottom sheet slides up · tap a class to switch · the ledger reloads with that class's roster, scores, and progress.</div>
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>Two classes, four, seven · same affordance, no new mental model</h4>
+<ul>
+<li><b>The chevron and the "1 of 2" pill beside the class name are the switch.</b> Every PWA screen and the desktop ledger show the active class at the top. The chevron tells the teacher there are more classes; the pill says how many. Mr. Owusu, with two Form 2 Maths classes, sees "1 of 2." A typical English teacher running across forms would see "1 of 5." A teacher with one class sees no chevron — the affordance is suppressed when it isn't useful, so the UI doesn't tell first-year teachers their single class is one of one.</li>
+<li><b>The bottom sheet lists every class the teacher teaches this semester, with progress at a glance.</b> Each entry shows path used (A, B, or C), completion status across the five categories, student count, and the STPSHS-readiness pill if the window is approaching. Tapping an entry switches the active class; the bottom sheet dismisses; the ledger view (card or grid, whichever the teacher last used) reloads with the new class's roster. Two taps, end to end.</li>
+<li><b>The current class is highlighted and is also the default route on open.</b> When Mr. Owusu opens the PWA fresh, it lands on the class he last touched — not on the first class alphabetically, not on a "pick a class" interstitial. The state of the world the teacher last left is the one Omnischools restores. Switching is the deliberate action; staying put is the default. This matters more than it looks: a teacher who taps the home-screen icon between marking sessions wants to land back in the marking, not in a navigation step.</li>
+<li><b>Switching is non-destructive.</b> Tapping a different class does not lose anything — pending unsaved scores stay buffered in the local queue, sync resumes as normal, the new class's ledger loads on top. The audit trail records the switch (who looked at which class, when) the same way every other class-context action is logged. The teacher's working state in the prior class is preserved exactly; they can switch back and find their cursor where they left it.</li>
+<li><b>The same affordance lives on the desktop ledger view.</b> On the desktop (where the same teacher might be reconciling marks against their paper book on a wider screen), the chevron becomes a horizontal class-tab list above the grid — each tab shows the class name, student count, path used, and a small completion indicator. Tap to switch; the grid below reloads. The conceptual model is identical across form factors — one teacher, several classes, one switch.</li>
+<li><b>The class context is also where the chevron tells the teacher when something is wrong.</b> A class with an STPSHS deadline in less than 7 days shows the chevron in gold; a class with the teacher inactive for more than 14 days shows it with a small warn-dot. Without opening the bottom sheet, a teacher juggling several classes can see at a glance from any screen whether one of their other classes needs attention — and tap through directly. This is the same anomaly-rule infrastructure the Vice Headmaster's progress view uses, surfaced for the teacher's own benefit before it ever needs to surface for management.</li>
+</ul>
+</div>
+
+</div>
+
+<!-- ============================================ SECTION 3 — Bad connection ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">When the connection drops · the buffer holds, the strip says so</div>
+<div class="section-meta">Phase 1 connectivity · honest about scope</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop" style="background: var(--bg); border: none; box-shadow: none; padding: 20px 0;">
+
+<div class="phone-frame-row">
+
+<div class="phone-frame">
+<div class="phone-notch"></div>
+<div class="phone-screen">
+
+<div class="phone-statusbar">
+<div class="time">10:47</div>
+<div class="indicators">
+<div class="sig" style="opacity: 0.25;"></div>
+<div class="batt"></div>
+</div>
+</div>
+
+<div class="pwa-header">
+<div class="ph-brand">
+<div class="ph-brand-mark">O</div>
+<div class="ph-brand-text">Omnischools</div>
+</div>
+<div class="ph-avatar">KO</div>
+</div>
+
+<div class="pwa-context tappable">
+<div class="pc-class">Form 2 Science · <em>Maths</em> <span class="pc-chevron">▾</span><span class="pc-class-count">1 of 2</span></div>
+<div class="pc-meta">Semester 2 · 2025/26 · 37 students</div>
+</div>
+
+<div class="pwa-sync-strip offline">
+<div class="sync-dot"></div>
+<div>Connection lost · 3 scores held locally, will sync when reconnected</div>
+</div>
+
+<div class="pwa-view-toggle">
+<div class="vt-btn active"><span class="vt-glyph">▤</span>Card</div>
+<div class="vt-btn"><span class="vt-glyph">▦</span>Grid</div>
+</div>
+
+<div class="pwa-body">
+
+<div class="pwa-student-card">
+<div class="psc-name">Ama Asante</div>
+<div class="psc-ref">REF-2024-0144 · 16 of 37</div>
+<div class="pwa-cat-row"><div class="pcr-label">Assignments <span class="pcr-weight">15%</span></div><input class="pwa-input pending-sync" value="88"></div>
+<div class="pwa-cat-row"><div class="pcr-label">Mid-sem exam <span class="pcr-weight">15%</span></div><input class="pwa-input pending-sync" value="85"></div>
+<div class="pwa-cat-row"><div class="pcr-label">End-of-sem <span class="pcr-weight">40%</span></div><input class="pwa-input pending-sync" value="89"></div>
+<div class="pwa-cat-row"><div class="pcr-label">Project work <span class="pcr-weight">15%</span></div><input class="pwa-input" value="92"></div>
+<div class="pwa-cat-row"><div class="pcr-label">Portfolio <span class="pcr-weight">15%</span></div><input class="pwa-input empty" placeholder="—"></div>
+<div class="pwa-total-row">
+<div class="ptr-label">Weighted total</div>
+<div class="ptr-val"><em>88.6</em><span style="font-size: 11px; color: var(--navy-3); margin-left: 6px;">+ portfolio</span></div>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 11px; background: var(--gold-bg); border-radius: 7px; font-size: 10.5px; color: var(--navy-2);">
+<div style="width: 7px; height: 7px; border-radius: 50%; background: var(--gold); flex-shrink: 0;"></div>
+<div>3 scores on this card are held locally · will save when connection returns</div>
+</div>
+</div>
+
+</div>
+
+<div class="pwa-bottombar">
+<div class="pwa-tab"><div class="pt-icon">T</div>Today</div>
+<div class="pwa-tab"><div class="pt-icon">C</div>Classes</div>
+<div class="pwa-tab active"><div class="pt-icon">L</div>Ledger</div>
+<div class="pwa-tab"><div class="pt-icon">M</div>More</div>
+</div>
+
+</div>
+</div>
+
+<div class="phone-caption">Connection drops mid-entry · the buffer holds three pending scores · the strip and the input tint both say so plainly.</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Honest about what "handles bad connections" means</h4>
+<ul>
+<li><b>The strip turns gold and tells the teacher exactly what happened.</b> "Connection lost · 3 scores held locally, will sync when reconnected." Not a vague "offline mode" icon, not a silent failure, not optimistic "everything is fine." A teacher entering scores in a staff room with patchy signal needs to know which scores are confirmed and which are pending — and the strip is the answer.</li>
+<li><b>Pending inputs are tinted, not hidden.</b> The gold-tinted input fields are scores the teacher entered while disconnected; the indicator badge at the bottom of the card confirms the count. The teacher can keep entering scores, see the totals computed locally, and trust that the buffer holds — but the visual cue means they will never mistake a pending score for a confirmed one.</li>
+<li><b>The buffer is small and short-lived in v1.</b> Phase 1 supports a connection drop of a few minutes, the realistic case of a teacher entering scores when signal fades briefly. It does not support a teacher disconnecting for an hour and coming back — that is Phase 2 territory. Marketing the v1 PWA as "works on your phone, handles bad connections" tells the truth about what it does. Marketing it as "works offline" implies extended offline sessions that v1 does not commit to, and that gap is where angry users come from.</li>
+<li><b>Pre-cached student rosters mean the page loads without signal.</b> The teacher can open the PWA, see the student cards, even start typing — all without a connection. The sync happens when connectivity returns; the entry is not blocked while it doesn't.</li>
+</ul>
+</div>
+
+</div>
+
+<!-- ============================================ SECTION 4 — Phased connectivity ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">04</div>
+<div class="section-title display">What ships when · the connectivity roadmap, honestly</div>
+<div class="section-meta">Three phases · only one ships now</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop" style="background: var(--bg); border: none; box-shadow: none; padding: 20px 0;">
+
+<div class="phone-frame-row" style="align-items: stretch;">
+
+<div class="phone-frame" style="opacity: 0.95;">
+<div class="phone-notch"></div>
+<div class="phone-screen">
+
+<div class="phone-statusbar">
+<div class="time">10:42</div>
+<div class="indicators">
+<div class="sig"></div>
+<div class="batt"></div>
+</div>
+</div>
+
+<div class="pwa-header">
+<div class="ph-brand">
+<div class="ph-brand-mark">O</div>
+<div class="ph-brand-text">Omnischools</div>
+</div>
+<div class="ph-avatar">KO</div>
+</div>
+
+<div class="pwa-context">
+<div class="pc-class">Three <em>phases.</em></div>
+<div class="pc-meta">Connectivity roadmap · scoped honestly</div>
+</div>
+
+<div class="pwa-body">
+
+<div class="pwa-student-card" style="background: linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 70%); border-color: var(--gold);">
+<div style="font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; color: var(--green); margin-bottom: 6px;">Phase 1 · ships with v1</div>
+<div style="font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: var(--navy); margin-bottom: 6px;">Works on your phone · handles bad connections</div>
+<div style="font-size: 11px; color: var(--navy-2); line-height: 1.55;">PWA installable from the browser. Pre-caches the current class roster. Buffers a few minutes of pending scores when signal drops. Sync indicator is always visible. No extended offline sessions. No conflict resolution.</div>
+</div>
+
+<div class="pwa-student-card" style="opacity: 0.65;">
+<div style="font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; color: var(--navy-3); margin-bottom: 6px;">Phase 2 · later · trigger = real demand</div>
+<div style="font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: var(--navy); margin-bottom: 6px;">Extended offline sessions · single device</div>
+<div style="font-size: 11px; color: var(--navy-2); line-height: 1.55;">Local IndexedDB store. A teacher can enter scores for a full class with no connectivity and sync when it returns. Still single-device — no multi-device conflict logic.</div>
+</div>
+
+<div class="pwa-student-card" style="opacity: 0.55;">
+<div style="font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; color: var(--navy-3); margin-bottom: 6px;">Phase 3 · later still · if needed</div>
+<div style="font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: var(--navy); margin-bottom: 6px;">Multi-device with conflict resolution</div>
+<div style="font-size: 11px; color: var(--navy-2); line-height: 1.55;">Full offline-first. Conflict resolution when two devices edit the same cell offline. Last-write-wins rules, recovery from conflicts. Built only if real evidence shows the multi-device case matters.</div>
+</div>
+
+</div>
+
+<div class="pwa-bottombar">
+<div class="pwa-tab"><div class="pt-icon">T</div>Today</div>
+<div class="pwa-tab"><div class="pt-icon">C</div>Classes</div>
+<div class="pwa-tab"><div class="pt-icon">L</div>Ledger</div>
+<div class="pwa-tab active"><div class="pt-icon">M</div>More</div>
+</div>
+
+</div>
+</div>
+
+<div class="phone-caption">The marketing line is "works on your phone, handles bad connections." Not "works offline."</div>
+</div>
+
+</div>
+</div>
+
+<div class="notes">
+<h4>Phasing connectivity is the discipline that protects against angry users</h4>
+<ul>
+<li><b>Phase 1 ships first and delivers most of the practical value.</b> The realistic case is a teacher entering scores at home, in a staff room, or at a desk — usually with at least intermittent connectivity. Bad-connection handling and a small buffer cover that case well. Building a full offline-first architecture in v1 would be months of engineering for a load case the product may not actually face.</li>
+<li><b>Phase 2 is built when there is real evidence of need, not speculation.</b> The trigger is teachers in low-connectivity areas asking for extended offline sessions. Local IndexedDB store, sync queue, replay-on-reconnect — solvable but substantial. The right time to do it is after the v1 PWA has been live for a semester and the requests have come in from real teachers, not when product strategy assumes they will.</li>
+<li><b>Phase 3 is hypothetical capacity, not a commitment.</b> Multi-device conflict resolution is the engineering case that creates the most bugs and the most subtle data-loss failure modes — a sync conflict that silently keeps the wrong version of a student's score is the trust-eroding bug. Build it only if multi-device is a real workflow teachers actually have, which is not the most likely actual case.</li>
+<li><b>The marketing line follows the roadmap, not the other way around.</b> "Works on your phone, handles bad connections" is the truth about Phase 1. "Works offline" would be the misleading line that promises Phase 2 capability the product does not have. The expectation gap between marketing and reality is where churn comes from, and Omnischools should not create it.</li>
+<li><b>This is the discipline the rest of the product already shows.</b> Oversight's coverage caveats, the STPSHS export's honest "no WAEC API yet," the ledger's "we save you typing, you confirm the read" — all of it is about not over-promising. The PWA roadmap is the same discipline applied to the connectivity story.</li>
+</ul>
+</div>
+
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Class roster · SHS variant</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675; --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC; --bg:#FAF7F2; --surface:#FFFFFF; --green:#2F6B47; --green-bg:#E5EFE8; --terra:#B84A39; --terra-bg:#F5E1DC; --warn:#C58A2E; --warn-bg:#F5E9D0; --border:#E5DFD3; --border-2:#D4CCBA; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces',Georgia,serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces',serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:740px; line-height:1.6; }
+.page-header p b { color:var(--navy-2); font-weight:600; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; margin-right:8px; }
+.related-tag { display:inline-block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-3); font-weight:600; padding:3px 10px; border-radius:100px; border:1px solid var(--border); margin-bottom:14px; background:var(--surface); }
+
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces',serif; font-style:italic; font-size:32px; color:var(--gold); }
+.section-title { font-family:'Fraunces',serif; font-size:28px; font-weight:500; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces',serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; }
+.notes li b { color:var(--navy); }
+
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; }
+
+/* Desktop frame */
+.desktop { background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces',monospace; margin-left:12px; letter-spacing:0.04em; }
+
+.app-shell { display:grid; grid-template-columns:220px 1fr; background:var(--bg); }
+.sidebar { background:var(--navy); color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1100px; }
+.brand { padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; gap:12px; align-items:center; }
+.logo-mini { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; }
+.school-name { font-family:'Fraunces',serif; font-size:13px; font-weight:500; }
+.school-meta { font-size:10px; color:var(--gold-soft); margin-top:2px; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.08); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar-footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; font-size:12px; }
+.sidebar-footer .av { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces',serif; font-weight:600; font-size:12px; }
+.sidebar-footer .meta-name { font-weight:600; }
+.sidebar-footer .meta-role { font-size:10px; color:var(--gold-soft); }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.55); font-weight:700; border-top:1px solid rgba(255,255,255,0.05); }
+.powered-by em { color:var(--gold); font-style:normal; font-weight:700; }
+
+.main { background:var(--bg); }
+.page-head-c { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head-c .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head-c .crumb a { color:var(--gold); text-decoration:none; }
+.page-head-c .top-row { display:flex; justify-content:space-between; align-items:end; gap:24px; }
+.page-head-c h1 { font-family:'Fraunces',serif; font-size:30px; font-weight:500; letter-spacing:-0.02em; line-height:1.1; }
+.page-head-c h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head-c .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:780px; line-height:1.55; }
+.page-head-c .lede b { color:var(--navy-2); font-weight:600; }
+.page-head-c .actions { display:flex; gap:8px; flex-shrink:0; }
+
+.body-c { padding:24px 36px 60px; }
+
+/* Top meta strip */
+.meta-strip { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 22px; margin-bottom:20px; display:grid; grid-template-columns:repeat(5, 1fr); gap:0; }
+.meta-cell { padding:0 18px; border-right:1px solid var(--border); }
+.meta-cell:first-child { padding-left:0; }
+.meta-cell:last-child { border-right:none; padding-right:0; }
+.meta-cell .lab { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:5px; }
+.meta-cell .val { font-family:'Fraunces',serif; font-size:18px; font-weight:600; letter-spacing:-0.01em; line-height:1.1; }
+.meta-cell .val em { font-style:italic; color:var(--gold); }
+.meta-cell .val .sub-c { display:block; font-family:'Manrope',sans-serif; font-size:11px; font-weight:400; color:var(--navy-3); margin-top:2px; }
+.meta-cell .val .sub-c b { color:var(--navy-2); font-weight:600; }
+
+/* Tabs */
+.roster-tabs { display:flex; gap:0; border-bottom:1.5px solid var(--border); margin-bottom:24px; }
+.roster-tab { padding:11px 18px; font-size:12px; font-weight:600; color:var(--navy-3); border-bottom:2.5px solid transparent; margin-bottom:-1.5px; cursor:pointer; display:flex; align-items:center; gap:8px; }
+.roster-tab.active { color:var(--navy); border-bottom-color:var(--gold); }
+.roster-tab .badge { background:var(--bg); color:var(--navy-3); padding:1px 7px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.02em; }
+.roster-tab.active .badge { background:var(--gold); color:var(--navy); }
+
+/* Body grid */
+.roster-grid { display:grid; grid-template-columns:1fr 320px; gap:22px; }
+
+/* Student table */
+.student-table { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.table-head-bar { padding:14px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:14px; background:var(--bg); }
+.table-head-bar .left { display:flex; gap:10px; align-items:center; }
+.table-head-bar h3 { font-family:'Fraunces',serif; font-size:15px; font-weight:600; letter-spacing:-0.005em; }
+.table-head-bar h3 em { font-style:italic; color:var(--gold); }
+.table-head-bar .count { font-size:11px; color:var(--navy-3); font-style:italic; }
+.table-head-bar .right { margin-left:auto; display:flex; gap:8px; }
+.search-bar { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:6px 12px; font-size:11px; color:var(--navy-3); font-style:italic; width:180px; }
+
+.stu-row { display:grid; grid-template-columns:42px 1.4fr 0.9fr 0.7fr 0.7fr 0.7fr 32px; gap:14px; padding:13px 22px; border-bottom:1px solid var(--border); align-items:center; }
+.stu-row:last-child { border-bottom:none; }
+.stu-row.header-row { background:var(--bg); padding:10px 22px; }
+.stu-row.header-row .col { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.stu-row .av { width:36px; height:36px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:13px; }
+.stu-row .name h4 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; margin-bottom:2px; }
+.stu-row .name h4 em { font-style:italic; color:var(--gold); }
+.stu-row .name .id-x { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--navy-3); }
+.stu-row .house-cell { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--navy); font-weight:500; }
+.stu-row .house-cell .dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; border:1px solid var(--surface); box-shadow:0 0 0 1px var(--border-2); }
+.stu-row .house-cell .dot.pink { background:#D87794; }
+.stu-row .house-cell .dot.green { background:#5A8F6E; }
+.stu-row .house-cell .dot.blue { background:#5A7A9F; }
+.stu-row .house-cell .dot.gold-c { background:var(--gold); }
+.stu-row .house-cell .dot.terra-c { background:var(--terra); }
+.stu-row .house-cell .dot.navy-c { background:var(--navy); }
+.stu-row .residency-cell { font-size:11px; font-weight:600; }
+.stu-row .residency-cell .res-pill { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+.stu-row .residency-cell .res-pill.boarder { background:var(--navy); color:var(--bg); }
+.stu-row .residency-cell .res-pill.day { background:var(--bg); color:var(--navy-2); border:1px solid var(--border-2); }
+.stu-row .gender-cell { font-size:11px; color:var(--navy-2); font-weight:500; }
+.stu-row .attend-cell { font-size:11px; color:var(--navy-2); }
+.stu-row .attend-cell b { font-family:'JetBrains Mono',monospace; color:var(--navy); font-weight:600; }
+.stu-row .menu-btn { color:var(--navy-3); font-size:14px; cursor:pointer; padding:6px; text-align:center; }
+
+/* Right rail */
+.right-rail { display:flex; flex-direction:column; gap:14px; }
+.rail-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.rail-card .head-r { padding:14px 18px; border-bottom:1px solid var(--border); background:var(--bg); }
+.rail-card .head-r .eb { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.rail-card .head-r h4 { font-family:'Fraunces',serif; font-size:14px; font-weight:600; letter-spacing:-0.005em; }
+.rail-card .head-r h4 em { font-style:italic; color:var(--gold); }
+.rail-card .body-r { padding:16px 18px; }
+
+/* House distribution bars */
+.house-bar { padding:9px 0; border-bottom:1px solid var(--border); }
+.house-bar:last-child { border-bottom:none; padding-bottom:0; }
+.house-bar:first-child { padding-top:0; }
+.house-bar .h-meta { display:flex; align-items:center; gap:9px; margin-bottom:5px; font-size:11px; }
+.house-bar .h-meta .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.house-bar .h-meta .dot.pink { background:#D87794; }
+.house-bar .h-meta .dot.green { background:#5A8F6E; }
+.house-bar .h-meta .dot.blue { background:#5A7A9F; }
+.house-bar .h-meta .dot.gold-c { background:var(--gold); }
+.house-bar .h-meta .dot.terra-c { background:var(--terra); }
+.house-bar .h-meta .dot.navy-c { background:var(--navy); }
+.house-bar .h-meta .name { font-weight:600; color:var(--navy); }
+.house-bar .h-meta .count-c { margin-left:auto; font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--navy-2); font-size:11px; }
+.house-bar .bar-track { height:5px; background:var(--bg); border-radius:100px; overflow:hidden; }
+.house-bar .bar-fill { height:100%; border-radius:100px; }
+.house-bar .bar-fill.pink { background:#D87794; }
+.house-bar .bar-fill.green { background:#5A8F6E; }
+.house-bar .bar-fill.blue { background:#5A7A9F; }
+.house-bar .bar-fill.gold-c { background:var(--gold); }
+.house-bar .bar-fill.terra-c { background:var(--terra); }
+.house-bar .bar-fill.navy-c { background:var(--navy); }
+
+/* Teachers card */
+.teacher-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+.teacher-row:last-child { border-bottom:none; padding-bottom:0; }
+.teacher-row:first-child { padding-top:0; }
+.teacher-row .t-av { width:32px; height:32px; border-radius:50%; background:var(--gold-bg); color:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:11px; flex-shrink:0; }
+.teacher-row .t-info h5 { font-family:'Fraunces',serif; font-size:12px; font-weight:600; letter-spacing:-0.005em; line-height:1.2; margin-bottom:2px; }
+.teacher-row .t-info .sub-t { font-size:10px; color:var(--navy-3); font-style:italic; }
+.teacher-row .t-info .sub-t b { color:var(--navy-2); font-weight:600; font-style:normal; }
+
+/* Editorial card */
+.principle-card { background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; padding:18px 22px; margin-top:20px; }
+.principle-card .eb { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.principle-card p { font-size:13px; color:var(--navy-2); line-height:1.6; }
+.principle-card p em { font-style:italic; color:var(--gold); font-family:'Fraunces',serif; font-weight:500; }
+.principle-card p b { color:var(--navy); font-weight:600; }
+
+/* Class breadcrumb identity */
+.class-id { display:flex; align-items:center; gap:14px; padding:18px 22px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:20px; }
+.class-id .form-badge { width:64px; height:64px; border-radius:12px; background:var(--navy); color:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; flex-shrink:0; }
+.class-id .form-badge .form-num { font-size:22px; line-height:1; }
+.class-id .form-badge .form-lab { font-size:9px; letter-spacing:0.14em; opacity:0.7; margin-top:2px; }
+.class-id .name-c h2 { font-family:'Fraunces',serif; font-size:24px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; margin-bottom:5px; }
+.class-id .name-c h2 em { font-style:italic; color:var(--gold); }
+.class-id .name-c .components { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--navy-3); }
+.class-id .name-c .components .chip { padding:3px 9px; border-radius:100px; background:var(--bg); border:1px solid var(--border); font-weight:600; color:var(--navy-2); }
+.class-id .name-c .components .chip.programme { background:var(--gold-bg); border-color:var(--gold-soft); color:var(--gold); }
+.class-id .name-c .components .chip.section { background:var(--navy); border-color:var(--navy); color:var(--bg); }
+.class-id .name-c .components .sep { color:var(--border-2); }
+.class-id .quick-acts { margin-left:auto; display:flex; gap:8px; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Batch 0 · Structural foundation</div>
+  <span class="mvp-tag">SHS · classes</span>
+  <span class="related-tag">Two-dimensional sort · class × House</span>
+  <h1 class="display"><em>Form 2 General Arts A</em> · 32 students</h1>
+  <div class="gold-rule"></div>
+  <p>The roster surface is where the dual assignment becomes visible. Every student in this class has <b>two affiliations at once</b>: they're in Form 2 Arts A (their academic class) and they're in one of six Houses (their pastoral affiliation). The surface shows both at a glance — the table lists each student with House marker visible, and the right rail shows the <b>House distribution</b> across the class. Most rosters in MVP1 had one axis; <em>this one has two and both matter</em>.</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">The full roster surface · class + House visible</div>
+    <div class="section-meta">Classes → Form 2 General Arts A · roster tab active</div>
+  </div>
+
+  <div>
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / classes / form-2-arts-a / roster</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="logo-mini">CK</div>
+            <div>
+              <div class="school-name">Christ the King SHS</div>
+              <div class="school-meta">SHS · Accra</div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item active"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Programmes</div>
+          <div class="nav-item"><div class="ic"></div>Houses</div>
+          <div class="nav-item"><div class="ic"></div>Attendance</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Comms</div>
+          <div class="nav-item"><div class="ic"></div>PLC · CPD</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="sidebar-footer">
+            <div class="av">FA</div>
+            <div>
+              <div class="meta-name">Florence A.</div>
+              <div class="meta-role">Admin</div>
+            </div>
+          </div>
+          <div class="powered-by">Powered by <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head-c">
+            <div class="crumb"><a href="#">Classes</a> · Form 2 · General Arts · Section A</div>
+            <div class="top-row">
+              <div>
+                <h1 class="display">Form 2 General Arts <em>A</em></h1>
+                <div class="lede">32 students · 6 House affiliations represented · 19 boarders + 13 day · <b>Mr Mensah teaches Maths here</b> Tuesday/Thursday 8 AM · last attendance taken yesterday.</div>
+              </div>
+              <div class="actions">
+                <button class="btn">Print roster</button>
+                <button class="btn">Take attendance</button>
+                <button class="btn primary">+ Admit student</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="body-c">
+
+            <div class="class-id">
+              <div class="form-badge">
+                <div class="form-num">2</div>
+                <div class="form-lab">FORM</div>
+              </div>
+              <div class="name-c">
+                <h2 class="display"><em>Form 2 General Arts A</em></h2>
+                <div class="components">
+                  <span class="chip">Form 2</span>
+                  <span class="sep">×</span>
+                  <span class="chip programme">General Arts</span>
+                  <span class="sep">×</span>
+                  <span class="chip section">Section A</span>
+                  <span class="sep">·</span>
+                  <span style="font-style:italic;">unique combination · <b style="color:var(--navy-2);">CLS-2024-007</b></span>
+                </div>
+              </div>
+              <div class="quick-acts">
+                <button class="btn">View timetable</button>
+                <button class="btn">House view</button>
+              </div>
+            </div>
+
+            <div class="meta-strip">
+              <div class="meta-cell">
+                <div class="lab">Enrolment</div>
+                <div class="val display"><em>32</em> students<span class="sub-c">of <b>40</b> capacity · 80%</span></div>
+              </div>
+              <div class="meta-cell">
+                <div class="lab">Gender mix</div>
+                <div class="val display">18 / 14<span class="sub-c"><b>boys / girls</b> · co-ed</span></div>
+              </div>
+              <div class="meta-cell">
+                <div class="lab">Residency</div>
+                <div class="val display">19 / 13<span class="sub-c"><b>boarders / day</b> · 59% B</span></div>
+              </div>
+              <div class="meta-cell">
+                <div class="lab">House mix</div>
+                <div class="val display"><em>all 6</em><span class="sub-c">all Houses represented · balanced</span></div>
+              </div>
+              <div class="meta-cell">
+                <div class="lab">Attendance</div>
+                <div class="val display"><em>94.2</em>%<span class="sub-c">term-to-date · <b>above target</b></span></div>
+              </div>
+            </div>
+
+            <div class="roster-tabs">
+              <div class="roster-tab active">Roster <span class="badge">32</span></div>
+              <div class="roster-tab">Attendance log</div>
+              <div class="roster-tab">Subject teachers <span class="badge">9</span></div>
+              <div class="roster-tab">Timetable</div>
+              <div class="roster-tab">Grades</div>
+              <div class="roster-tab">Comms history</div>
+            </div>
+
+            <div class="roster-grid">
+              <div class="student-table">
+                <div class="table-head-bar">
+                  <div class="left">
+                    <h3 class="display">Students · <em>roster</em></h3>
+                    <span class="count">sorted by surname · House visible</span>
+                  </div>
+                  <div class="right">
+                    <div class="search-bar">Search by name or House…</div>
+                    <button class="btn">Filter</button>
+                  </div>
+                </div>
+
+                <div class="stu-row header-row">
+                  <div class="col">#</div>
+                  <div class="col">Student</div>
+                  <div class="col">House</div>
+                  <div class="col">Gender</div>
+                  <div class="col">Status</div>
+                  <div class="col">Attend</div>
+                  <div class="col"></div>
+                </div>
+
+                <div class="stu-row">
+                  <div class="av">AA</div>
+                  <div class="name">
+                    <h4 class="display">Abena Asare</h4>
+                    <div class="id-x">CTKS-24-0118</div>
+                  </div>
+                  <div class="house-cell"><span class="dot pink"></span>Pink 1</div>
+                  <div class="gender-cell">F</div>
+                  <div class="residency-cell"><span class="res-pill boarder">BOARDER</span></div>
+                  <div class="attend-cell"><b>96%</b></div>
+                  <div class="menu-btn">⋯</div>
+                </div>
+
+                <div class="stu-row">
+                  <div class="av">KA</div>
+                  <div class="name">
+                    <h4 class="display">Kofi Asante</h4>
+                    <div class="id-x">CTKS-24-0072</div>
+                  </div>
+                  <div class="house-cell"><span class="dot navy-c"></span>Knight</div>
+                  <div class="gender-cell">M</div>
+                  <div class="residency-cell"><span class="res-pill boarder">BOARDER</span></div>
+                  <div class="attend-cell"><b>98%</b></div>
+                  <div class="menu-btn">⋯</div>
+                </div>
+
+                <div class="stu-row">
+                  <div class="av">AB</div>
+                  <div class="name">
+                    <h4 class="display">Akosua Boateng</h4>
+                    <div class="id-x">CTKS-24-0094</div>
+                  </div>
+                  <div class="house-cell"><span class="dot gold-c"></span>Gibson</div>
+                  <div class="gender-cell">F</div>
+                  <div class="residency-cell"><span class="res-pill day">DAY</span></div>
+                  <div class="attend-cell"><b>91%</b></div>
+                  <div class="menu-btn">⋯</div>
+                </div>
+
+                <div class="stu-row">
+                  <div class="av">YD</div>
+                  <div class="name">
+                    <h4 class="display">Yaw Darko</h4>
+                    <div class="id-x">CTKS-24-0085</div>
+                  </div>
+                  <div class="house-cell"><span class="dot blue"></span>Aryee</div>
+                  <div class="gender-cell">M</div>
+                  <div class="residency-cell"><span class="res-pill day">DAY</span></div>
+                  <div class="attend-cell"><b>95%</b></div>
+                  <div class="menu-btn">⋯</div>
+                </div>
+
+                <div class="stu-row">
+                  <div class="av">ED</div>
+                  <div class="name">
+                    <h4 class="display">Esi Donkor</h4>
+                    <div class="id-x">CTKS-24-0102</div>
+                  </div>
+                  <div class="house-cell"><span class="dot pink"></span>Pink 2</div>
+                  <div class="gender-cell">F</div>
+                  <div class="residency-cell"><span class="res-pill boarder">BOARDER</span></div>
+                  <div class="attend-cell"><b>97%</b></div>
+                  <div class="menu-btn">⋯</div>
+                </div>
+
+                <div class="stu-row">
+                  <div class="av">KO</div>
+                  <div class="name">
+                    <h4 class="display">Kwame Owusu</h4>
+                    <div class="id-x">CTKS-24-0067</div>
+                  </div>
+                  <div class="house-cell"><span class="dot green"></span>Quaque</div>
+                  <div class="gender-cell">M</div>
+                  <div class="residency-cell"><span class="res-pill boarder">BOARDER</span></div>
+                  <div class="attend-cell"><b>89%</b></div>
+                  <div class="menu-btn">⋯</div>
+                </div>
+
+                <div class="stu-row">
+                  <div class="av">AM</div>
+                  <div class="name">
+                    <h4 class="display">Ama Mensah</h4>
+                    <div class="id-x">CTKS-24-0124</div>
+                  </div>
+                  <div class="house-cell"><span class="dot pink"></span>Pink 1</div>
+                  <div class="gender-cell">F</div>
+                  <div class="residency-cell"><span class="res-pill day">DAY</span></div>
+                  <div class="attend-cell"><b>93%</b></div>
+                  <div class="menu-btn">⋯</div>
+                </div>
+
+                <div class="stu-row">
+                  <div class="av">JA</div>
+                  <div class="name">
+                    <h4 class="display">Joseph Annan</h4>
+                    <div class="id-x">CTKS-24-0078</div>
+                  </div>
+                  <div class="house-cell"><span class="dot navy-c"></span>Knight</div>
+                  <div class="gender-cell">M</div>
+                  <div class="residency-cell"><span class="res-pill boarder">BOARDER</span></div>
+                  <div class="attend-cell"><b>92%</b></div>
+                  <div class="menu-btn">⋯</div>
+                </div>
+
+                <div class="stu-row">
+                  <div class="av">KO</div>
+                  <div class="name">
+                    <h4 class="display">Kafui Ofori</h4>
+                    <div class="id-x">CTKS-24-0091</div>
+                  </div>
+                  <div class="house-cell"><span class="dot gold-c"></span>Gibson</div>
+                  <div class="gender-cell">F</div>
+                  <div class="residency-cell"><span class="res-pill boarder">BOARDER</span></div>
+                  <div class="attend-cell"><b>96%</b></div>
+                  <div class="menu-btn">⋯</div>
+                </div>
+
+                <div class="stu-row">
+                  <div class="av">SA</div>
+                  <div class="name">
+                    <h4 class="display">Samuel Addo</h4>
+                    <div class="id-x">CTKS-24-0069</div>
+                  </div>
+                  <div class="house-cell"><span class="dot blue"></span>Aryee</div>
+                  <div class="gender-cell">M</div>
+                  <div class="residency-cell"><span class="res-pill day">DAY</span></div>
+                  <div class="attend-cell"><b>94%</b></div>
+                  <div class="menu-btn">⋯</div>
+                </div>
+
+                <div class="stu-row" style="background:var(--bg); justify-content:center; padding:14px 22px; grid-template-columns:1fr; gap:0;">
+                  <div style="text-align:center; font-size:12px; color:var(--navy-3); font-style:italic;">… 22 more students · <span style="color:var(--gold); font-weight:600; cursor:pointer; font-style:normal;">show all 32</span></div>
+                </div>
+
+              </div>
+
+              <div class="right-rail">
+
+                <div class="rail-card">
+                  <div class="head-r">
+                    <div class="eb">House distribution</div>
+                    <h4 class="display"><em>This class</em> · across 6 Houses</h4>
+                  </div>
+                  <div class="body-r">
+                    <div class="house-bar">
+                      <div class="h-meta">
+                        <span class="dot pink"></span>
+                        <span class="name">Pink 1</span>
+                        <span class="count-c">7</span>
+                      </div>
+                      <div class="bar-track"><div class="bar-fill pink" style="width:22%;"></div></div>
+                    </div>
+                    <div class="house-bar">
+                      <div class="h-meta">
+                        <span class="dot pink"></span>
+                        <span class="name">Pink 2</span>
+                        <span class="count-c">5</span>
+                      </div>
+                      <div class="bar-track"><div class="bar-fill pink" style="width:16%;"></div></div>
+                    </div>
+                    <div class="house-bar">
+                      <div class="h-meta">
+                        <span class="dot gold-c"></span>
+                        <span class="name">Gibson</span>
+                        <span class="count-c">3</span>
+                      </div>
+                      <div class="bar-track"><div class="bar-fill gold-c" style="width:9%;"></div></div>
+                    </div>
+                    <div class="house-bar">
+                      <div class="h-meta">
+                        <span class="dot blue"></span>
+                        <span class="name">Aryee</span>
+                        <span class="count-c">6</span>
+                      </div>
+                      <div class="bar-track"><div class="bar-fill blue" style="width:19%;"></div></div>
+                    </div>
+                    <div class="house-bar">
+                      <div class="h-meta">
+                        <span class="dot navy-c"></span>
+                        <span class="name">Knight</span>
+                        <span class="count-c">7</span>
+                      </div>
+                      <div class="bar-track"><div class="bar-fill navy-c" style="width:22%;"></div></div>
+                    </div>
+                    <div class="house-bar">
+                      <div class="h-meta">
+                        <span class="dot green"></span>
+                        <span class="name">Quaque</span>
+                        <span class="count-c">4</span>
+                      </div>
+                      <div class="bar-track"><div class="bar-fill green" style="width:12%;"></div></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rail-card">
+                  <div class="head-r">
+                    <div class="eb">Subject teachers</div>
+                    <h4 class="display">9 teachers · <em>this class</em></h4>
+                  </div>
+                  <div class="body-r">
+                    <div class="teacher-row">
+                      <div class="t-av">AM</div>
+                      <div class="t-info">
+                        <h5 class="display">Mr A. Mensah</h5>
+                        <div class="sub-t"><b>Elective Maths</b> · Tue/Thu 8 AM</div>
+                      </div>
+                    </div>
+                    <div class="teacher-row">
+                      <div class="t-av">JK</div>
+                      <div class="t-info">
+                        <h5 class="display">Mrs J. Kwakye</h5>
+                        <div class="sub-t"><b>English Lit</b> · Mon/Wed/Fri</div>
+                      </div>
+                    </div>
+                    <div class="teacher-row">
+                      <div class="t-av">DO</div>
+                      <div class="t-info">
+                        <h5 class="display">Mr D. Osei</h5>
+                        <div class="sub-t"><b>Economics</b> · Tue/Thu 10 AM</div>
+                      </div>
+                    </div>
+                    <div class="teacher-row">
+                      <div class="t-av">CA</div>
+                      <div class="t-info">
+                        <h5 class="display">Ms C. Asamoah</h5>
+                        <div class="sub-t"><b>Geography</b> · Wed/Fri 11 AM</div>
+                      </div>
+                    </div>
+                    <div class="teacher-row">
+                      <div class="t-av">YB</div>
+                      <div class="t-info">
+                        <h5 class="display">Mr Y. Boateng</h5>
+                        <div class="sub-t"><b>CRS · Form Master</b></div>
+                      </div>
+                    </div>
+                    <div class="teacher-row" style="justify-content:center; padding:12px 0 0;">
+                      <div style="font-size:11px; color:var(--gold); font-weight:600; cursor:pointer;">+ 4 more · view all</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rail-card" style="background:var(--gold-bg); border-color:var(--gold-soft);">
+                  <div class="head-r" style="background:transparent; border-bottom-color:var(--gold-soft);">
+                    <div class="eb">Quick actions</div>
+                    <h4 class="display">For <em>this class</em></h4>
+                  </div>
+                  <div class="body-r" style="padding:14px 18px;">
+                    <div style="font-size:11px; color:var(--navy-2); line-height:1.7;">
+                      <div style="padding:5px 0; border-bottom:1px solid var(--gold-soft); cursor:pointer;">→ Send SMS to all parents <em style="color:var(--gold);">(32 parents)</em></div>
+                      <div style="padding:5px 0; border-bottom:1px solid var(--gold-soft); cursor:pointer;">→ Schedule Form PTA meeting</div>
+                      <div style="padding:5px 0; border-bottom:1px solid var(--gold-soft); cursor:pointer;">→ Generate class report card</div>
+                      <div style="padding:5px 0; border-bottom:1px solid var(--gold-soft); cursor:pointer;">→ Export roster to CSV</div>
+                      <div style="padding:5px 0; cursor:pointer;">→ View grade analytics</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">The two-axis insight · class is academic, House is pastoral</div>
+    <div class="section-meta">Why both views matter · same students, different lenses</div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 28px;">
+
+        <h3 style="font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:16px; letter-spacing:-0.005em;">A student belongs to <em style="font-style:italic; color:var(--gold); font-weight:500;">both</em> structures · perpendicular by design</h3>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px;">
+
+          <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:18px 22px;">
+            <div style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px;">Academic axis · class</div>
+            <h4 style="font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-bottom:10px;">Form 2 General Arts A</h4>
+            <div style="font-size:12px; color:var(--navy-2); line-height:1.65;">
+              <b>What happens here:</b> lessons · subject teaching · timetabling · grades · WASSCE preparation · academic reports · parent-teacher meetings for academic performance.<br><br>
+              <b>Run by:</b> Form Master + 9 subject teachers · <em style="font-style:italic; color:var(--gold);">Mr Yaw Boateng (CRS)</em> is Form Master.<br><br>
+              <b>Membership:</b> determined by programme selection and section assignment at admission. <b>Stays the same</b> through the 3-year SHS journey unless student transfers programme.
+            </div>
+          </div>
+
+          <div style="background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:8px; padding:18px 22px;">
+            <div style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px;">Pastoral axis · House</div>
+            <h4 style="font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin-bottom:10px;">e.g. Knight House</h4>
+            <div style="font-size:12px; color:var(--navy-2); line-height:1.65;">
+              <b>What happens here:</b> pastoral care · dormitory life · House PTA · inter-house competitions · weekend activities · House assemblies · disciplinary matters.<br><br>
+              <b>Run by:</b> Housemaster + Senior House Prefect · <em style="font-style:italic; color:var(--gold);">Mr Alexander Mensah</em> is Housemaster of Knight (also Asst Head Academic).<br><br>
+              <b>Membership:</b> assigned at admission · <b>stays for all 3 years</b>. Sibling continuity tradition: if your brother was Knight, you're often placed in Knight.
+            </div>
+          </div>
+
+        </div>
+
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px 18px; font-size:12px; color:var(--navy-2); line-height:1.6;">
+          <b>The roster surface above shows the academic axis</b> (32 students who are all in Form 2 Arts A) with the pastoral axis visible per student (which House each belongs to). The <b>House view</b> — accessed by clicking "House view" in the top bar — flips the lens: shows all 200 students of Knight House across all Forms and programmes, with their class affiliation visible. <em>Same data, different organising principle.</em>
+        </div>
+
+      </div>
+
+      <div class="principle-card">
+        <div class="eb">For the build phase</div>
+        <p>The roster surface uses a single SQL query joining <b>students × classes × houses × house_assignments</b> through indexed foreign keys. Filtering by class is fast (~30 students). The reverse query — "all students in Knight House" — joins the same tables differently and might return 200 rows; Postgres handles both query shapes well as long as the right composite indexes exist. <em>One database, two views, both efficient.</em></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Calls worth flagging</h4>
+      <ul>
+        <li>The <b>"unique combination" tag</b> in the class identity strip is doing real work — admins occasionally try to create duplicate classes ("Form 2 Arts A" twice) and the system catches this via the (school_id, form, programme_id, section) composite unique constraint. <em>Visible reassurance that the schema enforces uniqueness</em>.</li>
+        <li>The <b>"all 6 represented"</b> House mix indicator is a subtle health check — if a class only has students from 2 Houses, it suggests the admission auto-balancer is failing. <b>Surfacing the diversity</b> nudges admin to investigate. Not an error, just a soft signal.</li>
+        <li>House dots in the table are <b>small (11px)</b>, by design — they're visual markers, not the primary identifier. The House name to the right of the dot is what reads. The dot is for fast pattern scanning when the admin's eye is moving down the list.</li>
+        <li>The <b>quick actions card</b> in the right rail is gold-tinted because it's the "what next?" hub — Form PTA scheduling, report card generation, grade analytics. Most admin work after viewing a roster involves one of these.</li>
+        <li>"View timetable" and "House view" sit in the class-identity strip as <em>peer affordances</em> to the roster — they're three lenses on the same class entity (academic schedule, student roster, pastoral makeup). <b>Lateral navigation, not hierarchical.</b></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

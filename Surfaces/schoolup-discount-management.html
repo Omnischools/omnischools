@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — Discount management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+  position: relative;
+}
+.app-shell.has-drawer::before {
+  content: "";
+  position: absolute;
+  inset: 0; left: 220px;
+  background: rgba(26,43,71,0.32);
+  z-index: 5;
+  pointer-events: none;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head .crumb a { color: var(--gold); text-decoration: none; }
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+.main-head .lede {
+  font-size: 13px; color: var(--navy-3);
+  margin-top: 6px; max-width: 540px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.subtle { background: transparent; border-color: transparent; color: var(--navy-3); }
+.btn.danger-outline {
+  background: transparent; color: var(--terra); border-color: var(--terra-bg);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ============ DISCOUNT TIERS — settings page ============ */
+.tier-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.tier-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 22px 18px;
+  position: relative;
+}
+.tier-card.add-new {
+  border: 1.5px dashed var(--border-2);
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  min-height: 200px;
+  transition: all 0.15s;
+}
+.tier-card.add-new:hover {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.tier-card.add-new .add-content {
+  color: var(--navy-3);
+}
+.tier-card.add-new .add-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 12px;
+}
+.tier-card.add-new .add-t1 {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 2px;
+}
+.tier-card.add-new .add-t2 {
+  font-size: 12px;
+  color: var(--navy-3);
+  max-width: 220px;
+  line-height: 1.5;
+  margin: 0 auto;
+}
+
+.tier-card .t-head {
+  display: flex; justify-content: space-between; align-items: start;
+  margin-bottom: 14px;
+}
+.tier-card .t-head .left {
+  display: flex; gap: 12px; align-items: start;
+}
+.tier-card .t-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 16px;
+  flex-shrink: 0;
+}
+.tier-card .t-icon.green { background: var(--green-bg); color: var(--green); }
+.tier-card .t-icon.terra { background: var(--terra-bg); color: var(--terra); }
+.tier-card .t-icon.navy { background: rgba(26,43,71,0.08); color: var(--navy); }
+.tier-card .t-name {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
+.tier-card .t-rule {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-weight: 500;
+}
+.tier-card .t-percent {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--gold);
+  line-height: 1;
+}
+.tier-card .t-percent.terra { color: var(--terra); }
+.tier-card .t-percent.green { color: var(--green); }
+.tier-card .t-percent .of {
+  font-size: 11px;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 500;
+  color: var(--navy-3);
+  letter-spacing: 0.04em;
+  margin-left: 2px;
+}
+
+.tier-card .t-desc {
+  font-size: 12px;
+  color: var(--navy-2);
+  line-height: 1.55;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.tier-card .t-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  margin-bottom: 14px;
+}
+.tier-card .t-meta .cell .l {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 700; margin-bottom: 2px;
+}
+.tier-card .t-meta .cell .v {
+  font-size: 12px; font-weight: 600;
+}
+.tier-card .t-meta .cell .v.muted {
+  color: var(--navy-3); font-style: italic; font-weight: 500;
+}
+
+.tier-card .t-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.tier-card .t-applied {
+  font-size: 11px; color: var(--navy-3);
+}
+.tier-card .t-applied b { color: var(--navy); font-weight: 700; }
+.tier-card .t-actions {
+  display: flex; gap: 6px;
+}
+.tier-card .mini-btn {
+  font-size: 10px; letter-spacing: 0.04em;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  padding: 4px 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.tier-card .mini-btn:hover { border-color: var(--gold); color: var(--gold); }
+.tier-card .mini-btn.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+}
+
+.tier-card.archived {
+  opacity: 0.6;
+  background: var(--bg);
+}
+.tier-card.archived::before {
+  content: "ARCHIVED";
+  position: absolute;
+  top: 14px; right: 18px;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--navy-3);
+  font-weight: 700;
+  background: var(--surface);
+  padding: 3px 8px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+}
+
+/* Stack rules block */
+.stack-rules {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 26px;
+  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 28px;
+  align-items: center;
+}
+.stack-rules .left h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.stack-rules .left h3 em { font-style: italic; color: var(--gold); }
+.stack-rules .left .desc {
+  font-size: 12px;
+  color: var(--navy-3);
+  line-height: 1.55;
+  max-width: 460px;
+}
+.stack-rules .left .desc b { color: var(--navy); font-weight: 600; }
+.stack-rules .toggle-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.stack-rules .toggle-block .body { flex: 1; }
+.stack-rules .toggle-block .body .t1 {
+  font-size: 12px; font-weight: 600;
+  margin-bottom: 1px;
+}
+.stack-rules .toggle-block .body .t2 {
+  font-size: 10px; color: var(--navy-3);
+}
+.stack-rules .toggle-mini {
+  width: 36px; height: 20px;
+  background: var(--green);
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.stack-rules .toggle-mini::after {
+  content: "";
+  position: absolute;
+  width: 16px; height: 16px;
+  background: var(--surface);
+  border-radius: 50%;
+  top: 2px; right: 2px;
+}
+
+.stack-example {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 11px;
+  color: var(--navy-2);
+  line-height: 1.6;
+}
+.stack-example .head {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 6px;
+}
+.stack-example .calc {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--navy);
+}
+.stack-example .calc b { color: var(--navy); font-weight: 700; }
+
+/* ============ APPLY DISCOUNT DRAWER ============ */
+.drawer {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 480px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -16px 0 40px -10px rgba(26,43,71,0.18);
+  z-index: 10;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.drawer-head {
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: start;
+}
+.drawer-head .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+  margin-bottom: 6px;
+}
+.drawer-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.drawer-head h3 em { font-style: italic; color: var(--gold); }
+.drawer-head .close {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-size: 14px;
+}
+.drawer-body {
+  flex: 1;
+  padding: 22px 24px;
+  overflow-y: auto;
+}
+.drawer-section-label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+  margin: 22px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.drawer-section-label::before {
+  content: ""; width: 18px; height: 1px; background: var(--gold);
+}
+.drawer-section-label:first-child { margin-top: 0; }
+
+.student-context-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  display: flex; gap: 12px; align-items: center;
+}
+.student-context-card .av {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.student-context-card .body { flex: 1; }
+.student-context-card .name {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.student-context-card .meta {
+  font-size: 11px; color: var(--navy-3);
+  margin-top: 1px;
+}
+
+/* Tier picker — list of tiers as selectable rows */
+.tier-picker { display: flex; flex-direction: column; gap: 6px; }
+.tier-pick-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.tier-pick-row.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.tier-pick-row .radio {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-2);
+  background: var(--surface);
+  position: relative;
+}
+.tier-pick-row.selected .radio { border-color: var(--gold); }
+.tier-pick-row.selected .radio::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--gold);
+  border-radius: 50%;
+}
+.tier-pick-row .body .t1 {
+  font-size: 13px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.tier-pick-row .body .t2 {
+  font-size: 11px; color: var(--navy-3);
+  margin-top: 1px;
+}
+.tier-pick-row .pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--gold);
+  letter-spacing: -0.015em;
+}
+.tier-pick-row .pct.terra { color: var(--terra); }
+.tier-pick-row .pct.green { color: var(--green); }
+.tier-pick-row.custom .pct {
+  font-size: 12px;
+  color: var(--navy-3);
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* Form fields */
+.field { margin-bottom: 14px; }
+.field label {
+  display: block;
+  font-size: 11px; color: var(--navy-2); font-weight: 600;
+  margin-bottom: 5px; letter-spacing: 0.02em;
+}
+.field label .req { color: var(--terra); margin-left: 2px; }
+.field label .hint { color: var(--navy-3); font-weight: 400; margin-left: 4px; font-size: 10px; }
+.input, .textarea, select.input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  font-family: inherit; font-size: 13px;
+  color: var(--navy);
+}
+.textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+.input::placeholder, .textarea::placeholder { color: var(--navy-3); font-style: italic; opacity: 1; }
+.input:focus, .textarea:focus, select.input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Live preview of effect */
+.discount-preview {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.discount-preview .head {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 8px;
+}
+.discount-preview .calc-row {
+  display: flex; justify-content: space-between;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.discount-preview .calc-row .l { color: var(--navy-2); }
+.discount-preview .calc-row .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  color: var(--navy);
+}
+.discount-preview .calc-row .v.discount { color: var(--terra); }
+.discount-preview .calc-row.divider {
+  border-top: 1px dashed var(--gold-soft);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+.discount-preview .calc-row.total {
+  border-top: 2px solid var(--navy);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+.discount-preview .calc-row.total .l { font-weight: 700; color: var(--navy); }
+.discount-preview .calc-row.total .v {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.drawer-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  display: flex; gap: 8px; justify-content: space-between;
+  align-items: center;
+}
+
+/* ============ STUDENT BILLING VIEW ============ */
+.student-page-head {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 26px;
+  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
+}
+.student-page-head .av-big {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--gold-bg);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.student-page-head .name-block .name {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  margin-bottom: 4px;
+}
+.student-page-head .name-block .meta {
+  font-size: 12px; color: var(--navy-3);
+  display: flex; gap: 8px; align-items: center;
+}
+.student-page-head .name-block .meta .dot { color: var(--border-2); }
+.student-page-head .name-block .meta b { color: var(--navy-2); font-weight: 600; }
+.student-page-head .actions {
+  display: flex; gap: 8px;
+}
+
+/* Active discounts panel */
+.active-discounts {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 22px;
+  overflow: hidden;
+}
+.active-discounts .ad-head {
+  padding: 16px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.active-discounts .ad-head .left .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 4px;
+}
+.active-discounts .ad-head .left h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.discount-row {
+  display: grid;
+  grid-template-columns: 38px 1fr 100px 110px auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.discount-row:last-child { border-bottom: none; }
+.discount-row .d-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+}
+.discount-row .d-icon.green { background: var(--green-bg); color: var(--green); }
+.discount-row .d-icon.terra { background: var(--terra-bg); color: var(--terra); }
+.discount-row .d-icon.navy { background: rgba(26,43,71,0.08); color: var(--navy); }
+.discount-row .d-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.discount-row .d-name .sub {
+  font-size: 11px;
+  color: var(--navy-3);
+  font-family: 'Manrope', sans-serif;
+  font-weight: 500;
+  margin-top: 1px;
+}
+.discount-row .d-pct {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--gold);
+  letter-spacing: -0.01em;
+}
+.discount-row .d-pct.terra { color: var(--terra); }
+.discount-row .d-pct.green { color: var(--green); }
+.discount-row .d-since {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.discount-row .d-since b { color: var(--navy); font-weight: 600; }
+.discount-row .d-actions { display: flex; gap: 4px; }
+.discount-row .mini-btn {
+  font-size: 9px; letter-spacing: 0.06em;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--navy-3);
+  padding: 4px 9px;
+  border-radius: 100px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.discount-row .mini-btn.danger { border-color: var(--terra-bg); color: var(--terra); }
+
+/* Cascade calculation card */
+.cascade-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.cascade-card .cc-head {
+  padding: 16px 22px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--bg);
+}
+.cascade-card .cc-head .label {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700;
+}
+.cascade-card .cc-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px; font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-top: 2px;
+}
+.cascade-card .cc-head .term-pill {
+  padding: 5px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.cascade-body { padding: 18px 24px; }
+
+.cascade-line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 7px 0;
+  font-size: 13px;
+}
+.cascade-line.sub {
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--navy-3);
+}
+.cascade-line.sub .l {
+  display: flex; gap: 6px; align-items: center;
+}
+.cascade-line.sub .arrow {
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 10px;
+}
+.cascade-line .v {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+}
+.cascade-line .v.discount { color: var(--terra); }
+.cascade-line.subtotal {
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+.cascade-line.subtotal .l { font-weight: 600; color: var(--navy); }
+.cascade-line.net {
+  border-top: 2px solid var(--navy);
+  padding-top: 12px;
+  margin-top: 8px;
+}
+.cascade-line.net .l {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--navy);
+}
+.cascade-line.net .v {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--green);
+}
+
+/* Discount pill inline */
+.discount-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  color: var(--gold);
+  border-radius: 100px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .tier-grid { grid-template-columns: 1fr; }
+  .stack-rules { grid-template-columns: 1fr; }
+  .student-page-head { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · Discounts</div>
+  <h1 class="display">Fee <em>discounts</em>, made tractable</h1>
+  <div class="gold-rule"></div>
+  <p>Schools handle a handful of recurring discount types — siblings, scholarships, staff children, hardship cases. Omnischools models these as reusable tiers defined once, then applied to students. One-off arrangements use a custom path. Three screens: tier templates, applying a discount, and the student billing view that shows the cascade.</p>
+</header>
+
+<!-- ============ 01 DISCOUNT TIERS ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Discount tiers · settings</div>
+    <div class="section-meta">Admin · Settings &gt; Fees &gt; Discounts</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / fees / discounts</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Settings</a> / <a href="#">Fees</a> / Discounts</div>
+              <h2 class="display">Discount <em>tiers</em></h2>
+              <div class="lede">Define the discounts your school offers once. Apply to specific students from their billing page — or use a custom amount for one-off arrangements.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">View applied</button>
+              <button class="btn gold">+ Add tier</button>
+            </div>
+          </div>
+
+          <!-- Stack rules block -->
+          <div class="stack-rules">
+            <div class="left">
+              <h3>How <em>stacking</em> works</h3>
+              <div class="desc">When a student qualifies for two discounts (e.g. <b>sibling 50% + staff child 50%</b>), the rates compound rather than add up. <b>50% then 50% again gives 75% off</b>, not 100%. This protects the school from accidental full waivers and keeps the math predictable.</div>
+            </div>
+            <div>
+              <div class="toggle-block" style="margin-bottom:10px">
+                <div class="body">
+                  <div class="t1">Allow discount stacking</div>
+                  <div class="t2">When off, only the largest single discount applies</div>
+                </div>
+                <div class="toggle-mini"></div>
+              </div>
+              <div class="stack-example">
+                <div class="head">Example · Akosua qualifies for both</div>
+                <div class="calc">
+                  Tuition · GHS 400.00<br>
+                  − sibling 50% &rarr; <b>GHS 200.00</b><br>
+                  − staff child 50% &rarr; <b>GHS 100.00</b><br>
+                  → Effective discount: <b>75% (GHS 300.00)</b>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tier grid -->
+          <div class="tier-grid">
+
+            <!-- Sibling -->
+            <div class="tier-card">
+              <div class="t-head">
+                <div class="left">
+                  <div class="t-icon">2nd</div>
+                  <div>
+                    <div class="t-name">Sibling discount</div>
+                    <div class="t-rule">Auto · second child onward</div>
+                  </div>
+                </div>
+                <div class="t-percent">50<span style="font-size:18px">%</span><div class="of" style="margin-top:-2px">off tuition</div></div>
+              </div>
+              <div class="t-desc">Applied automatically to the second and subsequent children when siblings are linked on student records. Most common discount in the school.</div>
+              <div class="t-meta">
+                <div class="cell">
+                  <div class="l">Applies to</div>
+                  <div class="v">Tuition only</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Duration</div>
+                  <div class="v">Per term · auto-renew</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Approval</div>
+                  <div class="v muted">Automatic</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Documentation</div>
+                  <div class="v muted">Not required</div>
+                </div>
+              </div>
+              <div class="t-foot">
+                <div class="t-applied">Applied to <b>23 students</b></div>
+                <div class="t-actions">
+                  <button class="mini-btn">Edit</button>
+                  <button class="mini-btn">Archive</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Staff children -->
+            <div class="tier-card">
+              <div class="t-head">
+                <div class="left">
+                  <div class="t-icon green">SC</div>
+                  <div>
+                    <div class="t-name">Staff children</div>
+                    <div class="t-rule">Manual · for staff dependants</div>
+                  </div>
+                </div>
+                <div class="t-percent green">100<span style="font-size:18px">%</span><div class="of" style="margin-top:-2px">all fees</div></div>
+              </div>
+              <div class="t-desc">Children of teachers and full-time school staff attend free. Applied manually after HR confirms staff status. Reviewed at the start of each academic year.</div>
+              <div class="t-meta">
+                <div class="cell">
+                  <div class="l">Applies to</div>
+                  <div class="v">All fees</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Duration</div>
+                  <div class="v">Per academic year</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Approval</div>
+                  <div class="v">Headmistress</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Documentation</div>
+                  <div class="v">Staff letter</div>
+                </div>
+              </div>
+              <div class="t-foot">
+                <div class="t-applied">Applied to <b>4 students</b></div>
+                <div class="t-actions">
+                  <button class="mini-btn">Edit</button>
+                  <button class="mini-btn">Archive</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bursary / hardship -->
+            <div class="tier-card">
+              <div class="t-head">
+                <div class="left">
+                  <div class="t-icon terra">B</div>
+                  <div>
+                    <div class="t-name">Bursary / hardship</div>
+                    <div class="t-rule">Case-by-case · variable</div>
+                  </div>
+                </div>
+                <div class="t-percent terra"><span style="font-size:18px;letter-spacing:0;font-style:italic;font-weight:500;font-family:'Fraunces',serif">var</span><div class="of" style="margin-top:-2px">case-specific</div></div>
+              </div>
+              <div class="t-desc">Used for hardship cases — orphans, single-parent low-income families, or families facing temporary financial difficulty. Each application sets its own percentage based on circumstances.</div>
+              <div class="t-meta">
+                <div class="cell">
+                  <div class="l">Applies to</div>
+                  <div class="v">All fees</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Duration</div>
+                  <div class="v">Per term · review</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Approval</div>
+                  <div class="v">Headmistress + Board</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Documentation</div>
+                  <div class="v">Case note required</div>
+                </div>
+              </div>
+              <div class="t-foot">
+                <div class="t-applied">Applied to <b>7 students</b></div>
+                <div class="t-actions">
+                  <button class="mini-btn">Edit</button>
+                  <button class="mini-btn">Archive</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scholarship -->
+            <div class="tier-card">
+              <div class="t-head">
+                <div class="left">
+                  <div class="t-icon navy">$</div>
+                  <div>
+                    <div class="t-name">Scholarship</div>
+                    <div class="t-rule">Manual · academic merit</div>
+                  </div>
+                </div>
+                <div class="t-percent">25<span style="font-size:18px">%</span><div class="of" style="margin-top:-2px">off tuition</div></div>
+              </div>
+              <div class="t-desc">Awarded to top 3 students per class at end of previous term. Reviewed each term based on academic standing. Renewed automatically if criteria still met.</div>
+              <div class="t-meta">
+                <div class="cell">
+                  <div class="l">Applies to</div>
+                  <div class="v">Tuition only</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Duration</div>
+                  <div class="v">Per term · review</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Approval</div>
+                  <div class="v">Headmistress</div>
+                </div>
+                <div class="cell">
+                  <div class="l">Documentation</div>
+                  <div class="v">Term report card</div>
+                </div>
+              </div>
+              <div class="t-foot">
+                <div class="t-applied">Applied to <b>9 students</b></div>
+                <div class="t-actions">
+                  <button class="mini-btn">Edit</button>
+                  <button class="mini-btn">Archive</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Early payment (archived) -->
+            <div class="tier-card archived">
+              <div class="t-head">
+                <div class="left">
+                  <div class="t-icon">EP</div>
+                  <div>
+                    <div class="t-name">Early payment discount</div>
+                    <div class="t-rule">Auto · payment before term starts</div>
+                  </div>
+                </div>
+                <div class="t-percent">5<span style="font-size:18px">%</span><div class="of" style="margin-top:-2px">off tuition</div></div>
+              </div>
+              <div class="t-desc">Was offered when families paid in full at least 14 days before the start of term. Discontinued after the 2025/26 academic year.</div>
+              <div class="t-foot" style="border-top:none;margin-top:0;padding-top:0">
+                <div class="t-applied">Was applied to <b>0 students</b> last term</div>
+                <div class="t-actions">
+                  <button class="mini-btn">Restore</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add new -->
+            <div class="tier-card add-new">
+              <div class="add-content">
+                <div class="add-icon">+</div>
+                <div class="add-t1">Add a discount tier</div>
+                <div class="add-t2">For any recurring discount your school offers</div>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Tiers as reusable templates.</b> Schools have 3-5 standard discount types; defining them once lets admin apply repeatedly without re-typing rules. The card layout makes the catalogue scannable.</li>
+        <li><b>Each tier carries its full rule set</b> — percentage, what it applies to, duration, approval needed, documentation required. The card answers every question the admin would have at the moment of applying it.</li>
+        <li><b>Variable percentage tier (Bursary).</b> "Var" in italic — admin sets the actual percentage at the moment of applying. Necessary because hardship cases differ by circumstance, but they share the same approval workflow and documentation requirements.</li>
+        <li><b>Color coding by discount character.</b> Sibling (gold, default), Staff children (green, free attendance), Bursary (terracotta, case-by-case sensitivity), Scholarship (navy, formal). Visual distinction reinforces the conceptual differences.</li>
+        <li><b>Stack rules block at the top</b> with a worked example. The 50%+50%=75% math is non-obvious; surfacing it before the tier list prevents misuse. The toggle lets schools opt out of stacking entirely.</li>
+        <li><b>"Applied to N students" footer</b> tells the admin which tiers are actively used. Useful for end-of-year review — the early-payment tier shown archived had 0 applications, justifying its retirement.</li>
+        <li><b>Archived tiers stay visible at reduced opacity.</b> Historical record matters — a parent might ask "did you offer the early-payment discount last year?" and the answer is in the catalogue.</li>
+        <li><b>"Add a discount tier" as a dashed card</b> matching the path-tile pattern from the empty states. Consistent affordance for "create new" across the product.</li>
+        <li><b>"View applied" page header button</b> goes to a list of every active discount application across all students — for end-of-term audit.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 APPLY DISCOUNT DRAWER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">Apply discount · drawer</div>
+    <div class="section-meta">Admin · from a student's billing detail</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / students / akosua-boateng / billing / apply-discount</div>
+      </div>
+      <div class="app-shell has-drawer">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item active"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <!-- Faded background -->
+          <div style="opacity:0.4">
+            <div class="main-head">
+              <div>
+                <div class="crumb">Students / Akosua Boateng / Billing</div>
+                <h2 class="display"><em>Akosua's</em> billing</h2>
+              </div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;height:300px"></div>
+          </div>
+
+          <!-- Drawer overlay -->
+          <aside class="drawer">
+            <div class="drawer-head">
+              <div>
+                <div class="label">Apply discount</div>
+                <h3>For <em>Akosua Boateng</em></h3>
+              </div>
+              <div class="close">×</div>
+            </div>
+
+            <div class="drawer-body">
+              <!-- Student context -->
+              <div class="student-context-card">
+                <div class="av">AB</div>
+                <div class="body">
+                  <div class="name">Akosua Boateng</div>
+                  <div class="meta">JHS 2A · CTK-2024-018 · 1 sibling enrolled</div>
+                </div>
+              </div>
+
+              <!-- Tier picker -->
+              <div class="drawer-section-label">Pick a discount tier</div>
+
+              <div class="tier-picker">
+                <div class="tier-pick-row">
+                  <div class="radio"></div>
+                  <div class="body">
+                    <div class="t1">Sibling discount</div>
+                    <div class="t2">Auto-applied · 1 sibling on file (Kofi, JHS 1B)</div>
+                  </div>
+                  <div class="pct">50%</div>
+                </div>
+                <div class="tier-pick-row selected">
+                  <div class="radio"></div>
+                  <div class="body">
+                    <div class="t1">Bursary / hardship</div>
+                    <div class="t2">Case-by-case · documentation required</div>
+                  </div>
+                  <div class="pct terra">var</div>
+                </div>
+                <div class="tier-pick-row">
+                  <div class="radio"></div>
+                  <div class="body">
+                    <div class="t1">Scholarship</div>
+                    <div class="t2">Top 3 in class · merit-based</div>
+                  </div>
+                  <div class="pct">25%</div>
+                </div>
+                <div class="tier-pick-row">
+                  <div class="radio"></div>
+                  <div class="body">
+                    <div class="t1">Staff children</div>
+                    <div class="t2">For dependants of staff</div>
+                  </div>
+                  <div class="pct green">100%</div>
+                </div>
+                <div class="tier-pick-row custom">
+                  <div class="radio"></div>
+                  <div class="body">
+                    <div class="t1">Custom one-off discount</div>
+                    <div class="t2">For arrangements that don't fit a tier</div>
+                  </div>
+                  <div class="pct">define below</div>
+                </div>
+              </div>
+
+              <!-- Bursary-specific fields (since bursary is selected) -->
+              <div class="drawer-section-label">Bursary details</div>
+
+              <div class="row-2">
+                <div class="field">
+                  <label>Discount amount <span class="req">*</span></label>
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <input class="input" value="40" style="text-align:right;font-family:'Fraunces',serif;font-size:16px;font-weight:600" />
+                    <span style="font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--gold)">%</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Applies to</label>
+                  <select class="input">
+                    <option>All fees</option>
+                    <option>Tuition only</option>
+                    <option>Tuition + Books</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Duration <span class="req">*</span></label>
+                <select class="input">
+                  <option>Per term · review next term</option>
+                  <option selected>This academic year (2025/26)</option>
+                  <option>Permanent until removed</option>
+                  <option>Term 1 only</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Case note <span class="hint">— required for bursary, internal only</span></label>
+                <textarea class="textarea" placeholder="Brief note on the circumstance. Visible to admin and accountant only.">Family bereavement Q1 2026 — father deceased. Mother now sole earner. Confirmed via guardian meeting 14 Apr; case discussed with school board on 18 Apr.</textarea>
+              </div>
+
+              <div class="field">
+                <label>Supporting document <span class="hint">— optional</span></label>
+                <div style="border:1.5px dashed var(--gold-soft);background:var(--gold-bg);border-radius:8px;padding:14px 16px;text-align:center;cursor:pointer">
+                  <div style="font-size:11px;color:var(--navy-2);font-weight:600">+ Upload death certificate or supporting letter</div>
+                  <div style="font-size:10px;color:var(--navy-3);margin-top:2px;font-style:italic">PDF or image · attached to audit log only</div>
+                </div>
+              </div>
+
+              <!-- Live preview -->
+              <div class="drawer-section-label">Effect on Term 1 invoice</div>
+
+              <div class="discount-preview">
+                <div class="head">After this discount is applied</div>
+                <div class="calc-row">
+                  <div class="l">Tuition</div>
+                  <div class="v">GHS 280.00</div>
+                </div>
+                <div class="calc-row">
+                  <div class="l">Books &amp; supplies</div>
+                  <div class="v">GHS 40.00</div>
+                </div>
+                <div class="calc-row">
+                  <div class="l">Sibling discount (already applied)</div>
+                  <div class="v discount">−GHS 140.00</div>
+                </div>
+                <div class="calc-row divider">
+                  <div class="l">Subtotal after sibling</div>
+                  <div class="v">GHS 180.00</div>
+                </div>
+                <div class="calc-row">
+                  <div class="l">Bursary 40% (this discount)</div>
+                  <div class="v discount">−GHS 72.00</div>
+                </div>
+                <div class="calc-row total">
+                  <div class="l">New net billed</div>
+                  <div class="v">GHS 108.00</div>
+                </div>
+              </div>
+
+              <div style="margin-top:14px;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--navy-3);line-height:1.5">
+                <b style="color:var(--navy);font-weight:600">Note:</b> This discount applies to <b style="color:var(--navy)">Term 1 · 2026 going forward</b>. Already-issued invoices are not affected. To adjust an existing invoice, void the original and reissue.
+              </div>
+            </div>
+
+            <div class="drawer-footer">
+              <button class="btn subtle">Cancel</button>
+              <button class="btn gold">Apply 40% bursary →</button>
+            </div>
+          </aside>
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Tier picker shows pre-qualified context.</b> "Sibling discount · auto-applied · 1 sibling on file (Kofi, JHS 1B)" tells the admin this discount already exists for Akosua because her sibling is in the system. They don't need to re-apply it; the picker shows reality.</li>
+        <li><b>Custom one-off is the last option.</b> Visually muted ("define below" instead of a percentage). It's the escape hatch, not the default — most discounts should use a tier.</li>
+        <li><b>Bursary tier reveals its own fields below the picker</b> — discount amount (because variable), applies-to, duration, case note (required), document upload. Different tiers reveal different fields. Sibling tier wouldn't show case-note input because it's automatic and rule-based.</li>
+        <li><b>Live preview shows the cascade with existing discounts.</b> "Sibling discount (already applied) −GHS 140.00" lets admin see the full picture before stacking. Surface the math at the moment of decision; admin doesn't need to do mental arithmetic.</li>
+        <li><b>"Subtotal after sibling" line</b> in the preview makes the stacking order explicit. The new discount is applied on top of the post-sibling number, not the original gross. This matches the stack-rules toggle from the tiers page.</li>
+        <li><b>Document upload is optional but available.</b> Attaches to the audit log entry, not visible on the receipt or invoice. Schools that want to keep records (death certificate for bereavement bursary) can; schools without upload capability still proceed.</li>
+        <li><b>Forward-only application is explicit.</b> The footer note tells admin this discount applies to <b>future invoices</b> only. Voiding existing invoices to reissue at the new rate is a separate, more deliberate action.</li>
+        <li><b>Apply button shows the percentage and tier name</b> — "Apply 40% bursary" — anchoring the action to the specific decision being made.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 STUDENT BILLING WITH DISCOUNTS ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">03</div>
+    <div class="section-title display">Student billing · cascade view</div>
+    <div class="section-meta">Admin · Akosua's billing detail with discounts</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / students / akosua-boateng / billing</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item active"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Students</a> / Akosua Boateng / Billing</div>
+              <h2 class="display"><em>Akosua's</em> billing</h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">+ Apply discount</button>
+              <button class="btn gold">+ Record payment</button>
+            </div>
+          </div>
+
+          <!-- Student header card -->
+          <div class="student-page-head">
+            <div class="av-big">AB</div>
+            <div class="name-block">
+              <div class="name">Akosua Boateng</div>
+              <div class="meta">
+                <span><b>JHS 2A</b></span>
+                <span class="dot">·</span>
+                <span>Student ID <b>CTK-2024-018</b></span>
+                <span class="dot">·</span>
+                <span>Guardian <b>Ama Boateng</b></span>
+                <span class="dot">·</span>
+                <span class="discount-pill">2 active discounts</span>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn">Profile</button>
+            </div>
+          </div>
+
+          <!-- Active discounts panel -->
+          <div class="active-discounts">
+            <div class="ad-head">
+              <div class="left">
+                <div class="label">Active discounts</div>
+                <h3>2 discounts apply to Akosua</h3>
+              </div>
+              <button class="btn" style="font-size:11px;padding:6px 12px">+ Apply another</button>
+            </div>
+            <div class="discount-row">
+              <div class="d-icon">2nd</div>
+              <div class="d-name">
+                Sibling discount
+                <div class="sub">Sibling: Kofi Boateng · JHS 1B</div>
+              </div>
+              <div class="d-pct">−50%</div>
+              <div class="d-since">
+                Since <b>Term 1 · 2026</b>
+                <div style="font-size:9px;letter-spacing:0.06em;color:var(--gold);font-weight:700;margin-top:2px;text-transform:uppercase">Auto · per term</div>
+              </div>
+              <div class="d-actions">
+                <button class="mini-btn">View</button>
+                <button class="mini-btn danger">Remove</button>
+              </div>
+            </div>
+            <div class="discount-row">
+              <div class="d-icon terra">B</div>
+              <div class="d-name">
+                Bursary
+                <div class="sub">Family bereavement Q1 2026 · case note on file</div>
+              </div>
+              <div class="d-pct terra">−40%</div>
+              <div class="d-since">
+                Since <b>30 Apr 2026</b>
+                <div style="font-size:9px;letter-spacing:0.06em;color:var(--gold);font-weight:700;margin-top:2px;text-transform:uppercase">Year · Florence Addo</div>
+              </div>
+              <div class="d-actions">
+                <button class="mini-btn">View</button>
+                <button class="mini-btn danger">Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cascade calculation card -->
+          <div class="cascade-card">
+            <div class="cc-head">
+              <div>
+                <div class="label">Term 1 · 2026 invoice</div>
+                <h3>Fee cascade</h3>
+              </div>
+              <div class="term-pill">INV-2026-0184</div>
+            </div>
+            <div class="cascade-body">
+              <div class="cascade-line">
+                <div class="l">Tuition</div>
+                <div class="v">GHS 280.00</div>
+              </div>
+              <div class="cascade-line">
+                <div class="l">Books &amp; supplies</div>
+                <div class="v">GHS 40.00</div>
+              </div>
+              <div class="cascade-line">
+                <div class="l">Transport <span style="font-style:italic;font-size:11px;color:var(--navy-3)">— not opted in</span></div>
+                <div class="v" style="color:var(--navy-3);font-weight:500">GHS 0.00</div>
+              </div>
+              <div class="cascade-line subtotal">
+                <div class="l">Subtotal</div>
+                <div class="v">GHS 320.00</div>
+              </div>
+              <div class="cascade-line sub">
+                <div class="l">
+                  <span class="arrow">→</span>
+                  Sibling discount (50% off tuition)
+                </div>
+                <div class="v discount">−GHS 140.00</div>
+              </div>
+              <div class="cascade-line subtotal">
+                <div class="l">After sibling</div>
+                <div class="v">GHS 180.00</div>
+              </div>
+              <div class="cascade-line sub">
+                <div class="l">
+                  <span class="arrow">→</span>
+                  Bursary (40% on remaining balance)
+                </div>
+                <div class="v discount">−GHS 72.00</div>
+              </div>
+              <div class="cascade-line net">
+                <div class="l">Net billed for Term 1</div>
+                <div class="v">GHS 108.00</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Term comparison strip -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 22px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div>
+                <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:3px">Across the year</div>
+                <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600;letter-spacing:-0.005em">Saving from discounts</div>
+              </div>
+              <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--green);letter-spacing:-0.02em">GHS 636.00</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;border-top:1px solid var(--border);padding-top:12px">
+              <div>
+                <div style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:2px">Term 1 · current</div>
+                <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px">GHS 320.00 → <span style="color:var(--green)">GHS 108.00</span></div>
+              </div>
+              <div>
+                <div style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:2px">Term 2 · projected</div>
+                <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px">GHS 320.00 → <span style="color:var(--green)">GHS 108.00</span></div>
+              </div>
+              <div>
+                <div style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--navy-3);font-weight:700;margin-bottom:2px">Term 3 · projected</div>
+                <div style="font-family:'Fraunces',serif;font-weight:600;font-size:13px">GHS 320.00 → <span style="color:var(--green)">GHS 108.00</span></div>
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Discount pill in the student header</b> tells admin at a glance that discounts apply. Without this, you'd have to scroll into the billing detail to know — easy to miss when reviewing many students.</li>
+        <li><b>"Active discounts" panel as its own section,</b> not buried in the invoice line items. The discounts are policy decisions about this student; they deserve their own surface where admin can see, manage, and remove without going through an invoice.</li>
+        <li><b>Each discount row carries its provenance.</b> Sibling discount shows "Auto · per term" in gold; bursary shows "Year · Florence Addo" — who applied it and on what cadence. Auditor reads the row and sees the full lineage.</li>
+        <li><b>Remove button is danger-styled</b> on each discount. Removing a discount is a deliberate act with audit consequences (next term's invoice will issue at the higher rate). Visual treatment matches the consequence.</li>
+        <li><b>Fee cascade card shows the math.</b> Each step labelled: subtotal → first discount → after first → second discount → net billed. Indented sub-lines with "→" arrows make the order explicit.</li>
+        <li><b>"After sibling" intermediate subtotal</b> shows the stacking base. Bursary 40% applies to GHS 180.00, not GHS 320.00 — this is non-obvious and the cascade makes it visible. Without this step the math reads as 50% + 40% = 90%, but the actual saving is 66.25% (GHS 212.00 of GHS 320.00).</li>
+        <li><b>Across-the-year strip at the bottom</b> projects the savings forward. Helps headmistress understand the financial impact of the policy choices she's made — GHS 636 across three terms is real money to track.</li>
+        <li><b>"Term 2 / Term 3 projected"</b> assumes the discounts auto-renew at current rates. If a discount is set to "this academic year only" the projection shows; if "this term only" the future terms revert to gross. The system handles the projection correctly per discount duration.</li>
+        <li><b>Two CTAs in the header</b> ("+ Apply discount" and "+ Record payment"). The most common student-billing actions, both discoverable from the top.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools Oversight — District director dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Omnischools Oversight — Regional dashboard</title>
+<style>
+:root {
+  --navy:#1A2B47; --navy-2:#2D3F5C; --navy-3:#5C6675;
+  --gold:#C8975B; --gold-soft:#E8D4B8; --gold-bg:#F5EBDC;
+  --bg:#FAF7F2; --surface:#FFFFFF;
+  --green:#2F6B47; --green-bg:#E5EFE8;
+  --terra:#B84A39; --terra-bg:#F5E1DC;
+  --warn:#C58A2E; --warn-bg:#F5E9D0;
+  --border:#E5DFD3; --border-2:#D4CCBA;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { font-family:'Manrope', system-ui, sans-serif; background:var(--bg); color:var(--navy); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.display { font-family:'Fraunces', Georgia, serif; letter-spacing:-0.01em; }
+.mono { font-family:'JetBrains Mono', monospace; }
+.page { max-width:1480px; margin:0 auto; padding:56px 32px 96px; }
+.page-header { margin-bottom:56px; }
+.eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:12px; }
+.page-header h1 { font-family:'Fraunces', Georgia, serif; font-weight:500; font-size:56px; line-height:1.05; letter-spacing:-0.02em; margin-bottom:16px; }
+.page-header h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-header p { font-size:16px; color:var(--navy-3); max-width:800px; line-height:1.6; }
+.gold-rule { width:64px; height:2px; background:var(--gold); margin:24px 0; }
+.mvp-tag { display:inline-block; background:var(--gold); color:var(--navy); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:14px; }
+.section { margin-bottom:80px; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.section-num { font-family:'Fraunces', serif; font-style:italic; font-size:32px; font-weight:400; color:var(--gold); }
+.section-title { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.01em; }
+.section-meta { margin-left:auto; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.layout { display:grid; grid-template-columns:1fr 280px; gap:48px; align-items:start; }
+.notes h4 { font-family:'Fraunces', serif; font-size:18px; font-weight:500; margin-bottom:14px; }
+.notes ul { list-style:none; margin:0; padding:0; }
+.notes li { font-size:13px; color:var(--navy-2); padding:10px 0; border-top:1px solid var(--border); display:flex; gap:10px; }
+.notes li:last-child { border-bottom:1px solid var(--border); }
+.notes li::before { content:"→"; color:var(--gold); font-weight:600; flex-shrink:0; }
+.notes li b { color:var(--navy); }
+
+.desktop { width:100%; background:var(--surface); border-radius:12px; border:1px solid var(--border); overflow:hidden; box-shadow:0 24px 60px -20px rgba(26,43,71,0.25); }
+.browser-bar { background:var(--navy); padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.browser-bar .dots { display:flex; gap:6px; }
+.browser-bar .dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+.browser-bar .url { background:rgba(255,255,255,0.08); color:var(--gold-soft); padding:5px 12px; border-radius:6px; font-size:11px; font-family:'Fraunces', monospace; margin-left:12px; letter-spacing:0.04em; }
+
+/* Oversight uses a deeper navy app chrome to distinguish it from the operational app */
+.app-shell { display:grid; grid-template-columns:230px 1fr; background:var(--bg); }
+.sidebar { background:#13203A; color:var(--bg); padding:24px 0; display:flex; flex-direction:column; min-height:1240px; }
+.sidebar.tall { min-height:1620px; }
+.sidebar.taller { min-height:1880px; }
+.sidebar .gov-mark { padding:0 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:8px; }
+.sidebar .gov-mark .crest { display:flex; gap:11px; align-items:center; }
+.sidebar .gov-mark .crest-badge { width:38px; height:38px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:13px; line-height:1; text-align:center; }
+.sidebar .gov-mark .crest-text .l1 { font-family:'Fraunces', serif; font-size:14px; font-weight:600; }
+.sidebar .gov-mark .crest-text .l2 { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:2px; }
+.sidebar .scope-chip { margin:14px 20px 8px; padding:10px 12px; background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:8px; }
+.sidebar .scope-chip .sc-label { font-size:8.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:3px; }
+.sidebar .scope-chip .sc-name { font-family:'Fraunces', serif; font-size:14px; font-weight:600; color:var(--bg); }
+.sidebar .scope-chip .sc-meta { font-size:10px; color:var(--gold-soft); margin-top:1px; }
+.nav-group { padding:16px 24px 6px; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(200,151,91,0.6); font-weight:700; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 24px; font-size:13px; color:rgba(250,247,242,0.7); font-weight:500; border-left:2px solid transparent; }
+.nav-item.active { background:rgba(200,151,91,0.1); color:var(--bg); border-left-color:var(--gold); }
+.nav-item .ic { width:16px; height:16px; background:currentColor; opacity:0.8; border-radius:3px; }
+.sidebar .footer { margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px; }
+.sidebar .footer .av { width:34px; height:34px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; color:var(--navy); font-family:'Fraunces', serif; font-weight:600; font-size:12px; flex-shrink:0; }
+.sidebar .footer .meta-name { font-weight:600; font-size:12px; }
+.sidebar .footer .meta-role { font-size:9.5px; color:var(--gold-soft); margin-top:1px; }
+.powered-by { padding:10px 24px 16px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(200,151,91,0.5); font-weight:700; }
+.powered-by em { color:var(--gold); font-style:normal; }
+
+.main { background:var(--bg); }
+.page-head { background:var(--surface); border-bottom:1px solid var(--border); padding:24px 36px 22px; }
+.page-head .crumb { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:600; margin-bottom:8px; }
+.page-head .crumb a { color:var(--gold); text-decoration:none; }
+.page-head .top-row { display:flex; justify-content:space-between; align-items:end; }
+.page-head h1 { font-family:'Fraunces', serif; font-size:28px; font-weight:500; letter-spacing:-0.018em; line-height:1.1; }
+.page-head h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+.page-head .lede { font-size:13px; color:var(--navy-3); margin-top:6px; max-width:820px; }
+.page-head .lede b { color:var(--navy-2); font-weight:600; }
+.actions { display:flex; gap:8px; }
+.btn { padding:9px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--border-2); background:var(--surface); color:var(--navy); font-family:inherit; cursor:pointer; }
+.btn.primary { background:var(--navy); color:var(--bg); border-color:var(--navy); font-weight:700; }
+.btn.gold { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:700; }
+.btn.ghost { background:transparent; border-color:var(--border-2); color:var(--navy-3); }
+.btn.lg { padding:11px 18px; font-size:13px; }
+.body { padding:28px 36px 60px; }
+
+/* Data-period banner */
+.period-banner { display:flex; align-items:center; gap:14px; padding:12px 18px; background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:10px; margin-bottom:24px; }
+.period-banner .pb-icon { width:34px; height:34px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:15px; flex-shrink:0; }
+.period-banner .pb-text { font-size:12px; color:var(--navy-2); line-height:1.5; }
+.period-banner .pb-text b { color:var(--navy); font-weight:700; }
+.period-banner .pb-aside { margin-left:auto; font-size:10px; letter-spacing:0.06em; color:var(--navy-3); font-weight:600; text-align:right; }
+
+/* KPI strip */
+.kpi-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:14px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+.kpi-card.lead { background:linear-gradient(135deg, var(--gold-bg) 0%, var(--surface) 100%); border-color:var(--gold-soft); }
+.kpi-card.lead::before { content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.kpi-card .k-lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:8px; position:relative; }
+.kpi-card .k-val { font-family:'Fraunces', serif; font-size:33px; font-weight:500; letter-spacing:-0.02em; line-height:1; position:relative; }
+.kpi-card .k-val em { font-style:italic; color:var(--gold); font-weight:400; }
+.kpi-card .k-val .unit { font-size:13px; color:var(--navy-3); font-weight:500; font-family:'Manrope', sans-serif; margin-left:4px; font-style:normal; }
+.kpi-card .k-sub { font-size:11px; color:var(--navy-3); margin-top:8px; font-weight:500; line-height:1.45; position:relative; }
+.kpi-card .k-sub b { color:var(--navy-2); font-weight:700; }
+.kpi-card .k-delta { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; margin-top:8px; position:relative; }
+.kpi-card .k-delta.up { background:var(--green-bg); color:var(--green); }
+.kpi-card .k-delta.down { background:var(--terra-bg); color:var(--terra); }
+.kpi-card .k-delta.flat { background:var(--bg); color:var(--navy-3); }
+
+/* Panel */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.panel-head { padding:16px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; justify-content:space-between; }
+.panel-head .ph-title { font-family:'Fraunces', serif; font-size:17px; font-weight:600; }
+.panel-head .ph-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.panel-head .ph-meta { font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--navy-3); font-weight:600; }
+.panel-head .ph-link { font-size:11px; font-weight:600; color:var(--gold); text-decoration:none; }
+.panel-body { padding:20px 22px; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* Bar rows for enrolment-by-sex etc */
+.bar-row { margin-bottom:14px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-row .br-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.bar-row .br-label { font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-label .br-sub { color:var(--navy-3); font-weight:500; font-size:10.5px; margin-left:6px; }
+.bar-row .br-value { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.bar-row .br-track { height:9px; background:var(--bg); border-radius:100px; overflow:hidden; display:flex; }
+.bar-row .br-fill { height:100%; }
+.bar-row .br-fill.navy { background:var(--navy); }
+.bar-row .br-fill.gold { background:var(--gold); }
+.bar-row .br-fill.green { background:var(--green); }
+.bar-row .br-fill.terra { background:var(--terra); }
+.bar-row .br-fill.warn { background:var(--warn); }
+.split-legend { display:flex; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.split-legend .sl-item { display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--navy-2); font-weight:600; }
+.split-legend .sl-dot { width:9px; height:9px; border-radius:2px; }
+.bar-row.parent .br-label { display:flex; align-items:center; gap:7px; }
+.bar-row.parent .drill-chip { font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; color:var(--gold); background:var(--gold-bg); border:1px solid var(--gold-soft); border-radius:100px; padding:2px 7px; cursor:pointer; }
+.bar-row.child { margin-left:18px; padding-left:12px; border-left:2px solid var(--border); }
+.bar-row.child .br-label { font-weight:500; color:var(--navy-2); font-size:11.5px; }
+.bar-row.child .br-value { font-size:11px; color:var(--navy-2); }
+.bar-row.child .br-track { height:7px; }
+.subtotal-note { font-size:10px; color:var(--navy-3); font-weight:600; margin:3px 0 10px 30px; font-style:italic; }
+.fee-row { margin-bottom:14px; }
+.fee-row:last-child { margin-bottom:0; }
+.fee-row .fr-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.fee-row .fr-level { font-size:12px; font-weight:700; color:var(--navy); }
+.fee-row .fr-total { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); }
+.fee-row .fr-bar { height:16px; border-radius:4px; overflow:hidden; display:flex; }
+.fee-row .fr-seg { height:100%; }
+.fee-legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.fee-legend .fl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.fee-legend .fl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* Mini stat list */
+.stat-list { display:flex; flex-direction:column; }
+.stat-list .st-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
+.stat-list .st-row:last-child { border-bottom:none; }
+.stat-list .st-label { font-size:12px; color:var(--navy-2); font-weight:500; }
+.stat-list .st-label b { color:var(--navy); font-weight:700; }
+.stat-list .st-val { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; color:var(--navy); }
+.stat-list .st-val .st-unit { font-size:10px; color:var(--navy-3); font-weight:500; }
+.stat-list .st-val.flag { color:var(--terra); }
+.stat-list .st-val.good { color:var(--green); }
+
+/* Performance band chart */
+.band-chart { display:flex; flex-direction:column; gap:10px; }
+.band-row { display:grid; grid-template-columns:78px 1fr 48px; gap:10px; align-items:center; }
+.band-row .bd-label { font-size:11px; font-weight:600; color:var(--navy-2); }
+.band-row .bd-track { height:20px; background:var(--bg); border-radius:5px; overflow:hidden; display:flex; }
+.band-row .bd-seg { height:100%; }
+.band-row .bd-pct { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:var(--navy); text-align:right; }
+.band-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.band-legend .bl-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--navy-2); font-weight:600; }
+.band-legend .bl-dot { width:9px; height:9px; border-radius:2px; }
+
+/* School list table */
+.school-table { width:100%; border-collapse:collapse; }
+.school-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.school-table th.c { text-align:center; }
+.school-table th.r { text-align:right; }
+.school-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--navy-2); }
+.school-table tr:last-child td { border-bottom:none; }
+.school-table tr.drill { cursor:pointer; }
+.school-table tr.drill:hover td { background:var(--gold-bg); }
+.school-table td .sc-name { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.school-table td .sc-name .sc-badge { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:10px; flex-shrink:0; }
+.school-table td .sc-name .sc-badge.anchor { background:var(--gold); color:var(--navy); }
+.school-table td .sc-meta { font-size:9.5px; color:var(--navy-3); margin-top:1px; font-weight:500; }
+.school-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.school-table td .num.r { text-align:right; }
+.school-table td .ratio { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; }
+.school-table td .ratio.good { color:var(--green); }
+.school-table td .ratio.warn { color:var(--warn); }
+.school-table td .ratio.flag { color:var(--terra); }
+.school-table td .perf-pill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:100px; }
+.school-table td .perf-pill.good { background:var(--green-bg); color:var(--green); }
+.school-table td .perf-pill.mid { background:var(--warn-bg); color:var(--warn); }
+.school-table td .perf-pill.low { background:var(--terra-bg); color:var(--terra); }
+.school-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.table-toolbar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.table-toolbar .tt-label { font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--navy-3); font-weight:700; }
+.chip { background:var(--surface); border:1px solid var(--border-2); border-radius:100px; padding:5px 11px; font-size:11px; font-weight:600; color:var(--navy-2); cursor:pointer; }
+.chip.active { background:var(--navy); color:var(--bg); border-color:var(--navy); }
+.chip.compare { background:var(--gold-bg); border-color:var(--gold); color:var(--navy); margin-left:auto; }
+.chip.compare::before { content:"⊕ "; color:var(--gold); }
+
+/* Anomaly callouts */
+.flag-list { display:flex; flex-direction:column; gap:10px; }
+.flag-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.flag-item.warn { border-color:var(--warn); background:linear-gradient(135deg, var(--warn-bg) 0%, var(--surface) 60%); }
+.flag-item.terra { border-color:var(--terra); background:linear-gradient(135deg, var(--terra-bg) 0%, var(--surface) 60%); }
+.flag-item .fi-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:600; font-size:14px; flex-shrink:0; }
+.flag-item.warn .fi-icon { background:var(--warn); color:var(--bg); }
+.flag-item.terra .fi-icon { background:var(--terra); color:var(--bg); }
+.flag-item .fi-body .fi-title { font-size:12px; font-weight:700; color:var(--navy); }
+.flag-item .fi-body .fi-detail { font-size:10.5px; color:var(--navy-2); margin-top:2px; line-height:1.45; }
+.flag-item .fi-body .fi-detail b { color:var(--navy); font-weight:700; }
+.flag-item .fi-action { background:var(--surface); border:1px solid var(--border-2); padding:6px 11px; border-radius:6px; font-size:10px; font-weight:700; color:var(--navy); cursor:pointer; }
+
+/* Comparison teaser */
+.compare-strip { background:linear-gradient(135deg, #13203A 0%, var(--navy-2) 100%); color:var(--bg); border-radius:14px; padding:22px 26px; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; position:relative; overflow:hidden; }
+.compare-strip::before { content:""; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(200,151,91,0.08); }
+.compare-strip .cs-body { position:relative; }
+.compare-strip .cs-eyebrow { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:6px; }
+.compare-strip .cs-title { font-family:'Fraunces', serif; font-size:21px; font-weight:500; line-height:1.2; margin-bottom:6px; }
+.compare-strip .cs-title em { font-style:italic; color:var(--gold); font-weight:400; }
+.compare-strip .cs-text { font-size:12px; color:var(--gold-soft); line-height:1.5; max-width:560px; }
+.compare-strip .cs-text b { color:var(--bg); font-weight:600; }
+.compare-strip .cs-action { position:relative; }
+
+/* Data provenance footer */
+.provenance { display:flex; gap:18px; padding:14px 18px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-top:18px; flex-wrap:wrap; }
+.provenance .pv-item { font-size:10.5px; color:var(--navy-3); font-weight:500; }
+.provenance .pv-item b { color:var(--navy-2); font-weight:700; }
+
+@media (max-width:1280px) {
+  .layout { grid-template-columns:1fr; }
+  .kpi-strip { grid-template-columns:repeat(2,1fr); }
+  .dash-grid { grid-template-columns:1fr; }
+  .compare-strip { grid-template-columns:1fr; }
+}
+
+/* ===== Regional dashboard specific ===== */
+.tier-crumb { display:inline-flex; align-items:center; gap:6px; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; color:var(--gold); background:rgba(200,151,91,0.1); border:1px solid rgba(200,151,91,0.25); border-radius:100px; padding:3px 10px; }
+.coverage-strip { display:flex; gap:0; margin-top:8px; border-radius:6px; overflow:hidden; height:9px; }
+.coverage-strip .cov-on { background:var(--gold); }
+.coverage-strip .cov-off { background:var(--border-2); }
+.district-table { width:100%; border-collapse:collapse; }
+.district-table th { background:var(--bg); padding:11px 12px; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--navy-3); font-weight:700; text-align:left; border-bottom:1px solid var(--border-2); }
+.district-table th.c { text-align:center; }
+.district-table td { padding:13px 12px; font-size:12px; border-bottom:1px solid var(--border); color:var(--navy-2); vertical-align:middle; }
+.district-table tr:last-child td { border-bottom:none; }
+.district-table tr.drill { cursor:pointer; }
+.district-table tr.drill:hover td { background:var(--gold-bg); }
+.district-table tr.home td { background:rgba(200,151,91,0.06); }
+.district-table td .dname { font-family:'Fraunces', serif; font-size:13px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.district-table td .dname .db { width:26px; height:26px; border-radius:6px; background:var(--navy); color:var(--bg); display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:600; font-size:9px; flex-shrink:0; }
+.district-table td .dname .db.home { background:var(--gold); color:var(--navy); }
+.district-table td .num { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--navy); text-align:center; }
+.district-table td .cov-mini { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; }
+.district-table td .cov-mini.good { color:var(--green); }
+.district-table td .cov-mini.warn { color:var(--warn); }
+.district-table td .cov-mini.low { color:var(--terra); }
+.district-table td .qpill { display:inline-block; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; padding:3px 9px; border-radius:100px; }
+.district-table td .qpill.green { background:var(--green-bg); color:var(--green); }
+.district-table td .qpill.warn { background:var(--warn-bg); color:var(--warn); }
+.district-table td .qpill.terra { background:var(--terra-bg); color:var(--terra); }
+.district-table td .drill-arrow { color:var(--gold); font-weight:700; font-size:13px; text-align:center; }
+.district-table tr.region-row td { background:var(--gold-bg); font-weight:700; }
+.rank-strip { display:flex; gap:10px; }
+.rank-card { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:14px 16px; }
+.rank-card.top { border-left:3px solid var(--green); }
+.rank-card.bottom { border-left:3px solid var(--terra); }
+.rank-card .rc-label { font-size:9px; letter-spacing:0.11em; text-transform:uppercase; color:var(--navy-3); font-weight:700; margin-bottom:6px; }
+.rank-card .rc-name { font-family:'Fraunces', serif; font-size:15px; font-weight:600; color:var(--navy); }
+.rank-card .rc-val { font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; margin-top:3px; }
+.rank-card .rc-val.green { color:var(--green); }
+.rank-card .rc-val.terra { color:var(--terra); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="page-header">
+<div class="mvp-tag">Omnischools Oversight · Batch 2 · surface 4 of 5</div>
+<div class="eyebrow">Omnischools Oversight · the regional tier</div>
+<h1>One tier up · <em>the region.</em></h1>
+<div class="gold-rule"></div>
+<p>The regional dashboard is the district dashboard's pattern lifted one level: a regional director sees their districts the way a district director sees schools. Same five themes, same anomaly logic, same drill-down — but the unit is the district, and the regional director can open any district's dashboard and follow it down to a single school. The demo is the Western Region, fourteen districts, with Wassa Amenfi West appearing as one row that drills into every surface already built. The regional view also carries a question the district view cannot: how the districts compare to one another, and which are pulling the region.</p>
+</div>
+
+<!-- ============================================ SECTION 1 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">01</div>
+<div class="section-title display">The region at a glance · fourteen districts rolled up</div>
+<div class="section-meta">Western Region · 2025/26</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / region / western</div></div>
+
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Western Region</div>
+<div class="sc-meta">Regional directorate · 14 districts</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item active"><div class="ic"></div>Regional dashboard</div>
+<div class="nav-item"><div class="ic"></div>Districts</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">AO</div><div><div class="meta-name">A. Owusu</div><div class="meta-role">Regional Director · Western</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Western Region · Regional dashboard</div>
+<div class="top-row">
+<div>
+<h1>Western Region · <em>regional dashboard.</em></h1>
+<div class="lede">Rolled up from <b>14 districts</b> · <b>431 of 508 schools</b> reporting into Omnischools · <b>198,400 pupils</b>. Figures are as of the most recent nightly sync.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">2025/26 ▾</button>
+<button class="btn">Export view</button>
+<button class="btn primary">Open comparison →</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="period-banner">
+<div class="pb-icon">i</div>
+<div class="pb-text">Data reflects the <b>2025/26 academic year, Term 2</b>. Enrolment, attendance and fee figures synced from schools' operational records <b>today at 02:00 GMT</b>. Performance figures are the <b>2025 BECE</b> and <b>2025 WASSCE</b> results from the official <b>WAEC</b> extract. Every regional figure is the sum or mean of its 14 districts.</div>
+<div class="pb-aside">Next sync<br>tomorrow 02:00 GMT</div>
+</div>
+
+<div class="kpi-strip">
+<div class="kpi-card lead">
+<div class="k-lbl">Total enrolment</div>
+<div class="k-val"><em>198,400</em><span class="unit">pupils</span></div>
+<div class="k-sub">Across 431 reporting schools</div>
+<div class="k-delta up">▲ 2.8% vs 2024/25</div>
+</div>
+<div class="kpi-card">
+<div class="k-lbl">School coverage</div>
+<div class="k-val">84.8<span class="unit">%</span></div>
+<div class="k-sub"><b>431 of 508</b> in the EMIS register</div>
+<div class="k-delta up">▲ 41 schools onboarded this year</div>
+</div>
+<div class="kpi-card">
+<div class="k-lbl">WASSCE qualification</div>
+<div class="k-val">66<span class="unit">%</span></div>
+<div class="k-sub">Region · 2025 · credit or above</div>
+<div class="k-delta up">▲ 2 pts vs 2024</div>
+</div>
+<div class="kpi-card">
+<div class="k-lbl">Pupil-teacher ratio</div>
+<div class="k-val">25.6<span class="unit">: 1</span></div>
+<div class="k-sub">Region average · GES target 25:1</div>
+<div class="k-delta down">▼ slightly above target</div>
+</div>
+</div>
+
+<div class="provenance">
+<div class="pv-item"><b>Source</b> · Omnischools analytics DB · 14 district rollups</div>
+<div class="pv-item"><b>Coverage</b> · 431 of 508 schools · 77 not yet on Omnischools</div>
+<div class="pv-item"><b>Mode</b> · aggregate · no named records on this surface</div>
+<div class="pv-item"><b>Scope</b> · Western Region · sibling regions not visible here</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The district dashboard, lifted one tier</h4>
+<ul>
+<li><b>The pattern is deliberately identical.</b> Same KPI strip, same period banner, same provenance row as the district dashboard — a regional director who has seen a district dashboard reads this with no relearning. Only the unit changes: pupils become 198,400 not 14,820, schools become 508 not 40, and the rollup is of 14 districts.</li>
+<li><b>The scope-chip names the regional jurisdiction.</b> "Western Region · 14 districts" where the district view said "Wassa Amenfi West." The regional director A. Owusu sits above the district director D. Mensah-Bonsu in the same provisioning hierarchy — Decision 5's nesting made concrete.</li>
+<li><b>Coverage is a headline KPI at this tier.</b> 431 of 508 schools — and the card shows the year's progress (41 onboarded). At regional scale the coverage gap is large enough to be a managed programme, so it earns a KPI rather than a footnote, and the figure is honest about what the region cannot yet see.</li>
+<li><b>Every regional figure is explicitly a rollup.</b> The period banner states it: each number is the sum or mean of 14 districts. A regional director must know their 66% WASSCE figure is a district-weighted mean, not a separate measurement — the surface says so rather than implying a regional-level source.</li>
+<li><b>The ceiling holds upward too.</b> "Sibling regions not visible here" — a regional director sees their region and down, never sideways into another region. The same jurisdiction discipline as the district tier, one level up.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 2 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">02</div>
+<div class="section-title display">The districts · where each one sits, and drill-down</div>
+<div class="section-meta">14 districts · sortable</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / region/western/districts</div></div>
+
+<div class="app-shell">
+<div class="sidebar taller">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Western Region</div>
+<div class="sc-meta">Regional directorate · 14 districts</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item"><div class="ic"></div>Regional dashboard</div>
+<div class="nav-item active"><div class="ic"></div>Districts</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">AO</div><div><div class="meta-name">A. Owusu</div><div class="meta-role">Regional Director · Western</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Western Region · Districts</div>
+<div class="top-row">
+<div>
+<h1>The fourteen <em>districts.</em></h1>
+<div class="lede">Every district in the region. Tap a row to open its district dashboard — the same surface its own director uses.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">All districts ▾</button>
+<button class="btn">Export list</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="rank-strip" style="margin-bottom:18px;">
+<div class="rank-card top">
+<div class="rc-label">Strongest · WASSCE qualification</div>
+<div class="rc-name">Sekondi-Takoradi Metro</div>
+<div class="rc-val green">74% qualification · 96% coverage</div>
+</div>
+<div class="rank-card bottom">
+<div class="rc-label">Needs attention · WASSCE qualification</div>
+<div class="rc-name">Wassa Amenfi Central</div>
+<div class="rc-val terra">59% qualification · 61% coverage</div>
+</div>
+</div>
+
+<div class="panel" style="margin-bottom:0;">
+<div class="table-toolbar">
+<span class="tt-label">Sort</span>
+<button class="chip active">WASSCE qualification</button>
+<button class="chip">Enrolment</button>
+<button class="chip">Coverage</button>
+<button class="chip">PTR</button>
+<button class="chip compare">Compare selected · 0</button>
+</div>
+<table class="district-table">
+<thead><tr>
+<th>District</th>
+<th class="c">Schools (on / total)</th>
+<th class="c">Coverage</th>
+<th class="c">Enrolment</th>
+<th class="c">WASSCE qual.</th>
+<th class="c">PTR</th>
+<th class="c">Detail</th>
+</tr></thead>
+<tbody>
+<tr class="drill">
+<td><div class="dname"><div class="db">ST</div>Sekondi-Takoradi Metro</div></td>
+<td><div class="num">88 / 92</div></td>
+<td><div class="num"><span class="cov-mini good">95.7%</span></div></td>
+<td><div class="num">31,240</div></td>
+<td><div class="num"><span class="qpill green">74%</span></div></td>
+<td><div class="num">23.1:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="dname"><div class="db">EN</div>Effia-Kwesimintsim</div></td>
+<td><div class="num">54 / 60</div></td>
+<td><div class="num"><span class="cov-mini good">90.0%</span></div></td>
+<td><div class="num">19,870</div></td>
+<td><div class="num"><span class="qpill green">70%</span></div></td>
+<td><div class="num">24.4:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="dname"><div class="db">WE</div>Wassa Amenfi East</div></td>
+<td><div class="num">38 / 41</div></td>
+<td><div class="num"><span class="cov-mini good">92.7%</span></div></td>
+<td><div class="num">16,110</div></td>
+<td><div class="num"><span class="qpill green">68%</span></div></td>
+<td><div class="num">24.9:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="drill home">
+<td><div class="dname"><div class="db home">WW</div>Wassa Amenfi West</div></td>
+<td><div class="num">34 / 40</div></td>
+<td><div class="num"><span class="cov-mini warn">85.0%</span></div></td>
+<td><div class="num">14,820</div></td>
+<td><div class="num"><span class="qpill warn">63%</span></div></td>
+<td><div class="num">24.2:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="dname"><div class="db">PH</div>Prestea-Huni Valley</div></td>
+<td><div class="num">31 / 44</div></td>
+<td><div class="num"><span class="cov-mini low">70.5%</span></div></td>
+<td><div class="num">13,460</div></td>
+<td><div class="num"><span class="qpill terra">59%</span></div></td>
+<td><div class="num">27.3:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="drill">
+<td><div class="dname"><div class="db">WC</div>Wassa Amenfi Central</div></td>
+<td><div class="num">22 / 36</div></td>
+<td><div class="num"><span class="cov-mini low">61.1%</span></div></td>
+<td><div class="num">9,940</div></td>
+<td><div class="num"><span class="qpill terra">59%</span></div></td>
+<td><div class="num">28.1:1</div></td>
+<td><div class="drill-arrow">→</div></td>
+</tr>
+<tr class="region-row">
+<td>Western Region · all 14</td>
+<td><div class="num">431 / 508</div></td>
+<td><div class="num">84.8%</div></td>
+<td><div class="num">198,400</div></td>
+<td><div class="num"><span class="qpill warn">66%</span></div></td>
+<td><div class="num">25.6:1</div></td>
+<td><div class="num"></div></td>
+</tr>
+</tbody>
+</table>
+<div style="text-align:center; padding:14px; font-size:11px; color:var(--navy-3); font-style:italic; border-top:1px solid var(--border);">Showing 6 of 14 districts · sorted by WASSCE qualification · <b>your home district Wassa Amenfi West is highlighted</b></div>
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Tap a row</b> · opens that district's dashboard</div>
+<div class="pv-item"><b>Select + Compare</b> · opens chosen districts in the comparison workspace</div>
+<div class="pv-item"><b>Coverage colour</b> · green ≥85% · amber 70–85% · red below 70%</div>
+<div class="pv-item"><b>Read rate with coverage</b> · a low rate at thin coverage is unsettled</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The districts table is the regional junction box</h4>
+<ul>
+<li><b>Every row drills into a full district dashboard.</b> A regional director tapping Wassa Amenfi West lands on exactly the surface its own director D. Mensah-Bonsu uses — and from there into the school list, a school detail view, the enrolment analysis. The whole district product is reachable from one regional row. The hierarchy is navigable top to bottom.</li>
+<li><b>The home-district highlight orients the director.</b> Even a regional director thinks in terms of "my patch" — Wassa Amenfi West is gold-tinted as the reference row. It is also a deliberate demo thread: the district every other Oversight surface has used, now seen as one line in its region.</li>
+<li><b>Coverage sits beside every rate, and the colour rule is stated.</b> Prestea-Huni Valley and Wassa Amenfi Central both show 59% WASSCE — but Central is at 61% coverage, so its figure is the least settled in the region. The table refuses to let a regional director rank Central last on a number that thin coverage makes ambiguous; the provenance row spells out the rule.</li>
+<li><b>The rank cards name the ends honestly.</b> Strongest district carries both its rate and its coverage; the "needs attention" card does too. A regional director gets the headline — Sekondi-Takoradi leading, Central trailing — without losing the caveat that makes the trailing case provisional.</li>
+<li><b>Compare is the workspace entry, one tier up.</b> Select districts, hit Compare, land in the comparison workspace at its district-vs-district tier — the same surface section 3 of the workspace demonstrated. The regional director's natural path is dashboard → spot an outlier → compare or drill.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+
+<!-- ============================================ SECTION 3 ============================================ -->
+<div class="section">
+<div class="section-head">
+<div class="section-num display">03</div>
+<div class="section-title display">What the region needs to act on</div>
+<div class="section-meta">Anomalies &amp; cross-district patterns</div>
+</div>
+
+<div class="layout">
+
+<div class="desktop">
+<div class="browser-bar"><div class="dots"><span></span><span></span><span></span></div><div class="url">oversight.omnischools.gh / region/western</div></div>
+
+<div class="app-shell">
+<div class="sidebar tall">
+<div class="gov-mark">
+<div class="crest"><div class="crest-badge">GES</div><div class="crest-text"><div class="l1">Omnischools Oversight</div><div class="l2">Ghana Education Service</div></div></div>
+</div>
+<div class="scope-chip">
+<div class="sc-label">Your jurisdiction</div>
+<div class="sc-name">Western Region</div>
+<div class="sc-meta">Regional directorate · 14 districts</div>
+</div>
+<div class="nav-group">Overview</div>
+<div class="nav-item active"><div class="ic"></div>Regional dashboard</div>
+<div class="nav-item"><div class="ic"></div>Districts</div>
+<div class="nav-group">Analysis</div>
+<div class="nav-item"><div class="ic"></div>Academic performance</div>
+<div class="nav-item"><div class="ic"></div>Enrolment vs population</div>
+<div class="nav-item"><div class="ic"></div>Comparison workspace</div>
+<div class="nav-item"><div class="ic"></div>Anomaly queue</div>
+<div class="nav-group">Records</div>
+<div class="nav-item"><div class="ic"></div>Compliance records</div>
+<div class="nav-item"><div class="ic"></div>Exports</div>
+<div class="nav-group">Account</div>
+<div class="nav-item"><div class="ic"></div>Settings</div>
+<div class="footer"><div class="av">AO</div><div><div class="meta-name">A. Owusu</div><div class="meta-role">Regional Director · Western</div></div></div>
+<div class="powered-by">Powered by <em>Omnischools</em></div>
+</div>
+
+<div class="main">
+<div class="page-head">
+<div class="crumb">Oversight · Western Region · Regional dashboard</div>
+<div class="top-row">
+<div>
+<h1>What needs <em>attention.</em></h1>
+<div class="lede">Region-level signals — district outliers, and patterns that no single district director can see from inside their own jurisdiction.</div>
+</div>
+<div class="actions">
+<button class="btn ghost">2025/26 ▾</button>
+<button class="btn">Open anomaly queue</button>
+</div>
+</div>
+</div>
+
+<div class="body">
+
+<div class="panel">
+<div class="panel-head">
+<div class="ph-title">Flagged at <em>regional level</em></div>
+<a href="#" class="ph-link">Full anomaly queue · 23 →</a>
+</div>
+<div class="panel-body">
+<div class="flag-list">
+
+<div class="flag-item terra">
+<div class="fi-icon">!</div>
+<div class="fi-body">
+<div class="fi-title">Wassa Amenfi Central · coverage 61% and falling behind</div>
+<div class="fi-detail">Only <b>22 of 36 schools</b> on Omnischools — the thinnest coverage in the region. Its low enrolment and performance figures cannot be trusted until coverage closes. <b>This is the region's clearest priority</b>: an onboarding push, not an intervention.</div>
+</div>
+<button class="fi-action">Review district →</button>
+</div>
+
+<div class="flag-item terra">
+<div class="fi-icon">↓</div>
+<div class="fi-body">
+<div class="fi-title">Prestea-Huni Valley · PTR 27.3:1 across the district</div>
+<div class="fi-detail">Well above the 25:1 target and the worst-staffed district in the region. <b>13 schools unmeasured</b> too — the true ratio may be higher. A regional staffing reallocation question, not a single-school one.</div>
+</div>
+<button class="fi-action">Review district →</button>
+</div>
+
+<div class="flag-item warn">
+<div class="fi-icon">∿</div>
+<div class="fi-body">
+<div class="fi-title">Region-wide · Core Mathematics is the weakest core in 11 of 14 districts</div>
+<div class="fi-detail">A pattern no district director can see alone: Core Maths qualification trails other cores in <b>11 districts</b>. This is a <b>regional curriculum-support signal</b> — the case for a region-level Mathematics programme rather than 11 separate district responses.</div>
+</div>
+<button class="fi-action">View analysis →</button>
+</div>
+
+<div class="flag-item warn">
+<div class="fi-icon">⊕</div>
+<div class="fi-body">
+<div class="fi-title">77 schools across the region not yet on Omnischools</div>
+<div class="fi-detail">The region reports on 431 of 508. The gap is concentrated in <b>3 districts</b> — Central, Prestea-Huni Valley, and Mpohor. A targeted onboarding programme in those three closes most of the regional blind spot.</div>
+</div>
+<button class="fi-action">View plan →</button>
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="compare-strip">
+<div class="cs-body">
+<div class="cs-eyebrow">Comparison workspace</div>
+<div class="cs-title">Set the districts <em>against each other.</em></div>
+<div class="cs-text">Open the comparison workspace to put any districts in the Western Region side by side — on enrolment, performance, attendance, staffing, fees, or the enrolment-vs-population rate. As a regional director you can also compare the <b>Western Region against sibling regions</b>; you cannot see another region's internal districts.</div>
+</div>
+<div class="cs-action"><button class="btn gold lg">Open comparison workspace →</button></div>
+</div>
+
+<div class="provenance" style="margin-top:18px;">
+<div class="pv-item"><b>Anomaly rules</b> · same rule-based engine as district &amp; operational tiers</div>
+<div class="pv-item"><b>Regional-only signals</b> · cross-district patterns invisible at district level</div>
+<div class="pv-item"><b>Comparison ceiling</b> · districts within region · region vs sibling regions</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="notes">
+<h4>The regional tier earns its own signals</h4>
+<ul>
+<li><b>The regional dashboard is not just a bigger district dashboard — it sees patterns the district cannot.</b> "Core Maths is the weakest core in 11 of 14 districts" is invisible from inside any one district; it only appears when 14 districts are read together. That cross-district pattern is the regional tier's distinct value, and it argues for a regional programme over eleven separate district responses.</li>
+<li><b>Coverage drives the top regional priority.</b> The first flag is not a performance problem — it is Wassa Amenfi Central's 61% coverage. The regional dashboard inherits the enrolment surface's discipline: a district's weak figures are not actionable until its coverage is closed, so the regional director's clearest task is an onboarding push, explicitly framed as "not an intervention."</li>
+<li><b>Anomalies are framed at the right altitude.</b> Prestea-Huni Valley's district-wide 27.3:1 PTR is a "regional staffing reallocation question" — the regional director can move teachers between districts in a way a district director cannot. Each flag is written to the action its tier can actually take.</li>
+<li><b>The onboarding gap is localised.</b> 77 missing schools, concentrated in 3 named districts — the surface turns a regional statistic into a targeted programme. Same logic as the district dashboard's coverage flag, scaled up.</li>
+<li><b>Comparison and anomaly reuse the established engines.</b> Same rule-based anomaly logic as the district and operational tiers; same comparison workspace, entered at the district-vs-district tier. The regional dashboard is new surface area but no new mechanisms — consistency is the point.</li>
+<li><b>This completes the regional dashboard.</b> The region at a glance (section 1), the 14 districts with drill-down (section 2), and the regional-level signals (section 3) — the district pattern lifted one tier, with the cross-district view that only this tier provides. The fourth Batch 2 surface; the national dashboard is the last.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

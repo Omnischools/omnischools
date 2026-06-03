@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omnischools — WhatsApp template authoring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,0,600;9..144,0,700;9..144,1,400;9..144,1,500&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1A2B47;
+  --navy-2: #2D3F5C;
+  --navy-3: #5C6675;
+  --gold: #C8975B;
+  --gold-soft: #E8D4B8;
+  --gold-bg: #F5EBDC;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --green: #2F6B47;
+  --green-bg: #E5EFE8;
+  --terra: #B84A39;
+  --terra-bg: #F5E1DC;
+  --terra-bg-soft: rgba(184,74,57,0.06);
+  --warn: #C58A2E;
+  --warn-bg: #F5E9D0;
+  --border: #E5DFD3;
+  --border-2: #D4CCBA;
+  --wa-green: #25A859;
+  --wa-bg: #E7F8EE;
+  --wa-chat-bg: #E5DDD5;
+  --wa-msg-bg: #DCF8C6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+.page-header { margin-bottom: 56px; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600; margin-bottom: 12px;
+}
+.page-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; margin-bottom: 16px;
+  font-variation-settings: "opsz" 144;
+}
+.page-header h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.page-header p { font-size: 16px; color: var(--navy-3); max-width: 660px; line-height: 1.6; }
+.gold-rule { width: 64px; height: 2px; background: var(--gold); margin: 24px 0; }
+
+.section { margin-bottom: 80px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+}
+.section-num {
+  font-family: 'Fraunces', serif; font-style: italic;
+  font-size: 32px; font-weight: 400; color: var(--gold);
+}
+.section-title {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  font-weight: 500; letter-spacing: -0.01em;
+}
+.section-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--navy-3); font-weight: 600;
+}
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+
+.notes h4 {
+  font-family: 'Fraunces', serif; font-size: 18px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.notes ul { list-style: none; margin: 0; padding: 0; }
+.notes li {
+  font-size: 13px; color: var(--navy-2); padding: 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+}
+.notes li:last-child { border-bottom: 1px solid var(--border); }
+.notes li::before { content: "→"; color: var(--gold); font-weight: 600; flex-shrink: 0; }
+.notes li b { color: var(--navy); }
+
+.desktop {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(26,43,71,0.25);
+}
+.browser-bar {
+  background: var(--navy);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.browser-bar .dots { display: flex; gap: 6px; }
+.browser-bar .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.browser-bar .url {
+  background: rgba(255,255,255,0.08);
+  color: var(--gold-soft);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Fraunces', monospace;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 720px;
+  background: var(--bg);
+  position: relative;
+}
+.sidebar {
+  background: var(--navy);
+  color: var(--bg);
+  padding: 24px 0;
+  display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.brand-row { display: flex; gap: 12px; align-items: center; }
+.logo-mini {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 16px;
+  flex-shrink: 0;
+}
+.school-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.school-meta {
+  font-size: 10px; color: var(--gold-soft);
+  margin-top: 2px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  font-size: 13px;
+  color: rgba(250,247,242,0.7);
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.nav-item.active {
+  background: rgba(200,151,91,0.08);
+  color: var(--bg);
+  border-left-color: var(--gold);
+}
+.nav-item .ic {
+  width: 16px; height: 16px;
+  background: currentColor;
+  opacity: 0.8;
+  border-radius: 3px;
+}
+.sidebar .footer {
+  margin-top: auto;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.sidebar .footer .av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600; font-size: 12px;
+}
+.sidebar .footer .meta .n { font-weight: 600; }
+.sidebar .footer .meta .r { font-size: 10px; color: var(--gold-soft); }
+.powered-by {
+  padding: 10px 24px 16px;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(200,151,91,0.55);
+  font-weight: 700;
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.powered-by em { color: var(--gold); font-style: normal; font-weight: 700; }
+
+.main { padding: 28px 36px; overflow: hidden; position: relative; }
+.main-head {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.main-head .crumb {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--navy-3); font-weight: 600; margin-bottom: 6px;
+}
+.main-head .crumb a { color: var(--gold); text-decoration: none; }
+.main-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.015em;
+}
+.main-head h2 em { font-style: italic; color: var(--gold); }
+.main-head .lede {
+  font-size: 13px; color: var(--navy-3);
+  margin-top: 6px; max-width: 540px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--navy);
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--navy); color: var(--bg); border-color: var(--navy); }
+.btn.gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.btn.subtle { background: transparent; border-color: transparent; color: var(--navy-3); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* WhatsApp branded button */
+.btn.wa { background: var(--wa-green); color: var(--bg); border-color: var(--wa-green); }
+.btn.wa:hover { background: #1f9249; border-color: #1f9249; }
+
+/* ============ COMPOSER LAYOUT ============ */
+.composer-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.composer-col {
+  display: flex; flex-direction: column;
+  gap: 14px;
+}
+.composer-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.cc-head {
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.cc-head .label {
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold); font-weight: 700; margin-bottom: 3px;
+}
+.cc-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px; font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.cc-head h3 em { font-style: italic; color: var(--gold); }
+.cc-head .meta-right {
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.cc-head .meta-right b { color: var(--navy); font-weight: 600; }
+.cc-body { padding: 18px 20px 20px; }
+
+/* Step indicator */
+.step-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  margin-right: 8px;
+}
+
+/* Form fields */
+.field { margin-bottom: 14px; }
+.field label {
+  display: block;
+  font-size: 11px; color: var(--navy-2); font-weight: 600;
+  margin-bottom: 5px; letter-spacing: 0.02em;
+}
+.field label .req { color: var(--terra); margin-left: 2px; }
+.field label .hint { color: var(--navy-3); font-weight: 400; margin-left: 4px; font-size: 10px; }
+.input, .textarea, select.input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 6px;
+  font-family: inherit; font-size: 13px;
+  color: var(--navy);
+}
+.input.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+.input::placeholder, .textarea::placeholder { color: var(--navy-3); font-style: italic; opacity: 1; }
+.input:focus, .textarea:focus, select.input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Category tile picker */
+.cat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.cat-tile {
+  background: var(--surface);
+  border: 1.5px solid var(--border-2);
+  border-radius: 10px;
+  padding: 12px 12px 10px;
+  cursor: pointer;
+  position: relative;
+}
+.cat-tile.selected {
+  border-color: var(--gold);
+  background: var(--gold-bg);
+}
+.cat-tile.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg);
+}
+.cat-tile .ct-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  margin-bottom: 2px;
+}
+.cat-tile .ct-desc {
+  font-size: 10px;
+  color: var(--navy-3);
+  line-height: 1.4;
+}
+.cat-tile.selected .ct-desc { color: var(--navy-2); }
+.cat-tile .ct-tag {
+  position: absolute;
+  top: 10px; right: 10px;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 100px;
+  background: var(--green-bg);
+  color: var(--green);
+}
+.cat-tile.disabled .ct-tag { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+
+/* Header type segmented */
+.seg-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.seg-tile {
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.seg-tile.selected {
+  background: var(--surface);
+  color: var(--navy);
+  box-shadow: 0 1px 3px rgba(26,43,71,0.08);
+}
+
+/* Body editor with variable chips */
+.body-editor {
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.body-editor:focus-within {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+  border-color: var(--gold);
+}
+.body-editor .be-toolbar {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 8px;
+  display: flex; gap: 4px; flex-wrap: wrap;
+  align-items: center;
+}
+.body-editor .be-tool {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+}
+.body-editor .be-tool:hover {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--navy);
+}
+.body-editor .be-tool.bold { font-weight: 700; }
+.body-editor .be-tool.italic { font-style: italic; }
+.body-editor .be-tool-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+  margin: 0 3px;
+}
+.body-editor .be-var-btn {
+  padding: 4px 8px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-soft);
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold);
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+}
+.body-editor .be-var-btn:hover {
+  background: var(--gold);
+  color: var(--navy);
+}
+.body-editor textarea {
+  width: 100%;
+  border: none;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--navy);
+  line-height: 1.55;
+  min-height: 130px;
+  resize: vertical;
+}
+.body-editor textarea:focus { outline: none; }
+
+/* Variable highlight in textarea — visual aid using overlay */
+.var-token {
+  display: inline-block;
+  background: var(--gold-bg);
+  color: var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--gold-soft);
+}
+
+/* Variable list with sample data */
+.var-list {
+  display: flex; flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.var-list .vh {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.var-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 90px;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px dashed var(--border);
+  font-size: 12px;
+}
+.var-row:first-of-type { border-top: none; padding-top: 4px; }
+.var-row .v-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+}
+.var-row .v-input {
+  width: 100%;
+  padding: 5px 9px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--navy);
+}
+.var-row .v-source {
+  font-size: 10px;
+  color: var(--navy-3);
+  font-style: italic;
+}
+.var-row .v-source b { color: var(--navy-2); font-weight: 600; }
+
+/* Buttons composer */
+.btn-list {
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.btn-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 30px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.btn-row select.input, .btn-row .input {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.btn-row .remove-btn {
+  width: 24px; height: 24px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--terra);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+.btn-row .remove-btn:hover {
+  background: var(--terra-bg);
+  border-color: rgba(184,74,57,0.3);
+}
+.add-button-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1.5px dashed var(--border-2);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-3);
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 4px;
+}
+.add-button-link:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold-bg);
+}
+
+/* ============ WHATSAPP PREVIEW ============ */
+.wa-preview {
+  background: var(--wa-chat-bg);
+  border-radius: 12px;
+  padding: 20px 16px 24px;
+}
+.wa-preview .wa-header {
+  display: flex; gap: 10px; align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  margin-bottom: 14px;
+}
+.wa-preview .wa-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.wa-preview .wa-school-name {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+  display: flex; align-items: center; gap: 5px;
+}
+.wa-preview .wa-school-name .verified {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px;
+  background: var(--wa-green);
+  color: white;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+}
+.wa-preview .wa-status {
+  font-size: 11px;
+  color: rgba(26,43,71,0.6);
+  margin-top: 1px;
+}
+
+.wa-message {
+  background: white;
+  border-radius: 8px;
+  padding: 0;
+  margin-left: 0;
+  margin-right: 40px;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+.wa-message-header {
+  background: rgba(37,168,89,0.08);
+  padding: 10px 12px;
+  display: flex; gap: 10px; align-items: center;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+.wa-message-header .doc-icon {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  background: var(--terra);
+  color: white;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.wa-message-header .doc-info {
+  flex: 1;
+  min-width: 0;
+}
+.wa-message-header .doc-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wa-message-header .doc-meta {
+  font-size: 10px;
+  color: rgba(26,43,71,0.55);
+  margin-top: 1px;
+}
+
+.wa-message-body {
+  padding: 10px 12px 4px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  color: var(--navy);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.wa-message-body b { font-weight: 600; }
+.wa-message-body .var-rendered {
+  background: var(--gold-bg);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+
+.wa-message-footer {
+  padding: 4px 12px 8px;
+  font-size: 10px;
+  color: rgba(26,43,71,0.5);
+}
+
+.wa-message-time {
+  text-align: right;
+  padding: 0 10px 6px;
+  font-size: 10px;
+  color: rgba(26,43,71,0.45);
+  display: flex; justify-content: flex-end; gap: 4px;
+  align-items: center;
+}
+.wa-message-time .checks { color: #34B7F1; font-weight: 700; }
+
+.wa-buttons {
+  display: flex; flex-direction: column;
+  gap: 1px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.wa-btn {
+  background: white;
+  border: none;
+  padding: 11px 12px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  color: #027EB5;
+  font-weight: 500;
+  cursor: pointer;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.wa-btn:first-child { border-top: none; }
+.wa-btn .ic-link {
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ============ VALIDATION CHECKLIST ============ */
+.validation-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.validation-card .vc-head {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 12px;
+}
+.validation-card .vc-icon {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--green);
+  color: var(--bg);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.validation-card .vc-title {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.validation-card .vc-list {
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+.val-row {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 5px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.val-row .check {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.val-row .check.pass { background: var(--green-bg); color: var(--green); }
+.val-row .check.warn { background: var(--warn-bg); color: var(--warn); }
+.val-row .check.fail { background: var(--terra-bg); color: var(--terra); }
+.val-row .check.pending { background: var(--bg); color: var(--navy-3); border: 1px solid var(--border); }
+.val-row .body { color: var(--navy-2); }
+.val-row .body b { color: var(--navy); font-weight: 600; }
+.val-row.warn .body { color: var(--navy-2); }
+.val-row.fail .body { color: var(--terra); }
+
+/* ============ STATUS PAGE ============ */
+.status-hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 22px;
+  align-items: center;
+}
+.status-hero.approved {
+  background: linear-gradient(180deg, var(--green-bg) 0%, var(--surface) 50%);
+  border-color: rgba(47,107,71,0.2);
+}
+.status-hero.pending {
+  background: linear-gradient(180deg, var(--gold-bg) 0%, var(--surface) 50%);
+  border-color: var(--gold-soft);
+}
+.status-hero.rejected {
+  background: linear-gradient(180deg, var(--terra-bg) 0%, var(--surface) 50%);
+  border-color: rgba(184,74,57,0.2);
+}
+.status-hero .status-icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+.status-hero.approved .status-icon { background: var(--green); color: white; }
+.status-hero.pending .status-icon { background: var(--gold); color: var(--navy); }
+.status-hero.rejected .status-icon { background: var(--terra); color: white; }
+
+.status-hero .info .label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy-3);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.status-hero .info h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.status-hero.approved .info h2 em { color: var(--green); font-style: italic; }
+.status-hero.pending .info h2 em { color: var(--gold); font-style: italic; }
+.status-hero.rejected .info h2 em { color: var(--terra); font-style: italic; }
+.status-hero .info .ctx {
+  font-size: 13px;
+  color: var(--navy-2);
+  margin-top: 8px;
+  line-height: 1.5;
+  max-width: 520px;
+}
+.status-hero .info .ctx b { color: var(--navy); font-weight: 600; }
+
+.status-hero .meta {
+  text-align: right;
+  font-size: 11px;
+  color: var(--navy-3);
+}
+.status-hero .meta .row {
+  margin-bottom: 4px;
+}
+.status-hero .meta .row b {
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12px;
+  display: block;
+  margin-top: 1px;
+}
+
+.status-timeline {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 22px;
+  gap: 0;
+  align-items: stretch;
+}
+.timeline-step {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  padding: 4px 12px;
+}
+.timeline-step + .timeline-step::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: -50%;
+  right: 50%;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+.timeline-step.done + .timeline-step::before {
+  background: var(--green);
+}
+.timeline-step .ts-dot {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  color: var(--navy-3);
+}
+.timeline-step.done .ts-dot {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+}
+.timeline-step.current .ts-dot {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+  box-shadow: 0 0 0 4px var(--gold-bg);
+}
+.timeline-step .ts-name {
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-align: center;
+}
+.timeline-step .ts-when {
+  font-size: 10px;
+  color: var(--navy-3);
+  text-align: center;
+}
+.timeline-step.current .ts-name { color: var(--gold); }
+.timeline-step.current .ts-when { color: var(--gold); font-weight: 600; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }
+  .composer-grid { grid-template-columns: 1fr; }
+  .cat-row { grid-template-columns: 1fr; }
+  .seg-row { grid-template-columns: 1fr 1fr; }
+  .status-hero { grid-template-columns: 1fr; text-align: center; }
+  .status-hero .meta { text-align: center; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <div class="eyebrow">Omnischools · WhatsApp templates</div>
+  <h1 class="display">Submitting a <em>template</em></h1>
+  <div class="gold-rule"></div>
+  <p>WhatsApp Business requires every outbound message to use a Meta-approved template. Omnischools guides admins through composition, validates against common rejection reasons, and submits to Meta on the school's behalf. Templates use the <b>full school name</b> in headers and bodies — suffix stripping is SMS-only and does not apply here.</p>
+</header>
+
+<!-- ============ 01 TEMPLATE COMPOSER ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">01</div>
+    <div class="section-title display">Template composer</div>
+    <div class="section-meta">Admin · Settings &gt; Channels &gt; WhatsApp &gt; New template</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / channels / whatsapp / templates / new</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Settings</a> / Channels / WhatsApp / <a href="#">Templates</a> / New</div>
+              <h2 class="display">New <em>WhatsApp template</em></h2>
+              <div class="lede">Submit a new template for Meta approval. Approval typically takes 24-72 hours; simple Utility templates often auto-approve in minutes.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Save draft</button>
+              <button class="btn">Cancel</button>
+            </div>
+          </div>
+
+          <div class="composer-grid">
+
+            <!-- LEFT COLUMN: composer -->
+            <div class="composer-col">
+
+              <!-- Step 1: Basics -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label"><span class="step-num">1</span>Basics</div>
+                    <h3>Identify and <em>categorise</em></h3>
+                  </div>
+                </div>
+                <div class="cc-body">
+
+                  <div class="field">
+                    <label>Template name <span class="req">*</span> <span class="hint">— internal identifier, snake_case, no spaces</span></label>
+                    <input class="input mono" value="term_report_ready_v1" />
+                  </div>
+
+                  <div class="row-2">
+                    <div class="field">
+                      <label>Category <span class="req">*</span></label>
+                      <div class="cat-row">
+                        <div class="cat-tile selected">
+                          <div class="ct-tag">Most used</div>
+                          <div class="ct-name">Utility</div>
+                          <div class="ct-desc">Transactional notifications, account updates</div>
+                        </div>
+                        <div class="cat-tile">
+                          <div class="ct-name">Marketing</div>
+                          <div class="ct-desc">General announcements, school events</div>
+                        </div>
+                        <div class="cat-tile disabled">
+                          <div class="ct-tag">SMS only</div>
+                          <div class="ct-name">Authentication</div>
+                          <div class="ct-desc">OTPs route through SMS in Omnischools</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="row-2">
+                    <div class="field">
+                      <label>Language <span class="req">*</span></label>
+                      <select class="input">
+                        <option>English (Ghana) — en_GH</option>
+                        <option>Twi — tw</option>
+                        <option>Ga — gaa</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>Purpose <span class="hint">— internal note, not submitted to Meta</span></label>
+                      <input class="input" value="Notify parents when their child's term report is available" />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Step 2: Header -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label"><span class="step-num">2</span>Header</div>
+                    <h3>Optional <em>media</em> header</h3>
+                  </div>
+                </div>
+                <div class="cc-body">
+
+                  <div class="field">
+                    <label>Header type</label>
+                    <div class="seg-row">
+                      <div class="seg-tile">None</div>
+                      <div class="seg-tile">Text</div>
+                      <div class="seg-tile">Image</div>
+                      <div class="seg-tile selected">Document</div>
+                    </div>
+                    <div style="font-size:11px;color:var(--navy-3);margin-top:6px;font-style:italic">Document headers attach a PDF to the message — use this for receipts, term reports, and exam timetables.</div>
+                  </div>
+
+                  <div class="field">
+                    <label>Document filename pattern <span class="hint">— what parents see as the attachment name</span></label>
+                    <input class="input" value="{student_name}_term_report_{term}.pdf" />
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Step 3: Body -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label"><span class="step-num">3</span>Body</div>
+                    <h3>The <em>message</em> itself</h3>
+                  </div>
+                  <div class="meta-right">142 / 1024 chars</div>
+                </div>
+                <div class="cc-body">
+
+                  <div class="field">
+                    <label>Message body <span class="req">*</span></label>
+                    <div class="body-editor">
+                      <div class="be-toolbar">
+                        <button class="be-tool bold">B</button>
+                        <button class="be-tool italic">I</button>
+                        <button class="be-tool" style="text-decoration:line-through">S</button>
+                        <div class="be-tool-divider"></div>
+                        <span style="font-size:9px;color:var(--navy-3);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;margin-left:4px">Insert variable:</span>
+                        <button class="be-var-btn">{parent_name}</button>
+                        <button class="be-var-btn">{student_name}</button>
+                        <button class="be-var-btn">{term}</button>
+                        <button class="be-var-btn">{school_name}</button>
+                        <button class="be-var-btn">+ More</button>
+                      </div>
+                      <textarea>Hello {parent_name},
+
+{student_name}'s end-of-{term} report is ready. The PDF is attached above.
+
+Please review and reach out if you have questions about your child's progress.
+
+- {school_name}</textarea>
+                    </div>
+                  </div>
+
+                  <div class="var-list">
+                    <div class="vh">Variables &amp; sample data <span style="float:right;font-style:italic;font-weight:500;letter-spacing:0;text-transform:none;color:var(--navy-3)">Meta requires example values for review</span></div>
+                    <div class="var-row">
+                      <div class="v-name">{parent_name}</div>
+                      <input class="v-input" value="Ama Boateng" />
+                      <div class="v-source">from <b>guardian record</b></div>
+                    </div>
+                    <div class="var-row">
+                      <div class="v-name">{student_name}</div>
+                      <input class="v-input" value="Akosua Boateng" />
+                      <div class="v-source">from <b>student record</b></div>
+                    </div>
+                    <div class="var-row">
+                      <div class="v-name">{term}</div>
+                      <input class="v-input" value="Term 1 · 2026" />
+                      <div class="v-source">from <b>school calendar</b></div>
+                    </div>
+                    <div class="var-row">
+                      <div class="v-name">{school_name}</div>
+                      <input class="v-input" value="Christ the King JHS" />
+                      <div class="v-source">from <b>school settings</b> · always full name</div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Step 4: Footer -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label"><span class="step-num">4</span>Footer</div>
+                    <h3>Optional <em>small print</em></h3>
+                  </div>
+                  <div class="meta-right">38 / 60 chars</div>
+                </div>
+                <div class="cc-body">
+                  <div class="field">
+                    <label>Footer text <span class="hint">— shown in small grey text below the body</span></label>
+                    <input class="input" value="Reply STOP to opt out of WhatsApp updates" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Step 5: Buttons -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label"><span class="step-num">5</span>Buttons</div>
+                    <h3>Up to 3 <em>action buttons</em></h3>
+                  </div>
+                </div>
+                <div class="cc-body">
+
+                  <div class="btn-list">
+                    <div class="btn-row">
+                      <select class="input">
+                        <option>URL button</option>
+                        <option>Phone call button</option>
+                        <option>Quick reply</option>
+                      </select>
+                      <input class="input" value="View report online" />
+                      <button class="remove-btn">×</button>
+                    </div>
+                    <div class="btn-row">
+                      <select class="input">
+                        <option>Phone call button</option>
+                        <option>URL button</option>
+                        <option>Quick reply</option>
+                      </select>
+                      <input class="input" value="Call school office" />
+                      <button class="remove-btn">×</button>
+                    </div>
+                  </div>
+
+                  <button class="add-button-link">+ Add another button</button>
+
+                  <div style="margin-top:14px;padding:10px 14px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--navy-2);line-height:1.55">
+                    <b style="color:var(--navy);font-weight:600">URL button targets:</b> the URL can include variables like <code style="font-family:'JetBrains Mono',monospace;background:var(--surface);padding:1px 4px;border-radius:3px;font-size:11px;color:var(--gold)">https://omnischools.gh/r/&#123;report_id&#125;</code>. Each parent gets a personalised link.
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: preview + validation -->
+            <div class="composer-col">
+
+              <!-- WhatsApp preview -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label">Preview</div>
+                    <h3>How it <em>arrives</em> on WhatsApp</h3>
+                  </div>
+                </div>
+                <div class="cc-body" style="padding:0">
+                  <div class="wa-preview">
+                    <div class="wa-header">
+                      <div class="wa-avatar">CK</div>
+                      <div>
+                        <div class="wa-school-name">
+                          Christ the King JHS
+                          <span class="verified">✓</span>
+                        </div>
+                        <div class="wa-status">Business · online</div>
+                      </div>
+                    </div>
+
+                    <div class="wa-message">
+                      <div class="wa-message-header">
+                        <div class="doc-icon">PDF</div>
+                        <div class="doc-info">
+                          <div class="doc-name">Akosua_Boateng_term_report_Term_1.pdf</div>
+                          <div class="doc-meta">218 KB · PDF document</div>
+                        </div>
+                      </div>
+                      <div class="wa-message-body">Hello <span class="var-rendered">Ama Boateng</span>,
+
+<span class="var-rendered">Akosua Boateng</span>'s end-of-<span class="var-rendered">Term 1 · 2026</span> report is ready. The PDF is attached above.
+
+Please review and reach out if you have questions about your child's progress.
+
+- <span class="var-rendered">Christ the King JHS</span></div>
+                      <div class="wa-message-footer">Reply STOP to opt out of WhatsApp updates</div>
+                      <div class="wa-buttons">
+                        <button class="wa-btn"><span class="ic-link">↗</span> View report online</button>
+                        <button class="wa-btn"><span class="ic-link">📞</span> Call school office</button>
+                      </div>
+                      <div class="wa-message-time">10:24 AM <span class="checks">✓✓</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Validation checklist -->
+              <div class="validation-card">
+                <div class="vc-head">
+                  <div class="vc-icon">✓</div>
+                  <div class="vc-title">Ready to submit</div>
+                </div>
+                <div class="vc-list">
+                  <div class="val-row">
+                    <div class="check pass">✓</div>
+                    <div class="body"><b>Template name is unique</b> — no other template uses "term_report_ready_v1"</div>
+                  </div>
+                  <div class="val-row">
+                    <div class="check pass">✓</div>
+                    <div class="body"><b>Body fits Utility category</b> — transactional notification, no promotional language</div>
+                  </div>
+                  <div class="val-row">
+                    <div class="check pass">✓</div>
+                    <div class="body"><b>All variables have sample values</b> — Meta requires examples for review</div>
+                  </div>
+                  <div class="val-row">
+                    <div class="check pass">✓</div>
+                    <div class="body"><b>Body reads naturally with variables filled in</b> — sample values render coherently</div>
+                  </div>
+                  <div class="val-row">
+                    <div class="check pass">✓</div>
+                    <div class="body"><b>Buttons match body purpose</b> — URL and phone actions are relevant to the report notification</div>
+                  </div>
+                  <div class="val-row">
+                    <div class="check pass">✓</div>
+                    <div class="body"><b>Opt-out instruction in footer</b> — improves approval odds for Utility templates</div>
+                  </div>
+                  <div class="val-row warn">
+                    <div class="check warn">!</div>
+                    <div class="body"><b>Manual review likely.</b> Document headers and 2+ buttons trigger Meta's manual review queue. Expect <b>24-72 hours</b>; simpler templates often auto-approve in minutes.</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submit -->
+              <div class="composer-card">
+                <div class="cc-head">
+                  <div>
+                    <div class="label">Ready when you are</div>
+                    <h3>Submit to <em>Meta</em></h3>
+                  </div>
+                </div>
+                <div class="cc-body">
+                  <div style="font-size:12px;color:var(--navy-2);line-height:1.55;margin-bottom:14px">
+                    Omnischools submits the template to Meta on your behalf. You'll be notified when the status changes — approved, pending, or rejected with feedback.
+                  </div>
+                  <button class="btn wa" style="width:100%;justify-content:center;padding:12px">Submit for Meta review →</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Five-section composer in one page,</b> not a wizard. Templates are document-shaped — header, body, footer, buttons all relate to each other and benefit from being visible together. The numbered steps in card labels keep the linear feel without hiding state.</li>
+        <li><b>Template name is snake_case mono</b> in the field. "term_report_ready_v1" — versioned because templates can't be edited after submission; v2 means a new template. The mono font and underscore convention match Meta's API identifier expectations and signal "this is technical" to admin.</li>
+        <li><b>Three-tile category picker.</b> Utility selected by default with "Most used" tag — 80% of school templates are Utility. Marketing is available for term-start announcements, holiday closures. <b>Authentication is disabled with "SMS only" tag</b> — OTPs in Omnischools route through SMS because WhatsApp's 24-hour conversation window doesn't fit short-lived auth codes, and users expect OTPs via SMS in Ghana.</li>
+        <li><b>Header type as a 4-segment control.</b> None / Text / Image / Document. Document selected — the most powerful for school use. The filename pattern uses placeholders ({student_name}_term_report_{term}.pdf) so the file Akosua's mum receives is named "Akosua_Boateng_term_report_Term_1.pdf" — recognisable, searchable in their WhatsApp.</li>
+        <li><b>Body editor with a variable insertion bar.</b> Click {parent_name} or {student_name} and the placeholder inserts at cursor position. The variables themselves are styled like syntax tokens — gold-bordered chips — both in the editor and in the preview render. Visual distinction between content and variables.</li>
+        <li><b>Variable list with sample data is non-negotiable for Meta.</b> "Variables &amp; sample data — Meta requires example values for review." Without realistic samples, Meta can't tell if the template makes sense; rejections happen. Each variable shows where its value comes from in production ("from guardian record", "from school settings · always full name").</li>
+        <li><b>School name variable annotation:</b> "from school settings · always full name." This is the explicit confirmation that suffix-stripping doesn't apply to WhatsApp templates. The placeholder always resolves to "Christ the King JHS" in full.</li>
+        <li><b>Footer optional and limited to 60 chars.</b> "Reply STOP to opt out of WhatsApp updates" is the standard pattern — both compliance hygiene and a real user benefit. Surfacing the opt-out path matters under Meta policy.</li>
+        <li><b>Up to 3 buttons</b> with three button types. URL (deep link, can include variables for personalisation), phone call (one-tap to school office), quick reply (parent taps to send a pre-set response back). The example uses URL + phone — appropriate for a "report ready" notification.</li>
+        <li><b>WhatsApp preview is design-faithful.</b> Real WhatsApp visual conventions: avatar with verified checkmark, business name with green tick, document attachment block, message body with variables rendered in highlighted chips, footer in small grey, action buttons in WhatsApp blue with the underline that the real app uses. Two ticks in light blue (read receipts).</li>
+        <li><b>Verified checkmark next to school name</b> — the real WhatsApp Business verification badge. Schools with this badge get higher trust from parents (matches the "from a real bank" feeling). Important enough to render in the preview accurately.</li>
+        <li><b>Validation card live-updates.</b> Six green-check items that pass; one warn item flagging that document headers + 2+ buttons trigger Meta's manual review queue. <b>The warn isn't a problem to fix</b> — it's an expectation calibration. Some templates auto-approve in minutes; this one will probably take a day or two. Telling the admin upfront prevents the "why isn't this approved yet" anxiety.</li>
+        <li><b>"Submit to Meta" button is WhatsApp-green.</b> Anchors the action in the partner brand. Clicking submits via Meta's API; admin sees the status page next.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 STATUS PAGE — APPROVED ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num display">02</div>
+    <div class="section-title display">After submission · status</div>
+    <div class="section-meta">Three states · Approved / Pending / Rejected</div>
+  </div>
+
+  <div class="layout">
+    <div class="desktop">
+      <div class="browser-bar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="url">app.omnischools.gh / settings / channels / whatsapp / templates / term_report_ready_v1</div>
+      </div>
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-row">
+              <div class="logo-mini">CK</div>
+              <div>
+                <div class="school-name">Christ the King JHS</div>
+                <div class="school-meta">JHS · Accra</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-item"><div class="ic"></div>Dashboard</div>
+          <div class="nav-item"><div class="ic"></div>Students</div>
+          <div class="nav-item"><div class="ic"></div>Staff</div>
+          <div class="nav-item"><div class="ic"></div>Classes</div>
+          <div class="nav-item"><div class="ic"></div>Billing</div>
+          <div class="nav-item"><div class="ic"></div>Reports</div>
+          <div class="nav-item"><div class="ic"></div>Announcements</div>
+          <div class="nav-item"><div class="ic"></div>Achievements</div>
+          <div class="nav-item active"><div class="ic"></div>Settings</div>
+          <div class="footer">
+            <div class="av">FA</div>
+            <div class="meta"><div class="n">Florence Addo</div><div class="r">Headmistress</div></div>
+          </div>
+          <div class="powered-by">on <em>Omnischools</em></div>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div>
+              <div class="crumb"><a href="#">Settings</a> / Channels / WhatsApp / <a href="#">Templates</a> / term_report_ready_v1</div>
+              <h2 class="display">Template <em>status</em></h2>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Duplicate as new version</button>
+              <button class="btn">Archive</button>
+            </div>
+          </div>
+
+          <!-- APPROVED state -->
+          <div class="status-hero approved">
+            <div class="status-icon">✓</div>
+            <div class="info">
+              <div class="label">term_report_ready_v1</div>
+              <h2 class="display">Approved &amp; <em>ready to send</em></h2>
+              <div class="ctx">Meta approved this template <b>2 hours after submission</b>. You can now use it in announcements and automated workflows. <b>237 opted-in parents</b> are eligible to receive messages from this template.</div>
+            </div>
+            <div class="meta">
+              <div class="row">Submitted<br><b>2 May 2026 · 10:24 AM</b></div>
+              <div class="row">Approved<br><b>2 May 2026 · 12:17 PM</b></div>
+              <div class="row">Category<br><b>Utility</b></div>
+              <div class="row">Cost per use<br><b>~GHS 0.18</b></div>
+            </div>
+          </div>
+
+          <!-- Timeline -->
+          <div class="status-timeline">
+            <div class="timeline-step done">
+              <div class="ts-dot">1</div>
+              <div class="ts-name">Drafted</div>
+              <div class="ts-when">2 May · 09:18</div>
+            </div>
+            <div class="timeline-step done">
+              <div class="ts-dot">2</div>
+              <div class="ts-name">Submitted</div>
+              <div class="ts-when">2 May · 10:24</div>
+            </div>
+            <div class="timeline-step done">
+              <div class="ts-dot">3</div>
+              <div class="ts-name">Auto-checks passed</div>
+              <div class="ts-when">2 May · 10:25</div>
+            </div>
+            <div class="timeline-step done">
+              <div class="ts-dot">4</div>
+              <div class="ts-name">Manual review</div>
+              <div class="ts-when">2 May · 11:42</div>
+            </div>
+            <div class="timeline-step current">
+              <div class="ts-dot">✓</div>
+              <div class="ts-name">Approved</div>
+              <div class="ts-when">2 May · 12:17</div>
+            </div>
+          </div>
+
+          <!-- PENDING state -->
+          <div class="status-hero pending" style="margin-top:30px">
+            <div class="status-icon">⋯</div>
+            <div class="info">
+              <div class="label">grade_report_v1</div>
+              <h2 class="display">Pending <em>Meta review</em></h2>
+              <div class="ctx">Submitted <b>23 hours ago</b>. Auto-checks passed; the template is in Meta's manual review queue. <b>Document headers and multiple buttons</b> trigger manual review — expect approval within the next 24-48 hours. Omnischools will notify you when the status changes.</div>
+            </div>
+            <div class="meta">
+              <div class="row">Submitted<br><b>1 May 2026 · 11:30 AM</b></div>
+              <div class="row">Last update<br><b>1 May 2026 · 11:31 AM</b></div>
+              <div class="row">Category<br><b>Utility</b></div>
+              <div class="row">Position in queue<br><b>~3-7 hours</b></div>
+            </div>
+          </div>
+
+          <!-- Pending timeline -->
+          <div class="status-timeline">
+            <div class="timeline-step done">
+              <div class="ts-dot">1</div>
+              <div class="ts-name">Drafted</div>
+              <div class="ts-when">1 May · 11:14</div>
+            </div>
+            <div class="timeline-step done">
+              <div class="ts-dot">2</div>
+              <div class="ts-name">Submitted</div>
+              <div class="ts-when">1 May · 11:30</div>
+            </div>
+            <div class="timeline-step done">
+              <div class="ts-dot">3</div>
+              <div class="ts-name">Auto-checks passed</div>
+              <div class="ts-when">1 May · 11:31</div>
+            </div>
+            <div class="timeline-step current">
+              <div class="ts-dot">⋯</div>
+              <div class="ts-name">Manual review</div>
+              <div class="ts-when">in queue</div>
+            </div>
+            <div class="timeline-step">
+              <div class="ts-dot">5</div>
+              <div class="ts-name">Decision</div>
+              <div class="ts-when">expected 2 May</div>
+            </div>
+          </div>
+
+          <!-- REJECTED state -->
+          <div class="status-hero rejected" style="margin-top:30px">
+            <div class="status-icon">×</div>
+            <div class="info">
+              <div class="label">special_offer_v1</div>
+              <h2 class="display">Rejected by <em>Meta</em></h2>
+              <div class="ctx"><b>Reason:</b> "Template categorised as Utility but body contains promotional language ('special offer', 'limited time'). Re-submit as Marketing category, or revise the body to remove promotional phrasing." You can edit and resubmit as a new version.</div>
+            </div>
+            <div class="meta">
+              <div class="row">Submitted<br><b>28 Apr 2026 · 14:08</b></div>
+              <div class="row">Rejected<br><b>29 Apr 2026 · 09:42</b></div>
+              <div class="row">Category submitted<br><b>Utility</b></div>
+              <div class="row">Suggested<br><b>Marketing</b></div>
+            </div>
+          </div>
+
+          <!-- Action card after rejection -->
+          <div style="background:var(--terra-bg-soft);border:1px solid rgba(184,74,57,0.2);border-radius:12px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:13px;color:var(--navy-2);line-height:1.55;max-width:560px">
+              <b style="color:var(--navy);font-weight:600">Two paths forward.</b> Either revise the body to remove promotional language and resubmit as Utility, or accept the Marketing category recategorisation and resubmit. Marketing templates work the same way but are clearly labelled as such to parents.
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">Edit &amp; resubmit</button>
+              <button class="btn primary">Accept as Marketing</button>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4>Why this layout</h4>
+      <ul>
+        <li><b>Three states stacked on one page</b> shows the full lifecycle. In production, only the current state would render — but seeing all three together helps validate that each state is informative and actionable.</li>
+        <li><b>Status hero in different gradient backgrounds.</b> Approved fades from green to white; pending from gold to white; rejected from terra to white. The colour wash sets the emotional tone before any text is read.</li>
+        <li><b>Status icon in a 56px circle</b> — checkmark for approved, dots for pending, × for rejected. Iconographic at any zoom level. The size is deliberate: the page is communicating a state change, not just data.</li>
+        <li><b>Right-side meta column</b> shows submission timestamps, category, and contextual data (cost per use for approved, queue position for pending, suggested category for rejected). Compact key-value pairs in Fraunces — the answers an auditor or admin would ask in sequence.</li>
+        <li><b>Step timeline below the hero</b> visualises progress through Meta's review pipeline. Drafted → Submitted → Auto-checks → Manual review → Approved/Rejected. Done steps in green; current step pulses gold; future steps grey. Clear at-a-glance status without reading any text.</li>
+        <li><b>Approved state shows production readiness</b> — "237 opted-in parents are eligible to receive messages from this template." Connects the abstract approval to a concrete operational fact; admin sees that the template now does work.</li>
+        <li><b>Pending state has a queue position estimate</b> ("~3-7 hours"). Even an approximate figure helps admin plan. If the template is needed for an imminent send, admin knows whether to wait or fall back to SMS.</li>
+        <li><b>Rejected state quotes the actual reason</b> in the rejection text, not a paraphrase. "Template categorised as Utility but body contains promotional language ('special offer', 'limited time')." Meta's feedback is specific; surfacing it verbatim is more useful than summarising.</li>
+        <li><b>Two action buttons after rejection.</b> "Edit &amp; resubmit" preserves the body and lets admin revise. "Accept as Marketing" recategorises and resubmits with no body change. <b>This second path is the magic</b> — when the only issue is categorisation, admin can fix it in one click without re-thinking the message.</li>
+        <li><b>Templates can't be edited post-submission;</b> only duplicated as new versions ("v1" → "v2"). The "Duplicate as new version" header button enforces this convention. Meta's API treats edits as new templates anyway, so the UI matches the underlying reality.</li>
+        <li><b>Archive button in the header</b> for templates that should no longer be used. Archived templates remain in the audit trail but disappear from the active picker. Schools that retire a template (e.g. switching from quarterly to termly reports) need this without losing history.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
