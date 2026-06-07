@@ -12,10 +12,14 @@ omnischools/next-env.d.ts
 # ---- env / secrets ----
 .env
 .env.*
+*.env
 !.env.example
 omnischools/.env
 omnischools/.env.*
 !omnischools/.env.example
+# local MCP server config can carry tokens / project refs
+.mcp.json
+.claude/settings.local.json
 
 # ---- local data / docker volumes ----
 .docker-data/

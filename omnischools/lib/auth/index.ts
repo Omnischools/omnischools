@@ -54,6 +54,28 @@ export function normalizeGhanaPhone(input: string): string {
   return digits;
 }
 
+/**
+ * Minimal, explicitly-typed view of the Supabase auth client for the methods we use.
+ * We call through this instead of the inferred `.auth` type because duplicated
+ * @supabase/* type copies can drop methods from `SupabaseAuthClient` in some install
+ * layouts (passes locally, failed on Vercel). Runtime is unchanged — the methods exist.
+ */
+type SupabaseAuthApi = {
+  signInWithOtp(creds: { phone: string }): Promise<{ error: { message: string } | null }>;
+  verifyOtp(creds: {
+    phone: string;
+    token: string;
+    type: "sms";
+  }): Promise<{ error: { message: string } | null }>;
+  getUser(): Promise<{ data: { user: { phone?: string | null } | null } }>;
+  signOut(): Promise<unknown>;
+};
+
+async function authApi(): Promise<SupabaseAuthApi> {
+  const { createClient } = await import("@/lib/supabase/server");
+  return createClient().auth as unknown as SupabaseAuthApi;
+}
+
 /** Begin phone-OTP sign-in (sends an SMS code in live mode). */
 export async function signInWithPhone(
   phone: string,
@@ -63,8 +85,7 @@ export async function signInWithPhone(
     console.info(`[auth:dev] OTP requested for ${normalized} (bypass enabled)`);
     return { ok: true };
   }
-  const { createClient } = await import("@/lib/supabase/server");
-  const { error } = await createClient().auth.signInWithOtp({ phone: normalized });
+  const { error } = await (await authApi()).signInWithOtp({ phone: normalized });
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
@@ -75,8 +96,9 @@ export async function verifyPhoneOtp(
 ): Promise<{ ok: boolean; error?: string }> {
   const normalized = normalizeGhanaPhone(phone);
   if (!authIsLive()) return { ok: true };
-  const { createClient } = await import("@/lib/supabase/server");
-  const { error } = await createClient().auth.verifyOtp({
+  const { error } = await (
+    await authApi()
+  ).verifyOtp({
     phone: normalized,
     token,
     type: "sms",
@@ -86,18 +108,16 @@ export async function verifyPhoneOtp(
 
 export async function signOut(): Promise<void> {
   if (!authIsLive()) return;
-  const { createClient } = await import("@/lib/supabase/server");
-  await createClient().auth.signOut();
+  await (await authApi()).signOut();
 }
 
 /** Resolve the current authenticated user, or null. */
 export async function getCurrentUser(): Promise<AppUser | null> {
   if (!authIsLive()) return DEV_USER;
 
-  const { createClient } = await import("@/lib/supabase/server");
   const {
     data: { user },
-  } = await createClient().auth.getUser();
+  } = await (await authApi()).getUser();
   if (!user?.phone) return null;
   const phone = user.phone.startsWith("+") ? user.phone : `+${user.phone}`;
 

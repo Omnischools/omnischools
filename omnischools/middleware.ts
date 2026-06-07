@@ -25,7 +25,9 @@ export async function middleware(request: NextRequest) {
       },
     },
   });
-  await supabase.auth.getUser();
+  // Cast: see lib/auth — avoids a cross-version @supabase type-dup that drops methods
+  // from the inferred `.auth` type in some install layouts. Runtime is unaffected.
+  await (supabase.auth as unknown as { getUser(): Promise<unknown> }).getUser();
   return response;
 }
 
