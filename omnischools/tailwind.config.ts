@@ -31,6 +31,10 @@ const config: Config = {
         terra: { DEFAULT: "var(--terra)", bg: "var(--terra-bg)" },
         warn: { DEFAULT: "var(--warn)", bg: "var(--warn-bg)" },
 
+        // brand surfaces (used directly: bg-bg, text-bg, bg-surface)
+        bg: "var(--bg)",
+        surface: "var(--surface)",
+
         // semantic roles (shadcn/ui)
         background: "var(--background)",
         foreground: "var(--foreground)",
@@ -49,7 +53,11 @@ const config: Config = {
         },
         success: { DEFAULT: "var(--success)", foreground: "var(--success-foreground)" },
         warning: { DEFAULT: "var(--warning)", foreground: "var(--warning-foreground)" },
-        border: "var(--border)",
+        border: {
+          DEFAULT: "var(--border)",
+          1: "var(--border-1)",
+          2: "var(--border-2)",
+        },
         input: "var(--input)",
         ring: "var(--ring)",
       },
