@@ -1,50 +1,23 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Refreshes the Supabase auth session cookie on navigation so Server Components
- * see a current session. No-ops when Supabase env is absent (dev bypass).
+ * Intentionally a no-op pass-through.
  *
- * `@supabase/ssr` is imported *dynamically inside the try* on purpose: a static
- * top-level import is evaluated when the Edge function is instantiated, so if any
- * transitive @supabase code is incompatible with the Edge runtime it crashes the
- * whole invocation (MIDDLEWARE_INVOCATION_FAILED → 500 on every route) *before*
- * this function body runs, where no try/catch can reach it. A dynamic import
- * instead returns a rejected promise that the catch below handles, so a refresh
- * failure degrades to a no-op rather than taking the site down.
+ * We previously refreshed the Supabase session cookie here, but importing
+ * `@supabase/ssr` pulls Edge-incompatible code into the middleware's single Edge
+ * chunk, which crashed every request with MIDDLEWARE_INVOCATION_FAILED. The chunk
+ * fails at instantiation — before the function body runs — so no in-function
+ * try/catch can survive it, and a dynamic `import()` doesn't help because Next
+ * bundles it into the same Edge chunk rather than deferring evaluation.
+ *
+ * Auth does NOT depend on this middleware: sessions are resolved server-side via
+ * `getCurrentUser()` (lib/auth) in pages and server actions, and server actions
+ * can refresh/rotate the cookie when needed. A proactive refresh can be
+ * reintroduced later on the Node runtime (Next 15 middleware `runtime: 'nodejs'`)
+ * or via a dedicated route handler — both keep @supabase/ssr out of the Edge chunk.
  */
-export async function middleware(request: NextRequest) {
-  // `.trim()` guards against a pasted trailing newline/space in the Vercel env value.
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-  if (!url || !key) return NextResponse.next();
-
-  let response = NextResponse.next({ request });
-  try {
-    const { createServerClient } = await import("@supabase/ssr");
-    const supabase = createServerClient(url, key, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
-        },
-      },
-    });
-    // Cast: see lib/auth — avoids a cross-version @supabase type-dup that drops methods
-    // from the inferred `.auth` type in some install layouts. Runtime is unaffected.
-    await (supabase.auth as unknown as { getUser(): Promise<unknown> }).getUser();
-  } catch (err) {
-    // Best-effort: a failure here (Edge-incompatible import, bad env, network,
-    // Supabase down) must never 500 the whole site. Server Components still resolve
-    // the session on their own. Log and continue with the unmodified response.
-    console.error("[middleware] supabase session refresh skipped:", err);
-  }
-  return response;
+export function middleware(_request: NextRequest) {
+  return NextResponse.next();
 }
 
 export const config = {
