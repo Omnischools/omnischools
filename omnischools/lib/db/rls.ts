@@ -18,12 +18,19 @@ export async function withSchool<T>(
 }
 
 /**
- * Escalated, RLS-bypassing work (migrations, ETL, cross-tenant admin jobs).
- * Use sparingly and never from tenant-facing request handlers.
+ * Escalated, RLS-bypassing work (onboarding, identity lookups, ETL, admin jobs).
+ *
+ * Sets the `app.bypass_rls` GUC for the transaction; the tenant-isolation policies
+ * (db/sql/policies.sql) pass unconditionally while it is 'on'. This replaces a
+ * BYPASSRLS role — which Supabase's non-superuser `postgres` cannot create — and is
+ * portable across the local Docker DB and Supabase. The flag is set only here, in
+ * trusted server code, never from request input, so it cannot be forged.
+ *
+ * Use sparingly and never to serve tenant-facing reads without an explicit reason.
  */
 export async function withoutTenantScope<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
   return db.transaction(async (tx) => {
-    await tx.execute(sql`set local role omnischools_admin`);
+    await tx.execute(sql`select set_config('app.bypass_rls', 'on', true)`);
     return fn(tx);
   });
 }

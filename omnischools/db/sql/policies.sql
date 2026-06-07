@@ -1,30 +1,36 @@
--- Row-Level Security for Omnischools (applied after `db:push`).
+-- Row-Level Security for Omnischools (applied after migrations via scripts/apply-policies.ts).
 --
--- Production (Supabase) connects as a NON-superuser role, so these policies are
--- enforced automatically. Locally the Docker superuser bypasses RLS, so we also
--- create a NOSUPERUSER `omnischools_app` role; the RLS test SET ROLEs to it to prove
--- isolation. `omnischools_admin` (BYPASSRLS) backs lib/db withoutTenantScope().
+-- Tenant isolation is enforced by RLS on every tenant table, keyed on the
+-- `app.current_school` GUC set per-transaction (lib/db/rls.ts → withSchool).
+--
+-- Privileged, cross-tenant work (onboarding, identity lookups, ETL) sets the
+-- `app.bypass_rls` GUC to 'on' for the transaction (withoutTenantScope); the
+-- policies below honour that flag. This GUC approach is deliberately portable: it
+-- needs NO `BYPASSRLS` role (Supabase's non-superuser `postgres` cannot create
+-- one) and no superuser. The flag is only ever set by trusted server code in
+-- withoutTenantScope — never from user input — so it cannot be forged by a request.
+--
+-- FORCE RLS is kept so even the table-owning connection role is subject to the
+-- policies: a query that forgets to scope (no GUC set) returns zero rows — fails
+-- safe — rather than leaking across tenants.
+--
+-- `omnischools_app` (NOSUPERUSER, no bypass) exists so scripts/rls-test.ts can
+-- prove isolation as a non-privileged role even on a local superuser database.
 
--- ---- roles ----
+-- ---- role (used by the RLS test; harmless in prod) ----
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_app') THEN
     CREATE ROLE omnischools_app NOSUPERUSER NOINHERIT;
   END IF;
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_admin') THEN
-    CREATE ROLE omnischools_admin NOSUPERUSER BYPASSRLS NOINHERIT;
-  END IF;
 END
 $$;
 
 GRANT omnischools_app TO CURRENT_USER;
-GRANT omnischools_admin TO CURRENT_USER;
-
-GRANT USAGE ON SCHEMA public TO omnischools_app, omnischools_admin;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public
-  TO omnischools_app, omnischools_admin;
+GRANT USAGE ON SCHEMA public TO omnischools_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO omnischools_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO omnischools_app, omnischools_admin;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO omnischools_app;
 
 -- ---- tenant-isolation policies ----
 -- ref_school: a tenant sees only its own row (keyed on id).
@@ -33,8 +39,14 @@ ALTER TABLE ref_school FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON ref_school;
 CREATE POLICY tenant_isolation ON ref_school
   FOR ALL TO public
-  USING (id = NULLIF(current_setting('app.current_school', true), '')::uuid)
-  WITH CHECK (id = NULLIF(current_setting('app.current_school', true), '')::uuid);
+  USING (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR id = NULLIF(current_setting('app.current_school', true), '')::uuid
+  )
+  WITH CHECK (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR id = NULLIF(current_setting('app.current_school', true), '')::uuid
+  );
 
 -- All other tenant tables key on school_id.
 DO $$
@@ -75,8 +87,10 @@ BEGIN
     EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I;', tbl);
     EXECUTE format(
       'CREATE POLICY tenant_isolation ON %I FOR ALL TO public '
-      'USING (school_id = NULLIF(current_setting(''app.current_school'', true), '''')::uuid) '
-      'WITH CHECK (school_id = NULLIF(current_setting(''app.current_school'', true), '''')::uuid);',
+      'USING (current_setting(''app.bypass_rls'', true) = ''on'' '
+      '  OR school_id = NULLIF(current_setting(''app.current_school'', true), '''')::uuid) '
+      'WITH CHECK (current_setting(''app.bypass_rls'', true) = ''on'' '
+      '  OR school_id = NULLIF(current_setting(''app.current_school'', true), '''')::uuid);',
       tbl
     );
   END LOOP;
