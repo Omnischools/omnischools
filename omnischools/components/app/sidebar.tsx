@@ -11,6 +11,7 @@ const NAV = [
   { href: "/attendance", label: "Attendance", icon: "T" },
   { href: "/gradebook", label: "Gradebook", icon: "G" },
   { href: "/communication", label: "Communication", icon: "C" },
+  { href: "/settings", label: "Settings", icon: "⚙" },
 ];
 
 // Roadmap items (later phases) — shown disabled to convey the shape.
@@ -19,7 +20,7 @@ const SOON: { label: string; icon: string }[] = [];
 export function AppSidebar() {
   const pathname = usePathname();
   return (
-    <aside className="bg-surface hidden w-60 shrink-0 flex-col border-r border-border md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
       <div className="flex items-center gap-2.5 px-5 py-[18px]">
         <span className="flex h-8 w-8 items-center justify-center rounded-md bg-navy font-display text-[15px] font-semibold italic text-gold-soft">
           O
@@ -35,7 +36,7 @@ export function AppSidebar() {
               href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                active ? "bg-gold-bg text-navy" : "hover:bg-bg text-navy-2",
+                active ? "bg-gold-bg text-navy" : "text-navy-2 hover:bg-bg",
               )}
             >
               <span
@@ -60,7 +61,7 @@ export function AppSidebar() {
                 key={item.label}
                 className="text-navy-3/60 flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm font-medium"
               >
-                <span className="bg-bg text-navy-3/60 flex h-6 w-6 items-center justify-center rounded font-display text-xs italic">
+                <span className="text-navy-3/60 flex h-6 w-6 items-center justify-center rounded bg-bg font-display text-xs italic">
                   {item.icon}
                 </span>
                 {item.label}
