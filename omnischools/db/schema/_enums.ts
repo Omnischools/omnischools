@@ -132,3 +132,6 @@ export const correctionStatusEnum = pgEnum("correction_status", [
 // Communications
 export const audienceEnum = pgEnum("audience", ["WHOLE_SCHOOL", "CLASS"]);
 export const notifStatusEnum = pgEnum("notif_status", ["QUEUED", "SENT", "FAILED"]);
+
+// Billing (fee setup)
+export const discountKindEnum = pgEnum("discount_kind", ["PERCENT", "FIXED"]);
