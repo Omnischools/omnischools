@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sexEnum, studentStatusEnum, guardianRelationEnum } from "./_enums";
 import { schools } from "./tenancy";
+import { users } from "./identity";
 
 /** A class/form students belong to (e.g. "JHS 1A"). Attendance is taken per class. */
 export const classes = pgTable(
@@ -21,6 +22,9 @@ export const classes = pgTable(
       .references(() => schools.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     level: text("level"), // e.g. "JHS 1"
+    classTeacherUserId: uuid("class_teacher_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
