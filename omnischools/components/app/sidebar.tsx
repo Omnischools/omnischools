@@ -10,6 +10,7 @@ const NAV = [
   { href: "/classes", label: "Classes", icon: "L" },
   { href: "/admissions", label: "Admissions", icon: "A" },
   { href: "/fees", label: "Fees", icon: "F" },
+  { href: "/billing", label: "Billing", icon: "B" },
   { href: "/reports", label: "Reports", icon: "R" },
   { href: "/attendance", label: "Attendance", icon: "T" },
   { href: "/gradebook", label: "Gradebook", icon: "G" },
