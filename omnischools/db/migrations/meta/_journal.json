@@ -50,6 +50,13 @@
       "when": 1780516496000,
       "tag": "0006_amazing_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781304176818,
+      "tag": "0007_red_kingpin",
+      "breakpoints": true
     }
   ]
 }

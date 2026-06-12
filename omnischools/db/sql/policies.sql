@@ -71,6 +71,7 @@ BEGIN
     'receipt',
     'payment_audit_log',
     'class',
+    'timetable_slot',
     'attendance_record',
     'attendance_correction',
     'subject',
