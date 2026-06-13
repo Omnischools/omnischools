@@ -19,3 +19,4 @@ export * from "./gradebook";
 export * from "./timetable";
 export * from "./comms";
 export * from "./inbox";
+export * from "./invites";

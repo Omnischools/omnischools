@@ -85,7 +85,8 @@ BEGIN
     'sms_template',
     'notification_log',
     'conversation',
-    'inbox_message'
+    'inbox_message',
+    'invite'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);

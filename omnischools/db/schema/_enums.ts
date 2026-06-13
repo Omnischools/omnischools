@@ -139,3 +139,11 @@ export const discountKindEnum = pgEnum("discount_kind", ["PERCENT", "FIXED"]);
 // Inbox (two-way messaging)
 export const conversationStatusEnum = pgEnum("conversation_status", ["OPEN", "CLOSED"]);
 export const messageDirectionEnum = pgEnum("message_direction", ["INBOUND", "OUTBOUND"]);
+
+// Invites
+export const inviteStatusEnum = pgEnum("invite_status", [
+  "PENDING",
+  "ACCEPTED",
+  "REVOKED",
+  "EXPIRED",
+]);

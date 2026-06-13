@@ -67,6 +67,14 @@ type SupabaseAuthApi = {
     token: string;
     type: "sms";
   }): Promise<{ error: { message: string } | null }>;
+  signUp(creds: {
+    phone: string;
+    password: string;
+  }): Promise<{ error: { message: string } | null }>;
+  signInWithPassword(creds: {
+    phone: string;
+    password: string;
+  }): Promise<{ error: { message: string } | null }>;
   getUser(): Promise<{ data: { user: { phone?: string | null } | null } }>;
   signOut(): Promise<unknown>;
 };
@@ -102,6 +110,39 @@ export async function verifyPhoneOtp(
     phone: normalized,
     token,
     type: "sms",
+  });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/** Create a phone+password account for an invited user (idempotent on re-accept). */
+export async function createPasswordUser(
+  phone: string,
+  password: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!authIsLive()) return { ok: true };
+  const { error } = await (
+    await authApi()
+  ).signUp({
+    phone: normalizeGhanaPhone(phone),
+    password,
+  });
+  if (error && !/already (registered|exists)/i.test(error.message)) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/** Phone + password sign-in; establishes the session cookie in live mode. */
+export async function signInWithPassword(
+  phone: string,
+  password: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!authIsLive()) return { ok: true };
+  const { error } = await (
+    await authApi()
+  ).signInWithPassword({
+    phone: normalizeGhanaPhone(phone),
+    password,
   });
   return error ? { ok: false, error: error.message } : { ok: true };
 }
