@@ -15,6 +15,7 @@ const NAV = [
   { href: "/attendance", label: "Attendance", icon: "T" },
   { href: "/gradebook", label: "Gradebook", icon: "G" },
   { href: "/communication", label: "Communication", icon: "C" },
+  { href: "/inbox", label: "Inbox", icon: "I" },
   { href: "/settings", label: "Settings", icon: "⚙" },
 ];
 

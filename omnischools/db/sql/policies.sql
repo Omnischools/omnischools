@@ -83,7 +83,9 @@ BEGIN
     'report_card',
     'announcement',
     'sms_template',
-    'notification_log'
+    'notification_log',
+    'conversation',
+    'inbox_message'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);
