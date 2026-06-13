@@ -39,12 +39,23 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
       <Link href="/students" className="text-sm text-navy-3 hover:text-gold">
         ← Students
       </Link>
-      <h1 className="mb-1 mt-2 font-display text-3xl font-semibold text-navy">
-        {student.firstName} {student.otherNames ?? ""} {student.lastName}
-      </h1>
-      <p className="mb-6 font-mono text-xs text-navy-3">{student.studentCode}</p>
+      <div className="mt-2 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="mb-1 font-display text-3xl font-semibold text-navy">
+            {student.firstName} {student.otherNames ?? ""} {student.lastName}
+          </h1>
+          <p className="font-mono text-xs text-navy-3">{student.studentCode}</p>
+        </div>
+        <Link
+          href={`/students/${student.id}/edit`}
+          className="shrink-0 rounded-md border border-border-2 px-4 py-2 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg"
+        >
+          Edit
+        </Link>
+      </div>
+      <div className="mt-6" />
 
-      <div className="bg-surface rounded-xl border border-border p-6">
+      <div className="rounded-xl border border-border bg-surface p-6">
         <dl className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
           {facts.map(([k, v]) => (
             <div
@@ -68,7 +79,7 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
           {guardians.map((g) => (
             <div
               key={g.id}
-              className="bg-surface flex items-center justify-between rounded-lg border border-border px-4 py-3"
+              className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3"
             >
               <div>
                 <div className="text-sm font-medium text-navy">
