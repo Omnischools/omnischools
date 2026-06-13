@@ -1,7 +1,11 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { addTimetableSlots, removeTimetableSlot } from "@/lib/actions/classes";
+import {
+  addTimetableSlots,
+  removeTimetableSlot,
+  updateTimetableSlot,
+} from "@/lib/actions/classes";
 import { DAYS, DAY_LABEL } from "@/lib/timetable-days";
 import { COMMON_SUBJECTS } from "@/lib/field-options";
 import { Combobox, DataList } from "@/components/ui/fields";
@@ -15,8 +19,17 @@ type Slot = {
   endTime: string | null;
   subjectName: string | null;
   teacherName: string | null;
+  teacherUserId: string | null;
 };
 type Subject = { id: string; name: string };
+type EditVals = {
+  dayOfWeek: string;
+  periodIndex: string;
+  subjectName: string;
+  teacherUserId: string;
+  startTime: string;
+  endTime: string;
+};
 
 const fieldClass =
   "rounded-md border border-border-2 bg-bg px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold";
@@ -36,10 +49,38 @@ export function TimetableBuilder({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [edit, setEdit] = useState<EditVals | null>(null);
 
   const subjectOptions = Array.from(
     new Set([...COMMON_SUBJECTS, ...subjects.map((s) => s.name)]),
   );
+
+  function startEdit(s: Slot) {
+    setEditingId(s.id);
+    setError(null);
+    setEdit({
+      dayOfWeek: String(s.dayOfWeek),
+      periodIndex: String(s.periodIndex),
+      subjectName: s.subjectName ?? "",
+      teacherUserId: s.teacherUserId ?? "",
+      startTime: s.startTime ?? "",
+      endTime: s.endTime ?? "",
+    });
+  }
+
+  async function saveEdit() {
+    if (!editingId || !edit) return;
+    setBusy(true);
+    setError(null);
+    const res = await updateTimetableSlot({ slotId: editingId, classId, ...edit });
+    setBusy(false);
+    if (res.ok) {
+      setEditingId(null);
+      setEdit(null);
+      router.refresh();
+    } else setError(res.error ?? "Could not update.");
+  }
 
   async function add(formData: FormData) {
     const days = formData.getAll("day");
@@ -97,30 +138,133 @@ export function TimetableBuilder({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {ordered.map((s) => (
-                <tr key={s.id} className="hover:bg-bg">
-                  <td className="px-4 py-2.5 font-medium text-navy">
-                    {DAY_LABEL[s.dayOfWeek] ?? s.dayOfWeek}
-                  </td>
-                  <td className="px-4 py-2.5 text-navy-2">P{s.periodIndex}</td>
-                  <td className="px-4 py-2.5 text-navy-3">
-                    {s.startTime
-                      ? `${s.startTime}${s.endTime ? `–${s.endTime}` : ""}`
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-2.5 text-navy">{s.subjectName ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-navy-2">{s.teacherName ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-right">
-                    <button
-                      onClick={() => remove(s.id)}
-                      disabled={busy}
-                      className="text-xs font-semibold text-navy-3 transition-colors hover:text-terra disabled:opacity-50"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {ordered.map((s) =>
+                editingId === s.id && edit ? (
+                  <tr key={s.id} className="bg-gold-bg/40 align-middle">
+                    <td className="px-3 py-2">
+                      <select
+                        value={edit.dayOfWeek}
+                        onChange={(e) =>
+                          setEdit((p) => p && { ...p, dayOfWeek: e.target.value })
+                        }
+                        className={fieldClass}
+                      >
+                        {DAYS.map((d) => (
+                          <option key={d.value} value={d.value}>
+                            {d.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={15}
+                        value={edit.periodIndex}
+                        onChange={(e) =>
+                          setEdit((p) => p && { ...p, periodIndex: e.target.value })
+                        }
+                        className={`${fieldClass} w-14`}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <input
+                          value={edit.startTime}
+                          onChange={(e) =>
+                            setEdit((p) => p && { ...p, startTime: e.target.value })
+                          }
+                          placeholder="11:15"
+                          className={`${fieldClass} w-16`}
+                        />
+                        <input
+                          value={edit.endTime}
+                          onChange={(e) =>
+                            setEdit((p) => p && { ...p, endTime: e.target.value })
+                          }
+                          placeholder="12:05"
+                          className={`${fieldClass} w-16`}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Combobox
+                        listId="subjects-list"
+                        value={edit.subjectName}
+                        onChange={(e) =>
+                          setEdit((p) => p && { ...p, subjectName: e.target.value })
+                        }
+                        className="w-36 px-2.5 py-1.5"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <select
+                        value={edit.teacherUserId}
+                        onChange={(e) =>
+                          setEdit((p) => p && { ...p, teacherUserId: e.target.value })
+                        }
+                        className={`${fieldClass} w-36`}
+                      >
+                        <option value="">—</option>
+                        {teachers.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        onClick={saveEdit}
+                        disabled={busy}
+                        className="mr-2 text-xs font-semibold text-green disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingId(null);
+                          setEdit(null);
+                        }}
+                        className="text-xs font-semibold text-navy-3 hover:text-navy"
+                      >
+                        Cancel
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={s.id} className="hover:bg-bg">
+                    <td className="px-4 py-2.5 font-medium text-navy">
+                      {DAY_LABEL[s.dayOfWeek] ?? s.dayOfWeek}
+                    </td>
+                    <td className="px-4 py-2.5 text-navy-2">P{s.periodIndex}</td>
+                    <td className="px-4 py-2.5 text-navy-3">
+                      {s.startTime
+                        ? `${s.startTime}${s.endTime ? `–${s.endTime}` : ""}`
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-navy">{s.subjectName ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-navy-2">{s.teacherName ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={() => startEdit(s)}
+                        disabled={busy}
+                        className="mr-3 text-xs font-semibold text-navy-3 transition-colors hover:text-gold disabled:opacity-50"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => remove(s.id)}
+                        disabled={busy}
+                        className="text-xs font-semibold text-navy-3 transition-colors hover:text-terra disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ),
+              )}
             </tbody>
           </table>
         </div>

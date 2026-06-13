@@ -77,6 +77,7 @@ export default async function ClassDetailPage({ params }: { params: { id: string
           endTime: timetableSlots.endTime,
           subjectName: subjects.name,
           teacherName: users.fullName,
+          teacherUserId: timetableSlots.teacherUserId,
         })
         .from(timetableSlots)
         .leftJoin(subjects, eq(timetableSlots.subjectId, subjects.id))
