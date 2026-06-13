@@ -2,14 +2,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createFeeStructure } from "@/lib/actions/billing";
-
-const fieldClass =
-  "w-full rounded-md border border-border-2 bg-bg px-3 py-2 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
-const labelClass = "mb-1 block text-xs font-semibold text-navy-2";
+import { Combobox, DataList, fieldClass, labelClass } from "@/components/ui/fields";
+import { DEFAULT_FEE_ITEMS } from "@/lib/field-options";
 
 type Item = { description: string; amount: string };
 
-export function CreateFeeStructureForm({ defaultYear }: { defaultYear: string }) {
+export function CreateFeeStructureForm({
+  defaultYear,
+  feeItemOptions = [],
+}: {
+  defaultYear: string;
+  feeItemOptions?: string[];
+}) {
+  const itemOptions = Array.from(new Set([...DEFAULT_FEE_ITEMS, ...feeItemOptions]));
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([{ description: "Tuition", amount: "" }]);
@@ -79,14 +84,16 @@ export function CreateFeeStructureForm({ defaultYear }: { defaultYear: string })
 
       <div>
         <label className={labelClass}>Line items</label>
+        <DataList id="fee-items" options={itemOptions} />
         <div className="space-y-2">
           {items.map((it, i) => (
             <div key={i} className="flex items-center gap-2">
-              <input
+              <Combobox
+                listId="fee-items"
                 value={it.description}
                 onChange={(e) => setItem(i, { description: e.target.value })}
-                placeholder="Description"
-                className={`${fieldClass} flex-1`}
+                placeholder="Item — pick or type (e.g. Tuition)"
+                className="flex-1"
               />
               <input
                 value={it.amount}
@@ -95,7 +102,7 @@ export function CreateFeeStructureForm({ defaultYear }: { defaultYear: string })
                 min={0}
                 step="0.01"
                 placeholder="0.00"
-                className={`${fieldClass} w-28`}
+                className={`${fieldClass} w-32`}
               />
               {items.length > 1 && (
                 <button

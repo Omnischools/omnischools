@@ -10,6 +10,7 @@ import { round2, toMoney, num, nextInvoiceNumber } from "@/lib/fees-helpers";
 import {
   feeStructures,
   feeStructureItems,
+  feeCategories,
   discounts,
   students,
   studentGuardians,
@@ -62,6 +63,16 @@ export async function createFeeStructure(input: unknown): Promise<Result> {
           amount: toMoney(li.amount),
         })),
       );
+      // Remember each item label as a fee category so it joins the dropdown next time.
+      const cats = Array.from(
+        new Set(d.items.map((li) => li.description.trim()).filter(Boolean)),
+      );
+      if (cats.length > 0) {
+        await tx
+          .insert(feeCategories)
+          .values(cats.map((name) => ({ schoolId: school.id, name })))
+          .onConflictDoNothing({ target: [feeCategories.schoolId, feeCategories.name] });
+      }
       await recordAudit(tx, {
         schoolId: school.id,
         actorUserId: actor.id ?? undefined,
