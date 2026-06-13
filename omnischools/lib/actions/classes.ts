@@ -161,6 +161,51 @@ export async function addSubject(input: unknown): Promise<Result> {
   }
 }
 
+const RenameSubjectSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1, "Enter a subject name").max(60),
+});
+
+export async function renameSubject(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = RenameSubjectSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  try {
+    await withSchool(school.id, (tx) =>
+      tx
+        .update(subjects)
+        .set({ name: parsed.data.name.trim() })
+        .where(and(eq(subjects.id, parsed.data.id), eq(subjects.schoolId, school.id))),
+    );
+    safeRevalidate("/classes");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not rename — that name may already exist." };
+  }
+}
+
+const SubjectActiveSchema = z.object({ id: z.string().uuid(), active: z.boolean() });
+
+export async function setSubjectActive(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = SubjectActiveSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input" };
+  try {
+    await withSchool(school.id, (tx) =>
+      tx
+        .update(subjects)
+        .set({ active: parsed.data.active })
+        .where(and(eq(subjects.id, parsed.data.id), eq(subjects.schoolId, school.id))),
+    );
+    safeRevalidate("/classes");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not update subject." };
+  }
+}
+
 // ----------------------------------------------------------------- timetable
 const AddSlotSchema = z.object({
   classId: z.string().uuid(),
@@ -213,6 +258,98 @@ export async function addTimetableSlot(input: unknown): Promise<Result> {
     return { ok: true };
   } catch {
     return { ok: false, error: "This class already has a lesson in that slot." };
+  }
+}
+
+// Multi-day: lay the same lesson (subject·teacher·time·period) across several days.
+const AddSlotsSchema = z.object({
+  classId: z.string().uuid(),
+  days: z.array(z.coerce.number().int().min(1).max(7)).min(1, "Pick at least one day"),
+  periodIndex: z.coerce.number().int().min(1).max(15),
+  subjectName: z.string().max(60).optional().nullable(),
+  teacherUserId: z.string().optional().nullable(),
+  startTime: z.string().optional().nullable(),
+  endTime: z.string().optional().nullable(),
+});
+
+export async function addTimetableSlots(
+  input: unknown,
+): Promise<Result & { created?: number; skipped?: number }> {
+  const { school } = await requireSchool();
+  const parsed = AddSlotsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const d = parsed.data;
+  const teacherUserId = nz(d.teacherUserId);
+  const days = Array.from(new Set(d.days));
+  try {
+    const out = await withSchool(school.id, async (tx) => {
+      // find-or-create the subject by name (allows custom subjects e.g. Twi, Ga)
+      let subjectId: string | null = null;
+      const subjName = nz(d.subjectName);
+      if (subjName) {
+        await tx
+          .insert(subjects)
+          .values({ schoolId: school.id, name: subjName })
+          .onConflictDoNothing({ target: [subjects.schoolId, subjects.name] });
+        const [s] = await tx
+          .select({ id: subjects.id })
+          .from(subjects)
+          .where(and(eq(subjects.schoolId, school.id), eq(subjects.name, subjName)));
+        subjectId = s?.id ?? null;
+      }
+
+      let created = 0;
+      let skipped = 0;
+      for (const day of days) {
+        if (teacherUserId) {
+          const clash = await tx
+            .select({ id: timetableSlots.id })
+            .from(timetableSlots)
+            .where(
+              and(
+                eq(timetableSlots.schoolId, school.id),
+                eq(timetableSlots.teacherUserId, teacherUserId),
+                eq(timetableSlots.dayOfWeek, day),
+                eq(timetableSlots.periodIndex, d.periodIndex),
+              ),
+            );
+          if (clash.length > 0) {
+            skipped++;
+            continue;
+          }
+        }
+        const ins = await tx
+          .insert(timetableSlots)
+          .values({
+            schoolId: school.id,
+            classId: d.classId,
+            dayOfWeek: day,
+            periodIndex: d.periodIndex,
+            subjectId,
+            teacherUserId,
+            startTime: nz(d.startTime),
+            endTime: nz(d.endTime),
+          })
+          .onConflictDoNothing({
+            target: [
+              timetableSlots.schoolId,
+              timetableSlots.classId,
+              timetableSlots.dayOfWeek,
+              timetableSlots.periodIndex,
+            ],
+          })
+          .returning({ id: timetableSlots.id });
+        if (ins.length > 0) created++;
+        else skipped++;
+      }
+      return { created, skipped };
+    });
+    safeRevalidate(`/classes/${d.classId}`);
+    return { ok: true, ...out };
+  } catch {
+    return { ok: false, error: "Could not add the lessons. Please try again." };
   }
 }
 

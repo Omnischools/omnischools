@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { addTimetableSlot, removeTimetableSlot, addSubject } from "@/lib/actions/classes";
+import { addTimetableSlots, removeTimetableSlot } from "@/lib/actions/classes";
 import { DAYS, DAY_LABEL } from "@/lib/timetable-days";
+import { COMMON_SUBJECTS } from "@/lib/field-options";
+import { Combobox, DataList } from "@/components/ui/fields";
 import type { StaffOption } from "@/lib/data/staff-options";
 
 type Slot = {
@@ -33,23 +35,37 @@ export function TimetableBuilder({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newSubject, setNewSubject] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const subjectOptions = Array.from(
+    new Set([...COMMON_SUBJECTS, ...subjects.map((s) => s.name)]),
+  );
 
   async function add(formData: FormData) {
+    const days = formData.getAll("day");
+    if (days.length === 0) {
+      setError("Pick at least one day.");
+      return;
+    }
     setBusy(true);
     setError(null);
-    const res = await addTimetableSlot({
+    setMsg(null);
+    const res = await addTimetableSlots({
       classId,
-      dayOfWeek: formData.get("dayOfWeek"),
+      days,
       periodIndex: formData.get("periodIndex"),
-      subjectId: formData.get("subjectId"),
+      subjectName: formData.get("subjectName"),
       teacherUserId: formData.get("teacherUserId"),
       startTime: formData.get("startTime"),
       endTime: formData.get("endTime"),
     });
     setBusy(false);
-    if (res.ok) router.refresh();
-    else setError(res.error ?? "Could not add lesson.");
+    if (res.ok) {
+      setMsg(
+        `Added ${res.created} lesson${res.created === 1 ? "" : "s"}${res.skipped ? ` · skipped ${res.skipped} (clash/duplicate)` : ""}.`,
+      );
+      router.refresh();
+    } else setError(res.error ?? "Could not add lessons.");
   }
 
   async function remove(slotId: string) {
@@ -57,17 +73,6 @@ export function TimetableBuilder({
     await removeTimetableSlot({ slotId });
     setBusy(false);
     router.refresh();
-  }
-
-  async function createSubject() {
-    if (!newSubject.trim()) return;
-    setBusy(true);
-    const res = await addSubject({ name: newSubject });
-    setBusy(false);
-    if (res.ok) {
-      setNewSubject("");
-      router.refresh();
-    } else setError(res.error ?? "Could not add subject.");
   }
 
   const ordered = [...slots].sort(
@@ -123,93 +128,100 @@ export function TimetableBuilder({
 
       <form
         action={add}
-        className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-surface p-4"
+        className="space-y-3 rounded-xl border border-border bg-surface p-4"
       >
         <div>
-          <label className="mb-1 block text-[11px] font-semibold text-navy-2">Day</label>
-          <select name="dayOfWeek" defaultValue="1" className={fieldClass}>
+          <label className="mb-1.5 block text-[11px] font-semibold text-navy-2">
+            Days <span className="font-normal text-navy-3">— pick one or more</span>
+          </label>
+          <div className="flex flex-wrap gap-1.5">
             {DAYS.map((d) => (
-              <option key={d.value} value={d.value}>
+              <label
+                key={d.value}
+                className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border-2 px-2.5 py-1.5 text-sm text-navy-2 has-[:checked]:border-gold has-[:checked]:bg-gold-bg has-[:checked]:text-navy"
+              >
+                <input
+                  type="checkbox"
+                  name="day"
+                  value={d.value}
+                  defaultChecked={d.value === 1}
+                />
                 {d.label}
-              </option>
+              </label>
             ))}
-          </select>
+          </div>
         </div>
-        <div>
-          <label className="mb-1 block text-[11px] font-semibold text-navy-2">
-            Period
-          </label>
-          <input
-            name="periodIndex"
-            type="number"
-            min={1}
-            max={15}
-            defaultValue={1}
-            className={`${fieldClass} w-16`}
-          />
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold text-navy-2">
+              Period
+            </label>
+            <input
+              name="periodIndex"
+              type="number"
+              min={1}
+              max={15}
+              defaultValue={1}
+              className={`${fieldClass} w-16`}
+            />
+          </div>
+          <div className="min-w-44 flex-1">
+            <label className="mb-1 block text-[11px] font-semibold text-navy-2">
+              Subject
+            </label>
+            <Combobox
+              listId="subjects-list"
+              name="subjectName"
+              placeholder="Pick or type (e.g. Twi)"
+              className="px-2.5 py-1.5"
+            />
+            <DataList id="subjects-list" options={subjectOptions} />
+          </div>
+          <div className="min-w-40 flex-1">
+            <label className="mb-1 block text-[11px] font-semibold text-navy-2">
+              Teacher
+            </label>
+            <select
+              name="teacherUserId"
+              defaultValue=""
+              className={`${fieldClass} w-full`}
+            >
+              <option value="">—</option>
+              {teachers.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold text-navy-2">
+              Start
+            </label>
+            <input
+              name="startTime"
+              placeholder="11:15"
+              className={`${fieldClass} w-20`}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold text-navy-2">
+              End
+            </label>
+            <input name="endTime" placeholder="12:05" className={`${fieldClass} w-20`} />
+          </div>
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-md bg-navy px-4 py-1.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-60"
+          >
+            Add lesson(s)
+          </button>
         </div>
-        <div>
-          <label className="mb-1 block text-[11px] font-semibold text-navy-2">
-            Subject
-          </label>
-          <select name="subjectId" defaultValue="" className={fieldClass}>
-            <option value="">—</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-[11px] font-semibold text-navy-2">
-            Teacher
-          </label>
-          <select name="teacherUserId" defaultValue="" className={fieldClass}>
-            <option value="">—</option>
-            {teachers.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-[11px] font-semibold text-navy-2">
-            Start
-          </label>
-          <input name="startTime" placeholder="08:00" className={`${fieldClass} w-20`} />
-        </div>
-        <div>
-          <label className="mb-1 block text-[11px] font-semibold text-navy-2">End</label>
-          <input name="endTime" placeholder="08:40" className={`${fieldClass} w-20`} />
-        </div>
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-md bg-navy px-4 py-1.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-60"
-        >
-          Add lesson
-        </button>
       </form>
 
+      {msg && <p className="mt-2 text-sm font-medium text-green">{msg}</p>}
       {error && <p className="mt-2 text-sm text-terra">{error}</p>}
-
-      <div className="mt-3 flex items-center gap-2">
-        <input
-          value={newSubject}
-          onChange={(e) => setNewSubject(e.target.value)}
-          placeholder="New subject (e.g. Integrated Science)"
-          className={fieldClass}
-        />
-        <button
-          onClick={createSubject}
-          disabled={busy || !newSubject.trim()}
-          className="rounded-md border border-border-2 px-3 py-1.5 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg disabled:opacity-50"
-        >
-          + Add subject
-        </button>
-      </div>
     </div>
   );
 }

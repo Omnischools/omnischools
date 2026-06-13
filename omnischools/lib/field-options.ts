@@ -33,6 +33,18 @@ export const DEFAULT_FEE_ITEMS = [
   "Other",
 ] as const;
 
+/** Common discount names (managed under Settings → Fee structure). */
+export const DEFAULT_DISCOUNTS = [
+  "Sibling discount",
+  "Staff ward",
+  "Scholarship",
+  "Bursary",
+  "Need-based",
+  "Early payment",
+  "Sports / talent",
+  "Bereavement",
+] as const;
+
 /** Common Ghanaian basic-school subjects for subject dropdowns. */
 export const COMMON_SUBJECTS = [
   "English Language",

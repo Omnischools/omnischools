@@ -2,24 +2,34 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createFeeStructure } from "@/lib/actions/billing";
-import { Combobox, DataList, fieldClass, labelClass } from "@/components/ui/fields";
-import { DEFAULT_FEE_ITEMS } from "@/lib/field-options";
+import { DataList, fieldClass, labelClass } from "@/components/ui/fields";
+import { DEFAULT_FEE_ITEMS, YEAR_GROUPS } from "@/lib/field-options";
+
+const lineInput =
+  "rounded-md border border-border-2 bg-bg px-3 py-2 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
 
 type Item = { description: string; amount: string };
 
 export function CreateFeeStructureForm({
   defaultYear,
   feeItemOptions = [],
+  levelOptions = [],
+  yearOptions = [],
 }: {
   defaultYear: string;
   feeItemOptions?: string[];
+  levelOptions?: string[];
+  yearOptions?: string[];
 }) {
-  const itemOptions = Array.from(new Set([...DEFAULT_FEE_ITEMS, ...feeItemOptions]));
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([{ description: "Tuition", amount: "" }]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const itemOptions = Array.from(new Set([...DEFAULT_FEE_ITEMS, ...feeItemOptions]));
+  const levels = levelOptions.length > 0 ? levelOptions : [...YEAR_GROUPS];
+  const years = Array.from(new Set([defaultYear, ...yearOptions]));
 
   function setItem(i: number, patch: Partial<Item>) {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
@@ -66,19 +76,25 @@ export function CreateFeeStructureForm({
           <input name="name" required placeholder="JHS 1 fees" className={fieldClass} />
         </div>
         <div>
-          <label className={labelClass}>
-            Level <span className="font-medium text-navy-3">— optional</span>
-          </label>
-          <input name="level" placeholder="JHS 1" className={fieldClass} />
+          <label className={labelClass}>Level</label>
+          <select name="level" defaultValue="" className={fieldClass}>
+            <option value="">— choose —</option>
+            {levels.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className={labelClass}>Academic year</label>
-          <input
-            name="academicYear"
-            required
-            defaultValue={defaultYear}
-            className={fieldClass}
-          />
+          <select name="academicYear" defaultValue={defaultYear} className={fieldClass}>
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -88,12 +104,12 @@ export function CreateFeeStructureForm({
         <div className="space-y-2">
           {items.map((it, i) => (
             <div key={i} className="flex items-center gap-2">
-              <Combobox
-                listId="fee-items"
+              <input
+                list="fee-items"
                 value={it.description}
                 onChange={(e) => setItem(i, { description: e.target.value })}
                 placeholder="Item — pick or type (e.g. Tuition)"
-                className="flex-1"
+                className={`${lineInput} min-w-0 flex-1`}
               />
               <input
                 value={it.amount}
@@ -102,13 +118,13 @@ export function CreateFeeStructureForm({
                 min={0}
                 step="0.01"
                 placeholder="0.00"
-                className={`${fieldClass} w-32`}
+                className={`${lineInput} w-28 shrink-0`}
               />
               {items.length > 1 && (
                 <button
                   type="button"
                   onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
-                  className="px-1 text-navy-3 hover:text-terra"
+                  className="shrink-0 px-1 text-navy-3 hover:text-terra"
                   aria-label="Remove line"
                 >
                   ×
