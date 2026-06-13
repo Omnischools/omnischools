@@ -64,6 +64,13 @@
       "when": 1781306842680,
       "tag": "0008_damp_hedge_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781308169288,
+      "tag": "0009_flat_king_bedlam",
+      "breakpoints": true
     }
   ]
 }
