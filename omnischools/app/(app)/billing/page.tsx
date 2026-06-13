@@ -4,6 +4,7 @@ import { withSchool } from "@/lib/db/rls";
 import {
   feeStructures,
   feeStructureItems,
+  feeCategories,
   discounts,
   classes,
   invoices,
@@ -25,8 +26,8 @@ function currentAcademicYear() {
 export default async function BillingPage() {
   const { school } = await requireSchool();
 
-  const [structureRows, itemRows, discountRows, classRows, [summary]] = await Promise.all(
-    [
+  const [structureRows, itemRows, discountRows, classRows, feeCatRows, [summary]] =
+    await Promise.all([
       withSchool(school.id, (tx) =>
         tx
           .select()
@@ -56,6 +57,13 @@ export default async function BillingPage() {
       ),
       withSchool(school.id, (tx) =>
         tx
+          .select({ name: feeCategories.name })
+          .from(feeCategories)
+          .where(eq(feeCategories.schoolId, school.id))
+          .orderBy(asc(feeCategories.name)),
+      ),
+      withSchool(school.id, (tx) =>
+        tx
           .select({
             families: sql<number>`count(distinct ${invoices.studentId})`,
             total: sql<string>`coalesce(sum(${invoices.balanceAmount}), 0)`,
@@ -69,8 +77,7 @@ export default async function BillingPage() {
             ),
           ),
       ),
-    ],
-  );
+    ]);
 
   const itemsByStructure = new Map<string, { description: string; amount: number }[]>();
   for (const it of itemRows) {
@@ -114,7 +121,10 @@ export default async function BillingPage() {
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-display text-xl font-semibold text-navy">Fee structures</h2>
-          <CreateFeeStructureForm defaultYear={currentAcademicYear()} />
+          <CreateFeeStructureForm
+            defaultYear={currentAcademicYear()}
+            feeItemOptions={feeCatRows.map((c) => c.name)}
+          />
         </div>
         {structures.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border-2 bg-surface p-10 text-center text-sm text-navy-3">

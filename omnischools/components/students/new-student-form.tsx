@@ -7,7 +7,7 @@ const fieldClass =
   "w-full rounded-md border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
 const labelClass = "mb-1.5 block text-xs font-semibold text-navy-2";
 
-export function NewStudentForm() {
+export function NewStudentForm({ classes }: { classes: { id: string; name: string }[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -21,7 +21,7 @@ export function NewStudentForm() {
       otherNames: formData.get("otherNames"),
       sex: formData.get("sex"),
       dateOfBirth: formData.get("dateOfBirth"),
-      classLabel: formData.get("classLabel"),
+      classId: formData.get("classId"),
       guardianName: formData.get("guardianName"),
       guardianPhone: formData.get("guardianPhone"),
       guardianRelation: formData.get("guardianRelation"),
@@ -34,7 +34,7 @@ export function NewStudentForm() {
   return (
     <form
       action={action}
-      className="bg-surface space-y-5 rounded-xl border border-border p-6"
+      className="space-y-5 rounded-xl border border-border bg-surface p-6"
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
@@ -73,7 +73,14 @@ export function NewStudentForm() {
           <label className={labelClass}>
             Class <span className="font-medium text-navy-3">— optional</span>
           </label>
-          <input name="classLabel" placeholder="e.g. JHS 1A" className={fieldClass} />
+          <select name="classId" defaultValue="" className={fieldClass}>
+            <option value="">— unassigned —</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -116,14 +123,14 @@ export function NewStudentForm() {
         <button
           type="submit"
           disabled={saving}
-          className="text-bg rounded-md bg-navy px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-navy-deep disabled:opacity-60"
+          className="rounded-md bg-navy px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-60"
         >
           {saving ? "Saving…" : "Create student"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/students")}
-          className="hover:bg-bg rounded-md px-4 py-2.5 text-sm font-semibold text-navy-2"
+          className="rounded-md px-4 py-2.5 text-sm font-semibold text-navy-2 hover:bg-bg"
         >
           Cancel
         </button>

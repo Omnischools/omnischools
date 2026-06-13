@@ -5,8 +5,9 @@ import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { normalizeGhanaPhone } from "@/lib/auth";
+import { and, eq } from "drizzle-orm";
 import { nextStudentCode } from "@/lib/students-helpers";
-import { students, studentGuardians } from "@/db/schema";
+import { students, studentGuardians, classes } from "@/db/schema";
 
 const CreateStudentSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(120),
@@ -14,7 +15,7 @@ const CreateStudentSchema = z.object({
   otherNames: z.string().max(120).optional().or(z.literal("")),
   sex: z.enum(["MALE", "FEMALE"]),
   dateOfBirth: z.string().optional().or(z.literal("")),
-  classLabel: z.string().max(60).optional().or(z.literal("")),
+  classId: z.string().uuid().optional().or(z.literal("")),
   guardianName: z.string().max(160).optional().or(z.literal("")),
   guardianPhone: z.string().max(40).optional().or(z.literal("")),
   guardianRelation: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("GUARDIAN"),
@@ -36,6 +37,14 @@ export async function createStudent(input: unknown): Promise<CreateStudentResult
   try {
     const out = await withSchool(school.id, async (tx) => {
       const studentCode = await nextStudentCode(tx, school.id);
+      let className: string | null = null;
+      if (d.classId) {
+        const [cls] = await tx
+          .select({ name: classes.name })
+          .from(classes)
+          .where(and(eq(classes.id, d.classId), eq(classes.schoolId, school.id)));
+        className = cls?.name ?? null;
+      }
       const [student] = await tx
         .insert(students)
         .values({
@@ -46,7 +55,8 @@ export async function createStudent(input: unknown): Promise<CreateStudentResult
           otherNames: d.otherNames || null,
           sex: d.sex,
           dateOfBirth: d.dateOfBirth || null,
-          currentClassLabel: d.classLabel || null,
+          classId: d.classId || null,
+          currentClassLabel: className,
           enrolledOn: new Date().toISOString().slice(0, 10),
         })
         .returning();

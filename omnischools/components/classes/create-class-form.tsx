@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClass } from "@/lib/actions/classes";
+import { YEAR_GROUPS } from "@/lib/field-options";
 
 const fieldClass =
   "rounded-md border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
@@ -52,7 +53,14 @@ export function CreateClassForm() {
         <label className="mb-1.5 block text-xs font-semibold text-navy-2">
           Level <span className="font-medium text-navy-3">— optional</span>
         </label>
-        <input name="level" placeholder="JHS 1" className={fieldClass} />
+        <select name="level" defaultValue="" className={fieldClass}>
+          <option value="">— choose —</option>
+          {YEAR_GROUPS.map((yg) => (
+            <option key={yg} value={yg}>
+              {yg}
+            </option>
+          ))}
+        </select>
       </div>
       <button
         type="submit"
