@@ -1,5 +1,5 @@
 "use server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
@@ -350,6 +350,98 @@ export async function addTimetableSlots(
     return { ok: true, ...out };
   } catch {
     return { ok: false, error: "Could not add the lessons. Please try again." };
+  }
+}
+
+// Edit an existing lesson (single slot) after creation.
+const UpdateSlotSchema = z.object({
+  slotId: z.string().uuid(),
+  classId: z.string().uuid(),
+  dayOfWeek: z.coerce.number().int().min(1).max(7),
+  periodIndex: z.coerce.number().int().min(1).max(15),
+  subjectName: z.string().max(60).optional().nullable(),
+  teacherUserId: z.string().optional().nullable(),
+  startTime: z.string().optional().nullable(),
+  endTime: z.string().optional().nullable(),
+});
+
+export async function updateTimetableSlot(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = UpdateSlotSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input" };
+  const d = parsed.data;
+  const teacherUserId = nz(d.teacherUserId);
+  try {
+    const outcome = await withSchool(school.id, async (tx) => {
+      // class double-book (excluding this slot)
+      const clazz = await tx
+        .select({ id: timetableSlots.id })
+        .from(timetableSlots)
+        .where(
+          and(
+            eq(timetableSlots.schoolId, school.id),
+            eq(timetableSlots.classId, d.classId),
+            eq(timetableSlots.dayOfWeek, d.dayOfWeek),
+            eq(timetableSlots.periodIndex, d.periodIndex),
+            ne(timetableSlots.id, d.slotId),
+          ),
+        );
+      if (clazz.length > 0) {
+        return { error: "This class already has a lesson in that slot." };
+      }
+      if (teacherUserId) {
+        const clash = await tx
+          .select({ id: timetableSlots.id })
+          .from(timetableSlots)
+          .where(
+            and(
+              eq(timetableSlots.schoolId, school.id),
+              eq(timetableSlots.teacherUserId, teacherUserId),
+              eq(timetableSlots.dayOfWeek, d.dayOfWeek),
+              eq(timetableSlots.periodIndex, d.periodIndex),
+              ne(timetableSlots.id, d.slotId),
+            ),
+          );
+        if (clash.length > 0) {
+          return { error: "That teacher is already booked for this period." };
+        }
+      }
+
+      // find-or-create subject by name
+      let subjectId: string | null = null;
+      const subjName = nz(d.subjectName);
+      if (subjName) {
+        await tx
+          .insert(subjects)
+          .values({ schoolId: school.id, name: subjName })
+          .onConflictDoNothing({ target: [subjects.schoolId, subjects.name] });
+        const [s] = await tx
+          .select({ id: subjects.id })
+          .from(subjects)
+          .where(and(eq(subjects.schoolId, school.id), eq(subjects.name, subjName)));
+        subjectId = s?.id ?? null;
+      }
+
+      await tx
+        .update(timetableSlots)
+        .set({
+          dayOfWeek: d.dayOfWeek,
+          periodIndex: d.periodIndex,
+          subjectId,
+          teacherUserId,
+          startTime: nz(d.startTime),
+          endTime: nz(d.endTime),
+        })
+        .where(
+          and(eq(timetableSlots.id, d.slotId), eq(timetableSlots.schoolId, school.id)),
+        );
+      return { ok: true as const };
+    });
+    if ("error" in outcome) return { ok: false, error: outcome.error };
+    safeRevalidate(`/classes/${d.classId}`);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not update the lesson." };
   }
 }
 
