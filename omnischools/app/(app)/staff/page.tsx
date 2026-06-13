@@ -4,6 +4,7 @@ import { withSchool } from "@/lib/db/rls";
 import { users, roles, roleAssignments } from "@/db/schema";
 import { STAFF_ROLE_CODES } from "@/lib/staff-roles";
 import { AddStaffForm } from "@/components/staff/add-staff-form";
+import { InviteStaffForm } from "@/components/staff/invite-staff-form";
 import { RoleEditor } from "@/components/staff/role-editor";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +63,10 @@ export default async function StaffPage() {
             and admins who can sign in.
           </p>
         </div>
-        <AddStaffForm />
+        <div className="relative flex items-center gap-2">
+          <InviteStaffForm />
+          <AddStaffForm />
+        </div>
       </div>
 
       {staff.length === 0 ? (

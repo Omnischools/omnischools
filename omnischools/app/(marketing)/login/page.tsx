@@ -10,12 +10,16 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
-  // Live: real Supabase phone-OTP. Dev bypass: a shortcut into the app.
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: { accepted?: string };
+}) {
+  // Live: real Supabase phone-OTP / password. Dev bypass: a shortcut into the app.
   if (authIsLive()) {
     return (
       <main className="mx-auto flex min-h-[70vh] max-w-content items-center justify-center px-6 py-20">
-        <LoginForm />
+        <LoginForm accepted={searchParams?.accepted === "1"} />
       </main>
     );
   }
@@ -31,13 +35,13 @@ export default function LoginPage() {
       <div className="flex flex-wrap justify-center gap-3">
         <Link
           href="/dashboard"
-          className="text-bg rounded-md bg-navy px-6 py-3 text-sm font-semibold transition-colors hover:bg-navy-deep"
+          className="rounded-md bg-navy px-6 py-3 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep"
         >
           Continue to dashboard (dev)
         </Link>
         <Link
           href="/start"
-          className="border-border-2 rounded-md border px-6 py-3 text-sm font-semibold text-navy transition-colors hover:bg-gold-bg"
+          className="rounded-md border border-border-2 px-6 py-3 text-sm font-semibold text-navy transition-colors hover:bg-gold-bg"
         >
           Onboard a school
         </Link>
