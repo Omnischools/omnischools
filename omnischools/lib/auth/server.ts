@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { withoutTenantScope } from "@/lib/db/rls";
-import { schools, roleAssignments, roles, users } from "@/db/schema";
+import { schools, roleAssignments, roles, users, districts, regions } from "@/db/schema";
 import { getCurrentUser, type AppUser } from "@/lib/auth";
 
 export interface ActiveSchool {
@@ -11,6 +11,8 @@ export interface ActiveSchool {
   shortName: string | null;
   gesCode: string;
   schoolType: "BASIC" | "SENIOR" | "COMBINED";
+  /** District (or region) name, for the sidebar "tier · location" line. */
+  location: string | null;
 }
 
 /**
@@ -30,27 +32,42 @@ export async function getActiveSchool(): Promise<ActiveSchool | null> {
     shortName: schools.shortName,
     gesCode: schools.gesCode,
     schoolType: schools.schoolType,
+    districtName: districts.name,
+    regionName: regions.name,
   };
 
-  return withoutTenantScope(async (tx) => {
+  const row = await withoutTenantScope(async (tx) => {
     if (env.AUTH_DEV_BYPASS) {
       const demo = await tx
         .select(cols)
         .from(schools)
+        .leftJoin(districts, eq(schools.districtId, districts.id))
+        .leftJoin(regions, eq(schools.regionId, regions.id))
         .where(eq(schools.gesCode, "WR-WAW-014"))
         .limit(1);
       if (demo[0]) return demo[0];
-      const first = await tx.select(cols).from(schools).limit(1);
+      const first = await tx
+        .select(cols)
+        .from(schools)
+        .leftJoin(districts, eq(schools.districtId, districts.id))
+        .leftJoin(regions, eq(schools.regionId, regions.id))
+        .limit(1);
       return first[0] ?? null;
     }
     const assigned = await tx
       .select(cols)
       .from(roleAssignments)
       .innerJoin(schools, eq(roleAssignments.schoolId, schools.id))
+      .leftJoin(districts, eq(schools.districtId, districts.id))
+      .leftJoin(regions, eq(schools.regionId, regions.id))
       .where(eq(roleAssignments.userId, user.id))
       .limit(1);
     return assigned[0] ?? null;
   });
+
+  if (!row) return null;
+  const { districtName, regionName, ...rest } = row;
+  return { ...rest, location: districtName ?? regionName ?? null };
 }
 
 /** For app pages: ensure a signed-in user, else send to login. */

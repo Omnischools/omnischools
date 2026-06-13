@@ -1,80 +1,140 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Users,
+  GraduationCap,
+  BookOpen,
+  UserPlus,
+  Banknote,
+  ReceiptText,
+  BarChart3,
+  CalendarCheck,
+  ClipboardList,
+  Megaphone,
+  MessageSquare,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: "D" },
-  { href: "/staff", label: "Staff", icon: "P" },
-  { href: "/students", label: "Students", icon: "S" },
-  { href: "/classes", label: "Classes", icon: "L" },
-  { href: "/admissions", label: "Admissions", icon: "A" },
-  { href: "/fees", label: "Fees", icon: "F" },
-  { href: "/billing", label: "Billing", icon: "B" },
-  { href: "/reports", label: "Reports", icon: "R" },
-  { href: "/attendance", label: "Attendance", icon: "T" },
-  { href: "/gradebook", label: "Gradebook", icon: "G" },
-  { href: "/communication", label: "Communication", icon: "C" },
-  { href: "/inbox", label: "Inbox", icon: "I" },
-  { href: "/settings", label: "Settings", icon: "⚙" },
+const NAV: { href: string; label: string; Icon: LucideIcon }[] = [
+  { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { href: "/staff", label: "Staff", Icon: Users },
+  { href: "/students", label: "Students", Icon: GraduationCap },
+  { href: "/classes", label: "Classes", Icon: BookOpen },
+  { href: "/admissions", label: "Admissions", Icon: UserPlus },
+  { href: "/fees", label: "Fees", Icon: Banknote },
+  { href: "/billing", label: "Billing", Icon: ReceiptText },
+  { href: "/reports", label: "Reports", Icon: BarChart3 },
+  { href: "/attendance", label: "Attendance", Icon: CalendarCheck },
+  { href: "/gradebook", label: "Gradebook", Icon: ClipboardList },
+  { href: "/communication", label: "Communication", Icon: Megaphone },
+  { href: "/inbox", label: "Inbox", Icon: MessageSquare },
+  { href: "/settings", label: "Settings", Icon: Settings },
 ];
 
-// Roadmap items (later phases) — shown disabled to convey the shape.
-const SOON: { label: string; icon: string }[] = [];
+const TIER: Record<string, string> = {
+  BASIC: "Basic",
+  SENIOR: "Senior",
+  COMBINED: "Combined",
+};
 
-export function AppSidebar() {
+/** First letters of the first two words, uppercased (e.g. "Christ King" → "CK"). */
+function initials(s: string | null | undefined, fallback = "—"): string {
+  const parts = (s ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return fallback;
+  return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
+function titleCase(s: string): string {
+  return s
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function AppSidebar({
+  school,
+  user,
+}: {
+  school: {
+    name: string;
+    shortName: string | null;
+    schoolType: string;
+    location: string | null;
+  };
+  user: { name: string | null; role: string | null };
+}) {
   const pathname = usePathname();
+  const tierLoc = [TIER[school.schoolType] ?? school.schoolType, school.location]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
-      <div className="flex items-center gap-2.5 px-5 py-[18px]">
-        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-navy font-display text-[15px] font-semibold italic text-gold-soft">
-          O
+    <aside className="hidden w-60 shrink-0 flex-col bg-navy text-bg md:flex">
+      {/* School block */}
+      <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold font-display text-sm font-semibold text-navy">
+          {initials(school.shortName ?? school.name)}
         </span>
-        <span className="font-display text-lg font-semibold text-navy">Omnischools</span>
+        <div className="min-w-0">
+          <div className="truncate font-display text-sm font-medium text-bg">
+            {school.name}
+          </div>
+          <div className="truncate text-[10px] uppercase tracking-wider text-gold-soft">
+            {tierLoc}
+          </div>
+        </div>
       </div>
-      <nav className="flex-1 space-y-0.5 px-3 py-2">
-        {NAV.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+
+      {/* Nav */}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
+        {NAV.map(({ href, label, Icon }) => {
+          const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
-              key={item.href}
-              href={item.href}
+              key={href}
+              href={href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                active ? "bg-gold-bg text-navy" : "text-navy-2 hover:bg-bg",
+                "flex items-center gap-3 rounded-md border-l-2 py-2 pl-3 pr-3 text-sm font-medium transition-colors",
+                active
+                  ? "bg-gold/10 border-gold text-bg"
+                  : "text-bg/70 border-transparent hover:bg-white/5 hover:text-bg",
               )}
             >
-              <span
-                className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded font-display text-xs italic",
-                  active ? "bg-navy text-gold-soft" : "bg-bg text-navy-3",
-                )}
-              >
-                {item.icon}
-              </span>
-              {item.label}
+              <Icon
+                className="h-[18px] w-[18px] shrink-0"
+                strokeWidth={active ? 2.2 : 1.8}
+              />
+              {label}
             </Link>
           );
         })}
-        {SOON.length > 0 && (
-          <>
-            <div className="px-3 pb-1 pt-5 text-[10px] font-semibold uppercase tracking-[0.12em] text-navy-3">
-              Coming soon
-            </div>
-            {SOON.map((item) => (
-              <span
-                key={item.label}
-                className="text-navy-3/60 flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm font-medium"
-              >
-                <span className="text-navy-3/60 flex h-6 w-6 items-center justify-center rounded bg-bg font-display text-xs italic">
-                  {item.icon}
-                </span>
-                {item.label}
-              </span>
-            ))}
-          </>
-        )}
       </nav>
+
+      {/* User block */}
+      <div className="flex items-center gap-2.5 border-t border-white/10 px-4 py-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold font-display text-xs font-semibold text-navy">
+          {initials(user.name)}
+        </span>
+        <div className="min-w-0">
+          <div className="truncate font-display text-xs font-semibold text-bg">
+            {user.name ?? "—"}
+          </div>
+          <div className="truncate text-[10px] text-gold-soft">
+            {user.role ? titleCase(user.role) : ""}
+          </div>
+        </div>
+      </div>
+
+      {/* On Omnischools */}
+      <div className="border-t border-white/5 px-4 py-3">
+        <span className="text-gold/60 text-[9px] font-bold uppercase tracking-[0.18em]">
+          ON <span className="text-gold/90">OMNISCHOOLS</span>
+        </span>
+      </div>
     </aside>
   );
 }
