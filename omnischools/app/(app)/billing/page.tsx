@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import {
@@ -8,6 +8,7 @@ import {
   discounts,
   classes,
   invoices,
+  academicPeriod,
 } from "@/db/schema";
 import { num } from "@/lib/fees-helpers";
 import { CreateFeeStructureForm } from "@/components/billing/create-fee-structure-form";
@@ -26,58 +27,80 @@ function currentAcademicYear() {
 export default async function BillingPage() {
   const { school } = await requireSchool();
 
-  const [structureRows, itemRows, discountRows, classRows, feeCatRows, [summary]] =
-    await Promise.all([
-      withSchool(school.id, (tx) =>
-        tx
-          .select()
-          .from(feeStructures)
-          .where(eq(feeStructures.schoolId, school.id))
-          .orderBy(asc(feeStructures.name)),
-      ),
-      withSchool(school.id, (tx) =>
-        tx
-          .select()
-          .from(feeStructureItems)
-          .where(eq(feeStructureItems.schoolId, school.id)),
-      ),
-      withSchool(school.id, (tx) =>
-        tx
-          .select()
-          .from(discounts)
-          .where(eq(discounts.schoolId, school.id))
-          .orderBy(asc(discounts.name)),
-      ),
-      withSchool(school.id, (tx) =>
-        tx
-          .select({ id: classes.id, name: classes.name })
-          .from(classes)
-          .where(and(eq(classes.schoolId, school.id), eq(classes.active, true)))
-          .orderBy(asc(classes.name)),
-      ),
-      withSchool(school.id, (tx) =>
-        tx
-          .select({ name: feeCategories.name })
-          .from(feeCategories)
-          .where(eq(feeCategories.schoolId, school.id))
-          .orderBy(asc(feeCategories.name)),
-      ),
-      withSchool(school.id, (tx) =>
-        tx
-          .select({
-            families: sql<number>`count(distinct ${invoices.studentId})`,
-            total: sql<string>`coalesce(sum(${invoices.balanceAmount}), 0)`,
-          })
-          .from(invoices)
-          .where(
-            and(
-              eq(invoices.schoolId, school.id),
-              inArray(invoices.status, ["ISSUED", "PARTIAL", "OVERDUE"]),
-              sql`${invoices.balanceAmount} > 0`,
-            ),
+  const [
+    structureRows,
+    itemRows,
+    discountRows,
+    classRows,
+    feeCatRows,
+    levelRows,
+    yearRows,
+    [summary],
+  ] = await Promise.all([
+    withSchool(school.id, (tx) =>
+      tx
+        .select()
+        .from(feeStructures)
+        .where(eq(feeStructures.schoolId, school.id))
+        .orderBy(asc(feeStructures.name)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select()
+        .from(feeStructureItems)
+        .where(eq(feeStructureItems.schoolId, school.id)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select()
+        .from(discounts)
+        .where(eq(discounts.schoolId, school.id))
+        .orderBy(asc(discounts.name)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({ id: classes.id, name: classes.name })
+        .from(classes)
+        .where(and(eq(classes.schoolId, school.id), eq(classes.active, true)))
+        .orderBy(asc(classes.name)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({ name: feeCategories.name })
+        .from(feeCategories)
+        .where(eq(feeCategories.schoolId, school.id))
+        .orderBy(asc(feeCategories.name)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .selectDistinct({ level: classes.level })
+        .from(classes)
+        .where(and(eq(classes.schoolId, school.id), isNotNull(classes.level)))
+        .orderBy(asc(classes.level)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .selectDistinct({ year: academicPeriod.academicYear })
+        .from(academicPeriod)
+        .where(eq(academicPeriod.schoolId, school.id))
+        .orderBy(asc(academicPeriod.academicYear)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({
+          families: sql<number>`count(distinct ${invoices.studentId})`,
+          total: sql<string>`coalesce(sum(${invoices.balanceAmount}), 0)`,
+        })
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.schoolId, school.id),
+            inArray(invoices.status, ["ISSUED", "PARTIAL", "OVERDUE"]),
+            sql`${invoices.balanceAmount} > 0`,
           ),
-      ),
-    ]);
+        ),
+    ),
+  ]);
 
   const itemsByStructure = new Map<string, { description: string; amount: number }[]>();
   for (const it of itemRows) {
@@ -124,6 +147,8 @@ export default async function BillingPage() {
           <CreateFeeStructureForm
             defaultYear={currentAcademicYear()}
             feeItemOptions={feeCatRows.map((c) => c.name)}
+            levelOptions={levelRows.map((l) => l.level).filter((l): l is string => !!l)}
+            yearOptions={yearRows.map((y) => y.year)}
           />
         </div>
         {structures.length === 0 ? (

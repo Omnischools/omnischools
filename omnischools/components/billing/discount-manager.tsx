@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createDiscount, deleteDiscount } from "@/lib/actions/billing";
+import { DataList } from "@/components/ui/fields";
+import { DEFAULT_DISCOUNTS } from "@/lib/field-options";
 
 const ghs = (n: number) => `GH₵ ${n.toFixed(2)}`;
 const fieldClass =
@@ -41,7 +43,14 @@ export function DiscountManager({ discounts }: { discounts: DiscountOpt[] }) {
       <form id="discount-form" action={add} className="flex flex-wrap items-end gap-2">
         <div>
           <label className="mb-1 block text-xs font-semibold text-navy-2">Name</label>
-          <input name="name" required placeholder="Staff ward" className={fieldClass} />
+          <input
+            name="name"
+            list="discount-names"
+            required
+            placeholder="Pick or type"
+            className={fieldClass}
+          />
+          <DataList id="discount-names" options={DEFAULT_DISCOUNTS} />
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-navy-2">Type</label>

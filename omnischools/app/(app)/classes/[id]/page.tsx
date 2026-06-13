@@ -7,6 +7,7 @@ import { classes, students, subjects, timetableSlots, users } from "@/db/schema"
 import { loadStaffOptions } from "@/lib/data/staff-options";
 import { ClassTeacherSelect } from "@/components/classes/class-teacher-select";
 import { RosterManager } from "@/components/classes/roster-manager";
+import { SubjectsManager } from "@/components/classes/subjects-manager";
 import { TimetableBuilder } from "@/components/classes/timetable-builder";
 
 export const dynamic = "force-dynamic";
@@ -111,6 +112,8 @@ export default async function ClassDetailPage({ params }: { params: { id: string
       </div>
 
       <RosterManager classId={cls.id} inClass={inClass} unassigned={free} />
+
+      <SubjectsManager subjects={subjectRows} />
 
       <TimetableBuilder
         classId={cls.id}
