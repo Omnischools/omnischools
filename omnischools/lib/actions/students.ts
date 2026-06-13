@@ -199,3 +199,90 @@ export async function updateStudent(input: unknown): Promise<CreateStudentResult
     return { ok: false, error: "Could not update the student. Please try again." };
   }
 }
+
+// ------------------------------------------------------------- bulk import
+const ImportRowSchema = z.object({
+  firstName: z.string().min(1).max(120),
+  lastName: z.string().min(1).max(120),
+  otherNames: z.string().max(120).optional().or(z.literal("")),
+  sex: z.enum(["MALE", "FEMALE"]),
+  dateOfBirth: z.string().optional().or(z.literal("")),
+  classId: z.string().uuid().optional().or(z.literal("")),
+  guardianName: z.string().max(160).optional().or(z.literal("")),
+  guardianPhone: z.string().max(40).optional().or(z.literal("")),
+  guardianRelation: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("GUARDIAN"),
+});
+const ImportStudentsSchema = z.object({
+  rows: z.array(ImportRowSchema).min(1, "No rows to import").max(1000),
+});
+
+export type ImportStudentsResult =
+  | { ok: true; created: number }
+  | { ok: false; error: string };
+
+export async function importStudents(input: unknown): Promise<ImportStudentsResult> {
+  const { school } = await requireSchool();
+  const parsed = ImportStudentsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid import" };
+  }
+  const actor = await resolveActor(school.id);
+
+  try {
+    const created = await withSchool(school.id, async (tx) => {
+      const classRows = await tx
+        .select({ id: classes.id, name: classes.name })
+        .from(classes)
+        .where(eq(classes.schoolId, school.id));
+      const classNameById = new Map(classRows.map((c) => [c.id, c.name]));
+
+      let n = 0;
+      for (const r of parsed.data.rows) {
+        const studentCode = await nextStudentCode(tx, school.id);
+        const [student] = await tx
+          .insert(students)
+          .values({
+            schoolId: school.id,
+            studentCode,
+            firstName: r.firstName,
+            lastName: r.lastName,
+            otherNames: r.otherNames || null,
+            sex: r.sex,
+            dateOfBirth: r.dateOfBirth || null,
+            classId: r.classId || null,
+            currentClassLabel: r.classId ? (classNameById.get(r.classId) ?? null) : null,
+            enrolledOn: new Date().toISOString().slice(0, 10),
+          })
+          .returning({ id: students.id });
+
+        if (r.guardianName && r.guardianPhone) {
+          await tx.insert(studentGuardians).values({
+            schoolId: school.id,
+            studentId: student.id,
+            name: r.guardianName,
+            relationship: r.guardianRelation,
+            phone: normalizeGhanaPhone(r.guardianPhone),
+            isPrimary: true,
+          });
+        }
+        n++;
+      }
+
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "created",
+        entityType: "student_batch",
+        after: { count: n },
+        reason: "Bulk student import",
+      });
+      return n;
+    });
+
+    safeRevalidate("/students");
+    return { ok: true, created };
+  } catch {
+    return { ok: false, error: "Could not import students. Please try again." };
+  }
+}

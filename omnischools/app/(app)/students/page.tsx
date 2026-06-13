@@ -32,16 +32,24 @@ export default async function StudentsPage() {
           <h1 className="font-display text-3xl font-semibold text-navy">Students</h1>
           <p className="text-sm text-navy-3">{rows.length} on roll</p>
         </div>
-        <Link
-          href="/students/new"
-          className="text-bg rounded-md bg-navy px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-navy-deep"
-        >
-          + Add student
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/students/import"
+            className="rounded-md border border-border-2 px-4 py-2.5 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg"
+          >
+            Import
+          </Link>
+          <Link
+            href="/students/new"
+            className="rounded-md bg-navy px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep"
+          >
+            + Add student
+          </Link>
+        </div>
       </div>
 
       {rows.length === 0 ? (
-        <div className="border-border-2 bg-surface rounded-xl border border-dashed p-12 text-center">
+        <div className="rounded-xl border border-dashed border-border-2 bg-surface p-12 text-center">
           <p className="font-display text-lg text-navy">No students yet.</p>
           <p className="mt-1 text-sm text-navy-3">
             Add one directly, or accept an application from{" "}
@@ -52,9 +60,9 @@ export default async function StudentsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-surface overflow-hidden rounded-xl border border-border">
+        <div className="overflow-hidden rounded-xl border border-border bg-surface">
           <table className="w-full text-sm">
-            <thead className="bg-bg border-b border-border text-left text-xs uppercase tracking-wide text-navy-3">
+            <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
               <tr>
                 <th className="px-4 py-3 font-semibold">Code</th>
                 <th className="px-4 py-3 font-semibold">Name</th>
@@ -65,7 +73,7 @@ export default async function StudentsPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {rows.map((s) => (
-                <tr key={s.id} className="hover:bg-bg transition-colors">
+                <tr key={s.id} className="transition-colors hover:bg-bg">
                   <td className="px-4 py-3 font-mono text-xs text-navy-2">
                     <Link href={`/students/${s.id}`} className="hover:text-gold">
                       {s.studentCode}
