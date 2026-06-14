@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { asc, count, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { classes, students } from "@/db/schema";
 import { loadStaffOptions } from "@/lib/data/staff-options";
 import { CreateClassForm } from "@/components/classes/create-class-form";
-import { ClassTeacherSelect } from "@/components/classes/class-teacher-select";
+import { ClassesTable } from "@/components/classes/classes-table";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +36,13 @@ export default async function ClassesPage() {
   ]);
 
   const sizeOf = new Map(countRows.map((r) => [r.classId, Number(r.n)]));
+  const tableRows = classRows.map((c) => ({
+    id: c.id,
+    name: c.name,
+    level: c.level,
+    teacherId: c.teacherId,
+    size: sizeOf.get(c.id) ?? 0,
+  }));
 
   return (
     <div className="mx-auto max-w-page">
@@ -60,47 +66,7 @@ export default async function ClassesPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-surface">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Class</th>
-                <th className="px-4 py-3 font-semibold">Level</th>
-                <th className="px-4 py-3 font-semibold">Class teacher</th>
-                <th className="px-4 py-3 font-semibold">Students</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {classRows.map((c) => (
-                <tr key={c.id} className="transition-colors hover:bg-bg">
-                  <td className="px-4 py-3 font-medium text-navy">
-                    <Link href={`/classes/${c.id}`} className="hover:text-gold">
-                      {c.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-navy-2">{c.level ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <ClassTeacherSelect
-                      classId={c.id}
-                      current={c.teacherId}
-                      staff={staff}
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-navy-2">{sizeOf.get(c.id) ?? 0}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/classes/${c.id}`}
-                      className="text-sm font-semibold text-gold hover:underline"
-                    >
-                      Open →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ClassesTable rows={tableRows} staff={staff} />
       )}
     </div>
   );

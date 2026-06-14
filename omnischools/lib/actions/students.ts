@@ -5,9 +5,20 @@ import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { normalizeGhanaPhone } from "@/lib/auth";
-import { and, eq } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { nextStudentCode } from "@/lib/students-helpers";
-import { students, studentGuardians, classes } from "@/db/schema";
+import type { Tx } from "@/lib/db";
+import {
+  students,
+  studentGuardians,
+  classes,
+  invoices,
+  payments,
+  gradebookScores,
+  reportCards,
+  attendanceRecords,
+  admissionApplications,
+} from "@/db/schema";
 
 const CreateStudentSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(120),
@@ -284,5 +295,172 @@ export async function importStudents(input: unknown): Promise<ImportStudentsResu
     return { ok: true, created };
   } catch {
     return { ok: false, error: "Could not import students. Please try again." };
+  }
+}
+
+// ------------------------------------------------------------- delete student
+type DeleteResult = { ok: boolean; error?: string };
+
+function listJoin(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+/**
+ * Linked records that make a hard delete unsafe (would destroy financial /
+ * academic history). When any exist, deletion is blocked and the user is told to
+ * set a status (Withdrawn / Transferred) instead. Guardians don't block — they
+ * cascade away with the student.
+ */
+async function studentBlockers(
+  tx: Tx,
+  schoolId: string,
+  id: string,
+): Promise<string[]> {
+  const reasons: string[] = [];
+  const [p] = await tx
+    .select({ n: count() })
+    .from(payments)
+    .where(and(eq(payments.schoolId, schoolId), eq(payments.studentId, id)));
+  if (Number(p?.n ?? 0) > 0) reasons.push("payments");
+  const [iv] = await tx
+    .select({ n: count() })
+    .from(invoices)
+    .where(and(eq(invoices.schoolId, schoolId), eq(invoices.studentId, id)));
+  if (Number(iv?.n ?? 0) > 0) reasons.push("invoices");
+  const [g] = await tx
+    .select({ n: count() })
+    .from(gradebookScores)
+    .where(
+      and(eq(gradebookScores.schoolId, schoolId), eq(gradebookScores.studentId, id)),
+    );
+  if (Number(g?.n ?? 0) > 0) reasons.push("grades");
+  const [rc] = await tx
+    .select({ n: count() })
+    .from(reportCards)
+    .where(and(eq(reportCards.schoolId, schoolId), eq(reportCards.studentId, id)));
+  if (Number(rc?.n ?? 0) > 0) reasons.push("report cards");
+  const [at] = await tx
+    .select({ n: count() })
+    .from(attendanceRecords)
+    .where(
+      and(eq(attendanceRecords.schoolId, schoolId), eq(attendanceRecords.studentId, id)),
+    );
+  if (Number(at?.n ?? 0) > 0) reasons.push("attendance");
+  return reasons;
+}
+
+const DeleteStudentSchema = z.object({ id: z.string().uuid() });
+
+export async function deleteStudent(input: unknown): Promise<DeleteResult> {
+  const { school } = await requireSchool();
+  const parsed = DeleteStudentSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input" };
+  const actor = await resolveActor(school.id);
+  try {
+    const outcome = await withSchool(school.id, async (tx) => {
+      const [s] = await tx
+        .select({ first: students.firstName, last: students.lastName })
+        .from(students)
+        .where(and(eq(students.id, parsed.data.id), eq(students.schoolId, school.id)));
+      if (!s) return { error: "Student not found." };
+      const blockers = await studentBlockers(tx, school.id, parsed.data.id);
+      if (blockers.length) {
+        return {
+          error: `Can't delete — ${s.first} ${s.last} has ${listJoin(blockers)} on record. Set their status to Withdrawn or Transferred instead.`,
+        };
+      }
+      // detach any admission link first (its FK would otherwise block the delete)
+      await tx
+        .update(admissionApplications)
+        .set({ studentId: null })
+        .where(
+          and(
+            eq(admissionApplications.schoolId, school.id),
+            eq(admissionApplications.studentId, parsed.data.id),
+          ),
+        );
+      await tx
+        .delete(students)
+        .where(and(eq(students.id, parsed.data.id), eq(students.schoolId, school.id)));
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "deleted",
+        entityType: "student",
+        entityId: parsed.data.id,
+        before: { name: `${s.first} ${s.last}` },
+        reason: "Student deleted",
+      });
+      return { ok: true as const };
+    });
+    if ("error" in outcome) return { ok: false, error: outcome.error };
+    safeRevalidate("/students");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not delete the student." };
+  }
+}
+
+const DeleteStudentsSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+});
+
+export type DeleteStudentsResult = {
+  ok: boolean;
+  error?: string;
+  deleted?: number;
+  blocked?: { name: string; reasons: string[] }[];
+};
+
+export async function deleteStudents(input: unknown): Promise<DeleteStudentsResult> {
+  const { school } = await requireSchool();
+  const parsed = DeleteStudentsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Select at least one student" };
+  const ids = Array.from(new Set(parsed.data.ids));
+  const actor = await resolveActor(school.id);
+  try {
+    const result = await withSchool(school.id, async (tx) => {
+      const rows = await tx
+        .select({ id: students.id, first: students.firstName, last: students.lastName })
+        .from(students)
+        .where(and(eq(students.schoolId, school.id), inArray(students.id, ids)));
+      const blocked: { name: string; reasons: string[] }[] = [];
+      const deletable: string[] = [];
+      for (const r of rows) {
+        const reasons = await studentBlockers(tx, school.id, r.id);
+        if (reasons.length) blocked.push({ name: `${r.first} ${r.last}`, reasons });
+        else deletable.push(r.id);
+      }
+      if (deletable.length) {
+        await tx
+          .update(admissionApplications)
+          .set({ studentId: null })
+          .where(
+            and(
+              eq(admissionApplications.schoolId, school.id),
+              inArray(admissionApplications.studentId, deletable),
+            ),
+          );
+        await tx
+          .delete(students)
+          .where(and(eq(students.schoolId, school.id), inArray(students.id, deletable)));
+        await recordAudit(tx, {
+          schoolId: school.id,
+          actorUserId: actor.id ?? undefined,
+          actorRole: actor.role,
+          actionType: "deleted",
+          entityType: "student_batch",
+          after: { count: deletable.length },
+          reason: "Students deleted (bulk)",
+        });
+      }
+      return { deleted: deletable.length, blocked };
+    });
+    safeRevalidate("/students");
+    return { ok: true, ...result };
+  } catch {
+    return { ok: false, error: "Could not delete the selected students." };
   }
 }

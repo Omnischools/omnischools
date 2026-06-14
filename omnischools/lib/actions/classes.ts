@@ -5,6 +5,7 @@ import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
+import type { Tx } from "@/lib/db";
 import { classes, students, subjects, timetableSlots } from "@/db/schema";
 
 type Result = { ok: boolean; error?: string; id?: string };
@@ -53,6 +54,132 @@ export async function createClass(input: unknown): Promise<Result> {
     return { ok: true, id };
   } catch {
     return { ok: false, error: "Could not create class — that name may already exist." };
+  }
+}
+
+// edit a class (name + level) after creation
+const UpdateClassSchema = z.object({
+  classId: z.string().uuid(),
+  name: z.string().min(1, "Enter a class name").max(60),
+  level: z.string().max(40).optional().nullable(),
+});
+
+export async function updateClass(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = UpdateClassSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const name = parsed.data.name.trim();
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .update(classes)
+        .set({ name, level: nz(parsed.data.level) })
+        .where(
+          and(eq(classes.id, parsed.data.classId), eq(classes.schoolId, school.id)),
+        );
+      // keep students' display label in sync with the renamed class
+      await tx
+        .update(students)
+        .set({ currentClassLabel: name })
+        .where(
+          and(
+            eq(students.schoolId, school.id),
+            eq(students.classId, parsed.data.classId),
+          ),
+        );
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "class",
+        entityId: parsed.data.classId,
+        after: { name },
+        reason: "Class edited",
+      });
+    });
+    safeRevalidate("/classes");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not update class — that name may already exist." };
+  }
+}
+
+// delete one or more classes. Students in them are unassigned (kept); the
+// timetable and attendance for those classes cascade away at the DB level.
+async function removeClasses(
+  tx: Tx,
+  schoolId: string,
+  ids: string[],
+): Promise<void> {
+  await tx
+    .update(students)
+    .set({ classId: null, currentClassLabel: null })
+    .where(and(eq(students.schoolId, schoolId), inArray(students.classId, ids)));
+  await tx
+    .delete(classes)
+    .where(and(eq(classes.schoolId, schoolId), inArray(classes.id, ids)));
+}
+
+const DeleteClassSchema = z.object({ classId: z.string().uuid() });
+
+export async function deleteClass(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = DeleteClassSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input" };
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await removeClasses(tx, school.id, [parsed.data.classId]);
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "deleted",
+        entityType: "class",
+        entityId: parsed.data.classId,
+        reason: "Class deleted",
+      });
+    });
+    safeRevalidate("/classes");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not delete class." };
+  }
+}
+
+const DeleteClassesSchema = z.object({
+  classIds: z.array(z.string().uuid()).min(1).max(200),
+});
+
+export async function deleteClasses(
+  input: unknown,
+): Promise<Result & { deleted?: number }> {
+  const { school } = await requireSchool();
+  const parsed = DeleteClassesSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Select at least one class" };
+  const ids = Array.from(new Set(parsed.data.classIds));
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await removeClasses(tx, school.id, ids);
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "deleted",
+        entityType: "class_batch",
+        after: { count: ids.length },
+        reason: "Classes deleted (bulk)",
+      });
+    });
+    safeRevalidate("/classes");
+    return { ok: true, deleted: ids.length };
+  } catch {
+    return { ok: false, error: "Could not delete the selected classes." };
   }
 }
 

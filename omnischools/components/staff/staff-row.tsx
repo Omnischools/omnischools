@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { updateStaff } from "@/lib/actions/staff";
 import { createInvite } from "@/lib/actions/invites";
 import { RoleEditor } from "@/components/staff/role-editor";
+import { RowCheckbox } from "@/components/ui/selection";
 
 const inputClass =
   "w-full rounded-md border border-border-2 bg-bg px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold focus:bg-surface";
@@ -16,20 +17,44 @@ type Member = {
   roles: { assignmentId: string; code: string }[];
 };
 
-export function StaffRow({ member }: { member: Member }) {
+export function StaffRow({
+  member,
+  selected,
+  onToggle,
+  onRequestDelete,
+}: {
+  member: Member;
+  selected: boolean;
+  onToggle: () => void;
+  onRequestDelete: () => void;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(member.name ?? "");
+  const [phone, setPhone] = useState(member.phone);
   const [email, setEmail] = useState(member.email ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  function cancel() {
+    setEditing(false);
+    setName(member.name ?? "");
+    setPhone(member.phone);
+    setEmail(member.email ?? "");
+    setError(null);
+  }
+
   async function save() {
     setBusy(true);
     setError(null);
-    const res = await updateStaff({ userId: member.userId, fullName: name, email });
+    const res = await updateStaff({
+      userId: member.userId,
+      fullName: name,
+      phone,
+      email,
+    });
     setBusy(false);
     if (res.ok) {
       setEditing(false);
@@ -53,6 +78,13 @@ export function StaffRow({ member }: { member: Member }) {
 
   return (
     <tr className="align-top hover:bg-bg">
+      <td className="px-4 py-3">
+        <RowCheckbox
+          checked={selected}
+          onChange={onToggle}
+          label={`Select ${member.name ?? "staff"}`}
+        />
+      </td>
       <td className="px-4 py-3 font-medium text-navy">
         {editing ? (
           <input
@@ -64,7 +96,18 @@ export function StaffRow({ member }: { member: Member }) {
           (member.name ?? "—")
         )}
       </td>
-      <td className="px-4 py-3 font-mono text-xs text-navy-2">{member.phone}</td>
+      <td className="px-4 py-3 font-mono text-xs text-navy-2">
+        {editing ? (
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            type="tel"
+            className={`${inputClass} font-sans`}
+          />
+        ) : (
+          member.phone
+        )}
+      </td>
       <td className="px-4 py-3 text-navy-2">
         {editing ? (
           <input
@@ -92,11 +135,7 @@ export function StaffRow({ member }: { member: Member }) {
               Save
             </button>
             <button
-              onClick={() => {
-                setEditing(false);
-                setName(member.name ?? "");
-                setEmail(member.email ?? "");
-              }}
+              onClick={cancel}
               className="text-xs font-semibold text-navy-3 hover:text-navy"
             >
               Cancel
@@ -124,9 +163,16 @@ export function StaffRow({ member }: { member: Member }) {
             <button
               onClick={invite}
               disabled={busy}
-              className="text-xs font-semibold text-navy-3 transition-colors hover:text-gold disabled:opacity-50"
+              className="mr-3 text-xs font-semibold text-navy-3 transition-colors hover:text-gold disabled:opacity-50"
             >
               {busy ? "…" : "Invite"}
+            </button>
+            <button
+              onClick={onRequestDelete}
+              disabled={busy}
+              className="text-xs font-semibold text-navy-3 transition-colors hover:text-terra disabled:opacity-50"
+            >
+              Delete
             </button>
           </>
         )}
