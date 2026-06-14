@@ -90,6 +90,59 @@ export async function addStaff(input: unknown): Promise<Result> {
   }
 }
 
+// ----------------------------------------------------------- edit staff record
+const UpdateStaffSchema = z.object({
+  userId: z.string().uuid(),
+  fullName: z.string().min(2, "Enter the staff member's name").max(120),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
+});
+
+export async function updateStaff(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = UpdateStaffSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const d = parsed.data;
+  const actor = await resolveActor(school.id);
+  try {
+    const outcome = await withSchool(school.id, async (tx) => {
+      // only edit someone who is actually our staff
+      const [ra] = await tx
+        .select({ id: roleAssignments.id })
+        .from(roleAssignments)
+        .where(
+          and(
+            eq(roleAssignments.schoolId, school.id),
+            eq(roleAssignments.userId, d.userId),
+          ),
+        )
+        .limit(1);
+      if (!ra) return { error: "Not a staff member at this school." };
+      await tx
+        .update(users)
+        .set({ fullName: d.fullName.trim(), email: d.email || null })
+        .where(eq(users.id, d.userId));
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "staff",
+        entityId: d.userId,
+        after: { name: d.fullName },
+        reason: "Staff record edited",
+      });
+      return { ok: true as const };
+    });
+    if ("error" in outcome) return { ok: false, error: outcome.error };
+    safeRevalidate("/staff");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not update staff." };
+  }
+}
+
 // ----------------------------------------------------------- assign more roles
 const AssignSchema = z.object({
   userId: z.string().uuid(),

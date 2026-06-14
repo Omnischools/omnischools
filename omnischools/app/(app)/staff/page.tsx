@@ -4,8 +4,7 @@ import { withSchool } from "@/lib/db/rls";
 import { users, roles, roleAssignments } from "@/db/schema";
 import { STAFF_ROLE_CODES } from "@/lib/staff-roles";
 import { AddStaffForm } from "@/components/staff/add-staff-form";
-import { InviteStaffForm } from "@/components/staff/invite-staff-form";
-import { RoleEditor } from "@/components/staff/role-editor";
+import { StaffRow } from "@/components/staff/staff-row";
 
 export const dynamic = "force-dynamic";
 
@@ -63,10 +62,7 @@ export default async function StaffPage() {
             and admins who can sign in.
           </p>
         </div>
-        <div className="relative flex items-center gap-2">
-          <InviteStaffForm />
-          <AddStaffForm />
-        </div>
+        <AddStaffForm />
       </div>
 
       {staff.length === 0 ? (
@@ -86,18 +82,12 @@ export default async function StaffPage() {
                 <th className="px-4 py-3 font-semibold">Phone</th>
                 <th className="px-4 py-3 font-semibold">Email</th>
                 <th className="px-4 py-3 font-semibold">Roles</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {staff.map((m) => (
-                <tr key={m.userId} className="transition-colors hover:bg-bg">
-                  <td className="px-4 py-3 font-medium text-navy">{m.name ?? "—"}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-navy-2">{m.phone}</td>
-                  <td className="px-4 py-3 text-navy-2">{m.email ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <RoleEditor userId={m.userId} assignments={m.roles} />
-                  </td>
-                </tr>
+                <StaffRow key={m.userId} member={m} />
               ))}
             </tbody>
           </table>
