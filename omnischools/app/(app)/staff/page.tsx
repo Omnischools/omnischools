@@ -4,7 +4,7 @@ import { withSchool } from "@/lib/db/rls";
 import { users, roles, roleAssignments } from "@/db/schema";
 import { STAFF_ROLE_CODES } from "@/lib/staff-roles";
 import { AddStaffForm } from "@/components/staff/add-staff-form";
-import { StaffRow } from "@/components/staff/staff-row";
+import { StaffTable } from "@/components/staff/staff-table";
 
 export const dynamic = "force-dynamic";
 
@@ -74,24 +74,7 @@ export default async function StaffPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-surface">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Name</th>
-                <th className="px-4 py-3 font-semibold">Phone</th>
-                <th className="px-4 py-3 font-semibold">Email</th>
-                <th className="px-4 py-3 font-semibold">Roles</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {staff.map((m) => (
-                <StaffRow key={m.userId} member={m} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <StaffTable staff={staff} />
       )}
     </div>
   );
