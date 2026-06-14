@@ -6,7 +6,10 @@ import {
   GH_REGIONS,
   OWNERSHIPS,
   SCHOOL_TYPE_CARDS,
+  SENIOR_TRACKS,
   cardForSubtype,
+  cardById,
+  type CardId,
   type OnboardInput,
   type OnboardResult,
   type SchoolSubtype,
@@ -142,12 +145,16 @@ export function OnboardingWizard() {
     }
   };
 
-  const pickType = (key: SchoolSubtype) => {
-    const c = cardForSubtype(key);
-    setForm((f) => ({ ...f, subtype: key, product: c.product }));
+  const pickCard = (id: CardId) => {
+    const c = cardById(id);
+    setForm((f) => ({ ...f, subtype: c.defaultSubtype, product: c.product }));
     setSaved(false);
     // Leaving the SHS branch shouldn't strand us on a now-hidden step.
     if (c.steps === 6 && stepIdx > 5) setStepIdx(5);
+  };
+  const setSeniorTrack = (t: SchoolSubtype) => {
+    setForm((f) => ({ ...f, subtype: t }));
+    setSaved(false);
   };
 
   const saveForLater = () => {
@@ -339,7 +346,8 @@ export function OnboardingWizard() {
                 stepKey={current?.key ?? "identity"}
                 form={form}
                 set={set}
-                pickType={pickType}
+                pickCard={pickCard}
+                setSeniorTrack={setSeniorTrack}
                 isShs={isShs}
                 periodWord={periodWord}
                 stepNo={stepIdx + 1}
@@ -454,7 +462,8 @@ function StepBody({
   stepKey,
   form,
   set,
-  pickType,
+  pickCard,
+  setSeniorTrack,
   isShs,
   periodWord,
   stepNo,
@@ -463,13 +472,15 @@ function StepBody({
   stepKey: string;
   form: Form;
   set: (k: keyof Form, v: string) => void;
-  pickType: (k: SchoolSubtype) => void;
+  pickCard: (id: CardId) => void;
+  setSeniorTrack: (t: SchoolSubtype) => void;
   isShs: boolean;
   periodWord: string;
   stepNo: number;
   total: number;
 }) {
   const f = (k: keyof Form) => (form[k] as string) ?? "";
+  const selectedCard = form.subtype ? cardForSubtype(form.subtype) : null;
 
   if (stepKey === "identity") {
     return (
@@ -587,14 +598,14 @@ function StepBody({
           em="school are you?"
           lede="This is the only step that changes what steps 4–8 look like. Basic & JHS finish at step 6; SHS, SHTS and Multi-tier add residency + WAEC (8 steps)."
         />
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
           {SCHOOL_TYPE_CARDS.map((c) => {
-            const selected = form.subtype === c.key;
+            const selected = selectedCard?.id === c.id;
             return (
               <button
-                key={c.key}
+                key={c.id}
                 type="button"
-                onClick={() => pickType(c.key)}
+                onClick={() => pickCard(c.id)}
                 className={cn(
                   "relative rounded-[10px] border-2 p-5 text-left transition-colors",
                   selected
@@ -621,16 +632,48 @@ function StepBody({
               </button>
             );
           })}
-          <div className="rounded-[10px] border-2 border-dashed border-border-2 p-5 opacity-50">
-            <div className="font-display text-base font-medium text-navy-3">TVET-only</div>
-            <p className="mb-2.5 mt-1.5 text-[11px] leading-snug text-navy-3">
-              Technical/Vocational Institution under Ghana TVET Service. Coming Q3 2026.
-            </p>
-            <div className="border-t border-border pt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-navy-3">
-              Not yet available
+        </div>
+
+        {/* Senior sub-track — SHS vs SHTS (recorded now; SHTS curriculum is built in the Senior release) */}
+        {selectedCard?.id === "SENIOR" && (
+          <div className="mt-4">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-navy-3">
+              Senior track
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {SENIOR_TRACKS.map((t) => {
+                const on = form.subtype === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setSeniorTrack(t.key)}
+                    className={cn(
+                      "rounded-lg border-2 p-4 text-left transition-colors",
+                      on
+                        ? "border-gold bg-gold-bg"
+                        : "border-border-2 bg-surface hover:border-gold-soft",
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "flex h-4 w-4 items-center justify-center rounded-full border-2",
+                          on ? "border-gold bg-gold" : "border-border-2",
+                        )}
+                      >
+                        {on && <span className="h-1.5 w-1.5 rounded-full bg-navy" />}
+                      </span>
+                      <span className="text-sm font-semibold text-navy">{t.label}</span>
+                    </div>
+                    <p className="mt-1.5 pl-6 text-[11px] leading-snug text-navy-3">{t.desc}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </div>
+        )}
+
         <div className="mt-5 rounded-r-lg border-l-[3px] border-gold bg-gold-bg px-4 py-3.5 text-[12px] leading-relaxed text-navy-2">
           <b className="text-navy">Why this matters:</b> your answer determines whether later
           surfaces show class-based or programme-based structure, and whether residency &amp; WAEC
@@ -862,7 +905,14 @@ function ReviewPanel({
       step: "School type",
       key: "type",
       rows: [
-        ["Type", card ? `${card.name} · ${card.steps}-step path` : "—"],
+        [
+          "Type",
+          card
+            ? `${card.name}${
+                form.subtype === "SHTS" ? " (SHTS)" : form.subtype === "SHS" ? " (SHS)" : ""
+              } · ${card.steps}-step path`
+            : "—",
+        ],
         ["Tier", card?.product ?? "—"],
       ],
     },
