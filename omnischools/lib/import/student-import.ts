@@ -28,7 +28,7 @@ export const STUDENT_IMPORT_SAMPLE: string[][] = [
     "0241112222",
     "Mother",
   ],
-  ["Kw4me", "Mensah", "Kofi", "M", "2013-09-01", "", "", "", ""],
+  ["Kwame", "Mensah", "Kofi", "M", "2013-09-01", "", "", "", ""],
 ];
 
 export type RelationCode = "MOTHER" | "FATHER" | "GUARDIAN" | "OTHER";
