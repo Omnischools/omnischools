@@ -7,7 +7,7 @@ const fieldClass =
   "w-full rounded-md border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
 const labelClass = "mb-1.5 block text-xs font-semibold text-navy-2";
 
-const STATUSES = ["ACTIVE", "INACTIVE", "GRADUATED", "WITHDRAWN", "TRANSFERRED"] as const;
+const STATUSES = ["ACTIVE", "INACTIVE", "GRADUATED", "WITHDRAWN", "TRANSFERRED","DECEASED"] as const;
 const title = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
 type Student = {
