@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 
 const TABS: { href: string; label: string; soon?: boolean }[] = [
   { href: "/books", label: "Dashboard" },
-  { href: "/books/income", label: "Income", soon: true },
-  { href: "/books/expenses", label: "Expenses", soon: true },
+  { href: "/books/income", label: "Income" },
+  { href: "/books/expenses", label: "Expenses" },
   { href: "/books/reports", label: "Financial reports", soon: true },
   { href: "/books/assets", label: "Fixed assets", soon: true },
   { href: "/books/settings", label: "Settings" },

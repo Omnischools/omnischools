@@ -6,7 +6,7 @@ import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from "@/lib/field-options";
-import { bookCategories } from "@/db/schema";
+import { bookCategories, bookEntries } from "@/db/schema";
 
 type Result = { ok: boolean; error?: string; id?: string };
 
@@ -133,5 +133,102 @@ export async function seedDefaultBookCategories(): Promise<Result & { added?: nu
     return { ok: true, added };
   } catch {
     return { ok: false, error: "Could not seed default categories." };
+  }
+}
+
+// ----------------------------------------------------------- income / expense entries
+const isIsoDate = (s: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+
+const AddEntrySchema = z.object({
+  kind: KIND,
+  entryDate: z.string().refine(isIsoDate, "Enter a valid date"),
+  categoryId: z.string().uuid().optional().or(z.literal("")),
+  description: z.string().max(200).optional().or(z.literal("")),
+  party: z.string().max(120).optional().or(z.literal("")),
+  method: z.string().max(40).optional().or(z.literal("")),
+  reference: z.string().max(60).optional().or(z.literal("")),
+  amount: z.coerce.number().positive("Amount must be greater than 0").max(100000000),
+});
+
+export async function addBookEntry(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = AddEntrySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const d = parsed.data;
+  const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
+  const actor = await resolveActor(school.id);
+  try {
+    const id = await withSchool(school.id, async (tx) => {
+      const [e] = await tx
+        .insert(bookEntries)
+        .values({
+          schoolId: school.id,
+          kind: d.kind,
+          entryDate: d.entryDate,
+          categoryId: d.categoryId || null,
+          description: nz(d.description),
+          party: nz(d.party),
+          method: nz(d.method),
+          reference: nz(d.reference),
+          amount: String(d.amount),
+          createdByUserId: actor.id ?? null,
+        })
+        .returning({ id: bookEntries.id });
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "created",
+        entityType: "book_entry",
+        entityId: e.id,
+        after: { kind: d.kind, amount: d.amount },
+        reason: `${d.kind === "INCOME" ? "Income" : "Expense"} recorded`,
+      });
+      return e.id;
+    });
+    safeRevalidate("/books");
+    safeRevalidate(d.kind === "INCOME" ? "/books/income" : "/books/expenses");
+    return { ok: true, id };
+  } catch {
+    return { ok: false, error: "Could not save the entry. Please try again." };
+  }
+}
+
+const DeleteEntrySchema = z.object({ id: z.string().uuid() });
+export async function deleteBookEntry(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = DeleteEntrySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input" };
+  const actor = await resolveActor(school.id);
+  try {
+    const outcome = await withSchool(school.id, async (tx) => {
+      const [row] = await tx
+        .select({ kind: bookEntries.kind })
+        .from(bookEntries)
+        .where(and(eq(bookEntries.id, parsed.data.id), eq(bookEntries.schoolId, school.id)));
+      if (!row) return { error: "Entry not found." };
+      await tx
+        .delete(bookEntries)
+        .where(and(eq(bookEntries.id, parsed.data.id), eq(bookEntries.schoolId, school.id)));
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "deleted",
+        entityType: "book_entry",
+        entityId: parsed.data.id,
+        reason: "Book entry deleted",
+      });
+      return { ok: true as const, kind: row.kind };
+    });
+    if ("error" in outcome) return { ok: false, error: outcome.error };
+    safeRevalidate("/books");
+    safeRevalidate(outcome.kind === "INCOME" ? "/books/income" : "/books/expenses");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not delete the entry." };
   }
 }
