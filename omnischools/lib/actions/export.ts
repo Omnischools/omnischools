@@ -19,6 +19,18 @@ type ExportResult =
 
 const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
+/** Filename prefix from the school's name (filename-safe), e.g. "Asankrangwa High". */
+function filePrefix(school: { name: string; shortName: string | null }): string {
+  const base = (school.name || school.shortName || "school").trim();
+  return (
+    base
+      .replace(/[\\/:*?"<>|]+/g, "") // strip illegal filename chars
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 60) || "school"
+  );
+}
+
 /** Students → CSV (code, name parts, sex, DOB, class, status). */
 export async function exportStudentsCsv(): Promise<ExportResult> {
   const { school } = await requireSchool();
@@ -52,7 +64,7 @@ export async function exportStudentsCsv(): Promise<ExportResult> {
     ]);
     return {
       ok: true,
-      filename: "omnischools-students.csv",
+      filename: `${filePrefix(school)}-students.csv`,
       csv: csvTemplate(headers, body),
       rows: body.length,
     };
@@ -106,7 +118,7 @@ export async function exportStaffCsv(): Promise<ExportResult> {
     ]);
     return {
       ok: true,
-      filename: "omnischools-staff.csv",
+      filename: `${filePrefix(school)}-staff.csv`,
       csv: csvTemplate(headers, body),
       rows: body.length,
     };
@@ -146,7 +158,7 @@ export async function exportFeesCsv(): Promise<ExportResult> {
     ]);
     return {
       ok: true,
-      filename: "omnischools-fees.csv",
+      filename: `${filePrefix(school)}-fees.csv`,
       csv: csvTemplate(headers, body),
       rows: body.length,
     };
