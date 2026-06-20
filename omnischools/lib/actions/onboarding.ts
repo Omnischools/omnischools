@@ -7,6 +7,8 @@ import {
   defaultGradePreset,
   defaultClasses,
   defaultSubjects,
+  defaultFees,
+  DEFAULT_PAYMENT_METHODS,
 } from "@/lib/onboarding";
 import { withoutTenantScope } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
@@ -28,6 +30,8 @@ import {
   gradeScale,
   classes,
   subjects,
+  feeStructures,
+  feeStructureItems,
 } from "@/db/schema";
 
 const FOUNDER_EMAIL = "hello@omnischools.gh";
@@ -60,6 +64,9 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid submission" };
   }
   const d = parsed.data;
+  if (!d.termsAccepted) {
+    return { ok: false, error: "Please accept the Terms & Privacy Policy to continue." };
+  }
   const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
   const academicYear = nz(d.academicYear) ?? currentAcademicYear();
   const schoolType = d.product === "COMBINED" ? "COMBINED" : d.product;
@@ -80,6 +87,15 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
     Array.from(new Set(xs.map((s) => s.trim()).filter(Boolean)));
   const classNames = uniqTrim(d.classes ?? defaultClasses(d.subtype));
   const subjectNames = uniqTrim(d.subjects ?? defaultSubjects(d.subtype));
+  // Billing — the wizard's fee lines (named, any amount) else the tier defaults.
+  const feeLines = (d.fees ?? defaultFees(d.subtype, d.ownership)).filter((fee) =>
+    nz(fee.item),
+  );
+  const billingCadence = d.billingCadence ?? "TERM";
+  const paymentMethods =
+    d.paymentMethods && d.paymentMethods.length > 0
+      ? d.paymentMethods
+      : DEFAULT_PAYMENT_METHODS;
   const productRows: ("BASIC" | "SENIOR")[] =
     d.product === "COMBINED" ? ["BASIC", "SENIOR"] : [d.product];
 
@@ -146,6 +162,9 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
           ownership: d.ownership,
           yearFounded: nz(d.yearFounded),
           address: nz(d.address),
+          billingCadence,
+          paymentMethods,
+          termsAcceptedAt: new Date(),
           districtId,
           regionId,
         })
@@ -272,6 +291,26 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
           .insert(subjects)
           .values(subjectNames.map((name) => ({ schoolId: school.id, name })))
           .onConflictDoNothing({ target: [subjects.schoolId, subjects.name] });
+      }
+
+      // billing — a default fee structure for the year + its line items
+      if (feeLines.length > 0) {
+        const [fs] = await tx
+          .insert(feeStructures)
+          .values({
+            schoolId: school.id,
+            name: `Default fees · ${academicYear}`,
+            academicYear,
+          })
+          .returning({ id: feeStructures.id });
+        await tx.insert(feeStructureItems).values(
+          feeLines.map((fee) => ({
+            schoolId: school.id,
+            feeStructureId: fs.id,
+            description: fee.item.trim(),
+            amount: String(fee.amount ?? 0),
+          })),
+        );
       }
 
       await recordAudit(tx, {

@@ -1,4 +1,12 @@
-import { pgTable, uuid, text, boolean, timestamp, unique } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  boolean,
+  timestamp,
+  unique,
+  jsonb,
+} from "drizzle-orm/pg-core";
 import { schoolTypeEnum, ownershipEnum, shsCategoryEnum, productEnum } from "./_enums";
 
 /** GES geography — global reference data (no tenant scope). */
@@ -31,6 +39,10 @@ export const schools = pgTable("ref_school", {
   ownership: ownershipEnum("ownership_type").notNull().default("PRIVATE"),
   yearFounded: text("year_founded"),
   address: text("address"), // postal + GPS Ghana Post code
+  // Onboarding step 6 — billing prefs + Terms acceptance
+  billingCadence: text("billing_cadence"), // "TERM" | "MONTHLY"
+  paymentMethods: jsonb("payment_methods").$type<string[]>(), // e.g. ["MTN_MOMO","CASH"]
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
   districtId: uuid("district_id").references(() => districts.id),
   regionId: uuid("region_id").references(() => regions.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

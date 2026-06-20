@@ -11,20 +11,26 @@ import {
   GRADE_SCALE_PRESETS,
   SHS_PROGRAMMES,
   WASSCE_CORE_SUBJECTS,
+  BILLING_CADENCES,
+  PAYMENT_METHODS,
+  DEFAULT_PAYMENT_METHODS,
   currentAcademicYearLabel,
   defaultGradePreset,
   defaultClasses,
   defaultSubjects,
+  defaultFees,
   hasClassWing,
   hasSeniorWing,
   cardForSubtype,
   cardById,
+  type FeeItem,
   type CardId,
   type GradeRow,
   type OnboardInput,
   type OnboardResult,
   type SchoolSubtype,
 } from "@/lib/onboarding";
+import { DEFAULT_FEE_ITEMS } from "@/lib/field-options";
 import { onboardSchool } from "@/lib/actions/onboarding";
 
 type Form = Partial<OnboardInput> & { subtype?: SchoolSubtype };
@@ -135,6 +141,9 @@ export function OnboardingWizard() {
       if (!form.headmasterPhone) return "Enter the headmaster's phone.";
       if (!form.adminName) return "Enter the admin's name.";
       if (!form.adminPhone) return "Enter the admin's phone.";
+    }
+    if (current.key === "billing" && !form.termsAccepted) {
+      return "Please accept the Terms & Privacy Policy to continue.";
     }
     return null;
   };
@@ -1140,18 +1149,172 @@ function StepBody({
   }
 
   if (stepKey === "billing") {
+    const fees = form.fees ?? defaultFees(form.subtype, form.ownership);
+    const cadence = form.billingCadence ?? "TERM";
+    const methods = form.paymentMethods ?? DEFAULT_PAYMENT_METHODS;
+
+    const setFees = (next: FeeItem[]) => setForm((p) => ({ ...p, fees: next }));
+    const updateFee = (i: number, patch: Partial<FeeItem>) =>
+      setFees(fees.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+    const addFee = () => setFees([...fees, { item: "", amount: 0 }]);
+    const removeFee = (i: number) => setFees(fees.filter((_, idx) => idx !== i));
+    const toggleMethod = (code: string) =>
+      setForm((p) => {
+        const cur = p.paymentMethods ?? DEFAULT_PAYMENT_METHODS;
+        return {
+          ...p,
+          paymentMethods: cur.includes(code)
+            ? cur.filter((m) => m !== code)
+            : [...cur, code],
+        };
+      });
+
     return (
       <div>
         <Head
           pill={`Step ${stepNo} of ${total} · Billing & payments`}
           title="Fees &"
           em="payments."
-          lede="Fee structure, Mobile Money collection and (for public SHS) Free SHS handling. The full fee builder lives in Billing — set it up there once you're in."
+          lede="Set your fee lines, how you bill, and which payment channels you accept. Public Senior schools default to Free SHS (tuition GHS 0). You can refine all of this in Billing after launch."
         />
-        <InterimNote
-          title="Fee structure & payments"
-          body="The fee-category builder, MoMo setup and Terms & Privacy acceptance are added to this step in the next release. For now you can configure fees from Billing after launch."
-        />
+        <datalist id="fee-items">
+          {DEFAULT_FEE_ITEMS.map((o) => (
+            <option key={o} value={o} />
+          ))}
+        </datalist>
+
+        {/* Fee lines */}
+        <div className="rounded-xl border border-border bg-bg p-5">
+          <div className="font-display text-base font-medium text-navy">Fee structure</div>
+          <p className="mb-3 mt-0.5 text-[12px] text-navy-3">
+            One default structure for {academicYearLabel()}. Amounts in GHS — leave 0 to fill
+            later.
+          </p>
+          <div className="space-y-2">
+            {fees.map((row, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  list="fee-items"
+                  value={row.item}
+                  onChange={(e) => updateFee(i, { item: e.target.value })}
+                  placeholder="Fee item"
+                  className={cn(inputCls(!!row.item), "flex-1")}
+                />
+                <div className="relative w-36 shrink-0">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-navy-3">
+                    GHS
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={row.amount || ""}
+                    onChange={(e) => updateFee(i, { amount: Number(e.target.value) })}
+                    placeholder="0.00"
+                    className={cn(inputCls(!!row.amount), "pl-11 text-right font-mono")}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeFee(i)}
+                  aria-label="Remove fee"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-navy-3 transition-colors hover:bg-terra-bg hover:text-terra"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={addFee}
+            className="mt-3 text-[13px] font-semibold text-gold hover:underline"
+          >
+            + Add fee line
+          </button>
+        </div>
+
+        {/* Cadence */}
+        <div className="mt-4">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-navy-3">
+            How do you bill?
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {BILLING_CADENCES.map((c) => {
+              const on = cadence === c.key;
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => set("billingCadence", c.key)}
+                  className={cn(
+                    "rounded-lg border-2 p-4 text-left transition-colors",
+                    on
+                      ? "border-gold bg-gold-bg"
+                      : "border-border-2 bg-surface hover:border-gold-soft",
+                  )}
+                >
+                  <div className="text-sm font-semibold text-navy">{c.label}</div>
+                  <p className="mt-1 text-[11px] leading-snug text-navy-3">{c.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Payment methods */}
+        <div className="mt-4">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-navy-3">
+            Payment channels you accept
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {PAYMENT_METHODS.map((m) => {
+              const on = methods.includes(m.code);
+              return (
+                <button
+                  key={m.code}
+                  type="button"
+                  onClick={() => toggleMethod(m.code)}
+                  className={cn(
+                    "rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition-colors",
+                    on
+                      ? "border-gold bg-gold-bg text-navy"
+                      : "border-border-2 bg-surface text-navy-3 hover:border-gold-soft",
+                  )}
+                >
+                  {on ? "✓ " : ""}
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Terms & Privacy */}
+        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface p-4">
+          <input
+            type="checkbox"
+            checked={!!form.termsAccepted}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, termsAccepted: e.target.checked }))
+            }
+            className="mt-0.5 h-4 w-4 accent-gold"
+          />
+          <span className="text-[13px] leading-relaxed text-navy-2">
+            I agree to the{" "}
+            <Link href="/terms" target="_blank" className="font-semibold text-gold hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/privacy"
+              target="_blank"
+              className="font-semibold text-gold hover:underline"
+            >
+              Privacy Policy
+            </Link>
+            . <span className="text-terra">*</span>
+          </span>
+        </label>
       </div>
     );
   }
@@ -1214,6 +1377,9 @@ function ReviewPanel({
   const grades = form.gradeScale ?? GRADE_SCALE_PRESETS[defaultGradePreset(form.subtype)];
   const classCount = (form.classes ?? defaultClasses(form.subtype)).length;
   const subjectCount = (form.subjects ?? defaultSubjects(form.subtype)).length;
+  const feeList = form.fees ?? defaultFees(form.subtype, form.ownership);
+  const feeTotal = feeList.reduce((s, fee) => s + (fee.amount || 0), 0);
+  const methodCount = (form.paymentMethods ?? DEFAULT_PAYMENT_METHODS).length;
   const cards: { step: string; key: string; rows: [string, string][] }[] = [
     {
       step: "School identity",
@@ -1273,6 +1439,16 @@ function ReviewPanel({
       rows: [
         ["Headmaster", `${form.headmasterName ?? "—"} · ${form.headmasterPhone ?? "—"}`],
         ["Admin", `${form.adminName ?? "—"} · ${form.adminPhone ?? "—"}`],
+      ],
+    },
+    {
+      step: "Billing & payments",
+      key: "billing",
+      rows: [
+        ["Fees", `${feeList.length} lines · GHS ${feeTotal.toFixed(2)}`],
+        ["Billing", (form.billingCadence ?? "TERM") === "TERM" ? "Per term" : "Monthly"],
+        ["Channels", `${methodCount} accepted`],
+        ["Terms", form.termsAccepted ? "Accepted ✓" : "Not accepted"],
       ],
     },
   ];
