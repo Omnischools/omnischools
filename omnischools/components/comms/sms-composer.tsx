@@ -106,7 +106,7 @@ export function SmsComposer({
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           disabled={usingTemplate}
-          placeholder="Type a message — {student} and {school} are replaced per recipient"
+          placeholder="Type a message — {student_first} and {school_short} are replaced per recipient"
           className={`${fieldClass} min-h-[80px] resize-y disabled:opacity-70`}
         />
       </div>
@@ -114,8 +114,8 @@ export function SmsComposer({
       {error && <p className="text-sm text-terra">{error}</p>}
       {result && <p className="text-sm text-green">{result}</p>}
       <p className="text-xs text-navy-3">
-        Sends to each student&apos;s primary guardian. {"{student}"} and {"{school}"} are
-        personalised per recipient.
+        Sends to each student&apos;s primary guardian. {"{student_first}"} and{" "}
+        {"{school_short}"} are personalised per recipient.
       </p>
       <button
         onClick={send}

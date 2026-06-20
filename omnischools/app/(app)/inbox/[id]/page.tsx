@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { conversations, inboxMessages } from "@/db/schema";
+import { conversations, inboxMessages, students } from "@/db/schema";
 import { loadStaffOptions } from "@/lib/data/staff-options";
 import { ReplyBox } from "@/components/inbox/reply-box";
 import { ConversationControls } from "@/components/inbox/conversation-controls";
@@ -24,11 +24,25 @@ export default async function ConversationPage({ params }: { params: { id: strin
 
   const [conv] = await withSchool(school.id, (tx) =>
     tx
-      .select()
+      .select({
+        id: conversations.id,
+        contactName: conversations.contactName,
+        contactPhone: conversations.contactPhone,
+        subject: conversations.subject,
+        status: conversations.status,
+        assignedToUserId: conversations.assignedToUserId,
+        studentFirst: students.firstName,
+        studentLast: students.lastName,
+        studentClass: students.currentClassLabel,
+      })
       .from(conversations)
+      .leftJoin(students, eq(conversations.studentId, students.id))
       .where(and(eq(conversations.id, id), eq(conversations.schoolId, school.id))),
   );
   if (!conv) notFound();
+  const studentName = conv.studentFirst
+    ? `${conv.studentFirst} ${conv.studentLast ?? ""}`.trim()
+    : null;
 
   const [messages, staff] = await Promise.all([
     withSchool(school.id, (tx) =>
@@ -57,6 +71,12 @@ export default async function ConversationPage({ params }: { params: { id: strin
             <h1 className="font-display text-2xl font-semibold text-navy">
               {conv.contactName ?? conv.contactPhone}
             </h1>
+            {studentName && (
+              <p className="text-sm text-navy-2">
+                Guardian of <span className="font-medium text-navy">{studentName}</span>
+                {conv.studentClass ? ` · ${conv.studentClass}` : ""}
+              </p>
+            )}
             <p className="text-sm text-navy-3">
               {conv.contactPhone}
               {conv.subject ? ` · ${conv.subject}` : ""} ·{" "}
