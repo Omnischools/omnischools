@@ -6,7 +6,13 @@ import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
 import { createAdminClient, BRANDING_BUCKET } from "@/lib/supabase/admin";
-import { schools, gradebookConfig, academicPeriod, gradeScale } from "@/db/schema";
+import {
+  schools,
+  gradebookConfig,
+  academicPeriod,
+  academicPeriodConfig,
+  gradeScale,
+} from "@/db/schema";
 
 // --------------------------------------------------------------- school profile
 const OWNERSHIPS = ["PUBLIC", "PRIVATE", "MISSION", "INTERNATIONAL"] as const;
@@ -254,19 +260,23 @@ const isIsoDate = (s: string) =>
   /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
 
 const PeriodsSchema = z.object({
+  academicYear: z.string().min(1).max(20),
+  periodType: z.enum(["TERM", "SEMESTER"]).optional(),
   periods: z
     .array(
       z.object({
-        periodId: z.string().uuid(),
-        label: z.string().min(1).max(40),
+        periodId: z.string().uuid().optional(), // absent = a new term to insert
+        label: z.string().min(1, "Each term needs a name").max(40),
         startsOn: z.string(),
         endsOn: z.string(),
       }),
     )
-    .min(1)
-    .max(6),
+    .min(1, "Add at least one term")
+    .max(8),
 });
 
+/** Save term dates — updates existing periods (by id) and inserts new ones. Ensures an
+ *  academic-period-config row exists so the FK holds; never deletes (would cascade scores). */
 export async function updateAcademicPeriods(
   input: unknown,
 ): Promise<{ ok: boolean; error?: string }> {
@@ -275,7 +285,8 @@ export async function updateAcademicPeriods(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
-  for (const p of parsed.data.periods) {
+  const { academicYear, periods } = parsed.data;
+  for (const p of periods) {
     if (!isIsoDate(p.startsOn) || !isIsoDate(p.endsOn)) {
       return { ok: false, error: `Enter valid dates for ${p.label}.` };
     }
@@ -286,16 +297,52 @@ export async function updateAcademicPeriods(
   const actor = await resolveActor(school.id);
   try {
     await withSchool(school.id, async (tx) => {
-      for (const p of parsed.data.periods) {
-        await tx
-          .update(academicPeriod)
-          .set({ periodLabel: p.label.trim(), startsOn: p.startsOn, endsOn: p.endsOn })
-          .where(
-            and(
-              eq(academicPeriod.periodId, p.periodId),
-              eq(academicPeriod.schoolId, school.id),
-            ),
-          );
+      // ensure the config row exists (FK target for academic_period)
+      await tx
+        .insert(academicPeriodConfig)
+        .values({
+          schoolId: school.id,
+          academicYear,
+          periodType: parsed.data.periodType ?? "TERM",
+          periodCount: periods.length,
+          source: "SCHOOL_OVERRIDE",
+          configuredBy: actor.id ?? undefined,
+        })
+        .onConflictDoNothing();
+
+      const existing = await tx
+        .select({ n: academicPeriod.periodNumber })
+        .from(academicPeriod)
+        .where(
+          and(
+            eq(academicPeriod.schoolId, school.id),
+            eq(academicPeriod.academicYear, academicYear),
+          ),
+        );
+      let nextNum = existing.reduce((m, e) => Math.max(m, e.n), 0);
+
+      for (const p of periods) {
+        if (p.periodId) {
+          await tx
+            .update(academicPeriod)
+            .set({ periodLabel: p.label.trim(), startsOn: p.startsOn, endsOn: p.endsOn })
+            .where(
+              and(
+                eq(academicPeriod.periodId, p.periodId),
+                eq(academicPeriod.schoolId, school.id),
+              ),
+            );
+        } else {
+          nextNum += 1;
+          await tx.insert(academicPeriod).values({
+            schoolId: school.id,
+            academicYear,
+            periodNumber: nextNum,
+            periodLabel: p.label.trim(),
+            startsOn: p.startsOn,
+            endsOn: p.endsOn,
+          });
+        }
       }
       await recordAudit(tx, {
         schoolId: school.id,
@@ -304,7 +351,7 @@ export async function updateAcademicPeriods(
         actionType: "updated",
         entityType: "academic_period",
         entityId: school.id,
-        after: { periods: parsed.data.periods.length },
+        after: { periods: periods.length, academicYear },
         reason: "Term dates updated",
       });
     });

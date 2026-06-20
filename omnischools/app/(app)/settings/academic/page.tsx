@@ -8,12 +8,20 @@ import {
   gradeScale,
   gradebookConfig,
 } from "@/db/schema";
+import { currentAcademicYearLabel } from "@/lib/onboarding";
 import { TermDatesForm } from "@/components/settings/term-dates-form";
 import { GradeScaleEditor } from "@/components/settings/grade-scale-editor";
 import { WeightsForm } from "@/components/settings/weights-form";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Academic structure" };
+
+/** Coerce a DB date (string 'YYYY-MM-DD[…]' or a Date) to the strict YYYY-MM-DD that
+ *  <input type="date"> requires — otherwise the field renders empty and won't edit. */
+function ymd(v: unknown): string {
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  return String(v ?? "").slice(0, 10);
+}
 
 export default async function AcademicSettingsPage() {
   const { school } = await requireSchool();
@@ -57,12 +65,12 @@ export default async function AcademicSettingsPage() {
 
       <div className="space-y-5">
         <TermDatesForm
-          academicYear={data.cfg?.academicYear ?? "—"}
+          academicYear={data.cfg?.academicYear ?? currentAcademicYearLabel()}
           initial={data.periods.map((p) => ({
             periodId: p.periodId,
             label: p.periodLabel,
-            startsOn: p.startsOn,
-            endsOn: p.endsOn,
+            startsOn: ymd(p.startsOn),
+            endsOn: ymd(p.endsOn),
           }))}
         />
 
