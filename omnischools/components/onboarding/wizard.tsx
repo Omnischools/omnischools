@@ -14,6 +14,8 @@ import {
   BILLING_CADENCES,
   PAYMENT_METHODS,
   DEFAULT_PAYMENT_METHODS,
+  RESIDENCY_MODELS,
+  VISITING_CADENCES,
   currentAcademicYearLabel,
   defaultGradePreset,
   defaultClasses,
@@ -466,18 +468,6 @@ function Field({
       </div>
       {children}
       {help && <div className={helpCls}>{help}</div>}
-    </div>
-  );
-}
-
-function InterimNote({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border-2 bg-bg p-6">
-      <div className="font-display text-base font-medium text-navy">{title}</div>
-      <p className="mt-1.5 max-w-[560px] text-[13px] leading-relaxed text-navy-3">{body}</p>
-      <div className="mt-3 inline-block rounded-full bg-gold-bg px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-gold">
-        Configured after launch
-      </div>
     </div>
   );
 }
@@ -1326,29 +1316,114 @@ function StepBody({
           pill={`Step ${stepNo} of ${total} · Residency & boarding · SHS only`}
           title="How do students"
           em="live on campus?"
-          lede="Day, mixed or boarding — and an optional house system. This activates the Boarding and Sickbay modules. Captured here in a later release."
+          lede="Day, mixed or boarding — and an optional house system. This will drive the Boarding and Sickbay modules, which are built out in the Senior release; we capture your setup now."
         />
-        <InterimNote
-          title="Residency model & houses"
-          body="The residency picker (day / mixed / boarding), house system and visiting-day cadence are added here in the SHS setup release. Onboarding completes without them for now."
-        />
+        <div className="mb-5">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-navy-3">
+            Residency model
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {RESIDENCY_MODELS.map((r) => {
+              const on = form.residencyModel === r.key;
+              return (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={() => set("residencyModel", r.key)}
+                  className={cn(
+                    "rounded-[10px] border-2 p-4 text-left transition-colors",
+                    on
+                      ? "border-gold bg-gradient-to-br from-gold-bg to-surface"
+                      : "border-border-2 bg-surface hover:border-gold-soft",
+                  )}
+                >
+                  <div className="font-display text-[15px] font-medium text-navy">
+                    {r.name}
+                  </div>
+                  <p className="mt-1 text-[11px] leading-snug text-navy-3">{r.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            label="Houses"
+            help="Number of houses, if you run a house system. Leave blank if not."
+          >
+            <input
+              type="number"
+              min={0}
+              value={(form.houseCount as number | undefined) ?? ""}
+              onChange={(e) => set("houseCount", e.target.value)}
+              placeholder="e.g. 4"
+              className={inputCls(!!form.houseCount)}
+            />
+          </Field>
+          <Field label="Visiting day cadence">
+            <select
+              value={f("visitingDay")}
+              onChange={(e) => set("visitingDay", e.target.value)}
+              className={inputCls(!!f("visitingDay"))}
+            >
+              <option value="">— choose —</option>
+              {VISITING_CADENCES.map((v) => (
+                <option key={v}>{v}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
       </div>
     );
   }
 
   if (stepKey === "waec") {
+    const thisYear = currentAcademicYearLabel();
+    const startYear = Number(thisYear.slice(0, 4));
+    const cohortYears = Array.from({ length: 6 }, (_, i) => String(startYear + i));
     return (
       <div>
         <Head
           pill={`Step ${stepNo} of ${total} · WAEC centre & WASSCE · SHS only`}
           title="Connect to"
           em="WAEC."
-          lede="Your WAEC centre code unlocks the WASSCE module — registration, results and timetable sync. Captured here in a later release."
+          lede="Your WAEC centre code is the school's identifier with the West African Examinations Council — used for WASSCE registration and results. The WASSCE module itself ships in the Senior release; we record the details now."
         />
-        <InterimNote
-          title="WAEC centre & WASSCE programmes"
-          body="The centre code, regional office and first-cohort year are added here in the SHS setup release. Onboarding completes without them for now."
-        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            label="WAEC centre code"
+            help={<>Issued by WAEC. Format <b className="text-navy-2">RG-NNNN</b>.</>}
+          >
+            <input
+              value={f("waecCentreCode")}
+              onChange={(e) => set("waecCentreCode", e.target.value)}
+              placeholder="SU-0418"
+              className={cn(inputCls(!!f("waecCentreCode")), "font-mono")}
+            />
+          </Field>
+          <Field label="Regional office" help="Handles SC-12 make-up sittings.">
+            <input
+              value={f("waecOffice")}
+              onChange={(e) => set("waecOffice", e.target.value)}
+              placeholder="WAEC Sunyani"
+              className={inputCls(!!f("waecOffice"))}
+            />
+          </Field>
+        </div>
+        <div className="mt-4 sm:w-1/2 sm:pr-2">
+          <Field label="First WASSCE cohort year" help="When your current F1 sits WASSCE.">
+            <select
+              value={f("firstWassceYear")}
+              onChange={(e) => set("firstWassceYear", e.target.value)}
+              className={inputCls(!!f("firstWassceYear"))}
+            >
+              <option value="">— choose —</option>
+              {cohortYears.map((y) => (
+                <option key={y}>{y}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
       </div>
     );
   }
@@ -1451,6 +1526,33 @@ function ReviewPanel({
         ["Terms", form.termsAccepted ? "Accepted ✓" : "Not accepted"],
       ],
     },
+    ...(hasSeniorWing(form.subtype)
+      ? [
+          {
+            step: "Residency & boarding",
+            key: "residency",
+            rows: [
+              [
+                "Model",
+                form.residencyModel
+                  ? RESIDENCY_MODELS.find((r) => r.key === form.residencyModel)?.name ?? "—"
+                  : "Not set",
+              ],
+              ["Houses", form.houseCount ? String(form.houseCount) : "—"],
+              ["Visiting day", form.visitingDay || "—"],
+            ] as [string, string][],
+          },
+          {
+            step: "WAEC centre & WASSCE",
+            key: "waec",
+            rows: [
+              ["Centre code", form.waecCentreCode || "—"],
+              ["Regional office", form.waecOffice || "—"],
+              ["First WASSCE", form.firstWassceYear || "—"],
+            ] as [string, string][],
+          },
+        ]
+      : []),
   ];
 
   return (

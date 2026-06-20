@@ -279,6 +279,33 @@ export const DEFAULT_PAYMENT_METHODS = ["MTN_MOMO", "CASH"];
 
 export type FeeItem = { item: string; amount: number };
 
+/* ----------------------------------- SHS residency + WAEC (steps 7–8) */
+
+export const RESIDENCY_MODELS = [
+  {
+    key: "DAY",
+    name: "Day-only",
+    desc: "All students commute. No on-campus residence.",
+  },
+  {
+    key: "MIXED",
+    name: "Mixed",
+    desc: "Some boarders, some day — the most common Free SHS pattern.",
+  },
+  {
+    key: "BOARDING",
+    name: "Boarding-only",
+    desc: "All students reside on campus.",
+  },
+] as const;
+
+export const VISITING_CADENCES = [
+  "Once per term",
+  "Twice per term",
+  "Monthly",
+  "No visiting days",
+] as const;
+
 /** Starter fee lines. Public Senior schools default to Free SHS (tuition 0). */
 export const defaultFees = (s?: SchoolSubtype, ownership?: string): FeeItem[] => {
   const senior = s === "SHS" || s === "SHTS" || s === "MULTI";
@@ -344,6 +371,13 @@ export const OnboardSchema = z.object({
   billingCadence: z.enum(["TERM", "MONTHLY"]).optional(),
   paymentMethods: z.array(z.string().max(30)).max(10).optional(),
   termsAccepted: z.boolean().optional(),
+  // Steps 7–8 (SHS only) — lightweight capture
+  residencyModel: z.enum(["DAY", "MIXED", "BOARDING"]).optional(),
+  houseCount: z.coerce.number().int().min(0).max(40).optional(),
+  visitingDay: z.string().max(60).optional().or(z.literal("")),
+  waecCentreCode: z.string().max(40).optional().or(z.literal("")),
+  waecOffice: z.string().max(80).optional().or(z.literal("")),
+  firstWassceYear: z.string().max(8).optional().or(z.literal("")),
   headmasterName: z.string().min(2, "Headmaster name is required").max(160),
   headmasterPhone: z.string().min(7, "Headmaster phone is required").max(40),
   headmasterEmail: z.string().email().optional().or(z.literal("")),
