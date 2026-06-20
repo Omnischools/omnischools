@@ -6,7 +6,7 @@ import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from "@/lib/field-options";
-import { bookCategories, bookEntries } from "@/db/schema";
+import { bookCategories, bookEntries, fixedAssets } from "@/db/schema";
 
 type Result = { ok: boolean; error?: string; id?: string };
 
@@ -230,5 +230,93 @@ export async function deleteBookEntry(input: unknown): Promise<Result> {
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not delete the entry." };
+  }
+}
+
+// ----------------------------------------------------------- fixed assets
+const AddAssetSchema = z.object({
+  name: z.string().min(1, "Enter an asset name").max(120),
+  acquiredOn: z.string().optional().or(z.literal("")),
+  originalCost: z.coerce.number().min(0).max(100000000),
+  accumulatedDepreciation: z.coerce.number().min(0).max(100000000).optional(),
+  usefulLifeYears: z.coerce.number().int().min(0).max(100).optional(),
+  condition: z.string().max(40).optional().or(z.literal("")),
+  notes: z.string().max(200).optional().or(z.literal("")),
+});
+
+export async function addFixedAsset(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = AddAssetSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const d = parsed.data;
+  const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
+  const dep = d.accumulatedDepreciation ?? 0;
+  if (dep > d.originalCost) {
+    return { ok: false, error: "Depreciation can't exceed the original cost." };
+  }
+  const actor = await resolveActor(school.id);
+  try {
+    const id = await withSchool(school.id, async (tx) => {
+      const [a] = await tx
+        .insert(fixedAssets)
+        .values({
+          schoolId: school.id,
+          name: d.name.trim(),
+          acquiredOn: nz(d.acquiredOn),
+          originalCost: String(d.originalCost),
+          accumulatedDepreciation: String(dep),
+          usefulLifeYears: d.usefulLifeYears ?? null,
+          condition: nz(d.condition),
+          notes: nz(d.notes),
+        })
+        .returning({ id: fixedAssets.id });
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "created",
+        entityType: "fixed_asset",
+        entityId: a.id,
+        after: { name: d.name, cost: d.originalCost },
+        reason: "Fixed asset added",
+      });
+      return a.id;
+    });
+    safeRevalidate("/books");
+    safeRevalidate("/books/assets");
+    return { ok: true, id };
+  } catch {
+    return { ok: false, error: "Could not add the asset. Please try again." };
+  }
+}
+
+const DeleteAssetSchema = z.object({ id: z.string().uuid() });
+export async function deleteFixedAsset(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = DeleteAssetSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input" };
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .delete(fixedAssets)
+        .where(and(eq(fixedAssets.id, parsed.data.id), eq(fixedAssets.schoolId, school.id)));
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "deleted",
+        entityType: "fixed_asset",
+        entityId: parsed.data.id,
+        reason: "Fixed asset removed",
+      });
+    });
+    safeRevalidate("/books");
+    safeRevalidate("/books/assets");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not remove the asset." };
   }
 }
