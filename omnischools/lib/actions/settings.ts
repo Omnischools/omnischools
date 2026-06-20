@@ -5,6 +5,7 @@ import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
+import { createAdminClient, BRANDING_BUCKET } from "@/lib/supabase/admin";
 import { schools, gradebookConfig } from "@/db/schema";
 
 // --------------------------------------------------------------- school profile
@@ -94,17 +95,17 @@ export async function updateSchoolBranding(
   }
   const d = parsed.data;
   const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
+  // Partial update — only touch fields the caller actually sent (undefined = leave,
+  // "" = clear). Lets the colour Save and the per-image Remove run independently.
+  const set: Record<string, string | null> = {};
+  if (d.logoUrl !== undefined) set.logoUrl = nz(d.logoUrl);
+  if (d.stampUrl !== undefined) set.stampUrl = nz(d.stampUrl);
+  if (d.brandColor !== undefined) set.brandColor = nz(d.brandColor);
+  if (Object.keys(set).length === 0) return { ok: true };
   const actor = await resolveActor(school.id);
   try {
     await withSchool(school.id, async (tx) => {
-      await tx
-        .update(schools)
-        .set({
-          logoUrl: nz(d.logoUrl),
-          stampUrl: nz(d.stampUrl),
-          brandColor: nz(d.brandColor),
-        })
-        .where(eq(schools.id, school.id));
+      await tx.update(schools).set(set).where(eq(schools.id, school.id));
       await recordAudit(tx, {
         schoolId: school.id,
         actorUserId: actor.id ?? undefined,
@@ -112,7 +113,7 @@ export async function updateSchoolBranding(
         actionType: "updated",
         entityType: "school",
         entityId: school.id,
-        after: { logo: !!nz(d.logoUrl), stamp: !!nz(d.stampUrl) },
+        after: set,
         reason: "Branding updated",
       });
     });
@@ -121,6 +122,73 @@ export async function updateSchoolBranding(
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not save branding. Please try again." };
+  }
+}
+
+// --------------------------------------------------------------- branding upload
+const MAX_BRAND_BYTES = 2 * 1024 * 1024; // 2 MB
+const MIME_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+};
+
+/** Upload a logo/stamp to Supabase Storage (service role) and store its public URL. */
+export async function uploadBrandingImage(
+  formData: FormData,
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const { school } = await requireSchool();
+  const kind = String(formData.get("kind") ?? "");
+  const file = formData.get("file");
+  if (kind !== "logo" && kind !== "stamp") {
+    return { ok: false, error: "Invalid image type." };
+  }
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "No file selected." };
+  }
+  if (file.size > MAX_BRAND_BYTES) {
+    return { ok: false, error: "Image must be 2 MB or smaller." };
+  }
+  const ext = MIME_EXT[file.type];
+  if (!ext) return { ok: false, error: "Use a PNG, JPG, WebP or SVG image." };
+
+  const admin = createAdminClient();
+  if (!admin) {
+    return { ok: false, error: "Image upload isn't configured on this deployment." };
+  }
+
+  const path = `${school.id}/${kind}-${Date.now()}.${ext}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const up = await admin.storage
+    .from(BRANDING_BUCKET)
+    .upload(path, buffer, { contentType: file.type, upsert: true });
+  if (up.error) return { ok: false, error: "Upload failed. Please try again." };
+  const url = admin.storage.from(BRANDING_BUCKET).getPublicUrl(path).data.publicUrl;
+
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .update(schools)
+        .set(kind === "logo" ? { logoUrl: url } : { stampUrl: url })
+        .where(eq(schools.id, school.id));
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "school",
+        entityId: school.id,
+        after: { [kind]: true },
+        reason: `Branding ${kind} uploaded`,
+      });
+    });
+    safeRevalidate("/settings");
+    safeRevalidate("/settings/branding");
+    return { ok: true, url };
+  } catch {
+    return { ok: false, error: "Saved the file but couldn't update the record." };
   }
 }
 
