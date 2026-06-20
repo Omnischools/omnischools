@@ -45,6 +45,28 @@ export const DEFAULT_DISCOUNTS = [
   "Bereavement",
 ] as const;
 
+/** Default chart-of-accounts categories for the Books module (seed + suggestions). */
+export const INCOME_CATEGORIES = [
+  "Tuition & fees",
+  "PTA dues",
+  "Admission fees",
+  "Donations",
+  "Government grant",
+  "Boarding fees",
+  "Other income",
+] as const;
+
+export const EXPENSE_CATEGORIES = [
+  "Salaries & wages",
+  "Utilities (light & water)",
+  "Feeding",
+  "Teaching & learning materials",
+  "Maintenance & repairs",
+  "Transport",
+  "Administration",
+  "Other expense",
+] as const;
+
 /** Common Ghanaian basic-school subjects for subject dropdowns. */
 export const COMMON_SUBJECTS = [
   "English Language",
