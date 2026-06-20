@@ -67,6 +67,63 @@ export async function updateSchoolProfile(
   }
 }
 
+// --------------------------------------------------------------- branding
+const urlField = z
+  .string()
+  .max(500)
+  .url("Enter a valid image URL (https://…)")
+  .optional()
+  .or(z.literal(""));
+const BrandingSchema = z.object({
+  logoUrl: urlField,
+  stampUrl: urlField,
+  brandColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Use a hex colour like #1A2B47")
+    .optional()
+    .or(z.literal("")),
+});
+
+export async function updateSchoolBranding(
+  input: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  const { school } = await requireSchool();
+  const parsed = BrandingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const d = parsed.data;
+  const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .update(schools)
+        .set({
+          logoUrl: nz(d.logoUrl),
+          stampUrl: nz(d.stampUrl),
+          brandColor: nz(d.brandColor),
+        })
+        .where(eq(schools.id, school.id));
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "school",
+        entityId: school.id,
+        after: { logo: !!nz(d.logoUrl), stamp: !!nz(d.stampUrl) },
+        reason: "Branding updated",
+      });
+    });
+    safeRevalidate("/settings");
+    safeRevalidate("/settings/branding");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save branding. Please try again." };
+  }
+}
+
 // --------------------------------------------------------------- grading weights
 const WeightsSchema = z
   .object({
