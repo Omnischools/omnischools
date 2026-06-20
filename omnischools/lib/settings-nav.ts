@@ -50,7 +50,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         tone: "gold",
         desc: "School logo, official stamp and brand colour. The stamp appears on every PDF; the logo on receipts and announcements.",
         href: "/settings/branding",
-        soon: true,
       },
       {
         key: "academic",

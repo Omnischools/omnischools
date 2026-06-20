@@ -40,6 +40,10 @@ export const schools = pgTable("ref_school", {
   ownership: ownershipEnum("ownership_type").notNull().default("PRIVATE"),
   yearFounded: text("year_founded"),
   address: text("address"), // postal + GPS Ghana Post code
+  // Branding (Settings → Branding) — hosted image URLs + brand colour
+  logoUrl: text("logo_url"),
+  stampUrl: text("stamp_url"),
+  brandColor: text("brand_color"), // hex, e.g. "#1A2B47"
   // Onboarding step 6 — billing prefs + Terms acceptance
   billingCadence: text("billing_cadence"), // "TERM" | "MONTHLY"
   paymentMethods: jsonb("payment_methods").$type<string[]>(), // e.g. ["MTN_MOMO","CASH"]
