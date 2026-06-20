@@ -54,7 +54,7 @@ export function NewStudentForm({ classes }: { classes: { id: string; name: strin
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
-          <label className={labelClass}>Sex</label>
+          <label className={labelClass}>Gender</label>
           <select name="sex" required defaultValue="" className={fieldClass}>
             <option value="" disabled>
               Choose

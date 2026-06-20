@@ -8,7 +8,7 @@ export const STUDENT_IMPORT_HEADERS = [
   "First name",
   "Last name",
   "Other names",
-  "Sex (M/F)",
+  "Gender (M/F)",
   "Date of birth (YYYY-MM-DD)",
   "Class",
   "Guardian name",
@@ -98,7 +98,7 @@ export function validateStudentRows(
     if (!lastName) errors.push("Last name is required");
 
     const sex = normSex(get(3));
-    if (!sex) errors.push("Sex must be M or F");
+    if (!sex) errors.push("Gender must be M or F");
 
     const dobRaw = get(4);
     let dateOfBirth: string | null = null;

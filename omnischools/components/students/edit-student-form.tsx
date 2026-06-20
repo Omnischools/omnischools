@@ -93,7 +93,7 @@ export function EditStudentForm({
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div>
-          <label className={labelClass}>Sex</label>
+          <label className={labelClass}>Gender</label>
           <select name="sex" defaultValue={student.sex} className={fieldClass}>
             <option value="MALE">Male</option>
             <option value="FEMALE">Female</option>
