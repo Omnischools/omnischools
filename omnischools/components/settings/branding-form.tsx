@@ -2,13 +2,13 @@
 import { useState } from "react";
 /* eslint-disable @next/next/no-img-element */
 import { useRouter } from "next/navigation";
-import { updateSchoolBranding } from "@/lib/actions/settings";
+import { uploadBrandingImage, updateSchoolBranding } from "@/lib/actions/settings";
 
 const fieldClass =
   "w-full rounded-md border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
-const labelClass = "mb-1.5 block text-xs font-semibold text-navy-2";
+const ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml";
 
-const isUrl = (s: string) => /^https?:\/\/\S+$/.test(s.trim());
+type Kind = "logo" | "stamp";
 
 export function BrandingForm({
   initial,
@@ -18,148 +18,167 @@ export function BrandingForm({
   schoolName: string;
 }) {
   const router = useRouter();
-  const [f, setF] = useState(initial);
-  const [busy, setBusy] = useState(false);
+  const [logo, setLogo] = useState(initial.logoUrl);
+  const [stamp, setStamp] = useState(initial.stampUrl);
+  const [color, setColor] = useState(initial.brandColor);
+  const [busy, setBusy] = useState<Kind | "color" | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const set = (k: keyof typeof f, v: string) => {
-    setF((p) => ({ ...p, [k]: v }));
-    setMsg(null);
-  };
-  const dirty = (Object.keys(initial) as (keyof typeof f)[]).some(
-    (k) => f[k] !== initial[k],
-  );
-  const color = /^#[0-9a-fA-F]{6}$/.test(f.brandColor) ? f.brandColor : "#1A2B47";
+  const swatch = /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#1A2B47";
   const initials = (schoolName.trim()[0] ?? "S").toUpperCase();
 
-  async function save() {
-    setBusy(true);
+  async function onPick(kind: Kind, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(kind);
     setMsg(null);
-    const res = await updateSchoolBranding(f);
-    setBusy(false);
+    const fd = new FormData();
+    fd.set("kind", kind);
+    fd.set("file", file);
+    const res = await uploadBrandingImage(fd);
+    setBusy(null);
+    if (res.ok && res.url) {
+      if (kind === "logo") setLogo(res.url);
+      else setStamp(res.url);
+      setMsg({ ok: true, text: `${kind === "logo" ? "Logo" : "Stamp"} updated.` });
+      router.refresh();
+    } else setMsg({ ok: false, text: res.error ?? "Upload failed." });
+  }
+
+  async function removeImg(kind: Kind) {
+    setBusy(kind);
+    setMsg(null);
+    const res = await updateSchoolBranding(
+      kind === "logo" ? { logoUrl: "" } : { stampUrl: "" },
+    );
+    setBusy(null);
     if (res.ok) {
-      setMsg({ ok: true, text: "Saved." });
+      if (kind === "logo") setLogo("");
+      else setStamp("");
+      router.refresh();
+    } else setMsg({ ok: false, text: res.error ?? "Could not remove." });
+  }
+
+  async function saveColor() {
+    setBusy("color");
+    setMsg(null);
+    const res = await updateSchoolBranding({ brandColor: color });
+    setBusy(null);
+    if (res.ok) {
+      setMsg({ ok: true, text: "Colour saved." });
       router.refresh();
     } else setMsg({ ok: false, text: res.error ?? "Could not save." });
   }
 
-  return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-      {/* Form */}
-      <div className="space-y-5 rounded-xl border border-border bg-surface p-6">
-        <div>
-          <label className={labelClass}>Logo URL</label>
-          <input
-            className={fieldClass}
-            value={f.logoUrl}
-            placeholder="https://…/logo.png"
-            onChange={(e) => set("logoUrl", e.target.value)}
+  const uploader = (kind: Kind, url: string, isStamp: boolean) => (
+    <div className="rounded-xl border border-border bg-surface p-5">
+      <div className="font-display text-base font-medium text-navy">
+        {isStamp ? "Official stamp" : "School logo"}
+      </div>
+      <p className="mb-4 mt-0.5 text-[12px] text-navy-3">
+        {isStamp
+          ? "Appears on every generated PDF (statements, report cards)."
+          : "Shown on receipts and announcements."}{" "}
+        PNG, JPG, WebP or SVG · max 2 MB.
+      </p>
+      <div className="flex items-center gap-4">
+        {url ? (
+          <img
+            src={url}
+            alt={isStamp ? "Official stamp" : "School logo"}
+            className={
+              isStamp
+                ? "h-20 w-20 rounded-full border border-border bg-bg object-contain p-1"
+                : "h-16 w-auto max-w-[160px] rounded-md border border-border bg-bg object-contain p-1"
+            }
           />
-          <p className="mt-1 text-[11px] text-navy-3">
-            A hosted PNG/SVG. Shown on receipts and announcements. (Direct uploads come
-            later — paste a link for now.)
-          </p>
-        </div>
-        <div>
-          <label className={labelClass}>Official stamp URL</label>
-          <input
-            className={fieldClass}
-            value={f.stampUrl}
-            placeholder="https://…/stamp.png"
-            onChange={(e) => set("stampUrl", e.target.value)}
-          />
-          <p className="mt-1 text-[11px] text-navy-3">
-            Appears on every generated PDF (statements, report cards).
-          </p>
-        </div>
-        <div>
-          <label className={labelClass}>Brand colour</label>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => set("brandColor", e.target.value)}
-              className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border-2 bg-bg"
-              aria-label="Brand colour picker"
-            />
-            <input
-              className={`${fieldClass} font-mono uppercase`}
-              value={f.brandColor}
-              placeholder="#1A2B47"
-              maxLength={7}
-              onChange={(e) => set("brandColor", e.target.value)}
-            />
+        ) : isStamp ? (
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-border-2 text-[10px] text-navy-3">
+            No stamp
           </div>
-          <p className="mt-1 text-[11px] text-navy-3">
-            Used as an accent on your branded documents. App theming stays navy/gold.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 border-t border-border pt-5">
-          <button
-            onClick={save}
-            disabled={busy || !dirty}
-            className="rounded-md bg-navy px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-50"
+        ) : (
+          <div
+            className="flex h-16 w-16 items-center justify-center rounded-md font-display text-2xl font-semibold text-white"
+            style={{ background: swatch }}
           >
-            {busy ? "Saving…" : "Save branding"}
-          </button>
-          {msg && (
-            <span className={`text-sm ${msg.ok ? "text-green" : "text-terra"}`}>
-              {msg.text}
-            </span>
+            {initials}
+          </div>
+        )}
+        <div className="flex flex-col gap-2">
+          <label
+            className={`cursor-pointer rounded-md bg-navy px-4 py-2 text-center text-sm font-semibold text-bg transition-colors hover:bg-navy-deep ${
+              busy === kind ? "pointer-events-none opacity-60" : ""
+            }`}
+          >
+            {busy === kind ? "Uploading…" : url ? "Replace" : "Upload"}
+            <input
+              type="file"
+              accept={ACCEPT}
+              className="hidden"
+              onChange={(e) => onPick(kind, e)}
+            />
+          </label>
+          {url && (
+            <button
+              type="button"
+              disabled={busy === kind}
+              onClick={() => removeImg(kind)}
+              className="text-xs font-semibold text-navy-3 transition-colors hover:text-terra disabled:opacity-50"
+            >
+              Remove
+            </button>
           )}
         </div>
       </div>
+    </div>
+  );
 
-      {/* Live preview */}
-      <div className="rounded-xl border border-border bg-surface p-6">
-        <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-gold">
-          Preview
-        </div>
-        <div className="space-y-4">
-          <div>
-            <div className="mb-1.5 text-xs font-semibold text-navy-2">Logo</div>
-            {isUrl(f.logoUrl) ? (
-              <img
-                src={f.logoUrl}
-                alt="School logo"
-                className="h-16 w-auto max-w-full rounded-md border border-border bg-bg object-contain p-1"
-              />
-            ) : (
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-md font-display text-2xl font-semibold text-white"
-                style={{ background: color }}
-              >
-                {initials}
-              </div>
-            )}
-          </div>
-          <div>
-            <div className="mb-1.5 text-xs font-semibold text-navy-2">Stamp</div>
-            {isUrl(f.stampUrl) ? (
-              <img
-                src={f.stampUrl}
-                alt="Official stamp"
-                className="h-20 w-20 rounded-full border border-border bg-bg object-contain p-1"
-              />
-            ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-border-2 text-[10px] text-navy-3">
-                No stamp
-              </div>
-            )}
-          </div>
-          <div>
-            <div className="mb-1.5 text-xs font-semibold text-navy-2">Accent</div>
-            <div className="flex items-center gap-2">
-              <span
-                className="h-6 w-6 rounded-md border border-border"
-                style={{ background: color }}
-              />
-              <span className="font-mono text-xs uppercase text-navy-2">{color}</span>
-            </div>
-          </div>
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        {uploader("logo", logo, false)}
+        {uploader("stamp", stamp, true)}
+      </div>
+
+      <div className="rounded-xl border border-border bg-surface p-5">
+        <div className="font-display text-base font-medium text-navy">Brand colour</div>
+        <p className="mb-3 mt-0.5 text-[12px] text-navy-3">
+          An accent for your branded documents. App theming stays navy/gold.
+        </p>
+        <div className="flex items-center gap-3">
+          <input
+            type="color"
+            value={swatch}
+            onChange={(e) => setColor(e.target.value)}
+            className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border-2 bg-bg"
+            aria-label="Brand colour picker"
+          />
+          <input
+            className={`${fieldClass} max-w-[160px] font-mono uppercase`}
+            value={color}
+            placeholder="#1A2B47"
+            maxLength={7}
+            onChange={(e) => setColor(e.target.value)}
+          />
+          <button
+            onClick={saveColor}
+            disabled={busy === "color" || color === initial.brandColor}
+            className="rounded-md bg-navy px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-50"
+          >
+            {busy === "color" ? "Saving…" : "Save colour"}
+          </button>
         </div>
       </div>
+
+      {msg && (
+        <p
+          className={`text-sm ${msg.ok ? "text-green" : "text-terra"}`}
+          role={msg.ok ? undefined : "alert"}
+        >
+          {msg.text}
+        </p>
+      )}
     </div>
   );
 }
