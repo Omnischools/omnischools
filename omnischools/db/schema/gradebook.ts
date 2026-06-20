@@ -32,6 +32,31 @@ export const subjects = pgTable(
   (t) => ({ uniqName: unique("uniq_subject_per_school").on(t.schoolId, t.name) }),
 );
 
+/**
+ * Per-school grade scale — how a final score maps to a letter grade. A grade applies
+ * for score >= minScore up to the next-higher grade's threshold; the lowest grade has
+ * minScore 0 ("below X"). Seeded at onboarding (Basic A–F or WASSCE A1–F9), editable.
+ * Used by the gradebook, report cards and the parent app.
+ */
+export const gradeScale = pgTable(
+  "grade_scale",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    grade: text("grade").notNull(), // "A", "A1", "F9"
+    label: text("label"), // "Excellent", "Pass"
+    minScore: numeric("min_score", { precision: 5, scale: 2 }).notNull(),
+    ordinal: smallint("ordinal").notNull(), // display order, highest grade = 0
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqGrade: unique("uniq_grade_per_school").on(t.schoolId, t.grade),
+    bySchool: index("grade_scale_school_idx").on(t.schoolId),
+  }),
+);
+
 /** Per-school weighting for Basic's two-category model (defaults 50/50). */
 export const gradebookConfig = pgTable("gradebook_config", {
   schoolId: uuid("school_id")

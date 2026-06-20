@@ -1,6 +1,11 @@
 "use server";
 import { eq, and } from "drizzle-orm";
-import { OnboardSchema, type OnboardResult } from "@/lib/onboarding";
+import {
+  OnboardSchema,
+  type OnboardResult,
+  GRADE_SCALE_PRESETS,
+  defaultGradePreset,
+} from "@/lib/onboarding";
 import { withoutTenantScope } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { normalizeGhanaPhone } from "@/lib/auth";
@@ -18,6 +23,7 @@ import {
   academicPeriodConfig,
   academicPeriod,
   genPeriodDefaults,
+  gradeScale,
 } from "@/db/schema";
 
 const FOUNDER_EMAIL = "hello@omnischools.gh";
@@ -50,12 +56,21 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid submission" };
   }
   const d = parsed.data;
-  const academicYear = currentAcademicYear();
+  const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
+  const academicYear = nz(d.academicYear) ?? currentAcademicYear();
   const schoolType = d.product === "COMBINED" ? "COMBINED" : d.product;
   const productLine = d.product === "SENIOR" ? "SENIOR" : "BASIC";
-  const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
-  const periodType = productLine === "SENIOR" ? "SEMESTER" : "TERM";
-  const periodCount = productLine === "SENIOR" ? 2 : 3;
+  // Step 3 calendar — prefer the wizard's choices, else the GES tier default.
+  const periodType = d.periodType ?? (productLine === "SENIOR" ? "SEMESTER" : "TERM");
+  const periodCount = d.periodCount ?? (productLine === "SENIOR" ? 2 : 3);
+  // Terms the user dated themselves (both ends) — these override the GES calendar.
+  const datedTerms = (d.terms ?? []).filter((t) => nz(t.startsOn) && nz(t.endsOn));
+  const customCalendar = datedTerms.length > 0 || !!d.periodType || !!nz(d.academicYear);
+  // Grade scale — the wizard's rows, else the tier preset.
+  const gradeRows =
+    d.gradeScale && d.gradeScale.length > 0
+      ? d.gradeScale
+      : GRADE_SCALE_PRESETS[defaultGradePreset(d.subtype)];
   const productRows: ("BASIC" | "SENIOR")[] =
     d.product === "COMBINED" ? ["BASIC", "SENIOR"] : [d.product];
 
@@ -175,40 +190,66 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
         { userId: headmasterId, schoolId: school.id, roleId: roleId("HEADMASTER") },
       ]);
 
-      // academic period config
+      // academic period config (school override if the wizard set the calendar)
       await tx.insert(academicPeriodConfig).values({
         schoolId: school.id,
         academicYear,
         periodType,
         periodCount,
-        source: "GES_DEFAULT",
+        source: customCalendar ? "SCHOOL_OVERRIDE" : "GES_DEFAULT",
         configuredBy: adminId,
       });
 
-      // dated periods from GES defaults, if available for this year/line
-      const defaults = await tx
-        .select()
-        .from(genPeriodDefaults)
-        .where(
-          and(
-            eq(genPeriodDefaults.academicYear, academicYear),
-            eq(genPeriodDefaults.productLine, productLine),
-          ),
-        );
+      // dated periods — prefer the wizard's term dates, else GES defaults.
       let periodsCreated = 0;
-      if (defaults.length > 0) {
+      if (datedTerms.length > 0) {
         await tx.insert(academicPeriod).values(
-          defaults.map((p) => ({
+          datedTerms.map((t, i) => ({
             schoolId: school.id,
             academicYear,
-            periodNumber: p.periodNumber,
-            periodLabel: p.periodLabel,
-            startsOn: p.startsOn,
-            endsOn: p.endsOn,
+            periodNumber: i + 1,
+            periodLabel: t.label?.trim() || `Period ${i + 1}`,
+            startsOn: t.startsOn as string,
+            endsOn: t.endsOn as string,
           })),
         );
-        periodsCreated = defaults.length;
+        periodsCreated = datedTerms.length;
+      } else {
+        const defaults = await tx
+          .select()
+          .from(genPeriodDefaults)
+          .where(
+            and(
+              eq(genPeriodDefaults.academicYear, academicYear),
+              eq(genPeriodDefaults.productLine, productLine),
+            ),
+          );
+        if (defaults.length > 0) {
+          await tx.insert(academicPeriod).values(
+            defaults.map((p) => ({
+              schoolId: school.id,
+              academicYear,
+              periodNumber: p.periodNumber,
+              periodLabel: p.periodLabel,
+              startsOn: p.startsOn,
+              endsOn: p.endsOn,
+            })),
+          );
+          periodsCreated = defaults.length;
+        }
       }
+
+      // grade scale — wizard rows, else the tier preset. Ordered highest-first.
+      const orderedGrades = [...gradeRows].sort((a, b) => b.minScore - a.minScore);
+      await tx.insert(gradeScale).values(
+        orderedGrades.map((g, i) => ({
+          schoolId: school.id,
+          grade: g.grade.trim(),
+          label: nz(g.label) ?? null,
+          minScore: String(g.minScore),
+          ordinal: i,
+        })),
+      );
 
       await recordAudit(tx, {
         schoolId: school.id,

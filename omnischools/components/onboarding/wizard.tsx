@@ -7,9 +7,14 @@ import {
   OWNERSHIPS,
   SCHOOL_TYPE_CARDS,
   SENIOR_TRACKS,
+  PERIOD_CHOICES,
+  GRADE_SCALE_PRESETS,
+  currentAcademicYearLabel,
+  defaultGradePreset,
   cardForSubtype,
   cardById,
   type CardId,
+  type GradeRow,
   type OnboardInput,
   type OnboardResult,
   type SchoolSubtype,
@@ -346,10 +351,10 @@ export function OnboardingWizard() {
                 stepKey={current?.key ?? "identity"}
                 form={form}
                 set={set}
+                setForm={setForm}
                 pickCard={pickCard}
                 setSeniorTrack={setSeniorTrack}
                 isShs={isShs}
-                periodWord={periodWord}
                 stepNo={stepIdx + 1}
                 total={total}
               />
@@ -462,20 +467,20 @@ function StepBody({
   stepKey,
   form,
   set,
+  setForm,
   pickCard,
   setSeniorTrack,
   isShs,
-  periodWord,
   stepNo,
   total,
 }: {
   stepKey: string;
   form: Form;
   set: (k: keyof Form, v: string) => void;
+  setForm: React.Dispatch<React.SetStateAction<Form>>;
   pickCard: (id: CardId) => void;
   setSeniorTrack: (t: SchoolSubtype) => void;
   isShs: boolean;
-  periodWord: string;
   stepNo: number;
   total: number;
 }) {
@@ -684,24 +689,178 @@ function StepBody({
   }
 
   if (stepKey === "calendar") {
+    const choice =
+      PERIOD_CHOICES.find((c) => c.periodType === form.periodType) ??
+      PERIOD_CHOICES[isShs ? 1 : 0];
+    const ay = form.academicYear ?? currentAcademicYearLabel();
+    const terms =
+      form.terms ?? choice.names.map((n) => ({ label: n, startsOn: "", endsOn: "" }));
+    const grades = form.gradeScale ?? GRADE_SCALE_PRESETS[defaultGradePreset(form.subtype)];
+
+    const setTerm = (i: number, patch: Partial<(typeof terms)[number]>) =>
+      setForm((prev) => {
+        const base = prev.terms ?? terms;
+        const nextTerms = base.map((t, j) => (j === i ? { ...t, ...patch } : t));
+        return { ...prev, terms: nextTerms };
+      });
+    const pickPeriod = (key: string) => {
+      const c = PERIOD_CHOICES.find((p) => p.key === key) ?? PERIOD_CHOICES[0];
+      setForm((prev) => ({
+        ...prev,
+        periodType: c.periodType,
+        periodCount: c.count,
+        terms: c.names.map((n) => ({ label: n, startsOn: "", endsOn: "" })),
+      }));
+    };
+    const setGrade = (i: number, patch: Partial<GradeRow>) =>
+      setForm((prev) => {
+        const base = prev.gradeScale ?? grades;
+        const next = base.map((g, j) => (j === i ? { ...g, ...patch } : g));
+        return { ...prev, gradeScale: next };
+      });
+    const applyPreset = (key: "BASIC" | "WASSCE") =>
+      setForm((prev) => ({
+        ...prev,
+        gradeScale: GRADE_SCALE_PRESETS[key].map((g) => ({ ...g })),
+      }));
+
+    const badgeTone = (i: number, n: number) =>
+      i === 0
+        ? "bg-green-bg text-green"
+        : i >= n - 1
+          ? "bg-terra-bg text-terra"
+          : "bg-gold-bg text-gold";
+
     return (
       <div>
         <Head
           pill={`Step ${stepNo} of ${total} · Academic calendar`}
-          title="Your academic"
+          title="Set up your academic"
           em="year."
-          lede="Omnischools seeds the GES-standard calendar for your tier automatically. You'll be able to fine-tune term dates, holidays and week numbering once you're in."
+          lede="Tell us when your school year runs and how you grade. Sensible GES defaults are pre-filled — adjust what you need; you can refine it later in Settings."
         />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <SummaryCell label="Academic year" value={academicYearLabel()} sub="GES default" />
-          <SummaryCell label="Structure" value={periodWord} sub="per the GES standard" />
-          <SummaryCell label="Source" value="GES default" sub="editable in Settings" />
+
+        {/* School year & terms */}
+        <div className="rounded-xl border border-border bg-bg p-5">
+          <div className="font-display text-base font-medium text-navy">
+            School year &amp; terms
+          </div>
+          <p className="mb-3 mt-0.5 text-[12px] text-navy-3">
+            Most Basic and JHS schools run three terms; Senior schools often run two
+            semesters.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Academic year">
+              <input
+                className={inputCls(true)}
+                value={ay}
+                onChange={(e) => set("academicYear", e.target.value)}
+                placeholder="2026/27"
+              />
+            </Field>
+            <Field label="Number of periods">
+              <select className={inputCls(true)} value={choice.key} onChange={(e) => pickPeriod(e.target.value)}>
+                {PERIOD_CHOICES.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <div className="mt-4 space-y-2">
+            {terms.map((t, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-[1fr_1fr_1fr] items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2"
+              >
+                <div className="text-[13px] font-semibold text-navy">{t.label}</div>
+                <input
+                  type="date"
+                  value={t.startsOn ?? ""}
+                  onChange={(e) => setTerm(i, { startsOn: e.target.value })}
+                  className={cn(inputCls(!!t.startsOn), "px-2.5 py-1.5 text-[12px]")}
+                />
+                <input
+                  type="date"
+                  value={t.endsOn ?? ""}
+                  onChange={(e) => setTerm(i, { endsOn: e.target.value })}
+                  className={cn(inputCls(!!t.endsOn), "px-2.5 py-1.5 text-[12px]")}
+                />
+              </div>
+            ))}
+          </div>
+          <p className="mt-2.5 text-[11px] text-navy-3">
+            Leave dates blank to keep the GES calendar — you can set exact dates later.
+          </p>
         </div>
-        <div className="mt-4">
-          <InterimNote
-            title="Full calendar editor is coming next"
-            body="Per-term date pickers, holidays and the grading scale arrive in the next setup release. For now the GES default is applied so you can finish onboarding."
-          />
+
+        {/* Grade scale */}
+        <div className="mt-4 rounded-xl border border-border bg-bg p-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <div>
+              <div className="font-display text-base font-medium text-navy">Grade scale</div>
+              <p className="mt-0.5 text-[12px] text-navy-3">
+                How scores map to grades — used in the gradebook, report cards and the parent
+                app.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-1.5 text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() => applyPreset("BASIC")}
+                className="rounded-md border border-border-2 px-2.5 py-1 text-navy-2 transition-colors hover:bg-surface"
+              >
+                A–F
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset("WASSCE")}
+                className="rounded-md border border-border-2 px-2.5 py-1 text-navy-2 transition-colors hover:bg-surface"
+              >
+                WASSCE A1–F9
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 space-y-2">
+            {grades.map((g, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-[44px_1fr_auto_72px] items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2"
+              >
+                <div
+                  className={cn(
+                    "flex h-7 items-center justify-center rounded-md font-display text-[13px] font-semibold",
+                    badgeTone(i, grades.length),
+                  )}
+                >
+                  {g.grade}
+                </div>
+                <input
+                  value={g.label ?? ""}
+                  onChange={(e) => setGrade(i, { label: e.target.value })}
+                  className={cn(inputCls(!!g.label), "px-2.5 py-1.5 text-[12px]")}
+                  placeholder="Description"
+                />
+                <div className="text-[11px] text-navy-3">
+                  {i >= grades.length - 1 ? "below" : "from"}
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={i >= grades.length - 1 ? grades[i - 1]?.minScore ?? g.minScore : g.minScore}
+                  disabled={i >= grades.length - 1}
+                  onChange={(e) => setGrade(i, { minScore: Number(e.target.value) })}
+                  className={cn(
+                    inputCls(true),
+                    "px-2.5 py-1.5 text-center text-[12px]",
+                    i >= grades.length - 1 && "opacity-60",
+                  )}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -863,18 +1022,6 @@ function StepBody({
   return null;
 }
 
-function SummaryCell({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-3.5">
-      <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-navy-3">
-        {label}
-      </div>
-      <div className="font-display text-base font-medium text-navy">{value}</div>
-      {sub && <div className="mt-0.5 text-[11px] text-navy-3">{sub}</div>}
-    </div>
-  );
-}
-
 /* --------------------------------------------------------------------- review */
 
 function ReviewPanel({
@@ -889,6 +1036,11 @@ function ReviewPanel({
   onEdit: (key: string) => void;
 }) {
   const card = form.subtype ? cardForSubtype(form.subtype) : null;
+  const calChoice =
+    PERIOD_CHOICES.find((c) => c.periodType === form.periodType) ??
+    PERIOD_CHOICES[isShs ? 1 : 0];
+  const datedCount = (form.terms ?? []).filter((t) => t.startsOn && t.endsOn).length;
+  const grades = form.gradeScale ?? GRADE_SCALE_PRESETS[defaultGradePreset(form.subtype)];
   const cards: { step: string; key: string; rows: [string, string][] }[] = [
     {
       step: "School identity",
@@ -920,8 +1072,12 @@ function ReviewPanel({
       step: "Academic calendar",
       key: "calendar",
       rows: [
-        ["Year", academicYearLabel()],
-        ["Structure", `${periodWord} · GES default`],
+        ["Year", form.academicYear || academicYearLabel()],
+        [
+          "Structure",
+          `${calChoice.label}${datedCount > 0 ? ` · ${datedCount} dated` : " · GES default"}`,
+        ],
+        ["Grade scale", `${grades.length} grades (${grades.map((g) => g.grade).join(", ")})`],
       ],
     },
     {
