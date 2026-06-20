@@ -12,6 +12,7 @@ export const STAFF_ROLES = [
   { code: "TEACHER", label: "Teacher" },
   { code: "FORM_MASTER", label: "Form Master" },
   { code: "BURSAR", label: "Bursar" },
+  { code: "ACCOUNTANT", label: "Accountant" },
   { code: "HOUSEMASTER", label: "Housemaster" },
   { code: "DEAN_OF_BOARDING", label: "Dean of Boarding" },
   { code: "MATRON", label: "Matron" },
@@ -27,3 +28,42 @@ export const STAFF_ROLE_CODES = STAFF_ROLES.map((r) => r.code) as [
 export const STAFF_ROLE_LABEL: Record<string, string> = Object.fromEntries(
   STAFF_ROLES.map((r) => [r.code, r.label]),
 );
+
+/** Roles that are NOT staff — used to include everyone else (incl. custom roles) as staff. */
+export const NON_STAFF_ROLE_CODES = ["STUDENT", "PARENT"] as [string, ...string[]];
+
+/** Slug a custom role label to a stable code, e.g. "Sports Master" → "SPORTS_MASTER". */
+export function slugRole(label: string): string {
+  return (
+    label
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 40) || "ROLE"
+  );
+}
+
+/**
+ * Resolve a role input (a known code, a known label, or a free-typed custom label) to a
+ * `{ code, label }`. Known roles map to their canonical code+label; anything else becomes
+ * a custom role (slugged code + the typed text as the label).
+ */
+export function resolveRole(input: string): { code: string; label: string } {
+  const v = input.trim();
+  const known = STAFF_ROLES.find(
+    (r) => r.code === v.toUpperCase() || r.label.toLowerCase() === v.toLowerCase(),
+  );
+  if (known) return { code: known.code, label: known.label };
+  return { code: slugRole(v), label: v };
+}
+
+/** Display label for a role code, falling back to a humanised version of the code. */
+export function roleLabel(code: string, dbLabel?: string | null): string {
+  if (dbLabel) return dbLabel;
+  if (STAFF_ROLE_LABEL[code]) return STAFF_ROLE_LABEL[code];
+  return code
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}

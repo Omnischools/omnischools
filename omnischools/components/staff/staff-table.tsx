@@ -11,7 +11,7 @@ type Member = {
   name: string | null;
   phone: string;
   email: string | null;
-  roles: { assignmentId: string; code: string }[];
+  roles: { assignmentId: string; code: string; label: string | null }[];
 };
 
 export function StaffTable({ staff }: { staff: Member[] }) {

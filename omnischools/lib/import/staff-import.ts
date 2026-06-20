@@ -1,5 +1,5 @@
 import { isValidGhanaPhone, normalizePhone } from "./csv";
-import { STAFF_ROLES, type StaffRoleCode } from "@/lib/staff-roles";
+import { STAFF_ROLES } from "@/lib/staff-roles";
 
 /**
  * Staff bulk-import spec + validator. Pure + client-safe so the review table can
@@ -24,8 +24,8 @@ export type StaffImportRow = {
   fullName: string;
   phone: string; // normalised E.164 when valid
   email: string;
-  role: StaffRoleCode;
-  roleLabel: string;
+  roleLabel: string; // known label or the custom text (sent to the action verbatim)
+  custom: boolean;
   errors: string[];
   warnings: string[];
 };
@@ -42,7 +42,6 @@ for (const r of STAFF_ROLES) {
   ROLE_BY_KEY.set(r.code.toLowerCase(), r);
   ROLE_BY_KEY.set(r.label.toLowerCase(), r);
 }
-const ROLE_NAMES = STAFF_ROLES.map((r) => r.label).join(", ");
 
 const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 
@@ -77,21 +76,22 @@ export function validateStaffRows(dataRows: string[][]): {
     if (email && !isEmail(email)) errors.push("Email is invalid");
 
     const roleRaw = get(3);
-    let role: StaffRoleCode = "TEACHER";
     let roleLabel = "Teacher";
+    let custom = false;
     if (!roleRaw) {
       warnings.push("Role blank — defaulting to Teacher");
     } else {
       const match = ROLE_BY_KEY.get(roleRaw.toLowerCase());
       if (match) {
-        role = match.code;
         roleLabel = match.label;
       } else {
-        errors.push(`Unknown role "${roleRaw}" — use one of: ${ROLE_NAMES}`);
+        roleLabel = roleRaw;
+        custom = true;
+        warnings.push(`Custom role "${roleRaw}" — will be created`);
       }
     }
 
-    return { index: i + 1, fullName, phone, email, role, roleLabel, errors, warnings };
+    return { index: i + 1, fullName, phone, email, roleLabel, custom, errors, warnings };
   });
 
   const summary: ImportSummary = {

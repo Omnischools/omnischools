@@ -1,11 +1,11 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, notInArray } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import { users, roles, roleAssignments } from "@/db/schema";
-import { STAFF_ROLE_CODES } from "@/lib/staff-roles";
+import { NON_STAFF_ROLE_CODES } from "@/lib/staff-roles";
 
 export type StaffOption = { id: string; name: string };
 
-/** Distinct staff (anyone with a staff role) for teacher/assignee dropdowns. */
+/** Distinct staff (anyone holding a non-student/parent role, incl. custom) for dropdowns. */
 export async function loadStaffOptions(schoolId: string): Promise<StaffOption[]> {
   const rows = await withSchool(schoolId, (tx) =>
     tx
@@ -16,7 +16,7 @@ export async function loadStaffOptions(schoolId: string): Promise<StaffOption[]>
       .where(
         and(
           eq(roleAssignments.schoolId, schoolId),
-          inArray(roles.code, STAFF_ROLE_CODES),
+          notInArray(roles.code, NON_STAFF_ROLE_CODES),
         ),
       )
       .orderBy(asc(users.fullName)),

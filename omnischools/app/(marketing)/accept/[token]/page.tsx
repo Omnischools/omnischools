@@ -2,7 +2,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { withoutTenantScope } from "@/lib/db/rls";
 import { invites, schools } from "@/db/schema";
-import { STAFF_ROLE_LABEL } from "@/lib/staff-roles";
+import { roleLabel } from "@/lib/staff-roles";
 import { AcceptForm } from "@/components/auth/accept-form";
 
 export const dynamic = "force-dynamic";
@@ -106,7 +106,7 @@ export default async function AcceptInvitePage({
       <p className="mt-1 text-sm text-navy-3">
         You&apos;ve been added as{" "}
         <span className="font-semibold text-navy">
-          {STAFF_ROLE_LABEL[data.role] ?? data.role}
+          {roleLabel(data.role)}
         </span>
         . Set a password to get started.
       </p>
