@@ -128,13 +128,13 @@ export default async function ReportCardPage({
                 <tr key={i}>
                   <td className="py-2 text-navy">{l.subject}</td>
                   <td className="py-2 text-right text-navy-2">
-                    {l.classScore ? Number(l.classScore).toFixed(0) : "—"}
+                    {l.classScore != null ? Number(l.classScore).toFixed(0) : "—"}
                   </td>
                   <td className="py-2 text-right text-navy-2">
-                    {l.examScore ? Number(l.examScore).toFixed(0) : "—"}
+                    {l.examScore != null ? Number(l.examScore).toFixed(0) : "—"}
                   </td>
                   <td className="py-2 text-right font-medium text-navy">
-                    {l.total ? Number(l.total).toFixed(2) : "—"}
+                    {l.total != null ? Number(l.total).toFixed(2) : "—"}
                   </td>
                   <td className="py-2 text-right font-semibold text-navy">
                     {l.grade ?? "—"}
@@ -162,7 +162,7 @@ export default async function ReportCardPage({
           <div className="text-right">
             <div className="text-xs uppercase tracking-wide text-navy-3">Overall</div>
             <div className="font-display text-3xl font-semibold text-navy">
-              {card?.overallTotal ? Number(card.overallTotal).toFixed(2) : "—"}
+              {card?.overallTotal != null ? Number(card.overallTotal).toFixed(2) : "—"}
               {card?.overallGrade && (
                 <span className="ml-2 text-xl text-gold">{card.overallGrade}</span>
               )}

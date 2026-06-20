@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { generateInvoicesForClass, deleteFeeStructure } from "@/lib/actions/billing";
 
-const ghs = (n: number) => `GH₵ ${n.toFixed(2)}`;
+const ghs = (n: number) => `GHS ${n.toFixed(2)}`;
 
 type Structure = {
   id: string;

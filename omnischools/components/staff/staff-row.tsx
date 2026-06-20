@@ -105,7 +105,7 @@ export function StaffRow({
             className={`${inputClass} font-sans`}
           />
         ) : (
-          member.phone
+          member.phone || "—"
         )}
       </td>
       <td className="px-4 py-3 text-navy-2">

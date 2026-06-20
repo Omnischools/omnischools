@@ -5,7 +5,7 @@ import { createDiscount, deleteDiscount } from "@/lib/actions/billing";
 import { DataList } from "@/components/ui/fields";
 import { DEFAULT_DISCOUNTS } from "@/lib/field-options";
 
-const ghs = (n: number) => `GH₵ ${n.toFixed(2)}`;
+const ghs = (n: number) => `GHS ${n.toFixed(2)}`;
 const fieldClass =
   "rounded-md border border-border-2 bg-bg px-3 py-2 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
 
@@ -55,7 +55,7 @@ export function DiscountManager({ discounts }: { discounts: DiscountOpt[] }) {
         <div>
           <label className="mb-1 block text-xs font-semibold text-navy-2">Type</label>
           <select name="kind" defaultValue="FIXED" className={fieldClass}>
-            <option value="FIXED">Fixed (GH₵)</option>
+            <option value="FIXED">Fixed (GHS)</option>
             <option value="PERCENT">Percent (%)</option>
           </select>
         </div>
