@@ -105,7 +105,7 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
               </th>
               <th className="px-4 py-3 font-semibold">Code</th>
               <th className="px-4 py-3 font-semibold">Name</th>
-              <th className="px-4 py-3 font-semibold">Sex</th>
+              <th className="px-4 py-3 font-semibold">Gender</th>
               <th className="px-4 py-3 font-semibold">Class</th>
               <th className="px-4 py-3 font-semibold">Status</th>
               <th className="px-4 py-3" />

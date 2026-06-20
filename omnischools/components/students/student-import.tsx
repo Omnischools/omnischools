@@ -191,7 +191,7 @@ export function StudentImport({
                 <tr>
                   <th className="px-3 py-2.5 font-semibold">#</th>
                   <th className="px-3 py-2.5 font-semibold">Name</th>
-                  <th className="px-3 py-2.5 font-semibold">Sex</th>
+                  <th className="px-3 py-2.5 font-semibold">Gender</th>
                   <th className="px-3 py-2.5 font-semibold">DOB</th>
                   <th className="px-3 py-2.5 font-semibold">Class</th>
                   <th className="px-3 py-2.5 font-semibold">Guardian</th>
