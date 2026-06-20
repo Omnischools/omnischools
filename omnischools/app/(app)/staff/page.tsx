@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
@@ -62,7 +63,15 @@ export default async function StaffPage() {
             and admins who can sign in.
           </p>
         </div>
-        <AddStaffForm />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/staff/import"
+            className="rounded-md border border-border-2 px-4 py-2.5 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg"
+          >
+            Import
+          </Link>
+          <AddStaffForm />
+        </div>
       </div>
 
       {staff.length === 0 ? (

@@ -5,6 +5,8 @@ import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { normalizeGhanaPhone } from "@/lib/auth";
+import { sendSms } from "@/lib/sms";
+import { sendEmail } from "@/lib/email";
 import { safeRevalidate } from "@/lib/revalidate";
 import { STAFF_ROLE_CODES, STAFF_ROLE_LABEL } from "@/lib/staff-roles";
 import type { Tx } from "@/lib/db";
@@ -14,6 +16,7 @@ import {
   roleAssignments,
   classes,
   timetableSlots,
+  invites,
 } from "@/db/schema";
 
 type Result = { ok: boolean; error?: string };
@@ -93,6 +96,114 @@ export async function addStaff(input: unknown): Promise<Result> {
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not add staff. Please try again." };
+  }
+}
+
+// --------------------------------------------------------------- bulk import
+const INVITE_TTL_DAYS = 14;
+const ImportStaffSchema = z.object({
+  rows: z
+    .array(
+      z.object({
+        fullName: z.string().min(2).max(120),
+        phone: z.string().min(7),
+        email: z.string().email().optional().or(z.literal("")),
+        role: z.enum(STAFF_ROLE_CODES),
+      }),
+    )
+    .min(1, "No rows to import")
+    .max(500),
+  sendInvites: z.boolean().optional(),
+});
+
+export async function importStaff(
+  input: unknown,
+): Promise<Result & { created?: number; invited?: number }> {
+  const { school } = await requireSchool();
+  const parsed = ImportStaffSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid import" };
+  }
+  const { rows, sendInvites } = parsed.data;
+  const actor = await resolveActor(school.id);
+
+  try {
+    const out = await withSchool(school.id, async (tx) => {
+      let created = 0;
+      let invited = 0;
+      const notify: { phone: string; email: string | null; role: string; token: string }[] =
+        [];
+
+      for (const r of rows) {
+        const phone = normalizeGhanaPhone(r.phone);
+        await tx
+          .insert(users)
+          .values({ phone, fullName: r.fullName.trim(), email: r.email || null })
+          .onConflictDoNothing({ target: users.phone });
+        const [u] = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.phone, phone));
+        const added = await assign(tx, school.id, u.id, r.role);
+        if (added) created++;
+
+        if (sendInvites) {
+          const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
+          await tx.insert(invites).values({
+            schoolId: school.id,
+            token,
+            role: r.role,
+            fullName: r.fullName.trim(),
+            email: r.email || null,
+            phone,
+            expiresAt: new Date(Date.now() + INVITE_TTL_DAYS * 86400_000),
+            invitedByUserId: actor.id ?? null,
+          });
+          invited++;
+          notify.push({ phone, email: r.email || null, role: r.role, token });
+        }
+      }
+
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "created",
+        entityType: "staff_batch",
+        after: { count: created, invited },
+        reason: "Bulk staff import",
+      });
+      return { created, invited, notify };
+    });
+
+    // best-effort invite notifications (stubbed providers; mirrors createInvite)
+    if (sendInvites && out.notify.length > 0) {
+      const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+      const sender = school.shortName ?? "Omnischools";
+      for (const n of out.notify) {
+        const link = `${base}/accept/${n.token}`;
+        try {
+          await sendSms(
+            n.phone,
+            `${sender}: You've been added as ${STAFF_ROLE_LABEL[n.role]}. Set up your account: ${link}`,
+          );
+          if (n.email) {
+            await sendEmail({
+              to: n.email,
+              subject: `You're invited to ${school.name} on Omnischools`,
+              html: `<p>You've been added as <b>${STAFF_ROLE_LABEL[n.role]}</b> at ${school.name}.</p><p><a href="${link}">Accept the invite & set your password</a>.</p>`,
+            });
+          }
+        } catch {
+          /* ignore provider failures — invite rows still exist */
+        }
+      }
+    }
+
+    safeRevalidate("/staff");
+    return { ok: true, created: out.created, invited: out.invited };
+  } catch {
+    return { ok: false, error: "Could not import staff. Please try again." };
   }
 }
 
