@@ -180,7 +180,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         tone: "navy",
         desc: "An immutable record of who changed what and when — payments, records, roles and settings.",
         href: "/settings/audit",
-        soon: true,
       },
       {
         key: "export",
@@ -190,7 +189,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         tone: "green",
         desc: "Download your students, staff and fees as CSV. Your records are yours to take anytime.",
         href: "/settings/export",
-        soon: true,
       },
       {
         key: "retention",
