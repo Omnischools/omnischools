@@ -1,5 +1,4 @@
 import { pgTable, uuid, text, timestamp, date } from "drizzle-orm/pg-core";
-import { appRoleEnum } from "./_enums";
 import { schools } from "./tenancy";
 
 /** A person who can authenticate (phone-OTP). Linked to schools via role_assignment. */
@@ -11,10 +10,13 @@ export const users = pgTable("ref_user", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Seeded role catalogue (one row per AppRole). */
+/**
+ * Role catalogue (one row per role). `code` is free text — seeded with the standard
+ * AppRole set but schools can add custom roles (e.g. "Sports Master") on the fly.
+ */
 export const roles = pgTable("ref_role", {
   id: uuid("id").primaryKey().defaultRandom(),
-  code: appRoleEnum("code").notNull().unique(),
+  code: text("code").notNull().unique(),
   label: text("label").notNull(),
   description: text("description"),
 });

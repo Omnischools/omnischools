@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, notInArray } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { users, roles, roleAssignments } from "@/db/schema";
-import { STAFF_ROLE_CODES } from "@/lib/staff-roles";
+import { NON_STAFF_ROLE_CODES } from "@/lib/staff-roles";
 import { AddStaffForm } from "@/components/staff/add-staff-form";
 import { StaffTable } from "@/components/staff/staff-table";
 
@@ -14,7 +14,7 @@ type StaffMember = {
   name: string | null;
   phone: string;
   email: string | null;
-  roles: { assignmentId: string; code: string }[];
+  roles: { assignmentId: string; code: string; label: string | null }[];
 };
 
 export default async function StaffPage() {
@@ -29,6 +29,7 @@ export default async function StaffPage() {
         phone: users.phone,
         email: users.email,
         code: roles.code,
+        label: roles.label,
       })
       .from(roleAssignments)
       .innerJoin(users, eq(roleAssignments.userId, users.id))
@@ -36,7 +37,7 @@ export default async function StaffPage() {
       .where(
         and(
           eq(roleAssignments.schoolId, school.id),
-          inArray(roles.code, STAFF_ROLE_CODES),
+          notInArray(roles.code, NON_STAFF_ROLE_CODES),
         ),
       )
       .orderBy(asc(users.fullName)),
@@ -49,7 +50,7 @@ export default async function StaffPage() {
       g = { userId: r.userId, name: r.name, phone: r.phone, email: r.email, roles: [] };
       byUser.set(r.userId, g);
     }
-    g.roles.push({ assignmentId: r.assignmentId, code: r.code });
+    g.roles.push({ assignmentId: r.assignmentId, code: r.code, label: r.label });
   }
   const staff = Array.from(byUser.values());
 

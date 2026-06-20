@@ -121,18 +121,22 @@ export function AddStaffForm() {
               </div>
               <div>
                 <label className={labelClass}>Role</label>
-                <select
+                <input
                   name="role"
                   required
-                  defaultValue="TEACHER"
+                  list="add-staff-roles"
+                  defaultValue="Teacher"
+                  placeholder="Pick or type a role"
                   className={fieldClass}
-                >
+                />
+                <datalist id="add-staff-roles">
                   {STAFF_ROLES.map((r) => (
-                    <option key={r.code} value={r.code}>
-                      {r.label}
-                    </option>
+                    <option key={r.code} value={r.label} />
                   ))}
-                </select>
+                </datalist>
+                <p className="mt-1 text-[11px] text-navy-3">
+                  Choose from the list or type a custom role (e.g. Sports Master).
+                </p>
               </div>
             </div>
 

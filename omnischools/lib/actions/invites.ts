@@ -8,7 +8,7 @@ import { normalizeGhanaPhone, createPasswordUser } from "@/lib/auth";
 import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { safeRevalidate } from "@/lib/revalidate";
-import { STAFF_ROLE_CODES, STAFF_ROLE_LABEL } from "@/lib/staff-roles";
+import { resolveRole, roleLabel } from "@/lib/staff-roles";
 import { invites, users, roles, roleAssignments } from "@/db/schema";
 
 type Result = { ok: boolean; error?: string };
@@ -17,7 +17,7 @@ const INVITE_TTL_DAYS = 14;
 
 // ----------------------------------------------------------------- create
 const CreateInviteSchema = z.object({
-  role: z.enum(STAFF_ROLE_CODES),
+  role: z.string().min(2, "Choose or enter a role").max(60),
   fullName: z.string().min(2, "Enter a name").max(120),
   phone: z.string().min(7, "A phone number is required"),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
@@ -40,6 +40,7 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
   }
   const d = parsed.data;
   const phone = normalizeGhanaPhone(d.phone);
+  const role = resolveRole(d.role);
   const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
   const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86400_000);
   const actor = await resolveActor(school.id);
@@ -49,7 +50,7 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
       await tx.insert(invites).values({
         schoolId: school.id,
         token,
-        role: d.role,
+        role: role.code,
         fullName: d.fullName.trim(),
         email: d.email || null,
         phone,
@@ -63,7 +64,7 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
         actorRole: actor.role,
         actionType: "created",
         entityType: "invite",
-        after: { role: d.role, name: d.fullName },
+        after: { role: role.label, name: d.fullName },
         reason: "Invite sent",
       });
     });
@@ -73,13 +74,13 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
     const sender = school.shortName ?? "Omnischools";
     await sendSms(
       phone,
-      `${sender}: You've been added as ${STAFF_ROLE_LABEL[d.role]}. Set up your account: ${link}`,
+      `${sender}: You've been added as ${role.label}. Set up your account: ${link}`,
     );
     if (d.email) {
       await sendEmail({
         to: d.email,
         subject: `You're invited to ${school.name} on Omnischools`,
-        html: `<p>You've been added as <b>${STAFF_ROLE_LABEL[d.role]}</b> at ${school.name}.</p><p><a href="${link}">Accept the invite & set your password</a>.</p>`,
+        html: `<p>You've been added as <b>${role.label}</b> at ${school.name}.</p><p><a href="${link}">Accept the invite & set your password</a>.</p>`,
       });
     }
     safeRevalidate("/staff");
@@ -147,7 +148,7 @@ export async function acceptInvite(input: unknown): Promise<Result> {
     await withoutTenantScope(async (tx) => {
       await tx
         .insert(roles)
-        .values({ code: inv.role, label: STAFF_ROLE_LABEL[inv.role] ?? inv.role })
+        .values({ code: inv.role, label: roleLabel(inv.role) })
         .onConflictDoNothing({ target: roles.code });
       const [roleRow] = await tx
         .select({ id: roles.id })

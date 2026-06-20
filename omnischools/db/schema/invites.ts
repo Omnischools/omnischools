@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, jsonb, timestamp, index } from "drizzle-orm/pg-core";
-import { inviteStatusEnum, appRoleEnum } from "./_enums";
+import { inviteStatusEnum } from "./_enums";
 import { schools } from "./tenancy";
 import { users } from "./identity";
 
@@ -17,7 +17,7 @@ export const invites = pgTable(
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
     token: text("token").notNull().unique(),
-    role: appRoleEnum("role").notNull(),
+    role: text("role").notNull(), // role code (standard or custom)
     fullName: text("full_name").notNull(),
     email: text("email"),
     phone: text("phone"), // E.164 — mandatory for staff (enforced in the action)

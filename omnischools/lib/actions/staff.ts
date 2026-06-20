@@ -8,7 +8,7 @@ import { normalizeGhanaPhone } from "@/lib/auth";
 import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { safeRevalidate } from "@/lib/revalidate";
-import { STAFF_ROLE_CODES, STAFF_ROLE_LABEL } from "@/lib/staff-roles";
+import { resolveRole } from "@/lib/staff-roles";
 import type { Tx } from "@/lib/db";
 import {
   users,
@@ -21,11 +21,11 @@ import {
 
 type Result = { ok: boolean; error?: string };
 
-/** Ensure the ref_role row exists (prod onboarding seeds only ADMIN/HEADMASTER). */
-async function ensureRoleId(tx: Tx, code: (typeof STAFF_ROLE_CODES)[number]) {
+/** Find-or-create the ref_role row (standard or custom) and return its id. */
+async function ensureRoleId(tx: Tx, code: string, label: string) {
   await tx
     .insert(roles)
-    .values({ code, label: STAFF_ROLE_LABEL[code] })
+    .values({ code, label })
     .onConflictDoNothing({ target: roles.code });
   const [r] = await tx.select({ id: roles.id }).from(roles).where(eq(roles.code, code));
   return r.id;
@@ -35,9 +35,10 @@ async function assign(
   tx: Tx,
   schoolId: string,
   userId: string,
-  code: (typeof STAFF_ROLE_CODES)[number],
+  code: string,
+  label: string,
 ): Promise<boolean> {
-  const roleId = await ensureRoleId(tx, code);
+  const roleId = await ensureRoleId(tx, code, label);
   const existing = await tx
     .select({ id: roleAssignments.id })
     .from(roleAssignments)
@@ -58,7 +59,7 @@ const AddStaffSchema = z.object({
   fullName: z.string().min(2, "Enter the staff member's name").max(120),
   phone: z.string().min(7, "Enter a valid phone number"),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
-  role: z.enum(STAFF_ROLE_CODES),
+  role: z.string().min(2, "Choose or enter a role").max(60),
 });
 
 export async function addStaff(input: unknown): Promise<Result> {
@@ -69,6 +70,7 @@ export async function addStaff(input: unknown): Promise<Result> {
   }
   const d = parsed.data;
   const phone = normalizeGhanaPhone(d.phone);
+  const role = resolveRole(d.role);
   const actor = await resolveActor(school.id);
   try {
     await withSchool(school.id, async (tx) => {
@@ -80,7 +82,7 @@ export async function addStaff(input: unknown): Promise<Result> {
         .select({ id: users.id })
         .from(users)
         .where(eq(users.phone, phone));
-      const added = await assign(tx, school.id, u.id, d.role);
+      const added = await assign(tx, school.id, u.id, role.code, role.label);
       await recordAudit(tx, {
         schoolId: school.id,
         actorUserId: actor.id ?? undefined,
@@ -88,7 +90,7 @@ export async function addStaff(input: unknown): Promise<Result> {
         actionType: added ? "created" : "updated",
         entityType: "staff",
         entityId: u.id,
-        after: { name: d.fullName, role: d.role },
+        after: { name: d.fullName, role: role.label },
         reason: "Staff member added",
       });
     });
@@ -108,7 +110,7 @@ const ImportStaffSchema = z.object({
         fullName: z.string().min(2).max(120),
         phone: z.string().min(7),
         email: z.string().email().optional().or(z.literal("")),
-        role: z.enum(STAFF_ROLE_CODES),
+        role: z.string().min(2).max(60),
       }),
     )
     .min(1, "No rows to import")
@@ -131,11 +133,16 @@ export async function importStaff(
     const out = await withSchool(school.id, async (tx) => {
       let created = 0;
       let invited = 0;
-      const notify: { phone: string; email: string | null; role: string; token: string }[] =
-        [];
+      const notify: {
+        phone: string;
+        email: string | null;
+        roleLabel: string;
+        token: string;
+      }[] = [];
 
       for (const r of rows) {
         const phone = normalizeGhanaPhone(r.phone);
+        const role = resolveRole(r.role);
         await tx
           .insert(users)
           .values({ phone, fullName: r.fullName.trim(), email: r.email || null })
@@ -144,7 +151,7 @@ export async function importStaff(
           .select({ id: users.id })
           .from(users)
           .where(eq(users.phone, phone));
-        const added = await assign(tx, school.id, u.id, r.role);
+        const added = await assign(tx, school.id, u.id, role.code, role.label);
         if (added) created++;
 
         if (sendInvites) {
@@ -152,7 +159,7 @@ export async function importStaff(
           await tx.insert(invites).values({
             schoolId: school.id,
             token,
-            role: r.role,
+            role: role.code,
             fullName: r.fullName.trim(),
             email: r.email || null,
             phone,
@@ -160,7 +167,7 @@ export async function importStaff(
             invitedByUserId: actor.id ?? null,
           });
           invited++;
-          notify.push({ phone, email: r.email || null, role: r.role, token });
+          notify.push({ phone, email: r.email || null, roleLabel: role.label, token });
         }
       }
 
@@ -185,13 +192,13 @@ export async function importStaff(
         try {
           await sendSms(
             n.phone,
-            `${sender}: You've been added as ${STAFF_ROLE_LABEL[n.role]}. Set up your account: ${link}`,
+            `${sender}: You've been added as ${n.roleLabel}. Set up your account: ${link}`,
           );
           if (n.email) {
             await sendEmail({
               to: n.email,
               subject: `You're invited to ${school.name} on Omnischools`,
-              html: `<p>You've been added as <b>${STAFF_ROLE_LABEL[n.role]}</b> at ${school.name}.</p><p><a href="${link}">Accept the invite & set your password</a>.</p>`,
+              html: `<p>You've been added as <b>${n.roleLabel}</b> at ${school.name}.</p><p><a href="${link}">Accept the invite & set your password</a>.</p>`,
             });
           }
         } catch {
@@ -391,17 +398,18 @@ export async function deleteStaffBulk(
 // ----------------------------------------------------------- assign more roles
 const AssignSchema = z.object({
   userId: z.string().uuid(),
-  role: z.enum(STAFF_ROLE_CODES),
+  role: z.string().min(2, "Choose or enter a role").max(60),
 });
 
 export async function assignStaffRole(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
   const parsed = AssignSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
+  const role = resolveRole(parsed.data.role);
   const actor = await resolveActor(school.id);
   try {
     await withSchool(school.id, async (tx) => {
-      const added = await assign(tx, school.id, parsed.data.userId, parsed.data.role);
+      const added = await assign(tx, school.id, parsed.data.userId, role.code, role.label);
       if (added) {
         await recordAudit(tx, {
           schoolId: school.id,
@@ -410,7 +418,7 @@ export async function assignStaffRole(input: unknown): Promise<Result> {
           actionType: "updated",
           entityType: "staff",
           entityId: parsed.data.userId,
-          after: { role: parsed.data.role },
+          after: { role: role.label },
           reason: "Role assigned",
         });
       }

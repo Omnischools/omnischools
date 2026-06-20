@@ -59,7 +59,7 @@ export function StaffImport() {
         fullName: r.fullName,
         phone: r.phone,
         email: r.email,
-        role: r.role,
+        role: r.roleLabel,
       })),
       sendInvites: invite,
     });

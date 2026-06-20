@@ -10,7 +10,12 @@ import { env } from "@/lib/env";
  *  - Real (Supabase URL set + AUTH_DEV_BYPASS=false): phone-OTP via Supabase Auth;
  *    the authenticated phone is mapped to a ref_user + role assignments.
  */
-export type AppRole =
+/**
+ * Known role codes. Roles are stored as free text (ref_role.code), so a school may also
+ * hold custom roles — `(string & {})` keeps autocomplete for the known set while allowing
+ * any custom code through.
+ */
+export type KnownAppRole =
   | "ADMIN"
   | "HEADMASTER"
   | "VICE_HEADMASTER_ACADEMIC"
@@ -20,8 +25,10 @@ export type AppRole =
   | "STUDENT"
   | "PARENT"
   | "BURSAR"
+  | "ACCOUNTANT"
   | "DEAN_OF_BOARDING"
   | "MATRON";
+export type AppRole = KnownAppRole | (string & {});
 
 export interface AppUser {
   id: string;
