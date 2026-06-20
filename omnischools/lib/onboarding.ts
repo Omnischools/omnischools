@@ -170,6 +170,88 @@ export const GRADE_SCALE_PRESETS: Record<"BASIC" | "WASSCE", GradeRow[]> = {
 export const defaultGradePreset = (subtype?: SchoolSubtype): "BASIC" | "WASSCE" =>
   subtype === "SHS" || subtype === "SHTS" ? "WASSCE" : "BASIC";
 
+/* --------------------------------------------- academic structure (step 4) */
+
+/** GES Basic ladder — KG through JHS. Seeded as editable class rows for Basic/Multi. */
+export const GES_BASIC_CLASSES = [
+  "KG 1",
+  "KG 2",
+  "Basic 1",
+  "Basic 2",
+  "Basic 3",
+  "Basic 4",
+  "Basic 5",
+  "Basic 6",
+  "JHS 1",
+  "JHS 2",
+  "JHS 3",
+];
+
+/** Common GES Basic-school subjects. */
+export const GES_BASIC_SUBJECTS = [
+  "English Language",
+  "Mathematics",
+  "Integrated Science",
+  "Our World Our People",
+  "Computing (ICT)",
+  "Creative Arts & Design",
+  "Ghanaian Language",
+  "Religious & Moral Education",
+  "French",
+  "Physical Education",
+];
+
+/** The four universal WASSCE cores (every SHS programme). */
+export const WASSCE_CORE_SUBJECTS = [
+  "English Language",
+  "Mathematics (Core)",
+  "Integrated Science",
+  "Social Studies",
+];
+
+/** SHS programmes shown as a stub at step 4 — the full matrix lands in the Senior MVP. */
+export const SHS_PROGRAMMES = [
+  { name: "Science", electives: ["Chemistry", "Physics", "Biology", "Elective Maths"] },
+  {
+    name: "Business",
+    electives: [
+      "Financial Accounting",
+      "Cost Accounting",
+      "Business Management",
+      "Economics",
+    ],
+  },
+  {
+    name: "General Arts",
+    electives: ["Literature", "Geography", "Government", "History / CRS / French"],
+  },
+  {
+    name: "Home Economics",
+    electives: [
+      "Management in Living",
+      "Food & Nutrition",
+      "Clothing & Textiles",
+      "Biology",
+    ],
+  },
+];
+
+/** Has a class-based wing (Basic or Multi-tier) → show the classes builder. */
+export const hasClassWing = (s?: SchoolSubtype): boolean => s !== "SHS" && s !== "SHTS";
+/** Has a senior wing (SHS/SHTS/Multi-tier) → show the programmes stub. */
+export const hasSeniorWing = (s?: SchoolSubtype): boolean =>
+  s === "SHS" || s === "SHTS" || s === "MULTI";
+
+export const defaultClasses = (s?: SchoolSubtype): string[] =>
+  hasClassWing(s) ? GES_BASIC_CLASSES : [];
+
+export const defaultSubjects = (s?: SchoolSubtype): string[] =>
+  s === "SHS" || s === "SHTS"
+    ? WASSCE_CORE_SUBJECTS
+    : s === "MULTI"
+      ? Array.from(new Set([...GES_BASIC_SUBJECTS, ...WASSCE_CORE_SUBJECTS]))
+      : GES_BASIC_SUBJECTS;
+
 export const OnboardSchema = z.object({
   schoolName: z.string().min(2, "School name is required").max(200),
   shortName: z.string().max(60).optional().or(z.literal("")),
@@ -207,6 +289,9 @@ export const OnboardSchema = z.object({
     )
     .max(15)
     .optional(),
+  // Step 4 — academic structure (optional; falls back to tier defaults)
+  classes: z.array(z.string().max(60)).max(60).optional(),
+  subjects: z.array(z.string().max(60)).max(80).optional(),
   headmasterName: z.string().min(2, "Headmaster name is required").max(160),
   headmasterPhone: z.string().min(7, "Headmaster phone is required").max(40),
   headmasterEmail: z.string().email().optional().or(z.literal("")),

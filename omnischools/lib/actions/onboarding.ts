@@ -5,6 +5,8 @@ import {
   type OnboardResult,
   GRADE_SCALE_PRESETS,
   defaultGradePreset,
+  defaultClasses,
+  defaultSubjects,
 } from "@/lib/onboarding";
 import { withoutTenantScope } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
@@ -24,6 +26,8 @@ import {
   academicPeriod,
   genPeriodDefaults,
   gradeScale,
+  classes,
+  subjects,
 } from "@/db/schema";
 
 const FOUNDER_EMAIL = "hello@omnischools.gh";
@@ -71,6 +75,11 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
     d.gradeScale && d.gradeScale.length > 0
       ? d.gradeScale
       : GRADE_SCALE_PRESETS[defaultGradePreset(d.subtype)];
+  // Academic structure — the wizard's lists, else the tier defaults.
+  const uniqTrim = (xs: string[]) =>
+    Array.from(new Set(xs.map((s) => s.trim()).filter(Boolean)));
+  const classNames = uniqTrim(d.classes ?? defaultClasses(d.subtype));
+  const subjectNames = uniqTrim(d.subjects ?? defaultSubjects(d.subtype));
   const productRows: ("BASIC" | "SENIOR")[] =
     d.product === "COMBINED" ? ["BASIC", "SENIOR"] : [d.product];
 
@@ -250,6 +259,20 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
           ordinal: i,
         })),
       );
+
+      // academic structure — seed classes + subjects (wizard lists or tier defaults)
+      if (classNames.length > 0) {
+        await tx
+          .insert(classes)
+          .values(classNames.map((name) => ({ schoolId: school.id, name })))
+          .onConflictDoNothing({ target: [classes.schoolId, classes.name] });
+      }
+      if (subjectNames.length > 0) {
+        await tx
+          .insert(subjects)
+          .values(subjectNames.map((name) => ({ schoolId: school.id, name })))
+          .onConflictDoNothing({ target: [subjects.schoolId, subjects.name] });
+      }
 
       await recordAudit(tx, {
         schoolId: school.id,
