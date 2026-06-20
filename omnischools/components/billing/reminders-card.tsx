@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { sendFeeReminders } from "@/lib/actions/billing";
 
 const ghs = (n: number) =>
-  `GH₵ ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `GHS ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function RemindersCard({ families, total }: { families: number; total: number }) {
   const router = useRouter();

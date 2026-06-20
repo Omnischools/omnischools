@@ -18,7 +18,7 @@ export const announcements = pgTable("announcement", {
   postedAt: timestamp("posted_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Reusable SMS message templates (placeholders: {student}, {school}). */
+/** Reusable SMS message templates (placeholders: {student_first}, {school_short}). */
 export const smsTemplates = pgTable(
   "sms_template",
   {

@@ -132,7 +132,7 @@ export function TemplateForm() {
       <textarea
         name="body"
         required
-        placeholder="Message — use {student} and {school} as placeholders"
+        placeholder="Message — use {student_first} and {school_short} as placeholders"
         className={`${fieldClass} min-h-[70px] resize-y`}
       />
       <div className="flex items-center gap-2">

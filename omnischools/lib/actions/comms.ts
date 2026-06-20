@@ -116,7 +116,13 @@ export type SendSmsResult =
   | { ok: false; error: string };
 
 function render(body: string, vars: { student: string; school: string }): string {
-  return body.replaceAll("{student}", vars.student).replaceAll("{school}", vars.school);
+  // Canonical tokens match the SMS-library vocabulary; the bare {student}/{school}
+  // forms are kept for backward-compatibility with templates saved before the rename.
+  return body
+    .replaceAll("{student_first}", vars.student)
+    .replaceAll("{student}", vars.student)
+    .replaceAll("{school_short}", vars.school)
+    .replaceAll("{school}", vars.school);
 }
 
 export async function sendSmsToAudience(input: unknown): Promise<SendSmsResult> {

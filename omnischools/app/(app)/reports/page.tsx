@@ -8,7 +8,7 @@ import { schoolFile } from "@/lib/filename";
 export const dynamic = "force-dynamic";
 
 const ghs = (n: number) =>
-  `GH₵ ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `GHS ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const num = (v: unknown) => Number(v ?? 0);
 
 const METHOD_LABEL: Record<string, string> = {
