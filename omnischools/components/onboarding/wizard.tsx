@@ -9,8 +9,14 @@ import {
   SENIOR_TRACKS,
   PERIOD_CHOICES,
   GRADE_SCALE_PRESETS,
+  SHS_PROGRAMMES,
+  WASSCE_CORE_SUBJECTS,
   currentAcademicYearLabel,
   defaultGradePreset,
+  defaultClasses,
+  defaultSubjects,
+  hasClassWing,
+  hasSeniorWing,
   cardForSubtype,
   cardById,
   type CardId,
@@ -90,9 +96,13 @@ export function OnboardingWizard() {
     hydrated.current = true;
   }, []);
 
-  // Persist the draft whenever it changes (after initial hydration).
+  // Persist the draft whenever it changes (after initial hydration). Never write the
+  // empty initial form — that would clobber a saved draft on mount, before the restore
+  // effect's state has committed (and again under StrictMode's double-invoked effects).
   useEffect(() => {
     if (!hydrated.current) return;
+    const untouched = !form.schoolName && !form.subtype && stepIdx === 0;
+    if (untouched) return;
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ form, stepIdx }));
     } catch {
@@ -463,6 +473,81 @@ function InterimNote({ title, body }: { title: string; body: string }) {
   );
 }
 
+/** Editable chip list — removable tags + an add input. Used for classes & subjects. */
+function ChipEditor({
+  title,
+  hint,
+  items,
+  onAdd,
+  onRemove,
+  value,
+  setValue,
+  placeholder,
+}: {
+  title: string;
+  hint: string;
+  items: string[];
+  onAdd: (v: string) => void;
+  onRemove: (i: number) => void;
+  value: string;
+  setValue: (v: string) => void;
+  placeholder: string;
+}) {
+  const commit = () => {
+    onAdd(value);
+    setValue("");
+  };
+  return (
+    <div className="rounded-xl border border-border bg-bg p-5">
+      <div className="font-display text-base font-medium text-navy">
+        {title} <span className="text-navy-3">· {items.length}</span>
+      </div>
+      <p className="mb-3 mt-0.5 text-[12px] text-navy-3">{hint}</p>
+      {items.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {items.map((it, i) => (
+            <span
+              key={`${it}-${i}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border-2 bg-surface py-1 pl-3 pr-1.5 text-[12px] font-medium text-navy"
+            >
+              {it}
+              <button
+                type="button"
+                onClick={() => onRemove(i)}
+                aria-label={`Remove ${it}`}
+                className="flex h-4 w-4 items-center justify-center rounded-full text-navy-3 transition-colors hover:bg-terra-bg hover:text-terra"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            }
+          }}
+          placeholder={placeholder}
+          className={inputCls(false)}
+        />
+        <button
+          type="button"
+          onClick={commit}
+          className="shrink-0 rounded-lg border border-border-2 bg-surface px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-gold-bg"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function StepBody({
   stepKey,
   form,
@@ -486,6 +571,8 @@ function StepBody({
 }) {
   const f = (k: keyof Form) => (form[k] as string) ?? "";
   const selectedCard = form.subtype ? cardForSubtype(form.subtype) : null;
+  const [newClass, setNewClass] = useState("");
+  const [newSubject, setNewSubject] = useState("");
 
   if (stepKey === "identity") {
     return (
@@ -867,26 +954,110 @@ function StepBody({
   }
 
   if (stepKey === "structure") {
+    const showClasses = hasClassWing(form.subtype);
+    const showProgrammes = hasSeniorWing(form.subtype);
+    const classList = form.classes ?? defaultClasses(form.subtype);
+    const subjectList = form.subjects ?? defaultSubjects(form.subtype);
+    const listFor = (key: "classes" | "subjects") =>
+      key === "classes" ? classList : subjectList;
+
+    const addItem = (key: "classes" | "subjects", val: string) => {
+      const v = val.trim();
+      if (!v) return;
+      setForm((prev) => {
+        const base = (prev[key] as string[] | undefined) ?? listFor(key);
+        if (base.some((x) => x.toLowerCase() === v.toLowerCase())) return prev;
+        return { ...prev, [key]: [...base, v] };
+      });
+    };
+    const removeItem = (key: "classes" | "subjects", idx: number) =>
+      setForm((prev) => {
+        const base = (prev[key] as string[] | undefined) ?? listFor(key);
+        return { ...prev, [key]: base.filter((_, i) => i !== idx) };
+      });
+
     return (
       <div>
         <Head
           pill={`Step ${stepNo} of ${total} · Academic structure`}
           title="Your classes"
-          em={isShs ? "& programmes." : "& subjects."}
+          em={showProgrammes && !showClasses ? "& programmes." : "& subjects."}
           lede={
-            isShs
-              ? "SHS schools build a programmes matrix — Science, Business, General Arts, Home Econ — with 4 universal cores and electives per programme."
-              : "Basic & JHS schools build a class list with subjects per class, loaded from the GES syllabus."
+            showProgrammes && !showClasses
+              ? "Senior schools are programme-based — Science, Business, General Arts, Home Econ — over four universal WASSCE cores. Confirm the cores now; the full programme matrix is built in the Senior release."
+              : "Build your class list and the subjects you teach. We've pre-filled the GES defaults — add or remove to match your school."
           }
         />
-        <InterimNote
-          title={isShs ? "Programmes, cores & electives" : "Classes & subjects"}
-          body={
-            isShs
-              ? "The WAEC programme matrix (cores + per-programme electives) is built here in the next release. For now, set programmes up from Classes after launch."
-              : "The GES class + subject builder is added here in the next release. For now, create your classes and subjects from Classes after launch."
-          }
-        />
+
+        {showClasses && (
+          <ChipEditor
+            title="Classes"
+            hint="Forms / classes students belong to. Attendance and the timetable hang off these."
+            items={classList}
+            onAdd={(v) => addItem("classes", v)}
+            onRemove={(i) => removeItem("classes", i)}
+            value={newClass}
+            setValue={setNewClass}
+            placeholder="e.g. JHS 1"
+          />
+        )}
+
+        <div className={showClasses ? "mt-4" : ""}>
+          <ChipEditor
+            title={showProgrammes && !showClasses ? "Core subjects" : "Subjects"}
+            hint={
+              showProgrammes && !showClasses
+                ? "The four universal WASSCE cores. Programme electives are added with the programme builder in the Senior release."
+                : "Subjects taught across the school. These feed the gradebook and report cards."
+            }
+            items={subjectList}
+            onAdd={(v) => addItem("subjects", v)}
+            onRemove={(i) => removeItem("subjects", i)}
+            value={newSubject}
+            setValue={setNewSubject}
+            placeholder="e.g. Twi"
+          />
+        </div>
+
+        {showProgrammes && (
+          <div className="mt-4 rounded-xl border border-border bg-bg p-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="font-display text-base font-medium text-navy">
+                Programmes <span className="text-navy-3">· preview</span>
+              </div>
+              <span className="rounded-full bg-gold-bg px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-gold">
+                Senior release
+              </span>
+            </div>
+            <p className="mt-0.5 text-[12px] text-navy-3">
+              The WASSCE programme matrix (electives per programme) is built after launch.
+              Here&apos;s what your Senior wing will offer:
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {SHS_PROGRAMMES.map((p) => (
+                <div key={p.name} className="rounded-lg border border-border bg-surface p-3">
+                  <div className="font-display text-[13px] font-semibold text-navy">
+                    {p.name}
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {p.electives.map((e) => (
+                      <span
+                        key={e}
+                        className="rounded-full border border-gold-soft bg-gold-bg px-2 py-0.5 text-[10px] font-medium text-gold"
+                      >
+                        {e}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] text-navy-3">
+              Cores ({WASSCE_CORE_SUBJECTS.length}) apply to every programme · electives shown
+              are GES defaults you&apos;ll confirm later.
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -1041,6 +1212,8 @@ function ReviewPanel({
     PERIOD_CHOICES[isShs ? 1 : 0];
   const datedCount = (form.terms ?? []).filter((t) => t.startsOn && t.endsOn).length;
   const grades = form.gradeScale ?? GRADE_SCALE_PRESETS[defaultGradePreset(form.subtype)];
+  const classCount = (form.classes ?? defaultClasses(form.subtype)).length;
+  const subjectCount = (form.subjects ?? defaultSubjects(form.subtype)).length;
   const cards: { step: string; key: string; rows: [string, string][] }[] = [
     {
       step: "School identity",
@@ -1078,6 +1251,20 @@ function ReviewPanel({
           `${calChoice.label}${datedCount > 0 ? ` · ${datedCount} dated` : " · GES default"}`,
         ],
         ["Grade scale", `${grades.length} grades (${grades.map((g) => g.grade).join(", ")})`],
+      ],
+    },
+    {
+      step: "Academic structure",
+      key: "structure",
+      rows: [
+        ["Classes", classCount > 0 ? `${classCount} classes` : "Programme-based"],
+        ["Subjects", `${subjectCount} subjects`],
+        ...(hasSeniorWing(form.subtype)
+          ? ([["Programmes", `${SHS_PROGRAMMES.length} (Senior release)`]] as [
+              string,
+              string,
+            ][])
+          : []),
       ],
     },
     {
