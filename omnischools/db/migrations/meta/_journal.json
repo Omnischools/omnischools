@@ -85,6 +85,13 @@
       "when": 1781438482769,
       "tag": "0011_real_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1781947584289,
+      "tag": "0012_petite_karnak",
+      "breakpoints": true
     }
   ]
 }

@@ -80,6 +80,7 @@ BEGIN
     'subject',
     'gradebook_config',
     'gradebook_score',
+    'grade_scale',
     'report_card',
     'announcement',
     'sms_template',

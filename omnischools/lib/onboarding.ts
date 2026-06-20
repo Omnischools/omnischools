@@ -106,6 +106,70 @@ export const cardForSubtype = (s?: SchoolSubtype): SchoolTypeCard => {
 export const cardById = (id: CardId): SchoolTypeCard =>
   SCHOOL_TYPE_CARDS.find((c) => c.id === id) ?? SCHOOL_TYPE_CARDS[0];
 
+/* ----------------------------------------------- academic calendar (step 3) */
+
+export type PeriodChoice = {
+  key: "TERM3" | "SEM2";
+  label: string;
+  periodType: "TERM" | "SEMESTER";
+  count: number;
+  names: string[];
+};
+
+export const PERIOD_CHOICES: PeriodChoice[] = [
+  {
+    key: "TERM3",
+    label: "3 terms",
+    periodType: "TERM",
+    count: 3,
+    names: ["Term 1", "Term 2", "Term 3"],
+  },
+  {
+    key: "SEM2",
+    label: "2 semesters",
+    periodType: "SEMESTER",
+    count: 2,
+    names: ["Semester 1", "Semester 2"],
+  },
+];
+
+/** GES current academic year, e.g. "2025/26" (rolls over in September). */
+export function currentAcademicYearLabel(now = new Date()): string {
+  const y = now.getFullYear();
+  const start = now.getMonth() >= 8 ? y : y - 1;
+  return `${start}/${String((start + 1) % 100).padStart(2, "0")}`;
+}
+
+/* --------------------------------------------------- grade scale (step 3) */
+
+export type GradeRow = { grade: string; label: string; minScore: number };
+
+/** Default grade scales. Basic uses A–F bands; Senior mirrors WASSCE A1–F9. */
+export const GRADE_SCALE_PRESETS: Record<"BASIC" | "WASSCE", GradeRow[]> = {
+  BASIC: [
+    { grade: "A", label: "Excellent", minScore: 80 },
+    { grade: "B", label: "Very good", minScore: 70 },
+    { grade: "C", label: "Good", minScore: 60 },
+    { grade: "D", label: "Pass", minScore: 50 },
+    { grade: "F", label: "Fail", minScore: 0 },
+  ],
+  WASSCE: [
+    { grade: "A1", label: "Excellent", minScore: 80 },
+    { grade: "B2", label: "Very good", minScore: 75 },
+    { grade: "B3", label: "Good", minScore: 70 },
+    { grade: "C4", label: "Credit", minScore: 65 },
+    { grade: "C5", label: "Credit", minScore: 60 },
+    { grade: "C6", label: "Credit", minScore: 55 },
+    { grade: "D7", label: "Pass", minScore: 50 },
+    { grade: "E8", label: "Pass", minScore: 45 },
+    { grade: "F9", label: "Fail", minScore: 0 },
+  ],
+};
+
+/** Senior tiers default to the WASSCE scale; Basic/Multi-tier to the A–F bands. */
+export const defaultGradePreset = (subtype?: SchoolSubtype): "BASIC" | "WASSCE" =>
+  subtype === "SHS" || subtype === "SHTS" ? "WASSCE" : "BASIC";
+
 export const OnboardSchema = z.object({
   schoolName: z.string().min(2, "School name is required").max(200),
   shortName: z.string().max(60).optional().or(z.literal("")),
@@ -118,6 +182,31 @@ export const OnboardSchema = z.object({
   product: z.enum(ONBOARD_PRODUCTS),
   subtype: z.enum(SCHOOL_SUBTYPES).optional(),
   ownership: z.enum(OWNERSHIPS),
+  // Step 3 — academic calendar (optional; falls back to GES defaults)
+  academicYear: z.string().max(20).optional().or(z.literal("")),
+  periodType: z.enum(["TERM", "SEMESTER"]).optional(),
+  periodCount: z.coerce.number().int().min(1).max(6).optional(),
+  terms: z
+    .array(
+      z.object({
+        label: z.string().max(40),
+        startsOn: z.string().optional().or(z.literal("")),
+        endsOn: z.string().optional().or(z.literal("")),
+      }),
+    )
+    .max(6)
+    .optional(),
+  // Step 3 — grade scale (optional; falls back to the tier preset)
+  gradeScale: z
+    .array(
+      z.object({
+        grade: z.string().min(1).max(8),
+        label: z.string().max(40).optional().or(z.literal("")),
+        minScore: z.coerce.number().min(0).max(100),
+      }),
+    )
+    .max(15)
+    .optional(),
   headmasterName: z.string().min(2, "Headmaster name is required").max(160),
   headmasterPhone: z.string().min(7, "Headmaster phone is required").max(40),
   headmasterEmail: z.string().email().optional().or(z.literal("")),
