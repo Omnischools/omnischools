@@ -64,6 +64,26 @@ export default async function DashboardPage() {
         ),
       )
       .limit(1);
+    const byClass = await tx
+      .select({
+        name: classes.name,
+        total: sql<number>`count(${students.id})::int`,
+        male: sql<number>`coalesce(sum(case when ${students.sex} = 'MALE' then 1 else 0 end),0)::int`,
+        female: sql<number>`coalesce(sum(case when ${students.sex} = 'FEMALE' then 1 else 0 end),0)::int`,
+      })
+      .from(classes)
+      .leftJoin(
+        students,
+        and(eq(students.classId, classes.id), eq(students.status, "ACTIVE")),
+      )
+      .where(and(eq(classes.schoolId, school.id), eq(classes.active, true)))
+      .groupBy(classes.id, classes.name)
+      .orderBy(classes.name);
+    const statusRows = await tx
+      .select({ status: students.status, n: sql<number>`count(*)::int` })
+      .from(students)
+      .where(eq(students.schoolId, school.id))
+      .groupBy(students.status);
     return {
       activeStudents,
       pending,
@@ -71,12 +91,29 @@ export default async function DashboardPage() {
       teacherCount,
       academicYear: cfg?.academicYear ?? null,
       term: term?.label ?? null,
+      byClass,
+      statusRows,
     };
   });
 
   const ratio = stats.teacherCount > 0 ? Math.round(stats.activeStudents / stats.teacherCount) : 0;
   const avgClass =
     stats.classCount > 0 ? Math.round(stats.activeStudents / stats.classCount) : 0;
+
+  const male = stats.byClass.reduce((s, c) => s + c.male, 0);
+  const female = stats.byClass.reduce((s, c) => s + c.female, 0);
+  const genderTotal = male + female;
+  const malePct = genderTotal > 0 ? Math.round((male / genderTotal) * 100) : 0;
+
+  const statusOf = (s: string) =>
+    stats.statusRows.find((r) => r.status === s)?.n ?? 0;
+  const FLOW: { key: string; label: string; tone: string }[] = [
+    { key: "ACTIVE", label: "Active", tone: "bg-green" },
+    { key: "GRADUATED", label: "Graduated", tone: "bg-gold" },
+    { key: "TRANSFERRED", label: "Transferred", tone: "bg-warn" },
+    { key: "WITHDRAWN", label: "Withdrawn", tone: "bg-terra" },
+    { key: "INACTIVE", label: "Inactive", tone: "bg-navy-3" },
+  ];
 
   const kpis = [
     {
@@ -184,6 +221,102 @@ export default async function DashboardPage() {
           </div>
           <span className="text-sm font-semibold text-gold">Open admissions →</span>
         </Link>
+      </div>
+
+      {/* Gender split + enrolment status */}
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-border bg-surface p-5">
+          <h2 className="font-display text-base font-semibold text-navy">Gender mix</h2>
+          {genderTotal === 0 ? (
+            <p className="mt-2 text-sm text-navy-3">No students on roll yet.</p>
+          ) : (
+            <>
+              <div className="mt-3 flex h-3 overflow-hidden rounded-pill">
+                <div className="bg-navy" style={{ width: `${malePct}%` }} />
+                <div className="bg-gold" style={{ width: `${100 - malePct}%` }} />
+              </div>
+              <div className="mt-2 flex justify-between text-sm">
+                <span className="text-navy-2">
+                  <b className="text-navy">{male}</b> boys · {malePct}%
+                </span>
+                <span className="text-navy-2">
+                  {100 - malePct}% · <b className="text-navy">{female}</b> girls
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-border bg-surface p-5">
+          <h2 className="font-display text-base font-semibold text-navy">Enrolment status</h2>
+          <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+            {FLOW.map((f) => (
+              <div key={f.key} className="flex items-center gap-2 text-sm">
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${f.tone}`} />
+                <span className="text-navy-3">{f.label}</span>
+                <span className="ml-auto font-mono font-medium text-navy">
+                  {statusOf(f.key)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Class composition */}
+      <div className="mt-6">
+        <h2 className="mb-2 font-display text-lg font-semibold text-navy">
+          Class composition
+        </h2>
+        {stats.byClass.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+            No classes yet —{" "}
+            <Link href="/classes" className="text-gold underline">
+              set them up
+            </Link>
+            .
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
+                <tr>
+                  <th className="px-4 py-2.5 font-semibold">Class</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">Students</th>
+                  <th className="px-4 py-2.5 font-semibold">Gender mix</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {stats.byClass.map((c) => {
+                  const mp = c.total > 0 ? Math.round((c.male / c.total) * 100) : 0;
+                  return (
+                    <tr key={c.name} className="hover:bg-bg">
+                      <td className="px-4 py-2.5 font-medium text-navy">{c.name}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-navy-2">
+                        {c.total}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {c.total === 0 ? (
+                          <span className="text-navy-3">—</span>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-2 w-28 overflow-hidden rounded-pill">
+                              <div className="bg-navy" style={{ width: `${mp}%` }} />
+                              <div className="bg-gold" style={{ width: `${100 - mp}%` }} />
+                            </div>
+                            <span className="text-[11px] text-navy-3">
+                              {c.male}M · {c.female}F
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
