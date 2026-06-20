@@ -252,6 +252,50 @@ export const defaultSubjects = (s?: SchoolSubtype): string[] =>
       ? Array.from(new Set([...GES_BASIC_SUBJECTS, ...WASSCE_CORE_SUBJECTS]))
       : GES_BASIC_SUBJECTS;
 
+/* ------------------------------------------ billing & payments (step 6) */
+
+export const BILLING_CADENCES = [
+  {
+    key: "TERM",
+    label: "Per term",
+    desc: "One bill at the start of each term — the Ghanaian norm.",
+  },
+  {
+    key: "MONTHLY",
+    label: "Monthly",
+    desc: "Spread fees across monthly instalments.",
+  },
+] as const;
+
+export const PAYMENT_METHODS = [
+  { code: "MTN_MOMO", label: "MTN MoMo" },
+  { code: "TELECEL_CASH", label: "Telecel Cash" },
+  { code: "AIRTELTIGO_MONEY", label: "AirtelTigo Money" },
+  { code: "BANK_TRANSFER", label: "Bank transfer" },
+  { code: "CASH", label: "Cash" },
+] as const;
+
+export const DEFAULT_PAYMENT_METHODS = ["MTN_MOMO", "CASH"];
+
+export type FeeItem = { item: string; amount: number };
+
+/** Starter fee lines. Public Senior schools default to Free SHS (tuition 0). */
+export const defaultFees = (s?: SchoolSubtype, ownership?: string): FeeItem[] => {
+  const senior = s === "SHS" || s === "SHTS" || s === "MULTI";
+  if (senior && ownership === "PUBLIC") {
+    return [
+      { item: "Tuition (Free SHS)", amount: 0 },
+      { item: "PTA dues", amount: 0 },
+      { item: "Boarding", amount: 0 },
+    ];
+  }
+  return [
+    { item: "Tuition", amount: 0 },
+    { item: "Books", amount: 0 },
+    { item: "PTA dues", amount: 0 },
+  ];
+};
+
 export const OnboardSchema = z.object({
   schoolName: z.string().min(2, "School name is required").max(200),
   shortName: z.string().max(60).optional().or(z.literal("")),
@@ -292,6 +336,14 @@ export const OnboardSchema = z.object({
   // Step 4 — academic structure (optional; falls back to tier defaults)
   classes: z.array(z.string().max(60)).max(60).optional(),
   subjects: z.array(z.string().max(60)).max(80).optional(),
+  // Step 6 — billing & payments (optional; falls back to tier defaults)
+  fees: z
+    .array(z.object({ item: z.string().max(60), amount: z.coerce.number().min(0).max(1000000) }))
+    .max(20)
+    .optional(),
+  billingCadence: z.enum(["TERM", "MONTHLY"]).optional(),
+  paymentMethods: z.array(z.string().max(30)).max(10).optional(),
+  termsAccepted: z.boolean().optional(),
   headmasterName: z.string().min(2, "Headmaster name is required").max(160),
   headmasterPhone: z.string().min(7, "Headmaster phone is required").max(40),
   headmasterEmail: z.string().email().optional().or(z.literal("")),
