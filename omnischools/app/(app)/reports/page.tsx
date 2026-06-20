@@ -3,6 +3,7 @@ import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { invoices, payments, students, classes } from "@/db/schema";
 import { ExportCsv } from "@/components/reports/export-csv";
+import { schoolFile } from "@/lib/filename";
 
 export const dynamic = "force-dynamic";
 
@@ -125,7 +126,7 @@ export default async function ReportsPage() {
             Outstanding by class
           </h2>
           <ExportCsv
-            filename="outstanding-by-class.csv"
+            filename={schoolFile(school.name, "outstanding-by-class.csv")}
             headers={["Class", "Billed", "Collected", "Outstanding"]}
             rows={byClass.map((c) => [
               c.className,
@@ -179,7 +180,7 @@ export default async function ReportsPage() {
               Monthly collections
             </h2>
             <ExportCsv
-              filename="monthly-collections.csv"
+              filename={schoolFile(school.name, "monthly-collections.csv")}
               headers={["Month", "Collected"]}
               rows={monthly.map((m) => [m.month, num(m.amount).toFixed(2)])}
             />

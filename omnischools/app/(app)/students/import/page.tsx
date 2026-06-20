@@ -39,7 +39,7 @@ export default async function ImportStudentsPage() {
           </p>
         </div>
       </div>
-      <StudentImport classByName={classByName} />
+      <StudentImport classByName={classByName} schoolName={school.name} />
     </div>
   );
 }

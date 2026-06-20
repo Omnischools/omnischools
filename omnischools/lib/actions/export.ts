@@ -3,6 +3,7 @@ import { and, asc, desc, eq, notInArray } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import { requireSchool } from "@/lib/auth/server";
 import { csvTemplate } from "@/lib/import/csv";
+import { schoolFile } from "@/lib/filename";
 import { NON_STAFF_ROLE_CODES } from "@/lib/staff-roles";
 import {
   students,
@@ -18,18 +19,6 @@ type ExportResult =
   | { ok: false; error: string };
 
 const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
-
-/** Filename prefix from the school's name (filename-safe), e.g. "Asankrangwa High". */
-function filePrefix(school: { name: string; shortName: string | null }): string {
-  const base = (school.name || school.shortName || "school").trim();
-  return (
-    base
-      .replace(/[\\/:*?"<>|]+/g, "") // strip illegal filename chars
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 60) || "school"
-  );
-}
 
 /** Students → CSV (code, name parts, sex, DOB, class, status). */
 export async function exportStudentsCsv(): Promise<ExportResult> {
@@ -64,7 +53,7 @@ export async function exportStudentsCsv(): Promise<ExportResult> {
     ]);
     return {
       ok: true,
-      filename: `${filePrefix(school)}-students.csv`,
+      filename: schoolFile(school.name, "students.csv"),
       csv: csvTemplate(headers, body),
       rows: body.length,
     };
@@ -118,7 +107,7 @@ export async function exportStaffCsv(): Promise<ExportResult> {
     ]);
     return {
       ok: true,
-      filename: `${filePrefix(school)}-staff.csv`,
+      filename: schoolFile(school.name, "staff.csv"),
       csv: csvTemplate(headers, body),
       rows: body.length,
     };
@@ -158,7 +147,7 @@ export async function exportFeesCsv(): Promise<ExportResult> {
     ]);
     return {
       ok: true,
-      filename: `${filePrefix(school)}-fees.csv`,
+      filename: schoolFile(school.name, "fees.csv"),
       csv: csvTemplate(headers, body),
       rows: body.length,
     };
