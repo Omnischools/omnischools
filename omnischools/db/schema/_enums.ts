@@ -136,6 +136,9 @@ export const notifStatusEnum = pgEnum("notif_status", ["QUEUED", "SENT", "FAILED
 // Billing (fee setup)
 export const discountKindEnum = pgEnum("discount_kind", ["PERCENT", "FIXED"]);
 
+// Books (bookkeeping / school accounts)
+export const bookEntryKindEnum = pgEnum("book_entry_kind", ["INCOME", "EXPENSE"]);
+
 // Inbox (two-way messaging)
 export const conversationStatusEnum = pgEnum("conversation_status", ["OPEN", "CLOSED"]);
 export const messageDirectionEnum = pgEnum("message_direction", ["INBOUND", "OUTBOUND"]);

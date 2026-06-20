@@ -87,7 +87,10 @@ BEGIN
     'notification_log',
     'conversation',
     'inbox_message',
-    'invite'
+    'invite',
+    'book_category',
+    'book_entry',
+    'fixed_asset'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);

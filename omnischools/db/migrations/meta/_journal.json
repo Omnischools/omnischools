@@ -127,6 +127,13 @@
       "when": 1781980892911,
       "tag": "0017_blushing_cammi",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1781985668631,
+      "tag": "0018_flowery_stingray",
+      "breakpoints": true
     }
   ]
 }
