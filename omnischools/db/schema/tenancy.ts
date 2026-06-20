@@ -6,6 +6,7 @@ import {
   timestamp,
   unique,
   jsonb,
+  smallint,
 } from "drizzle-orm/pg-core";
 import { schoolTypeEnum, ownershipEnum, shsCategoryEnum, productEnum } from "./_enums";
 
@@ -43,6 +44,13 @@ export const schools = pgTable("ref_school", {
   billingCadence: text("billing_cadence"), // "TERM" | "MONTHLY"
   paymentMethods: jsonb("payment_methods").$type<string[]>(), // e.g. ["MTN_MOMO","CASH"]
   termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  // Onboarding steps 7–8 (SHS only) — lightweight capture; modules built in the Senior MVP
+  residencyModel: text("residency_model"), // "DAY" | "MIXED" | "BOARDING"
+  houseCount: smallint("house_count"),
+  visitingDay: text("visiting_day"),
+  waecCentreCode: text("waec_centre_code"),
+  waecOffice: text("waec_office"),
+  firstWassceYear: text("first_wassce_year"),
   districtId: uuid("district_id").references(() => districts.id),
   regionId: uuid("region_id").references(() => regions.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

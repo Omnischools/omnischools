@@ -165,6 +165,13 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
           billingCadence,
           paymentMethods,
           termsAcceptedAt: new Date(),
+          // SHS-only steps 7–8 (null for Basic — steps never shown)
+          residencyModel: d.residencyModel ?? null,
+          houseCount: d.houseCount ?? null,
+          visitingDay: nz(d.visitingDay),
+          waecCentreCode: nz(d.waecCentreCode),
+          waecOffice: nz(d.waecOffice),
+          firstWassceYear: nz(d.firstWassceYear),
           districtId,
           regionId,
         })
