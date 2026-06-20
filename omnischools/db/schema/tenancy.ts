@@ -55,6 +55,11 @@ export const schools = pgTable("ref_school", {
   waecCentreCode: text("waec_centre_code"),
   waecOffice: text("waec_office"),
   firstWassceYear: text("first_wassce_year"),
+  // Settings — retention policy + security prefs (captured; enforcement is future work)
+  recordRetentionMonths: smallint("record_retention_months"), // keep records after leaving
+  auditRetentionMonths: smallint("audit_retention_months"),
+  require2fa: boolean("require_2fa"),
+  sessionHours: smallint("session_hours"),
   districtId: uuid("district_id").references(() => districts.id),
   regionId: uuid("region_id").references(() => regions.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

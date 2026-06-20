@@ -424,3 +424,88 @@ export async function updateGradeScale(
     return { ok: false, error: "Could not save the grade scale. Please try again." };
   }
 }
+
+// --------------------------------------------------------------- retention policy
+const RetentionSchema = z.object({
+  recordRetentionMonths: z.coerce.number().int().min(0).max(600).optional(),
+  auditRetentionMonths: z.coerce.number().int().min(0).max(600).optional(),
+});
+
+export async function updateRetentionPolicy(
+  input: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  const { school } = await requireSchool();
+  const parsed = RetentionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const d = parsed.data;
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .update(schools)
+        .set({
+          recordRetentionMonths: d.recordRetentionMonths ?? null,
+          auditRetentionMonths: d.auditRetentionMonths ?? null,
+        })
+        .where(eq(schools.id, school.id));
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "school",
+        entityId: school.id,
+        after: d,
+        reason: "Retention policy updated",
+      });
+    });
+    safeRevalidate("/settings");
+    safeRevalidate("/settings/retention");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save the retention policy." };
+  }
+}
+
+// --------------------------------------------------------------- security prefs
+const SecuritySchema = z.object({
+  require2fa: z.boolean(),
+  sessionHours: z.coerce.number().int().min(1).max(720),
+});
+
+export async function updateSecurityPrefs(
+  input: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  const { school } = await requireSchool();
+  const parsed = SecuritySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const d = parsed.data;
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .update(schools)
+        .set({ require2fa: d.require2fa, sessionHours: d.sessionHours })
+        .where(eq(schools.id, school.id));
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "school",
+        entityId: school.id,
+        after: d,
+        reason: "Security preferences updated",
+      });
+    });
+    safeRevalidate("/settings");
+    safeRevalidate("/settings/security");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save security preferences." };
+  }
+}
