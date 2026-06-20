@@ -23,9 +23,14 @@ export const schools = pgTable("ref_school", {
   name: text("name").notNull(),
   shortName: text("short_name"), // SMS sign-off (e.g. ASANKSHS)
   gesCode: text("ges_code").notNull().unique(),
+  csspsCode: text("cssps_code"), // CSSPS placement code (SHS/TVI) — hm.cssps.gov.gh
   schoolType: schoolTypeEnum("school_type").notNull().default("BASIC"),
+  // Exact onboarding choice (BASIC/JHS/SHS/SHTS/MULTI) — finer than school_type enum.
+  subtype: text("subtype"),
   shsCategory: shsCategoryEnum("shs_category"),
   ownership: ownershipEnum("ownership_type").notNull().default("PRIVATE"),
+  yearFounded: text("year_founded"),
+  address: text("address"), // postal + GPS Ghana Post code
   districtId: uuid("district_id").references(() => districts.id),
   regionId: uuid("region_id").references(() => regions.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

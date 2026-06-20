@@ -53,6 +53,7 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
   const academicYear = currentAcademicYear();
   const schoolType = d.product === "COMBINED" ? "COMBINED" : d.product;
   const productLine = d.product === "SENIOR" ? "SENIOR" : "BASIC";
+  const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
   const periodType = productLine === "SENIOR" ? "SEMESTER" : "TERM";
   const periodCount = productLine === "SENIOR" ? 2 : 3;
   const productRows: ("BASIC" | "SENIOR")[] =
@@ -113,10 +114,14 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
         .insert(schools)
         .values({
           name: d.schoolName,
-          shortName: shortName(d.schoolName),
+          shortName: nz(d.shortName) ?? shortName(d.schoolName),
           gesCode: d.gesCode,
+          csspsCode: nz(d.csspsCode),
           schoolType,
+          subtype: d.subtype ?? null,
           ownership: d.ownership,
+          yearFounded: nz(d.yearFounded),
+          address: nz(d.address),
           districtId,
           regionId,
         })
