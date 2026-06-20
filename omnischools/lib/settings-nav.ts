@@ -59,7 +59,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         tone: "gold",
         desc: "Term dates, the school-year calendar, and the grade scale (BECE 1–9 / WASSCE A1–F9 / percentage bands).",
         href: "/settings/academic",
-        soon: true,
       },
     ],
   },

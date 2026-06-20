@@ -1,12 +1,12 @@
 "use server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
 import { createAdminClient, BRANDING_BUCKET } from "@/lib/supabase/admin";
-import { schools, gradebookConfig } from "@/db/schema";
+import { schools, gradebookConfig, academicPeriod, gradeScale } from "@/db/schema";
 
 // --------------------------------------------------------------- school profile
 const OWNERSHIPS = ["PUBLIC", "PRIVATE", "MISSION", "INTERNATIONAL"] as const;
@@ -246,5 +246,134 @@ export async function updateGradingWeights(
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not save weights. Please try again." };
+  }
+}
+
+// --------------------------------------------------------------- academic periods
+const isIsoDate = (s: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+
+const PeriodsSchema = z.object({
+  periods: z
+    .array(
+      z.object({
+        periodId: z.string().uuid(),
+        label: z.string().min(1).max(40),
+        startsOn: z.string(),
+        endsOn: z.string(),
+      }),
+    )
+    .min(1)
+    .max(6),
+});
+
+export async function updateAcademicPeriods(
+  input: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  const { school } = await requireSchool();
+  const parsed = PeriodsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  for (const p of parsed.data.periods) {
+    if (!isIsoDate(p.startsOn) || !isIsoDate(p.endsOn)) {
+      return { ok: false, error: `Enter valid dates for ${p.label}.` };
+    }
+    if (p.startsOn > p.endsOn) {
+      return { ok: false, error: `${p.label}: the start date is after the end date.` };
+    }
+  }
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      for (const p of parsed.data.periods) {
+        await tx
+          .update(academicPeriod)
+          .set({ periodLabel: p.label.trim(), startsOn: p.startsOn, endsOn: p.endsOn })
+          .where(
+            and(
+              eq(academicPeriod.periodId, p.periodId),
+              eq(academicPeriod.schoolId, school.id),
+            ),
+          );
+      }
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "academic_period",
+        entityId: school.id,
+        after: { periods: parsed.data.periods.length },
+        reason: "Term dates updated",
+      });
+    });
+    safeRevalidate("/settings");
+    safeRevalidate("/settings/academic");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save term dates. Please try again." };
+  }
+}
+
+// --------------------------------------------------------------- grade scale
+const GradeScaleSchema = z.object({
+  rows: z
+    .array(
+      z.object({
+        grade: z.string().min(1, "Grade is required").max(8),
+        label: z.string().max(40).optional().or(z.literal("")),
+        minScore: z.coerce.number().min(0).max(100),
+      }),
+    )
+    .min(1, "Add at least one grade")
+    .max(15),
+});
+
+export async function updateGradeScale(
+  input: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  const { school } = await requireSchool();
+  const parsed = GradeScaleSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
+  const rows = parsed.data.rows.map((r) => ({ ...r, grade: r.grade.trim() }));
+  const codes = rows.map((r) => r.grade.toUpperCase());
+  if (new Set(codes).size !== codes.length) {
+    return { ok: false, error: "Grade letters must be unique." };
+  }
+  const ordered = [...rows].sort((a, b) => b.minScore - a.minScore);
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx.delete(gradeScale).where(eq(gradeScale.schoolId, school.id));
+      await tx.insert(gradeScale).values(
+        ordered.map((g, i) => ({
+          schoolId: school.id,
+          grade: g.grade,
+          label: nz(g.label),
+          minScore: String(g.minScore),
+          ordinal: i,
+        })),
+      );
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "grade_scale",
+        entityId: school.id,
+        after: { grades: ordered.length },
+        reason: "Grade scale updated",
+      });
+    });
+    safeRevalidate("/settings");
+    safeRevalidate("/settings/academic");
+    safeRevalidate("/gradebook");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save the grade scale. Please try again." };
   }
 }
