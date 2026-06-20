@@ -10,10 +10,17 @@ import {
   type ImportSummary,
 } from "@/lib/import/student-import";
 import { importStudents } from "@/lib/actions/students";
+import { schoolFile } from "@/lib/filename";
 
 type Filter = "all" | "ready" | "warning" | "error";
 
-export function StudentImport({ classByName }: { classByName: Record<string, string> }) {
+export function StudentImport({
+  classByName,
+  schoolName,
+}: {
+  classByName: Record<string, string>;
+  schoolName?: string;
+}) {
   const router = useRouter();
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -29,7 +36,7 @@ export function StudentImport({ classByName }: { classByName: Record<string, str
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "omnischools-students-template.csv";
+    a.download = schoolFile(schoolName, "students-template.csv");
     a.click();
     URL.revokeObjectURL(url);
   }

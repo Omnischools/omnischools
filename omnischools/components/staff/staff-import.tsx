@@ -10,10 +10,11 @@ import {
   type ImportSummary,
 } from "@/lib/import/staff-import";
 import { importStaff } from "@/lib/actions/staff";
+import { schoolFile } from "@/lib/filename";
 
 type Filter = "all" | "ready" | "warning" | "error";
 
-export function StaffImport() {
+export function StaffImport({ schoolName }: { schoolName?: string }) {
   const router = useRouter();
   const [rows, setRows] = useState<StaffImportRow[]>([]);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -30,7 +31,7 @@ export function StaffImport() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "omnischools-staff-template.csv";
+    a.download = schoolFile(schoolName, "staff-template.csv");
     a.click();
     URL.revokeObjectURL(url);
   }

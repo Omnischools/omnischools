@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Import staff" };
 
 export default async function ImportStaffPage() {
-  await requireSchool();
+  const { school } = await requireSchool();
 
   return (
     <div className="mx-auto max-w-page">
@@ -26,7 +26,7 @@ export default async function ImportStaffPage() {
           </p>
         </div>
       </div>
-      <StaffImport />
+      <StaffImport schoolName={school.name} />
     </div>
   );
 }
