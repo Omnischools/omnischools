@@ -2,12 +2,23 @@ import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { attendanceCorrections, attendanceRecords, students } from "@/db/schema";
+import { attendanceCorrections, attendanceRecords, students, users } from "@/db/schema";
 import { CorrectionActions } from "@/components/attendance/correction-actions";
 
 export const dynamic = "force-dynamic";
 
 const fmt = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
+const fmtWhen = (d: Date | string) => {
+  const dt = d instanceof Date ? d : new Date(d);
+  return Number.isNaN(dt.getTime())
+    ? ""
+    : dt.toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+};
 
 export default async function CorrectionsPage() {
   const { school } = await requireSchool();
@@ -23,6 +34,7 @@ export default async function CorrectionsPage() {
         currentStatus: attendanceRecords.status,
         firstName: students.firstName,
         lastName: students.lastName,
+        requestedBy: users.fullName,
       })
       .from(attendanceCorrections)
       .innerJoin(
@@ -30,6 +42,7 @@ export default async function CorrectionsPage() {
         eq(attendanceCorrections.attendanceRecordId, attendanceRecords.id),
       )
       .innerJoin(students, eq(attendanceRecords.studentId, students.id))
+      .leftJoin(users, eq(attendanceCorrections.requestedByUserId, users.id))
       .where(eq(attendanceCorrections.schoolId, school.id))
       .orderBy(desc(attendanceCorrections.createdAt))
       .limit(100),
@@ -71,6 +84,13 @@ export default async function CorrectionsPage() {
                     {fmt(r.requestedStatus)}
                   </span>{" "}
                   · {r.reason}
+                </div>
+                <div className="mt-0.5 text-[11px] text-navy-3">
+                  Requested by{" "}
+                  <span className="font-medium text-navy-2">
+                    {r.requestedBy ?? "a teacher"}
+                  </span>
+                  {fmtWhen(r.createdAt) ? ` · ${fmtWhen(r.createdAt)}` : ""}
                 </div>
               </div>
               {r.status === "PENDING" ? (
