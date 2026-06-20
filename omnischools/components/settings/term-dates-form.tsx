@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateAcademicPeriods } from "@/lib/actions/settings";
 
-type Period = { periodId: string; label: string; startsOn: string; endsOn: string };
+type Period = { periodId?: string; label: string; startsOn: string; endsOn: string };
 const inputCls =
   "w-full rounded-md border border-border-2 bg-bg px-3 py-2 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
 
@@ -24,11 +24,19 @@ export function TermDatesForm({
     setRows((p) => p.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
     setMsg(null);
   };
+  const addTerm = () => {
+    setRows((p) => [
+      ...p,
+      { label: `Term ${p.length + 1}`, startsOn: "", endsOn: "" },
+    ]);
+    setMsg(null);
+  };
+  const removeNew = (i: number) => setRows((p) => p.filter((_, idx) => idx !== i));
 
   async function save() {
     setBusy(true);
     setMsg(null);
-    const res = await updateAcademicPeriods({ periods: rows });
+    const res = await updateAcademicPeriods({ academicYear, periods: rows });
     setBusy(false);
     if (res.ok) {
       setMsg({ ok: true, text: "Saved." });
@@ -48,15 +56,16 @@ export function TermDatesForm({
       </p>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-navy-3">
-          No terms configured. They&apos;re seeded from GES defaults during onboarding.
+        <p className="rounded-lg border border-dashed border-border-2 bg-bg px-4 py-5 text-sm text-navy-3">
+          No terms set up yet. Add your terms below — most Basic/JHS schools run 3, SHS runs
+          2 semesters.
         </p>
       ) : (
         <div className="space-y-3">
           {rows.map((r, i) => (
             <div
-              key={r.periodId}
-              className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1fr]"
+              key={r.periodId ?? `new-${i}`}
+              className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]"
             >
               <div>
                 <label className="mb-1 block text-[11px] font-semibold text-navy-3">
@@ -90,27 +99,46 @@ export function TermDatesForm({
                   onChange={(e) => update(i, "endsOn", e.target.value)}
                 />
               </div>
+              <div className="flex items-end">
+                {!r.periodId && (
+                  <button
+                    type="button"
+                    onClick={() => removeNew(i)}
+                    aria-label="Remove term"
+                    className="flex h-9 w-9 items-center justify-center rounded-md text-navy-3 transition-colors hover:bg-terra-bg hover:text-terra"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {rows.length > 0 && (
-        <div className="mt-5 flex items-center gap-3">
-          <button
-            onClick={save}
-            disabled={busy || !dirty}
-            className="rounded-md bg-navy px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-50"
-          >
-            {busy ? "Saving…" : "Save term dates"}
-          </button>
-          {msg && (
-            <span className={`text-sm ${msg.ok ? "text-green" : "text-terra"}`}>
-              {msg.text}
-            </span>
-          )}
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={addTerm}
+        disabled={rows.length >= 8}
+        className="mt-3 text-[13px] font-semibold text-gold hover:underline disabled:opacity-50"
+      >
+        + Add term
+      </button>
+
+      <div className="mt-5 flex items-center gap-3 border-t border-border pt-5">
+        <button
+          onClick={save}
+          disabled={busy || !dirty || rows.length === 0}
+          className="rounded-md bg-navy px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-50"
+        >
+          {busy ? "Saving…" : "Save term dates"}
+        </button>
+        {msg && (
+          <span className={`text-sm ${msg.ok ? "text-green" : "text-terra"}`}>
+            {msg.text}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
