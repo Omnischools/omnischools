@@ -27,6 +27,7 @@ export default async function FeesPage() {
         lastName: students.lastName,
         code: students.studentCode,
         balance: sql<number>`sum(${invoices.balanceAmount})::float`,
+        maxOverdue: sql<number>`coalesce(max(case when ${invoices.dueAt} is not null and ${invoices.dueAt} < now() and ${invoices.balanceAmount} > 0 then floor(extract(epoch from (now() - ${invoices.dueAt})) / 86400) else 0 end), 0)::int`,
       })
       .from(invoices)
       .innerJoin(students, eq(invoices.studentId, students.id))
@@ -100,6 +101,11 @@ export default async function FeesPage() {
                     <Link href={`/fees/${d.studentId}`} className="hover:text-gold">
                       {d.lastName}, {d.firstName}
                     </Link>
+                    {d.maxOverdue > 0 && (
+                      <span className="ml-2 rounded-pill bg-terra-bg px-2 py-0.5 text-xs font-medium text-terra">
+                        Overdue {d.maxOverdue}d
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-terra">
                     {ghs(d.balance)}
