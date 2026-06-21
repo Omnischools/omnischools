@@ -1,0 +1,1 @@
+ALTER TABLE "attendance_record" ADD COLUMN "reason_code" text;

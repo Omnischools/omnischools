@@ -20,6 +20,9 @@ export const attendanceRecords = pgTable(
       .references(() => classes.id, { onDelete: "cascade" }),
     date: date("date").notNull(),
     status: attendanceStatusEnum("status").notNull(),
+    // Structured absence reason (SICK / MEDICAL / FAMILY / TRAVEL / OTHER); free
+    // detail goes in `note`. Both are captured when a student isn't Present.
+    reasonCode: text("reason_code"),
     note: text("note"),
     markedByUserId: uuid("marked_by_user_id").references(() => users.id),
     markedAt: timestamp("marked_at", { withTimezone: true }).notNull().defaultNow(),

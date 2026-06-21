@@ -6,6 +6,7 @@ import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { sendSms } from "@/lib/sms";
 import { safeRevalidate } from "@/lib/revalidate";
+import { ATTENDANCE_REASON_CODES } from "@/lib/attendance-reasons";
 import {
   classes,
   students,
@@ -92,7 +93,14 @@ const SaveSchema = z.object({
   classId: z.string().uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
   entries: z
-    .array(z.object({ studentId: z.string().uuid(), status: z.enum(STATUSES) }))
+    .array(
+      z.object({
+        studentId: z.string().uuid(),
+        status: z.enum(STATUSES),
+        reasonCode: z.enum(ATTENDANCE_REASON_CODES).nullable().optional(),
+        note: z.string().max(300).nullable().optional(),
+      }),
+    )
     .min(1, "No students to mark"),
 });
 
@@ -112,6 +120,9 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
   try {
     const absentStudentIds = await withSchool(school.id, async (tx) => {
       for (const e of d.entries) {
+        // Reason/note only make sense for non-present marks; clear them otherwise.
+        const reasonCode = e.status === "PRESENT" ? null : (e.reasonCode ?? null);
+        const note = e.status === "PRESENT" ? null : (e.note?.trim() || null);
         await tx
           .insert(attendanceRecords)
           .values({
@@ -120,6 +131,8 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
             classId: d.classId,
             date: d.date,
             status: e.status,
+            reasonCode,
+            note,
             markedByUserId: actor.id ?? undefined,
             markedAt: new Date(),
           })
@@ -131,6 +144,8 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
             ],
             set: {
               status: e.status,
+              reasonCode,
+              note,
               markedByUserId: actor.id ?? undefined,
               markedAt: new Date(),
             },

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, gte, lte, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { classes, students, attendanceRecords } from "@/db/schema";
+import { classes, students, attendanceRecords, academicPeriod } from "@/db/schema";
 import { TakeRegister } from "@/components/attendance/take-register";
 
 export const dynamic = "force-dynamic";
@@ -48,24 +48,67 @@ export default async function TakeAttendancePage({
         id: attendanceRecords.id,
         studentId: attendanceRecords.studentId,
         status: attendanceRecords.status,
+        reasonCode: attendanceRecords.reasonCode,
+        note: attendanceRecords.note,
       })
       .from(attendanceRecords)
       .where(
         and(eq(attendanceRecords.classId, cls.id), eq(attendanceRecords.date, date)),
       );
-    return { cls, roster, recs };
+
+    // Per-student term attendance %, scoped to the current term when one is active.
+    const ids = roster.map((s) => s.id);
+    const [term] = await tx
+      .select({ startsOn: academicPeriod.startsOn, endsOn: academicPeriod.endsOn })
+      .from(academicPeriod)
+      .where(
+        and(
+          eq(academicPeriod.schoolId, school.id),
+          lte(academicPeriod.startsOn, date),
+          gte(academicPeriod.endsOn, date),
+        ),
+      )
+      .limit(1);
+    const termAgg =
+      ids.length === 0
+        ? []
+        : await tx
+            .select({
+              studentId: attendanceRecords.studentId,
+              attended: sql<number>`sum(case when ${attendanceRecords.status} in ('PRESENT','LATE') then 1 else 0 end)::int`,
+              total: sql<number>`count(*)::int`,
+            })
+            .from(attendanceRecords)
+            .where(
+              and(
+                eq(attendanceRecords.schoolId, school.id),
+                inArray(attendanceRecords.studentId, ids),
+                term ? gte(attendanceRecords.date, term.startsOn) : undefined,
+                term ? lte(attendanceRecords.date, term.endsOn) : undefined,
+              ),
+            )
+            .groupBy(attendanceRecords.studentId);
+    return { cls, roster, recs, termAgg };
   });
 
   if (!data) notFound();
   const recByStudent = new Map(data.recs.map((r) => [r.studentId, r]));
+  const aggByStudent = new Map(data.termAgg.map((a) => [a.studentId, a]));
   const roster = data.roster.map((s) => {
     const rec = recByStudent.get(s.id);
+    const agg = aggByStudent.get(s.id);
+    const termPct =
+      agg && agg.total > 0 ? Math.round((agg.attended / agg.total) * 100) : null;
     return {
       id: s.id,
       name: `${s.lastName}, ${s.firstName}`,
       code: s.code,
       status: rec?.status ?? null,
       recordId: rec?.id ?? null,
+      reasonCode: rec?.reasonCode ?? null,
+      note: rec?.note ?? null,
+      termPct,
+      termDays: agg ? `${agg.attended}/${agg.total}` : null,
     };
   });
 
