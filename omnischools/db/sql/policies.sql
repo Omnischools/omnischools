@@ -79,6 +79,7 @@ BEGIN
     'timetable_slot',
     'attendance_record',
     'attendance_correction',
+    'attendance_settings',
     'subject',
     'gradebook_config',
     'gradebook_score',

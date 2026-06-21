@@ -1,8 +1,37 @@
-import { pgTable, uuid, text, date, timestamp, unique, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  date,
+  integer,
+  boolean,
+  timestamp,
+  unique,
+  index,
+} from "drizzle-orm/pg-core";
 import { attendanceStatusEnum, correctionStatusEnum } from "./_enums";
 import { schools } from "./tenancy";
 import { students, classes } from "./students";
 import { users } from "./identity";
+
+/** Per-school attendance configuration (one row). Drives marking, SMS and flags. */
+export const attendanceSettings = pgTable("attendance_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  schoolId: uuid("school_id")
+    .notNull()
+    .unique()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  dayStart: text("day_start").notNull().default("08:00"),
+  lateThreshold: text("late_threshold").notNull().default("08:15"),
+  dayEnd: text("day_end").notNull().default("15:00"),
+  editWindowHours: integer("edit_window_hours").notNull().default(24),
+  absenceSms: boolean("absence_sms").notNull().default(true),
+  absWatchDays: integer("abs_watch_days").notNull().default(3),
+  absCriticalDays: integer("abs_critical_days").notNull().default(5),
+  pctWatch: integer("pct_watch").notNull().default(70),
+  pctCritical: integer("pct_critical").notNull().default(60),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /** One attendance record per student per day. */
 export const attendanceRecords = pgTable(

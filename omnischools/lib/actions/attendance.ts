@@ -13,6 +13,7 @@ import {
   studentGuardians,
   attendanceRecords,
   attendanceCorrections,
+  attendanceSettings,
 } from "@/db/schema";
 
 const STATUSES = ["PRESENT", "ABSENT", "LATE", "EXCUSED", "MEDICAL"] as const;
@@ -167,9 +168,17 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
       return absent;
     });
 
-    // absence alerts to primary guardians (stub)
+    // absence alerts to primary guardians — only when the school keeps them on
     let alertsSent = 0;
-    if (absentStudentIds.length > 0) {
+    const [cfg] = await withSchool(school.id, (tx) =>
+      tx
+        .select({ absenceSms: attendanceSettings.absenceSms })
+        .from(attendanceSettings)
+        .where(eq(attendanceSettings.schoolId, school.id))
+        .limit(1),
+    );
+    const smsOn = cfg?.absenceSms ?? true; // default on when unconfigured
+    if (smsOn && absentStudentIds.length > 0) {
       const guardians = await withSchool(school.id, (tx) =>
         tx
           .select({
@@ -297,5 +306,61 @@ export async function decideCorrection(
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not record the decision." };
+  }
+}
+
+// ------------------------------------------------------------------- settings
+const SettingsSchema = z.object({
+  dayStart: z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM"),
+  lateThreshold: z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM"),
+  dayEnd: z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM"),
+  editWindowHours: z.coerce.number().int().min(0).max(336),
+  absenceSms: z.coerce.boolean(),
+  absWatchDays: z.coerce.number().int().min(1).max(30),
+  absCriticalDays: z.coerce.number().int().min(1).max(60),
+  pctWatch: z.coerce.number().int().min(1).max(100),
+  pctCritical: z.coerce.number().int().min(1).max(100),
+});
+
+export async function updateAttendanceSettings(
+  input: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  const { school } = await requireSchool();
+  const parsed = SettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid settings." };
+  }
+  const d = parsed.data;
+  if (d.absCriticalDays < d.absWatchDays) {
+    return { ok: false, error: "Critical absence days must be ≥ the watch threshold." };
+  }
+  if (d.pctCritical > d.pctWatch) {
+    return { ok: false, error: "Critical % must be ≤ the watch %." };
+  }
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .insert(attendanceSettings)
+        .values({ schoolId: school.id, ...d, updatedAt: new Date() })
+        .onConflictDoUpdate({
+          target: attendanceSettings.schoolId,
+          set: { ...d, updatedAt: new Date() },
+        });
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "attendance_settings",
+        entityId: school.id,
+        reason: "Attendance settings updated",
+      });
+    });
+    safeRevalidate("/settings/attendance");
+    safeRevalidate("/attendance");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save the settings." };
   }
 }

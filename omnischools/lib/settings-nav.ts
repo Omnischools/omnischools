@@ -74,9 +74,8 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         em: "rules",
         icon: "A",
         tone: "navy",
-        desc: "Daily register, late thresholds and the absentee SMS. Drives the attendance module's behaviour.",
-        href: "/attendance",
-        external: true,
+        desc: "Daily register times, the edit window, late thresholds, the absentee SMS and attention flags.",
+        href: "/settings/attendance",
       },
       {
         key: "billing",
