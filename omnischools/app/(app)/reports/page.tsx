@@ -1,9 +1,22 @@
-import { and, eq, ne, isNull, sql, desc } from "drizzle-orm";
+import { and, eq, ne, isNull, isNotNull, asc, sql, desc } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { invoices, payments, students, classes } from "@/db/schema";
+import {
+  invoices,
+  payments,
+  students,
+  classes,
+  receipts,
+  users,
+  discounts,
+  discountTiers,
+  feeCategories,
+} from "@/db/schema";
 import { ExportCsv } from "@/components/reports/export-csv";
 import { schoolFile } from "@/lib/filename";
+
+const ordinal = (n: number) =>
+  n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +37,18 @@ const METHOD_LABEL: Record<string, string> = {
 export default async function ReportsPage() {
   const { school } = await requireSchool();
 
-  const [[totals], byClass, monthly, byMethod, agingRows] = await Promise.all([
+  const [
+    [totals],
+    byClass,
+    monthly,
+    byMethod,
+    agingRows,
+    voids,
+    discRows,
+    discTierRows,
+    [discTotal],
+    catRows,
+  ] = await Promise.all([
     withSchool(school.id, (tx) =>
       tx
         .select({
@@ -97,6 +121,60 @@ export default async function ReportsPage() {
         )
         .groupBy(sql`1`),
     ),
+    // Voided / refunded payments (audit-grade reason capture from the Fees void flow).
+    withSchool(school.id, (tx) =>
+      tx
+        .select({
+          voidedAt: payments.voidedAt,
+          amount: payments.grossAmount,
+          method: payments.method,
+          isRefund: payments.voidIsRefund,
+          reason: payments.voidReason,
+          firstName: students.firstName,
+          lastName: students.lastName,
+          receiptNumber: receipts.receiptNumber,
+          voidedBy: users.fullName,
+        })
+        .from(payments)
+        .innerJoin(students, eq(payments.studentId, students.id))
+        .leftJoin(receipts, eq(receipts.paymentId, payments.id))
+        .leftJoin(users, eq(payments.voidedByUserId, users.id))
+        .where(and(eq(payments.schoolId, school.id), isNotNull(payments.voidedAt)))
+        .orderBy(desc(payments.voidedAt))
+        .limit(100),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select()
+        .from(discounts)
+        .where(eq(discounts.schoolId, school.id))
+        .orderBy(asc(discounts.name)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({
+          discountId: discountTiers.discountId,
+          rank: discountTiers.rank,
+          value: discountTiers.value,
+        })
+        .from(discountTiers)
+        .where(eq(discountTiers.schoolId, school.id)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({
+          total: sql<string>`coalesce(sum(${invoices.discountAmount}), 0)`,
+          count: sql<number>`count(*) filter (where ${invoices.discountAmount} > 0)`,
+        })
+        .from(invoices)
+        .where(and(eq(invoices.schoolId, school.id), ne(invoices.status, "VOIDED"))),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({ id: feeCategories.id, name: feeCategories.name })
+        .from(feeCategories)
+        .where(eq(feeCategories.schoolId, school.id)),
+    ),
   ]);
 
   const billed = num(totals?.billed);
@@ -122,6 +200,28 @@ export default async function ReportsPage() {
     (s, b) => s + (agingMap.get(b.key)?.amount ?? 0),
     0,
   );
+
+  const catName = new Map(catRows.map((c) => [c.id, c.name]));
+  const tiersByDiscount = new Map<string, { rank: number; value: number }[]>();
+  for (const t of discTierRows) {
+    const arr = tiersByDiscount.get(t.discountId) ?? [];
+    arr.push({ rank: t.rank, value: num(t.value) });
+    tiersByDiscount.set(t.discountId, arr);
+  }
+  const discountTotal = num(discTotal?.total);
+  const discountedCount = num(discTotal?.count);
+  const discountValueText = (d: (typeof discRows)[number]) => {
+    if (d.isTiered) {
+      return (tiersByDiscount.get(d.id) ?? [])
+        .sort((a, b) => a.rank - b.rank)
+        .map(
+          (t) =>
+            `${ordinal(t.rank)} ${d.kind === "PERCENT" ? `${t.value}%` : ghs(t.value)}`,
+        )
+        .join(" · ");
+    }
+    return d.kind === "PERCENT" ? `${num(d.value)}%` : ghs(num(d.value));
+  };
 
   const kpis = [
     {
@@ -345,6 +445,169 @@ export default async function ReportsPage() {
           )}
         </section>
       </div>
+
+      {/* Voids & refunds */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold text-navy">
+            Voids &amp; refunds
+          </h2>
+          {voids.length > 0 && (
+            <ExportCsv
+              filename={schoolFile(school.name, "voids-refunds.csv")}
+              headers={[
+                "Date",
+                "Student",
+                "Receipt",
+                "Amount",
+                "Method",
+                "Type",
+                "Reason",
+                "By",
+              ]}
+              rows={voids.map((v) => [
+                v.voidedAt ? new Date(v.voidedAt).toISOString().slice(0, 10) : "",
+                `${v.lastName}, ${v.firstName}`,
+                v.receiptNumber ?? "",
+                num(v.amount).toFixed(2),
+                METHOD_LABEL[v.method] ?? v.method,
+                v.isRefund ? "Refund" : "Void",
+                v.reason ?? "",
+                v.voidedBy ?? "",
+              ])}
+            />
+          )}
+        </div>
+        {voids.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+            No voided or refunded payments.
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Date</th>
+                  <th className="px-4 py-3 font-semibold">Student</th>
+                  <th className="px-4 py-3 font-semibold">Receipt</th>
+                  <th className="px-4 py-3 text-right font-semibold">Amount</th>
+                  <th className="px-4 py-3 font-semibold">Type</th>
+                  <th className="px-4 py-3 font-semibold">Reason</th>
+                  <th className="px-4 py-3 font-semibold">By</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {voids.map((v, i) => (
+                  <tr key={i} className="hover:bg-bg">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-navy-3">
+                      {v.voidedAt
+                        ? new Date(v.voidedAt).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-navy">
+                      {v.lastName}, {v.firstName}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-navy-2">
+                      {v.receiptNumber ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-navy">
+                      {ghs(num(v.amount))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-pill px-2 py-0.5 text-xs font-medium ${v.isRefund ? "bg-terra-bg text-terra" : "bg-bg text-navy-3"}`}
+                      >
+                        {v.isRefund ? "Refund" : "Void"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-navy-2">{v.reason ?? "—"}</td>
+                    <td className="px-4 py-3 text-navy-3">{v.voidedBy ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Discounts given */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold text-navy">Discounts given</h2>
+          {discRows.length > 0 && (
+            <ExportCsv
+              filename={schoolFile(school.name, "discounts.csv")}
+              headers={[
+                "Discount",
+                "Value",
+                "Applies to",
+                "Tiered",
+                "Approval",
+                "Applied",
+              ]}
+              rows={discRows.map((d) => [
+                d.name,
+                discountValueText(d),
+                d.appliesToCategoryId
+                  ? (catName.get(d.appliesToCategoryId) ?? "Whole invoice")
+                  : "Whole invoice",
+                d.isTiered ? "Yes" : "No",
+                d.requiresApproval ? (d.approvedAt ? "Approved" : "Pending") : "—",
+                String(d.appliedCount),
+              ])}
+            />
+          )}
+        </div>
+        <p className="mb-3 text-sm text-navy-3">
+          <b className="text-navy">{ghs(discountTotal)}</b> discounted across{" "}
+          {discountedCount} invoice{discountedCount === 1 ? "" : "s"}.
+        </p>
+        {discRows.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+            No discounts configured. Set them up under Billing.
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Discount</th>
+                  <th className="px-4 py-3 font-semibold">Value</th>
+                  <th className="px-4 py-3 font-semibold">Applies to</th>
+                  <th className="px-4 py-3 text-right font-semibold">Applied</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {discRows.map((d) => (
+                  <tr key={d.id} className="hover:bg-bg">
+                    <td className="px-4 py-3 font-medium text-navy">
+                      {d.name}
+                      {d.requiresApproval && !d.approvedAt && (
+                        <span className="ml-2 rounded-pill bg-warn-bg px-2 py-0.5 text-[11px] font-medium text-warn">
+                          Pending approval
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-navy-2">{discountValueText(d)}</td>
+                    <td className="px-4 py-3 text-navy-2">
+                      {d.appliesToCategoryId
+                        ? (catName.get(d.appliesToCategoryId) ?? "Whole invoice")
+                        : "Whole invoice"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-navy-2">
+                      {d.appliedCount}×
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
