@@ -9,12 +9,15 @@ import {
   classes,
   invoices,
   academicPeriod,
+  households,
+  students,
 } from "@/db/schema";
 import { num } from "@/lib/fees-helpers";
 import { CreateFeeStructureForm } from "@/components/billing/create-fee-structure-form";
 import { FeeStructureCard } from "@/components/billing/fee-structure-card";
 import { DiscountManager } from "@/components/billing/discount-manager";
 import { RemindersCard } from "@/components/billing/reminders-card";
+import { FamiliesCard } from "@/components/billing/families-card";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +39,8 @@ export default async function BillingPage() {
     levelRows,
     yearRows,
     [summary],
+    householdRows,
+    memberRows,
   ] = await Promise.all([
     withSchool(school.id, (tx) =>
       tx
@@ -100,6 +105,33 @@ export default async function BillingPage() {
           ),
         ),
     ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({ id: households.id, name: households.name })
+        .from(households)
+        .where(eq(households.schoolId, school.id))
+        .orderBy(asc(households.name)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({
+          id: students.id,
+          householdId: students.householdId,
+          firstName: students.firstName,
+          lastName: students.lastName,
+          code: students.studentCode,
+          enrolledOn: students.enrolledOn,
+          createdAt: students.createdAt,
+        })
+        .from(students)
+        .where(
+          and(
+            eq(students.schoolId, school.id),
+            isNotNull(students.householdId),
+            eq(students.status, "ACTIVE"),
+          ),
+        ),
+    ),
   ]);
 
   const itemsByStructure = new Map<string, { description: string; amount: number }[]>();
@@ -127,6 +159,25 @@ export default async function BillingPage() {
     kind: d.kind,
     value: num(d.value),
   }));
+
+  // Group members per household and rank by enrolment (earliest = 1st child).
+  const sortKey = (m: { enrolledOn: string | null; createdAt: Date; code: string }) =>
+    `${m.enrolledOn ?? m.createdAt.toISOString().slice(0, 10)}|${m.code}`;
+  const families = householdRows
+    .map((h) => ({
+      id: h.id,
+      name: h.name,
+      members: memberRows
+        .filter((m) => m.householdId === h.id)
+        .sort((a, b) => sortKey(a).localeCompare(sortKey(b)))
+        .map((m, i) => ({
+          id: m.id,
+          name: `${m.lastName}, ${m.firstName}`,
+          code: m.code,
+          rank: i + 1,
+        })),
+    }))
+    .filter((f) => f.members.length > 0);
 
   return (
     <div className="mx-auto max-w-page space-y-10">
@@ -174,6 +225,14 @@ export default async function BillingPage() {
       <section>
         <h2 className="mb-4 font-display text-xl font-semibold text-navy">Discounts</h2>
         <DiscountManager discounts={discountOptions} />
+      </section>
+
+      {/* Families & siblings */}
+      <section>
+        <h2 className="mb-4 font-display text-xl font-semibold text-navy">
+          Families &amp; siblings
+        </h2>
+        <FamiliesCard families={families} />
       </section>
     </div>
   );

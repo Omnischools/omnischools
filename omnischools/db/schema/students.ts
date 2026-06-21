@@ -32,6 +32,24 @@ export const classes = pgTable(
 );
 
 /**
+ * A family/household grouping siblings within a school. Powers sibling-rank fee
+ * discounts (1st/2nd/3rd child). Sibling rank is derived at billing time from a
+ * household's members ordered by enrolment, so it's never stored stale.
+ */
+export const households = pgTable(
+  "household",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ bySchool: index("household_school_idx").on(t.schoolId) }),
+);
+
+/**
  * The student is the central object — the single source of truth every module reads.
  * SHS-specific columns (programme/house/residency) are added in Phase 4.
  * `current_class_label` is kept as a display fallback alongside the class_id FK.
@@ -52,6 +70,9 @@ export const students = pgTable(
     status: studentStatusEnum("status").notNull().default("ACTIVE"),
     currentClassLabel: text("current_class_label"), // display fallback
     classId: uuid("class_id").references(() => classes.id),
+    householdId: uuid("household_id").references(() => households.id, {
+      onDelete: "set null",
+    }),
     enrolledOn: date("enrolled_on"),
     admissionApplicationId: uuid("admission_application_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -141,6 +141,13 @@
       "when": 1782000571363,
       "tag": "0019_strong_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1782044682064,
+      "tag": "0020_lowly_blue_blade",
+      "breakpoints": true
     }
   ]
 }
