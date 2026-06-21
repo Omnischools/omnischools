@@ -3,7 +3,13 @@ import { notFound } from "next/navigation";
 import { and, asc, eq, inArray, gte, lte, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { classes, students, attendanceRecords, academicPeriod } from "@/db/schema";
+import {
+  classes,
+  students,
+  attendanceRecords,
+  academicPeriod,
+  attendanceSettings,
+} from "@/db/schema";
 import { TakeRegister } from "@/components/attendance/take-register";
 
 export const dynamic = "force-dynamic";
@@ -50,11 +56,17 @@ export default async function TakeAttendancePage({
         status: attendanceRecords.status,
         reasonCode: attendanceRecords.reasonCode,
         note: attendanceRecords.note,
+        markedAt: attendanceRecords.markedAt,
       })
       .from(attendanceRecords)
       .where(
         and(eq(attendanceRecords.classId, cls.id), eq(attendanceRecords.date, date)),
       );
+    const [cfg] = await tx
+      .select({ editWindowHours: attendanceSettings.editWindowHours })
+      .from(attendanceSettings)
+      .where(eq(attendanceSettings.schoolId, school.id))
+      .limit(1);
 
     // Per-student term attendance %, scoped to the current term when one is active.
     const ids = roster.map((s) => s.id);
@@ -88,10 +100,22 @@ export default async function TakeAttendancePage({
               ),
             )
             .groupBy(attendanceRecords.studentId);
-    return { cls, roster, recs, termAgg };
+    return { cls, roster, recs, termAgg, editWindowHours: cfg?.editWindowHours ?? 24 };
   });
 
   if (!data) notFound();
+  // The register locks once its earliest mark is older than the edit window.
+  const windowH = data.editWindowHours;
+  const oldestMark = data.recs.reduce<number>((min, r) => {
+    const t = (
+      r.markedAt instanceof Date ? r.markedAt : new Date(r.markedAt as string)
+    ).getTime();
+    return t < min ? t : min;
+  }, Infinity);
+  const locked =
+    data.recs.length > 0 &&
+    windowH > 0 &&
+    Date.now() - oldestMark > windowH * 3_600_000;
   const recByStudent = new Map(data.recs.map((r) => [r.studentId, r]));
   const aggByStudent = new Map(data.termAgg.map((a) => [a.studentId, a]));
   const roster = data.roster.map((s) => {
@@ -136,7 +160,12 @@ export default async function TakeAttendancePage({
           </p>
         </div>
       ) : (
-        <TakeRegister classId={data.cls.id} date={date} roster={roster} />
+        <TakeRegister
+          classId={data.cls.id}
+          date={date}
+          roster={roster}
+          locked={locked}
+        />
       )}
     </div>
   );

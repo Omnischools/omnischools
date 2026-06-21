@@ -41,10 +41,12 @@ export function TakeRegister({
   classId,
   date,
   roster,
+  locked = false,
 }: {
   classId: string;
   date: string;
   roster: Row[];
+  locked?: boolean;
 }) {
   const router = useRouter();
   const [statuses, setStatuses] = useState<Record<string, Status>>(
@@ -95,6 +97,15 @@ export function TakeRegister({
 
   return (
     <div>
+      {locked && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-warn/40 bg-warn-bg/40 px-4 py-3 text-sm">
+          <span className="font-semibold text-warn">Register locked.</span>
+          <span className="text-navy-2">
+            The edit window has closed — use <b>Request correction</b> on a student to
+            change a mark (it needs an admin co-sign).
+          </span>
+        </div>
+      )}
       {/* Stat strip */}
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
         {STAT.map((s, i) => (
@@ -128,16 +139,17 @@ export function TakeRegister({
         <div className="flex items-center gap-2">
           <button
             onClick={allPresent}
-            className="border-border-2 bg-surface rounded-md border px-3 py-2 text-sm font-semibold text-navy hover:bg-gold-bg"
+            disabled={locked}
+            className="border-border-2 bg-surface rounded-md border px-3 py-2 text-sm font-semibold text-navy hover:bg-gold-bg disabled:opacity-50"
           >
             Mark all present
           </button>
           <button
             onClick={save}
-            disabled={saving}
+            disabled={saving || locked}
             className="text-bg rounded-md bg-navy px-5 py-2 text-sm font-semibold transition-colors hover:bg-navy-deep disabled:opacity-60"
           >
-            {saving ? "Saving…" : "Save register"}
+            {locked ? "Locked" : saving ? "Saving…" : "Save register"}
           </button>
         </div>
       </div>
@@ -187,9 +199,10 @@ export function TakeRegister({
                         <button
                           key={o.v}
                           onClick={() => set(r.id, o.v)}
+                          disabled={locked}
                           title={o.v}
                           className={cn(
-                            "h-8 w-8 rounded-md text-xs font-bold transition-colors",
+                            "h-8 w-8 rounded-md text-xs font-bold transition-colors disabled:opacity-60",
                             statuses[r.id] === o.v
                               ? o.on
                               : "bg-bg text-navy-3 hover:bg-gold-bg",
