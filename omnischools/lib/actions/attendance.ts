@@ -119,7 +119,37 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
   const actor = await resolveActor(school.id);
 
   try {
-    const absentStudentIds = await withSchool(school.id, async (tx) => {
+    const out = await withSchool(school.id, async (tx) => {
+      // Edit-window lock — a register marked longer ago than the window can only
+      // be changed through the correction flow, not re-saved directly.
+      const existing = await tx
+        .select({ markedAt: attendanceRecords.markedAt })
+        .from(attendanceRecords)
+        .where(
+          and(
+            eq(attendanceRecords.schoolId, school.id),
+            eq(attendanceRecords.classId, d.classId),
+            eq(attendanceRecords.date, d.date),
+          ),
+        );
+      if (existing.length > 0) {
+        const [cfg] = await tx
+          .select({ editWindowHours: attendanceSettings.editWindowHours })
+          .from(attendanceSettings)
+          .where(eq(attendanceSettings.schoolId, school.id))
+          .limit(1);
+        const windowH = cfg?.editWindowHours ?? 24;
+        const oldest = existing.reduce<number>((min, r) => {
+          const t = (
+            r.markedAt instanceof Date ? r.markedAt : new Date(r.markedAt as string)
+          ).getTime();
+          return t < min ? t : min;
+        }, Infinity);
+        if (windowH > 0 && Date.now() - oldest > windowH * 3_600_000) {
+          return { locked: true as const };
+        }
+      }
+
       for (const e of d.entries) {
         // Reason/note only make sense for non-present marks; clear them otherwise.
         const reasonCode = e.status === "PRESENT" ? null : (e.reasonCode ?? null);
@@ -165,8 +195,17 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
         after: { date: d.date, marked: d.entries.length, absent: absent.length },
         reason: "Attendance taken",
       });
-      return absent;
+      return { locked: false as const, absent };
     });
+
+    if (out.locked) {
+      return {
+        ok: false,
+        error:
+          "This register is locked — the edit window has closed. Submit a correction request to change it.",
+      };
+    }
+    const absentStudentIds = out.absent;
 
     // absence alerts to primary guardians — only when the school keeps them on
     let alertsSent = 0;

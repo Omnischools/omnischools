@@ -8,6 +8,23 @@ import { CorrectionActions } from "@/components/attendance/correction-actions";
 export const dynamic = "force-dynamic";
 
 const fmt = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
+
+const STATUS_PILL: Record<string, string> = {
+  PRESENT: "bg-green-bg text-green",
+  LATE: "bg-warn-bg text-warn",
+  EXCUSED: "bg-bg text-navy-2",
+  MEDICAL: "bg-gold-bg text-navy",
+  ABSENT: "bg-terra-bg text-terra",
+};
+function StatusPill({ status }: { status: string }) {
+  return (
+    <span
+      className={`rounded-pill px-2 py-0.5 text-xs font-semibold ${STATUS_PILL[status] ?? "bg-bg text-navy-3"}`}
+    >
+      {fmt(status)}
+    </span>
+  );
+}
 const fmtWhen = (d: Date | string) => {
   const dt = d instanceof Date ? d : new Date(d);
   return Number.isNaN(dt.getTime())
@@ -78,13 +95,14 @@ export default async function CorrectionsPage() {
                   {r.lastName}, {r.firstName}{" "}
                   <span className="text-xs text-navy-3">· {r.date}</span>
                 </div>
-                <div className="text-xs text-navy-3">
-                  {fmt(r.currentStatus)} →{" "}
-                  <span className="font-semibold text-navy-2">
-                    {fmt(r.requestedStatus)}
-                  </span>{" "}
-                  · {r.reason}
+                <div className="mt-1 flex items-center gap-2">
+                  <StatusPill status={r.currentStatus} />
+                  <span className="text-navy-3">→</span>
+                  <StatusPill status={r.requestedStatus} />
                 </div>
+                <p className="mt-1.5 border-l-2 border-gold-soft pl-2 text-xs italic text-navy-2">
+                  “{r.reason}”
+                </p>
                 <div className="mt-0.5 text-[11px] text-navy-3">
                   Requested by{" "}
                   <span className="font-medium text-navy-2">
