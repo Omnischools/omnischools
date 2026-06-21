@@ -61,6 +61,7 @@ BEGIN
     'audit_log',
     'students',
     'student_guardian',
+    'household',
     'admission_application',
     'admission_document',
     'fee_category',
