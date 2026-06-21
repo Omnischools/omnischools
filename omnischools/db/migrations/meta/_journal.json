@@ -162,6 +162,13 @@
       "when": 1782053664093,
       "tag": "0022_thin_emma_frost",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1782059264973,
+      "tag": "0023_fuzzy_the_stranger",
+      "breakpoints": true
     }
   ]
 }

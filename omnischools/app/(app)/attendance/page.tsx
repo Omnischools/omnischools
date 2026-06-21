@@ -8,10 +8,12 @@ import {
   attendanceRecords,
   attendanceCorrections,
   academicPeriod,
+  attendanceSettings,
   users,
 } from "@/db/schema";
 import { NewClassForm, AssignStudent } from "@/components/attendance/class-controls";
 import { computeAttendanceFlags } from "@/lib/attendance-flags";
+import { ATTENDANCE_SETTINGS_DEFAULTS } from "@/lib/attendance-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -115,14 +117,29 @@ export default async function AttendancePage() {
             ),
           )
       : [];
-    return { cls, studs, todayRecs, yAgg, pendingCorrections, termRecs };
+    const [cfg] = await tx
+      .select({
+        absWatchDays: attendanceSettings.absWatchDays,
+        absCriticalDays: attendanceSettings.absCriticalDays,
+        pctWatch: attendanceSettings.pctWatch,
+        pctCritical: attendanceSettings.pctCritical,
+      })
+      .from(attendanceSettings)
+      .where(eq(attendanceSettings.schoolId, school.id))
+      .limit(1);
+    return { cls, studs, todayRecs, yAgg, pendingCorrections, termRecs, cfg };
   });
 
   const unassigned = data.studs.filter((s) => !s.classId);
   const classOptions = data.cls.map((c) => ({ id: c.id, name: c.name }));
 
-  // Threshold-based "needs attention" list over the current term.
-  const flagMap = computeAttendanceFlags(data.termRecs);
+  // Threshold-based "needs attention" list over the current term (configurable).
+  const flagMap = computeAttendanceFlags(data.termRecs, {
+    absWatch: data.cfg?.absWatchDays ?? ATTENDANCE_SETTINGS_DEFAULTS.absWatchDays,
+    absCritical: data.cfg?.absCriticalDays ?? ATTENDANCE_SETTINGS_DEFAULTS.absCriticalDays,
+    pctWatch: data.cfg?.pctWatch ?? ATTENDANCE_SETTINGS_DEFAULTS.pctWatch,
+    pctCritical: data.cfg?.pctCritical ?? ATTENDANCE_SETTINGS_DEFAULTS.pctCritical,
+  });
   const classNameById = new Map(data.cls.map((c) => [c.id, c.name]));
   const sevRank = (w: string | null) =>
     w === "CRITICAL" ? 0 : w === "WATCHING" ? 1 : 2;
