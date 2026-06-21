@@ -6,6 +6,7 @@ import {
   feeStructureItems,
   feeCategories,
   discounts,
+  discountTiers,
   classes,
   invoices,
   academicPeriod,
@@ -41,6 +42,7 @@ export default async function BillingPage() {
     [summary],
     householdRows,
     memberRows,
+    tierRows,
   ] = await Promise.all([
     withSchool(school.id, (tx) =>
       tx
@@ -71,7 +73,7 @@ export default async function BillingPage() {
     ),
     withSchool(school.id, (tx) =>
       tx
-        .select({ name: feeCategories.name })
+        .select({ id: feeCategories.id, name: feeCategories.name })
         .from(feeCategories)
         .where(eq(feeCategories.schoolId, school.id))
         .orderBy(asc(feeCategories.name)),
@@ -132,6 +134,16 @@ export default async function BillingPage() {
           ),
         ),
     ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({
+          discountId: discountTiers.discountId,
+          rank: discountTiers.rank,
+          value: discountTiers.value,
+        })
+        .from(discountTiers)
+        .where(eq(discountTiers.schoolId, school.id)),
+    ),
   ]);
 
   const itemsByStructure = new Map<string, { description: string; amount: number }[]>();
@@ -153,11 +165,28 @@ export default async function BillingPage() {
     };
   });
 
+  const catNameById = new Map(feeCatRows.map((c) => [c.id, c.name]));
+  const tiersByDiscount = new Map<string, { rank: number; value: number }[]>();
+  for (const t of tierRows) {
+    const arr = tiersByDiscount.get(t.discountId) ?? [];
+    arr.push({ rank: t.rank, value: num(t.value) });
+    tiersByDiscount.set(t.discountId, arr);
+  }
   const discountOptions = discountRows.map((d) => ({
     id: d.id,
     name: d.name,
     kind: d.kind,
     value: num(d.value),
+    appliesToCategoryName: d.appliesToCategoryId
+      ? (catNameById.get(d.appliesToCategoryId) ?? null)
+      : null,
+    durationLabel: d.durationLabel,
+    requiresApproval: d.requiresApproval,
+    approved: !!d.approvedAt,
+    stackable: d.stackable,
+    isTiered: d.isTiered,
+    appliedCount: d.appliedCount,
+    tiers: tiersByDiscount.get(d.id) ?? [],
   }));
 
   // Group members per household and rank by enrolment (earliest = 1st child).
@@ -224,7 +253,7 @@ export default async function BillingPage() {
       {/* Discounts */}
       <section>
         <h2 className="mb-4 font-display text-xl font-semibold text-navy">Discounts</h2>
-        <DiscountManager discounts={discountOptions} />
+        <DiscountManager discounts={discountOptions} categories={feeCatRows} />
       </section>
 
       {/* Families & siblings */}

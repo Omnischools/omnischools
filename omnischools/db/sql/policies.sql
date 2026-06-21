@@ -68,6 +68,7 @@ BEGIN
     'fee_structure',
     'fee_structure_item',
     'discount',
+    'discount_tier',
     'invoice',
     'invoice_line_item',
     'payment',

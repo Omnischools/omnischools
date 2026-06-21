@@ -12,6 +12,7 @@ import {
   feeStructureItems,
   feeCategories,
   discounts,
+  discountTiers,
   students,
   studentGuardians,
   invoices,
@@ -112,10 +113,20 @@ export async function deleteFeeStructure(input: unknown): Promise<Result> {
 }
 
 // ------------------------------------------------------------------ discounts
+const TierSchema = z.object({
+  rank: z.coerce.number().int().min(1).max(20),
+  value: z.coerce.number().min(0),
+});
 const DiscountSchema = z.object({
   name: z.string().min(1, "Enter a name").max(80),
   kind: z.enum(["PERCENT", "FIXED"]),
-  value: z.coerce.number().positive("Value must be > 0"),
+  value: z.coerce.number().min(0).default(0),
+  appliesToCategoryId: z.string().uuid().optional().or(z.literal("")).nullable(),
+  durationLabel: z.string().max(40).optional().or(z.literal("")).nullable(),
+  requiresApproval: z.coerce.boolean().default(false),
+  stackable: z.coerce.boolean().default(true),
+  isTiered: z.coerce.boolean().default(false),
+  tiers: z.array(TierSchema).optional(),
 });
 
 export async function createDiscount(input: unknown): Promise<Result> {
@@ -125,22 +136,91 @@ export async function createDiscount(input: unknown): Promise<Result> {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const d = parsed.data;
-  if (d.kind === "PERCENT" && d.value > 100) {
-    return { ok: false, error: "A percentage can't exceed 100." };
+  const overCap = (v: number) => d.kind === "PERCENT" && v > 100;
+
+  // Normalise tiers (dedupe by rank, drop blanks) when tiered.
+  const tiers = d.isTiered
+    ? Array.from(
+        new Map((d.tiers ?? []).map((t) => [t.rank, round2(t.value)])).entries(),
+      )
+        .map(([rank, value]) => ({ rank, value }))
+        .sort((a, b) => a.rank - b.rank)
+    : [];
+
+  if (d.isTiered) {
+    if (tiers.length === 0) {
+      return { ok: false, error: "Add at least one sibling-rank tier." };
+    }
+    if (tiers.some((t) => overCap(t.value))) {
+      return { ok: false, error: "A percentage tier can't exceed 100." };
+    }
+  } else {
+    if (d.value <= 0) return { ok: false, error: "Value must be > 0." };
+    if (overCap(d.value)) return { ok: false, error: "A percentage can't exceed 100." };
   }
+
   try {
-    await withSchool(school.id, (tx) =>
-      tx.insert(discounts).values({
-        schoolId: school.id,
-        name: d.name.trim(),
-        kind: d.kind,
-        value: toMoney(d.value),
-      }),
-    );
+    await withSchool(school.id, async (tx) => {
+      const [created] = await tx
+        .insert(discounts)
+        .values({
+          schoolId: school.id,
+          name: d.name.trim(),
+          kind: d.kind,
+          value: toMoney(d.isTiered ? 0 : d.value),
+          appliesToCategoryId: d.appliesToCategoryId || null,
+          durationLabel: d.durationLabel?.trim() || null,
+          requiresApproval: d.requiresApproval,
+          stackable: d.stackable,
+          isTiered: d.isTiered,
+        })
+        .returning({ id: discounts.id });
+      if (tiers.length > 0) {
+        await tx.insert(discountTiers).values(
+          tiers.map((t) => ({
+            schoolId: school.id,
+            discountId: created.id,
+            rank: t.rank,
+            value: toMoney(t.value),
+          })),
+        );
+      }
+    });
     safeRevalidate("/billing");
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not create — that name may already exist." };
+  }
+}
+
+export async function approveDiscount(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const id = z
+    .string()
+    .uuid()
+    .safeParse((input as { id?: string })?.id);
+  if (!id.success) return { ok: false, error: "Invalid input" };
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .update(discounts)
+        .set({ approvedAt: new Date(), approvedByUserId: actor.id ?? undefined })
+        .where(and(eq(discounts.id, id.data), eq(discounts.schoolId, school.id)));
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "approved",
+        entityType: "discount",
+        entityId: id.data,
+        reason: "Discount approved for use",
+      });
+    });
+    safeRevalidate("/billing");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not approve." };
   }
 }
 
@@ -168,19 +248,31 @@ export async function deleteDiscount(input: unknown): Promise<Result> {
 const GenerateSchema = z.object({
   structureId: z.string().uuid(),
   classId: z.string().uuid(),
-  discountId: z.string().optional().nullable(),
+  discountIds: z.array(z.string().uuid()).optional(),
 });
 
 export type GenerateResult =
   | { ok: true; created: number; skipped: number }
   | { ok: false; error: string };
 
+/** Tier value for a sibling rank: the highest tier whose rank ≤ the student's. */
+function tierValueForRank(
+  tiers: { rank: number; value: string }[],
+  rank: number,
+): number {
+  if (tiers.length === 0) return 0;
+  const sorted = [...tiers].sort((a, b) => a.rank - b.rank);
+  let chosen = sorted[0];
+  for (const t of sorted) if (t.rank <= rank) chosen = t;
+  return num(chosen.value);
+}
+
 export async function generateInvoicesForClass(input: unknown): Promise<GenerateResult> {
   const { school } = await requireSchool();
   const parsed = GenerateSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   const { structureId, classId } = parsed.data;
-  const discountId = parsed.data.discountId?.trim() || null;
+  const discountIds = Array.from(new Set(parsed.data.discountIds ?? [])).filter(Boolean);
   const actor = await resolveActor(school.id);
 
   try {
@@ -200,17 +292,66 @@ export async function generateInvoicesForClass(input: unknown): Promise<Generate
       if (items.length === 0)
         return { ok: false as const, error: "Structure has no items." };
 
-      let discount: { kind: string; value: string } | null = null;
-      if (discountId) {
-        const [d] = await tx
-          .select({ kind: discounts.kind, value: discounts.value })
-          .from(discounts)
-          .where(and(eq(discounts.id, discountId), eq(discounts.schoolId, school.id)));
-        discount = d ?? null;
+      // Selected discounts (for stacking) + validation.
+      const selected = discountIds.length
+        ? await tx
+            .select()
+            .from(discounts)
+            .where(
+              and(eq(discounts.schoolId, school.id), inArray(discounts.id, discountIds)),
+            )
+        : [];
+      if (selected.length !== discountIds.length) {
+        return { ok: false as const, error: "A selected discount no longer exists." };
+      }
+      const unapproved = selected.find((d) => d.requiresApproval && !d.approvedAt);
+      if (unapproved) {
+        return {
+          ok: false as const,
+          error: `"${unapproved.name}" needs approval before it can be used.`,
+        };
+      }
+      if (selected.length > 1 && selected.some((d) => !d.stackable)) {
+        const nonStack = selected.find((d) => !d.stackable);
+        return {
+          ok: false as const,
+          error: `"${nonStack?.name}" can't be combined with other discounts.`,
+        };
       }
 
+      // Tiers for any tiered discount, grouped by discount.
+      const tieredIds = selected.filter((d) => d.isTiered).map((d) => d.id);
+      const tierRows = tieredIds.length
+        ? await tx
+            .select()
+            .from(discountTiers)
+            .where(inArray(discountTiers.discountId, tieredIds))
+        : [];
+      const tiersByDiscount = new Map<string, { rank: number; value: string }[]>();
+      for (const t of tierRows) {
+        const arr = tiersByDiscount.get(t.discountId) ?? [];
+        arr.push({ rank: t.rank, value: t.value });
+        tiersByDiscount.set(t.discountId, arr);
+      }
+
+      // applies-to category names (matched against item descriptions).
+      const catIds = Array.from(
+        new Set(
+          selected.map((d) => d.appliesToCategoryId).filter((x): x is string => !!x),
+        ),
+      );
+      const catRows = catIds.length
+        ? await tx
+            .select({ id: feeCategories.id, name: feeCategories.name })
+            .from(feeCategories)
+            .where(
+              and(eq(feeCategories.schoolId, school.id), inArray(feeCategories.id, catIds)),
+            )
+        : [];
+      const catName = new Map(catRows.map((c) => [c.id, c.name.toLowerCase()]));
+
       const roster = await tx
-        .select({ id: students.id })
+        .select({ id: students.id, householdId: students.householdId })
         .from(students)
         .where(
           and(
@@ -223,18 +364,67 @@ export async function generateInvoicesForClass(input: unknown): Promise<Generate
         return { ok: false as const, error: "No active students in that class." };
       }
 
-      const subtotal = round2(items.reduce((s, li) => s + num(li.amount), 0));
-      const discAmount = discount
-        ? round2(
-            Math.min(
-              discount.kind === "PERCENT"
-                ? subtotal * (num(discount.value) / 100)
-                : num(discount.value),
-              subtotal,
+      // Sibling rank per student: position within their household by enrolment.
+      const householdIds = Array.from(
+        new Set(roster.map((r) => r.householdId).filter((x): x is string => !!x)),
+      );
+      const rankByStudent = new Map<string, number>();
+      if (householdIds.length) {
+        const members = await tx
+          .select({
+            id: students.id,
+            householdId: students.householdId,
+            enrolledOn: students.enrolledOn,
+            createdAt: students.createdAt,
+          })
+          .from(students)
+          .where(
+            and(
+              eq(students.schoolId, school.id),
+              eq(students.status, "ACTIVE"),
+              inArray(students.householdId, householdIds),
             ),
-          )
-        : 0;
-      const billed = round2(subtotal - discAmount);
+          );
+        const byHouse = new Map<string, typeof members>();
+        for (const m of members) {
+          if (!m.householdId) continue;
+          const arr = byHouse.get(m.householdId) ?? [];
+          arr.push(m);
+          byHouse.set(m.householdId, arr);
+        }
+        const keyOf = (m: (typeof members)[number]) =>
+          `${m.enrolledOn ?? m.createdAt.toISOString().slice(0, 10)}|${m.id}`;
+        for (const [, arr] of Array.from(byHouse)) {
+          arr
+            .sort((a, b) => keyOf(a).localeCompare(keyOf(b)))
+            .forEach((m, i) => rankByStudent.set(m.id, i + 1));
+        }
+      }
+
+      const subtotal = round2(items.reduce((s, li) => s + num(li.amount), 0));
+      const baseFor = (d: (typeof selected)[number]): number => {
+        if (!d.appliesToCategoryId) return subtotal;
+        const name = catName.get(d.appliesToCategoryId);
+        if (!name) return 0;
+        return round2(
+          items
+            .filter((li) => li.description.toLowerCase() === name)
+            .reduce((s, li) => s + num(li.amount), 0),
+        );
+      };
+      const discountForStudent = (studentId: string): number => {
+        const rank = rankByStudent.get(studentId) ?? 1;
+        let total = 0;
+        for (const d of selected) {
+          const base = baseFor(d);
+          if (base <= 0) continue;
+          const value = d.isTiered
+            ? tierValueForRank(tiersByDiscount.get(d.id) ?? [], rank)
+            : num(d.value);
+          total += d.kind === "PERCENT" ? base * (value / 100) : Math.min(value, base);
+        }
+        return round2(Math.min(total, subtotal));
+      };
 
       let created = 0;
       let skipped = 0;
@@ -256,6 +446,8 @@ export async function generateInvoicesForClass(input: unknown): Promise<Generate
           continue;
         }
 
+        const discAmount = discountForStudent(stu.id);
+        const billed = round2(subtotal - discAmount);
         const invoiceNumber = await nextInvoiceNumber(tx, school.id);
         const [inv] = await tx
           .insert(invoices)
@@ -284,6 +476,16 @@ export async function generateInvoicesForClass(input: unknown): Promise<Generate
         created++;
       }
 
+      // Track how many bills each discount has been applied to.
+      if (created > 0 && selected.length > 0) {
+        for (const d of selected) {
+          await tx
+            .update(discounts)
+            .set({ appliedCount: sql`${discounts.appliedCount} + ${created}` })
+            .where(eq(discounts.id, d.id));
+        }
+      }
+
       await recordAudit(tx, {
         schoolId: school.id,
         actorUserId: actor.id ?? undefined,
@@ -291,7 +493,12 @@ export async function generateInvoicesForClass(input: unknown): Promise<Generate
         actionType: "created",
         entityType: "invoice_batch",
         entityId: classId,
-        after: { structure: structure.name, created, skipped },
+        after: {
+          structure: structure.name,
+          created,
+          skipped,
+          discounts: selected.map((d) => d.name),
+        },
         reason: "Invoices generated from fee structure",
       });
 
