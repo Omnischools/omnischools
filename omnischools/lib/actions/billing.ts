@@ -633,3 +633,73 @@ export async function sendFeeReminders(): Promise<RemindersResult> {
     return { ok: false, error: "Could not send reminders. Please try again." };
   }
 }
+
+export type SingleReminderResult =
+  | { ok: true; sent: boolean }
+  | { ok: false; error: string };
+
+/** Send the fee reminder to one student's primary guardian (used from Reports). */
+export async function sendReminderToStudent(input: unknown): Promise<SingleReminderResult> {
+  const { school } = await requireSchool();
+  const sid = z
+    .string()
+    .uuid()
+    .safeParse((input as { studentId?: string })?.studentId);
+  if (!sid.success) return { ok: false, error: "Invalid student." };
+  const actor = await resolveActor(school.id);
+  try {
+    const data = await withSchool(school.id, async (tx) => {
+      const [stu] = await tx
+        .select({ firstName: students.firstName })
+        .from(students)
+        .where(and(eq(students.id, sid.data), eq(students.schoolId, school.id)));
+      if (!stu) return null;
+      const [bal] = await tx
+        .select({
+          outstanding: sql<string>`coalesce(sum(${invoices.balanceAmount}), 0)`,
+        })
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.studentId, sid.data),
+            inArray(invoices.status, ["ISSUED", "PARTIAL", "OVERDUE"]),
+          ),
+        );
+      const [g] = await tx
+        .select({ phone: studentGuardians.phone })
+        .from(studentGuardians)
+        .where(
+          and(
+            eq(studentGuardians.studentId, sid.data),
+            eq(studentGuardians.isPrimary, true),
+          ),
+        )
+        .limit(1);
+      return { firstName: stu.firstName, outstanding: num(bal?.outstanding), phone: g?.phone ?? null };
+    });
+
+    if (!data) return { ok: false, error: "Student not found." };
+    if (data.outstanding <= 0) return { ok: true, sent: false };
+    if (!data.phone) return { ok: false, error: "No guardian phone on file." };
+
+    const msg = feeReminderMessage(
+      school.shortName ?? "Omnischools",
+      data.firstName,
+      data.outstanding,
+    );
+    await sendSms(data.phone, msg);
+    await withSchool(school.id, (tx) =>
+      tx.insert(notificationLog).values({
+        schoolId: school.id,
+        studentId: sid.data,
+        phone: data.phone as string,
+        message: msg,
+        status: "SENT",
+        sentByUserId: actor.id ?? undefined,
+      }),
+    );
+    return { ok: true, sent: true };
+  } catch {
+    return { ok: false, error: "Could not send the reminder." };
+  }
+}

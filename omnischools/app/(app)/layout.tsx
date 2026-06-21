@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         user={{ name: user.name ?? null, role: user.roles[0] ?? null }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between gap-4 border-b border-border bg-surface px-6 py-3">
+        <header className="flex items-center justify-between gap-4 border-b border-border bg-surface px-6 py-3 print:hidden">
           {/* School name shows on mobile (sidebar hidden < md); on desktop it lives in the sidebar. */}
           <div className="truncate font-display text-base font-semibold text-navy md:hidden">
             {school.name}
