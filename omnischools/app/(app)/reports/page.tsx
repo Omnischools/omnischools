@@ -14,6 +14,7 @@ import {
   feeCategories,
 } from "@/db/schema";
 import { ExportCsv } from "@/components/reports/export-csv";
+import { PrintButton } from "@/components/reports/print-button";
 import { schoolFile } from "@/lib/filename";
 
 const ordinal = (n: number) =>
@@ -94,6 +95,7 @@ export default async function ReportsPage({
     withSchool(school.id, (tx) =>
       tx
         .select({
+          classId: classes.id,
           className: sql<string>`coalesce(${classes.name}, '— Unassigned —')`,
           billed: sql<string>`coalesce(sum(${invoices.billedAmount}), 0)`,
           collected: sql<string>`coalesce(sum(${invoices.paidAmount}), 0)`,
@@ -105,7 +107,7 @@ export default async function ReportsPage({
         .where(
           and(eq(invoices.schoolId, school.id), ne(invoices.status, "VOIDED"), yearInv),
         )
-        .groupBy(classes.name)
+        .groupBy(classes.id, classes.name)
         .orderBy(desc(sql`sum(${invoices.balanceAmount})`)),
     ),
     withSchool(school.id, (tx) =>
@@ -285,17 +287,20 @@ export default async function ReportsPage({
 
   return (
     <div className="mx-auto max-w-page space-y-8">
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-navy">Reports</h1>
-        <p className="text-sm text-navy-3">
-          Fees collected, outstanding by class, and collection trends — for the bursar.
-          {selectedYear && (
-            <>
-              {" "}
-              Showing <b className="text-navy">{selectedYear}</b>.
-            </>
-          )}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-semibold text-navy">Reports</h1>
+          <p className="text-sm text-navy-3">
+            Fees collected, outstanding by class, and collection trends — for the bursar.
+            {selectedYear && (
+              <>
+                {" "}
+                Showing <b className="text-navy">{selectedYear}</b>.
+              </>
+            )}
+          </p>
+        </div>
+        <PrintButton />
       </div>
 
       {yearRows.length > 0 && (
@@ -371,7 +376,18 @@ export default async function ReportsPage({
                   const r = classRate(c.billed, c.collected);
                   return (
                     <tr key={c.className} className="hover:bg-bg">
-                      <td className="px-4 py-3 font-medium text-navy">{c.className}</td>
+                      <td className="px-4 py-3 font-medium text-navy">
+                        {c.classId ? (
+                          <Link
+                            href={`/reports/class/${c.classId}`}
+                            className="hover:text-gold"
+                          >
+                            {c.className}
+                          </Link>
+                        ) : (
+                          c.className
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-right text-navy-2">
                         {ghs(num(c.billed))}
                       </td>

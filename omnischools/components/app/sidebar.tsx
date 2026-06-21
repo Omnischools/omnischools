@@ -75,7 +75,7 @@ export function AppSidebar({
     .join(" · ");
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col bg-navy text-bg md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col bg-navy text-bg md:flex print:hidden">
       {/* School block */}
       <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold font-display text-sm font-semibold text-navy">
