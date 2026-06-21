@@ -64,6 +64,18 @@ export default async function StudentFeesPage({
   const balance = invs
     .filter((i) => i.status !== "VOIDED")
     .reduce((s, i) => s + num(i.balanceAmount), 0);
+  // Outstanding invoices, oldest first (invs come newest-first), for allocation.
+  const outstanding = invs
+    .filter(
+      (i) => i.status !== "VOIDED" && i.status !== "PAID" && num(i.balanceAmount) > 0,
+    )
+    .slice()
+    .reverse()
+    .map((i) => ({
+      id: i.id,
+      invoiceNumber: i.invoiceNumber,
+      balance: num(i.balanceAmount),
+    }));
 
   return (
     <div className="mx-auto max-w-page">
@@ -88,7 +100,7 @@ export default async function StudentFeesPage({
       </div>
 
       <div className="mb-8 flex flex-wrap items-start gap-3">
-        <RecordPaymentForm studentId={student.id} />
+        <RecordPaymentForm studentId={student.id} outstanding={outstanding} />
         <IssueInvoiceForm studentId={student.id} />
       </div>
 
