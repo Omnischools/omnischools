@@ -134,6 +134,19 @@ const RecordPaymentSchema = z.object({
   ]),
   grossAmount: z.coerce.number().positive("Amount must be > 0"),
   methodReference: z.string().max(120).optional().or(z.literal("")),
+  /**
+   * Optional manual split across specific invoices. When omitted (or all zero),
+   * the payment auto-allocates oldest-invoice-first. Any amount beyond the
+   * allocations (or beyond outstanding balances) is held as credit.
+   */
+  allocations: z
+    .array(
+      z.object({
+        invoiceId: z.string().uuid(),
+        amount: z.coerce.number().min(0),
+      }),
+    )
+    .optional(),
 });
 
 export type RecordPaymentResult =
@@ -186,7 +199,6 @@ export async function recordPayment(input: unknown): Promise<RecordPaymentResult
         afterState: { gross: toMoney(gross), method: d.method },
       });
 
-      // auto-allocate oldest-first across outstanding invoices
       const outstanding = await tx
         .select()
         .from(invoices)
@@ -200,21 +212,66 @@ export async function recordPayment(input: unknown): Promise<RecordPaymentResult
         )
         .orderBy(asc(invoices.issuedAt));
 
+      // Build the allocation plan: a manual per-invoice split when one is given,
+      // else auto oldest-invoice-first. Manual entries are validated against the
+      // current outstanding balances before anything is written.
+      type PlanEntry = {
+        inv: (typeof outstanding)[number];
+        applied: number;
+        method: "MANUAL" | "AUTO_OLDEST_FIRST";
+      };
+      const byId = new Map(outstanding.map((inv) => [inv.id, inv] as const));
+      const manualByInvoice = new Map<string, number>();
+      for (const a of d.allocations ?? []) {
+        const amt = round2(a.amount);
+        if (amt <= 0) continue;
+        manualByInvoice.set(a.invoiceId, round2((manualByInvoice.get(a.invoiceId) ?? 0) + amt));
+      }
+
+      const plan: PlanEntry[] = [];
+      if (manualByInvoice.size > 0) {
+        let manualTotal = 0;
+        for (const [invoiceId, applied] of Array.from(manualByInvoice)) {
+          const inv = byId.get(invoiceId);
+          if (!inv) {
+            return {
+              ok: false as const,
+              error: "An allocation target is not an outstanding invoice.",
+            };
+          }
+          if (applied > num(inv.balanceAmount)) {
+            return {
+              ok: false as const,
+              error: `Allocation to ${inv.invoiceNumber} exceeds its balance.`,
+            };
+          }
+          manualTotal = round2(manualTotal + applied);
+          plan.push({ inv, applied, method: "MANUAL" });
+        }
+        if (manualTotal > gross) {
+          return { ok: false as const, error: "Allocations exceed the payment amount." };
+        }
+      } else {
+        let rem = gross;
+        for (const inv of outstanding) {
+          if (rem <= 0) break;
+          const applied = round2(Math.min(num(inv.balanceAmount), rem));
+          if (applied <= 0) continue;
+          plan.push({ inv, applied, method: "AUTO_OLDEST_FIRST" });
+          rem = round2(rem - applied);
+        }
+      }
+
       let remaining = gross;
       let allocated = 0;
-      for (const inv of outstanding) {
-        if (remaining <= 0) break;
-        const bal = num(inv.balanceAmount);
-        const applied = round2(Math.min(bal, remaining));
-        if (applied <= 0) continue;
-
+      for (const { inv, applied, method } of plan) {
         await tx.insert(paymentAllocations).values({
           schoolId: school.id,
           paymentId: payment.id,
           invoiceId: inv.id,
           allocationType: "INVOICE",
           amount: toMoney(applied),
-          allocationMethod: "AUTO_OLDEST_FIRST",
+          allocationMethod: method,
           allocatedByUserId: actor.id ?? undefined,
         });
 
@@ -236,7 +293,7 @@ export async function recordPayment(input: unknown): Promise<RecordPaymentResult
           invoiceId: inv.id,
           eventType: "ALLOCATION_ADDED",
           actorUserId: actor.id ?? undefined,
-          afterState: { applied: toMoney(applied), invoice: inv.invoiceNumber },
+          afterState: { applied: toMoney(applied), invoice: inv.invoiceNumber, method },
         });
 
         remaining = round2(remaining - applied);
