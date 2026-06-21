@@ -46,12 +46,20 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
           </h1>
           <p className="font-mono text-xs text-navy-3">{student.studentCode}</p>
         </div>
-        <Link
-          href={`/students/${student.id}/edit`}
-          className="shrink-0 rounded-md border border-border-2 px-4 py-2 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg"
-        >
-          Edit
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href={`/attendance/student/${student.id}`}
+            className="rounded-md border border-border-2 px-4 py-2 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg"
+          >
+            Attendance
+          </Link>
+          <Link
+            href={`/students/${student.id}/edit`}
+            className="rounded-md border border-border-2 px-4 py-2 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg"
+          >
+            Edit
+          </Link>
+        </div>
       </div>
       <div className="mt-6" />
 
