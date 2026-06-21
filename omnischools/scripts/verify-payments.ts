@@ -83,7 +83,10 @@ async function main() {
 
   // 5. void the momo payment → back to PARTIAL
   if (p2.ok) {
-    const v = await voidPayment({ paymentId: p2.paymentId });
+    const v = await voidPayment({
+      paymentId: p2.paymentId,
+      reason: "verification script void",
+    });
     check("void ok", v.ok);
   }
   s = await invoiceState(sid);

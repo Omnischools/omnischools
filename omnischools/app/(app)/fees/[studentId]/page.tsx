@@ -48,6 +48,8 @@ export default async function StudentFeesPage({
         settlementStatus: payments.settlementStatus,
         recordedAt: payments.recordedAt,
         voidedAt: payments.voidedAt,
+        voidReason: payments.voidReason,
+        voidIsRefund: payments.voidIsRefund,
         receiptNumber: receipts.receiptNumber,
       })
       .from(payments)
@@ -178,9 +180,16 @@ export default async function StudentFeesPage({
                   </td>
                   <td className="px-4 py-3 text-navy-2">
                     {p.voidedAt ? (
-                      <span className="rounded-pill bg-terra-bg px-2 py-0.5 text-xs text-terra">
-                        Voided
-                      </span>
+                      <div>
+                        <span className="rounded-pill bg-terra-bg px-2 py-0.5 text-xs font-medium text-terra">
+                          {p.voidIsRefund ? "Refunded" : "Voided"}
+                        </span>
+                        {p.voidReason && (
+                          <div className="mt-1 max-w-[16rem] text-xs text-navy-3">
+                            {p.voidReason}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       p.settlementStatus.charAt(0) +
                       p.settlementStatus.slice(1).toLowerCase()

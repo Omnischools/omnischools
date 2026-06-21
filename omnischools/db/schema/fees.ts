@@ -111,6 +111,8 @@ export const payments = pgTable(
     recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
     voidedAt: timestamp("voided_at", { withTimezone: true }),
     voidedByUserId: uuid("voided_by_user_id").references(() => users.id),
+    voidReason: text("void_reason"),
+    voidIsRefund: boolean("void_is_refund").notNull().default(false),
   },
   (t) => ({ byStudent: index("payment_student_idx").on(t.studentId) }),
 );
