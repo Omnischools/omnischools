@@ -1,4 +1,5 @@
-import { and, eq, ne, isNull, isNotNull, asc, sql, desc } from "drizzle-orm";
+import { and, eq, ne, isNull, isNotNull, asc, gte, lt, sql, desc } from "drizzle-orm";
+import Link from "next/link";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import {
@@ -34,8 +35,35 @@ const METHOD_LABEL: Record<string, string> = {
   OTHER: "Other",
 };
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams?: { year?: string };
+}) {
   const { school } = await requireSchool();
+
+  // Period scope: an academic year ("2025/26") narrows every figure. Invoices
+  // filter by their academic_year column; payments/voids by the Sep–Aug window.
+  const selectedYear =
+    searchParams?.year && searchParams.year !== "all" ? searchParams.year : null;
+  let windowStart: Date | null = null;
+  let windowEnd: Date | null = null;
+  if (selectedYear) {
+    const sy = Number.parseInt(selectedYear.slice(0, 4), 10);
+    if (!Number.isNaN(sy)) {
+      windowStart = new Date(Date.UTC(sy, 8, 1));
+      windowEnd = new Date(Date.UTC(sy + 1, 8, 1));
+    }
+  }
+  const yearInv = selectedYear ? eq(invoices.academicYear, selectedYear) : undefined;
+  const payWindow =
+    windowStart && windowEnd
+      ? and(gte(payments.paidAt, windowStart), lt(payments.paidAt, windowEnd))
+      : undefined;
+  const voidWindow =
+    windowStart && windowEnd
+      ? and(gte(payments.voidedAt, windowStart), lt(payments.voidedAt, windowEnd))
+      : undefined;
 
   const [
     [totals],
@@ -48,6 +76,7 @@ export default async function ReportsPage() {
     discTierRows,
     [discTotal],
     catRows,
+    yearRows,
   ] = await Promise.all([
     withSchool(school.id, (tx) =>
       tx
@@ -58,7 +87,9 @@ export default async function ReportsPage() {
           invoiceCount: sql<number>`count(*)`,
         })
         .from(invoices)
-        .where(and(eq(invoices.schoolId, school.id), ne(invoices.status, "VOIDED"))),
+        .where(
+          and(eq(invoices.schoolId, school.id), ne(invoices.status, "VOIDED"), yearInv),
+        ),
     ),
     withSchool(school.id, (tx) =>
       tx
@@ -71,7 +102,9 @@ export default async function ReportsPage() {
         .from(invoices)
         .innerJoin(students, eq(invoices.studentId, students.id))
         .leftJoin(classes, eq(students.classId, classes.id))
-        .where(and(eq(invoices.schoolId, school.id), ne(invoices.status, "VOIDED")))
+        .where(
+          and(eq(invoices.schoolId, school.id), ne(invoices.status, "VOIDED"), yearInv),
+        )
         .groupBy(classes.name)
         .orderBy(desc(sql`sum(${invoices.balanceAmount})`)),
     ),
@@ -82,7 +115,7 @@ export default async function ReportsPage() {
           amount: sql<string>`coalesce(sum(${payments.netAmount}), 0)`,
         })
         .from(payments)
-        .where(and(eq(payments.schoolId, school.id), isNull(payments.voidedAt)))
+        .where(and(eq(payments.schoolId, school.id), isNull(payments.voidedAt), payWindow))
         .groupBy(sql`to_char(${payments.paidAt}, 'YYYY-MM')`)
         .orderBy(sql`to_char(${payments.paidAt}, 'YYYY-MM')`),
     ),
@@ -94,7 +127,7 @@ export default async function ReportsPage() {
           count: sql<number>`count(*)`,
         })
         .from(payments)
-        .where(and(eq(payments.schoolId, school.id), isNull(payments.voidedAt)))
+        .where(and(eq(payments.schoolId, school.id), isNull(payments.voidedAt), payWindow))
         .groupBy(payments.method),
     ),
     // Outstanding balance bucketed by how far past due it is.
@@ -117,6 +150,7 @@ export default async function ReportsPage() {
             eq(invoices.schoolId, school.id),
             ne(invoices.status, "VOIDED"),
             sql`${invoices.balanceAmount} > 0`,
+            yearInv,
           ),
         )
         .groupBy(sql`1`),
@@ -139,7 +173,9 @@ export default async function ReportsPage() {
         .innerJoin(students, eq(payments.studentId, students.id))
         .leftJoin(receipts, eq(receipts.paymentId, payments.id))
         .leftJoin(users, eq(payments.voidedByUserId, users.id))
-        .where(and(eq(payments.schoolId, school.id), isNotNull(payments.voidedAt)))
+        .where(
+          and(eq(payments.schoolId, school.id), isNotNull(payments.voidedAt), voidWindow),
+        )
         .orderBy(desc(payments.voidedAt))
         .limit(100),
     ),
@@ -167,13 +203,22 @@ export default async function ReportsPage() {
           count: sql<number>`count(*) filter (where ${invoices.discountAmount} > 0)`,
         })
         .from(invoices)
-        .where(and(eq(invoices.schoolId, school.id), ne(invoices.status, "VOIDED"))),
+        .where(
+          and(eq(invoices.schoolId, school.id), ne(invoices.status, "VOIDED"), yearInv),
+        ),
     ),
     withSchool(school.id, (tx) =>
       tx
         .select({ id: feeCategories.id, name: feeCategories.name })
         .from(feeCategories)
         .where(eq(feeCategories.schoolId, school.id)),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .selectDistinct({ year: invoices.academicYear })
+        .from(invoices)
+        .where(eq(invoices.schoolId, school.id))
+        .orderBy(desc(invoices.academicYear)),
     ),
   ]);
 
@@ -244,8 +289,34 @@ export default async function ReportsPage() {
         <h1 className="font-display text-3xl font-semibold text-navy">Reports</h1>
         <p className="text-sm text-navy-3">
           Fees collected, outstanding by class, and collection trends — for the bursar.
+          {selectedYear && (
+            <>
+              {" "}
+              Showing <b className="text-navy">{selectedYear}</b>.
+            </>
+          )}
         </p>
       </div>
+
+      {yearRows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-navy-3">
+            Period
+          </span>
+          <PeriodPill href="/reports" active={!selectedYear}>
+            All time
+          </PeriodPill>
+          {yearRows.map((y) => (
+            <PeriodPill
+              key={y.year}
+              href={`/reports?year=${encodeURIComponent(y.year)}`}
+              active={selectedYear === y.year}
+            >
+              {y.year}
+            </PeriodPill>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {kpis.map((k) => (
@@ -609,5 +680,28 @@ export default async function ReportsPage() {
         )}
       </section>
     </div>
+  );
+}
+
+function PeriodPill({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-pill border px-3 py-1 text-xs font-semibold transition-colors ${
+        active
+          ? "border-navy bg-navy text-bg"
+          : "border-border-2 bg-surface text-navy-2 hover:border-gold"
+      }`}
+    >
+      {children}
+    </Link>
   );
 }
