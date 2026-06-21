@@ -305,14 +305,25 @@ export async function recordPayment(input: unknown): Promise<RecordPaymentResult
 }
 
 // ----------------------------------------------------------------- void payment
+const VoidPaymentSchema = z.object({
+  paymentId: z.string().uuid(),
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Give a reason for voiding (at least 3 characters).")
+    .max(300),
+  isRefund: z.coerce.boolean().default(false),
+});
+
 export type VoidPaymentResult = { ok: true } | { ok: false; error: string };
 
-export async function voidPayment(input: {
-  paymentId: string;
-}): Promise<VoidPaymentResult> {
+export async function voidPayment(input: unknown): Promise<VoidPaymentResult> {
   const { school } = await requireSchool();
-  const paymentId = z.string().uuid().safeParse(input?.paymentId);
-  if (!paymentId.success) return { ok: false, error: "Invalid payment." };
+  const parsed = VoidPaymentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request." };
+  }
+  const d = parsed.data;
   const actor = await resolveActor(school.id);
 
   try {
@@ -320,7 +331,7 @@ export async function voidPayment(input: {
       const [payment] = await tx
         .select()
         .from(payments)
-        .where(and(eq(payments.id, paymentId.data), eq(payments.schoolId, school.id)));
+        .where(and(eq(payments.id, d.paymentId), eq(payments.schoolId, school.id)));
       if (!payment) return { ok: false as const, error: "Payment not found." };
       if (payment.voidedAt) return { ok: false as const, error: "Already voided." };
 
@@ -361,7 +372,12 @@ export async function voidPayment(input: {
 
       await tx
         .update(payments)
-        .set({ voidedAt: new Date(), voidedByUserId: actor.id ?? undefined })
+        .set({
+          voidedAt: new Date(),
+          voidedByUserId: actor.id ?? undefined,
+          voidReason: d.reason,
+          voidIsRefund: d.isRefund,
+        })
         .where(eq(payments.id, payment.id));
       await tx
         .update(receipts)
@@ -374,7 +390,8 @@ export async function voidPayment(input: {
         eventType: "VOIDED",
         actorUserId: actor.id ?? undefined,
         beforeState: { settlementStatus: payment.settlementStatus },
-        notes: "Payment voided",
+        afterState: { isRefund: d.isRefund, reason: d.reason },
+        notes: `${d.isRefund ? "Refunded" : "Voided"}: ${d.reason}`,
       });
 
       return { ok: true as const, studentId: payment.studentId };
