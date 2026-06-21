@@ -14,7 +14,16 @@ type Structure = {
   total: number;
 };
 type ClassOpt = { id: string; name: string };
-type DiscountOpt = { id: string; name: string; kind: string; value: number };
+type DiscountOpt = {
+  id: string;
+  name: string;
+  kind: string;
+  value: number;
+  isTiered: boolean;
+  requiresApproval: boolean;
+  approved: boolean;
+  stackable: boolean;
+};
 
 export function FeeStructureCard({
   structure,
@@ -27,10 +36,17 @@ export function FeeStructureCard({
 }) {
   const router = useRouter();
   const [classId, setClassId] = useState("");
-  const [discountId, setDiscountId] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const usable = (d: DiscountOpt) => !d.requiresApproval || d.approved;
+  function toggle(id: string) {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
 
   async function generate() {
     if (!classId) return;
@@ -40,7 +56,7 @@ export function FeeStructureCard({
     const res = await generateInvoicesForClass({
       structureId: structure.id,
       classId,
-      discountId: discountId || null,
+      discountIds: selected,
     });
     setBusy(false);
     if (res.ok) {
@@ -111,20 +127,6 @@ export function FeeStructureCard({
               </option>
             ))}
           </select>
-          {discounts.length > 0 && (
-            <select
-              value={discountId}
-              onChange={(e) => setDiscountId(e.target.value)}
-              className="rounded-md border border-border-2 bg-bg px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
-            >
-              <option value="">No discount</option>
-              {discounts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name} ({d.kind === "PERCENT" ? `${d.value}%` : ghs(d.value)})
-                </option>
-              ))}
-            </select>
-          )}
           <button
             onClick={generate}
             disabled={busy || !classId}
@@ -133,6 +135,43 @@ export function FeeStructureCard({
             {busy ? "Working…" : "Generate"}
           </button>
         </div>
+
+        {discounts.length > 0 && (
+          <div className="mt-2.5 rounded-lg border border-border-2 bg-bg p-2.5">
+            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-navy-3">
+              Apply discounts <span className="font-normal">— optional, can stack</span>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {discounts.map((d) => {
+                const disabled = !usable(d);
+                return (
+                  <label
+                    key={d.id}
+                    title={disabled ? "Needs head approval before use" : undefined}
+                    className={`flex items-center gap-2 text-sm ${disabled ? "opacity-50" : "text-navy-2"}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(d.id)}
+                      onChange={() => toggle(d.id)}
+                      disabled={disabled}
+                      className="h-4 w-4 accent-navy"
+                    />
+                    {d.name}
+                    <span className="text-xs text-navy-3">
+                      {d.isTiered
+                        ? "(tiered)"
+                        : `(${d.kind === "PERCENT" ? `${d.value}%` : ghs(d.value)})`}
+                      {disabled && " · needs approval"}
+                      {!d.stackable && " · exclusive"}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {msg && <p className="mt-2 text-xs font-medium text-green">{msg}</p>}
         {error && <p className="mt-2 text-xs text-terra">{error}</p>}
       </div>
