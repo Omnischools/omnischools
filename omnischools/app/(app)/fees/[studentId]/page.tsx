@@ -4,7 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { students, invoices, payments, receipts } from "@/db/schema";
-import { num } from "@/lib/fees-helpers";
+import { num, daysOverdue } from "@/lib/fees-helpers";
 import { IssueInvoiceForm } from "@/components/fees/issue-invoice-form";
 import { RecordPaymentForm } from "@/components/fees/record-payment-form";
 import { VoidPaymentButton } from "@/components/fees/void-payment-button";
@@ -106,29 +106,44 @@ export default async function StudentFeesPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {invs.map((i) => (
-                <tr key={i.id}>
-                  <td className="px-4 py-3 font-mono text-xs text-navy-2">
-                    {i.invoiceNumber}
-                  </td>
-                  <td className="px-4 py-3 text-right text-navy">
-                    {ghs(num(i.billedAmount))}
-                  </td>
-                  <td className="px-4 py-3 text-right text-navy-2">
-                    {ghs(num(i.paidAmount))}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium text-navy">
-                    {ghs(num(i.balanceAmount))}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-pill px-2 py-0.5 text-xs font-medium ${INV_STATUS[i.status]}`}
-                    >
-                      {i.status.charAt(0) + i.status.slice(1).toLowerCase()}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {invs.map((i) => {
+                const overdue =
+                  i.status !== "VOIDED" &&
+                  i.status !== "PAID" &&
+                  num(i.balanceAmount) > 0
+                    ? daysOverdue(i.dueAt)
+                    : 0;
+                return (
+                  <tr key={i.id}>
+                    <td className="px-4 py-3 font-mono text-xs text-navy-2">
+                      {i.invoiceNumber}
+                    </td>
+                    <td className="px-4 py-3 text-right text-navy">
+                      {ghs(num(i.billedAmount))}
+                    </td>
+                    <td className="px-4 py-3 text-right text-navy-2">
+                      {ghs(num(i.paidAmount))}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-navy">
+                      {ghs(num(i.balanceAmount))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`rounded-pill px-2 py-0.5 text-xs font-medium ${INV_STATUS[i.status]}`}
+                        >
+                          {i.status.charAt(0) + i.status.slice(1).toLowerCase()}
+                        </span>
+                        {overdue > 0 && (
+                          <span className="rounded-pill bg-terra-bg px-2 py-0.5 text-xs font-medium text-terra">
+                            Overdue {overdue}d
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
