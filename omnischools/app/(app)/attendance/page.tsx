@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, eq, asc, sql } from "drizzle-orm";
+import { and, eq, asc, gte, lte, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import {
@@ -7,9 +7,11 @@ import {
   students,
   attendanceRecords,
   attendanceCorrections,
+  academicPeriod,
   users,
 } from "@/db/schema";
 import { NewClassForm, AssignStudent } from "@/components/attendance/class-controls";
+import { computeAttendanceFlags } from "@/lib/attendance-flags";
 
 export const dynamic = "force-dynamic";
 
@@ -85,11 +87,60 @@ export default async function AttendancePage() {
           ),
         )
     ).length;
-    return { cls, studs, todayRecs, yAgg, pendingCorrections };
+    // Current term's records, to compute who needs attention.
+    const [term] = await tx
+      .select({ startsOn: academicPeriod.startsOn, endsOn: academicPeriod.endsOn })
+      .from(academicPeriod)
+      .where(
+        and(
+          eq(academicPeriod.schoolId, school.id),
+          lte(academicPeriod.startsOn, today),
+          gte(academicPeriod.endsOn, today),
+        ),
+      )
+      .limit(1);
+    const termRecs = term
+      ? await tx
+          .select({
+            studentId: attendanceRecords.studentId,
+            date: attendanceRecords.date,
+            status: attendanceRecords.status,
+          })
+          .from(attendanceRecords)
+          .where(
+            and(
+              eq(attendanceRecords.schoolId, school.id),
+              gte(attendanceRecords.date, term.startsOn),
+              lte(attendanceRecords.date, term.endsOn),
+            ),
+          )
+      : [];
+    return { cls, studs, todayRecs, yAgg, pendingCorrections, termRecs };
   });
 
   const unassigned = data.studs.filter((s) => !s.classId);
   const classOptions = data.cls.map((c) => ({ id: c.id, name: c.name }));
+
+  // Threshold-based "needs attention" list over the current term.
+  const flagMap = computeAttendanceFlags(data.termRecs);
+  const classNameById = new Map(data.cls.map((c) => [c.id, c.name]));
+  const sevRank = (w: string | null) =>
+    w === "CRITICAL" ? 0 : w === "WATCHING" ? 1 : 2;
+  const needsAttention = data.studs
+    .map((s) => ({ s, f: flagMap.get(s.id) }))
+    .filter((x) => x.f && x.f.flags.length > 0)
+    .map((x) => ({
+      id: x.s.id,
+      name: `${x.s.lastName}, ${x.s.firstName}`,
+      code: x.s.code,
+      className: x.s.classId ? (classNameById.get(x.s.classId) ?? null) : null,
+      ...x.f!,
+    }))
+    .sort(
+      (a, b) =>
+        sevRank(a.worst) - sevRank(b.worst) || (a.termPct ?? 100) - (b.termPct ?? 100),
+    )
+    .slice(0, 50);
 
   // Per-class roll-up of today.
   type ClassView = {
@@ -283,6 +334,86 @@ export default async function AttendancePage() {
               </Link>
             ))}
           </div>
+
+          {/* Students needing attention */}
+          {needsAttention.length > 0 && (
+            <section className="mt-8">
+              <h2 className="mb-3 font-display text-lg font-semibold text-navy">
+                Students needing attention{" "}
+                <span className="text-sm font-normal text-navy-3">
+                  ({needsAttention.length})
+                </span>
+              </h2>
+              <div className="overflow-hidden rounded-xl border border-border bg-surface">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Student</th>
+                      <th className="px-4 py-3 font-semibold">Flag</th>
+                      <th className="px-4 py-3 text-right font-semibold">Term</th>
+                      <th className="px-4 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {needsAttention.map((s) => (
+                      <tr key={s.id} className="hover:bg-bg">
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-navy">{s.name}</div>
+                          <div className="font-mono text-xs text-navy-3">
+                            {s.code}
+                            {s.className ? ` · ${s.className}` : ""}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            {s.flags.map((f) => (
+                              <span
+                                key={f.type}
+                                title={f.detail}
+                                className={`rounded-pill px-2 py-0.5 text-xs font-medium ${
+                                  f.severity === "CRITICAL"
+                                    ? "bg-terra-bg text-terra"
+                                    : "bg-warn-bg text-warn"
+                                }`}
+                              >
+                                {f.label}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span
+                            className={`text-sm font-semibold ${
+                              s.termPct === null
+                                ? "text-navy-3"
+                                : s.termPct < 60
+                                  ? "text-terra"
+                                  : s.termPct < 70
+                                    ? "text-warn"
+                                    : "text-navy-2"
+                            }`}
+                          >
+                            {s.termPct === null ? "—" : `${s.termPct}%`}
+                          </span>
+                          <span className="ml-1 text-[11px] text-navy-3">
+                            {s.attended}/{s.total}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Link
+                            href={`/students/${s.id}`}
+                            className="text-xs font-semibold text-gold hover:underline"
+                          >
+                            View →
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
         </>
       )}
 
