@@ -4,7 +4,7 @@ import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
-import { sendSms } from "@/lib/sms";
+import { sendSms, smsSegments, SMS_SEGMENT_RATE_GHS } from "@/lib/sms";
 import { safeRevalidate } from "@/lib/revalidate";
 import { round2, toMoney, num, nextInvoiceNumber } from "@/lib/fees-helpers";
 import {
@@ -309,6 +309,86 @@ export async function generateInvoicesForClass(input: unknown): Promise<Generate
 }
 
 // ---------------------------------------------------------------- reminders
+/** The SMS body sent to a guardian about an outstanding balance. */
+function feeReminderMessage(sender: string, firstName: string, amount: number): string {
+  return `${sender}: Dear parent, ${firstName} has an outstanding fee balance of GHS ${toMoney(amount)}. Kindly settle at your earliest convenience. Thank you.`;
+}
+
+/** Outstanding-balance rows (one per student) with the primary guardian phone. */
+function reminderRows(schoolId: string) {
+  return withSchool(schoolId, (tx) =>
+    tx
+      .select({
+        studentId: invoices.studentId,
+        firstName: students.firstName,
+        outstanding: sql<string>`sum(${invoices.balanceAmount})`,
+        phone: studentGuardians.phone,
+      })
+      .from(invoices)
+      .innerJoin(students, eq(invoices.studentId, students.id))
+      .leftJoin(
+        studentGuardians,
+        and(
+          eq(studentGuardians.studentId, students.id),
+          eq(studentGuardians.isPrimary, true),
+        ),
+      )
+      .where(
+        and(
+          eq(invoices.schoolId, schoolId),
+          inArray(invoices.status, ["ISSUED", "PARTIAL", "OVERDUE"]),
+          sql`${invoices.balanceAmount} > 0`,
+        ),
+      )
+      .groupBy(invoices.studentId, students.firstName, studentGuardians.phone)
+      .limit(1000),
+  );
+}
+
+export type ReminderPreview = {
+  recipients: number; // families with a phone on file (will receive an SMS)
+  noPhone: number; // families with a balance but no phone (skipped)
+  totalOutstanding: number;
+  segments: number; // total SMS segments across all recipients
+  estCost: number; // segments × per-segment rate, in GHS
+};
+
+export async function previewFeeReminders(): Promise<
+  { ok: true; preview: ReminderPreview } | { ok: false; error: string }
+> {
+  const { school } = await requireSchool();
+  try {
+    const rows = await reminderRows(school.id);
+    const sender = school.shortName ?? "Omnischools";
+    let recipients = 0;
+    let noPhone = 0;
+    let segments = 0;
+    let totalOutstanding = 0;
+    for (const r of rows) {
+      const amount = num(r.outstanding);
+      totalOutstanding = round2(totalOutstanding + amount);
+      if (!r.phone) {
+        noPhone++;
+        continue;
+      }
+      recipients++;
+      segments += smsSegments(feeReminderMessage(sender, r.firstName, amount));
+    }
+    return {
+      ok: true,
+      preview: {
+        recipients,
+        noPhone,
+        totalOutstanding,
+        segments,
+        estCost: round2(segments * SMS_SEGMENT_RATE_GHS),
+      },
+    };
+  } catch {
+    return { ok: false, error: "Could not load the reminder preview." };
+  }
+}
+
 export type RemindersResult =
   | { ok: true; sent: number; noPhone: number }
   | { ok: false; error: string };
@@ -317,34 +397,7 @@ export async function sendFeeReminders(): Promise<RemindersResult> {
   const { school } = await requireSchool();
   const actor = await resolveActor(school.id);
   try {
-    const rows = await withSchool(school.id, (tx) =>
-      tx
-        .select({
-          studentId: invoices.studentId,
-          firstName: students.firstName,
-          outstanding: sql<string>`sum(${invoices.balanceAmount})`,
-          phone: studentGuardians.phone,
-        })
-        .from(invoices)
-        .innerJoin(students, eq(invoices.studentId, students.id))
-        .leftJoin(
-          studentGuardians,
-          and(
-            eq(studentGuardians.studentId, students.id),
-            eq(studentGuardians.isPrimary, true),
-          ),
-        )
-        .where(
-          and(
-            eq(invoices.schoolId, school.id),
-            inArray(invoices.status, ["ISSUED", "PARTIAL", "OVERDUE"]),
-            sql`${invoices.balanceAmount} > 0`,
-          ),
-        )
-        .groupBy(invoices.studentId, students.firstName, studentGuardians.phone)
-        .limit(1000),
-    );
-
+    const rows = await reminderRows(school.id);
     let sent = 0;
     let noPhone = 0;
     const sender = school.shortName ?? "Omnischools";
@@ -353,7 +406,7 @@ export async function sendFeeReminders(): Promise<RemindersResult> {
         noPhone++;
         continue;
       }
-      const msg = `${sender}: Dear parent, ${r.firstName} has an outstanding fee balance of GHS ${toMoney(num(r.outstanding))}. Kindly settle at your earliest convenience. Thank you.`;
+      const msg = feeReminderMessage(sender, r.firstName, num(r.outstanding));
       await sendSms(r.phone, msg);
       await withSchool(school.id, (tx) =>
         tx.insert(notificationLog).values({
