@@ -71,3 +71,17 @@ export function getSmsProvider(): SmsProvider {
 export async function sendSms(to: string, body: string): Promise<SmsResult> {
   return getSmsProvider().send({ to, body });
 }
+
+/** Estimated cost per SMS segment in GHS (Hubtel-style bulk rate). */
+export const SMS_SEGMENT_RATE_GHS = 0.035;
+
+/**
+ * Number of SMS segments a GSM-7 message occupies: one segment up to 160 chars,
+ * then 153 chars per segment once it concatenates. Used to estimate send cost
+ * before a bulk reminder run. Names are ASCII so GSM-7 is a fair assumption.
+ */
+export function smsSegments(body: string): number {
+  const len = body.length;
+  if (len === 0) return 0;
+  return len <= 160 ? 1 : Math.ceil(len / 153);
+}
