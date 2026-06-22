@@ -1,11 +1,22 @@
 /**
- * Threshold-based attendance flags, computed from a term's records. Two rules
- * (matching the alerts surface): long absence (consecutive absent days) and
- * below-threshold (term attendance %). Each escalates Watching → Critical.
- * Pattern-shift / anomaly detection is deferred to MVP2.
+ * Attendance flags computed from a term's records, matching the alerts surface:
+ * long absence (consecutive absent days), below-threshold (term attendance %),
+ * and pattern shift (same-day-of-week absences, or a rolling-14-day drop).
+ * Long-absence / below-threshold escalate Watching → Critical; pattern shift is
+ * Watching only (per the surface).
  */
 export type FlagSeverity = "WATCHING" | "CRITICAL";
-export type FlagType = "LONG_ABSENCE" | "BELOW_THRESHOLD";
+export type FlagType = "LONG_ABSENCE" | "BELOW_THRESHOLD" | "PATTERN_SHIFT";
+
+const WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 export type AttendanceFlag = {
   type: FlagType;
@@ -29,6 +40,10 @@ export const FLAG_THRESHOLDS = {
   absCritical: 5,
   pctWatch: 70,
   pctCritical: 60,
+  // pattern shift
+  dropPct: 30, // ≥30-point fall, recent 14 days vs the prior 14
+  dowWindow: 6, // look at the last 6 occurrences of a weekday…
+  dowMiss: 4, // …and flag if ≥4 were absent
 };
 
 type Rec = { studentId: string; date: string; status: string };
@@ -81,6 +96,58 @@ export function computeAttendanceFlags(
         label: critical ? "Below 60%" : "Below 70%",
         detail: `term attendance ${termPct}%`,
       });
+    }
+
+    // Pattern shift — only worth checking with a few weeks of history.
+    if (total >= 8) {
+      // (a) same day-of-week: the last `dowWindow` occurrences of a weekday,
+      // flagged when ≥`dowMiss` were absent (e.g. "Pattern · Fridays").
+      const byDow = new Map<number, Rec[]>();
+      for (const r of recs) {
+        const dow = new Date(`${r.date}T00:00:00Z`).getUTCDay();
+        const arr = byDow.get(dow) ?? [];
+        arr.push(r);
+        byDow.set(dow, arr);
+      }
+      let dowFlag: { day: number; missed: number } | null = null;
+      for (const [day, list] of Array.from(byDow)) {
+        const recent = list.slice(-thresholds.dowWindow);
+        if (recent.length < thresholds.dowWindow) continue;
+        const missed = recent.filter((r) => r.status === "ABSENT").length;
+        if (missed >= thresholds.dowMiss && (!dowFlag || missed > dowFlag.missed)) {
+          dowFlag = { day, missed };
+        }
+      }
+      if (dowFlag) {
+        flags.push({
+          type: "PATTERN_SHIFT",
+          severity: "WATCHING",
+          label: `Pattern · ${WEEKDAYS[dowFlag.day]}s`,
+          detail: `absent ${dowFlag.missed} of the last ${thresholds.dowWindow} ${WEEKDAYS[dowFlag.day]}s`,
+        });
+      } else {
+        // (b) rolling drop: recent 14 days vs the prior 14.
+        const recent = recs.slice(-14);
+        const prior = recs.slice(-28, -14);
+        if (prior.length >= 5 && recent.length >= 5) {
+          const pct = (arr: Rec[]) =>
+            Math.round(
+              (arr.filter((r) => r.status === "PRESENT" || r.status === "LATE").length /
+                arr.length) *
+                100,
+            );
+          const recentPct = pct(recent);
+          const priorPct = pct(prior);
+          if (priorPct - recentPct >= thresholds.dropPct) {
+            flags.push({
+              type: "PATTERN_SHIFT",
+              severity: "WATCHING",
+              label: "Pattern shift",
+              detail: `${priorPct}% → ${recentPct}% over 2 weeks`,
+            });
+          }
+        }
+      }
     }
 
     const worst: FlagSeverity | null = flags.some((f) => f.severity === "CRITICAL")
