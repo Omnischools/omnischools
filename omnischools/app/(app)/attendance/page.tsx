@@ -17,7 +17,9 @@ import { CorrectionActions } from "@/components/attendance/correction-actions";
 import { computeAttendanceFlags, FLAG_THRESHOLDS } from "@/lib/attendance-flags";
 import { NeedsAttention } from "@/components/attendance/needs-attention";
 import { TermTrend } from "@/components/attendance/term-trend";
+import { ExportCsv } from "@/components/reports/export-csv";
 import { termDayProgress } from "@/lib/school-calendar";
+import { schoolFile } from "@/lib/filename";
 
 export const dynamic = "force-dynamic";
 
@@ -326,6 +328,35 @@ export default async function AttendancePage() {
     pctCritical: data.cfg?.pctCritical ?? FLAG_THRESHOLDS.pctCritical,
   });
   const classNameById = new Map(data.cls.map((c) => [c.id, c.name]));
+
+  // Per-student term summary, for the "Export term report" CSV.
+  const summaryByStudent = new Map<string, Record<string, number>>();
+  for (const r of data.termRecs) {
+    const m = summaryByStudent.get(r.studentId) ?? {};
+    m[r.status] = (m[r.status] ?? 0) + 1;
+    summaryByStudent.set(r.studentId, m);
+  }
+  const reportRows = data.studs.map((s) => {
+    const m = summaryByStudent.get(s.id) ?? {};
+    const present = m.PRESENT ?? 0;
+    const late = m.LATE ?? 0;
+    const excused = (m.EXCUSED ?? 0) + (m.MEDICAL ?? 0);
+    const absent = m.ABSENT ?? 0;
+    const total = present + late + excused + absent;
+    const pct = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+    return [
+      s.code,
+      `${s.lastName}, ${s.firstName}`,
+      s.classId ? (classNameById.get(s.classId) ?? "") : "",
+      String(present),
+      String(late),
+      String(excused),
+      String(absent),
+      String(total),
+      String(pct),
+    ];
+  });
+
   // Last-14-school-days status series per student, for the attention sparkline.
   const last14ByStudent = new Map<string, { date: string; status: string }[]>();
   for (const r of data.termRecs) {
@@ -423,10 +454,32 @@ export default async function AttendancePage() {
               : ""}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/attendance/term-grid"
+            className="border-border-2 bg-surface rounded-md border px-3.5 py-2.5 text-sm font-semibold text-navy hover:border-gold"
+          >
+            View term grid
+          </Link>
+          <ExportCsv
+            filename={schoolFile(school.name, "term-attendance.csv")}
+            headers={[
+              "Code",
+              "Student",
+              "Class",
+              "Present",
+              "Late",
+              "Excused",
+              "Absent",
+              "Marked days",
+              "Rate %",
+            ]}
+            rows={reportRows}
+            label="Export term report"
+          />
           <Link
             href="/attendance/corrections"
-            className="border-border-2 bg-surface rounded-md border px-4 py-2.5 text-sm font-semibold text-navy hover:bg-gold-bg"
+            className="border-border-2 bg-surface rounded-md border px-3.5 py-2.5 text-sm font-semibold text-navy hover:bg-gold-bg"
           >
             Corrections
             {data.pendingCorrections > 0 ? ` (${data.pendingCorrections})` : ""}
