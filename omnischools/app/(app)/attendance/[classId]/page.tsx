@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, desc, eq, inArray, gte, lt, lte } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, gte, lt, lte, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import {
@@ -15,6 +15,12 @@ import {
 import { computeAttendanceFlags } from "@/lib/attendance-flags";
 import { termDayProgress } from "@/lib/school-calendar";
 import { TakeRegister, type RegisterRow } from "@/components/attendance/take-register";
+import {
+  RegisterSwitcher,
+  type SwitcherClass,
+  type SwitcherSeg,
+  type EarlierReg,
+} from "@/components/attendance/register-switcher";
 import type { AttendanceStatus } from "@/lib/attendance-status";
 
 export const dynamic = "force-dynamic";
@@ -26,14 +32,51 @@ const fmtLongDate = (iso: string) =>
     month: "long",
   });
 
-const fmtCloseAt = (ms: number) =>
-  new Date(ms).toLocaleString("en-GB", {
+const fmtShortDate = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", {
+    weekday: "short",
     day: "numeric",
     month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
+
+const fmtTime = (d: Date) =>
+  upperMeridiem(
+    d.toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true }),
+  );
+
+const STATUS_KINDS = ["PRESENT", "LATE", "EXCUSED", "MEDICAL", "ABSENT"] as const;
+
+/** Sparkline segments + marked total from a status→count tally. */
+function buildSegs(
+  counts: Record<string, number>,
+  studentCount: number,
+): { segs: SwitcherSeg[]; marked: number } {
+  const segs: SwitcherSeg[] = STATUS_KINDS.filter((k) => (counts[k] ?? 0) > 0).map((k) => ({
+    kind: k,
+    n: counts[k],
+  }));
+  const marked = STATUS_KINDS.reduce((s, k) => s + (counts[k] ?? 0), 0);
+  const unmarked = Math.max(studentCount - marked, 0);
+  if (unmarked > 0 || segs.length === 0)
+    segs.push({ kind: "UNMARKED", n: unmarked || studentCount || 1 });
+  return { segs, marked };
+}
+
+const toMs = (d: unknown) =>
+  (d instanceof Date ? d : new Date(d as string)).getTime();
+
+const upperMeridiem = (s: string) => s.replace(/\b(am|pm)\b/i, (m) => m.toUpperCase());
+
+const fmtCloseAt = (ms: number) =>
+  upperMeridiem(
+    new Date(ms).toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }),
+  );
 
 export default async function TakeAttendancePage({
   params,
@@ -144,26 +187,39 @@ export default async function TakeAttendancePage({
             )
         : [];
 
-    // The most recent earlier register for this class → "Copy from yesterday".
-    const [prev] = await tx
-      .select({ date: attendanceRecords.date })
+    // Switcher rail: every active class + its register state today.
+    const allClasses = await tx
+      .select({ id: classes.id, name: classes.name })
+      .from(classes)
+      .where(and(eq(classes.schoolId, school.id), eq(classes.active, true)))
+      .orderBy(asc(classes.name));
+    const studentCounts = await tx
+      .select({ classId: students.classId, n: sql<number>`count(*)::int` })
+      .from(students)
+      .where(and(eq(students.schoolId, school.id), eq(students.status, "ACTIVE")))
+      .groupBy(students.classId);
+    const todayRecs = await tx
+      .select({
+        classId: attendanceRecords.classId,
+        status: attendanceRecords.status,
+        markedAt: attendanceRecords.markedAt,
+      })
+      .from(attendanceRecords)
+      .where(and(eq(attendanceRecords.schoolId, school.id), eq(attendanceRecords.date, date)));
+
+    // The active class's earlier registers → "Earlier this week" + Copy from yesterday.
+    const earlierRecs = await tx
+      .select({
+        date: attendanceRecords.date,
+        studentId: attendanceRecords.studentId,
+        status: attendanceRecords.status,
+        reasonCode: attendanceRecords.reasonCode,
+        note: attendanceRecords.note,
+        markedAt: attendanceRecords.markedAt,
+      })
       .from(attendanceRecords)
       .where(and(eq(attendanceRecords.classId, cls.id), lt(attendanceRecords.date, date)))
-      .orderBy(desc(attendanceRecords.date))
-      .limit(1);
-    const prevRecs = prev
-      ? await tx
-          .select({
-            studentId: attendanceRecords.studentId,
-            status: attendanceRecords.status,
-            reasonCode: attendanceRecords.reasonCode,
-            note: attendanceRecords.note,
-          })
-          .from(attendanceRecords)
-          .where(
-            and(eq(attendanceRecords.classId, cls.id), eq(attendanceRecords.date, prev.date)),
-          )
-      : [];
+      .orderBy(desc(attendanceRecords.date));
 
     return {
       cls,
@@ -172,7 +228,10 @@ export default async function TakeAttendancePage({
       termRecs,
       term,
       holidays,
-      prev: prev ? { date: prev.date, recs: prevRecs } : null,
+      allClasses,
+      studentCounts,
+      todayRecs,
+      earlierRecs,
       editWindowHours: cfg?.editWindowHours ?? 24,
     };
   });
@@ -224,11 +283,76 @@ export default async function TakeAttendancePage({
     ? termDayProgress(data.term.startsOn, data.term.endsOn, date, data.holidays)
     : null;
 
-  const yesterday = data.prev
+  // ── Switcher rail: today's register state per class ──────────────────
+  const countMap = new Map(data.studentCounts.map((s) => [s.classId, s.n]));
+  type Today = { counts: Record<string, number>; oldest: number };
+  const todayByClass = new Map<string, Today>();
+  for (const r of data.todayRecs) {
+    const t = todayByClass.get(r.classId) ?? { counts: {}, oldest: Infinity };
+    t.counts[r.status] = (t.counts[r.status] ?? 0) + 1;
+    t.oldest = Math.min(t.oldest, toMs(r.markedAt));
+    todayByClass.set(r.classId, t);
+  }
+  const switcherClasses: SwitcherClass[] = data.allClasses.map((c) => {
+    const studentCount = countMap.get(c.id) ?? 0;
+    const t = todayByClass.get(c.id);
+    const { segs, marked } = buildSegs(t?.counts ?? {}, studentCount);
+    let state: SwitcherClass["state"];
+    let metaLine: string;
+    if (marked === 0) {
+      state = "PENDING";
+      metaLine = "Not yet marked";
+    } else {
+      const isLocked =
+        windowH > 0 && t!.oldest !== Infinity && Date.now() - t!.oldest > windowH * 3_600_000;
+      const markedAtLabel = t!.oldest !== Infinity ? fmtTime(new Date(t!.oldest)) : null;
+      if (isLocked) {
+        state = "LOCKED";
+        metaLine = `marked ${markedAtLabel}`;
+      } else if (marked < studentCount) {
+        state = "PARTIAL";
+        metaLine = `${marked}/${studentCount} marked`;
+      } else {
+        state = "DONE";
+        metaLine = `marked ${markedAtLabel}`;
+      }
+    }
+    return { id: c.id, name: c.name, studentCount, state, metaLine, segs };
+  });
+
+  // ── Earlier registers for the active class (grouped by date, newest first) ──
+  const earlierByDate = new Map<
+    string,
+    { studentId: string; status: string; reasonCode: string | null; note: string | null; markedAt: unknown }[]
+  >();
+  for (const r of data.earlierRecs) {
+    const arr = earlierByDate.get(r.date) ?? [];
+    arr.push(r);
+    earlierByDate.set(r.date, arr);
+  }
+  const earlierDates = Array.from(earlierByDate.keys()); // already desc from the query
+  const earlier: EarlierReg[] = earlierDates.slice(0, 3).map((iso) => {
+    const recs = earlierByDate.get(iso)!;
+    const counts: Record<string, number> = {};
+    let oldest = Infinity;
+    for (const r of recs) {
+      counts[r.status] = (counts[r.status] ?? 0) + 1;
+      oldest = Math.min(oldest, toMs(r.markedAt));
+    }
+    const { segs } = buildSegs(counts, roster.length);
+    return {
+      iso,
+      dateLabel: fmtShortDate(iso),
+      markedAtLabel: oldest !== Infinity ? fmtTime(new Date(oldest)) : null,
+      segs,
+    };
+  });
+
+  const yesterday = earlierDates.length
     ? {
-        date: fmtLongDate(data.prev.date),
+        date: fmtLongDate(earlierDates[0]),
         entries: Object.fromEntries(
-          data.prev.recs.map((r) => [
+          earlierByDate.get(earlierDates[0])!.map((r) => [
             r.studentId,
             {
               status: r.status as AttendanceStatus,
@@ -265,21 +389,29 @@ export default async function TakeAttendancePage({
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <TakeRegister
-        classId={data.cls.id}
-        date={date}
-        roster={roster}
-        locked={locked}
-        className={data.cls.name}
-        dateLabel={fmtLongDate(date)}
-        teacher={data.cls.teacher ?? null}
-        termLabel={data.term?.label ?? null}
-        dayOf={progress?.dayOf ?? null}
-        editWindowHours={windowH}
-        windowCloseLabel={windowCloseLabel}
-        yesterday={yesterday}
+    <div className="flex gap-6">
+      <RegisterSwitcher
+        dateLabel={fmtShortDate(date)}
+        classes={switcherClasses}
+        earlier={earlier}
+        activeId={data.cls.id}
       />
+      <div className="min-w-0 flex-1">
+        <TakeRegister
+          classId={data.cls.id}
+          date={date}
+          roster={roster}
+          locked={locked}
+          className={data.cls.name}
+          dateLabel={fmtLongDate(date)}
+          teacher={data.cls.teacher ?? null}
+          termLabel={data.term?.label ?? null}
+          dayOf={progress?.dayOf ?? null}
+          editWindowHours={windowH}
+          windowCloseLabel={windowCloseLabel}
+          yesterday={yesterday}
+        />
+      </div>
     </div>
   );
 }
