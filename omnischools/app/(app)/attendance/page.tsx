@@ -13,6 +13,7 @@ import {
   users,
 } from "@/db/schema";
 import { NewClassForm, AssignStudent } from "@/components/attendance/class-controls";
+import { CorrectionActions } from "@/components/attendance/correction-actions";
 import { computeAttendanceFlags, FLAG_THRESHOLDS } from "@/lib/attendance-flags";
 import { NeedsAttention } from "@/components/attendance/needs-attention";
 import { TermTrend } from "@/components/attendance/term-trend";
@@ -28,6 +29,15 @@ const fmtShort = (iso: string) =>
     day: "numeric",
     month: "short",
   });
+
+const STATUS_PILL: Record<string, string> = {
+  PRESENT: "bg-green-bg text-green",
+  LATE: "bg-warn-bg text-warn",
+  EXCUSED: "bg-bg text-navy-2",
+  MEDICAL: "bg-gold-bg text-navy",
+  ABSENT: "bg-terra-bg text-terra",
+};
+const capWord = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
 // today's segments, in display order
 const SEG: { key: string; label: string; tone: string }[] = [
@@ -181,6 +191,33 @@ export default async function AttendancePage() {
         prevAvg = agg && agg.total > 0 ? Math.round((agg.attended / agg.total) * 100) : null;
       }
     }
+    // §05 — pending register edit requests awaiting the head's co-sign.
+    const editRequests = await tx
+      .select({
+        id: attendanceCorrections.id,
+        requestedStatus: attendanceCorrections.requestedStatus,
+        reason: attendanceCorrections.reason,
+        date: attendanceRecords.date,
+        currentStatus: attendanceRecords.status,
+        firstName: students.firstName,
+        lastName: students.lastName,
+        requestedBy: users.fullName,
+      })
+      .from(attendanceCorrections)
+      .innerJoin(
+        attendanceRecords,
+        eq(attendanceCorrections.attendanceRecordId, attendanceRecords.id),
+      )
+      .innerJoin(students, eq(attendanceRecords.studentId, students.id))
+      .leftJoin(users, eq(attendanceCorrections.requestedByUserId, users.id))
+      .where(
+        and(
+          eq(attendanceCorrections.schoolId, school.id),
+          eq(attendanceCorrections.status, "PENDING"),
+        ),
+      )
+      .orderBy(desc(attendanceCorrections.createdAt))
+      .limit(6);
     return {
       cls,
       studs,
@@ -192,6 +229,7 @@ export default async function AttendancePage() {
       term,
       holidays,
       prevAvg,
+      editRequests,
     };
   });
 
@@ -573,6 +611,64 @@ export default async function AttendancePage() {
 
           {/* 04 · Students needing attention */}
           {needsAttention.length > 0 && <NeedsAttention students={needsAttention} />}
+
+          {/* 05 · Register edit requests */}
+          {data.editRequests.length > 0 && (
+            <section className="mt-8">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-display text-lg font-semibold text-navy">
+                  Register edit requests{" "}
+                  <span className="text-sm font-normal text-navy-3">
+                    ({data.pendingCorrections})
+                  </span>
+                </h2>
+                <Link
+                  href="/attendance/corrections"
+                  className="text-xs font-semibold text-gold hover:underline"
+                >
+                  View all →
+                </Link>
+              </div>
+              <div className="space-y-2">
+                {data.editRequests.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium text-navy">
+                        {r.lastName}, {r.firstName}{" "}
+                        <span className="text-xs text-navy-3">· {r.date}</span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span
+                          className={`rounded-pill px-2 py-0.5 text-xs font-semibold ${STATUS_PILL[r.currentStatus] ?? "bg-bg text-navy-3"}`}
+                        >
+                          {capWord(r.currentStatus)}
+                        </span>
+                        <span className="text-navy-3">→</span>
+                        <span
+                          className={`rounded-pill px-2 py-0.5 text-xs font-semibold ${STATUS_PILL[r.requestedStatus] ?? "bg-bg text-navy-3"}`}
+                        >
+                          {capWord(r.requestedStatus)}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 border-l-2 border-gold-soft pl-2 text-xs italic text-navy-2">
+                        “{r.reason}”
+                      </p>
+                      <div className="mt-0.5 text-[11px] text-navy-3">
+                        Requested by{" "}
+                        <span className="font-medium text-navy-2">
+                          {r.requestedBy ?? "a teacher"}
+                        </span>
+                      </div>
+                    </div>
+                    <CorrectionActions correctionId={r.id} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
 
