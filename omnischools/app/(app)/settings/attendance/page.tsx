@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { attendanceSettings } from "@/db/schema";
+import { attendanceSettings, schoolHolidays } from "@/db/schema";
 import {
   ATTENDANCE_SETTINGS_DEFAULTS,
   type AttendanceSettings,
 } from "@/lib/attendance-settings";
 import { AttendanceSettingsForm } from "@/components/settings/attendance-settings-form";
+import { HolidaysManager } from "@/components/settings/holidays-manager";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Attendance settings" };
@@ -20,6 +21,19 @@ export default async function AttendanceSettingsPage() {
       .from(attendanceSettings)
       .where(eq(attendanceSettings.schoolId, school.id))
       .limit(1),
+  );
+  const holidays = await withSchool(school.id, (tx) =>
+    tx
+      .select({
+        id: schoolHolidays.id,
+        name: schoolHolidays.name,
+        startsOn: schoolHolidays.startsOn,
+        endsOn: schoolHolidays.endsOn,
+        kind: schoolHolidays.kind,
+      })
+      .from(schoolHolidays)
+      .where(eq(schoolHolidays.schoolId, school.id))
+      .orderBy(asc(schoolHolidays.startsOn)),
   );
 
   const initial: AttendanceSettings = row
@@ -50,7 +64,10 @@ export default async function AttendanceSettingsPage() {
           the attendance module.
         </p>
       </div>
-      <AttendanceSettingsForm initial={initial} />
+      <div className="space-y-6">
+        <AttendanceSettingsForm initial={initial} />
+        <HolidaysManager holidays={holidays} />
+      </div>
     </div>
   );
 }
