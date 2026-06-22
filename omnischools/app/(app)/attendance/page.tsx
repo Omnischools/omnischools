@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, eq, asc, gte, lte, sql } from "drizzle-orm";
+import { and, eq, asc, desc, gte, lte, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import {
@@ -15,12 +15,19 @@ import {
 import { NewClassForm, AssignStudent } from "@/components/attendance/class-controls";
 import { computeAttendanceFlags, FLAG_THRESHOLDS } from "@/lib/attendance-flags";
 import { NeedsAttention } from "@/components/attendance/needs-attention";
+import { TermTrend } from "@/components/attendance/term-trend";
 import { termDayProgress } from "@/lib/school-calendar";
 
 export const dynamic = "force-dynamic";
 
 const fmtTime = (d: Date) =>
   d.toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true });
+const fmtShort = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 
 // today's segments, in display order
 const SEG: { key: string; label: string; tone: string }[] = [
@@ -55,6 +62,7 @@ export default async function AttendancePage() {
         firstName: students.firstName,
         lastName: students.lastName,
         code: students.studentCode,
+        sex: students.sex,
       })
       .from(students)
       .where(and(eq(students.schoolId, school.id), eq(students.status, "ACTIVE")));
@@ -142,7 +150,49 @@ export default async function AttendancePage() {
       .from(attendanceSettings)
       .where(eq(attendanceSettings.schoolId, school.id))
       .limit(1);
-    return { cls, studs, todayRecs, yAgg, pendingCorrections, termRecs, cfg, term, holidays };
+    // Previous term's average, for the trend headline's "vs previous term".
+    let prevAvg: number | null = null;
+    if (term) {
+      const [prev] = await tx
+        .select({ startsOn: academicPeriod.startsOn, endsOn: academicPeriod.endsOn })
+        .from(academicPeriod)
+        .where(
+          and(
+            eq(academicPeriod.schoolId, school.id),
+            lte(academicPeriod.endsOn, term.startsOn),
+          ),
+        )
+        .orderBy(desc(academicPeriod.endsOn))
+        .limit(1);
+      if (prev) {
+        const [agg] = await tx
+          .select({
+            attended: sql<number>`sum(case when ${attendanceRecords.status} in ('PRESENT','LATE') then 1 else 0 end)::int`,
+            total: sql<number>`count(*)::int`,
+          })
+          .from(attendanceRecords)
+          .where(
+            and(
+              eq(attendanceRecords.schoolId, school.id),
+              gte(attendanceRecords.date, prev.startsOn),
+              lte(attendanceRecords.date, prev.endsOn),
+            ),
+          );
+        prevAvg = agg && agg.total > 0 ? Math.round((agg.attended / agg.total) * 100) : null;
+      }
+    }
+    return {
+      cls,
+      studs,
+      todayRecs,
+      yAgg,
+      pendingCorrections,
+      termRecs,
+      cfg,
+      term,
+      holidays,
+      prevAvg,
+    };
   });
 
   const unassigned = data.studs.filter((s) => !s.classId);
@@ -157,6 +207,77 @@ export default async function AttendancePage() {
   const progress = data.term
     ? termDayProgress(data.term.startsOn, data.term.endsOn, today, data.holidays)
     : null;
+
+  // §03 trend — daily attendance % over the term: school / by-gender / by-class.
+  type Bucket = { att: number; tot: number };
+  const bump = (m: Map<string, Bucket>, k: string, present: boolean) => {
+    const b = m.get(k) ?? { att: 0, tot: 0 };
+    b.tot++;
+    if (present) b.att++;
+    m.set(k, b);
+  };
+  const trendMeta = new Map(data.studs.map((s) => [s.id, s]));
+  const dayAll = new Map<string, Bucket>();
+  const dayMale = new Map<string, Bucket>();
+  const dayFemale = new Map<string, Bucket>();
+  const dayByClass = new Map<string, Map<string, Bucket>>();
+  for (const r of data.termRecs) {
+    const present = r.status === "PRESENT" || r.status === "LATE";
+    bump(dayAll, r.date, present);
+    const m = trendMeta.get(r.studentId);
+    if (m?.sex === "MALE") bump(dayMale, r.date, present);
+    else if (m?.sex === "FEMALE") bump(dayFemale, r.date, present);
+    if (m?.classId) {
+      const cm = dayByClass.get(m.classId) ?? new Map<string, Bucket>();
+      bump(cm, r.date, present);
+      dayByClass.set(m.classId, cm);
+    }
+  }
+  const toPoints = (m: Map<string, Bucket>) =>
+    Array.from(m.entries())
+      .filter(([, b]) => b.tot > 0)
+      .map(([date, b]) => ({ date, pct: Math.round((b.att / b.tot) * 100) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  const schoolPts = toPoints(dayAll);
+  const trend =
+    data.term && schoolPts.length > 0
+      ? {
+          school: schoolPts,
+          male: toPoints(dayMale),
+          female: toPoints(dayFemale),
+          byClass: data.cls
+            .map((c) => ({ name: c.name, points: toPoints(dayByClass.get(c.id) ?? new Map()) }))
+            .filter((c) => c.points.length > 0),
+          holidays: data.holidays,
+          termStart: data.term.startsOn,
+          termEnd: data.term.endsOn,
+          today,
+        }
+      : null;
+  const termAvg =
+    data.termRecs.length > 0
+      ? Math.round(
+          (data.termRecs.filter((r) => r.status === "PRESENT" || r.status === "LATE")
+            .length /
+            data.termRecs.length) *
+            100,
+        )
+      : null;
+  const trendDelta =
+    termAvg !== null && data.prevAvg !== null ? termAvg - data.prevAvg : null;
+  const dowOf = (d: string) => new Date(`${d}T00:00:00Z`).getUTCDay();
+  const avgOf = (pts: { pct: number }[]) =>
+    pts.length ? Math.round(pts.reduce((s, p) => s + p.pct, 0) / pts.length) : null;
+  const bestDay = schoolPts.reduce<{ date: string; pct: number } | null>(
+    (m, p) => (!m || p.pct > m.pct ? p : m),
+    null,
+  );
+  const lowestDay = schoolPts.reduce<{ date: string; pct: number } | null>(
+    (m, p) => (!m || p.pct < m.pct ? p : m),
+    null,
+  );
+  const monAvg = avgOf(schoolPts.filter((p) => dowOf(p.date) === 1));
+  const friAvg = avgOf(schoolPts.filter((p) => dowOf(p.date) === 5));
 
   // Threshold-based "needs attention" list over the current term (configurable).
   const flagMap = computeAttendanceFlags(data.termRecs, {
@@ -401,6 +522,54 @@ export default async function AttendancePage() {
               </Link>
             ))}
           </div>
+
+          {/* 03 · This term's trend */}
+          {trend && (
+            <section className="mt-8">
+              <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                <h2 className="font-display text-lg font-semibold text-navy">
+                  This term&apos;s trend
+                </h2>
+                <div className="text-sm text-navy-3">
+                  <b className="text-navy">{termAvg}%</b> term average
+                  {trendDelta !== null && (
+                    <span
+                      className={
+                        trendDelta >= 0 ? "text-green" : "text-terra"
+                      }
+                    >
+                      {" · "}
+                      {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}% vs previous term
+                    </span>
+                  )}
+                </div>
+              </div>
+              <TermTrend data={trend} />
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {(
+                  [
+                    ["Best day", bestDay ? `${bestDay.pct}%` : "—", bestDay ? fmtShort(bestDay.date) : ""],
+                    ["Lowest day", lowestDay ? `${lowestDay.pct}%` : "—", lowestDay ? fmtShort(lowestDay.date) : ""],
+                    ["Mondays avg", monAvg !== null ? `${monAvg}%` : "—", ""],
+                    ["Fridays avg", friAvg !== null ? `${friAvg}%` : "—", ""],
+                  ] as const
+                ).map(([label, val, sub]) => (
+                  <div
+                    key={label}
+                    className="rounded-lg border border-border bg-surface px-3 py-2"
+                  >
+                    <div className="text-[11px] uppercase tracking-wide text-navy-3">
+                      {label}
+                    </div>
+                    <div className="font-display text-lg font-semibold text-navy">
+                      {val}
+                    </div>
+                    {sub && <div className="text-[11px] text-navy-3">{sub}</div>}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* 04 · Students needing attention */}
           {needsAttention.length > 0 && <NeedsAttention students={needsAttention} />}
