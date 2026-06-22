@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { saveAttendance, requestCorrection } from "@/lib/actions/attendance";
-import { ATTENDANCE_REASONS, reasonLabel } from "@/lib/attendance-reasons";
+import { reasonLabel } from "@/lib/attendance-reasons";
 import {
   ATTENDANCE_STATUS_META,
   ATTENDANCE_STATUS_ORDER,
   STATUS_HOTKEYS,
   type AttendanceStatus,
 } from "@/lib/attendance-status";
+import { ReasonSheet } from "@/components/attendance/reason-sheet";
 
 type Tag = { label: string; tone: "warn" | "terra" };
 
@@ -107,6 +108,7 @@ export function TakeRegister({
     Object.fromEntries(roster.map((r) => [r.id, r.note ?? ""])),
   );
   const [focused, setFocused] = useState<number | null>(null);
+  const [sheetFor, setSheetFor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -212,15 +214,14 @@ export function TakeRegister({
           markStatus(roster[focused].id, hot);
         } else if (e.key === "Enter") {
           e.preventDefault();
-          document
-            .querySelector<HTMLSelectElement>(`[data-reason="${roster[focused].id}"]`)
-            ?.focus();
+          const fr = roster[focused];
+          if (statuses[fr.id] && statuses[fr.id] !== "PRESENT") setSheetFor(fr.id);
         }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [locked, focused, marked, total, roster, markStatus, doSave]);
+  }, [locked, focused, marked, total, roster, statuses, markStatus, doSave]);
 
   const absentSms = absent.length;
   const footerMeta = (
@@ -554,31 +555,30 @@ export function TakeRegister({
                         </span>
                       </div>
                     ) : editable ? (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <select
-                          data-reason={r.id}
-                          value={reasons[r.id] ?? ""}
-                          onChange={(e) =>
-                            setReasons((s) => ({ ...s, [r.id]: e.target.value }))
-                          }
-                          className="rounded border border-border-2 bg-bg px-1.5 py-1 text-xs text-navy outline-none focus:border-gold"
-                        >
-                          <option value="">Reason…</option>
-                          {ATTENDANCE_REASONS.map((o) => (
-                            <option key={o.code} value={o.code}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          value={notes[r.id] ?? ""}
-                          onChange={(e) =>
-                            setNotes((s) => ({ ...s, [r.id]: e.target.value }))
-                          }
-                          placeholder="note (optional)"
-                          maxLength={300}
-                          className="w-36 rounded border border-border-2 bg-bg px-1.5 py-1 text-xs text-navy outline-none focus:border-gold"
-                        />
+                      <div className="flex flex-wrap items-center gap-2 text-xs italic leading-snug text-navy-2">
+                        {reasons[r.id] || notes[r.id] ? (
+                          <>
+                            <span>
+                              <b className="font-semibold not-italic text-navy">
+                                {reasonLabel(reasons[r.id]) ?? "Reason"}
+                              </b>
+                              {notes[r.id] ? ` · ${notes[r.id]}` : ""}
+                            </span>
+                            <button
+                              onClick={() => setSheetFor(r.id)}
+                              className="font-semibold not-italic text-gold hover:underline"
+                            >
+                              Edit
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setSheetFor(r.id)}
+                            className="font-semibold not-italic text-gold hover:underline"
+                          >
+                            + Add reason
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <span className="text-[11px] italic text-navy-3 opacity-50">—</span>
@@ -622,6 +622,33 @@ export function TakeRegister({
         P present · L late · E excused · M medical · A absent. Add a reason for any non-present
         mark. Absences notify the primary guardian by SMS on submit.
       </p>
+
+      {sheetFor &&
+        (() => {
+          const r = roster.find((x) => x.id === sheetFor);
+          if (!r) return null;
+          return (
+            <ReasonSheet
+              student={{
+                id: r.id,
+                name: fullName(r),
+                initials: r.initials,
+                className,
+                termPct: r.termPct,
+              }}
+              initialStatus={(statuses[r.id] ?? "ABSENT") as AttendanceStatus}
+              initialReason={reasons[r.id] ?? ""}
+              initialNote={notes[r.id] ?? ""}
+              onSave={(st, rc, nt) => {
+                setStatuses((s) => ({ ...s, [r.id]: st }));
+                setReasons((s) => ({ ...s, [r.id]: rc ?? "" }));
+                setNotes((s) => ({ ...s, [r.id]: nt ?? "" }));
+                setSheetFor(null);
+              }}
+              onClose={() => setSheetFor(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

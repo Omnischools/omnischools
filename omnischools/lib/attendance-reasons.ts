@@ -4,11 +4,15 @@
  * Shared by the take-register UI and the per-student attendance view.
  */
 export const ATTENDANCE_REASONS = [
-  { code: "SICK", label: "Sick" },
-  { code: "MEDICAL", label: "Medical appointment" },
-  { code: "FAMILY", label: "Family event" },
-  { code: "TRAVEL", label: "Travel" },
-  { code: "OTHER", label: "Other" },
+  { code: "SICK", label: "Sick", detail: "Medical illness, doctor's note may follow" },
+  {
+    code: "MEDICAL",
+    label: "Medical appointment",
+    detail: "Hospital, dental, optometrist visit",
+  },
+  { code: "FAMILY", label: "Family event", detail: "Funeral, wedding, religious observance" },
+  { code: "TRAVEL", label: "Travel", detail: "Out of town with family" },
+  { code: "OTHER", label: "Other", detail: "Anything not listed above" },
 ] as const;
 
 export type AttendanceReasonCode = (typeof ATTENDANCE_REASONS)[number]["code"];
