@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, eq, inArray, gte, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, gte, lt, lte } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import {
@@ -9,10 +9,31 @@ import {
   attendanceRecords,
   academicPeriod,
   attendanceSettings,
+  schoolHolidays,
+  users,
 } from "@/db/schema";
-import { TakeRegister } from "@/components/attendance/take-register";
+import { computeAttendanceFlags } from "@/lib/attendance-flags";
+import { termDayProgress } from "@/lib/school-calendar";
+import { TakeRegister, type RegisterRow } from "@/components/attendance/take-register";
+import type { AttendanceStatus } from "@/lib/attendance-status";
 
 export const dynamic = "force-dynamic";
+
+const fmtLongDate = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
+const fmtCloseAt = (ms: number) =>
+  new Date(ms).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 
 export default async function TakeAttendancePage({
   params,
@@ -29,10 +50,16 @@ export default async function TakeAttendancePage({
 
   const data = await withSchool(school.id, async (tx) => {
     const [cls] = await tx
-      .select()
+      .select({
+        id: classes.id,
+        name: classes.name,
+        teacher: users.fullName,
+      })
       .from(classes)
+      .leftJoin(users, eq(classes.classTeacherUserId, users.id))
       .where(and(eq(classes.id, params.classId), eq(classes.schoolId, school.id)));
     if (!cls) return null;
+
     const roster = await tx
       .select({
         id: students.id,
@@ -48,7 +75,8 @@ export default async function TakeAttendancePage({
           eq(students.status, "ACTIVE"),
         ),
       )
-      .orderBy(asc(students.lastName));
+      .orderBy(asc(students.firstName), asc(students.lastName));
+
     const recs = await tx
       .select({
         id: attendanceRecords.id,
@@ -62,16 +90,19 @@ export default async function TakeAttendancePage({
       .where(
         and(eq(attendanceRecords.classId, cls.id), eq(attendanceRecords.date, date)),
       );
+
     const [cfg] = await tx
       .select({ editWindowHours: attendanceSettings.editWindowHours })
       .from(attendanceSettings)
       .where(eq(attendanceSettings.schoolId, school.id))
       .limit(1);
 
-    // Per-student term attendance %, scoped to the current term when one is active.
-    const ids = roster.map((s) => s.id);
     const [term] = await tx
-      .select({ startsOn: academicPeriod.startsOn, endsOn: academicPeriod.endsOn })
+      .select({
+        label: academicPeriod.periodLabel,
+        startsOn: academicPeriod.startsOn,
+        endsOn: academicPeriod.endsOn,
+      })
       .from(academicPeriod)
       .where(
         and(
@@ -81,30 +112,73 @@ export default async function TakeAttendancePage({
         ),
       )
       .limit(1);
-    const termAgg =
-      ids.length === 0
-        ? []
-        : await tx
+
+    const holidays = await tx
+      .select({
+        name: schoolHolidays.name,
+        startsOn: schoolHolidays.startsOn,
+        endsOn: schoolHolidays.endsOn,
+        kind: schoolHolidays.kind,
+      })
+      .from(schoolHolidays)
+      .where(eq(schoolHolidays.schoolId, school.id));
+
+    // Whole-term records for this class's roster → term %, flags, patterns.
+    const ids = roster.map((s) => s.id);
+    const termRecs =
+      term && ids.length
+        ? await tx
             .select({
               studentId: attendanceRecords.studentId,
-              attended: sql<number>`sum(case when ${attendanceRecords.status} in ('PRESENT','LATE') then 1 else 0 end)::int`,
-              total: sql<number>`count(*)::int`,
+              date: attendanceRecords.date,
+              status: attendanceRecords.status,
             })
             .from(attendanceRecords)
             .where(
               and(
                 eq(attendanceRecords.schoolId, school.id),
                 inArray(attendanceRecords.studentId, ids),
-                term ? gte(attendanceRecords.date, term.startsOn) : undefined,
-                term ? lte(attendanceRecords.date, term.endsOn) : undefined,
+                gte(attendanceRecords.date, term.startsOn),
+                lte(attendanceRecords.date, term.endsOn),
               ),
             )
-            .groupBy(attendanceRecords.studentId);
-    return { cls, roster, recs, termAgg, editWindowHours: cfg?.editWindowHours ?? 24 };
+        : [];
+
+    // The most recent earlier register for this class → "Copy from yesterday".
+    const [prev] = await tx
+      .select({ date: attendanceRecords.date })
+      .from(attendanceRecords)
+      .where(and(eq(attendanceRecords.classId, cls.id), lt(attendanceRecords.date, date)))
+      .orderBy(desc(attendanceRecords.date))
+      .limit(1);
+    const prevRecs = prev
+      ? await tx
+          .select({
+            studentId: attendanceRecords.studentId,
+            status: attendanceRecords.status,
+            reasonCode: attendanceRecords.reasonCode,
+            note: attendanceRecords.note,
+          })
+          .from(attendanceRecords)
+          .where(
+            and(eq(attendanceRecords.classId, cls.id), eq(attendanceRecords.date, prev.date)),
+          )
+      : [];
+
+    return {
+      cls,
+      roster,
+      recs,
+      termRecs,
+      term,
+      holidays,
+      prev: prev ? { date: prev.date, recs: prevRecs } : null,
+      editWindowHours: cfg?.editWindowHours ?? 24,
+    };
   });
 
   if (!data) notFound();
-  // The register locks once its earliest mark is older than the edit window.
+
   const windowH = data.editWindowHours;
   const oldestMark = data.recs.reduce<number>((min, r) => {
     const t = (
@@ -113,43 +187,70 @@ export default async function TakeAttendancePage({
     return t < min ? t : min;
   }, Infinity);
   const locked =
-    data.recs.length > 0 &&
-    windowH > 0 &&
-    Date.now() - oldestMark > windowH * 3_600_000;
+    data.recs.length > 0 && windowH > 0 && Date.now() - oldestMark > windowH * 3_600_000;
+  const windowCloseLabel =
+    data.recs.length > 0 && windowH > 0 ? fmtCloseAt(oldestMark + windowH * 3_600_000) : null;
+
+  const flags = computeAttendanceFlags(data.termRecs);
   const recByStudent = new Map(data.recs.map((r) => [r.studentId, r]));
-  const aggByStudent = new Map(data.termAgg.map((a) => [a.studentId, a]));
-  const roster = data.roster.map((s) => {
+
+  const roster: RegisterRow[] = data.roster.map((s) => {
     const rec = recByStudent.get(s.id);
-    const agg = aggByStudent.get(s.id);
-    const termPct =
-      agg && agg.total > 0 ? Math.round((agg.attended / agg.total) * 100) : null;
+    const f = flags.get(s.id);
+    const tags = (f?.flags ?? [])
+      .filter((fl) => fl.type === "BELOW_THRESHOLD" || fl.type === "PATTERN_SHIFT")
+      .map((fl) => ({
+        label: fl.label,
+        tone: (fl.type === "BELOW_THRESHOLD" ? "terra" : "warn") as "terra" | "warn",
+      }));
     return {
       id: s.id,
-      name: `${s.lastName}, ${s.firstName}`,
+      first: s.firstName,
+      last: s.lastName,
+      initials: `${s.firstName[0] ?? ""}${s.lastName[0] ?? ""}`.toUpperCase(),
       code: s.code,
-      status: rec?.status ?? null,
+      status: (rec?.status as AttendanceStatus | undefined) ?? null,
       recordId: rec?.id ?? null,
       reasonCode: rec?.reasonCode ?? null,
       note: rec?.note ?? null,
-      termPct,
-      termDays: agg ? `${agg.attended}/${agg.total}` : null,
+      termPct: f?.termPct ?? null,
+      termDays: f ? `${f.attended}/${f.total} days` : null,
+      consecutiveAbsent: f?.consecutiveAbsent ?? 0,
+      tags,
     };
   });
 
-  return (
-    <div className="mx-auto max-w-3xl">
-      <Link href="/attendance" className="text-sm text-navy-3 hover:text-gold">
-        ← Attendance
-      </Link>
-      <h1 className="mb-1 mt-2 font-display text-3xl font-semibold text-navy">
-        {data.cls.name}
-      </h1>
-      <p className="mb-6 text-sm text-navy-3">
-        {roster.length} student{roster.length === 1 ? "" : "s"}
-      </p>
+  const progress = data.term
+    ? termDayProgress(data.term.startsOn, data.term.endsOn, date, data.holidays)
+    : null;
 
-      {roster.length === 0 ? (
-        <div className="border-border-2 bg-surface rounded-xl border border-dashed p-12 text-center">
+  const yesterday = data.prev
+    ? {
+        date: fmtLongDate(data.prev.date),
+        entries: Object.fromEntries(
+          data.prev.recs.map((r) => [
+            r.studentId,
+            {
+              status: r.status as AttendanceStatus,
+              reasonCode: r.reasonCode,
+              note: r.note,
+            },
+          ]),
+        ),
+      }
+    : null;
+
+  if (roster.length === 0) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <Link href="/attendance" className="text-sm text-navy-3 hover:text-gold">
+          ← Attendance
+        </Link>
+        <h1 className="mb-1 mt-2 font-display text-3xl font-semibold text-navy">
+          {data.cls.name}
+        </h1>
+        <p className="mb-6 text-sm text-navy-3">0 students</p>
+        <div className="rounded-xl border border-dashed border-border-2 bg-surface p-12 text-center">
           <p className="font-display text-lg text-navy">No students in this class.</p>
           <p className="mt-1 text-sm text-navy-3">
             Assign students from the{" "}
@@ -159,14 +260,26 @@ export default async function TakeAttendancePage({
             dashboard.
           </p>
         </div>
-      ) : (
-        <TakeRegister
-          classId={data.cls.id}
-          date={date}
-          roster={roster}
-          locked={locked}
-        />
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl">
+      <TakeRegister
+        classId={data.cls.id}
+        date={date}
+        roster={roster}
+        locked={locked}
+        className={data.cls.name}
+        dateLabel={fmtLongDate(date)}
+        teacher={data.cls.teacher ?? null}
+        termLabel={data.term?.label ?? null}
+        dayOf={progress?.dayOf ?? null}
+        editWindowHours={windowH}
+        windowCloseLabel={windowCloseLabel}
+        yesterday={yesterday}
+      />
     </div>
   );
 }
