@@ -9,11 +9,13 @@ import {
   attendanceCorrections,
   academicPeriod,
   attendanceSettings,
+  schoolHolidays,
   users,
 } from "@/db/schema";
 import { NewClassForm, AssignStudent } from "@/components/attendance/class-controls";
 import { computeAttendanceFlags, FLAG_THRESHOLDS } from "@/lib/attendance-flags";
 import { NeedsAttention } from "@/components/attendance/needs-attention";
+import { termDayProgress } from "@/lib/school-calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +93,11 @@ export default async function AttendancePage() {
     ).length;
     // Current term's records, to compute who needs attention.
     const [term] = await tx
-      .select({ startsOn: academicPeriod.startsOn, endsOn: academicPeriod.endsOn })
+      .select({
+        label: academicPeriod.periodLabel,
+        startsOn: academicPeriod.startsOn,
+        endsOn: academicPeriod.endsOn,
+      })
       .from(academicPeriod)
       .where(
         and(
@@ -101,6 +107,15 @@ export default async function AttendancePage() {
         ),
       )
       .limit(1);
+    const holidays = await tx
+      .select({
+        name: schoolHolidays.name,
+        startsOn: schoolHolidays.startsOn,
+        endsOn: schoolHolidays.endsOn,
+        kind: schoolHolidays.kind,
+      })
+      .from(schoolHolidays)
+      .where(eq(schoolHolidays.schoolId, school.id));
     const termRecs = term
       ? await tx
           .select({
@@ -127,11 +142,21 @@ export default async function AttendancePage() {
       .from(attendanceSettings)
       .where(eq(attendanceSettings.schoolId, school.id))
       .limit(1);
-    return { cls, studs, todayRecs, yAgg, pendingCorrections, termRecs, cfg };
+    return { cls, studs, todayRecs, yAgg, pendingCorrections, termRecs, cfg, term, holidays };
   });
 
   const unassigned = data.studs.filter((s) => !s.classId);
   const classOptions = data.cls.map((c) => ({ id: c.id, name: c.name }));
+
+  const fullDate = new Date().toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const progress = data.term
+    ? termDayProgress(data.term.startsOn, data.term.endsOn, today, data.holidays)
+    : null;
 
   // Threshold-based "needs attention" list over the current term (configurable).
   const flagMap = computeAttendanceFlags(data.termRecs, {
@@ -224,8 +249,20 @@ export default async function AttendancePage() {
     <div className="mx-auto max-w-page">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-semibold text-navy">Attendance</h1>
-          <p className="text-sm text-navy-3">Today · {today}</p>
+          <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-gold">
+            Attendance
+          </div>
+          <h1 className="font-display text-3xl font-semibold text-navy">
+            Attendance{" "}
+            <em className="not-italic text-gold [font-style:italic]">· today.</em>
+          </h1>
+          <p className="mt-1 text-sm text-navy-3">
+            {fullDate}
+            {data.term ? ` · ${data.term.label}` : ""}
+            {progress && progress.total > 0
+              ? ` · Day ${progress.dayOf} of ${progress.total}`
+              : ""}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Link
