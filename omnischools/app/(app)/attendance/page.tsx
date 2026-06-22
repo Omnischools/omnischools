@@ -12,8 +12,8 @@ import {
   users,
 } from "@/db/schema";
 import { NewClassForm, AssignStudent } from "@/components/attendance/class-controls";
-import { computeAttendanceFlags } from "@/lib/attendance-flags";
-import { ATTENDANCE_SETTINGS_DEFAULTS } from "@/lib/attendance-settings";
+import { computeAttendanceFlags, FLAG_THRESHOLDS } from "@/lib/attendance-flags";
+import { NeedsAttention } from "@/components/attendance/needs-attention";
 
 export const dynamic = "force-dynamic";
 
@@ -135,12 +135,24 @@ export default async function AttendancePage() {
 
   // Threshold-based "needs attention" list over the current term (configurable).
   const flagMap = computeAttendanceFlags(data.termRecs, {
-    absWatch: data.cfg?.absWatchDays ?? ATTENDANCE_SETTINGS_DEFAULTS.absWatchDays,
-    absCritical: data.cfg?.absCriticalDays ?? ATTENDANCE_SETTINGS_DEFAULTS.absCriticalDays,
-    pctWatch: data.cfg?.pctWatch ?? ATTENDANCE_SETTINGS_DEFAULTS.pctWatch,
-    pctCritical: data.cfg?.pctCritical ?? ATTENDANCE_SETTINGS_DEFAULTS.pctCritical,
+    ...FLAG_THRESHOLDS,
+    absWatch: data.cfg?.absWatchDays ?? FLAG_THRESHOLDS.absWatch,
+    absCritical: data.cfg?.absCriticalDays ?? FLAG_THRESHOLDS.absCritical,
+    pctWatch: data.cfg?.pctWatch ?? FLAG_THRESHOLDS.pctWatch,
+    pctCritical: data.cfg?.pctCritical ?? FLAG_THRESHOLDS.pctCritical,
   });
   const classNameById = new Map(data.cls.map((c) => [c.id, c.name]));
+  // Last-14-school-days status series per student, for the attention sparkline.
+  const last14ByStudent = new Map<string, { date: string; status: string }[]>();
+  for (const r of data.termRecs) {
+    const arr = last14ByStudent.get(r.studentId) ?? [];
+    arr.push({ date: r.date, status: r.status });
+    last14ByStudent.set(r.studentId, arr);
+  }
+  for (const [id, arr] of Array.from(last14ByStudent)) {
+    arr.sort((a, b) => a.date.localeCompare(b.date));
+    last14ByStudent.set(id, arr.slice(-14));
+  }
   const sevRank = (w: string | null) =>
     w === "CRITICAL" ? 0 : w === "WATCHING" ? 1 : 2;
   const needsAttention = data.studs
@@ -151,6 +163,7 @@ export default async function AttendancePage() {
       name: `${x.s.lastName}, ${x.s.firstName}`,
       code: x.s.code,
       className: x.s.classId ? (classNameById.get(x.s.classId) ?? null) : null,
+      last14: last14ByStudent.get(x.s.id) ?? [],
       ...x.f!,
     }))
     .sort(
@@ -352,85 +365,8 @@ export default async function AttendancePage() {
             ))}
           </div>
 
-          {/* Students needing attention */}
-          {needsAttention.length > 0 && (
-            <section className="mt-8">
-              <h2 className="mb-3 font-display text-lg font-semibold text-navy">
-                Students needing attention{" "}
-                <span className="text-sm font-normal text-navy-3">
-                  ({needsAttention.length})
-                </span>
-              </h2>
-              <div className="overflow-hidden rounded-xl border border-border bg-surface">
-                <table className="w-full text-sm">
-                  <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
-                    <tr>
-                      <th className="px-4 py-3 font-semibold">Student</th>
-                      <th className="px-4 py-3 font-semibold">Flag</th>
-                      <th className="px-4 py-3 text-right font-semibold">Term</th>
-                      <th className="px-4 py-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {needsAttention.map((s) => (
-                      <tr key={s.id} className="hover:bg-bg">
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-navy">{s.name}</div>
-                          <div className="font-mono text-xs text-navy-3">
-                            {s.code}
-                            {s.className ? ` · ${s.className}` : ""}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1.5">
-                            {s.flags.map((f) => (
-                              <span
-                                key={f.type}
-                                title={f.detail}
-                                className={`rounded-pill px-2 py-0.5 text-xs font-medium ${
-                                  f.severity === "CRITICAL"
-                                    ? "bg-terra-bg text-terra"
-                                    : "bg-warn-bg text-warn"
-                                }`}
-                              >
-                                {f.label}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span
-                            className={`text-sm font-semibold ${
-                              s.termPct === null
-                                ? "text-navy-3"
-                                : s.termPct < 60
-                                  ? "text-terra"
-                                  : s.termPct < 70
-                                    ? "text-warn"
-                                    : "text-navy-2"
-                            }`}
-                          >
-                            {s.termPct === null ? "—" : `${s.termPct}%`}
-                          </span>
-                          <span className="ml-1 text-[11px] text-navy-3">
-                            {s.attended}/{s.total}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Link
-                            href={`/students/${s.id}`}
-                            className="text-xs font-semibold text-gold hover:underline"
-                          >
-                            View →
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
+          {/* 04 · Students needing attention */}
+          {needsAttention.length > 0 && <NeedsAttention students={needsAttention} />}
         </>
       )}
 
