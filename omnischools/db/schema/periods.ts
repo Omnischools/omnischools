@@ -7,10 +7,32 @@ import {
   timestamp,
   primaryKey,
   foreignKey,
+  index,
 } from "drizzle-orm/pg-core";
 import { periodTypeEnum, periodSourceEnum } from "./_enums";
 import { schools } from "./tenancy";
 import { users } from "./identity";
+
+/**
+ * School holidays / breaks / events / exam weeks within a term. Drives the
+ * school-day counter ("Day 47 of 62"), trend holiday bands and the term grid.
+ * `kind`: PUBLIC | BREAK | EVENT | EXAM.
+ */
+export const schoolHolidays = pgTable(
+  "school_holiday",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    startsOn: date("starts_on").notNull(),
+    endsOn: date("ends_on").notNull(),
+    kind: text("kind").notNull().default("PUBLIC"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ bySchool: index("school_holiday_school_idx").on(t.schoolId) }),
+);
 
 /**
  * Academic period configuration — Item 0 of the score-ledger build sequence.

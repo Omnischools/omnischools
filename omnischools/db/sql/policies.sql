@@ -58,6 +58,7 @@ BEGIN
     'role_assignment',
     'ref_academic_period_config',
     'academic_period',
+    'school_holiday',
     'audit_log',
     'students',
     'student_guardian',

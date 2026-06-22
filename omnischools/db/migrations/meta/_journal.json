@@ -169,6 +169,13 @@
       "when": 1782059264973,
       "tag": "0023_fuzzy_the_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1782113841641,
+      "tag": "0024_large_viper",
+      "breakpoints": true
     }
   ]
 }
