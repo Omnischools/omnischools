@@ -1,129 +1,206 @@
-import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { attendanceCorrections, attendanceRecords, students, users } from "@/db/schema";
-import { CorrectionActions } from "@/components/attendance/correction-actions";
+import {
+  attendanceCorrections,
+  attendanceRecords,
+  attendanceSettings,
+  students,
+  studentGuardians,
+  classes,
+  academicPeriod,
+  users,
+} from "@/db/schema";
+import { EditRequestReview, type CorrectionRow } from "@/components/attendance/edit-request-review";
 
 export const dynamic = "force-dynamic";
 
-const fmt = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
-
-const STATUS_PILL: Record<string, string> = {
-  PRESENT: "bg-green-bg text-green",
-  LATE: "bg-warn-bg text-warn",
-  EXCUSED: "bg-bg text-navy-2",
-  MEDICAL: "bg-gold-bg text-navy",
-  ABSENT: "bg-terra-bg text-terra",
-};
-function StatusPill({ status }: { status: string }) {
-  return (
-    <span
-      className={`rounded-pill px-2 py-0.5 text-xs font-semibold ${STATUS_PILL[status] ?? "bg-bg text-navy-3"}`}
-    >
-      {fmt(status)}
-    </span>
-  );
-}
+const fmtTime = (d: Date | string) =>
+  (d instanceof Date ? d : new Date(d))
+    .toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true })
+    .replace(/\b(am|pm)\b/i, (m) => m.toUpperCase());
+const fmtDay = (iso: string) =>
+  new Date(iso + "T00:00:00Z").toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 const fmtWhen = (d: Date | string) => {
   const dt = d instanceof Date ? d : new Date(d);
-  return Number.isNaN(dt.getTime())
-    ? ""
-    : dt.toLocaleString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+  return `${fmtTime(dt)}, ${dt.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}`;
 };
+const initials = (name: string | null) =>
+  (name ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("") || "—";
 
 export default async function CorrectionsPage() {
   const { school } = await requireSchool();
-  const rows = await withSchool(school.id, (tx) =>
-    tx
+  const today = new Date().toISOString().slice(0, 10);
+  const requester = alias(users, "requester");
+  const marker = alias(users, "marker");
+
+  const data = await withSchool(school.id, async (tx) => {
+    const rows = await tx
       .select({
         id: attendanceCorrections.id,
         requestedStatus: attendanceCorrections.requestedStatus,
         reason: attendanceCorrections.reason,
         status: attendanceCorrections.status,
         createdAt: attendanceCorrections.createdAt,
+        requesterId: attendanceCorrections.requestedByUserId,
+        requesterName: requester.fullName,
+        // before record
+        recordStatus: attendanceRecords.status,
+        recordReasonCode: attendanceRecords.reasonCode,
+        recordNote: attendanceRecords.note,
+        markedAt: attendanceRecords.markedAt,
+        markedByName: marker.fullName,
         date: attendanceRecords.date,
-        currentStatus: attendanceRecords.status,
+        classId: attendanceRecords.classId,
+        className: classes.name,
+        studentId: students.id,
         firstName: students.firstName,
         lastName: students.lastName,
-        requestedBy: users.fullName,
+        code: students.studentCode,
       })
       .from(attendanceCorrections)
-      .innerJoin(
-        attendanceRecords,
-        eq(attendanceCorrections.attendanceRecordId, attendanceRecords.id),
-      )
+      .innerJoin(attendanceRecords, eq(attendanceCorrections.attendanceRecordId, attendanceRecords.id))
       .innerJoin(students, eq(attendanceRecords.studentId, students.id))
-      .leftJoin(users, eq(attendanceCorrections.requestedByUserId, users.id))
+      .leftJoin(requester, eq(attendanceCorrections.requestedByUserId, requester.id))
+      .leftJoin(marker, eq(attendanceRecords.markedByUserId, marker.id))
+      .leftJoin(classes, eq(attendanceRecords.classId, classes.id))
       .where(eq(attendanceCorrections.schoolId, school.id))
       .orderBy(desc(attendanceCorrections.createdAt))
-      .limit(100),
-  );
-  const pending = rows.filter((r) => r.status === "PENDING");
+      .limit(100);
+
+    const studentIds = Array.from(new Set(rows.map((r) => r.studentId)));
+    const guardians = studentIds.length
+      ? await tx
+          .select({
+            studentId: studentGuardians.studentId,
+            name: studentGuardians.name,
+            phone: studentGuardians.phone,
+            isPrimary: studentGuardians.isPrimary,
+          })
+          .from(studentGuardians)
+          .where(inArray(studentGuardians.studentId, studentIds))
+          .orderBy(desc(studentGuardians.isPrimary))
+      : [];
+
+    const [term] = await tx
+      .select({ startsOn: academicPeriod.startsOn, endsOn: academicPeriod.endsOn })
+      .from(academicPeriod)
+      .where(
+        and(
+          eq(academicPeriod.schoolId, school.id),
+          lte(academicPeriod.startsOn, today),
+          gte(academicPeriod.endsOn, today),
+        ),
+      )
+      .limit(1);
+
+    const studentRecs =
+      studentIds.length && term
+        ? await tx
+            .select({
+              studentId: attendanceRecords.studentId,
+              date: attendanceRecords.date,
+              status: attendanceRecords.status,
+            })
+            .from(attendanceRecords)
+            .where(
+              and(
+                eq(attendanceRecords.schoolId, school.id),
+                inArray(attendanceRecords.studentId, studentIds),
+                gte(attendanceRecords.date, term.startsOn),
+                lte(attendanceRecords.date, term.endsOn),
+              ),
+            )
+            .orderBy(asc(attendanceRecords.date))
+        : [];
+
+    const [cfg] = await tx
+      .select({ absenceSms: attendanceSettings.absenceSms })
+      .from(attendanceSettings)
+      .where(eq(attendanceSettings.schoolId, school.id))
+      .limit(1);
+
+    return { rows, guardians, studentRecs, absenceSms: cfg?.absenceSms ?? true };
+  });
+
+  const primaryGuardian = new Map<string, { name: string; phone: string }>();
+  for (const g of data.guardians)
+    if (!primaryGuardian.has(g.studentId)) primaryGuardian.set(g.studentId, { name: g.name, phone: g.phone });
+
+  const recsByStudent = new Map<string, { date: string; status: string }[]>();
+  for (const r of data.studentRecs) {
+    const arr = recsByStudent.get(r.studentId) ?? [];
+    arr.push({ date: r.date, status: r.status });
+    recsByStudent.set(r.studentId, arr);
+  }
+
+  const editCount = new Map<string, number>();
+  for (const r of data.rows)
+    if (r.requesterId) editCount.set(r.requesterId, (editCount.get(r.requesterId) ?? 0) + 1);
+
+  const rows: CorrectionRow[] = data.rows.map((r) => {
+    const recs = recsByStudent.get(r.studentId) ?? [];
+    const attended = recs.filter((x) => x.status === "PRESENT" || x.status === "LATE").length;
+    const termPct = recs.length ? Math.round((attended / recs.length) * 100) : null;
+    const last14 = recs.slice(-14).map((x) => ({ date: x.date, status: x.status }));
+    const markedMs = (r.markedAt instanceof Date ? r.markedAt : new Date(r.markedAt)).getTime();
+    const createdMs = (r.createdAt instanceof Date ? r.createdAt : new Date(r.createdAt)).getTime();
+    const hoursLate = Math.max(0, Math.round((createdMs - markedMs) / 3_600_000));
+    const guardian = primaryGuardian.get(r.studentId) ?? null;
+    return {
+      id: r.id,
+      status: r.status,
+      requestedStatus: r.requestedStatus,
+      recordStatus: r.recordStatus,
+      reason: r.reason,
+      reasonAttribution: `— ${r.requesterName ?? "a teacher"} · ${fmtWhen(r.createdAt)}`,
+      requesterName: r.requesterName ?? "A teacher",
+      requesterInitials: initials(r.requesterName),
+      requesterEditCount: r.requesterId ? (editCount.get(r.requesterId) ?? 1) : 1,
+      className: r.className ?? "—",
+      registerDate: fmtDay(r.date),
+      submittedLabel: fmtTime(r.markedAt),
+      requestedLabel: `${new Date(r.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · ${hoursLate}h late`,
+      markedByName: r.markedByName ?? null,
+      recordReasonCode: r.recordReasonCode,
+      recordNote: r.recordNote,
+      studentName: `${r.firstName} ${r.lastName}`,
+      studentInitials: `${r.firstName[0] ?? ""}${r.lastName[0] ?? ""}`.toUpperCase(),
+      studentCode: r.code,
+      guardianName: guardian?.name ?? null,
+      guardianPhone: guardian?.phone ?? null,
+      termPct,
+      last14,
+      absenceSmsWasSent: r.recordStatus === "ABSENT" && data.absenceSms,
+    };
+  });
 
   return (
     <div className="mx-auto max-w-page">
-      <Link href="/attendance" className="text-sm text-navy-3 hover:text-gold">
-        ← Attendance
-      </Link>
-      <h1 className="mb-1 mt-2 font-display text-3xl font-semibold text-navy">
-        Attendance corrections
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">
+        Omnischools · Attendance · Edit-request approval
+      </div>
+      <h1 className="mt-1 font-display text-3xl font-semibold text-navy">
+        Approving the <em className="text-gold">change</em>
       </h1>
-      <p className="mb-6 text-sm text-navy-3">
-        {pending.length} awaiting your co-sign · teacher-requested changes to a saved
-        record.
+      <div className="mb-3 mt-2 h-0.5 w-16 bg-gold" />
+      <p className="mb-6 max-w-2xl text-sm text-navy-3">
+        Teacher-requested changes to a saved register. Open a request to see the before→after
+        diff, the teacher&apos;s full reason, the student&apos;s recent attendance, and what
+        approving will do — then co-sign.
       </p>
 
-      {rows.length === 0 ? (
-        <div className="border-border-2 bg-surface rounded-xl border border-dashed p-12 text-center">
-          <p className="font-display text-lg text-navy">No correction requests.</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {rows.map((r) => (
-            <div
-              key={r.id}
-              className="bg-surface flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border px-4 py-3"
-            >
-              <div className="min-w-0">
-                <div className="font-medium text-navy">
-                  {r.lastName}, {r.firstName}{" "}
-                  <span className="text-xs text-navy-3">· {r.date}</span>
-                </div>
-                <div className="mt-1 flex items-center gap-2">
-                  <StatusPill status={r.currentStatus} />
-                  <span className="text-navy-3">→</span>
-                  <StatusPill status={r.requestedStatus} />
-                </div>
-                <p className="mt-1.5 border-l-2 border-gold-soft pl-2 text-xs italic text-navy-2">
-                  “{r.reason}”
-                </p>
-                <div className="mt-0.5 text-[11px] text-navy-3">
-                  Requested by{" "}
-                  <span className="font-medium text-navy-2">
-                    {r.requestedBy ?? "a teacher"}
-                  </span>
-                  {fmtWhen(r.createdAt) ? ` · ${fmtWhen(r.createdAt)}` : ""}
-                </div>
-              </div>
-              {r.status === "PENDING" ? (
-                <CorrectionActions correctionId={r.id} />
-              ) : (
-                <span
-                  className={`rounded-pill px-2 py-0.5 text-xs font-medium ${r.status === "APPROVED" ? "bg-green-bg text-green" : "bg-terra-bg text-terra"}`}
-                >
-                  {fmt(r.status)}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <EditRequestReview rows={rows} />
     </div>
   );
 }
