@@ -1,0 +1,1 @@
+ALTER TABLE "attendance_correction" ADD COLUMN "decision_note" text;

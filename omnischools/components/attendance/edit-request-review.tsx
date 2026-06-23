@@ -31,6 +31,7 @@ export type CorrectionRow = {
   termPct: number | null;
   last14: { date: string; status: string }[];
   absenceSmsWasSent: boolean;
+  decisionNote: string | null;
 };
 
 const meta = (s: string) => ATTENDANCE_STATUS_META[s as AttendanceStatus];
@@ -126,6 +127,11 @@ function ListGroup({
                 Request from <span className="font-medium text-navy-2">{r.requesterName}</span> ·{" "}
                 {r.className}
               </div>
+              {!pending && r.decisionNote && (
+                <p className="mt-1 border-l-2 border-border-2 pl-2 text-[11px] italic text-navy-3">
+                  Note: {r.decisionNote}
+                </p>
+              )}
             </div>
             {pending ? (
               <button
@@ -155,6 +161,8 @@ function Drawer({ row, onClose }: { row: CorrectionRow; onClose: () => void }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [sendSms, setSendSms] = useState(row.absenceSmsWasSent);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -167,11 +175,17 @@ function Drawer({ row, onClose }: { row: CorrectionRow; onClose: () => void }) {
   const before = meta(row.recordStatus);
   const after = meta(row.requestedStatus);
   const becomesExcused = row.requestedStatus === "EXCUSED" || row.requestedStatus === "MEDICAL";
+  const willSendSms = row.absenceSmsWasSent && sendSms;
 
   function decide(approve: boolean) {
     setError(null);
     startTransition(async () => {
-      const res = await decideCorrection({ correctionId: row.id, approve });
+      const res = await decideCorrection({
+        correctionId: row.id,
+        approve,
+        note: note.trim() || undefined,
+        sendCorrectionSms: approve && willSendSms,
+      });
       if (res.ok) {
         router.refresh();
         onClose();
@@ -350,7 +364,7 @@ function Drawer({ row, onClose }: { row: CorrectionRow; onClose: () => void }) {
                   was marked Absent. Approving reclassifies it as{" "}
                   <b className="font-semibold text-navy">{after?.label}</b>
                   {becomesExcused ? " — excused days still count toward term attendance." : "."}{" "}
-                  A correction SMS is not sent automatically yet.
+                  You can send a brief correction SMS to the guardian:
                 </>
               ) : (
                 <>
@@ -360,7 +374,56 @@ function Drawer({ row, onClose }: { row: CorrectionRow; onClose: () => void }) {
                 </>
               )}
             </p>
+            {row.absenceSmsWasSent && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSendSms(true)}
+                  className={cn(
+                    "rounded-lg border p-2 text-left",
+                    sendSms ? "border-gold bg-surface" : "border-border-2 bg-bg",
+                  )}
+                >
+                  <div className="text-[11px] font-bold text-navy">Send correction SMS</div>
+                  <div className="mt-0.5 text-[10px] italic text-navy-3">
+                    &ldquo;{row.studentName.split(" ")[0]}&apos;s {row.registerDate} absence has
+                    been marked {after?.label}.&rdquo;
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSendSms(false)}
+                  className={cn(
+                    "rounded-lg border p-2 text-left",
+                    !sendSms ? "border-gold bg-surface" : "border-border-2 bg-bg",
+                  )}
+                >
+                  <div className="text-[11px] font-bold text-navy">No correction needed</div>
+                  <div className="mt-0.5 text-[10px] italic text-navy-3">
+                    Guardian already knows · skip the SMS.
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* §5 Note for the record */}
+          <Section num="5" title="Note for the record" />
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={1000}
+            placeholder={
+              becomesExcused
+                ? "e.g. 'Verified the doctor's note — admission dates match'"
+                : "e.g. 'Verified late entry against the late book' · helps audit later"
+            }
+            className="min-h-[64px] w-full rounded-lg border border-border-2 bg-surface px-3 py-2 text-xs text-navy outline-none placeholder:italic placeholder:text-navy-3 focus:border-gold"
+          />
+          <p className="mt-1 text-[10px] italic text-navy-3">
+            Stored on the register&apos;s audit trail · visible to admins reviewing this register
+            later{becomesExcused ? " · recommended for medical changes" : ""}.
+          </p>
         </div>
 
         {/* Footer */}
@@ -387,7 +450,7 @@ function Drawer({ row, onClose }: { row: CorrectionRow; onClose: () => void }) {
               disabled={busy}
               className="rounded-md bg-green px-4 py-2 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
             >
-              {busy ? "Saving…" : "Approve change ✓"}
+              {busy ? "Saving…" : willSendSms ? "Approve & send SMS ✓" : "Approve change ✓"}
             </button>
           </div>
         </div>

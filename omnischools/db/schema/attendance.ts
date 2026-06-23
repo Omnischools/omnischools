@@ -74,6 +74,8 @@ export const attendanceCorrections = pgTable("attendance_correction", {
   requestedStatus: attendanceStatusEnum("requested_status").notNull(),
   reason: text("reason").notNull(),
   status: correctionStatusEnum("status").notNull().default("PENDING"),
+  /** Admin's note recorded at decision time (audit trail; surface §5 "note for the record"). */
+  decisionNote: text("decision_note"),
   requestedByUserId: uuid("requested_by_user_id").references(() => users.id),
   decidedByUserId: uuid("decided_by_user_id").references(() => users.id),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
