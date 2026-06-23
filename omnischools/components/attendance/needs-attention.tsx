@@ -46,11 +46,8 @@ export function NeedsAttention({ students }: { students: FlaggedRow[] }) {
       : students.filter((s) => s.flags.some((f) => f.type === tab));
 
   return (
-    <section className="mt-8">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-lg font-semibold text-navy">
-          Students needing attention
-        </h2>
+    <div>
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
         <div className="flex flex-wrap gap-1.5">
           {TABS.map((t) => {
             const n = count(t.key);
@@ -153,6 +150,6 @@ export function NeedsAttention({ students }: { students: FlaggedRow[] }) {
           </tbody>
         </table>
       </div>
-    </section>
+    </div>
   );
 }
