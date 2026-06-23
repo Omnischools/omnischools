@@ -155,9 +155,8 @@ export default async function AttendanceSettingsPage() {
         </div>
       )}
 
-      {/* Region 02 — Daily schedule, marking & alert rules */}
-      <SectionHead num="02" title="Daily schedule, marking & alert rules" />
-      <AttendanceSettingsForm initial={initial} />
+      {/* Regions 02 & 03 — daily schedule + notifications (owned by the form) */}
+      <AttendanceSettingsForm initial={initial} schoolName={school.name} />
     </div>
   );
 }
