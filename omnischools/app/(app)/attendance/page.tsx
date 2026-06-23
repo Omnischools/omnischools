@@ -41,6 +41,29 @@ const STATUS_PILL: Record<string, string> = {
 };
 const capWord = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
+/** Numbered region head matching schoolup-attendance-admin.html (gold num + gold-em title word). */
+function SectionHead({
+  num,
+  children,
+  right,
+  className = "mt-8",
+}: {
+  num: string;
+  children: React.ReactNode;
+  right?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`mb-3 flex flex-wrap items-end justify-between gap-2 ${className}`}>
+      <div className="flex items-baseline gap-2.5">
+        <span className="font-display text-lg font-semibold italic text-gold">{num}</span>
+        <h2 className="font-display text-lg font-semibold text-navy">{children}</h2>
+      </div>
+      {right}
+    </div>
+  );
+}
+
 // today's segments, in display order
 const SEG: { key: string; label: string; tone: string }[] = [
   { key: "PRESENT", label: "Present", tone: "bg-green" },
@@ -497,7 +520,10 @@ export default async function AttendancePage() {
         </div>
       ) : (
         <>
-          {/* Today's pulse */}
+          {/* 01 · Today's pulse */}
+          <SectionHead num="01" className="mt-2">
+            Today&apos;s <em className="text-gold">pulse</em>
+          </SectionHead>
           <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             <div className="rounded-xl border border-navy bg-navy p-5 text-bg">
               <div className="font-display text-4xl font-semibold">
@@ -542,8 +568,10 @@ export default async function AttendancePage() {
             </div>
           </div>
 
-          {/* By class */}
-          <h2 className="mb-3 font-display text-lg font-semibold text-navy">By class</h2>
+          {/* 02 · By class */}
+          <SectionHead num="02">
+            By <em className="text-gold">class</em>
+          </SectionHead>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {classViews.map((c) => (
               <Link
@@ -615,73 +643,94 @@ export default async function AttendancePage() {
           </div>
 
           {/* 03 · This term's trend */}
-          {trend && (
-            <section className="mt-8">
-              <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                <h2 className="font-display text-lg font-semibold text-navy">
-                  This term&apos;s trend
-                </h2>
-                <div className="text-sm text-navy-3">
-                  <b className="text-navy">{termAvg}%</b> term average
-                  {trendDelta !== null && (
-                    <span
-                      className={
-                        trendDelta >= 0 ? "text-green" : "text-terra"
-                      }
-                    >
-                      {" · "}
-                      {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}% vs previous term
-                    </span>
-                  )}
-                </div>
-              </div>
-              <TermTrend data={trend} />
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {(
-                  [
-                    ["Best day", bestDay ? `${bestDay.pct}%` : "—", bestDay ? fmtShort(bestDay.date) : ""],
-                    ["Lowest day", lowestDay ? `${lowestDay.pct}%` : "—", lowestDay ? fmtShort(lowestDay.date) : ""],
-                    ["Mondays avg", monAvg !== null ? `${monAvg}%` : "—", ""],
-                    ["Fridays avg", friAvg !== null ? `${friAvg}%` : "—", ""],
-                  ] as const
-                ).map(([label, val, sub]) => (
-                  <div
-                    key={label}
-                    className="rounded-lg border border-border bg-surface px-3 py-2"
-                  >
-                    <div className="text-[11px] uppercase tracking-wide text-navy-3">
-                      {label}
-                    </div>
-                    <div className="font-display text-lg font-semibold text-navy">
-                      {val}
-                    </div>
-                    {sub && <div className="text-[11px] text-navy-3">{sub}</div>}
+          <section>
+            <SectionHead
+              num="03"
+              right={
+                trend ? (
+                  <div className="text-sm text-navy-3">
+                    <b className="text-navy">{termAvg}%</b> term average
+                    {trendDelta !== null && (
+                      <span className={trendDelta >= 0 ? "text-green" : "text-terra"}>
+                        {" · "}
+                        {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}% vs previous term
+                      </span>
+                    )}
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
+                ) : undefined
+              }
+            >
+              This <em className="text-gold">term&apos;s</em> trend
+            </SectionHead>
+            {trend ? (
+              <>
+                <TermTrend data={trend} />
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {(
+                    [
+                      ["Best day", bestDay ? `${bestDay.pct}%` : "—", bestDay ? fmtShort(bestDay.date) : ""],
+                      ["Lowest day", lowestDay ? `${lowestDay.pct}%` : "—", lowestDay ? fmtShort(lowestDay.date) : ""],
+                      ["Mondays avg", monAvg !== null ? `${monAvg}%` : "—", ""],
+                      ["Fridays avg", friAvg !== null ? `${friAvg}%` : "—", ""],
+                    ] as const
+                  ).map(([label, val, sub]) => (
+                    <div
+                      key={label}
+                      className="rounded-lg border border-border bg-surface px-3 py-2"
+                    >
+                      <div className="text-[11px] uppercase tracking-wide text-navy-3">
+                        {label}
+                      </div>
+                      <div className="font-display text-lg font-semibold text-navy">{val}</div>
+                      {sub && <div className="text-[11px] text-navy-3">{sub}</div>}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+                No active term — this term&apos;s trend appears once the term is running and
+                registers are being marked.
+              </p>
+            )}
+          </section>
 
           {/* 04 · Students needing attention */}
-          {needsAttention.length > 0 && <NeedsAttention students={needsAttention} />}
+          <section className="mt-8">
+            <SectionHead num="04" className="mt-0">
+              Students needing <em className="text-gold">attention</em>
+            </SectionHead>
+            {needsAttention.length > 0 ? (
+              <NeedsAttention students={needsAttention} />
+            ) : (
+              <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+                {trend
+                  ? "No students flagged — every class is above the attendance thresholds."
+                  : "No active term — flags appear once attendance is being marked this term."}
+              </p>
+            )}
+          </section>
 
           {/* 05 · Register edit requests */}
-          {data.editRequests.length > 0 && (
-            <section className="mt-8">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-display text-lg font-semibold text-navy">
-                  Register edit requests{" "}
-                  <span className="text-sm font-normal text-navy-3">
-                    ({data.pendingCorrections})
-                  </span>
-                </h2>
+          <section className="mt-8">
+            <SectionHead
+              num="05"
+              className="mt-0"
+              right={
                 <Link
                   href="/attendance/corrections"
                   className="text-xs font-semibold text-gold hover:underline"
                 >
                   View all →
                 </Link>
-              </div>
+              }
+            >
+              Register edit <em className="text-gold">requests</em>{" "}
+              <span className="text-sm font-normal text-navy-3">
+                ({data.pendingCorrections})
+              </span>
+            </SectionHead>
+            {data.editRequests.length > 0 ? (
               <div className="space-y-2">
                 {data.editRequests.map((r) => (
                   <div
@@ -720,8 +769,13 @@ export default async function AttendancePage() {
                   </div>
                 ))}
               </div>
-            </section>
-          )}
+            ) : (
+              <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+                No pending edit requests — teacher correction requests will appear here for your
+                co-sign.
+              </p>
+            )}
+          </section>
         </>
       )}
 
