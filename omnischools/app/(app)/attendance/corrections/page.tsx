@@ -51,6 +51,7 @@ export default async function CorrectionsPage() {
         requestedStatus: attendanceCorrections.requestedStatus,
         reason: attendanceCorrections.reason,
         status: attendanceCorrections.status,
+        decisionNote: attendanceCorrections.decisionNote,
         createdAt: attendanceCorrections.createdAt,
         requesterId: attendanceCorrections.requestedByUserId,
         requesterName: requester.fullName,
@@ -182,6 +183,7 @@ export default async function CorrectionsPage() {
       termPct,
       last14,
       absenceSmsWasSent: r.recordStatus === "ABSENT" && data.absenceSms,
+      decisionNote: r.decisionNote,
     };
   });
 

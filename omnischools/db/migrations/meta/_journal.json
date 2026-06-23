@@ -176,6 +176,13 @@
       "when": 1782113841641,
       "tag": "0024_large_viper",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1782252697382,
+      "tag": "0025_fair_zaladane",
+      "breakpoints": true
     }
   ]
 }

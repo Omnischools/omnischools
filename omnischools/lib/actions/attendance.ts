@@ -294,11 +294,21 @@ export async function decideCorrection(
 ): Promise<{ ok: boolean; error?: string }> {
   const { school } = await requireSchool();
   const parsed = z
-    .object({ correctionId: z.string().uuid(), approve: z.boolean() })
+    .object({
+      correctionId: z.string().uuid(),
+      approve: z.boolean(),
+      note: z.string().max(1000).optional(),
+      sendCorrectionSms: z.boolean().optional(),
+    })
     .safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid decision." };
+  const note = parsed.data.note?.trim() || null;
   const actor = await resolveActor(school.id);
   try {
+    // The guardian to message on approve (resolved in-tx, sent after commit).
+    let correctionSms: { phone: string; first: string; status: string; date: string } | null =
+      null;
+
     await withSchool(school.id, async (tx) => {
       const [c] = await tx
         .select()
@@ -327,6 +337,7 @@ export async function decideCorrection(
           status: parsed.data.approve ? "APPROVED" : "REJECTED",
           decidedByUserId: actor.id ?? undefined,
           decidedAt: new Date(),
+          decisionNote: note,
         })
         .where(eq(attendanceCorrections.id, c.id));
 
@@ -337,11 +348,43 @@ export async function decideCorrection(
         actionType: parsed.data.approve ? "correction_approved" : "correction_rejected",
         entityType: "attendance_record",
         entityId: c.attendanceRecordId,
-        after: { requestedStatus: c.requestedStatus },
-        reason: "Attendance correction decision",
+        after: { requestedStatus: c.requestedStatus, note },
+        reason: note ?? "Attendance correction decision",
       });
+
+      if (parsed.data.approve && parsed.data.sendCorrectionSms) {
+        const [g] = await tx
+          .select({
+            phone: studentGuardians.phone,
+            first: students.firstName,
+            date: attendanceRecords.date,
+          })
+          .from(attendanceRecords)
+          .innerJoin(students, eq(students.id, attendanceRecords.studentId))
+          .innerJoin(
+            studentGuardians,
+            and(
+              eq(studentGuardians.studentId, students.id),
+              eq(studentGuardians.isPrimary, true),
+            ),
+          )
+          .where(eq(attendanceRecords.id, c.attendanceRecordId))
+          .limit(1);
+        if (g) correctionSms = { phone: g.phone, first: g.first, status: c.requestedStatus, date: g.date };
+      }
     });
+
+    if (correctionSms) {
+      const c = correctionSms as { phone: string; first: string; status: string; date: string };
+      const label = c.status.charAt(0) + c.status.slice(1).toLowerCase();
+      await sendSms(
+        c.phone,
+        `${school.shortName ?? "Omnischools"}: ${c.first}'s attendance on ${c.date} has been corrected to ${label}.`,
+      );
+    }
+
     safeRevalidate("/attendance/corrections");
+    safeRevalidate("/attendance");
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not record the decision." };
