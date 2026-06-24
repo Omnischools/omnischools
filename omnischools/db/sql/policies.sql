@@ -85,6 +85,8 @@ BEGIN
     'subject',
     'gradebook_config',
     'gradebook_score',
+    'gradebook_column',
+    'gradebook_column_score',
     'grade_scale',
     'report_card',
     'announcement',

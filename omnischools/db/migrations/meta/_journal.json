@@ -197,6 +197,13 @@
       "when": 1782284620841,
       "tag": "0027_romantic_silver_fox",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1782335989777,
+      "tag": "0028_amused_vivisector",
+      "breakpoints": true
     }
   ]
 }
