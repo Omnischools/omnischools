@@ -2,8 +2,10 @@ import Link from "next/link";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
+import { ScrollText } from "lucide-react";
 import { auditLog, users } from "@/db/schema";
 import { BackLink } from "@/components/ui/back-link";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Audit log" };
@@ -101,9 +103,10 @@ export default async function AuditLogPage({
       </div>
 
       {data.rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-2 bg-surface p-10 text-center text-sm text-navy-3">
-          No audit events yet.
-        </div>
+        <EmptyState
+          icon={<ScrollText className="h-5 w-5" />}
+          title="No audit events yet."
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-surface">
           <table className="w-full text-sm">

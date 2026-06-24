@@ -15,8 +15,10 @@ const fmtWhen = (d: Date | string) => {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(date.getDate())}/${p(date.getMonth() + 1)} ${p(date.getHours())}:${p(date.getMinutes())}`;
 };
+import { Megaphone } from "lucide-react";
 import { AnnouncementComposer, TemplateForm } from "@/components/comms/composers";
 import { SmsComposer } from "@/components/comms/sms-composer";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +74,10 @@ export default async function CommunicationPage() {
           <AnnouncementComposer classOptions={classOptions} />
           <div className="mt-4 space-y-2">
             {data.recentAnnouncements.length === 0 ? (
-              <p className="text-sm text-navy-3">No announcements yet.</p>
+              <EmptyState
+                icon={<Megaphone className="h-5 w-5" />}
+                title="No announcements yet."
+              />
             ) : (
               data.recentAnnouncements.map((a) => (
                 <div
@@ -126,7 +131,7 @@ export default async function CommunicationPage() {
               Recent sends
             </h3>
             {data.log.length === 0 ? (
-              <p className="text-sm text-navy-3">No messages sent yet.</p>
+              <EmptyState tone="muted">No messages sent yet.</EmptyState>
             ) : (
               <div className="bg-surface overflow-hidden rounded-xl border border-border">
                 <table className="w-full text-sm">

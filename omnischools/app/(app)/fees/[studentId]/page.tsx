@@ -8,6 +8,7 @@ import { IssueInvoiceForm } from "@/components/fees/issue-invoice-form";
 import { RecordPaymentForm } from "@/components/fees/record-payment-form";
 import { VoidPaymentButton } from "@/components/fees/void-payment-button";
 import { BackLink } from "@/components/ui/back-link";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -124,7 +125,9 @@ export default async function StudentFeesPage({
 
       <h2 className="mb-3 font-display text-xl font-semibold text-navy">Invoices</h2>
       {invs.length === 0 ? (
-        <p className="mb-8 text-sm text-navy-3">No invoices yet.</p>
+        <EmptyState tone="muted" className="mb-8">
+          No invoices yet.
+        </EmptyState>
       ) : (
         <div className="bg-surface mb-8 overflow-hidden rounded-xl border border-border">
           <table className="w-full text-sm">
@@ -183,7 +186,7 @@ export default async function StudentFeesPage({
 
       <h2 className="mb-3 font-display text-xl font-semibold text-navy">Payments</h2>
       {pays.length === 0 ? (
-        <p className="text-sm text-navy-3">No payments yet.</p>
+        <EmptyState tone="muted">No payments yet.</EmptyState>
       ) : (
         <div className="bg-surface overflow-hidden rounded-xl border border-border">
           <table className="w-full text-sm">

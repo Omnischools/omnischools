@@ -12,8 +12,10 @@ import {
   schoolHolidays,
   users,
 } from "@/db/schema";
+import { GraduationCap } from "lucide-react";
 import { NewClassForm, AssignStudent } from "@/components/attendance/class-controls";
 import { CorrectionActions } from "@/components/attendance/correction-actions";
+import { EmptyState } from "@/components/ui/empty-state";
 import { computeAttendanceFlags, FLAG_THRESHOLDS } from "@/lib/attendance-flags";
 import { NeedsAttention } from "@/components/attendance/needs-attention";
 import { TermTrend } from "@/components/attendance/term-trend";
@@ -512,12 +514,11 @@ export default async function AttendancePage() {
       </div>
 
       {data.cls.length === 0 ? (
-        <div className="border-border-2 bg-surface rounded-xl border border-dashed p-12 text-center">
-          <p className="font-display text-lg text-navy">No classes yet.</p>
-          <p className="mt-1 text-sm text-navy-3">
-            Create a class to start taking attendance.
-          </p>
-        </div>
+        <EmptyState
+          icon={<GraduationCap className="h-5 w-5" />}
+          title="No classes yet."
+          body="Create a class to start taking attendance."
+        />
       ) : (
         <>
           {/* 01 · Today's pulse */}
@@ -688,10 +689,10 @@ export default async function AttendancePage() {
                 </div>
               </>
             ) : (
-              <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+              <EmptyState tone="muted">
                 No active term — this term&apos;s trend appears once the term is running and
                 registers are being marked.
-              </p>
+              </EmptyState>
             )}
           </section>
 
@@ -703,11 +704,11 @@ export default async function AttendancePage() {
             {needsAttention.length > 0 ? (
               <NeedsAttention students={needsAttention} />
             ) : (
-              <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+              <EmptyState tone="muted">
                 {trend
                   ? "No students flagged — every class is above the attendance thresholds."
                   : "No active term — flags appear once attendance is being marked this term."}
-              </p>
+              </EmptyState>
             )}
           </section>
 
@@ -770,10 +771,10 @@ export default async function AttendancePage() {
                 ))}
               </div>
             ) : (
-              <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+              <EmptyState tone="muted">
                 No pending edit requests — teacher correction requests will appear here for your
                 co-sign.
-              </p>
+              </EmptyState>
             )}
           </section>
         </>

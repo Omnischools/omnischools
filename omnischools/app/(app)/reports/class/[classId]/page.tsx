@@ -9,6 +9,7 @@ import { PrintButton } from "@/components/reports/print-button";
 import { ExportCsv } from "@/components/reports/export-csv";
 import { schoolFile } from "@/lib/filename";
 import { BackLink } from "@/components/ui/back-link";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -85,9 +86,9 @@ export default async function ClassReportPage({
       </div>
 
       {debtors.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-2 bg-surface p-12 text-center">
-          <p className="font-display text-lg text-navy">Nothing outstanding in this class.</p>
-        </div>
+        <EmptyState tone="muted" className="p-12">
+          Nothing outstanding in this class.
+        </EmptyState>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-surface">
           <table className="w-full text-sm">

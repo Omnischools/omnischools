@@ -1,3 +1,4 @@
+import { GraduationCap } from "lucide-react";
 import { asc, count, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
@@ -5,6 +6,7 @@ import { classes, students } from "@/db/schema";
 import { loadStaffOptions } from "@/lib/data/staff-options";
 import { CreateClassForm } from "@/components/classes/create-class-form";
 import { ClassesTable } from "@/components/classes/classes-table";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -58,13 +60,11 @@ export default async function ClassesPage() {
       </div>
 
       {classRows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-2 bg-surface p-12 text-center">
-          <p className="font-display text-lg text-navy">No classes yet.</p>
-          <p className="mt-1 text-sm text-navy-3">
-            Create your forms/classes (e.g. JHS 1A) — students, attendance and the
-            timetable all hang off them.
-          </p>
-        </div>
+        <EmptyState
+          icon={<GraduationCap className="h-5 w-5" />}
+          title="No classes yet."
+          body="Create your forms/classes (e.g. JHS 1A) — students, attendance and the timetable all hang off them."
+        />
       ) : (
         <ClassesTable rows={tableRows} staff={staff} />
       )}

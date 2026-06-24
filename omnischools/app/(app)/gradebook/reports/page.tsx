@@ -6,6 +6,7 @@ import { classes, students, academicPeriod, reportCards } from "@/db/schema";
 import { GradebookSelectors } from "@/components/gradebook/selectors";
 import { GenerateReports } from "@/components/gradebook/generate-reports";
 import { BackLink } from "@/components/ui/back-link";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +28,9 @@ export default async function ReportsPage({
   });
 
   let body: React.ReactNode = (
-    <div className="border-border-2 bg-surface rounded-xl border border-dashed p-12 text-center text-sm text-navy-3">
+    <EmptyState tone="muted" className="p-12">
       Choose a class and period.
-    </div>
+    </EmptyState>
   );
 
   if (classId && periodId) {
@@ -64,7 +65,7 @@ export default async function ReportsPage({
           <GenerateReports classId={classId} periodId={periodId} />
         </div>
         {roster.length === 0 ? (
-          <p className="text-sm text-navy-3">No students in this class.</p>
+          <EmptyState tone="muted">No students in this class.</EmptyState>
         ) : (
           <div className="bg-surface overflow-hidden rounded-xl border border-border">
             <table className="w-full text-sm">

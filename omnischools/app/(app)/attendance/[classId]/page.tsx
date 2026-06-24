@@ -23,6 +23,7 @@ import {
 } from "@/components/attendance/register-switcher";
 import type { AttendanceStatus } from "@/lib/attendance-status";
 import { BackLink } from "@/components/ui/back-link";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -373,16 +374,13 @@ export default async function TakeAttendancePage({
           {data.cls.name}
         </h1>
         <p className="mb-6 text-sm text-navy-3">0 students</p>
-        <div className="rounded-xl border border-dashed border-border-2 bg-surface p-12 text-center">
-          <p className="font-display text-lg text-navy">No students in this class.</p>
-          <p className="mt-1 text-sm text-navy-3">
-            Assign students from the{" "}
-            <Link href="/attendance" className="text-gold underline">
-              Attendance
-            </Link>{" "}
-            dashboard.
-          </p>
-        </div>
+        <EmptyState tone="muted">
+          No students in this class. Assign students from the{" "}
+          <Link href="/attendance" className="text-gold underline">
+            Attendance
+          </Link>{" "}
+          dashboard.
+        </EmptyState>
       </div>
     );
   }

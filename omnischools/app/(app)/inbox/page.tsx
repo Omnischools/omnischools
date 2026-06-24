@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 import { desc, eq, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { conversations, users } from "@/db/schema";
 import { NewConversationForm } from "@/components/inbox/new-conversation-form";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -57,14 +59,17 @@ export default async function InboxPage() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-2 bg-surface p-12 text-center">
-          <p className="font-display text-lg text-navy">No conversations yet.</p>
-          <p className="mt-1 text-sm text-navy-3">
-            Start a message to a parent, or wire your SMS provider’s webhook to{" "}
-            <code className="font-mono text-xs">/api/inbox/inbound</code> so replies land
-            here.
-          </p>
-        </div>
+        <EmptyState
+          icon={<MessageSquare className="h-5 w-5" />}
+          title="No conversations yet."
+          body={
+            <>
+              Start a message to a parent, or wire your SMS provider’s webhook to{" "}
+              <code className="font-mono text-xs">/api/inbox/inbound</code> so replies land
+              here.
+            </>
+          }
+        />
       ) : (
         <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
           {rows.map((r) => (
