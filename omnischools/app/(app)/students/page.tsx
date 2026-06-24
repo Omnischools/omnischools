@@ -4,6 +4,7 @@ import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { students } from "@/db/schema";
 import { StudentsTable } from "@/components/students/students-table";
+import { StudentsEmpty } from "@/components/students/students-empty";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,14 @@ export default async function StudentsPage() {
       .orderBy(desc(students.createdAt))
       .limit(200),
   );
+
+  if (rows.length === 0) {
+    return (
+      <div className="mx-auto max-w-page">
+        <StudentsEmpty />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-page">
@@ -50,20 +59,7 @@ export default async function StudentsPage() {
         </div>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-2 bg-surface p-12 text-center">
-          <p className="font-display text-lg text-navy">No students yet.</p>
-          <p className="mt-1 text-sm text-navy-3">
-            Add one directly, or accept an application from{" "}
-            <Link href="/admissions" className="text-gold underline">
-              Admissions
-            </Link>
-            .
-          </p>
-        </div>
-      ) : (
-        <StudentsTable rows={rows} />
-      )}
+      <StudentsTable rows={rows} />
     </div>
   );
 }
