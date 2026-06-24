@@ -4,6 +4,7 @@ import {
   text,
   date,
   boolean,
+  integer,
   timestamp,
   unique,
   index,
@@ -25,6 +26,7 @@ export const classes = pgTable(
     classTeacherUserId: uuid("class_teacher_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    targetCapacity: integer("target_capacity"), // planned seats; drives utilisation stats (nullable)
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

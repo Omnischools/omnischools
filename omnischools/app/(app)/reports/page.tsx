@@ -1,5 +1,8 @@
+import { eq, and, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { getFinanceReport, ghs } from "@/lib/reports/finance-data";
+import { withSchool } from "@/lib/db/rls";
+import { students } from "@/db/schema";
 import { ReportCatalog, type ReportCard } from "@/components/reports/report-catalog";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +10,15 @@ export const dynamic = "force-dynamic";
 export default async function ReportsPage() {
   const { school } = await requireSchool();
   const r = await getFinanceReport(school.id, null);
+
+  // Cheap headcount for the School-statistics card snapshot.
+  const activeStudentCount = await withSchool(school.id, async (tx) => {
+    const rows = await tx
+      .select({ count: sql<number>`count(*)::int` })
+      .from(students)
+      .where(and(eq(students.schoolId, school.id), eq(students.status, "ACTIVE")));
+    return rows[0]?.count ?? 0;
+  });
 
   const cards: ReportCard[] = [
     {
@@ -92,14 +104,14 @@ export default async function ReportsPage() {
     },
     {
       category: "operational",
+      href: "/reports/school-stats",
       icon: "S",
-      iconTone: "bg-bg text-navy-3",
+      iconTone: "bg-gold-bg text-gold",
       name: "School statistics",
       desc: "Headcount, class composition, gender split and enrolment flow.",
-      comingSoon: true,
-      snapshotLabel: "Coming soon",
-      snapshotValue: "In build",
-      snapshotSub: "Headcount & composition rollups",
+      snapshotLabel: "Total students",
+      snapshotValue: String(activeStudentCount),
+      snapshotSub: "Headcount, composition & enrolment flow",
     },
     {
       category: "operational",
