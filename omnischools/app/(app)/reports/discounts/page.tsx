@@ -9,6 +9,7 @@ import {
   type DiscountAppRow,
 } from "@/components/reports/discount-applications-table";
 import { PeriodBar } from "@/components/reports/period-bar";
+import { EmptyState } from "@/components/ui/empty-state";
 import { resolvePeriod, weeksIn } from "@/lib/reports/period";
 import { getReportTerm } from "@/lib/reports/report-term";
 import { schoolFile } from "@/lib/filename";
@@ -86,11 +87,11 @@ export default async function DiscountsPage({
       />
 
       {r.applicationCount === 0 ? (
-        <Empty>
+        <EmptyState tone="muted">
           No discount applications recorded yet. Discounts are attributed to a scheme from issuance
           onward — issue an invoice and pick a discount scheme (or apply a sibling/bursary discount)
           to populate this report. Historical freeform discounts aren&rsquo;t attributed.
-        </Empty>
+        </EmptyState>
       ) : (
         <>
           {/* KPI strip */}
@@ -140,7 +141,7 @@ export default async function DiscountsPage({
 
           {/* Tier breakdown */}
           {r.byScheme.length === 0 ? (
-            <Empty>No schemes have applications yet.</Empty>
+            <EmptyState tone="muted">No schemes have applications yet.</EmptyState>
           ) : (
             <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {r.byScheme.map((s) => (
@@ -196,7 +197,7 @@ export default async function DiscountsPage({
                 <h3 className="mt-0.5 font-display text-lg font-semibold text-navy">Largest amounts</h3>
               </div>
               {r.topRecipients.length === 0 ? (
-                <Empty>No recipients yet.</Empty>
+                <EmptyState tone="muted">No recipients yet.</EmptyState>
               ) : (
                 <div className="space-y-1">
                   {r.topRecipients.map((t, i) => (
@@ -333,13 +334,5 @@ function Kpi({
       </div>
       <div className="mt-0.5 text-xs text-navy-3">{sub}</div>
     </div>
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
-      {children}
-    </p>
   );
 }

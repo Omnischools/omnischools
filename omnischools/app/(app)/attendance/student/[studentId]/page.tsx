@@ -17,6 +17,7 @@ import { computeAttendanceFlags } from "@/lib/attendance-flags";
 import { isHoliday, type HolidayRange } from "@/lib/school-calendar";
 import { ATTENDANCE_STATUS_META, type AttendanceStatus } from "@/lib/attendance-status";
 import { PrintButton } from "@/components/reports/print-button";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -466,9 +467,9 @@ export default async function StudentAttendancePage({
         </span>
       </div>
       {!term ? (
-        <Empty>No active term — set term dates in Settings to see the register grid.</Empty>
+        <EmptyState tone="muted">No active term — set term dates in Settings to see the register grid.</EmptyState>
       ) : weeks.length === 0 ? (
-        <Empty>No school days in this term yet.</Empty>
+        <EmptyState tone="muted">No school days in this term yet.</EmptyState>
       ) : (
         <div className="space-y-2">
           {weeks.map((w) => (
@@ -683,14 +684,6 @@ function Glance({
         </div>
       )}
     </div>
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
-      {children}
-    </p>
   );
 }
 

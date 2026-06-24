@@ -3,6 +3,7 @@ import { getSchoolStats, type ClassComposition } from "@/lib/reports/school-stat
 import { ExportCsv } from "@/components/reports/export-csv";
 import { PrintButton } from "@/components/reports/print-button";
 import { ReportHeader } from "@/components/reports/report-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { schoolFile } from "@/lib/filename";
 
 export const dynamic = "force-dynamic";
@@ -144,7 +145,7 @@ export default async function SchoolStatsPage() {
           </div>
 
           {s.byClass.length === 0 ? (
-            <Empty>No active classes yet. Create classes to see composition here.</Empty>
+            <EmptyState tone="muted" className="m-6">No active classes yet. Create classes to see composition here.</EmptyState>
           ) : (
             <>
               {/* Column heads */}
@@ -176,7 +177,7 @@ export default async function SchoolStatsPage() {
           </div>
           <div className="px-6 py-6">
             {gender.total === 0 ? (
-              <Empty>No active students to break down yet.</Empty>
+              <EmptyState tone="muted" className="m-6">No active students to break down yet.</EmptyState>
             ) : (
               <div className="text-center">
                 <GenderDonut female={gender.female} total={gender.total} />
@@ -479,13 +480,5 @@ function FlowRow({
       </div>
       <div className={`font-display text-[22px] font-semibold ${numTone}`}>{value}</div>
     </div>
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="m-6 rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
-      {children}
-    </p>
   );
 }
