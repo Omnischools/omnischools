@@ -8,11 +8,13 @@ import {
   students,
   academicPeriod,
   gradebookConfig,
-  gradebookScores,
+  gradebookColumns,
+  gradebookColumnScores,
 } from "@/db/schema";
 import { GradebookSelectors } from "@/components/gradebook/selectors";
 import { NewSubjectForm } from "@/components/gradebook/new-subject-form";
-import { ScoreGrid } from "@/components/gradebook/score-grid";
+import { ColumnScoreGrid } from "@/components/gradebook/column-score-grid";
+import { GradebookEmptyColumns } from "@/components/gradebook/empty-columns";
 
 export const dynamic = "force-dynamic";
 
@@ -69,32 +71,62 @@ export default async function GradebookPage({
         .orderBy(asc(students.lastName));
       if (roster.length === 0)
         return {
-          roster: [],
-          scores: [] as {
+          roster,
+          columns: [] as {
+            id: string;
+            name: string;
+            category: string;
+            maxScore: string;
+          }[],
+          colScores: [] as {
+            columnId: string;
             studentId: string;
-            classScore: string | null;
-            examScore: string | null;
+            rawScore: string | null;
           }[],
         };
-      const scores = await tx
+
+      const columns = await tx
         .select({
-          studentId: gradebookScores.studentId,
-          classScore: gradebookScores.classScore,
-          examScore: gradebookScores.examScore,
+          id: gradebookColumns.id,
+          name: gradebookColumns.name,
+          category: gradebookColumns.category,
+          maxScore: gradebookColumns.maxScore,
         })
-        .from(gradebookScores)
+        .from(gradebookColumns)
         .where(
           and(
-            eq(gradebookScores.schoolId, school.id),
-            eq(gradebookScores.subjectId, subjectId),
-            eq(gradebookScores.periodId, periodId),
-            inArray(
-              gradebookScores.studentId,
-              roster.map((r) => r.id),
-            ),
+            eq(gradebookColumns.schoolId, school.id),
+            eq(gradebookColumns.classId, classId),
+            eq(gradebookColumns.subjectId, subjectId),
+            eq(gradebookColumns.periodId, periodId),
           ),
-        );
-      return { roster, scores };
+        )
+        .orderBy(asc(gradebookColumns.position));
+
+      const colScores = columns.length
+        ? await tx
+            .select({
+              columnId: gradebookColumnScores.columnId,
+              studentId: gradebookColumnScores.studentId,
+              rawScore: gradebookColumnScores.rawScore,
+            })
+            .from(gradebookColumnScores)
+            .where(
+              and(
+                eq(gradebookColumnScores.schoolId, school.id),
+                inArray(
+                  gradebookColumnScores.columnId,
+                  columns.map((c) => c.id),
+                ),
+                inArray(
+                  gradebookColumnScores.studentId,
+                  roster.map((r) => r.id),
+                ),
+              ),
+            )
+        : [];
+
+      return { roster, columns, colScores };
     });
 
     if (data.roster.length === 0) {
@@ -108,26 +140,51 @@ export default async function GradebookPage({
         </div>
       );
     } else {
-      const byStudent = new Map(data.scores.map((s) => [s.studentId, s]));
-      const roster = data.roster.map((r) => {
-        const s = byStudent.get(r.id);
-        return {
-          id: r.id,
-          name: `${r.lastName}, ${r.firstName}`,
-          code: r.code,
-          classScore: s?.classScore ?? "",
-          examScore: s?.examScore ?? "",
-        };
-      });
-      grid = (
-        <ScoreGrid
-          classId={classId}
-          subjectId={subjectId}
-          periodId={periodId}
-          weights={base.weights}
-          roster={roster}
-        />
-      );
+      const subjectName = base.subs.find((s) => s.id === subjectId)?.name ?? "Subject";
+      const className = base.cls.find((c) => c.id === classId)?.name ?? "Class";
+      const period = base.periods.find((p) => p.periodId === periodId);
+      const termLabel = period?.periodLabel ?? "this term";
+
+      const rosterRows = data.roster.map((r) => ({
+        id: r.id,
+        name: `${r.lastName}, ${r.firstName}`,
+        code: r.code,
+      }));
+
+      if (data.columns.length === 0) {
+        grid = (
+          <GradebookEmptyColumns
+            className={className}
+            subjectName={subjectName}
+            termLabel={termLabel}
+            students={rosterRows}
+            classId={classId}
+            subjectId={subjectId}
+            periodId={periodId}
+          />
+        );
+      } else {
+        grid = (
+          <ColumnScoreGrid
+            columns={data.columns.map((c) => ({
+              id: c.id,
+              name: c.name,
+              category: c.category === "EXAM" ? "EXAM" : "CA",
+              maxScore: Number(c.maxScore),
+            }))}
+            roster={rosterRows}
+            scores={data.colScores.map((s) => ({
+              columnId: s.columnId,
+              studentId: s.studentId,
+              raw: s.rawScore ?? "",
+            }))}
+            weights={base.weights}
+            classId={classId}
+            subjectId={subjectId}
+            periodId={periodId}
+          />
+        );
+      }
     }
   }
 
