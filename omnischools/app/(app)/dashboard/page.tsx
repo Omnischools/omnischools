@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte, ne, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import {
@@ -10,8 +10,18 @@ import {
   roleAssignments,
   academicPeriodConfig,
   academicPeriod,
+  invoices,
+  announcements,
 } from "@/db/schema";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  AdminChecklist,
+  type ChecklistStep,
+} from "@/components/dashboard/admin-checklist";
+import {
+  TeacherHero,
+  type TeacherAssignment,
+} from "@/components/dashboard/teacher-hero";
 
 export const dynamic = "force-dynamic";
 
@@ -24,8 +34,36 @@ const fmtDate = (d: Date) =>
   });
 
 export default async function DashboardPage() {
-  const { school } = await requireSchool();
+  const { user, school } = await requireSchool();
   const today = new Date().toISOString().slice(0, 10);
+
+  const roleSet = new Set(user.roles);
+  const isAdminOrHead = roleSet.has("ADMIN") || roleSet.has("HEADMASTER");
+  const isTeacher = roleSet.has("TEACHER");
+  // A teacher who just joined (and isn't also an admin/head) gets the welcome hero.
+  const isTeacherOnly = isTeacher && !isAdminOrHead;
+
+  // ── Teacher branch: just accepted their invite → welcome hero ────────────
+  if (isTeacherOnly) {
+    const myClasses = await withSchool(school.id, async (tx) =>
+      tx
+        .select({ name: classes.name, level: classes.level })
+        .from(classes)
+        .where(
+          and(
+            eq(classes.schoolId, school.id),
+            eq(classes.active, true),
+            eq(classes.classTeacherUserId, user.id),
+          ),
+        )
+        .orderBy(classes.name),
+    );
+    const assignments: TeacherAssignment[] = myClasses.map((c) => ({
+      className: c.name,
+      note: "Form teacher",
+    }));
+    return <TeacherHero name={user.name} assignments={assignments} />;
+  }
 
   const stats = await withSchool(school.id, async (tx) => {
     const [{ activeStudents }] = await tx
@@ -85,17 +123,87 @@ export default async function DashboardPage() {
       .from(students)
       .where(eq(students.schoolId, school.id))
       .groupBy(students.status);
+    // First-run signals (admin checklist): does the school have a non-voided
+    // invoice and at least one announcement yet?
+    const [{ invoiceCount }] = await tx
+      .select({ invoiceCount: sql<number>`count(*)::int` })
+      .from(invoices)
+      .where(and(eq(invoices.schoolId, school.id), ne(invoices.status, "VOIDED")));
+    const [{ announcementCount }] = await tx
+      .select({ announcementCount: sql<number>`count(*)::int` })
+      .from(announcements)
+      .where(eq(announcements.schoolId, school.id));
     return {
       activeStudents,
       pending,
       classCount,
       teacherCount,
+      periodConfigured: !!cfg,
       academicYear: cfg?.academicYear ?? null,
       term: term?.label ?? null,
       byClass,
       statusRows,
+      invoiceCount,
+      announcementCount,
     };
   });
+
+  // ── Admin / head first-run branch: setup not yet complete → checklist ────
+  if (isAdminOrHead) {
+    const steps: ChecklistStep[] = [
+      {
+        title: "Set up your school",
+        sub: "Academic year, terms and calendar",
+        done: stats.periodConfigured,
+        href: "/settings/academic",
+        cta: "Set up →",
+      },
+      {
+        title: "Invite your teachers",
+        sub: "Add teaching staff so they can take attendance and grade",
+        done: stats.teacherCount > 0,
+        href: "/staff",
+        cta: "Invite teachers →",
+      },
+      {
+        title: "Add your students",
+        sub: "Upload a CSV or add students one by one — the most important step",
+        done: stats.activeStudents > 0,
+        href: "/students",
+        cta: "Add students →",
+      },
+      {
+        title: "Issue Term 1 invoices",
+        sub: "Once students are loaded, send the first round of fee invoices",
+        done: stats.invoiceCount > 0,
+        href: "/billing",
+        cta: "Issue invoices →",
+        locked: stats.activeStudents === 0,
+      },
+      {
+        title: "Send the first announcement",
+        sub: "A welcome message goes out to all parents and students",
+        done: stats.announcementCount > 0,
+        href: "/communication",
+        cta: "Write one →",
+        optional: true,
+      },
+    ];
+    const doneCount = steps.filter((s) => s.done).length;
+    const progressPct = Math.round((doneCount / steps.length) * 100);
+    // First-run = the three foundational steps aren't all done yet.
+    const setupComplete =
+      stats.periodConfigured && stats.teacherCount > 0 && stats.activeStudents > 0;
+    if (!setupComplete) {
+      return (
+        <AdminChecklist
+          steps={steps}
+          progressPct={progressPct}
+          firstName={user.name?.trim().split(/\s+/)[0] ?? null}
+        />
+      );
+    }
+  }
 
   const ratio = stats.teacherCount > 0 ? Math.round(stats.activeStudents / stats.teacherCount) : 0;
   const avgClass =
