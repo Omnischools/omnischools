@@ -13,6 +13,7 @@ import {
 import { isHoliday, schoolDaysInRange, type HolidayRange } from "@/lib/school-calendar";
 import { PrintButton } from "@/components/reports/print-button";
 import { ATTENDANCE_STATUS_META, type AttendanceStatus } from "@/lib/attendance-status";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -266,11 +267,11 @@ export default async function TermGridPage({
       </div>
 
       {!cls ? (
-        <Empty>No classes yet.</Empty>
+        <EmptyState tone="muted" className="p-10">No classes yet.</EmptyState>
       ) : !term ? (
-        <Empty>No active term — set term dates in Settings to see the grid.</Empty>
+        <EmptyState tone="muted" className="p-10">No active term — set term dates in Settings to see the grid.</EmptyState>
       ) : data.roster.length === 0 ? (
-        <Empty>No students in this class.</Empty>
+        <EmptyState tone="muted" className="p-10">No students in this class.</EmptyState>
       ) : (
         <>
           {/* ── Controls: month nav + legend ─────────────────── */}
@@ -477,14 +478,6 @@ function ClassTitle({ name }: { name: string }) {
       </>
     );
   return <>{name}</>;
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="rounded-xl border border-dashed border-border-2 bg-surface p-10 text-center text-sm text-navy-3">
-      {children}
-    </p>
-  );
 }
 
 function NavBtn({

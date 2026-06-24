@@ -6,6 +6,7 @@ import { CumulativeOverlay } from "@/components/reports/cumulative-overlay";
 import { ExportCsv } from "@/components/reports/export-csv";
 import { PrintButton } from "@/components/reports/print-button";
 import { ReportHeader } from "@/components/reports/report-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { schoolFile } from "@/lib/filename";
 
 export const dynamic = "force-dynamic";
@@ -212,9 +213,9 @@ export default async function CollectionTrendPage() {
         meta="Weekly cumulative · GHS thousands"
       >
         {!r.hasPeriods || !cur ? (
-          <Empty>
+          <EmptyState tone="muted">
             Configure academic terms (Settings → Term &amp; calendar) to see term-on-term trends.
-          </Empty>
+          </EmptyState>
         ) : (
           <div className="rounded-xl border border-border bg-surface p-6">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -304,7 +305,7 @@ export default async function CollectionTrendPage() {
         meta="Each week's collection vs same week last term"
       >
         {r.weeklyRows.length === 0 ? (
-          <Empty>No weekly collection yet for this term.</Empty>
+          <EmptyState tone="muted">No weekly collection yet for this term.</EmptyState>
         ) : (
           <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-5">
             {r.weeklyRows.map((w) => {
@@ -357,7 +358,7 @@ export default async function CollectionTrendPage() {
       {/* ============ REGION 04 — BY CLASS ============ */}
       <Region num="04" pre="By" gold="class" meta="Which year groups are leading or lagging">
         {r.byClass.length === 0 ? (
-          <Empty>No invoiced classes yet for this term.</Empty>
+          <EmptyState tone="muted">No invoiced classes yet for this term.</EmptyState>
         ) : (
           <div className="overflow-hidden rounded-xl border border-border bg-surface">
             <div className="flex items-center justify-between border-b border-border bg-bg px-5 py-3.5 text-[11px] italic text-navy-3">
@@ -427,7 +428,7 @@ export default async function CollectionTrendPage() {
       {/* ============ REGION 05 — AGING ============ */}
       <Region num="05" pre="Age of" gold="outstanding" post=" balances" meta="How old is the unpaid amount">
         {r.aging.totalOutstanding <= 0 ? (
-          <Empty>Nothing outstanding — every invoice is settled.</Empty>
+          <EmptyState tone="muted">Nothing outstanding — every invoice is settled.</EmptyState>
         ) : (
           <AgingCard aging={r.aging} />
         )}
@@ -685,12 +686,4 @@ function agingNote(key: string): string {
     default:
       return "Balances over 90 days old rarely self-resolve — these households likely need direct outreach.";
   }
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
-      {children}
-    </p>
-  );
 }

@@ -5,6 +5,7 @@ import { ExportCsv } from "@/components/reports/export-csv";
 import { PrintButton } from "@/components/reports/print-button";
 import { ReportHeader } from "@/components/reports/report-header";
 import { WeeklyBars } from "@/components/reports/weekly-bars";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PeriodBar } from "@/components/reports/period-bar";
 import { resolvePeriod, weeksIn } from "@/lib/reports/period";
 import { getReportTerm } from "@/lib/reports/report-term";
@@ -123,7 +124,7 @@ export default async function TermCollectionPage({
             )}
           </div>
           {weeks.length === 0 ? (
-            <Empty>No payments recorded yet.</Empty>
+            <EmptyState tone="muted">No payments recorded yet.</EmptyState>
           ) : (
             <>
               <WeeklyBars weeks={weeks.map((w) => ({ label: w.label, amount: w.amount }))} />
@@ -145,7 +146,7 @@ export default async function TermCollectionPage({
             <h3 className="mt-0.5 font-display text-lg font-semibold text-navy">Where it came from</h3>
           </div>
           {r.byMethod.length === 0 ? (
-            <Empty>No payments recorded yet.</Empty>
+            <EmptyState tone="muted">No payments recorded yet.</EmptyState>
           ) : (
             <div className="space-y-3">
               {r.byMethod
@@ -184,7 +185,7 @@ export default async function TermCollectionPage({
           </div>
         </div>
         {r.byClass.length === 0 ? (
-          <Empty>No invoices yet. Issue fees from the Fees module to see collections here.</Empty>
+          <EmptyState tone="muted">No invoices yet. Issue fees from the Fees module to see collections here.</EmptyState>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -231,13 +232,5 @@ export default async function TermCollectionPage({
         )}
       </section>
     </div>
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
-      {children}
-    </p>
   );
 }
