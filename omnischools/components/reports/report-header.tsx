@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BackLink } from "@/components/ui/back-link";
 
 /**
  * Shared detail-route header: a back link to the Reports hub (matching the
@@ -20,12 +20,7 @@ export function ReportHeader({
 }) {
   return (
     <div className="mb-5">
-      <Link
-        href="/reports"
-        className="mb-2 inline-block text-sm text-navy-3 transition-colors hover:text-gold print:hidden"
-      >
-        ← Reports
-      </Link>
+      <BackLink href="/reports" label="Reports" className="mb-2" />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-wide text-navy-3 print:hidden">{crumb}</div>

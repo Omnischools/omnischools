@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { and, asc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { classes } from "@/db/schema";
 import { NewStudentForm } from "@/components/students/new-student-form";
+import { BackLink } from "@/components/ui/back-link";
 
 export const metadata = { title: "Add student" };
 export const dynamic = "force-dynamic";
@@ -20,9 +20,7 @@ export default async function NewStudentPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href="/students" className="text-sm text-navy-3 hover:text-gold">
-        ← Students
-      </Link>
+      <BackLink href="/students" label="Students" />
       <h1 className="mb-6 mt-2 font-display text-3xl font-semibold text-navy">
         Add a student
       </h1>
