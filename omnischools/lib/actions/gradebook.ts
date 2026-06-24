@@ -5,7 +5,7 @@ import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
-import { round2, gradeFor, weightedTotal } from "@/lib/gradebook-helpers";
+import { round2, gradeFor } from "@/lib/gradebook-helpers";
 import type { Tx } from "@/lib/db";
 import {
   students,
@@ -67,91 +67,6 @@ async function getWeights(tx: Tx, schoolId: string): Promise<{ cw: number; ew: n
   if (cfg) return { cw: cfg.classWeight, ew: cfg.examWeight };
   await tx.insert(gradebookConfig).values({ schoolId }).onConflictDoNothing();
   return { cw: 50, ew: 50 };
-}
-
-// ------------------------------------------------------------------- scores
-const SaveScoresSchema = z.object({
-  classId: z.string().uuid(),
-  subjectId: z.string().uuid(),
-  periodId: z.string().uuid(),
-  entries: z
-    .array(
-      z.object({
-        studentId: z.string().uuid(),
-        classScore: z.coerce.number().min(0).max(100).nullable().catch(null),
-        examScore: z.coerce.number().min(0).max(100).nullable().catch(null),
-      }),
-    )
-    .min(1, "No students"),
-});
-
-export type SaveScoresResult = { ok: true; saved: number } | { ok: false; error: string };
-
-export async function saveScores(input: unknown): Promise<SaveScoresResult> {
-  const { school } = await requireSchool();
-  const parsed = SaveScoresSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid scores" };
-  }
-  const d = parsed.data;
-  const actor = await resolveActor(school.id);
-
-  try {
-    const saved = await withSchool(school.id, async (tx) => {
-      const { cw, ew } = await getWeights(tx, school.id);
-      let n = 0;
-      for (const e of d.entries) {
-        const total = weightedTotal(e.classScore, e.examScore, cw, ew);
-        await tx
-          .insert(gradebookScores)
-          .values({
-            schoolId: school.id,
-            studentId: e.studentId,
-            subjectId: d.subjectId,
-            periodId: d.periodId,
-            classScore: e.classScore == null ? null : e.classScore.toFixed(2),
-            examScore: e.examScore == null ? null : e.examScore.toFixed(2),
-            total: total == null ? null : total.toFixed(2),
-            grade: total == null ? null : gradeFor(total),
-            updatedByUserId: actor.id ?? undefined,
-            updatedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [
-              gradebookScores.schoolId,
-              gradebookScores.studentId,
-              gradebookScores.subjectId,
-              gradebookScores.periodId,
-            ],
-            set: {
-              classScore: e.classScore == null ? null : e.classScore.toFixed(2),
-              examScore: e.examScore == null ? null : e.examScore.toFixed(2),
-              total: total == null ? null : total.toFixed(2),
-              grade: total == null ? null : gradeFor(total),
-              updatedByUserId: actor.id ?? undefined,
-              updatedAt: new Date(),
-            },
-          });
-        n++;
-      }
-      await recordAudit(tx, {
-        schoolId: school.id,
-        actorUserId: actor.id ?? undefined,
-        actorRole: actor.role,
-        actionType: "updated",
-        entityType: "gradebook",
-        entityId: d.subjectId,
-        after: { periodId: d.periodId, scores: n, weights: `${cw}/${ew}` },
-        reason: "Scores entered",
-      });
-      return n;
-    });
-
-    safeRevalidate("/gradebook");
-    return { ok: true, saved };
-  } catch {
-    return { ok: false, error: "Could not save scores. Please try again." };
-  }
 }
 
 // ---------------------------------------------------------- assessment columns
