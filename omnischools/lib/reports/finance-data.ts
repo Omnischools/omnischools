@@ -59,9 +59,19 @@ export function yearWindow(selectedYear: string | null): YearWindow {
   return { start: new Date(Date.UTC(sy, 8, 1)), end: new Date(Date.UTC(sy + 1, 8, 1)) };
 }
 
-export async function getFinanceReport(schoolId: string, selectedYear: string | null) {
-  const win = yearWindow(selectedYear);
-  const yearInv = selectedYear ? eq(invoices.academicYear, selectedYear) : undefined;
+export async function getFinanceReport(
+  schoolId: string,
+  selectedYear: string | null,
+  /** Explicit date window (from the PERIOD filter); overrides the academic-year window. */
+  period?: { start: Date; end: Date } | null,
+) {
+  const win = period ?? yearWindow(selectedYear);
+  // Period scopes invoices by issue date; the year selector scopes by academic-year label.
+  const invFilter = period
+    ? and(gte(invoices.issuedAt, period.start), lt(invoices.issuedAt, period.end))
+    : selectedYear
+      ? eq(invoices.academicYear, selectedYear)
+      : undefined;
   const payWindow = win
     ? and(gte(payments.paidAt, win.start), lt(payments.paidAt, win.end))
     : undefined;
@@ -94,7 +104,7 @@ export async function getFinanceReport(schoolId: string, selectedYear: string | 
           debtorCount: sql<number>`count(distinct ${invoices.studentId}) filter (where ${invoices.balanceAmount} > 0)`,
         })
         .from(invoices)
-        .where(and(eq(invoices.schoolId, schoolId), ne(invoices.status, "VOIDED"), yearInv)),
+        .where(and(eq(invoices.schoolId, schoolId), ne(invoices.status, "VOIDED"), invFilter)),
     ),
     withSchool(schoolId, (tx) =>
       tx
@@ -108,7 +118,7 @@ export async function getFinanceReport(schoolId: string, selectedYear: string | 
         .from(invoices)
         .innerJoin(students, eq(invoices.studentId, students.id))
         .leftJoin(classes, eq(students.classId, classes.id))
-        .where(and(eq(invoices.schoolId, schoolId), ne(invoices.status, "VOIDED"), yearInv))
+        .where(and(eq(invoices.schoolId, schoolId), ne(invoices.status, "VOIDED"), invFilter))
         .groupBy(classes.id, classes.name)
         .orderBy(desc(sql`sum(${invoices.balanceAmount})`)),
     ),
@@ -164,7 +174,7 @@ export async function getFinanceReport(schoolId: string, selectedYear: string | 
             eq(invoices.schoolId, schoolId),
             ne(invoices.status, "VOIDED"),
             sql`${invoices.balanceAmount} > 0`,
-            yearInv,
+            invFilter,
           ),
         )
         .groupBy(sql`1`),
@@ -210,7 +220,7 @@ export async function getFinanceReport(schoolId: string, selectedYear: string | 
           count: sql<number>`count(*) filter (where ${invoices.discountAmount} > 0)`,
         })
         .from(invoices)
-        .where(and(eq(invoices.schoolId, schoolId), ne(invoices.status, "VOIDED"), yearInv)),
+        .where(and(eq(invoices.schoolId, schoolId), ne(invoices.status, "VOIDED"), invFilter)),
     ),
     withSchool(schoolId, (tx) =>
       tx

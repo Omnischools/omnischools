@@ -5,6 +5,9 @@ import { ExportCsv } from "@/components/reports/export-csv";
 import { PrintButton } from "@/components/reports/print-button";
 import { ReportHeader } from "@/components/reports/report-header";
 import { WeeklyBars } from "@/components/reports/weekly-bars";
+import { PeriodBar } from "@/components/reports/period-bar";
+import { resolvePeriod, weeksIn } from "@/lib/reports/period";
+import { getReportTerm } from "@/lib/reports/report-term";
 import { schoolFile } from "@/lib/filename";
 
 export const dynamic = "force-dynamic";
@@ -24,12 +27,15 @@ const METHOD_SWATCH: Record<string, string> = {
 const fmtWeek = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-// Periods stay visual until the term-calendar infra lands (MVP2 wires real windows).
-const PERIODS = ["This week", "This month", "This term", "Academic year", "Custom…"] as const;
-
-export default async function TermCollectionPage() {
+export default async function TermCollectionPage({
+  searchParams,
+}: {
+  searchParams: { period?: string; from?: string; to?: string };
+}) {
   const { school } = await requireSchool();
-  const r = await getFinanceReport(school.id, null);
+  const term = await getReportTerm(school.id);
+  const period = resolvePeriod(searchParams, term, new Date());
+  const r = await getFinanceReport(school.id, null, { start: period.start, end: period.end });
 
   // Trailing window so the chart reads like a term rather than the whole history.
   const weeksAll = r.weekly.map((w) => ({ iso: w.weekStart, amount: num(w.amount) }));
@@ -73,20 +79,13 @@ export default async function TermCollectionPage() {
       />
 
       {/* Period bar */}
-      <div className="mb-6 flex flex-wrap items-center gap-2 print:hidden">
-        <span className="mr-1 text-[10px] font-bold uppercase tracking-[0.1em] text-navy-3">Period</span>
-        {PERIODS.map((p) => {
-          const active = p === "This term";
-          return (
-            <span
-              key={p}
-              className={`rounded-pill border px-3 py-1 text-xs font-semibold ${active ? "border-navy bg-navy text-bg" : "border-border-2 bg-surface text-navy-3"}`}
-            >
-              {p}
-            </span>
-          );
-        })}
-      </div>
+      <PeriodBar
+        activeKey={period.key}
+        termLabel={term ? `${term.label} · ${term.academicYear}` : null}
+        termWeeks={term ? weeksIn(term.start, term.end) : null}
+        from={period.from}
+        to={period.to}
+      />
 
       {/* KPI strip */}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
