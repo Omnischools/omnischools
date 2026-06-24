@@ -8,13 +8,13 @@ import {
   DiscountApplicationsTable,
   type DiscountAppRow,
 } from "@/components/reports/discount-applications-table";
+import { PeriodBar } from "@/components/reports/period-bar";
+import { resolvePeriod, weeksIn } from "@/lib/reports/period";
+import { getReportTerm } from "@/lib/reports/report-term";
 import { schoolFile } from "@/lib/filename";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Discounts given" };
-
-// Periods stay visual until the term-calendar filtering infra lands; "This term" active.
-const PERIODS = ["This week", "This month", "This term", "Academic year", "Custom…"] as const;
 
 /** colorKey → solid token bg class, used for tier-breakdown bars, swatches & timeline segments. */
 const FILL_CLASS: Record<string, string> = {
@@ -37,13 +37,15 @@ const kLabel = (n: number) =>
     ? `${(n / 1000).toLocaleString("en-GH", { maximumFractionDigits: n % 1000 === 0 ? 0 : 1 })}k`
     : String(Math.round(n));
 
-export default async function DiscountsPage() {
+export default async function DiscountsPage({
+  searchParams,
+}: {
+  searchParams: { period?: string; from?: string; to?: string };
+}) {
   const { school } = await requireSchool();
-  const r = await getDiscountsReport(school.id);
-
-  const periodLabel = r.currentTerm
-    ? `${r.currentTerm.periodLabel} · ${r.currentTerm.academicYear}`
-    : "This term";
+  const term = await getReportTerm(school.id);
+  const period = resolvePeriod(searchParams, term, new Date());
+  const r = await getDiscountsReport(school.id, { start: period.start, end: period.end });
 
   const tableRows: DiscountAppRow[] = r.rows;
 
@@ -75,20 +77,13 @@ export default async function DiscountsPage() {
       />
 
       {/* Period bar */}
-      <div className="mb-6 flex flex-wrap items-center gap-2 print:hidden">
-        <span className="mr-1 text-[10px] font-bold uppercase tracking-[0.1em] text-navy-3">Period</span>
-        {PERIODS.map((p) => {
-          const active = p === "This term";
-          return (
-            <span
-              key={p}
-              className={`rounded-pill border px-3 py-1 text-xs font-semibold ${active ? "border-navy bg-navy text-bg" : "border-border-2 bg-surface text-navy-3"}`}
-            >
-              {active ? periodLabel : p}
-            </span>
-          );
-        })}
-      </div>
+      <PeriodBar
+        activeKey={period.key}
+        termLabel={term ? `${term.label} · ${term.academicYear}` : null}
+        termWeeks={term ? weeksIn(term.start, term.end) : null}
+        from={period.from}
+        to={period.to}
+      />
 
       {r.applicationCount === 0 ? (
         <Empty>
@@ -128,11 +123,19 @@ export default async function DiscountsPage() {
                   : "no applications yet"
               }
             />
-            <Kpi
-              label="New this term"
-              value={String(r.newThisTerm)}
-              sub={r.newBreakdown || (r.hasTerm ? "none in the term window" : "no term set")}
-            />
+            {period.key === "term" ? (
+              <Kpi
+                label="New this term"
+                value={String(r.newThisTerm)}
+                sub={r.newBreakdown || (r.hasTerm ? "none in the term window" : "no term set")}
+              />
+            ) : (
+              <Kpi
+                label="Schemes in use"
+                value={String(r.schemesInUse)}
+                sub={`across this ${period.key === "custom" ? "range" : period.key}`}
+              />
+            )}
           </div>
 
           {/* Tier breakdown */}

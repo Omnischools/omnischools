@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, ne, sql } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import {
   invoices,
@@ -48,8 +48,13 @@ type AppRow = {
   className: string;
 };
 
-export async function getDiscountsReport(schoolId: string) {
+export async function getDiscountsReport(
+  schoolId: string,
+  /** Date window from the PERIOD filter; scopes billed (issue date) + applications (applied date). */
+  period?: { start: Date; end: Date } | null,
+) {
   return withSchool(schoolId, async (tx) => {
+    const win = period ?? null;
     // 1. Current term: window containing today, else latest started, else last.
     const periods = await tx
       .select({
@@ -81,7 +86,11 @@ export async function getDiscountsReport(schoolId: string) {
         and(
           eq(invoices.schoolId, schoolId),
           ne(invoices.status, "VOIDED"),
-          reportYear ? eq(invoices.academicYear, reportYear) : undefined,
+          win
+            ? and(gte(invoices.issuedAt, win.start), lt(invoices.issuedAt, win.end))
+            : reportYear
+              ? eq(invoices.academicYear, reportYear)
+              : undefined,
         ),
       );
     const totalBilled = num(billedRow?.total);
@@ -113,7 +122,14 @@ export async function getDiscountsReport(schoolId: string) {
         and(
           eq(invoiceDiscountApplications.schoolId, schoolId),
           ne(invoices.status, "VOIDED"),
-          reportYear ? eq(invoices.academicYear, reportYear) : undefined,
+          win
+            ? and(
+                gte(invoiceDiscountApplications.appliedAt, win.start),
+                lt(invoiceDiscountApplications.appliedAt, win.end),
+              )
+            : reportYear
+              ? eq(invoices.academicYear, reportYear)
+              : undefined,
         ),
       )
       .orderBy(desc(invoiceDiscountApplications.appliedAt));
@@ -226,13 +242,16 @@ export async function getDiscountsReport(schoolId: string) {
         .join(" · ");
     }
 
-    // 7. Timeline — weekly buckets across the current term, else calendar months.
-    //    Each bucket carries a per-scheme amount map for stacked bars.
+    // 7. Timeline — weekly buckets across the active window (≤ 20 weeks), else
+    //    calendar months. Each bucket carries a per-scheme amount map for stacking.
     const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+    const tlStartMs = win ? +win.start : currentTerm ? +new Date(`${currentTerm.startsOn}T00:00:00Z`) : null;
+    const tlEndMs = win ? +win.end : currentTerm ? +new Date(`${currentTerm.endsOn}T00:00:00Z`) : null;
+    const tlWeekly = tlStartMs != null && tlEndMs != null && tlEndMs - tlStartMs <= 20 * MS_WEEK;
     let timelineWeeks: { label: string; segments: Record<string, number> }[] = [];
-    if (currentTerm) {
-      const start = new Date(`${currentTerm.startsOn}T00:00:00Z`).getTime();
-      const end = new Date(`${currentTerm.endsOn}T00:00:00Z`).getTime();
+    if (tlStartMs != null && tlEndMs != null && tlWeekly) {
+      const start = tlStartMs;
+      const end = tlEndMs;
       const weekCount = Math.max(1, Math.ceil((end - start) / MS_WEEK) + 1);
       timelineWeeks = Array.from({ length: weekCount }, (_, i) => ({
         label: `W${i + 1}`,
@@ -333,6 +352,7 @@ export async function getDiscountsReport(schoolId: string) {
       studentCount,
       stackedStudentCount,
       byScheme,
+      schemesInUse: byScheme.length,
       mostUsedScheme,
       newThisTerm,
       newBreakdown,
