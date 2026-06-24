@@ -2,7 +2,12 @@ import "@/db/_loadenv";
 import { and, eq } from "drizzle-orm";
 import { createStudent } from "@/lib/actions/students";
 import { createClass, setStudentClass } from "@/lib/actions/attendance";
-import { createSubject, saveScores, generateReportCards } from "@/lib/actions/gradebook";
+import {
+  createSubject,
+  createGradebookColumn,
+  saveColumnScores,
+  generateReportCards,
+} from "@/lib/actions/gradebook";
 import { db } from "@/lib/db";
 import {
   students,
@@ -48,14 +53,38 @@ async function main() {
   }
   await setStudentClass({ studentId: stu.studentId, classId: cls.classId });
 
-  // class 80, exam 60, default 50/50 → total 70, grade B
-  const save = await saveScores({
+  // One CA column (80/100 → CA 80%) + one EXAM column (60/100 → Exam 60%);
+  // default 50/50 weights → total 70. Grade comes from the school's grade scale.
+  const caCol = await createGradebookColumn({
     classId: cls.classId,
     subjectId: sub.id,
     periodId: period.periodId,
-    entries: [{ studentId: stu.studentId, classScore: 80, examScore: 60 }],
+    name: "CA",
+    category: "CA",
+    maxScore: 100,
   });
-  check("save scores ok", save.ok);
+  const examCol = await createGradebookColumn({
+    classId: cls.classId,
+    subjectId: sub.id,
+    periodId: period.periodId,
+    name: "Exam",
+    category: "EXAM",
+    maxScore: 100,
+  });
+  if (!caCol.ok || !examCol.ok) {
+    console.error("column setup failed", { caCol, examCol });
+    process.exit(1);
+  }
+  const save = await saveColumnScores({
+    classId: cls.classId,
+    subjectId: sub.id,
+    periodId: period.periodId,
+    scores: [
+      { columnId: caCol.columnId, studentId: stu.studentId, raw: "80" },
+      { columnId: examCol.columnId, studentId: stu.studentId, raw: "60" },
+    ],
+  });
+  check("save column scores ok", save.ok);
 
   const [sc] = await db
     .select()
@@ -68,8 +97,8 @@ async function main() {
       ),
     );
   check(
-    "total 70.00, grade B",
-    Number(sc?.total) === 70 && sc?.grade === "B",
+    "rollup total 70.00, grade set",
+    Number(sc?.total) === 70 && sc?.grade != null,
     `${sc?.total}/${sc?.grade}`,
   );
 
