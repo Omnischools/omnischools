@@ -12,8 +12,10 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = "Delete",
+  busyLabel = "Deleting…",
   busy = false,
   error,
+  tone = "danger",
   onConfirm,
   onClose,
 }: {
@@ -21,11 +23,18 @@ export function ConfirmDialog({
   title: string;
   message: React.ReactNode;
   confirmLabel?: string;
+  busyLabel?: string;
   busy?: boolean;
   error?: string | null;
+  /** Confirm-button colour. "danger" (terra) for deletes; "gold" for positive actions. */
+  tone?: "danger" | "gold";
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const confirmClass =
+    tone === "gold"
+      ? "rounded-md bg-gold px-4 py-2 text-sm font-semibold text-navy transition-colors hover:bg-gold-soft disabled:opacity-60"
+      : "rounded-md bg-terra px-4 py-2 text-sm font-semibold text-bg transition-colors hover:opacity-90 disabled:opacity-60";
   return (
     <Modal open={open} onClose={busy ? () => {} : onClose} title={title}>
       <div className="space-y-4">
@@ -42,13 +51,8 @@ export function ConfirmDialog({
           >
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={busy}
-            className="rounded-md bg-terra px-4 py-2 text-sm font-semibold text-bg transition-colors hover:opacity-90 disabled:opacity-60"
-          >
-            {busy ? "Deleting…" : confirmLabel}
+          <button type="button" onClick={onConfirm} disabled={busy} className={confirmClass}>
+            {busy ? busyLabel : confirmLabel}
           </button>
         </div>
       </div>

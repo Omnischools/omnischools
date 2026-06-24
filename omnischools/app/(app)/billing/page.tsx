@@ -1,3 +1,4 @@
+import { Receipt } from "lucide-react";
 import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
@@ -16,9 +17,11 @@ import {
 import { num } from "@/lib/fees-helpers";
 import { CreateFeeStructureForm } from "@/components/billing/create-fee-structure-form";
 import { FeeStructureCard } from "@/components/billing/fee-structure-card";
+import { IssueInvoicesCard } from "@/components/billing/issue-invoices-card";
 import { DiscountManager } from "@/components/billing/discount-manager";
 import { RemindersCard } from "@/components/billing/reminders-card";
 import { FamiliesCard } from "@/components/billing/families-card";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +33,7 @@ function currentAcademicYear() {
 
 export default async function BillingPage() {
   const { school } = await requireSchool();
+  const year = currentAcademicYear();
 
   const [
     structureRows,
@@ -43,6 +47,9 @@ export default async function BillingPage() {
     householdRows,
     memberRows,
     tierRows,
+    [activeCount],
+    [unInvoicedCount],
+    periodRows,
   ] = await Promise.all([
     withSchool(school.id, (tx) =>
       tx
@@ -66,7 +73,7 @@ export default async function BillingPage() {
     ),
     withSchool(school.id, (tx) =>
       tx
-        .select({ id: classes.id, name: classes.name })
+        .select({ id: classes.id, name: classes.name, level: classes.level })
         .from(classes)
         .where(and(eq(classes.schoolId, school.id), eq(classes.active, true)))
         .orderBy(asc(classes.name)),
@@ -144,6 +151,42 @@ export default async function BillingPage() {
         .from(discountTiers)
         .where(eq(discountTiers.schoolId, school.id)),
     ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(students)
+        .where(and(eq(students.schoolId, school.id), eq(students.status, "ACTIVE"))),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(students)
+        .where(
+          and(
+            eq(students.schoolId, school.id),
+            eq(students.status, "ACTIVE"),
+            sql`not exists (
+              select 1 from ${invoices} iv
+              where iv.student_id = ${students.id}
+                and iv.school_id = ${school.id}
+                and iv.academic_year = ${year}
+                and iv.status <> 'VOIDED'
+            )`,
+          ),
+        ),
+    ),
+    withSchool(school.id, (tx) =>
+      tx
+        .select({
+          academicYear: academicPeriod.academicYear,
+          periodLabel: academicPeriod.periodLabel,
+          startsOn: academicPeriod.startsOn,
+          endsOn: academicPeriod.endsOn,
+        })
+        .from(academicPeriod)
+        .where(eq(academicPeriod.schoolId, school.id))
+        .orderBy(asc(academicPeriod.startsOn)),
+    ),
   ]);
 
   const itemsByStructure = new Map<string, { description: string; amount: number }[]>();
@@ -160,10 +203,40 @@ export default async function BillingPage() {
       name: s.name,
       level: s.level,
       academicYear: s.academicYear,
+      active: s.active,
       items,
       total: items.reduce((sum, i) => sum + i.amount, 0),
     };
   });
+
+  // Active fee structures for the current year — what school-wide issuance bills from.
+  const activeStructures = structures.filter(
+    (s) => s.active && s.academicYear === year,
+  );
+  // Preview = first active structure (for the year) that actually has line items.
+  const previewStructure = activeStructures.find((s) => s.items.length > 0) ?? null;
+  const totalActive = num(activeCount?.n);
+  const unInvoiced = num(unInvoicedCount?.n);
+
+  // Levels billable by an active, non-empty structure (mirrors issueAllInvoices).
+  const billableLevels = new Set(
+    activeStructures.filter((s) => s.items.length > 0 && s.level).map((s) => s.level),
+  );
+  const classesWithoutStructure = classRows.filter(
+    (c) => !c.level || !billableLevels.has(c.level),
+  ).length;
+
+  // Term label: the active academic period containing today (else latest started,
+  // else last), falling back to the academic year when no periods are configured.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const currentPeriod =
+    periodRows.find((p) => p.startsOn <= todayIso && p.endsOn >= todayIso) ??
+    [...periodRows].reverse().find((p) => p.startsOn <= todayIso) ??
+    periodRows[periodRows.length - 1] ??
+    null;
+  const termLabel = currentPeriod
+    ? `${currentPeriod.periodLabel} · ${currentPeriod.academicYear}`
+    : year;
 
   const catNameById = new Map(feeCatRows.map((c) => [c.id, c.name]));
   const tiersByDiscount = new Map<string, { rank: number; value: number }[]>();
@@ -220,21 +293,51 @@ export default async function BillingPage() {
 
       <RemindersCard families={num(summary?.families)} total={num(summary?.total)} />
 
+      {activeStructures.length === 0 ? (
+        <EmptyState
+          tone="default"
+          icon={<Receipt className="h-5 w-5" aria-hidden />}
+          title="Set up your fee structure first"
+          body="A fee structure is your termly bill — Tuition, Books, Transport… Create one, then issue invoices to every student in a click."
+          primary={{ label: "+ Create fee structure", href: "#fee-structures", variant: "gold" }}
+        />
+      ) : (
+        unInvoiced > 0 && (
+          <IssueInvoicesCard
+            unInvoiced={unInvoiced}
+            totalActive={totalActive}
+            termLabel={termLabel}
+            preview={
+              previewStructure
+                ? {
+                    schoolName: school.name,
+                    structureName: previewStructure.name,
+                    items: previewStructure.items,
+                    subtotal: previewStructure.total,
+                  }
+                : null
+            }
+            classesWithoutStructure={classesWithoutStructure}
+          />
+        )
+      )}
+
       {/* Fee structures */}
-      <section>
+      <section id="fee-structures" className="scroll-mt-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-display text-xl font-semibold text-navy">Fee structures</h2>
           <CreateFeeStructureForm
-            defaultYear={currentAcademicYear()}
+            defaultYear={year}
             feeItemOptions={feeCatRows.map((c) => c.name)}
             levelOptions={levelRows.map((l) => l.level).filter((l): l is string => !!l)}
             yearOptions={yearRows.map((y) => y.year)}
           />
         </div>
         {structures.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border-2 bg-surface p-10 text-center text-sm text-navy-3">
-            No fee structures yet. Create one (e.g. “JHS 1 — {currentAcademicYear()}”) to
-            bill a whole class in one click.
+          // No structures → the "Set up your fee structure first" hero above covers it;
+          // the section just keeps its "+ New fee structure" control.
+          <p className="text-sm italic text-navy-3">
+            Your fee structures will appear here once you create one.
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

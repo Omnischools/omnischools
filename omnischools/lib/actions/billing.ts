@@ -13,12 +13,20 @@ import {
   feeCategories,
   discounts,
   discountTiers,
+  classes,
   students,
   studentGuardians,
   invoices,
   invoiceLineItems,
   notificationLog,
 } from "@/db/schema";
+
+/** Current academic year as "YYYY/YY" (Sept rollover) — mirrors app/(app)/billing/page.tsx. */
+function currentAcademicYear(): string {
+  const now = new Date();
+  const start = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${start}/${String((start + 1) % 100).padStart(2, "0")}`;
+}
 
 type Result = { ok: boolean; error?: string };
 
@@ -512,6 +520,186 @@ export async function generateInvoicesForClass(input: unknown): Promise<Generate
     return out;
   } catch {
     return { ok: false, error: "Could not generate invoices. Please try again." };
+  }
+}
+
+// ------------------------------------------------ school-wide invoice issuance
+export type IssueAllResult =
+  | {
+      ok: true;
+      created: number;
+      skipped: number;
+      classesIssued: number;
+      classesWithoutStructure: number;
+    }
+  | { ok: false; error: string };
+
+/**
+ * Issue invoices across the whole school for the current academic year: every
+ * ACTIVE student gets a bill at the FULL amount of the active fee structure that
+ * matches their class level. Idempotent (skips students already invoiced for the
+ * year), bills the full subtotal (no auto-discounts — those apply per-invoice via
+ * the existing flow) and sends NO SMS (reminders are the separate sendFeeReminders
+ * flow). Mirrors generateInvoicesForClass's invoice-creation exactly.
+ */
+export async function issueAllInvoices(): Promise<IssueAllResult> {
+  const { school } = await requireSchool();
+  const actor = await resolveActor(school.id);
+  const year = currentAcademicYear();
+
+  try {
+    const out = await withSchool(school.id, async (tx) => {
+      // Active fee structures for the year, with their line items.
+      const structureRows = await tx
+        .select()
+        .from(feeStructures)
+        .where(
+          and(
+            eq(feeStructures.schoolId, school.id),
+            eq(feeStructures.academicYear, year),
+            eq(feeStructures.active, true),
+          ),
+        );
+      if (structureRows.length === 0) {
+        return {
+          ok: false as const,
+          error: `No active fee structure for ${year}.`,
+        };
+      }
+
+      const structureIds = structureRows.map((s) => s.id);
+      const items = await tx
+        .select()
+        .from(feeStructureItems)
+        .where(inArray(feeStructureItems.feeStructureId, structureIds));
+      const itemsByStructure = new Map<string, typeof items>();
+      for (const li of items) {
+        const arr = itemsByStructure.get(li.feeStructureId) ?? [];
+        arr.push(li);
+        itemsByStructure.set(li.feeStructureId, arr);
+      }
+
+      // Resolve each class → the active structure whose level matches the class.
+      // First matching structure per level wins (deterministic by load order).
+      const structureByLevel = new Map<string, (typeof structureRows)[number]>();
+      for (const s of structureRows) {
+        if (s.level && !structureByLevel.has(s.level)) structureByLevel.set(s.level, s);
+      }
+
+      const classRows = await tx
+        .select({ id: classes.id, name: classes.name, level: classes.level })
+        .from(classes)
+        .where(and(eq(classes.schoolId, school.id), eq(classes.active, true)));
+
+      let created = 0;
+      let skipped = 0;
+      let classesIssued = 0;
+      let classesWithoutStructure = 0;
+
+      for (const cls of classRows) {
+        const structure = cls.level ? structureByLevel.get(cls.level) : undefined;
+        if (!structure) {
+          classesWithoutStructure++;
+          continue;
+        }
+        const structItems = itemsByStructure.get(structure.id) ?? [];
+        if (structItems.length === 0) {
+          // An active structure with no line items can't bill anything.
+          classesWithoutStructure++;
+          continue;
+        }
+
+        const subtotal = round2(structItems.reduce((s, li) => s + num(li.amount), 0));
+
+        const roster = await tx
+          .select({ id: students.id })
+          .from(students)
+          .where(
+            and(
+              eq(students.schoolId, school.id),
+              eq(students.classId, cls.id),
+              eq(students.status, "ACTIVE"),
+            ),
+          );
+        if (roster.length === 0) continue;
+
+        let classCreated = 0;
+        for (const stu of roster) {
+          const existing = await tx
+            .select({ id: invoices.id })
+            .from(invoices)
+            .where(
+              and(
+                eq(invoices.schoolId, school.id),
+                eq(invoices.studentId, stu.id),
+                eq(invoices.academicYear, year),
+                sql`${invoices.status} <> 'VOIDED'`,
+              ),
+            )
+            .limit(1);
+          if (existing.length > 0) {
+            skipped++;
+            continue;
+          }
+
+          const invoiceNumber = await nextInvoiceNumber(tx, school.id);
+          const [inv] = await tx
+            .insert(invoices)
+            .values({
+              schoolId: school.id,
+              studentId: stu.id,
+              invoiceNumber,
+              academicYear: year,
+              subtotalAmount: toMoney(subtotal),
+              discountAmount: "0.00",
+              billedAmount: toMoney(subtotal),
+              paidAmount: "0.00",
+              balanceAmount: toMoney(subtotal),
+              status: "ISSUED",
+            })
+            .returning({ id: invoices.id });
+          await tx.insert(invoiceLineItems).values(
+            structItems.map((li) => ({
+              schoolId: school.id,
+              invoiceId: inv.id,
+              feeCategoryId: li.feeCategoryId,
+              description: li.description,
+              amount: li.amount,
+            })),
+          );
+          created++;
+          classCreated++;
+        }
+        if (classCreated > 0) classesIssued++;
+      }
+
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "created",
+        entityType: "invoice_batch",
+        entityId: school.id,
+        after: { created, skipped, classesIssued, classesWithoutStructure, year },
+        reason: "School-wide invoice issuance",
+      });
+
+      return {
+        ok: true as const,
+        created,
+        skipped,
+        classesIssued,
+        classesWithoutStructure,
+      };
+    });
+
+    if (!out.ok) return out;
+    safeRevalidate("/billing");
+    safeRevalidate("/fees");
+    safeRevalidate("/reports");
+    return out;
+  } catch {
+    return { ok: false, error: "Could not issue invoices. Please try again." };
   }
 }
 
