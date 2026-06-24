@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { students, studentGuardians, classes } from "@/db/schema";
 import { EditStudentForm } from "@/components/students/edit-student-form";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Edit student" };
@@ -40,12 +40,7 @@ export default async function EditStudentPage({ params }: { params: { id: string
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link
-        href={`/students/${student.id}`}
-        className="text-sm text-navy-3 hover:text-gold"
-      >
-        ← Back to student
-      </Link>
+      <BackLink href={`/students/${student.id}`} label="Back to student" />
       <h1 className="mb-6 mt-2 font-display text-3xl font-semibold text-navy">
         Edit {student.firstName} {student.lastName}
       </h1>

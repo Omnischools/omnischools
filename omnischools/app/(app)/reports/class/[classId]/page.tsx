@@ -8,6 +8,7 @@ import { SendReminderButton } from "@/components/reports/send-reminder-button";
 import { PrintButton } from "@/components/reports/print-button";
 import { ExportCsv } from "@/components/reports/export-csv";
 import { schoolFile } from "@/lib/filename";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -57,9 +58,7 @@ export default async function ClassReportPage({
 
   return (
     <div className="mx-auto max-w-page">
-      <Link href="/reports" className="text-sm text-navy-3 hover:text-gold print:hidden">
-        ← Reports
-      </Link>
+      <BackLink href="/reports" label="Reports" />
       <div className="mb-6 mt-2 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-semibold text-navy">{cls.name}</h1>

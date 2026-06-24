@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { schools } from "@/db/schema";
 import { BrandingForm } from "@/components/settings/branding-form";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Branding & identity" };
@@ -26,9 +26,7 @@ export default async function BrandingPage() {
 
   return (
     <div className="mx-auto max-w-page">
-      <Link href="/settings" className="text-sm text-navy-3 hover:text-gold">
-        ← Settings
-      </Link>
+      <BackLink href="/settings" label="Settings" />
       <div className="mb-6 mt-2">
         <h1 className="font-display text-3xl font-semibold text-navy">
           Branding &amp; <em className="not-italic text-gold [font-style:italic]">identity.</em>

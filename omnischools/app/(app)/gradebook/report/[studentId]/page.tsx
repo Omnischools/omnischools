@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
@@ -11,6 +10,7 @@ import {
   reportCards,
 } from "@/db/schema";
 import { PrintButton } from "@/components/gradebook/print-button";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -72,9 +72,7 @@ export default async function ReportCardPage({
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-4 flex items-center justify-between print:hidden">
-        <Link href="/gradebook/reports" className="text-sm text-navy-3 hover:text-gold">
-          ← Report cards
-        </Link>
+        <BackLink href="/gradebook/reports" label="Report cards" />
         <PrintButton />
       </div>
 

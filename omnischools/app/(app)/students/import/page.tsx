@@ -4,6 +4,7 @@ import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { classes } from "@/db/schema";
 import { StudentImport } from "@/components/students/student-import";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Import students" };
@@ -22,9 +23,7 @@ export default async function ImportStudentsPage() {
 
   return (
     <div className="mx-auto max-w-page">
-      <Link href="/students" className="text-sm text-navy-3 hover:text-gold">
-        ← Students
-      </Link>
+      <BackLink href="/students" label="Students" />
       <div className="mb-6 mt-2 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-semibold text-navy">

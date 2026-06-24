@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
@@ -7,6 +6,7 @@ import { conversations, inboxMessages, students } from "@/db/schema";
 import { loadStaffOptions } from "@/lib/data/staff-options";
 import { ReplyBox } from "@/components/inbox/reply-box";
 import { ConversationControls } from "@/components/inbox/conversation-controls";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -63,9 +63,7 @@ export default async function ConversationPage({ params }: { params: { id: strin
   return (
     <div className="mx-auto flex max-w-prose flex-col gap-4">
       <div>
-        <Link href="/inbox" className="text-sm text-navy-3 hover:text-gold">
-          ← Inbox
-        </Link>
+        <BackLink href="/inbox" label="Inbox" />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl font-semibold text-navy">

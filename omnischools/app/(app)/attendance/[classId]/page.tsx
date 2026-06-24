@@ -22,6 +22,7 @@ import {
   type EarlierReg,
 } from "@/components/attendance/register-switcher";
 import type { AttendanceStatus } from "@/lib/attendance-status";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -367,9 +368,7 @@ export default async function TakeAttendancePage({
   if (roster.length === 0) {
     return (
       <div className="mx-auto max-w-3xl">
-        <Link href="/attendance" className="text-sm text-navy-3 hover:text-gold">
-          ← Attendance
-        </Link>
+        <BackLink href="/attendance" label="Attendance" />
         <h1 className="mb-1 mt-2 font-display text-3xl font-semibold text-navy">
           {data.cls.name}
         </h1>

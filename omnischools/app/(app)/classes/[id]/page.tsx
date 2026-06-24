@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
@@ -9,6 +8,7 @@ import { ClassTeacherSelect } from "@/components/classes/class-teacher-select";
 import { RosterManager } from "@/components/classes/roster-manager";
 import { SubjectsManager } from "@/components/classes/subjects-manager";
 import { TimetableBuilder } from "@/components/classes/timetable-builder";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -97,9 +97,7 @@ export default async function ClassDetailPage({ params }: { params: { id: string
   return (
     <div className="mx-auto max-w-page space-y-8">
       <div>
-        <Link href="/classes" className="text-sm text-navy-3 hover:text-gold">
-          ← Classes
-        </Link>
+        <BackLink href="/classes" label="Classes" />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-3xl font-semibold text-navy">{cls.name}</h1>

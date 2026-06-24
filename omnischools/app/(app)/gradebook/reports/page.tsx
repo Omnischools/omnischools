@@ -5,6 +5,7 @@ import { withSchool } from "@/lib/db/rls";
 import { classes, students, academicPeriod, reportCards } from "@/db/schema";
 import { GradebookSelectors } from "@/components/gradebook/selectors";
 import { GenerateReports } from "@/components/gradebook/generate-reports";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -107,9 +108,7 @@ export default async function ReportsPage({
 
   return (
     <div className="mx-auto max-w-page">
-      <Link href="/gradebook" className="text-sm text-navy-3 hover:text-gold">
-        ← Gradebook
-      </Link>
+      <BackLink href="/gradebook" label="Gradebook" />
       <h1 className="mb-1 mt-2 font-display text-3xl font-semibold text-navy">
         Report cards
       </h1>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
@@ -8,6 +7,7 @@ import { num, daysOverdue } from "@/lib/fees-helpers";
 import { IssueInvoiceForm } from "@/components/fees/issue-invoice-form";
 import { RecordPaymentForm } from "@/components/fees/record-payment-form";
 import { VoidPaymentButton } from "@/components/fees/void-payment-button";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -90,9 +90,7 @@ export default async function StudentFeesPage({
 
   return (
     <div className="mx-auto max-w-page">
-      <Link href="/fees" className="text-sm text-navy-3 hover:text-gold">
-        ← Fees
-      </Link>
+      <BackLink href="/fees" label="Fees" />
       <div className="mb-6 mt-2 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold text-navy">

@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { students, studentGuardians } from "@/db/schema";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +37,7 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href="/students" className="text-sm text-navy-3 hover:text-gold">
-        ← Students
-      </Link>
+      <BackLink href="/students" label="Students" />
       <div className="mt-2 flex items-start justify-between gap-3">
         <div>
           <h1 className="mb-1 font-display text-3xl font-semibold text-navy">
