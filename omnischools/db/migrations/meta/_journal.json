@@ -183,6 +183,13 @@
       "when": 1782252697382,
       "tag": "0025_fair_zaladane",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1782283528587,
+      "tag": "0026_many_tenebrous",
+      "breakpoints": true
     }
   ]
 }

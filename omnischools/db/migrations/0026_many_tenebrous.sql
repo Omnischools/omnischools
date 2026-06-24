@@ -1,0 +1,1 @@
+ALTER TABLE "class" ADD COLUMN "target_capacity" integer;
