@@ -73,6 +73,7 @@ export async function getFinanceReport(schoolId: string, selectedYear: string | 
     [totals],
     byClass,
     monthly,
+    weekly,
     byMethod,
     agingRows,
     voids,
@@ -89,6 +90,8 @@ export async function getFinanceReport(schoolId: string, selectedYear: string | 
           collected: sql<string>`coalesce(sum(${invoices.paidAmount}), 0)`,
           outstanding: sql<string>`coalesce(sum(${invoices.balanceAmount}), 0)`,
           invoiceCount: sql<number>`count(*)`,
+          studentCount: sql<number>`count(distinct ${invoices.studentId})`,
+          debtorCount: sql<number>`count(distinct ${invoices.studentId}) filter (where ${invoices.balanceAmount} > 0)`,
         })
         .from(invoices)
         .where(and(eq(invoices.schoolId, schoolId), ne(invoices.status, "VOIDED"), yearInv)),
@@ -119,6 +122,17 @@ export async function getFinanceReport(schoolId: string, selectedYear: string | 
         .where(and(eq(payments.schoolId, schoolId), isNull(payments.voidedAt), payWindow))
         .groupBy(sql`to_char(${payments.paidAt}, 'YYYY-MM')`)
         .orderBy(sql`to_char(${payments.paidAt}, 'YYYY-MM')`),
+    ),
+    withSchool(schoolId, (tx) =>
+      tx
+        .select({
+          weekStart: sql<string>`to_char(date_trunc('week', ${payments.paidAt}), 'YYYY-MM-DD')`,
+          amount: sql<string>`coalesce(sum(${payments.netAmount}), 0)`,
+        })
+        .from(payments)
+        .where(and(eq(payments.schoolId, schoolId), isNull(payments.voidedAt), payWindow))
+        .groupBy(sql`date_trunc('week', ${payments.paidAt})`)
+        .orderBy(sql`date_trunc('week', ${payments.paidAt})`),
     ),
     withSchool(schoolId, (tx) =>
       tx
@@ -241,6 +255,7 @@ export async function getFinanceReport(schoolId: string, selectedYear: string | 
     rate,
     byClass,
     monthly,
+    weekly,
     byMethod,
     agingMap,
     overdueTotal,
