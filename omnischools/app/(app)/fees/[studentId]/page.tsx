@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { students, invoices, payments, receipts } from "@/db/schema";
+import { students, invoices, payments, receipts, discounts } from "@/db/schema";
 import { num, daysOverdue } from "@/lib/fees-helpers";
 import { IssueInvoiceForm } from "@/components/fees/issue-invoice-form";
 import { RecordPaymentForm } from "@/components/fees/record-payment-form";
@@ -56,11 +56,22 @@ export default async function StudentFeesPage({
       .leftJoin(receipts, eq(receipts.paymentId, payments.id))
       .where(eq(payments.studentId, student.id))
       .orderBy(desc(payments.recordedAt));
-    return { student, invs, pays };
+    const schemes = await tx
+      .select({
+        id: discounts.id,
+        name: discounts.name,
+        kind: discounts.kind,
+        value: discounts.value,
+        isTiered: discounts.isTiered,
+      })
+      .from(discounts)
+      .where(and(eq(discounts.schoolId, school.id), eq(discounts.active, true)))
+      .orderBy(discounts.name);
+    return { student, invs, pays, schemes };
   });
 
   if (!data) notFound();
-  const { student, invs, pays } = data;
+  const { student, invs, pays, schemes } = data;
   const balance = invs
     .filter((i) => i.status !== "VOIDED")
     .reduce((s, i) => s + num(i.balanceAmount), 0);
@@ -101,7 +112,16 @@ export default async function StudentFeesPage({
 
       <div className="mb-8 flex flex-wrap items-start gap-3">
         <RecordPaymentForm studentId={student.id} outstanding={outstanding} />
-        <IssueInvoiceForm studentId={student.id} />
+        <IssueInvoiceForm
+          studentId={student.id}
+          schemes={schemes.map((s) => ({
+            id: s.id,
+            name: s.name,
+            kind: s.kind,
+            value: num(s.value),
+            isTiered: s.isTiered,
+          }))}
+        />
       </div>
 
       <h2 className="mb-3 font-display text-xl font-semibold text-navy">Invoices</h2>

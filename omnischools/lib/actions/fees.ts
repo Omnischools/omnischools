@@ -23,6 +23,8 @@ import {
   paymentAllocations,
   receipts,
   paymentAuditLog,
+  discounts,
+  invoiceDiscountApplications,
 } from "@/db/schema";
 
 // ---------------------------------------------------------------- issue invoice
@@ -36,6 +38,8 @@ const IssueInvoiceSchema = z.object({
   periodId: z.string().uuid().optional().or(z.literal("")),
   dueAt: z.string().optional().or(z.literal("")),
   discountAmount: z.coerce.number().min(0).default(0),
+  // Optional: attribute the discount to a configured scheme (powers the Discounts report).
+  discountId: z.string().uuid().optional().or(z.literal("")),
   lineItems: z.array(LineItemSchema).min(1, "Add at least one line item"),
 });
 
@@ -96,6 +100,30 @@ export async function issueInvoice(input: unknown): Promise<IssueInvoiceResult> 
           amount: toMoney(li.amount),
         })),
       );
+
+      // Attribute the discount to the chosen scheme so the Discounts report can
+      // break value down per scheme / recipient. Recorded from issuance onward.
+      if (d.discountId && discount > 0) {
+        const [scheme] = await tx
+          .select({ id: discounts.id, kind: discounts.kind })
+          .from(discounts)
+          .where(and(eq(discounts.id, d.discountId), eq(discounts.schoolId, school.id)));
+        if (scheme) {
+          await tx.insert(invoiceDiscountApplications).values({
+            schoolId: school.id,
+            invoiceId: inv.id,
+            studentId: d.studentId,
+            discountId: scheme.id,
+            amount: toMoney(discount),
+            kindSnapshot: scheme.kind,
+            appliedByUserId: actor.id ?? undefined,
+          });
+          await tx
+            .update(discounts)
+            .set({ appliedCount: sql`${discounts.appliedCount} + 1` })
+            .where(eq(discounts.id, scheme.id));
+        }
+      }
 
       await recordAudit(tx, {
         schoolId: school.id,

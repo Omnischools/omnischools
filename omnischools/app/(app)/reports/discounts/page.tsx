@@ -1,33 +1,51 @@
 import { requireSchool } from "@/lib/auth/server";
-import { getFinanceReport, ghs, num, ordinal } from "@/lib/reports/finance-data";
+import { ghs } from "@/lib/reports/finance-data";
+import { getDiscountsReport } from "@/lib/reports/discounts-data";
 import { ExportCsv } from "@/components/reports/export-csv";
 import { PrintButton } from "@/components/reports/print-button";
 import { ReportHeader } from "@/components/reports/report-header";
+import {
+  DiscountApplicationsTable,
+  type DiscountAppRow,
+} from "@/components/reports/discount-applications-table";
 import { schoolFile } from "@/lib/filename";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Discounts given" };
 
+// Periods stay visual until the term-calendar filtering infra lands; "This term" active.
+const PERIODS = ["This week", "This month", "This term", "Academic year", "Custom…"] as const;
+
+/** colorKey → solid token bg class, used for tier-breakdown bars, swatches & timeline segments. */
+const FILL_CLASS: Record<string, string> = {
+  gold: "bg-gold",
+  green: "bg-green",
+  warn: "bg-warn",
+  terra: "bg-terra",
+  "navy-3": "bg-navy-3",
+};
+const ICON_CLASS: Record<string, string> = {
+  gold: "bg-gold-bg text-gold",
+  green: "bg-green-bg text-green",
+  warn: "bg-warn-bg text-warn",
+  terra: "bg-terra-bg text-terra",
+  "navy-3": "bg-bg text-navy-2",
+};
+
+const kLabel = (n: number) =>
+  n >= 1000
+    ? `${(n / 1000).toLocaleString("en-GH", { maximumFractionDigits: n % 1000 === 0 ? 0 : 1 })}k`
+    : String(Math.round(n));
+
 export default async function DiscountsPage() {
   const { school } = await requireSchool();
-  const r = await getFinanceReport(school.id, null);
+  const r = await getDiscountsReport(school.id);
 
-  const catName = new Map(r.catRows.map((c) => [c.id, c.name]));
-  const tiersByDiscount = new Map<string, { rank: number; value: number }[]>();
-  for (const t of r.discTierRows) {
-    const arr = tiersByDiscount.get(t.discountId) ?? [];
-    arr.push({ rank: t.rank, value: num(t.value) });
-    tiersByDiscount.set(t.discountId, arr);
-  }
-  const valueText = (d: (typeof r.discRows)[number]) => {
-    if (d.isTiered) {
-      return (tiersByDiscount.get(d.id) ?? [])
-        .sort((a, b) => a.rank - b.rank)
-        .map((t) => `${ordinal(t.rank)} ${d.kind === "PERCENT" ? `${t.value}%` : ghs(t.value)}`)
-        .join(" · ");
-    }
-    return d.kind === "PERCENT" ? `${num(d.value)}%` : ghs(num(d.value));
-  };
+  const periodLabel = r.currentTerm
+    ? `${r.currentTerm.periodLabel} · ${r.currentTerm.academicYear}`
+    : "This term";
+
+  const tableRows: DiscountAppRow[] = r.rows;
 
   return (
     <div className="mx-auto max-w-page">
@@ -35,20 +53,19 @@ export default async function DiscountsPage() {
         crumb="Discounts given"
         pre="Discounts"
         gold="given"
-        lede="The fees you chose not to collect — by tier and by recipient."
+        lede="The fees you chose not to collect — by scheme and by recipient."
         actions={
           <>
-            {r.discRows.length > 0 && (
+            {r.rows.length > 0 && (
               <ExportCsv
                 filename={schoolFile(school.name, "discounts.csv")}
-                headers={["Discount", "Value", "Applies to", "Tiered", "Approval", "Applied"]}
-                rows={r.discRows.map((d) => [
-                  d.name,
-                  valueText(d),
-                  d.appliesToCategoryId ? (catName.get(d.appliesToCategoryId) ?? "Whole invoice") : "Whole invoice",
-                  d.isTiered ? "Yes" : "No",
-                  d.requiresApproval ? (d.approvedAt ? "Approved" : "Pending") : "—",
-                  String(d.appliedCount),
+                headers={["Student", "Class", "Scheme", "Amount", "Applied"]}
+                rows={r.rows.map((d) => [
+                  d.studentName,
+                  d.className,
+                  d.schemeName,
+                  d.amount.toFixed(2),
+                  d.appliedLabel,
                 ])}
               />
             )}
@@ -57,72 +74,260 @@ export default async function DiscountsPage() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-xl border border-navy bg-navy p-5">
-          <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-gold-soft">Total discounted</div>
-          <div className="mt-1.5 font-display text-2xl font-semibold text-bg">{ghs(r.discountTotal)}</div>
-          <div className="mt-0.5 text-xs text-bg/60">
-            {r.billed > 0 ? `${Math.round((r.discountTotal / r.billed) * 100)}% of total billed` : "no invoices yet"}
-          </div>
-        </div>
-        <Kpi label="Discounted invoices" value={String(r.discountedCount)} sub="this period" />
-        <Kpi label="Discounts configured" value={String(r.discRows.length)} sub="active rules" />
-        <Kpi
-          label="Tiered discounts"
-          value={String(r.discRows.filter((d) => d.isTiered).length)}
-          sub="e.g. sibling 1st/2nd/3rd"
-        />
+      {/* Period bar */}
+      <div className="mb-6 flex flex-wrap items-center gap-2 print:hidden">
+        <span className="mr-1 text-[10px] font-bold uppercase tracking-[0.1em] text-navy-3">Period</span>
+        {PERIODS.map((p) => {
+          const active = p === "This term";
+          return (
+            <span
+              key={p}
+              className={`rounded-pill border px-3 py-1 text-xs font-semibold ${active ? "border-navy bg-navy text-bg" : "border-border-2 bg-surface text-navy-3"}`}
+            >
+              {active ? periodLabel : p}
+            </span>
+          );
+        })}
       </div>
 
-      <h2 className="mb-3 font-display text-lg font-semibold text-navy">Discounts in effect</h2>
-      {r.discRows.length === 0 ? (
-        <Empty>No discounts configured. Set them up under Billing.</Empty>
+      {r.applicationCount === 0 ? (
+        <Empty>
+          No discount applications recorded yet. Discounts are attributed to a scheme from issuance
+          onward — issue an invoice and pick a discount scheme (or apply a sibling/bursary discount)
+          to populate this report. Historical freeform discounts aren&rsquo;t attributed.
+        </Empty>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Discount</th>
-                <th className="px-4 py-3 font-semibold">Value</th>
-                <th className="px-4 py-3 font-semibold">Applies to</th>
-                <th className="px-4 py-3 text-right font-semibold">Applied</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {r.discRows.map((d) => (
-                <tr key={d.id} className="hover:bg-bg">
-                  <td className="px-4 py-3 font-medium text-navy">
-                    {d.name}
-                    {d.requiresApproval && !d.approvedAt && (
-                      <span className="ml-2 rounded-pill bg-warn-bg px-2 py-0.5 text-[11px] font-medium text-warn">
-                        Pending approval
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-navy-2">{valueText(d)}</td>
-                  <td className="px-4 py-3 text-navy-2">
-                    {d.appliesToCategoryId ? (catName.get(d.appliesToCategoryId) ?? "Whole invoice") : "Whole invoice"}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-navy-2">{d.appliedCount}×</td>
-                </tr>
+        <>
+          {/* KPI strip */}
+          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="rounded-xl border border-navy bg-navy p-5">
+              <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-gold-soft">
+                Total discounted this term
+              </div>
+              <div className="mt-1.5 font-display text-2xl font-semibold text-bg">
+                {ghs(r.totalDiscounted)}
+              </div>
+              <div className="mt-0.5 text-xs text-gold-soft">
+                <span className="mr-1 text-green">↑</span>
+                {r.discountPctOfBilled}% of total billed
+              </div>
+            </div>
+
+            <Kpi
+              label="Active applications"
+              value={String(r.applicationCount)}
+              sub={`${r.studentCount} students · ${r.stackedStudentCount} stack 2+ schemes`}
+            />
+            <Kpi
+              label="Most-used scheme"
+              value={r.mostUsedScheme?.name ?? "—"}
+              valueSmall
+              sub={
+                r.mostUsedScheme
+                  ? `${r.mostUsedScheme.applicationCount} applications · ${r.mostUsedScheme.sharePct}% of total`
+                  : "no applications yet"
+              }
+            />
+            <Kpi
+              label="New this term"
+              value={String(r.newThisTerm)}
+              sub={r.newBreakdown || (r.hasTerm ? "none in the term window" : "no term set")}
+            />
+          </div>
+
+          {/* Tier breakdown */}
+          {r.byScheme.length === 0 ? (
+            <Empty>No schemes have applications yet.</Empty>
+          ) : (
+            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {r.byScheme.map((s) => (
+                <div key={s.discountId} className="rounded-xl border border-border bg-surface p-5">
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${ICON_CLASS[s.colorKey] ?? "bg-bg text-navy-2"}`}
+                    >
+                      {s.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <div className="truncate text-sm font-semibold text-navy">{s.name}</div>
+                  </div>
+                  <div className="mt-3 font-display text-xl font-semibold text-navy">{ghs(s.amount)}</div>
+                  <div className="mt-0.5 text-xs text-navy-3">
+                    <b className="text-navy-2">{s.applicationCount} applications</b> · {s.studentCount} students
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.08em] text-navy-3">
+                      <span>Share of discounts</span>
+                      <span className="text-navy-2">{s.sharePct}%</span>
+                    </div>
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-bg">
+                      <div
+                        className={`h-full rounded-full ${FILL_CLASS[s.colorKey] ?? "bg-navy-3"}`}
+                        style={{ width: `${Math.min(100, s.sharePct)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          )}
+
+          {/* Two-column body: timeline + top recipients */}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <section className="rounded-xl border border-border bg-surface p-5">
+              <div className="mb-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-navy-3">
+                  Application timeline
+                </div>
+                <h3 className="mt-0.5 font-display text-lg font-semibold text-navy">
+                  When discounts got applied
+                </h3>
+              </div>
+              <Timeline timeline={r.timeline} />
+            </section>
+
+            <section className="rounded-xl border border-border bg-surface p-5">
+              <div className="mb-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-navy-3">
+                  Top recipients
+                </div>
+                <h3 className="mt-0.5 font-display text-lg font-semibold text-navy">Largest amounts</h3>
+              </div>
+              {r.topRecipients.length === 0 ? (
+                <Empty>No recipients yet.</Empty>
+              ) : (
+                <div className="space-y-1">
+                  {r.topRecipients.map((t, i) => (
+                    <div key={`${t.studentName}-${i}`} className="flex items-center gap-3 py-2">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bg font-mono text-xs font-semibold text-navy-3">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-navy">{t.studentName}</div>
+                        <div className="truncate text-xs text-navy-3">
+                          {t.className} · {t.schemes.join(" + ")}
+                        </div>
+                      </div>
+                      <span className="shrink-0 font-mono text-sm font-semibold text-navy-2">
+                        {ghs(t.total)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+
+          {/* Active applications */}
+          <section className="mt-8">
+            <div className="mb-3">
+              <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-navy-3">
+                Active applications
+              </div>
+              <h3 className="mt-0.5 font-display text-lg font-semibold text-navy">
+                Every discount in effect this term
+              </h3>
+            </div>
+            <DiscountApplicationsTable rows={tableRows} schemes={r.schemeColor} />
+          </section>
+        </>
       )}
-      <p className="mt-3 text-xs italic text-navy-3">
-        Per-application breakdown (tier shares, timeline, top recipients, per-student rows) needs a
-        discount-application table — flagged for a schema-backed slice.
-      </p>
     </div>
   );
 }
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub: string }) {
+function Timeline({ timeline }: { timeline: DiscountsTimeline }) {
+  const { weeks, schemes, yMax } = timeline;
+  const lines = [1, 0.75, 0.5, 0.25].map((f) => ({ pct: f * 100, label: kLabel(yMax * f) }));
+  const hasData = weeks.some((w) => Object.keys(w.segments).length > 0);
+
+  return (
+    <div>
+      <div className="relative ml-10 flex h-56 items-end gap-1.5">
+        {lines.map((l) => (
+          <div
+            key={l.pct}
+            className="pointer-events-none absolute inset-x-0 border-t border-dashed border-border"
+            style={{ bottom: `${l.pct}%` }}
+          >
+            <span className="absolute -left-10 -top-2 w-9 text-right font-mono text-[10px] text-navy-3">
+              {l.label}
+            </span>
+          </div>
+        ))}
+        {weeks.map((w, wi) => (
+          <div key={`${w.label}-${wi}`} className="group flex h-full flex-1 flex-col justify-end">
+            <div className="flex w-full max-w-[28px] flex-col-reverse self-center">
+              {schemes.map((s) => {
+                const amt = w.segments[s.discountId] ?? 0;
+                if (amt <= 0) return null;
+                const h = (amt / yMax) * 224; // plot height = h-56 = 14rem = 224px
+                return (
+                  <div
+                    key={s.discountId}
+                    className={`${FILL_CLASS[s.colorKey] ?? "bg-navy-3"} opacity-80`}
+                    style={{ height: `${Math.max(2, h)}px` }}
+                    title={`${s.name} · ${w.label}: ${ghs(amt)}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="ml-10 flex gap-1.5">
+        {weeks.map((w, wi) => (
+          <span key={`${w.label}-x-${wi}`} className="flex-1 text-center font-mono text-[10px] text-navy-3">
+            {w.label}
+          </span>
+        ))}
+      </div>
+
+      {!hasData && (
+        <p className="mt-3 text-center text-xs italic text-navy-3">
+          No applications dated within this period yet.
+        </p>
+      )}
+
+      {/* Legend */}
+      {schemes.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-border pt-3">
+          {schemes.map((s) => (
+            <div key={s.discountId} className="flex items-center gap-1.5 text-xs text-navy-2">
+              <span className={`h-3 w-3 rounded-sm ${FILL_CLASS[s.colorKey] ?? "bg-navy-3"}`} />
+              <b className="font-medium text-navy">{s.name}</b>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type DiscountsTimeline = {
+  weeks: { label: string; segments: Record<string, number> }[];
+  schemes: { discountId: string; name: string; colorKey: string }[];
+  yMax: number;
+};
+
+function Kpi({
+  label,
+  value,
+  sub,
+  valueSmall,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  valueSmall?: boolean;
+}) {
   return (
     <div className="rounded-xl border border-border bg-surface p-5">
       <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-navy-3">{label}</div>
-      <div className="mt-1.5 font-display text-2xl font-semibold text-navy">{value}</div>
+      <div
+        className={`mt-1.5 truncate font-display font-semibold text-navy ${valueSmall ? "text-lg" : "text-2xl"}`}
+      >
+        {value}
+      </div>
       <div className="mt-0.5 text-xs text-navy-3">{sub}</div>
     </div>
   );

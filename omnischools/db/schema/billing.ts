@@ -7,11 +7,13 @@ import {
   integer,
   timestamp,
   unique,
+  index,
 } from "drizzle-orm/pg-core";
 import { discountKindEnum } from "./_enums";
 import { schools } from "./tenancy";
 import { users } from "./identity";
-import { feeCategories } from "./fees";
+import { feeCategories, invoices } from "./fees";
+import { students } from "./students";
 
 const money = (name: string) => numeric(name, { precision: 12, scale: 2 });
 
@@ -101,4 +103,39 @@ export const discountTiers = pgTable(
     value: money("value").notNull(),
   },
   (t) => ({ uniqRank: unique("uniq_discount_tier_rank").on(t.discountId, t.rank) }),
+);
+
+/**
+ * Attributes a discount applied on an invoice to the specific `discount` scheme
+ * that granted it — the missing link that powers the Discounts report (per-scheme
+ * value, top recipients, application timeline). Written by the invoice-issue flow
+ * when a scheme is selected; recorded from issuance onward (no historical backfill).
+ */
+export const invoiceDiscountApplications = pgTable(
+  "invoice_discount_application",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    discountId: uuid("discount_id")
+      .notNull()
+      .references(() => discounts.id, { onDelete: "restrict" }),
+    amount: money("amount").notNull(), // GHS value granted on this invoice
+    kindSnapshot: discountKindEnum("kind_snapshot"), // discount kind at application time
+    rank: integer("rank"), // sibling rank, when the scheme is tiered
+    appliedAt: timestamp("applied_at", { withTimezone: true }).notNull().defaultNow(),
+    appliedByUserId: uuid("applied_by_user_id").references(() => users.id),
+  },
+  (t) => ({
+    bySchool: index("invoice_discount_app_school_idx").on(t.schoolId),
+    byInvoice: index("invoice_discount_app_invoice_idx").on(t.invoiceId),
+    byDiscount: index("invoice_discount_app_discount_idx").on(t.discountId),
+  }),
 );

@@ -8,21 +8,46 @@ const fieldClass =
 const labelClass = "mb-1.5 block text-xs font-semibold text-navy-2";
 
 type Line = { description: string; amount: string };
+export type DiscountScheme = {
+  id: string;
+  name: string;
+  kind: string;
+  value: number;
+  isTiered: boolean;
+};
 
-export function IssueInvoiceForm({ studentId }: { studentId: string }) {
+export function IssueInvoiceForm({
+  studentId,
+  schemes = [],
+}: {
+  studentId: string;
+  schemes?: DiscountScheme[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [lines, setLines] = useState<Line[]>([{ description: "Tuition", amount: "" }]);
   const [discount, setDiscount] = useState("0");
+  const [discountId, setDiscountId] = useState("");
   const [dueAt, setDueAt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const total =
-    lines.reduce((s, l) => s + (Number(l.amount) || 0), 0) - (Number(discount) || 0);
+  const subtotal = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  const total = subtotal - (Number(discount) || 0);
 
   function setLine(i: number, key: keyof Line, v: string) {
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, [key]: v } : l)));
+  }
+
+  // Selecting a scheme attributes the discount and pre-fills a suggested amount
+  // (fixed = its value; percent = applied to the current subtotal; tiered varies
+  // by sibling rank, so it's left for the bursar to enter).
+  function pickScheme(id: string) {
+    setDiscountId(id);
+    const s = schemes.find((x) => x.id === id);
+    if (!s || s.isTiered) return;
+    if (s.kind === "PERCENT") setDiscount(((subtotal * s.value) / 100).toFixed(2));
+    else setDiscount(s.value.toFixed(2));
   }
 
   async function submit() {
@@ -31,6 +56,7 @@ export function IssueInvoiceForm({ studentId }: { studentId: string }) {
     const res = await issueInvoice({
       studentId,
       discountAmount: discount,
+      discountId: discountId || "",
       dueAt,
       lineItems: lines
         .filter((l) => l.description && l.amount)
@@ -41,6 +67,7 @@ export function IssueInvoiceForm({ studentId }: { studentId: string }) {
       setOpen(false);
       setLines([{ description: "Tuition", amount: "" }]);
       setDiscount("0");
+      setDiscountId("");
       setDueAt("");
       router.refresh();
     } else {
@@ -100,6 +127,34 @@ export function IssueInvoiceForm({ studentId }: { studentId: string }) {
       >
         + Add line
       </button>
+
+      {schemes.length > 0 && (
+        <div className="mt-4">
+          <label className={labelClass}>
+            Discount scheme <span className="font-medium text-navy-3">— optional</span>
+          </label>
+          <select
+            className={fieldClass}
+            value={discountId}
+            onChange={(e) => pickScheme(e.target.value)}
+          >
+            <option value="">No scheme — manual discount</option>
+            {schemes.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+                {s.isTiered
+                  ? " · tiered"
+                  : s.kind === "PERCENT"
+                    ? ` · ${s.value}%`
+                    : ` · GHS ${s.value.toFixed(2)}`}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-navy-3">
+            Attributing the discount to a scheme powers the Discounts report.
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
