@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { ClipboardList } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { admissionApplications } from "@/db/schema";
 import { AdmissionActions } from "@/components/admissions/admission-actions";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -46,12 +48,15 @@ export default async function AdmissionsPage() {
       </div>
 
       {apps.length === 0 ? (
-        <div className="border-border-2 bg-surface rounded-xl border border-dashed p-12 text-center">
-          <p className="font-display text-lg text-navy">No applications yet.</p>
-          <p className="mt-1 text-sm text-navy-3">
-            Share your school&apos;s public application link with prospective parents.
-          </p>
-        </div>
+        <EmptyState
+          icon={<ClipboardList className="h-5 w-5" />}
+          title="No applications yet."
+          body="Share your school's public application link with prospective parents."
+          primary={{
+            label: `Open /apply/${school.gesCode} →`,
+            href: `/apply/${encodeURIComponent(school.gesCode)}`,
+          }}
+        />
       ) : (
         <div className="space-y-2">
           {apps.map((a) => {

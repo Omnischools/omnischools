@@ -4,6 +4,7 @@ import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { bookEntries, bookCategories, fixedAssets } from "@/db/schema";
 import { BooksTabs } from "@/components/books/books-tabs";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Books" };
@@ -126,9 +127,9 @@ export default async function BooksDashboardPage() {
       <div className="mt-6">
         <h2 className="mb-2 font-display text-lg font-semibold text-navy">Recent entries</h2>
         {data.recent.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-2 bg-surface p-10 text-center text-sm text-navy-3">
+          <EmptyState tone="muted" className="p-10">
             No entries yet. Record income and expenses from their tabs (coming next).
-          </div>
+          </EmptyState>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border bg-surface">
             <table className="w-full text-sm">

@@ -9,6 +9,7 @@ import { ReportHeader } from "@/components/reports/report-header";
 import { BulkRemindersButton } from "@/components/reports/bulk-reminders-button";
 import { OutstandingTable, type DebtorRow, type DebtorBucket } from "@/components/reports/outstanding-table";
 import { schoolFile } from "@/lib/filename";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Outstanding balances" };
@@ -156,9 +157,9 @@ export default async function OutstandingPage() {
 
       {/* Aging strip */}
       {rows.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+        <EmptyState tone="muted">
           Nothing outstanding — every invoice is settled.
-        </p>
+        </EmptyState>
       ) : (
         <>
           <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">

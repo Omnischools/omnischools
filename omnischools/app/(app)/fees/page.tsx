@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { Receipt } from "lucide-react";
 import { and, eq, sql, desc } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { invoices, students } from "@/db/schema";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -73,16 +75,12 @@ export default async function FeesPage() {
         Students with a balance
       </h2>
       {data.debtors.length === 0 ? (
-        <div className="border-border-2 bg-surface rounded-xl border border-dashed p-12 text-center">
-          <p className="font-display text-lg text-navy">Nothing outstanding.</p>
-          <p className="mt-1 text-sm text-navy-3">
-            Open a student from{" "}
-            <Link href="/students" className="text-gold underline">
-              Students
-            </Link>{" "}
-            to issue an invoice.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Receipt className="h-5 w-5" />}
+          title="Nothing outstanding."
+          body="Open a student from Students to issue an invoice."
+          primary={{ label: "Open Students →", href: "/students" }}
+        />
       ) : (
         <div className="bg-surface overflow-hidden rounded-xl border border-border">
           <table className="w-full text-sm">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Users } from "lucide-react";
 import { and, asc, eq, notInArray } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
@@ -6,6 +7,7 @@ import { users, roles, roleAssignments } from "@/db/schema";
 import { NON_STAFF_ROLE_CODES } from "@/lib/staff-roles";
 import { AddStaffForm } from "@/components/staff/add-staff-form";
 import { StaffTable } from "@/components/staff/staff-table";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -76,13 +78,11 @@ export default async function StaffPage() {
       </div>
 
       {staff.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-2 bg-surface p-12 text-center">
-          <p className="font-display text-lg text-navy">No staff yet.</p>
-          <p className="mt-1 text-sm text-navy-3">
-            Add teachers and other staff so they can take attendance, enter scores and
-            collect fees.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Users className="h-5 w-5" />}
+          title="No staff yet."
+          body="Add teachers and other staff so they can take attendance, enter scores and collect fees."
+        />
       ) : (
         <StaffTable staff={staff} />
       )}

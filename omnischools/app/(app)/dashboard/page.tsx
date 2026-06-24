@@ -11,6 +11,7 @@ import {
   academicPeriodConfig,
   academicPeriod,
 } from "@/db/schema";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -228,7 +229,9 @@ export default async function DashboardPage() {
         <div className="rounded-xl border border-border bg-surface p-5">
           <h2 className="font-display text-base font-semibold text-navy">Gender mix</h2>
           {genderTotal === 0 ? (
-            <p className="mt-2 text-sm text-navy-3">No students on roll yet.</p>
+            <EmptyState tone="muted" className="mt-2">
+              No students on roll yet.
+            </EmptyState>
           ) : (
             <>
               <div className="mt-3 flex h-3 overflow-hidden rounded-pill">
@@ -269,13 +272,13 @@ export default async function DashboardPage() {
           Class composition
         </h2>
         {stats.byClass.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
+          <EmptyState tone="muted">
             No classes yet —{" "}
             <Link href="/classes" className="text-gold underline">
               set them up
             </Link>
             .
-          </div>
+          </EmptyState>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border bg-surface">
             <table className="w-full text-sm">

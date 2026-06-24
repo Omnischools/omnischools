@@ -5,6 +5,7 @@ import { PrintButton } from "@/components/reports/print-button";
 import { ReportHeader } from "@/components/reports/report-header";
 import { VoidsTable, type VoidRow } from "@/components/reports/voids-table";
 import { schoolFile } from "@/lib/filename";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Voids & refunds" };
@@ -149,9 +150,7 @@ export default async function VoidsRefundsPage() {
       </div>
 
       {events.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border-2 bg-surface p-8 text-center text-sm text-navy-3">
-          No voided or refunded payments.
-        </p>
+        <EmptyState tone="muted">No voided or refunded payments.</EmptyState>
       ) : (
         <>
           {/* Split cards */}
