@@ -464,10 +464,15 @@ export async function voidPayment(input: unknown): Promise<VoidPaymentResult> {
           voidIsRefund: d.isRefund,
         })
         .where(eq(payments.id, payment.id));
-      await tx
-        .update(receipts)
-        .set({ voidedAt: new Date() })
-        .where(eq(receipts.paymentId, payment.id));
+      // A void means the record was wrong → strike the receipt. A refund means the
+      // payment was correct but the money is being returned → the original receipt
+      // stays valid (a refund is recorded as a separate overlay). See schoolup-void-refund.
+      if (!d.isRefund) {
+        await tx
+          .update(receipts)
+          .set({ voidedAt: new Date() })
+          .where(eq(receipts.paymentId, payment.id));
+      }
 
       await tx.insert(paymentAuditLog).values({
         schoolId: school.id,
@@ -485,6 +490,8 @@ export async function voidPayment(input: unknown): Promise<VoidPaymentResult> {
     if (!out.ok) return out;
     safeRevalidate("/fees");
     safeRevalidate(`/fees/${out.studentId}`);
+    safeRevalidate(`/students/${out.studentId}/billing`);
+    safeRevalidate(`/billing/payments/${d.paymentId}`);
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not void the payment. Please try again." };

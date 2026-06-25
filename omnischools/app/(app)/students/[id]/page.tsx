@@ -304,7 +304,7 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
             Edit profile
           </Link>
           <Link
-            href={`/fees/${student.id}`}
+            href={`/students/${student.id}/billing`}
             className="rounded-md border border-border-2 px-3.5 py-2 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg"
           >
             Billing
