@@ -35,7 +35,12 @@ import {
 import { DEFAULT_FEE_ITEMS } from "@/lib/field-options";
 import { onboardSchool } from "@/lib/actions/onboarding";
 
-type Form = Partial<OnboardInput> & { subtype?: SchoolSubtype };
+type Form = Partial<OnboardInput> & {
+  subtype?: SchoolSubtype;
+  /** UI-only: "I'm also the administrator" — replicates the headmaster's details into
+   * the admin fields at submit. Stripped by the server schema. */
+  adminSameAsHead?: boolean;
+};
 
 const DRAFT_KEY = "omnischools:onboarding-draft";
 
@@ -141,8 +146,19 @@ export function OnboardingWizard() {
     if (current.key === "staff") {
       if (!form.headmasterName) return "Enter the headmaster's name.";
       if (!form.headmasterPhone) return "Enter the headmaster's phone.";
-      if (!form.adminName) return "Enter the admin's name.";
-      if (!form.adminPhone) return "Enter the admin's phone.";
+      if (!form.adminSameAsHead) {
+        if (!form.adminName) return "Enter the admin's name.";
+        if (!form.adminPhone) return "Enter the admin's phone.";
+      }
+      if (!form.billingHandler) return "Choose who handles billing.";
+      if (form.billingHandler === "ACCOUNTANT") {
+        // The invite is optional, but a name needs a phone (and vice-versa) to work.
+        const name = form.accountantName?.trim();
+        const phone = form.accountantPhone?.trim();
+        if ((name && !phone) || (!name && phone)) {
+          return "Add both the accountant's name and phone, or leave both blank to set them up later.";
+        }
+      }
     }
     if (current.key === "billing" && !form.termsAccepted) {
       return "Please accept the Terms & Privacy Policy to continue.";
@@ -195,7 +211,17 @@ export function OnboardingWizard() {
   async function launch() {
     setSubmitting(true);
     setError(null);
-    const res = await onboardSchool(form);
+    // "I'm also the administrator" → replicate the headmaster's details into the admin
+    // fields so the user never re-types them. (adminSameAsHead is UI-only; stripped server-side.)
+    const payload: Form = form.adminSameAsHead
+      ? {
+          ...form,
+          adminName: form.headmasterName,
+          adminPhone: form.headmasterPhone,
+          adminEmail: form.headmasterEmail,
+        }
+      : form;
+    const res = await onboardSchool(payload);
     setSubmitting(false);
     if (res.ok) {
       try {
@@ -544,6 +570,90 @@ function ChipEditor({
         </button>
       </div>
     </div>
+  );
+}
+
+/** Accountant permission summary — three states: yes (✓), read-only (i), no (✕). */
+const ACCOUNTANT_PERMS: { kind: "yes" | "read" | "no"; label: string }[] = [
+  { kind: "yes", label: "Record & void payments" },
+  { kind: "yes", label: "Apply discounts to students" },
+  { kind: "yes", label: "Generate invoices & receipts" },
+  { kind: "yes", label: "Run financial reports" },
+  { kind: "read", label: "View students (read only)" },
+  { kind: "read", label: "View classes (read only)" },
+  { kind: "no", label: "Manage staff or settings" },
+  { kind: "no", label: "Post announcements" },
+];
+
+function PermIcon({ kind }: { kind: "yes" | "read" | "no" }) {
+  const map = {
+    yes: { ch: "✓", cls: "bg-green-bg text-green" },
+    read: { ch: "i", cls: "bg-gold-bg text-gold" },
+    no: { ch: "✕", cls: "bg-bg text-navy-3" },
+  } as const;
+  const { ch, cls } = map[kind];
+  return (
+    <span
+      className={cn(
+        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+        cls,
+      )}
+      aria-hidden
+    >
+      {ch}
+    </span>
+  );
+}
+
+/** A selectable "who handles billing" card with role pills + a "typical for…" note. */
+function BillingChoiceCard({
+  selected,
+  onSelect,
+  pills,
+  title,
+  desc,
+  who,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  pills: { label: string; alt: boolean }[];
+  title: string;
+  desc: string;
+  who: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        "flex flex-col rounded-xl border p-4 text-left transition-colors",
+        selected
+          ? "border-gold bg-gold-bg"
+          : "border-border-2 bg-surface hover:border-gold-soft",
+      )}
+    >
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        {pills.map((p) => (
+          <span
+            key={p.label}
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+              p.alt
+                ? "border border-gold-soft bg-gold-bg text-gold"
+                : "border border-border-2 bg-surface text-navy-2",
+            )}
+          >
+            {p.label}
+          </span>
+        ))}
+      </div>
+      <div className="font-display text-[15px] font-medium text-navy">{title}</div>
+      <div className="mt-1 text-[12px] leading-relaxed text-navy-3">{desc}</div>
+      <div className="mt-2 border-t border-border pt-2 text-[11px] leading-relaxed text-navy-3">
+        {who}
+      </div>
+    </button>
   );
 }
 
@@ -1062,18 +1172,25 @@ function StepBody({
   }
 
   if (stepKey === "staff") {
+    const sameAsHead = !!form.adminSameAsHead;
+    const handler = form.billingHandler;
+    const setHandler = (v: "ADMIN" | "ACCOUNTANT") =>
+      setForm((p) => ({ ...p, billingHandler: v }));
+    const toggleSameAsHead = () =>
+      setForm((p) => ({ ...p, adminSameAsHead: !p.adminSameAsHead }));
     return (
       <div>
         <Head
           pill={`Step ${stepNo} of ${total} · Staff & roles`}
           title="Who runs"
           em="the school?"
-          lede="Two people to start: the Headmaster, and the admin who signs in first and sets up the rest. Both log in with their phone number; email is optional. You can bulk-add the rest of your staff after launch."
+          lede="Start with your own details, name the admin who signs in first, and tell us who handles billing. Everyone logs in with their phone number; email is optional. You can bulk-add the rest of your staff after launch."
         />
         <div className="space-y-6">
+          {/* Your details — the account creator (headmaster). */}
           <div>
             <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-navy-3">
-              Headmaster
+              Your details · Headmaster
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Field label="Full name" req>
@@ -1102,37 +1219,181 @@ function StepBody({
               </Field>
             </div>
           </div>
+
+          {/* Administrator — with a "same as me" replicate toggle. */}
+          <div>
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-navy-3">
+                Admin (first sign-in)
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={sameAsHead}
+                onClick={toggleSameAsHead}
+                className="inline-flex items-center gap-2 text-[12px] font-semibold text-navy"
+              >
+                <span
+                  className={cn(
+                    "relative h-5 w-9 rounded-full transition-colors",
+                    sameAsHead ? "bg-gold" : "bg-border-2",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-all",
+                      sameAsHead ? "left-[18px]" : "left-0.5",
+                    )}
+                  />
+                </span>
+                I&apos;m also the administrator
+              </button>
+            </div>
+            {sameAsHead ? (
+              <p className="rounded-xl border border-dashed border-border-2 bg-gold-bg px-4 py-3 text-[12px] text-navy-2">
+                The admin will be <b>you</b> — we&apos;ll use the name, phone, and email
+                above. The first sign-in is with your phone number.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Field label="Full name" req>
+                  <input
+                    className={inputCls(!!f("adminName"))}
+                    value={f("adminName")}
+                    onChange={(e) => set("adminName", e.target.value)}
+                    placeholder="School Office"
+                  />
+                </Field>
+                <Field label="Phone (login)" req>
+                  <input
+                    className={inputCls(!!f("adminPhone"))}
+                    value={f("adminPhone")}
+                    onChange={(e) => set("adminPhone", e.target.value)}
+                    placeholder="024 000 0000"
+                  />
+                </Field>
+                <Field label="Email — optional">
+                  <input
+                    className={inputCls(!!f("adminEmail"))}
+                    type="email"
+                    value={f("adminEmail")}
+                    onChange={(e) => set("adminEmail", e.target.value)}
+                  />
+                </Field>
+              </div>
+            )}
+          </div>
+
+          {/* Who handles billing? — the surface's two-card choice. */}
           <div>
             <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-navy-3">
-              Admin (first sign-in)
+              Who handles billing?
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field label="Full name" req>
-                <input
-                  className={inputCls(!!f("adminName"))}
-                  value={f("adminName")}
-                  onChange={(e) => set("adminName", e.target.value)}
-                  placeholder="School Office"
-                />
-              </Field>
-              <Field label="Phone (login)" req>
-                <input
-                  className={inputCls(!!f("adminPhone"))}
-                  value={f("adminPhone")}
-                  onChange={(e) => set("adminPhone", e.target.value)}
-                  placeholder="024 000 0000"
-                />
-              </Field>
-              <Field label="Email — optional">
-                <input
-                  className={inputCls(!!f("adminEmail"))}
-                  type="email"
-                  value={f("adminEmail")}
-                  onChange={(e) => set("adminEmail", e.target.value)}
-                />
-              </Field>
+            <p className="mb-3 text-[12px] text-navy-3">
+              Some schools combine administration and finance. Others have a dedicated
+              accountant or bursar. Pick what matches yours.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <BillingChoiceCard
+                selected={handler === "ADMIN"}
+                onSelect={() => setHandler("ADMIN")}
+                pills={[
+                  { label: "Admin", alt: false },
+                  { label: "+ Billing", alt: true },
+                ]}
+                title="I'll handle it myself"
+                desc="Admin role includes full access to billing, fees, and payments. Best for smaller schools."
+                who={
+                  <>
+                    Typical for schools with <b>up to ~250 students</b> or where the
+                    headmaster runs everything.
+                  </>
+                }
+              />
+              <BillingChoiceCard
+                selected={handler === "ACCOUNTANT"}
+                onSelect={() => setHandler("ACCOUNTANT")}
+                pills={[
+                  { label: "Admin", alt: false },
+                  { label: "Accountant", alt: true },
+                ]}
+                title="We have an accountant"
+                desc="A separate Accountant role with billing-only access. Admin still oversees, but day-to-day finance is delegated."
+                who={
+                  <>
+                    Typical for schools with a <b>dedicated bursar</b> or{" "}
+                    <b>250+ students</b>. Cleaner audit separation.
+                  </>
+                }
+              />
             </div>
           </div>
+
+          {/* Reveal: invite the accountant — only when "separate" is chosen. */}
+          {handler === "ACCOUNTANT" && (
+            <div className="rounded-xl border border-border bg-bg p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="font-display text-base font-medium text-navy">
+                  Invite your accountant
+                </div>
+                <span className="rounded-full border border-gold-soft bg-gold-bg px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-gold">
+                  Accountant
+                </span>
+              </div>
+              <p className="mb-4 mt-0.5 text-[12px] text-navy-3">
+                They&apos;ll get a secure link to set their password. You can also do this
+                later from Settings → Roles — leave these blank to just enable the role.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Field label="Full name">
+                  <input
+                    className={inputCls(!!f("accountantName"))}
+                    value={f("accountantName")}
+                    onChange={(e) => set("accountantName", e.target.value)}
+                    placeholder="e.g. Joseph Owusu"
+                  />
+                </Field>
+                <Field
+                  label="Phone (login)"
+                  help="Needed so they can set up their account."
+                >
+                  <input
+                    className={inputCls(!!f("accountantPhone"))}
+                    value={f("accountantPhone")}
+                    onChange={(e) => set("accountantPhone", e.target.value)}
+                    placeholder="024 000 0000"
+                  />
+                </Field>
+                <Field label="Email — optional">
+                  <input
+                    className={inputCls(!!f("accountantEmail"))}
+                    type="email"
+                    value={f("accountantEmail")}
+                    onChange={(e) => set("accountantEmail", e.target.value)}
+                    placeholder="accounts@school.edu.gh"
+                  />
+                </Field>
+              </div>
+
+              {/* Permission summary — exactly what an accountant can/can't do. */}
+              <div className="mt-4 rounded-lg border border-border-2 bg-surface p-4">
+                <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-navy-3">
+                  What an accountant can do
+                </div>
+                <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
+                  {ACCOUNTANT_PERMS.map((p) => (
+                    <div
+                      key={p.label}
+                      className="flex items-center gap-2 text-[12px] text-navy-2"
+                    >
+                      <PermIcon kind={p.kind} />
+                      {p.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1513,7 +1774,20 @@ function ReviewPanel({
       key: "staff",
       rows: [
         ["Headmaster", `${form.headmasterName ?? "—"} · ${form.headmasterPhone ?? "—"}`],
-        ["Admin", `${form.adminName ?? "—"} · ${form.adminPhone ?? "—"}`],
+        [
+          "Admin",
+          form.adminSameAsHead
+            ? "Same as headmaster"
+            : `${form.adminName ?? "—"} · ${form.adminPhone ?? "—"}`,
+        ],
+        [
+          "Finance",
+          form.billingHandler === "ACCOUNTANT"
+            ? form.accountantName?.trim()
+              ? `Accountant · ${form.accountantName.trim()}`
+              : "Separate accountant (invite later)"
+            : "Admin handles billing",
+        ],
       ],
     },
     {
