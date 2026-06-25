@@ -6,6 +6,7 @@
 export * from "./_enums";
 export * from "./tenancy";
 export * from "./identity";
+export * from "./staff";
 export * from "./periods";
 export * from "./audit";
 export * from "./anomaly";

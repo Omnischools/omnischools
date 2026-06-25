@@ -17,9 +17,91 @@ import {
   classes,
   timetableSlots,
   invites,
+  staffProfiles,
 } from "@/db/schema";
 
 type Result = { ok: boolean; error?: string };
+
+/** Empty string / whitespace → null; otherwise the trimmed value. */
+const nz = (v: string | null | undefined): string | null => {
+  const s = (v ?? "").trim();
+  return s.length > 0 ? s : null;
+};
+
+/** The optional staff-profile fields shared by the importer and the edit form. */
+const profileFields = {
+  dateOfBirth: z.string().optional().or(z.literal("")),
+  gender: z.string().optional().or(z.literal("")),
+  address: z.string().optional().or(z.literal("")),
+  emergencyContact: z.string().optional().or(z.literal("")),
+  qualificationLevel: z.string().optional().or(z.literal("")), // resolved code
+  highestQualification: z.string().optional().or(z.literal("")),
+  undergraduate: z.string().optional().or(z.literal("")),
+  ntcLicenceNumber: z.string().optional().or(z.literal("")),
+  ntcLicenceExpiry: z.string().optional().or(z.literal("")),
+  specialisations: z.string().optional().or(z.literal("")),
+} as const;
+
+type ProfileInput = {
+  dateOfBirth?: string;
+  gender?: string;
+  address?: string;
+  emergencyContact?: string;
+  qualificationLevel?: string;
+  highestQualification?: string;
+  undergraduate?: string;
+  ntcLicenceNumber?: string;
+  ntcLicenceExpiry?: string;
+  specialisations?: string;
+};
+
+/** True if the row carries any non-empty profile value worth persisting. */
+function hasProfileData(p: ProfileInput): boolean {
+  return [
+    p.dateOfBirth,
+    p.gender,
+    p.address,
+    p.emergencyContact,
+    p.qualificationLevel,
+    p.highestQualification,
+    p.undergraduate,
+    p.ntcLicenceNumber,
+    p.ntcLicenceExpiry,
+    p.specialisations,
+  ].some((v) => nz(v) !== null);
+}
+
+/**
+ * Upsert the (schoolId, userId) staff_profile row. Empty strings store as null;
+ * date columns take "YYYY-MM-DD" strings straight through (the validator/import
+ * guarantees they're either a valid ISO date or "").
+ */
+async function upsertStaffProfile(
+  tx: Tx,
+  schoolId: string,
+  userId: string,
+  p: ProfileInput,
+): Promise<void> {
+  const values = {
+    dateOfBirth: nz(p.dateOfBirth),
+    gender: nz(p.gender),
+    address: nz(p.address),
+    emergencyContact: nz(p.emergencyContact),
+    qualificationLevel: nz(p.qualificationLevel),
+    highestQualification: nz(p.highestQualification),
+    undergraduate: nz(p.undergraduate),
+    ntcLicenceNumber: nz(p.ntcLicenceNumber),
+    ntcLicenceExpiry: nz(p.ntcLicenceExpiry),
+    specialisations: nz(p.specialisations),
+  };
+  await tx
+    .insert(staffProfiles)
+    .values({ schoolId, userId, ...values })
+    .onConflictDoUpdate({
+      target: [staffProfiles.schoolId, staffProfiles.userId],
+      set: { ...values, updatedAt: new Date() },
+    });
+}
 
 /** Find-or-create the ref_role row (standard or custom) and return its id. */
 async function ensureRoleId(tx: Tx, code: string, label: string) {
@@ -111,6 +193,7 @@ const ImportStaffSchema = z.object({
         phone: z.string().min(7),
         email: z.string().email().optional().or(z.literal("")),
         role: z.string().min(2).max(60),
+        ...profileFields,
       }),
     )
     .min(1, "No rows to import")
@@ -153,6 +236,11 @@ export async function importStaff(
           .where(eq(users.phone, phone));
         const added = await assign(tx, school.id, u.id, role.code, role.label);
         if (added) created++;
+
+        // Optional extended profile — only persist when the row carries any.
+        if (hasProfileData(r)) {
+          await upsertStaffProfile(tx, school.id, u.id, r);
+        }
 
         if (sendInvites) {
           const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
@@ -211,6 +299,46 @@ export async function importStaff(
     return { ok: true, created: out.created, invited: out.invited };
   } catch {
     return { ok: false, error: "Could not import staff. Please try again." };
+  }
+}
+
+// -------------------------------------------------------- save staff profile
+/**
+ * Upsert the optional extended profile for one staff member. Backs the profile
+ * edit form. All fields optional; empty strings clear (store null). Dates are
+ * "YYYY-MM-DD" strings (or "") and pass straight into the date columns.
+ */
+const SaveStaffProfileSchema = z.object({
+  userId: z.string().uuid(),
+  ...profileFields,
+});
+
+export async function saveStaffProfile(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = SaveStaffProfileSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const d = parsed.data;
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await upsertStaffProfile(tx, school.id, d.userId, d);
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "staff_profile",
+        entityId: d.userId,
+        reason: "Staff profile updated",
+      });
+    });
+    safeRevalidate("/staff");
+    safeRevalidate(`/staff/${d.userId}`);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save the staff profile." };
   }
 }
 

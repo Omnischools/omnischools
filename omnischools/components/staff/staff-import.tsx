@@ -61,6 +61,16 @@ export function StaffImport({ schoolName }: { schoolName?: string }) {
         phone: r.phone,
         email: r.email,
         role: r.roleLabel,
+        dateOfBirth: r.dateOfBirth,
+        gender: r.gender,
+        address: r.address,
+        emergencyContact: r.emergencyContact,
+        qualificationLevel: r.qualificationLevel, // resolved code, not raw text
+        highestQualification: r.highestQualification,
+        undergraduate: r.undergraduate,
+        ntcLicenceNumber: r.ntcLicenceNumber,
+        ntcLicenceExpiry: r.ntcLicenceExpiry,
+        specialisations: r.specialisations,
       })),
       sendInvites: invite,
     });

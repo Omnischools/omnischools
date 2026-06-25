@@ -56,6 +56,7 @@ BEGIN
   FOREACH tbl IN ARRAY ARRAY[
     'ref_school_product',
     'role_assignment',
+    'staff_profile',
     'ref_academic_period_config',
     'academic_period',
     'school_holiday',
