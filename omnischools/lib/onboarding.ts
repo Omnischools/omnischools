@@ -172,16 +172,17 @@ export const defaultGradePreset = (subtype?: SchoolSubtype): "BASIC" | "WASSCE" 
 
 /* --------------------------------------------- academic structure (step 4) */
 
-/** GES Basic ladder — KG through JHS. Seeded as editable class rows for Basic/Multi. */
+/** GES Basic ladder — KG through JHS. Seeded as editable class rows for Basic/Multi.
+ * Primary years use "Primary 1–6" labels (GES designates these "Basic 1–6"). */
 export const GES_BASIC_CLASSES = [
   "KG 1",
   "KG 2",
-  "Basic 1",
-  "Basic 2",
-  "Basic 3",
-  "Basic 4",
-  "Basic 5",
-  "Basic 6",
+  "Primary 1",
+  "Primary 2",
+  "Primary 3",
+  "Primary 4",
+  "Primary 5",
+  "Primary 6",
   "JHS 1",
   "JHS 2",
   "JHS 3",
@@ -384,6 +385,15 @@ export const OnboardSchema = z.object({
   adminName: z.string().min(2, "Admin name is required").max(160),
   adminPhone: z.string().min(7, "Admin phone is required").max(40),
   adminEmail: z.string().email().optional().or(z.literal("")),
+  // Staff step — who handles billing. "ADMIN" = the admin keeps full billing access
+  // (combined); "ACCOUNTANT" = a separate Accountant role, invited below.
+  billingHandler: z.enum(["ADMIN", "ACCOUNTANT"]).optional(),
+  // Accountant invite (only when billingHandler === "ACCOUNTANT"). Phone is required
+  // for a usable invite — the accept flow creates a phone+password account; email is
+  // optional. Leaving these blank just enables the role for later (no invite sent).
+  accountantName: z.string().max(160).optional().or(z.literal("")),
+  accountantPhone: z.string().max(40).optional().or(z.literal("")),
+  accountantEmail: z.string().email().optional().or(z.literal("")),
 });
 
 export type OnboardInput = z.infer<typeof OnboardSchema>;

@@ -32,6 +32,7 @@ import {
   subjects,
   feeStructures,
   feeStructureItems,
+  invites,
 } from "@/db/schema";
 
 const FOUNDER_EMAIL = "hello@omnischools.gh";
@@ -182,7 +183,7 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
         .insert(schoolProducts)
         .values(productRows.map((p) => ({ schoolId: school.id, product: p })));
 
-      // ensure ADMIN + HEADMASTER roles exist
+      // ensure ADMIN + HEADMASTER + ACCOUNTANT roles exist
       await tx
         .insert(roles)
         .values([
@@ -192,6 +193,11 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
             description: "School office / system admin",
           },
           { code: "HEADMASTER", label: "Headmaster", description: "Head of school" },
+          {
+            code: "ACCOUNTANT",
+            label: "Accountant",
+            description: "Billing, fees & financial reports",
+          },
         ])
         .onConflictDoNothing({ target: roles.code });
       const roleRows = await tx.select().from(roles);
@@ -224,6 +230,31 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
         { userId: adminId, schoolId: school.id, roleId: roleId("ADMIN") },
         { userId: headmasterId, schoolId: school.id, roleId: roleId("HEADMASTER") },
       ]);
+
+      // Separate accountant → create a pending invite (the accept flow then makes the
+      // user + ACCOUNTANT assignment when they set their password). "I'll handle it
+      // myself" keeps billing on the ADMIN role — no extra assignment needed.
+      // Skipped when the accountant fields were left blank (role available later).
+      let accountantInvite: { phone: string; email: string | null; token: string } | null =
+        null;
+      const accName = nz(d.accountantName);
+      const accPhoneRaw = nz(d.accountantPhone);
+      if (d.billingHandler === "ACCOUNTANT" && accName && accPhoneRaw) {
+        const accPhone = normalizeGhanaPhone(accPhoneRaw);
+        const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
+        const expiresAt = new Date(Date.now() + 14 * 86400_000);
+        await tx.insert(invites).values({
+          schoolId: school.id,
+          token,
+          role: "ACCOUNTANT",
+          fullName: accName,
+          email: nz(d.accountantEmail),
+          phone: accPhone,
+          expiresAt,
+          invitedByUserId: adminId,
+        });
+        accountantInvite = { phone: accPhone, email: nz(d.accountantEmail), token };
+      }
 
       // academic period config (school override if the wizard set the calendar)
       await tx.insert(academicPeriodConfig).values({
@@ -331,7 +362,13 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
         reason: "School onboarding wizard",
       });
 
-      return { schoolId: school.id, periodsCreated, adminPhone, headmasterPhone };
+      return {
+        schoolId: school.id,
+        periodsCreated,
+        adminPhone,
+        headmasterPhone,
+        accountantInvite,
+      };
     });
 
     // notifications (stubbed providers)
@@ -345,6 +382,23 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
       html: `<p><b>${d.schoolName}</b> (${d.gesCode}, ${d.product}) — ${d.region} / ${d.district}</p>
              <p>Headmaster: ${d.headmasterName} · Admin: ${d.adminName}</p>`,
     });
+    // Accountant invite — secure link to set their password (mirrors createInvite).
+    if (result.accountantInvite) {
+      const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+      const link = `${base}/accept/${result.accountantInvite.token}`;
+      const sender = nz(d.shortName) ?? "Omnischools";
+      await sendSms(
+        result.accountantInvite.phone,
+        `${sender}: You've been added as Accountant at ${d.schoolName}. Set up your account: ${link}`,
+      );
+      if (result.accountantInvite.email) {
+        await sendEmail({
+          to: result.accountantInvite.email,
+          subject: `You're invited to ${d.schoolName} on Omnischools`,
+          html: `<p>You've been added as <b>Accountant</b> at ${d.schoolName}.</p><p><a href="${link}">Accept the invite & set your password</a>.</p>`,
+        });
+      }
+    }
     captureEvent("school_onboarded", { product: d.product, region: d.region });
 
     return {
