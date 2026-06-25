@@ -38,6 +38,21 @@ export const STAFF_ROLE_LABEL: Record<string, string> = Object.fromEntries(
 /** Roles that are NOT staff — used to include everyone else (incl. custom roles) as staff. */
 export const NON_STAFF_ROLE_CODES = ["STUDENT", "PARENT"] as [string, ...string[]];
 
+/** Academic/classroom roles — a staff member holding any of these counts as a teacher. */
+export const TEACHING_ROLE_CODES = [
+  "TEACHER",
+  "FORM_MASTER",
+  "HEAD_OF_DEPARTMENT",
+  "VICE_HEADMASTER_ACADEMIC",
+  "EXAMS_OFFICER",
+  "GUIDANCE_COUNSELLOR",
+  "SPORTS_MASTER",
+];
+
+/** True when a staff member's roles include a teaching role. */
+export const isTeachingStaff = (codes: string[]): boolean =>
+  codes.some((c) => TEACHING_ROLE_CODES.includes(c));
+
 /** Slug a custom role label to a stable code, e.g. "Sports Master" → "SPORTS_MASTER". */
 export function slugRole(label: string): string {
   return (
