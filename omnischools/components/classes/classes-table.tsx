@@ -28,12 +28,15 @@ type ClassRow = {
 export function ClassesTable({
   rows,
   staff,
+  readOnly = false,
 }: {
   rows: ClassRow[];
   staff: StaffOption[];
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const ids = rows.map((r) => r.id);
+  const teacherName = new Map(staff.map((s) => [s.id, s.name]));
   const { selected, toggle, setAll, clear, count } = useSelection();
   const allSelected = ids.length > 0 && ids.every((id) => selected.has(id));
   const someSelected = count > 0 && !allSelected;
@@ -94,27 +97,31 @@ export function ClassesTable({
 
   return (
     <>
-      <BulkBar
-        count={count}
-        singular="class"
-        plural="classes"
-        onClear={clear}
-        onDelete={() => {
-          setDelError(null);
-          setBulkOpen(true);
-        }}
-      />
+      {!readOnly && (
+        <BulkBar
+          count={count}
+          singular="class"
+          plural="classes"
+          onClear={clear}
+          onDelete={() => {
+            setDelError(null);
+            setBulkOpen(true);
+          }}
+        />
+      )}
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
             <tr>
-              <th className="w-10 px-4 py-3">
-                <HeaderCheckbox
-                  checked={allSelected}
-                  indeterminate={someSelected}
-                  onChange={() => setAll(ids, !allSelected)}
-                />
-              </th>
+              {!readOnly && (
+                <th className="w-10 px-4 py-3">
+                  <HeaderCheckbox
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onChange={() => setAll(ids, !allSelected)}
+                  />
+                </th>
+              )}
               <th className="px-4 py-3 font-semibold">Class</th>
               <th className="px-4 py-3 font-semibold">Level</th>
               <th className="px-4 py-3 font-semibold">Class teacher</th>
@@ -127,13 +134,15 @@ export function ClassesTable({
               const editing = editId === c.id;
               return (
                 <tr key={c.id} className="align-top transition-colors hover:bg-bg">
-                  <td className="px-4 py-3">
-                    <RowCheckbox
-                      checked={selected.has(c.id)}
-                      onChange={() => toggle(c.id)}
-                      label={`Select ${c.name}`}
-                    />
-                  </td>
+                  {!readOnly && (
+                    <td className="px-4 py-3">
+                      <RowCheckbox
+                        checked={selected.has(c.id)}
+                        onChange={() => toggle(c.id)}
+                        label={`Select ${c.name}`}
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3 font-medium text-navy">
                     {editing ? (
                       <input
@@ -166,11 +175,17 @@ export function ClassesTable({
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <ClassTeacherSelect
-                      classId={c.id}
-                      current={c.teacherId}
-                      staff={staff}
-                    />
+                    {readOnly ? (
+                      <span className="text-navy-2">
+                        {c.teacherId ? (teacherName.get(c.teacherId) ?? "—") : "—"}
+                      </span>
+                    ) : (
+                      <ClassTeacherSelect
+                        classId={c.id}
+                        current={c.teacherId}
+                        staff={staff}
+                      />
+                    )}
                   </td>
                   <td className="px-4 py-3 text-navy-2">{c.size}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -198,27 +213,35 @@ export function ClassesTable({
                       </>
                     ) : (
                       <>
-                        <button
-                          onClick={() => startEdit(c)}
-                          className="mr-3 text-xs font-semibold text-navy-3 transition-colors hover:text-gold"
-                        >
-                          Edit
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => startEdit(c)}
+                            className="mr-3 text-xs font-semibold text-navy-3 transition-colors hover:text-gold"
+                          >
+                            Edit
+                          </button>
+                        )}
                         <Link
                           href={`/classes/${c.id}`}
-                          className="mr-3 text-xs font-semibold text-gold hover:underline"
+                          className={
+                            readOnly
+                              ? "text-xs font-semibold text-gold hover:underline"
+                              : "mr-3 text-xs font-semibold text-gold hover:underline"
+                          }
                         >
                           Open
                         </Link>
-                        <button
-                          onClick={() => {
-                            setDelError(null);
-                            setToDelete(c);
-                          }}
-                          className="text-xs font-semibold text-navy-3 transition-colors hover:text-terra"
-                        >
-                          Delete
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => {
+                              setDelError(null);
+                              setToDelete(c);
+                            }}
+                            className="text-xs font-semibold text-navy-3 transition-colors hover:text-terra"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </>
                     )}
                   </td>

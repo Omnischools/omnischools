@@ -32,7 +32,13 @@ type StudentRow = {
 
 const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
-export function StudentsTable({ rows }: { rows: StudentRow[] }) {
+export function StudentsTable({
+  rows,
+  readOnly = false,
+}: {
+  rows: StudentRow[];
+  readOnly?: boolean;
+}) {
   const router = useRouter();
   const ids = rows.map((r) => r.id);
   const { selected, toggle, setAll, clear, count } = useSelection();
@@ -82,27 +88,31 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
 
   return (
     <>
-      <BulkBar
-        count={count}
-        singular="student"
-        plural="students"
-        onClear={clear}
-        onDelete={() => {
-          setDelError(null);
-          setBulkOpen(true);
-        }}
-      />
+      {!readOnly && (
+        <BulkBar
+          count={count}
+          singular="student"
+          plural="students"
+          onClear={clear}
+          onDelete={() => {
+            setDelError(null);
+            setBulkOpen(true);
+          }}
+        />
+      )}
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-navy-3">
             <tr>
-              <th className="w-10 px-4 py-3">
-                <HeaderCheckbox
-                  checked={allSelected}
-                  indeterminate={someSelected}
-                  onChange={() => setAll(ids, !allSelected)}
-                />
-              </th>
+              {!readOnly && (
+                <th className="w-10 px-4 py-3">
+                  <HeaderCheckbox
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onChange={() => setAll(ids, !allSelected)}
+                  />
+                </th>
+              )}
               <th className="px-4 py-3 font-semibold">Code</th>
               <th className="px-4 py-3 font-semibold">Name</th>
               <th className="px-4 py-3 font-semibold">Gender</th>
@@ -114,13 +124,15 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
           <tbody className="divide-y divide-border">
             {rows.map((s) => (
               <tr key={s.id} className="transition-colors hover:bg-bg">
-                <td className="px-4 py-3">
-                  <RowCheckbox
-                    checked={selected.has(s.id)}
-                    onChange={() => toggle(s.id)}
-                    label={`Select ${s.firstName} ${s.lastName}`}
-                  />
-                </td>
+                {!readOnly && (
+                  <td className="px-4 py-3">
+                    <RowCheckbox
+                      checked={selected.has(s.id)}
+                      onChange={() => toggle(s.id)}
+                      label={`Select ${s.firstName} ${s.lastName}`}
+                    />
+                  </td>
+                )}
                 <td className="px-4 py-3 font-mono text-xs text-navy-2">
                   <Link href={`/students/${s.id}`} className="hover:text-gold">
                     {s.studentCode}
@@ -141,15 +153,17 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right">
-                  <button
-                    onClick={() => {
-                      setDelError(null);
-                      setToDelete(s);
-                    }}
-                    className="text-xs font-semibold text-navy-3 transition-colors hover:text-terra"
-                  >
-                    Delete
-                  </button>
+                  {!readOnly && (
+                    <button
+                      onClick={() => {
+                        setDelError(null);
+                        setToDelete(s);
+                      }}
+                      className="text-xs font-semibold text-navy-3 transition-colors hover:text-terra"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

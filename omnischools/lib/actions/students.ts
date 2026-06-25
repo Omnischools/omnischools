@@ -3,7 +3,7 @@ import { z } from "zod";
 import { safeRevalidate } from "@/lib/revalidate";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
-import { requireSchool, resolveActor } from "@/lib/auth/server";
+import { requireSchool, resolveActor, assertWriteAccess } from "@/lib/auth/server";
 import { normalizeGhanaPhone } from "@/lib/auth";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { nextStudentCode } from "@/lib/students-helpers";
@@ -38,6 +38,7 @@ export type CreateStudentResult =
 
 export async function createStudent(input: unknown): Promise<CreateStudentResult> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = CreateStudentSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid student" };
@@ -121,6 +122,7 @@ const UpdateStudentSchema = z.object({
 
 export async function updateStudent(input: unknown): Promise<CreateStudentResult> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = UpdateStudentSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid student" };
@@ -233,6 +235,7 @@ export type ImportStudentsResult =
 
 export async function importStudents(input: unknown): Promise<ImportStudentsResult> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = ImportStudentsSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid import" };
@@ -354,6 +357,7 @@ const DeleteStudentSchema = z.object({ id: z.string().uuid() });
 
 export async function deleteStudent(input: unknown): Promise<DeleteResult> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = DeleteStudentSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   const actor = await resolveActor(school.id);
@@ -416,6 +420,7 @@ export type DeleteStudentsResult = {
 
 export async function deleteStudents(input: unknown): Promise<DeleteStudentsResult> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = DeleteStudentsSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Select at least one student" };
   const ids = Array.from(new Set(parsed.data.ids));

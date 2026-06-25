@@ -3,7 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
-import { requireSchool, resolveActor } from "@/lib/auth/server";
+import { requireSchool, resolveActor, assertWriteAccess } from "@/lib/auth/server";
 import { sendSms } from "@/lib/sms";
 import { safeRevalidate } from "@/lib/revalidate";
 import { ATTENDANCE_REASON_CODES } from "@/lib/attendance-reasons";
@@ -25,6 +25,7 @@ export type CreateClassResult =
 
 export async function createClass(input: unknown): Promise<CreateClassResult> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = z
     .object({
       name: z.string().min(1).max(60),
@@ -65,6 +66,7 @@ export async function setStudentClass(
   input: unknown,
 ): Promise<{ ok: boolean; error?: string }> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = z
     .object({ studentId: z.string().uuid(), classId: z.string().uuid() })
     .safeParse(input);

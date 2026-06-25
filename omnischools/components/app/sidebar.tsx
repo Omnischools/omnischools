@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isFinanceOnly } from "@/lib/access";
 
 const NAV: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
@@ -42,6 +43,9 @@ const TIER: Record<string, string> = {
   SENIOR: "Senior",
   COMBINED: "Combined",
 };
+
+/** Finance-only (Accountant/Bursar) nav — billing first, then read-only students/classes. */
+const FINANCE_NAV_ORDER = ["/billing", "/fees", "/reports", "/books", "/students", "/classes"];
 
 /** First letters of the first two words, uppercased (e.g. "Christ King" → "CK"). */
 function initials(s: string | null | undefined, fallback = "—"): string {
@@ -67,12 +71,19 @@ export function AppSidebar({
     schoolType: string;
     location: string | null;
   };
-  user: { name: string | null; role: string | null };
+  user: { name: string | null; roles: string[] };
 }) {
   const pathname = usePathname();
   const tierLoc = [TIER[school.schoolType] ?? school.schoolType, school.location]
     .filter(Boolean)
     .join(" · ");
+  // Finance-only staff see a billing-focused nav; everyone else sees the full set.
+  const nav = isFinanceOnly(user.roles)
+    ? FINANCE_NAV_ORDER.map((href) => NAV.find((n) => n.href === href)).filter(
+        (n): n is (typeof NAV)[number] => !!n,
+      )
+    : NAV;
+  const roleLabel = user.roles[0] ? titleCase(user.roles[0]) : "";
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col bg-navy text-bg md:flex print:hidden">
@@ -93,7 +104,7 @@ export function AppSidebar({
 
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
-        {NAV.map(({ href, label, Icon }) => {
+        {nav.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
@@ -125,9 +136,7 @@ export function AppSidebar({
           <div className="truncate font-display text-xs font-semibold text-bg">
             {user.name ?? "—"}
           </div>
-          <div className="truncate text-[10px] text-gold-soft">
-            {user.role ? titleCase(user.role) : ""}
-          </div>
+          <div className="truncate text-[10px] text-gold-soft">{roleLabel}</div>
         </div>
       </div>
 

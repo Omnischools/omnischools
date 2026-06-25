@@ -3,7 +3,7 @@ import { and, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
-import { requireSchool, resolveActor } from "@/lib/auth/server";
+import { requireSchool, resolveActor, assertWriteAccess } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
 import type { Tx } from "@/lib/db";
 import { classes, students, subjects, timetableSlots } from "@/db/schema";
@@ -23,6 +23,7 @@ const CreateClassSchema = z.object({
 
 export async function createClass(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = CreateClassSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -66,6 +67,7 @@ const UpdateClassSchema = z.object({
 
 export async function updateClass(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = UpdateClassSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -128,6 +130,7 @@ const DeleteClassSchema = z.object({ classId: z.string().uuid() });
 
 export async function deleteClass(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = DeleteClassSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   const actor = await resolveActor(school.id);
@@ -159,6 +162,7 @@ export async function deleteClasses(
   input: unknown,
 ): Promise<Result & { deleted?: number }> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = DeleteClassesSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Select at least one class" };
   const ids = Array.from(new Set(parsed.data.classIds));
@@ -190,6 +194,7 @@ const SetTeacherSchema = z.object({
 
 export async function setClassTeacher(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = SetTeacherSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   const teacher = nz(parsed.data.userId);
@@ -215,6 +220,7 @@ const AssignStudentsSchema = z.object({
 
 export async function assignStudentsToClass(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = AssignStudentsSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Select at least one student" };
   try {
@@ -245,6 +251,7 @@ const RemoveStudentSchema = z.object({ studentId: z.string().uuid() });
 
 export async function removeStudentFromClass(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = RemoveStudentSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   try {
@@ -270,6 +277,7 @@ const AddSubjectSchema = z.object({
 
 export async function addSubject(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = AddSubjectSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -295,6 +303,7 @@ const RenameSubjectSchema = z.object({
 
 export async function renameSubject(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = RenameSubjectSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -317,6 +326,7 @@ const SubjectActiveSchema = z.object({ id: z.string().uuid(), active: z.boolean(
 
 export async function setSubjectActive(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = SubjectActiveSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   try {
@@ -346,6 +356,7 @@ const AddSlotSchema = z.object({
 
 export async function addTimetableSlot(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = AddSlotSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   const d = parsed.data;
@@ -403,6 +414,7 @@ export async function addTimetableSlots(
   input: unknown,
 ): Promise<Result & { created?: number; skipped?: number }> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = AddSlotsSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -494,6 +506,7 @@ const UpdateSlotSchema = z.object({
 
 export async function updateTimetableSlot(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = UpdateSlotSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   const d = parsed.data;
@@ -576,6 +589,7 @@ const RemoveSlotSchema = z.object({ slotId: z.string().uuid() });
 
 export async function removeTimetableSlot(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertWriteAccess();
   const parsed = RemoveSlotSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   try {

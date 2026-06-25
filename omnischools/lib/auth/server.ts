@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { withoutTenantScope } from "@/lib/db/rls";
 import { schools, roleAssignments, roles, users, districts, regions } from "@/db/schema";
 import { getCurrentUser, type AppUser } from "@/lib/auth";
+import { isFinanceOnly, pathAllowedForFinance, FINANCE_HOME } from "@/lib/access";
 
 export interface ActiveSchool {
   id: string;
@@ -82,7 +84,26 @@ export async function requireSchool(): Promise<{ user: AppUser; school: ActiveSc
   const user = await requireUser();
   const school = await getActiveSchool();
   if (!school) redirect("/start");
+  // Finance-only staff (Accountant/Bursar) are confined to the billing sections.
+  // Runs on every app page (and its server actions) via this shared guard; the path
+  // comes from the middleware-stamped `x-pathname` header.
+  if (isFinanceOnly(user.roles)) {
+    const pathname = headers().get("x-pathname") ?? "";
+    if (pathname && !pathAllowedForFinance(pathname)) redirect(FINANCE_HOME);
+  }
   return { user, school };
+}
+
+/**
+ * Throw if the current user is finance-only (Accountant/Bursar). Call at the top of
+ * mutation actions for records a finance role may only *read* (students, classes) so
+ * read-only access holds even against a hand-crafted request.
+ */
+export async function assertWriteAccess(): Promise<void> {
+  const user = await getCurrentUser();
+  if (user && isFinanceOnly(user.roles)) {
+    throw new Error("Forbidden: your role has read-only access to this record.");
+  }
 }
 
 /**

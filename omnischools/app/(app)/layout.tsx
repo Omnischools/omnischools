@@ -13,7 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           schoolType: school.schoolType,
           location: school.location,
         }}
-        user={{ name: user.name ?? null, role: user.roles[0] ?? null }}
+        user={{ name: user.name ?? null, roles: user.roles }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between gap-4 border-b border-border bg-surface px-6 py-3 print:hidden">
