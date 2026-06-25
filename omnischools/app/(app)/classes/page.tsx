@@ -1,6 +1,7 @@
 import { GraduationCap } from "lucide-react";
 import { asc, count, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
+import { isFinanceOnly } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
 import { classes, students } from "@/db/schema";
 import { loadStaffOptions } from "@/lib/data/staff-options";
@@ -11,7 +12,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 export const dynamic = "force-dynamic";
 
 export default async function ClassesPage() {
-  const { school } = await requireSchool();
+  const { school, user } = await requireSchool();
+  // Finance-only staff (Accountant/Bursar) get a read-only view — no write controls.
+  const readOnly = isFinanceOnly(user.roles);
 
   const [classRows, staff, countRows] = await Promise.all([
     withSchool(school.id, (tx) =>
@@ -56,7 +59,7 @@ export default async function ClassesPage() {
             class teacher and build the timetable.
           </p>
         </div>
-        <CreateClassForm />
+        {!readOnly && <CreateClassForm />}
       </div>
 
       {classRows.length === 0 ? (
@@ -66,7 +69,7 @@ export default async function ClassesPage() {
           body="Create your forms/classes (e.g. JHS 1A) — students, attendance and the timetable all hang off them."
         />
       ) : (
-        <ClassesTable rows={tableRows} staff={staff} />
+        <ClassesTable rows={tableRows} staff={staff} readOnly={readOnly} />
       )}
     </div>
   );
