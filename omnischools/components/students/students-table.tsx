@@ -19,7 +19,7 @@ const STATUS_STYLES: Record<string, string> = {
   TRANSFERRED: "bg-warn-bg text-warn",
 };
 
-type StudentRow = {
+export type StudentRow = {
   id: string;
   studentCode: string;
   firstName: string;
@@ -28,6 +28,7 @@ type StudentRow = {
   sex: string;
   currentClassLabel: string | null;
   status: string;
+  dateOfBirth?: string | null;
 };
 
 const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
