@@ -3,10 +3,22 @@ import { notFound } from "next/navigation";
 import { and, asc, count, eq, notInArray } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { users, roles, roleAssignments, classes, students, staffProfiles } from "@/db/schema";
+import {
+  users,
+  roles,
+  roleAssignments,
+  classes,
+  students,
+  staffProfiles,
+  staffCompensation,
+} from "@/db/schema";
 import { NON_STAFF_ROLE_CODES, roleLabel } from "@/lib/staff-roles";
 import { qualificationLabel } from "@/lib/staff-qualifications";
 import { StaffProfileEdit } from "@/components/staff/staff-profile-edit";
+import {
+  StaffCompensationEdit,
+  EMPTY_COMPENSATION,
+} from "@/components/staff/staff-compensation-edit";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +28,29 @@ const fmtDob = (iso: string) =>
     month: "short",
     year: "numeric",
   });
+
+const ghs = (v: number) =>
+  `GHS ${v.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const COMP_STATUS_LABEL: Record<string, string> = {
+  SCHOOL_PAID: "School-paid",
+  GES_PAID: "GES-paid",
+  ALLOWANCE: "Allowance-only",
+};
+const COMP_METHOD_LABEL: Record<string, string> = { BANK: "Bank", CASH: "Cash", MOMO: "MoMo" };
+
+/** Whole years between an ISO date and today (floored, never negative). */
+const yearsSince = (iso: string, today: string) => {
+  const b = new Date(iso + "T00:00:00Z");
+  const t = new Date(today + "T00:00:00Z");
+  let y = t.getUTCFullYear() - b.getUTCFullYear();
+  if (
+    t.getUTCMonth() < b.getUTCMonth() ||
+    (t.getUTCMonth() === b.getUTCMonth() && t.getUTCDate() < b.getUTCDate())
+  )
+    y--;
+  return Math.max(0, y);
+};
 
 const ageFrom = (dob: string, today: string) => {
   const b = new Date(dob + "T00:00:00Z");
@@ -70,7 +105,8 @@ export default async function StaffDetailPage({ params }: { params: { id: string
       .limit(1);
     if (!staffUser) return null;
 
-    const [roleRows, [profile], teacherClasses, classSizes] = await Promise.all([
+    const [roleRows, [profile], [compensation], teacherClasses, classSizes] =
+      await Promise.all([
       tx
         .select({
           assignmentId: roleAssignments.id,
@@ -100,6 +136,16 @@ export default async function StaffDetailPage({ params }: { params: { id: string
         )
         .limit(1),
       tx
+        .select()
+        .from(staffCompensation)
+        .where(
+          and(
+            eq(staffCompensation.schoolId, school.id),
+            eq(staffCompensation.userId, staffUser.id),
+          ),
+        )
+        .limit(1),
+      tx
         .select({ id: classes.id, name: classes.name, level: classes.level })
         .from(classes)
         .where(
@@ -116,11 +162,18 @@ export default async function StaffDetailPage({ params }: { params: { id: string
         .groupBy(students.classId),
     ]);
 
-    return { staffUser, roleRows, profile: profile ?? null, teacherClasses, classSizes };
+    return {
+      staffUser,
+      roleRows,
+      profile: profile ?? null,
+      compensation: compensation ?? null,
+      teacherClasses,
+      classSizes,
+    };
   });
 
   if (!data) notFound();
-  const { staffUser, roleRows, profile, teacherClasses, classSizes } = data;
+  const { staffUser, roleRows, profile, compensation, teacherClasses, classSizes } = data;
 
   const fullName = staffUser.fullName ?? "—";
   const { given, surname } = splitName(staffUser.fullName ?? "");
@@ -135,6 +188,15 @@ export default async function StaffDetailPage({ params }: { params: { id: string
 
   const dob = profile?.dateOfBirth ?? null;
   const gender = profile?.gender ?? null;
+
+  // Tenure — earliest role start date (roleRows are ordered ascending by start).
+  const firstStart = roleRows.length > 0 ? roleRows[0].startDate : null;
+
+  // Compensation — net = monthly − ssnit − paye.
+  const compMonthly = compensation ? Number(compensation.monthlyAmount) : 0;
+  const compSsnit = compensation ? Number(compensation.ssnitDeduction) : 0;
+  const compPaye = compensation ? Number(compensation.payeDeduction) : 0;
+  const compNet = compMonthly - compSsnit - compPaye;
 
   return (
     <div className="mx-auto max-w-page">
@@ -195,6 +257,12 @@ export default async function StaffDetailPage({ params }: { params: { id: string
               specialisations: profile?.specialisations ?? "",
             }}
           />
+          <Link
+            href="/staff/compensation"
+            className="rounded-md border border-navy px-3.5 py-2 text-sm font-semibold text-navy transition-colors hover:bg-navy hover:text-bg"
+          >
+            Compensation
+          </Link>
           <Link
             href="/classes"
             className="rounded-md border border-border-2 px-3.5 py-2 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg"
@@ -317,6 +385,76 @@ export default async function StaffDetailPage({ params }: { params: { id: string
               </div>
             ))}
           </div>
+        )}
+      </Section>
+
+      {/* ── 05 · Compensation ──────────────────────────────────── */}
+      <Section
+        num="05"
+        title="Compensation"
+        right={
+          <StaffCompensationEdit
+            userId={staffUser.id}
+            hasRecord={!!compensation}
+            variant="secondary"
+            initial={
+              compensation
+                ? {
+                    salaryStatus: compensation.salaryStatus,
+                    monthlyAmount: compMonthly ? String(compMonthly) : "",
+                    payMethod: compensation.payMethod,
+                    payCadence: compensation.payCadence,
+                    ssnitDeduction: compSsnit ? String(compSsnit) : "",
+                    payeDeduction: compPaye ? String(compPaye) : "",
+                    effectiveFrom: compensation.effectiveFrom ?? "",
+                    notes: compensation.notes ?? "",
+                  }
+                : EMPTY_COMPENSATION
+            }
+          />
+        }
+      >
+        {!compensation ? (
+          <Muted>No compensation set — use Set compensation.</Muted>
+        ) : (
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+            <Field
+              label="Salary status"
+              value={COMP_STATUS_LABEL[compensation.salaryStatus] ?? compensation.salaryStatus}
+            />
+            <Field label="Monthly amount" value={ghs(compMonthly)} mono />
+            <Field
+              label="Pay method"
+              value={`${COMP_METHOD_LABEL[compensation.payMethod] ?? compensation.payMethod} · ${
+                compensation.payCadence === "TERMLY" ? "Termly" : "Monthly"
+              }`}
+            />
+            <Field
+              label="SSNIT"
+              value={compSsnit > 0 ? ghs(compSsnit) : "—"}
+              mono={compSsnit > 0}
+            />
+            <Field
+              label="PAYE"
+              value={compPaye > 0 ? ghs(compPaye) : "—"}
+              mono={compPaye > 0}
+            />
+            <Field label="Net" value={ghs(compNet)} mono />
+            <Field
+              label="Effective from"
+              value={compensation.effectiveFrom ? fmtDob(compensation.effectiveFrom) : null}
+            />
+            <Field
+              label="Tenure"
+              value={
+                firstStart
+                  ? `${yearsSince(firstStart, today)} ${
+                      yearsSince(firstStart, today) === 1 ? "year" : "years"
+                    }`
+                  : null
+              }
+            />
+          </dl>
         )}
       </Section>
     </div>

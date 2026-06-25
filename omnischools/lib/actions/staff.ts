@@ -18,6 +18,7 @@ import {
   timetableSlots,
   invites,
   staffProfiles,
+  staffCompensation,
 } from "@/db/schema";
 
 type Result = { ok: boolean; error?: string };
@@ -618,5 +619,67 @@ export async function removeStaffRole(input: unknown): Promise<Result> {
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not remove role." };
+  }
+}
+
+// ------------------------------------------------------ staff compensation
+const SaveCompensationSchema = z.object({
+  userId: z.string().uuid(),
+  salaryStatus: z.enum(["SCHOOL_PAID", "GES_PAID", "ALLOWANCE"]).default("SCHOOL_PAID"),
+  monthlyAmount: z.coerce.number().min(0).max(10_000_000).default(0),
+  payMethod: z.enum(["BANK", "CASH", "MOMO"]).default("BANK"),
+  payCadence: z.enum(["MONTHLY", "TERMLY"]).default("MONTHLY"),
+  ssnitDeduction: z.coerce.number().min(0).max(10_000_000).default(0),
+  payeDeduction: z.coerce.number().min(0).max(10_000_000).default(0),
+  effectiveFrom: z.string().optional().or(z.literal("")),
+  notes: z.string().max(300).optional().or(z.literal("")),
+});
+
+/** Upsert the current compensation record for a staff member at this school. */
+export async function saveStaffCompensation(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = SaveCompensationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const d = parsed.data;
+  const actor = await resolveActor(school.id);
+  const money = (n: number) => n.toFixed(2);
+  try {
+    await withSchool(school.id, async (tx) => {
+      const values = {
+        salaryStatus: d.salaryStatus,
+        monthlyAmount: money(d.monthlyAmount),
+        payMethod: d.payMethod,
+        payCadence: d.payCadence,
+        ssnitDeduction: money(d.ssnitDeduction),
+        payeDeduction: money(d.payeDeduction),
+        effectiveFrom: nz(d.effectiveFrom),
+        notes: nz(d.notes),
+        updatedAt: new Date(),
+      };
+      await tx
+        .insert(staffCompensation)
+        .values({ schoolId: school.id, userId: d.userId, ...values })
+        .onConflictDoUpdate({
+          target: [staffCompensation.schoolId, staffCompensation.userId],
+          set: values,
+        });
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "staff_compensation",
+        entityId: d.userId,
+        reason: "Staff compensation updated",
+      });
+    });
+    safeRevalidate("/staff");
+    safeRevalidate(`/staff/${d.userId}`);
+    safeRevalidate("/staff/compensation");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save the compensation record." };
   }
 }

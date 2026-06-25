@@ -57,6 +57,7 @@ BEGIN
     'ref_school_product',
     'role_assignment',
     'staff_profile',
+    'staff_compensation',
     'ref_academic_period_config',
     'academic_period',
     'school_holiday',
