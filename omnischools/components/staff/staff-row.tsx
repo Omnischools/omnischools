@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateStaff } from "@/lib/actions/staff";
 import { createInvite } from "@/lib/actions/invites";
@@ -93,7 +94,9 @@ export function StaffRow({
             className={inputClass}
           />
         ) : (
-          (member.name ?? "—")
+          <Link href={`/staff/${member.userId}`} className="hover:text-gold">
+            {member.name ?? "—"}
+          </Link>
         )}
       </td>
       <td className="px-4 py-3 font-mono text-xs text-navy-2">
