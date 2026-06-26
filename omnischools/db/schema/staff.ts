@@ -4,6 +4,7 @@ import {
   text,
   date,
   timestamp,
+  numeric,
   unique,
   index,
 } from "drizzle-orm/pg-core";
@@ -50,5 +51,48 @@ export const staffProfiles = pgTable(
   (t) => ({
     uniqStaff: unique("uniq_staff_profile_per_school").on(t.schoolId, t.userId),
     bySchool: index("staff_profile_school_idx").on(t.schoolId),
+  }),
+);
+
+/**
+ * Staff compensation — the current pay record per staff member (schoolup-staff-
+ * compensation §01). One row per (school, user). Salary status distinguishes
+ * school-paid (hits the P&L salaries line), GES-paid (government-seconded, a footnote
+ * on the books), and allowance-only (part-time/volunteer). SSNIT + PAYE are deductions;
+ * net = monthly_amount − ssnit − paye. All amounts in the school's currency (GHS).
+ */
+export const staffCompensation = pgTable(
+  "staff_compensation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    /** SCHOOL_PAID | GES_PAID | ALLOWANCE */
+    salaryStatus: text("salary_status").notNull().default("SCHOOL_PAID"),
+    monthlyAmount: numeric("monthly_amount", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    payMethod: text("pay_method").notNull().default("BANK"), // BANK | CASH | MOMO
+    payCadence: text("pay_cadence").notNull().default("MONTHLY"),
+    ssnitDeduction: numeric("ssnit_deduction", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    payeDeduction: numeric("paye_deduction", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    effectiveFrom: date("effective_from"),
+    notes: text("notes"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqComp: unique("uniq_staff_compensation_per_school").on(t.schoolId, t.userId),
+    bySchool: index("staff_compensation_school_idx").on(t.schoolId),
   }),
 );

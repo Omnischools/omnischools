@@ -96,6 +96,12 @@ export default async function StaffPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href="/staff/compensation"
+            className="rounded-md border border-border-2 px-4 py-2.5 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg"
+          >
+            Compensation
+          </Link>
+          <Link
             href="/staff/import"
             className="rounded-md border border-border-2 px-4 py-2.5 text-sm font-semibold text-navy-2 transition-colors hover:bg-bg"
           >
