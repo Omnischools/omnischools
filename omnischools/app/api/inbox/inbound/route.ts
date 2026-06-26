@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { withSchool } from "@/lib/db/rls";
 import { normalizeGhanaPhone } from "@/lib/auth";
 import { conversations, inboxMessages } from "@/db/schema";
+import { applyRoutingToConversation } from "@/lib/inbox/routing";
 
 /**
  * Inbound message webhook (portability pattern): an SMS/WhatsApp provider POSTs a
@@ -78,6 +79,10 @@ export async function POST(request: Request) {
         direction: "INBOUND",
         body: message,
       });
+
+      // Classify the topic + auto-route by the school's rules (only assigns when the
+      // thread is unassigned; never overrides a human owner).
+      await applyRoutingToConversation(tx, schoolId, id, message);
       return id;
     });
 
