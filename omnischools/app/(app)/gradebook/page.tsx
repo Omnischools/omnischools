@@ -192,9 +192,16 @@ export default async function GradebookPage({
     <div className="mx-auto max-w-page">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-semibold text-navy">Gradebook</h1>
-          <p className="text-sm text-navy-3">
-            Enter class &amp; exam scores; totals are weighted.
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">
+            Omnischools · Gradebook
+          </div>
+          <h1 className="mt-1 font-display text-3xl font-semibold text-navy">
+            Every score, <em className="text-gold">weighted right</em>
+          </h1>
+          <div className="mb-3 mt-2 h-0.5 w-16 bg-gold" />
+          <p className="max-w-2xl text-sm text-navy-3">
+            Enter class and exam scores by class, subject and term — totals weight
+            automatically.
           </p>
         </div>
         <div className="flex items-center gap-3">

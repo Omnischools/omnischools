@@ -54,11 +54,19 @@ export default async function FeesPage() {
 
   return (
     <div className="mx-auto max-w-page">
-      <h1 className="mb-1 font-display text-3xl font-semibold text-navy">Fees</h1>
-      <p className="mb-6 text-sm text-navy-3">
-        Collections for {school.name}. Open a student to issue an invoice or record a
-        payment.
-      </p>
+      <div className="mb-6">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">
+          Omnischools · Fees
+        </div>
+        <h1 className="mt-1 font-display text-3xl font-semibold text-navy">
+          Fees <em className="text-gold">collection</em>
+        </h1>
+        <div className="mb-3 mt-2 h-0.5 w-16 bg-gold" />
+        <p className="max-w-2xl text-sm text-navy-3">
+          Collections for {school.name}. Open a student with a balance to record a payment
+          or issue a receipt.
+        </p>
+      </div>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {cards.map((c) => (
