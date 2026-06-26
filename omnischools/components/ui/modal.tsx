@@ -19,15 +19,20 @@ export function Modal({
   children: React.ReactNode;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
+  // Keep the latest onClose without making it a dependency of the open effect — else
+  // the effect re-runs on every parent render (e.g. each keystroke in a child input)
+  // and steals focus back to the first field.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
-    // focus the first focusable field
+    // focus the first focusable field — once, when the modal opens
     const first = cardRef.current?.querySelector<HTMLElement>(
       "input, select, textarea, button",
     );
@@ -36,7 +41,7 @@ export function Modal({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
