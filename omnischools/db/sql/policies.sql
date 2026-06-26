@@ -96,6 +96,7 @@ BEGIN
     'notification_log',
     'conversation',
     'inbox_message',
+    'inbox_routing_rule',
     'invite',
     'book_category',
     'book_entry',

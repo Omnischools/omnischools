@@ -135,6 +135,15 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         href: "/settings/engagement",
         soon: true,
       },
+      {
+        key: "inbox-routing",
+        name: "Inbox",
+        em: "routing",
+        icon: "IR",
+        tone: "gold",
+        desc: "Rules that decide who handles each parent message — by topic, class or keyword — evaluated top to bottom, first match wins.",
+        href: "/settings/inbox/routing",
+      },
     ],
   },
   {

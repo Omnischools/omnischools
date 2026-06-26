@@ -61,7 +61,15 @@ export default async function InboxPage() {
             {open} open · two-way SMS conversations with parents.
           </p>
         </div>
-        <NewConversationForm />
+        <div className="flex shrink-0 items-center gap-4">
+          <Link
+            href="/settings/inbox/routing"
+            className="text-sm font-semibold text-gold hover:underline"
+          >
+            Routing rules →
+          </Link>
+          <NewConversationForm />
+        </div>
       </div>
 
       {rows.length === 0 ? (
