@@ -60,10 +60,19 @@ export default async function CommunicationPage() {
 
   return (
     <div className="mx-auto max-w-page">
-      <h1 className="mb-1 font-display text-3xl font-semibold text-navy">
-        Communication
-      </h1>
-      <p className="mb-6 text-sm text-navy-3">Announcements and SMS to guardians.</p>
+      <div className="mb-6">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">
+          Omnischools · Communication
+        </div>
+        <h1 className="mt-1 font-display text-3xl font-semibold text-navy">
+          Reach every <em className="text-gold">guardian</em>
+        </h1>
+        <div className="mb-3 mt-2 h-0.5 w-16 bg-gold" />
+        <p className="max-w-2xl text-sm text-navy-3">
+          Post announcements and send SMS to guardians — with a reusable copy library and
+          a live delivery log.
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Announcements */}

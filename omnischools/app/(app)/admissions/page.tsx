@@ -35,8 +35,14 @@ export default async function AdmissionsPage() {
   return (
     <div className="mx-auto max-w-page">
       <div className="mb-6">
-        <h1 className="font-display text-3xl font-semibold text-navy">Admissions</h1>
-        <p className="text-sm text-navy-3">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">
+          Omnischools · Admissions
+        </div>
+        <h1 className="mt-1 font-display text-3xl font-semibold text-navy">
+          Every applicant, <em className="text-gold">reviewed</em>
+        </h1>
+        <div className="mb-3 mt-2 h-0.5 w-16 bg-gold" />
+        <p className="max-w-2xl text-sm text-navy-3">
           {pending.length} awaiting review · {apps.length} total · public link:{" "}
           <Link
             href={`/apply/${encodeURIComponent(school.gesCode)}`}

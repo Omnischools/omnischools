@@ -50,8 +50,14 @@ export default async function InboxPage() {
     <div className="mx-auto max-w-page">
       <div className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-semibold text-navy">Inbox</h1>
-          <p className="text-sm text-navy-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">
+            Omnischools · Inbox
+          </div>
+          <h1 className="mt-1 font-display text-3xl font-semibold text-navy">
+            When parents <em className="text-gold">reply</em>
+          </h1>
+          <div className="mb-3 mt-2 h-0.5 w-16 bg-gold" />
+          <p className="max-w-2xl text-sm text-navy-3">
             {open} open · two-way SMS conversations with parents.
           </p>
         </div>
