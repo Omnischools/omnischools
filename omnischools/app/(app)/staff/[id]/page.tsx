@@ -306,8 +306,8 @@ export default async function StaffDetailPage({ params }: { params: { id: string
 
       {/* ── 02 · Personal & contact ────────────────────────────── */}
       <Section num="02" title="Personal & contact">
-        <dl className="grid grid-cols-1 gap-x-8 gap-y-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
-          <Field label="Full name" value={staffUser.fullName} />
+        <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+          <Field label="Full name" value={staffUser.fullName} wide />
           <Field
             label="Date of birth"
             value={dob ? `${fmtDob(dob)} · ${ageFrom(dob, today)} years` : null}
@@ -325,7 +325,7 @@ export default async function StaffDetailPage({ params }: { params: { id: string
         {!profile ? (
           <Muted>No profile details captured yet — use Edit profile to add them.</Muted>
         ) : (
-          <dl className="grid grid-cols-1 gap-x-8 gap-y-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+          <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
             <Field label="Highest qualification" value={profile.highestQualification} />
             <Field label="Undergraduate" value={profile.undergraduate} />
             <Field
@@ -417,7 +417,7 @@ export default async function StaffDetailPage({ params }: { params: { id: string
         {!compensation ? (
           <Muted>No compensation set — use Set compensation.</Muted>
         ) : (
-          <dl className="grid grid-cols-1 gap-x-8 gap-y-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+          <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
             <Field
               label="Salary status"
               value={COMP_STATUS_LABEL[compensation.salaryStatus] ?? compensation.salaryStatus}
@@ -539,14 +539,16 @@ function Field({
   label,
   value,
   mono,
+  wide,
 }: {
   label: string;
   value: string | null | undefined;
   mono?: boolean;
+  wide?: boolean;
 }) {
   const has = value != null && value !== "";
   return (
-    <div className="bg-surface p-4">
+    <div className={`bg-surface p-4 ${wide ? "sm:col-span-2" : ""}`}>
       <dt className="text-[9px] font-bold uppercase tracking-[0.1em] text-navy-3">{label}</dt>
       <dd
         className={`mt-1 text-sm ${has ? "text-navy" : "text-navy-3"} ${
