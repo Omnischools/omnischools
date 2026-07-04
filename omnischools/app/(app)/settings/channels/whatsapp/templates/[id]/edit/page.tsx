@@ -68,7 +68,7 @@ export default async function EditWhatsAppTemplatePage({
         </p>
       </div>
 
-      <WhatsAppTemplateComposer initial={initial} />
+      <WhatsAppTemplateComposer initial={initial} schoolName={school.name} />
     </div>
   );
 }

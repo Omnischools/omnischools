@@ -26,6 +26,7 @@ export type LoadedTemplate = {
   rejectionReason: string | null;
   submittedAt: Date | null;
   decidedAt: Date | null;
+  createdAt: Date | null;
   updatedAt: Date | null;
 };
 
@@ -78,6 +79,7 @@ export async function loadTemplate(
     rejectionReason: row.rejectionReason,
     submittedAt: row.submittedAt,
     decidedAt: row.decidedAt,
+    createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
 }

@@ -23,7 +23,7 @@ const EMPTY: ComposerInitial = {
 
 export default async function NewWhatsAppTemplatePage() {
   // Gate on school membership; the composer's actions re-check write access.
-  await requireSchool();
+  const { school } = await requireSchool();
 
   return (
     <div className="mx-auto max-w-page">
@@ -55,7 +55,7 @@ export default async function NewWhatsAppTemplatePage() {
         </p>
       </div>
 
-      <WhatsAppTemplateComposer initial={EMPTY} />
+      <WhatsAppTemplateComposer initial={EMPTY} schoolName={school.name} />
     </div>
   );
 }

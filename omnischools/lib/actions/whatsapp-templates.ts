@@ -256,6 +256,91 @@ export async function duplicateTemplate(input: unknown): Promise<Result> {
   }
 }
 
+/**
+ * Accept Meta's suggested recategorisation after a rejection: duplicate the
+ * template as a fresh DRAFT with `category = "MARKETING"`, keeping the body/header/
+ * buttons unchanged. Returns the new id so the caller can open its edit page.
+ * (The real round-trip to Meta happens once the Business API is wired.)
+ */
+export async function acceptAsMarketing(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  await assertWriteAccess();
+  const id = z.string().uuid().safeParse((input as { id?: string })?.id);
+  if (!id.success) return { ok: false, error: "Invalid input" };
+  const actor = await resolveActor(school.id);
+  try {
+    const newId = await withSchool(school.id, async (tx) => {
+      const [t] = await tx
+        .select()
+        .from(whatsappTemplates)
+        .where(and(eq(whatsappTemplates.id, id.data), eq(whatsappTemplates.schoolId, school.id)));
+      if (!t) throw new Error("not found");
+      // Bump a _vN suffix (or add _v2) — same convention as duplicateTemplate.
+      const m = t.name.match(/^(.*?)(?:_v(\d+))?$/);
+      const base = m?.[1] ?? t.name;
+      const next = (m?.[2] ? parseInt(m[2], 10) : 1) + 1;
+      const [row] = await tx
+        .insert(whatsappTemplates)
+        .values({
+          schoolId: school.id,
+          name: `${base}_v${next}`,
+          category: "MARKETING",
+          language: t.language,
+          headerType: t.headerType,
+          headerText: t.headerText,
+          headerFilename: t.headerFilename,
+          body: t.body,
+          footer: t.footer,
+          buttons: t.buttons,
+          sampleValues: t.sampleValues,
+          status: "DRAFT",
+          createdByUserId: actor.id ?? undefined,
+        })
+        .returning({ id: whatsappTemplates.id });
+      return row.id;
+    });
+    safeRevalidate("/settings/channels/whatsapp/templates");
+    return { ok: true, id: newId };
+  } catch {
+    return { ok: false, error: "Could not recategorise the template." };
+  }
+}
+
+/** Retire a template: sets status to ARCHIVED so it disappears from the active picker
+ * but stays in the audit trail. Any non-archived template can be archived. */
+export async function archiveTemplate(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  await assertWriteAccess();
+  const id = z.string().uuid().safeParse((input as { id?: string })?.id);
+  if (!id.success) return { ok: false, error: "Invalid input" };
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .update(whatsappTemplates)
+        .set({ status: "ARCHIVED", updatedAt: new Date() })
+        .where(
+          and(eq(whatsappTemplates.id, id.data), eq(whatsappTemplates.schoolId, school.id)),
+        );
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "whatsapp_template",
+        entityId: id.data,
+        after: { status: "ARCHIVED" },
+        reason: "WhatsApp template archived",
+      });
+    });
+    safeRevalidate("/settings/channels/whatsapp/templates");
+    safeRevalidate(`/settings/channels/whatsapp/templates/${id.data}`);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not archive the template." };
+  }
+}
+
 export async function deleteTemplate(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
   await assertWriteAccess();

@@ -26,7 +26,7 @@ function formatWhen(d: Date | null): string {
 export default async function WhatsAppTemplatesPage() {
   const { school } = await requireSchool();
 
-  const templates = await withSchool(school.id, (tx) =>
+  const allTemplates = await withSchool(school.id, (tx) =>
     tx
       .select({
         id: whatsappTemplates.id,
@@ -40,6 +40,10 @@ export default async function WhatsAppTemplatesPage() {
       .where(eq(whatsappTemplates.schoolId, school.id))
       .orderBy(desc(whatsappTemplates.updatedAt)),
   );
+
+  // Archived templates stay in the audit trail but drop out of the active list.
+  const templates = allTemplates.filter((t) => t.status !== "ARCHIVED");
+  const archived = allTemplates.filter((t) => t.status === "ARCHIVED");
 
   return (
     <div className="mx-auto max-w-page">
@@ -136,6 +140,46 @@ export default async function WhatsAppTemplatesPage() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {archived.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-navy-3">
+            Archived
+          </div>
+          <div className="overflow-hidden rounded-xl border border-border bg-bg opacity-80">
+            <ul>
+              {archived.map((t) => (
+                <li key={t.id} className="border-b border-border last:border-b-0">
+                  <Link
+                    href={`/settings/channels/whatsapp/templates/${t.id}`}
+                    className="grid grid-cols-1 gap-2 px-5 py-3 transition-colors hover:bg-surface sm:grid-cols-[1.6fr_1fr_1fr_0.9fr_1fr] sm:items-center sm:gap-3"
+                  >
+                    <div className="font-mono text-[13px] font-semibold text-navy-3">
+                      {t.name}
+                    </div>
+                    <div className="text-[13px] text-navy-3">
+                      {categoryLabel(t.category)}
+                    </div>
+                    <div className="text-[13px] text-navy-3">
+                      {languageLabel(t.language)}
+                    </div>
+                    <div>
+                      <span
+                        className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_BADGE.ARCHIVED}`}
+                      >
+                        {STATUS_LABEL.ARCHIVED}
+                      </span>
+                    </div>
+                    <div className="text-[12px] text-navy-3">
+                      {formatWhen(t.updatedAt)}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
     </div>

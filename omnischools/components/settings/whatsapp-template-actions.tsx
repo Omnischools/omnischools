@@ -3,6 +3,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import {
+  acceptAsMarketing,
+  archiveTemplate,
   deleteTemplate,
   duplicateTemplate,
   resolveTemplate,
@@ -148,6 +150,96 @@ export function ResolveActions({ id }: { id: string }) {
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+/**
+ * Header actions shown on the status page for a submitted template: duplicate as a
+ * new version + archive (persistent regardless of Approved / Pending / Rejected).
+ */
+export function StatusHeaderActions({ id }: { id: string }) {
+  const { router, pending, error, run } = useAction();
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          className="rounded-md border border-border-2 bg-surface px-4 py-2.5 text-[13px] font-semibold text-navy transition-colors hover:border-gold disabled:opacity-60"
+          onClick={() =>
+            run(
+              () => duplicateTemplate({ id }),
+              (newId) => {
+                if (newId)
+                  router.push(`/settings/channels/whatsapp/templates/${newId}/edit`);
+                else router.refresh();
+              },
+            )
+          }
+        >
+          {pending ? "Working…" : "Duplicate as new version"}
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          className="rounded-md border border-border-2 bg-surface px-4 py-2.5 text-[13px] font-semibold text-navy transition-colors hover:border-gold disabled:opacity-60"
+          onClick={() => {
+            if (confirm("Archive this template? It leaves the active picker but stays in the audit trail."))
+              run(
+                () => archiveTemplate({ id }),
+                () => router.push("/settings/channels/whatsapp/templates"),
+              );
+          }}
+        >
+          Archive
+        </button>
+      </div>
+      {error && <p className="text-sm text-terra">{error}</p>}
+    </div>
+  );
+}
+
+/**
+ * REJECTED dual-path action card (terra). "Edit & resubmit" duplicates the template
+ * as a new draft to revise; "Accept as Marketing" duplicates it as a MARKETING draft
+ * with the body unchanged.
+ */
+export function RejectedActions({ id }: { id: string }) {
+  const { router, pending, error, run } = useAction();
+  const go = (newId?: string) => {
+    if (newId) router.push(`/settings/channels/whatsapp/templates/${newId}/edit`);
+    else router.refresh();
+  };
+  return (
+    <div className="rounded-xl border border-terra bg-terra-bg px-[22px] py-[18px]">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p className="max-w-xl text-[13px] leading-relaxed text-navy-2">
+          <b className="font-semibold text-navy">Two paths forward.</b> Either revise the
+          body to remove promotional language and resubmit as Utility, or accept the
+          Marketing category recategorisation and resubmit. Marketing templates work the
+          same way but are clearly labelled as such to parents.
+        </p>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            className="rounded-md border border-border-2 bg-surface px-4 py-2.5 text-[13px] font-semibold text-navy transition-colors hover:border-gold disabled:opacity-60"
+            onClick={() => run(() => duplicateTemplate({ id }), go)}
+          >
+            Edit &amp; resubmit
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            className="rounded-md bg-navy px-4 py-2.5 text-[13px] font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-60"
+            onClick={() => run(() => acceptAsMarketing({ id }), go)}
+          >
+            {pending ? "Working…" : "Accept as Marketing"}
+          </button>
+        </div>
+      </div>
+      {error && <p className="mt-2 text-sm text-terra">{error}</p>}
     </div>
   );
 }

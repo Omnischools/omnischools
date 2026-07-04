@@ -1,76 +1,134 @@
 import {
-  buttonTypeLabel,
   fillSampleValues,
+  fillSampleSegments,
   type TemplateShape,
 } from "@/lib/whatsapp-templates";
 
 /**
- * A read-only WhatsApp message-bubble preview. Renders the composed header /
- * body / footer / buttons with `{variables}` swapped for their sample values.
- * The WhatsApp greens come from --wa-green / --wa-bg (scoped tokens, applied via
- * arbitrary-value classes — never slash-opacity on the brand tokens).
+ * A design-faithful WhatsApp message preview, rendered on the real WhatsApp chat
+ * background (#E5DDD5). It reproduces the surface conventions: a chat header with
+ * the school avatar + green verified badge, the white message card (with a DOCUMENT
+ * / TEXT / IMAGE header block), the body with each `{variable}` replaced by its
+ * sample value and highlighted in a gold chip, a small grey footer, WhatsApp-blue
+ * (#027EB5) action buttons, and a "10:24 AM ✓✓" time row with light-blue (#34B7F1)
+ * read ticks.
+ *
+ * The WhatsApp brand colours are set with explicit hex arbitrary-value classes
+ * (never slash-opacity on custom tokens); the gold variable highlight uses the real
+ * gold-bg / navy tokens.
  */
-export function WhatsAppTemplatePreview({ t }: { t: TemplateShape }) {
-  const body = fillSampleValues(t.body, t.sampleValues);
+
+/** School initials for the avatar (e.g. "Christ the King JHS" → "CK"). */
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "??";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
+const buttonIcon = (type: string): string =>
+  type === "URL" ? "↗" : type === "PHONE" ? "📞" : "↩";
+
+export function WhatsAppTemplatePreview({
+  t,
+  schoolName = "Your school",
+}: {
+  t: TemplateShape;
+  schoolName?: string;
+}) {
+  const bodySegments = fillSampleSegments(t.body, t.sampleValues);
   const headerText = fillSampleValues(t.headerText, t.sampleValues);
+  const filename = fillSampleValues(t.headerFilename, t.sampleValues);
+  const activeButtons = t.buttons.filter((b) => (b.label ?? "").trim());
 
   return (
-    <div className="rounded-2xl border border-border bg-[#ece5dd] p-4">
-      <div className="mx-auto max-w-sm">
-        <div className="relative rounded-xl rounded-tl-sm bg-surface p-3 shadow-sm">
-          {/* Header */}
-          {t.headerType === "TEXT" && headerText && (
-            <div className="mb-1 font-display text-[15px] font-semibold text-navy">
-              {headerText}
-            </div>
-          )}
-          {t.headerType === "IMAGE" && (
-            <div className="mb-2 flex h-28 items-center justify-center rounded-lg bg-bg text-xs font-semibold uppercase tracking-[0.12em] text-navy-3">
-              Image header
-            </div>
-          )}
-          {t.headerType === "DOCUMENT" && (
-            <div className="mb-2 flex items-center gap-2 rounded-lg bg-bg px-3 py-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-terra-bg text-xs font-semibold text-terra">
-                PDF
-              </span>
-              <span className="min-w-0 truncate font-mono text-xs text-navy-2">
-                {t.headerFilename || "document.pdf"}
-              </span>
-            </div>
-          )}
+    <div className="rounded-2xl bg-[#E5DDD5] px-4 pb-6 pt-5">
+      {/* Chat header */}
+      <div className="mb-3.5 flex items-center gap-2.5 border-b border-[rgba(0,0,0,0.08)] pb-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy font-display text-[13px] font-semibold text-gold">
+          {initials(schoolName)}
+        </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-navy">
+            <span className="truncate">{schoolName}</span>
+            <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#25A859] text-[9px] font-bold text-white">
+              ✓
+            </span>
+          </div>
+          <div className="text-[11px] text-navy-3">Business · online</div>
+        </div>
+      </div>
 
-          {/* Body */}
-          {body ? (
-            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-navy">
-              {body}
-            </p>
+      {/* Message card */}
+      <div className="mr-8 overflow-hidden rounded-lg bg-white shadow-sm">
+        {/* Header block */}
+        {t.headerType === "DOCUMENT" && (
+          <div className="flex items-center gap-2.5 border-b border-[rgba(0,0,0,0.04)] bg-[#e7f5ec] px-3 py-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-terra font-display text-[11px] font-bold text-white">
+              PDF
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-semibold text-navy">
+                {filename || "document.pdf"}
+              </div>
+              <div className="mt-0.5 text-[10px] text-navy-3">218 KB · PDF document</div>
+            </div>
+          </div>
+        )}
+        {t.headerType === "TEXT" && headerText && (
+          <div className="px-3 pt-2.5 text-[15px] font-semibold text-navy">
+            {headerText}
+          </div>
+        )}
+        {t.headerType === "IMAGE" && (
+          <div className="flex h-28 items-center justify-center bg-bg text-[11px] font-semibold uppercase tracking-[0.12em] text-navy-3">
+            Image header
+          </div>
+        )}
+
+        {/* Body with highlighted variables */}
+        <div className="whitespace-pre-wrap break-words px-3 pb-1 pt-2.5 text-[13px] leading-snug text-navy">
+          {bodySegments.length > 0 ? (
+            bodySegments.map((seg, i) =>
+              seg.filled ? (
+                <span key={i} className="rounded-[3px] bg-gold-bg px-1 text-navy">
+                  {seg.text}
+                </span>
+              ) : (
+                <span key={i}>{seg.text}</span>
+              ),
+            )
           ) : (
-            <p className="text-sm italic text-navy-3">Your message body appears here…</p>
+            <span className="italic text-navy-3">Your message body appears here…</span>
           )}
-
-          {/* Footer */}
-          {t.footer && (
-            <p className="mt-1.5 text-[11px] leading-snug text-navy-3">{t.footer}</p>
-          )}
-
-          {/* Sent time chrome */}
-          <div className="mt-1 text-right text-[10px] text-navy-3">12:04 ✓✓</div>
         </div>
 
-        {/* Buttons — WhatsApp renders these as tappable rows under the bubble */}
-        {t.buttons.length > 0 && (
-          <div className="mt-1.5 space-y-1">
-            {t.buttons.map((b, i) => (
-              <div
+        {/* Footer */}
+        {t.footer && (
+          <div className="px-3 pb-2 pt-1 text-[10px] text-navy-3">{t.footer}</div>
+        )}
+
+        {/* Time row */}
+        <div className="flex items-center justify-end gap-1 px-2.5 pb-1.5 text-[10px] text-navy-3">
+          10:24 AM <span className="font-bold text-[#34B7F1]">✓✓</span>
+        </div>
+
+        {/* Action buttons */}
+        {activeButtons.length > 0 && (
+          <div className="border-t border-[rgba(0,0,0,0.06)]">
+            {activeButtons.map((b, i) => (
+              <button
                 key={i}
-                className="rounded-xl bg-surface py-2 text-center text-sm font-semibold text-[color:var(--wa-green)] shadow-sm"
+                type="button"
+                className={`flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-[13px] font-medium text-[#027EB5] ${
+                  i > 0 ? "border-t border-[rgba(0,0,0,0.06)]" : ""
+                }`}
               >
-                <span className="mr-1.5 text-navy-3" aria-hidden>
-                  {b.type === "URL" ? "↗" : b.type === "PHONE" ? "☏" : "↩"}
+                <span aria-hidden className="text-[11px]">
+                  {buttonIcon(b.type)}
                 </span>
-                {b.label || buttonTypeLabel(b.type)}
-              </div>
+                {b.label}
+              </button>
             ))}
           </div>
         )}
