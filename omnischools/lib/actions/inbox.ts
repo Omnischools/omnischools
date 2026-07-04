@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
+import { recordAudit } from "@/lib/db/audit";
 import { normalizeGhanaPhone } from "@/lib/auth";
 import { sendSms } from "@/lib/sms";
 import { safeRevalidate } from "@/lib/revalidate";
@@ -160,5 +161,54 @@ export async function setConversationStatus(input: unknown): Promise<Result> {
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not update status." };
+  }
+}
+
+// ------------------------------------------------------- reassign (with handoff)
+const ReassignSchema = z.object({
+  conversationId: z.string().uuid(),
+  toUserId: z.string().uuid().optional().or(z.literal("")), // "" = leave unassigned
+  handoffNote: z.string().max(600).optional().or(z.literal("")),
+});
+
+/**
+ * Reassign a thread to a colleague with an optional handoff note. This is an explicit
+ * human hand-off, so it clears the auto-route provenance and is written to the audit
+ * log (the note is the reason). Never silently overwrites without a trail.
+ */
+export async function reassignConversation(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  const parsed = ReassignSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input" };
+  const toUserId = parsed.data.toUserId?.trim() || null;
+  const note = parsed.data.handoffNote?.trim() || null;
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .update(conversations)
+        .set({ assignedToUserId: toUserId, routedByRuleId: null, routedByRuleName: null })
+        .where(
+          and(
+            eq(conversations.id, parsed.data.conversationId),
+            eq(conversations.schoolId, school.id),
+          ),
+        );
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "reassigned",
+        entityType: "conversation",
+        entityId: parsed.data.conversationId,
+        after: { assignedToUserId: toUserId },
+        reason: note ?? "Thread reassigned",
+      });
+    });
+    safeRevalidate(`/inbox/${parsed.data.conversationId}`);
+    safeRevalidate("/inbox");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not reassign." };
   }
 }

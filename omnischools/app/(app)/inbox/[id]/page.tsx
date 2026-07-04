@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { conversations, inboxMessages, students } from "@/db/schema";
+import { conversations, inboxMessages, students, users } from "@/db/schema";
 import { loadStaffOptions } from "@/lib/data/staff-options";
+import { topicLabel } from "@/lib/inbox/topics";
 import { ReplyBox } from "@/components/inbox/reply-box";
 import { ConversationControls } from "@/components/inbox/conversation-controls";
+import { ReassignDrawer } from "@/components/inbox/reassign-drawer";
 import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
@@ -18,8 +20,25 @@ const when = (d: Date) =>
     minute: "2-digit",
   });
 
+/** Topic chip colours — solid tokens / -bg tints / bordered neutrals only. */
+function topicChipClass(topic: string): string {
+  switch (topic) {
+    case "URGENT":
+      return "bg-terra text-bg";
+    case "BILLING":
+      return "bg-gold-bg text-gold";
+    case "ACADEMIC":
+      return "bg-green-bg text-green";
+    case "ATTENDANCE":
+    case "SCHEDULE":
+      return "bg-bg text-navy-2 border border-border-2";
+    default:
+      return "bg-bg text-navy-3";
+  }
+}
+
 export default async function ConversationPage({ params }: { params: { id: string } }) {
-  const { school } = await requireSchool();
+  const { user, school } = await requireSchool();
   const id = params.id;
 
   const [conv] = await withSchool(school.id, (tx) =>
@@ -31,12 +50,16 @@ export default async function ConversationPage({ params }: { params: { id: strin
         subject: conversations.subject,
         status: conversations.status,
         assignedToUserId: conversations.assignedToUserId,
+        assignedName: users.fullName,
+        topic: conversations.topic,
+        routedByRuleName: conversations.routedByRuleName,
         studentFirst: students.firstName,
         studentLast: students.lastName,
         studentClass: students.currentClassLabel,
       })
       .from(conversations)
       .leftJoin(students, eq(conversations.studentId, students.id))
+      .leftJoin(users, eq(conversations.assignedToUserId, users.id))
       .where(and(eq(conversations.id, id), eq(conversations.schoolId, school.id))),
   );
   if (!conv) notFound();
@@ -90,6 +113,47 @@ export default async function ConversationPage({ params }: { params: { id: strin
             staff={staff}
           />
         </div>
+      </div>
+
+      {/* Assignment bar — who owns the thread, auto-route provenance, topic, reassign */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gold-soft bg-gold-bg px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-gold">
+            Assigned to
+          </div>
+          <p className="mt-0.5 text-sm">
+            <span className="font-semibold text-navy">
+              {conv.assignedName ?? "Unassigned"}
+            </span>
+            {conv.assignedToUserId === user.id ? (
+              <span className="text-navy-3"> · you</span>
+            ) : null}
+            {conv.routedByRuleName ? (
+              <span className="italic text-navy-3">
+                {" "}
+                · auto-routed by{" "}
+                <span className="font-medium not-italic text-navy-2">
+                  {conv.routedByRuleName}
+                </span>
+              </span>
+            ) : null}
+          </p>
+        </div>
+        {conv.topic ? (
+          <span
+            className={`rounded-pill px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] ${topicChipClass(
+              conv.topic,
+            )}`}
+          >
+            {topicLabel(conv.topic)}
+          </span>
+        ) : null}
+        <ReassignDrawer
+          conversationId={conv.id}
+          currentAssigneeName={conv.assignedName}
+          staff={staff}
+          currentUserId={user.id}
+        />
       </div>
 
       <div className="space-y-3 rounded-xl border border-border bg-surface p-4">

@@ -5,20 +5,13 @@ import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { conversations, users } from "@/db/schema";
 import { NewConversationForm } from "@/components/inbox/new-conversation-form";
+import { InboxBrowser } from "@/components/inbox/inbox-browser";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
-const when = (d: Date) =>
-  new Date(d).toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
 export default async function InboxPage() {
-  const { school } = await requireSchool();
+  const { user, school } = await requireSchool();
 
   const rows = await withSchool(school.id, (tx) =>
     tx
@@ -30,6 +23,10 @@ export default async function InboxPage() {
         status: conversations.status,
         lastMessageAt: conversations.lastMessageAt,
         assignedName: users.fullName,
+        assignedToUserId: conversations.assignedToUserId,
+        channel: conversations.channel,
+        topic: conversations.topic,
+        routedByRuleName: conversations.routedByRuleName,
         lastBody: sql<
           string | null
         >`(select body from inbox_message m where m.conversation_id = ${conversations.id} order by m.created_at desc limit 1)`,
@@ -85,43 +82,7 @@ export default async function InboxPage() {
           }
         />
       ) : (
-        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
-          {rows.map((r) => (
-            <Link
-              key={r.id}
-              href={`/inbox/${r.id}`}
-              className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-bg"
-            >
-              <span
-                className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                  r.status === "OPEN" ? "bg-green" : "bg-border-2"
-                }`}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="truncate font-medium text-navy">
-                    {r.contactName ?? r.contactPhone}
-                    {r.subject ? (
-                      <span className="font-normal text-navy-3"> · {r.subject}</span>
-                    ) : null}
-                  </span>
-                  <span className="shrink-0 text-xs text-navy-3">
-                    {when(r.lastMessageAt)}
-                  </span>
-                </div>
-                <p className="mt-0.5 truncate text-sm text-navy-3">
-                  {r.lastDir === "INBOUND" ? "↩ " : "→ "}
-                  {r.lastBody ?? "—"}
-                </p>
-              </div>
-              {r.assignedName && (
-                <span className="shrink-0 rounded-pill bg-gold-bg px-2 py-0.5 text-xs font-medium text-navy">
-                  {r.assignedName.split(" ")[0]}
-                </span>
-              )}
-            </Link>
-          ))}
-        </div>
+        <InboxBrowser rows={rows} currentUserId={user.id} />
       )}
     </div>
   );
