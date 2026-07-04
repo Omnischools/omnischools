@@ -7,6 +7,7 @@ import {
   timestamp,
   primaryKey,
   foreignKey,
+  unique,
   index,
 } from "drizzle-orm/pg-core";
 import { periodTypeEnum, periodSourceEnum } from "./_enums";
@@ -74,6 +75,9 @@ export const academicPeriod = pgTable(
       columns: [t.schoolId, t.academicYear],
       foreignColumns: [academicPeriodConfig.schoolId, academicPeriodConfig.academicYear],
     }).onDelete("cascade"),
+    // Composite-FK target: lets child tables reference (school_id, period_id) so a
+    // cross-tenant period reference is structurally impossible. See prod-paste-0034.
+    tenantUk: unique("academic_period_tenant_uk").on(t.schoolId, t.periodId),
   }),
 );
 

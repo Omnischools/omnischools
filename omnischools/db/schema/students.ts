@@ -7,6 +7,7 @@ import {
   integer,
   timestamp,
   unique,
+  foreignKey,
   index,
 } from "drizzle-orm/pg-core";
 import { sexEnum, studentStatusEnum, guardianRelationEnum } from "./_enums";
@@ -30,7 +31,11 @@ export const classes = pgTable(
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({ uniqName: unique("uniq_class_per_school").on(t.schoolId, t.name) }),
+  (t) => ({
+    uniqName: unique("uniq_class_per_school").on(t.schoolId, t.name),
+    // Composite-FK target for students / attendance / timetable / gradebook (school_id, id).
+    tenantUk: unique("class_tenant_uk").on(t.schoolId, t.id),
+  }),
 );
 
 /**
@@ -71,7 +76,7 @@ export const students = pgTable(
     dateOfBirth: date("date_of_birth"),
     status: studentStatusEnum("status").notNull().default("ACTIVE"),
     currentClassLabel: text("current_class_label"), // display fallback
-    classId: uuid("class_id").references(() => classes.id),
+    classId: uuid("class_id"),
     householdId: uuid("household_id").references(() => households.id, {
       onDelete: "set null",
     }),
@@ -82,6 +87,13 @@ export const students = pgTable(
   (t) => ({
     uniqCode: unique("uniq_student_code_per_school").on(t.schoolId, t.studentCode),
     bySchool: index("students_school_idx").on(t.schoolId),
+    // Composite-FK target for every student-scoped table (school_id, id).
+    tenantUk: unique("students_tenant_uk").on(t.schoolId, t.id),
+    // Composite school-scoped FK — class must belong to the same tenant.
+    classFk: foreignKey({
+      columns: [t.schoolId, t.classId],
+      foreignColumns: [classes.schoolId, classes.id],
+    }),
   }),
 );
 
@@ -93,9 +105,7 @@ export const studentGuardians = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    studentId: uuid("student_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
     name: text("name").notNull(),
     relationship: guardianRelationEnum("relationship").notNull().default("GUARDIAN"),
     phone: text("phone").notNull(), // E.164
@@ -105,5 +115,10 @@ export const studentGuardians = pgTable(
   },
   (t) => ({
     byStudent: index("guardian_student_idx").on(t.studentId),
+    // Composite school-scoped FK — student must belong to the same tenant.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
   }),
 );

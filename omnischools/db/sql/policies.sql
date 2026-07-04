@@ -118,3 +118,32 @@ BEGIN
   END LOOP;
 END
 $$;
+
+-- ---- global (non-tenant) tables ----
+-- These have NO school_id, so the tenant_isolation policy above does not apply:
+--   ref_region / ref_district / ref_role / ref_anomaly_rule / gen_period_defaults — global
+--     reference data, read across tenants (often inside withSchool, GUC set, bypass off).
+--   ref_user — identity table, read under withoutTenantScope during pre-tenant auth lookups.
+--   marketing_lead — pre-signup demo-form leads, written with no tenant context at all.
+-- We enable RLS but intentionally do NOT FORCE it and add NO policy. The postgres table
+-- owner (the app's direct connection) is therefore exempt and keeps full access, while the
+-- Data API roles (anon / authenticated) are denied — closing the anon-key exposure the
+-- Supabase security advisor flags, without imposing tenant isolation on global data.
+DO $$
+DECLARE
+  tbl text;
+BEGIN
+  FOREACH tbl IN ARRAY ARRAY[
+    'ref_region',
+    'ref_district',
+    'ref_role',
+    'ref_anomaly_rule',
+    'gen_period_defaults',
+    'ref_user',
+    'marketing_lead'
+  ]
+  LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);
+  END LOOP;
+END
+$$;

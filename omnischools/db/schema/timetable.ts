@@ -5,6 +5,7 @@ import {
   smallint,
   timestamp,
   unique,
+  foreignKey,
   index,
 } from "drizzle-orm/pg-core";
 import { schools } from "./tenancy";
@@ -26,9 +27,7 @@ export const timetableSlots = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    classId: uuid("class_id")
-      .notNull()
-      .references(() => classes.id, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull(),
     dayOfWeek: smallint("day_of_week").notNull(), // 1=Mon … 5=Fri
     periodIndex: smallint("period_index").notNull(), // 1-based
     startTime: text("start_time"), // "08:00"
@@ -52,5 +51,10 @@ export const timetableSlots = pgTable(
       t.dayOfWeek,
       t.periodIndex,
     ),
+    // Composite school-scoped FK — class must belong to the same tenant.
+    classFk: foreignKey({
+      columns: [t.schoolId, t.classId],
+      foreignColumns: [classes.schoolId, classes.id],
+    }).onDelete("cascade"),
   }),
 );
