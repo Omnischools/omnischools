@@ -22,3 +22,4 @@ export * from "./comms";
 export * from "./inbox";
 export * from "./invites";
 export * from "./books";
+export * from "./whatsapp";

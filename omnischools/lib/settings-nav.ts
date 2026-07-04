@@ -144,6 +144,15 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         desc: "Rules that decide who handles each parent message — by topic, class or keyword — evaluated top to bottom, first match wins.",
         href: "/settings/inbox/routing",
       },
+      {
+        key: "whatsapp-templates",
+        name: "WhatsApp",
+        em: "templates",
+        icon: "WA",
+        tone: "green",
+        desc: "Compose Meta-approved WhatsApp templates — category, variables and buttons — and track their approval status.",
+        href: "/settings/channels/whatsapp/templates",
+      },
     ],
   },
   {
