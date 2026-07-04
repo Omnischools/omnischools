@@ -97,6 +97,7 @@ BEGIN
     'conversation',
     'inbox_message',
     'inbox_routing_rule',
+    'whatsapp_template',
     'invite',
     'book_category',
     'book_entry',

@@ -225,6 +225,13 @@
       "when": 1782460261507,
       "tag": "0031_unknown_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1783194986797,
+      "tag": "0032_jazzy_punisher",
+      "breakpoints": true
     }
   ]
 }
