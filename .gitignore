@@ -28,6 +28,10 @@ pgdata/
 # ---- graphify knowledge graph (generated) ----
 graphify-out/
 
+# ---- agent skills (installed via `npx skills add`) ----
+.agents/
+skills-lock.json
+
 # ---- editor / tooling ----
 .claude/
 .vscode/
