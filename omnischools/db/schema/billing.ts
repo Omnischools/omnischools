@@ -7,6 +7,7 @@ import {
   integer,
   timestamp,
   unique,
+  foreignKey,
   index,
 } from "drizzle-orm/pg-core";
 import { discountKindEnum } from "./_enums";
@@ -35,24 +36,36 @@ export const feeStructures = pgTable(
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({ uniqName: unique("uniq_fee_structure_per_school").on(t.schoolId, t.name) }),
+  (t) => ({
+    uniqName: unique("uniq_fee_structure_per_school").on(t.schoolId, t.name),
+    // Composite-FK target for fee_structure_item (school_id, id).
+    tenantUk: unique("fee_structure_tenant_uk").on(t.schoolId, t.id),
+  }),
 );
 
 /** One line of a fee structure (Tuition 300, Books 80, ...). */
-export const feeStructureItems = pgTable("fee_structure_item", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  schoolId: uuid("school_id")
-    .notNull()
-    .references(() => schools.id, { onDelete: "cascade" }),
-  feeStructureId: uuid("fee_structure_id")
-    .notNull()
-    .references(() => feeStructures.id, { onDelete: "cascade" }),
-  feeCategoryId: uuid("fee_category_id").references(() => feeCategories.id, {
-    onDelete: "set null",
+export const feeStructureItems = pgTable(
+  "fee_structure_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    feeStructureId: uuid("fee_structure_id").notNull(),
+    feeCategoryId: uuid("fee_category_id").references(() => feeCategories.id, {
+      onDelete: "set null",
+    }),
+    description: text("description").notNull(),
+    amount: money("amount").notNull(),
+  },
+  (t) => ({
+    // Composite school-scoped FK — the parent fee structure must be in the same tenant.
+    structureFk: foreignKey({
+      columns: [t.schoolId, t.feeStructureId],
+      foreignColumns: [feeStructures.schoolId, feeStructures.id],
+    }).onDelete("cascade"),
   }),
-  description: text("description").notNull(),
-  amount: money("amount").notNull(),
-});
+);
 
 /** A named discount the bursar can apply when generating invoices. */
 export const discounts = pgTable(
@@ -81,7 +94,11 @@ export const discounts = pgTable(
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({ uniqName: unique("uniq_discount_per_school").on(t.schoolId, t.name) }),
+  (t) => ({
+    uniqName: unique("uniq_discount_per_school").on(t.schoolId, t.name),
+    // Composite-FK target for discount_tier / invoice_discount_application (school_id, id).
+    tenantUk: unique("discount_tenant_uk").on(t.schoolId, t.id),
+  }),
 );
 
 /**
@@ -96,13 +113,18 @@ export const discountTiers = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    discountId: uuid("discount_id")
-      .notNull()
-      .references(() => discounts.id, { onDelete: "cascade" }),
+    discountId: uuid("discount_id").notNull(),
     rank: integer("rank").notNull(),
     value: money("value").notNull(),
   },
-  (t) => ({ uniqRank: unique("uniq_discount_tier_rank").on(t.discountId, t.rank) }),
+  (t) => ({
+    uniqRank: unique("uniq_discount_tier_rank").on(t.discountId, t.rank),
+    // Composite school-scoped FK — the parent discount must be in the same tenant.
+    discountFk: foreignKey({
+      columns: [t.schoolId, t.discountId],
+      foreignColumns: [discounts.schoolId, discounts.id],
+    }).onDelete("cascade"),
+  }),
 );
 
 /**
@@ -118,15 +140,9 @@ export const invoiceDiscountApplications = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    invoiceId: uuid("invoice_id")
-      .notNull()
-      .references(() => invoices.id, { onDelete: "cascade" }),
-    studentId: uuid("student_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
-    discountId: uuid("discount_id")
-      .notNull()
-      .references(() => discounts.id, { onDelete: "restrict" }),
+    invoiceId: uuid("invoice_id").notNull(),
+    studentId: uuid("student_id").notNull(),
+    discountId: uuid("discount_id").notNull(),
     amount: money("amount").notNull(), // GHS value granted on this invoice
     kindSnapshot: discountKindEnum("kind_snapshot"), // discount kind at application time
     rank: integer("rank"), // sibling rank, when the scheme is tiered
@@ -137,5 +153,18 @@ export const invoiceDiscountApplications = pgTable(
     bySchool: index("invoice_discount_app_school_idx").on(t.schoolId),
     byInvoice: index("invoice_discount_app_invoice_idx").on(t.invoiceId),
     byDiscount: index("invoice_discount_app_discount_idx").on(t.discountId),
+    // Composite school-scoped FKs — invoice, student and discount are same-tenant.
+    invoiceFk: foreignKey({
+      columns: [t.schoolId, t.invoiceId],
+      foreignColumns: [invoices.schoolId, invoices.id],
+    }).onDelete("cascade"),
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    discountFk: foreignKey({
+      columns: [t.schoolId, t.discountId],
+      foreignColumns: [discounts.schoolId, discounts.id],
+    }).onDelete("restrict"),
   }),
 );

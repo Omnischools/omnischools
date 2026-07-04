@@ -7,6 +7,7 @@ import {
   jsonb,
   timestamp,
   unique,
+  foreignKey,
   index,
 } from "drizzle-orm/pg-core";
 import {
@@ -37,7 +38,11 @@ export const feeCategories = pgTable(
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({ uniqName: unique("uniq_fee_category_per_school").on(t.schoolId, t.name) }),
+  (t) => ({
+    uniqName: unique("uniq_fee_category_per_school").on(t.schoolId, t.name),
+    // Composite-FK target for invoice_line_item (school_id, id).
+    tenantUk: unique("fee_category_tenant_uk").on(t.schoolId, t.id),
+  }),
 );
 
 /** A bill issued to a student for a term. paid/balance denormalised for fast reads. */
@@ -48,12 +53,10 @@ export const invoices = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    studentId: uuid("student_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
     invoiceNumber: text("invoice_number").notNull(),
     academicYear: text("academic_year").notNull(),
-    periodId: uuid("period_id").references(() => academicPeriod.periodId),
+    periodId: uuid("period_id"),
     subtotalAmount: money("subtotal_amount").notNull(),
     discountAmount: money("discount_amount").notNull().default("0"),
     billedAmount: money("billed_amount").notNull(),
@@ -68,22 +71,45 @@ export const invoices = pgTable(
   (t) => ({
     uniqNumber: unique("uniq_invoice_number_per_school").on(t.schoolId, t.invoiceNumber),
     byStudent: index("invoice_student_idx").on(t.studentId),
+    // Composite-FK target for invoice_line_item / payment_allocation / invoice_discount_application.
+    tenantUk: unique("invoice_tenant_uk").on(t.schoolId, t.id),
+    // Composite school-scoped FKs — student and period must be in the same tenant.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.periodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }),
   }),
 );
 
-export const invoiceLineItems = pgTable("invoice_line_item", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  schoolId: uuid("school_id")
-    .notNull()
-    .references(() => schools.id, { onDelete: "cascade" }),
-  invoiceId: uuid("invoice_id")
-    .notNull()
-    .references(() => invoices.id, { onDelete: "cascade" }),
-  feeCategoryId: uuid("fee_category_id").references(() => feeCategories.id),
-  description: text("description").notNull(),
-  amount: money("amount").notNull(),
-  isOptional: boolean("is_optional").notNull().default(false),
-});
+export const invoiceLineItems = pgTable(
+  "invoice_line_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    invoiceId: uuid("invoice_id").notNull(),
+    feeCategoryId: uuid("fee_category_id"),
+    description: text("description").notNull(),
+    amount: money("amount").notNull(),
+    isOptional: boolean("is_optional").notNull().default(false),
+  },
+  (t) => ({
+    // Composite school-scoped FKs — invoice and fee category are same-tenant.
+    invoiceFk: foreignKey({
+      columns: [t.schoolId, t.invoiceId],
+      foreignColumns: [invoices.schoolId, invoices.id],
+    }).onDelete("cascade"),
+    categoryFk: foreignKey({
+      columns: [t.schoolId, t.feeCategoryId],
+      foreignColumns: [feeCategories.schoolId, feeCategories.id],
+    }),
+  }),
+);
 
 /** One row per flow of money in. aggregator stays null in MVP1 (manual entry). */
 export const payments = pgTable(
@@ -93,9 +119,7 @@ export const payments = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    studentId: uuid("student_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
     recordedByUserId: uuid("recorded_by_user_id").references(() => users.id),
     grossAmount: money("gross_amount").notNull(),
     feeAmount: money("fee_amount").notNull().default("0"),
@@ -114,26 +138,47 @@ export const payments = pgTable(
     voidReason: text("void_reason"),
     voidIsRefund: boolean("void_is_refund").notNull().default(false),
   },
-  (t) => ({ byStudent: index("payment_student_idx").on(t.studentId) }),
+  (t) => ({
+    byStudent: index("payment_student_idx").on(t.studentId),
+    // Composite-FK target for payment_allocation / receipt (school_id, id).
+    tenantUk: unique("payment_tenant_uk").on(t.schoolId, t.id),
+    // Composite school-scoped FK — student must belong to the same tenant.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+  }),
 );
 
 /** Distribution of a payment across invoices (or credit/refund). */
-export const paymentAllocations = pgTable("payment_allocation", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  schoolId: uuid("school_id")
-    .notNull()
-    .references(() => schools.id, { onDelete: "cascade" }),
-  paymentId: uuid("payment_id")
-    .notNull()
-    .references(() => payments.id, { onDelete: "cascade" }),
-  invoiceId: uuid("invoice_id").references(() => invoices.id),
-  allocationType: allocationTypeEnum("allocation_type").notNull().default("INVOICE"),
-  amount: money("amount").notNull(),
-  allocationMethod: allocationMethodEnum("allocation_method").notNull().default("MANUAL"),
-  allocatedByUserId: uuid("allocated_by_user_id").references(() => users.id),
-  allocatedAt: timestamp("allocated_at", { withTimezone: true }).notNull().defaultNow(),
-  voidedAt: timestamp("voided_at", { withTimezone: true }),
-});
+export const paymentAllocations = pgTable(
+  "payment_allocation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    paymentId: uuid("payment_id").notNull(),
+    invoiceId: uuid("invoice_id"),
+    allocationType: allocationTypeEnum("allocation_type").notNull().default("INVOICE"),
+    amount: money("amount").notNull(),
+    allocationMethod: allocationMethodEnum("allocation_method").notNull().default("MANUAL"),
+    allocatedByUserId: uuid("allocated_by_user_id").references(() => users.id),
+    allocatedAt: timestamp("allocated_at", { withTimezone: true }).notNull().defaultNow(),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+  },
+  (t) => ({
+    // Composite school-scoped FKs — payment and invoice are same-tenant.
+    paymentFk: foreignKey({
+      columns: [t.schoolId, t.paymentId],
+      foreignColumns: [payments.schoolId, payments.id],
+    }).onDelete("cascade"),
+    invoiceFk: foreignKey({
+      columns: [t.schoolId, t.invoiceId],
+      foreignColumns: [invoices.schoolId, invoices.id],
+    }),
+  }),
+);
 
 /** One receipt per payment (1:1), generated on successful recording. */
 export const receipts = pgTable(
@@ -143,14 +188,9 @@ export const receipts = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    paymentId: uuid("payment_id")
-      .notNull()
-      .references(() => payments.id, { onDelete: "cascade" })
-      .unique(),
+    paymentId: uuid("payment_id").notNull().unique(),
     receiptNumber: text("receipt_number").notNull(),
-    studentId: uuid("student_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
     pdfUrl: text("pdf_url"),
     generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
     voidedAt: timestamp("voided_at", { withTimezone: true }),
@@ -158,6 +198,15 @@ export const receipts = pgTable(
   },
   (t) => ({
     uniqNumber: unique("uniq_receipt_number_per_school").on(t.schoolId, t.receiptNumber),
+    // Composite school-scoped FKs — payment and student are same-tenant.
+    paymentFk: foreignKey({
+      columns: [t.schoolId, t.paymentId],
+      foreignColumns: [payments.schoolId, payments.id],
+    }).onDelete("cascade"),
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
   }),
 );
 

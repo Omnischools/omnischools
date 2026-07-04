@@ -6,6 +6,8 @@ import {
   index,
   boolean,
   smallint,
+  unique,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 import { conversationStatusEnum, messageDirectionEnum } from "./_enums";
 import { schools } from "./tenancy";
@@ -53,6 +55,8 @@ export const conversations = pgTable(
       t.lastMessageAt,
     ),
     byPhone: index("conversation_phone_idx").on(t.schoolId, t.contactPhone),
+    // Composite-FK target for inbox_message (school_id, conversation_id).
+    tenantUk: unique("conversation_tenant_uk").on(t.schoolId, t.id),
   }),
 );
 
@@ -64,9 +68,7 @@ export const inboxMessages = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    conversationId: uuid("conversation_id")
-      .notNull()
-      .references(() => conversations.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id").notNull(),
     direction: messageDirectionEnum("direction").notNull(),
     body: text("body").notNull(),
     sentByUserId: uuid("sent_by_user_id").references(() => users.id, {
@@ -79,6 +81,11 @@ export const inboxMessages = pgTable(
       t.conversationId,
       t.createdAt,
     ),
+    // Composite school-scoped FK — conversation must belong to the same tenant.
+    conversationFk: foreignKey({
+      columns: [t.schoolId, t.conversationId],
+      foreignColumns: [conversations.schoolId, conversations.id],
+    }).onDelete("cascade"),
   }),
 );
 

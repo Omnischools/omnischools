@@ -7,6 +7,7 @@ import {
   boolean,
   timestamp,
   unique,
+  foreignKey,
   index,
 } from "drizzle-orm/pg-core";
 import { schools } from "./tenancy";
@@ -29,7 +30,11 @@ export const subjects = pgTable(
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({ uniqName: unique("uniq_subject_per_school").on(t.schoolId, t.name) }),
+  (t) => ({
+    uniqName: unique("uniq_subject_per_school").on(t.schoolId, t.name),
+    // Composite-FK target for gradebook_column / gradebook_score (school_id, id).
+    tenantUk: unique("subject_tenant_uk").on(t.schoolId, t.id),
+  }),
 );
 
 /**
@@ -74,15 +79,9 @@ export const gradebookScores = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    studentId: uuid("student_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
-    subjectId: uuid("subject_id")
-      .notNull()
-      .references(() => subjects.id, { onDelete: "cascade" }),
-    periodId: uuid("period_id")
-      .notNull()
-      .references(() => academicPeriod.periodId, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    periodId: uuid("period_id").notNull(),
     classScore: score("class_score"),
     examScore: score("exam_score"),
     total: score("total"),
@@ -98,6 +97,19 @@ export const gradebookScores = pgTable(
       t.periodId,
     ),
     byPeriodSubject: index("score_period_subject_idx").on(t.periodId, t.subjectId),
+    // Composite school-scoped FKs — student, subject and period are same-tenant.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    subjectFk: foreignKey({
+      columns: [t.schoolId, t.subjectId],
+      foreignColumns: [subjects.schoolId, subjects.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.periodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
   }),
 );
 
@@ -109,12 +121,8 @@ export const reportCards = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    studentId: uuid("student_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
-    periodId: uuid("period_id")
-      .notNull()
-      .references(() => academicPeriod.periodId, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    periodId: uuid("period_id").notNull(),
     overallTotal: score("overall_total"),
     overallGrade: text("overall_grade"),
     subjectCount: smallint("subject_count"),
@@ -124,6 +132,15 @@ export const reportCards = pgTable(
   },
   (t) => ({
     uniq: unique("uniq_report_student_period").on(t.schoolId, t.studentId, t.periodId),
+    // Composite school-scoped FKs — student and period are same-tenant.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.periodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
   }),
 );
 
@@ -140,15 +157,9 @@ export const gradebookColumns = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    classId: uuid("class_id")
-      .notNull()
-      .references(() => classes.id, { onDelete: "cascade" }),
-    subjectId: uuid("subject_id")
-      .notNull()
-      .references(() => subjects.id, { onDelete: "cascade" }),
-    periodId: uuid("period_id")
-      .notNull()
-      .references(() => academicPeriod.periodId, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    periodId: uuid("period_id").notNull(),
     name: text("name").notNull(), // "Quiz 1", "Class Test"
     category: text("category").notNull().default("CA"), // 'CA' | 'EXAM'
     maxScore: numeric("max_score", { precision: 5, scale: 2 }).notNull(),
@@ -165,6 +176,21 @@ export const gradebookColumns = pgTable(
       t.name,
     ),
     byContext: index("gradebook_column_context_idx").on(t.periodId, t.subjectId, t.classId),
+    // Composite-FK target for gradebook_column_score (school_id, id).
+    tenantUk: unique("gradebook_column_tenant_uk").on(t.schoolId, t.id),
+    // Composite school-scoped FKs — class, subject and period are same-tenant.
+    classFk: foreignKey({
+      columns: [t.schoolId, t.classId],
+      foreignColumns: [classes.schoolId, classes.id],
+    }).onDelete("cascade"),
+    subjectFk: foreignKey({
+      columns: [t.schoolId, t.subjectId],
+      foreignColumns: [subjects.schoolId, subjects.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.periodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
   }),
 );
 
@@ -176,12 +202,8 @@ export const gradebookColumnScores = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    columnId: uuid("column_id")
-      .notNull()
-      .references(() => gradebookColumns.id, { onDelete: "cascade" }),
-    studentId: uuid("student_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
+    columnId: uuid("column_id").notNull(),
+    studentId: uuid("student_id").notNull(),
     rawScore: score("raw_score"),
     updatedByUserId: uuid("updated_by_user_id").references(() => users.id),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -189,5 +211,14 @@ export const gradebookColumnScores = pgTable(
   (t) => ({
     uniq: unique("uniq_column_score_per_student").on(t.schoolId, t.columnId, t.studentId),
     byColumn: index("gradebook_column_score_column_idx").on(t.columnId),
+    // Composite school-scoped FKs — the column and student are same-tenant.
+    columnFk: foreignKey({
+      columns: [t.schoolId, t.columnId],
+      foreignColumns: [gradebookColumns.schoolId, gradebookColumns.id],
+    }).onDelete("cascade"),
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
   }),
 );
