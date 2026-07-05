@@ -1,7 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { savePortfolioScores } from "@/lib/actions/score-ledger";
+import {
+  savePortfolioScores,
+  saveDirectLedgerScores,
+} from "@/lib/actions/score-ledger";
 import { provisionalTotal, type CategoryWeights } from "@/lib/score-ledger/compute";
 
 export type LedgerRow = {
@@ -16,20 +19,27 @@ export type LedgerRow = {
   status: "DRAFT" | "COMPLETE" | "STPSHS_READY";
 };
 
-/** Category header colours (§3.4): assignments/project green, the two exams navy, portfolio terra. */
-const HEAD = [
-  { key: "asgn", label: "Assignments", cls: "text-green", wkey: "asgn" as const },
-  { key: "midSem", label: "Mid-sem", cls: "text-navy-2", wkey: "midSem" as const },
-  { key: "endSem", label: "End-of-sem", cls: "text-navy-2", wkey: "endSem" as const },
-  { key: "project", label: "Project", cls: "text-green", wkey: "project" as const },
-] as const;
+type CatKey = "asgn" | "midSem" | "endSem" | "project" | "portfolio";
+
+/** The five categories in order, with header colour (§3.4) and weight key. */
+const CATS: { key: CatKey; label: string; cls: string; wkey: keyof CategoryWeights }[] = [
+  { key: "asgn", label: "Assignments", cls: "text-green", wkey: "asgn" },
+  { key: "midSem", label: "Mid-sem", cls: "text-navy-2", wkey: "midSem" },
+  { key: "endSem", label: "End-of-sem", cls: "text-navy-2", wkey: "endSem" },
+  { key: "project", label: "Project", cls: "text-green", wkey: "project" },
+  { key: "portfolio", label: "Portfolio", cls: "text-terra", wkey: "portfolio" },
+];
 
 const computedCell = "rounded-md bg-green-bg px-2 py-1 font-mono text-[13px] font-bold text-green";
 const emptyCell = "font-mono text-[13px] text-border-2";
+const plainInput =
+  "w-16 rounded-md border border-border-2 bg-bg px-2 py-1.5 text-center font-mono text-[13px] text-navy outline-none focus:border-gold";
+const filledPortfolio =
+  "w-16 rounded-md border border-gold-soft bg-gold-bg px-2 py-1.5 text-center font-mono text-[13px] font-bold text-navy outline-none focus:border-gold";
+const emptyInput =
+  "w-16 rounded-md border border-border-2 bg-bg px-2 py-1.5 text-center font-mono text-[13px] text-border-2 outline-none focus:border-gold";
 
-function fmt(n: number | null): string {
-  return n == null ? "—" : n.toFixed(1);
-}
+const cellKey = (id: string, k: CatKey) => `${id}:${k}`;
 
 export function SeniorLedgerGrid({
   rows,
@@ -37,45 +47,69 @@ export function SeniorLedgerGrid({
   classId,
   subjectId,
   periodId,
+  /** compiled = Path A (4 auto cells read-only, portfolio manual); direct = Path C (all five editable). */
+  mode = "compiled",
 }: {
   rows: LedgerRow[];
   weights: CategoryWeights;
   classId: string;
   subjectId: string;
   periodId: string;
+  mode?: "compiled" | "direct";
 }) {
   const router = useRouter();
+  const editable: Set<CatKey> =
+    mode === "direct"
+      ? new Set<CatKey>(["asgn", "midSem", "endSem", "project", "portfolio"])
+      : new Set<CatKey>(["portfolio"]);
+
   const initial = useMemo(() => {
     const m: Record<string, string> = {};
-    for (const r of rows) m[r.id] = r.portfolio == null ? "" : String(r.portfolio);
+    for (const r of rows) {
+      for (const c of CATS) {
+        if (!editable.has(c.key)) continue;
+        const v = r[c.key];
+        m[cellKey(r.id, c.key)] = v == null ? "" : String(v);
+      }
+    }
     return m;
-  }, [rows]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, mode]);
 
-  const [portfolio, setPortfolio] = useState<Record<string, string>>(initial);
+  const [cells, setCells] = useState<Record<string, string>>(initial);
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function setP(studentId: string, v: string) {
-    setPortfolio((p) => ({ ...p, [studentId]: v }));
+  function setCell(studentId: string, k: CatKey, v: string) {
+    setCells((c) => ({ ...c, [cellKey(studentId, k)]: v }));
     setDirty((d) => new Set(d).add(studentId));
     setMsg(null);
   }
 
-  /** Live weighted total mirroring the server compile (provisional until portfolio is in). */
+  /** The current value of a category for a row — from the input if editable, else the compiled row value. */
+  function catValue(r: LedgerRow, k: CatKey): number | null {
+    if (editable.has(k)) {
+      const raw = cells[cellKey(r.id, k)];
+      if (raw == null || raw.trim() === "") return null;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : null;
+    }
+    return r[k];
+  }
+
+  /** Live weighted total mirroring the server compile (provisional until all five present). */
   function total(r: LedgerRow) {
-    const raw = portfolio[r.id];
-    const pf = raw == null || raw.trim() === "" ? null : Number(raw);
     const cats = {
-      asgn: r.asgn,
-      midSem: r.midSem,
-      endSem: r.endSem,
-      project: r.project,
-      portfolio: Number.isFinite(pf as number) ? (pf as number | null) : null,
+      asgn: catValue(r, "asgn"),
+      midSem: catValue(r, "midSem"),
+      endSem: catValue(r, "endSem"),
+      project: catValue(r, "project"),
+      portfolio: catValue(r, "portfolio"),
     };
-    const { total, weightEntered } = provisionalTotal(cats, weights);
-    return { value: total, complete: weightEntered === 100 };
+    const anyPresent = Object.values(cats).some((v) => v != null);
+    return { value: provisionalTotal(cats, weights).total, anyPresent };
   }
 
   async function save() {
@@ -86,35 +120,54 @@ export function SeniorLedgerGrid({
     setSaving(true);
     setError(null);
     setMsg(null);
-    const scores = Array.from(dirty).map((id) => ({
-      studentId: id,
-      value: portfolio[id] ?? "",
-    }));
-    const res = await savePortfolioScores({ classId, subjectId, periodId, scores });
+    const res =
+      mode === "direct"
+        ? await saveDirectLedgerScores({
+            classId,
+            subjectId,
+            periodId,
+            scores: Array.from(dirty).map((id) => ({
+              studentId: id,
+              asgn: cells[cellKey(id, "asgn")] ?? "",
+              midSem: cells[cellKey(id, "midSem")] ?? "",
+              endSem: cells[cellKey(id, "endSem")] ?? "",
+              project: cells[cellKey(id, "project")] ?? "",
+              portfolio: cells[cellKey(id, "portfolio")] ?? "",
+            })),
+          })
+        : await savePortfolioScores({
+            classId,
+            subjectId,
+            periodId,
+            scores: Array.from(dirty).map((id) => ({
+              studentId: id,
+              value: cells[cellKey(id, "portfolio")] ?? "",
+            })),
+          });
     setSaving(false);
     if (res.ok) {
       setDirty(new Set());
-      setMsg(`Saved ${res.saved} portfolio score${res.saved === 1 ? "" : "s"}.`);
+      setMsg(`Saved ${res.saved} row${res.saved === 1 ? "" : "s"}.`);
       router.refresh();
     } else setError(res.error);
   }
 
-  const w = weights;
-  const weightPct = [w.asgn, w.midSem, w.endSem, w.project];
+  const weightBy = (k: CatKey) => weights[CATS.find((c) => c.key === k)!.wkey];
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-navy-3">
-          Four categories auto-compile from the assessments below · portfolio is entered by
-          hand at semester end.
+          {mode === "direct"
+            ? "Direct entry (Path C) — type each category score (0–100) straight onto the grid."
+            : "Four categories auto-compile from the assessments below · portfolio is entered by hand at semester end."}
         </p>
         <button
           onClick={save}
           disabled={saving || dirty.size === 0}
           className="rounded-md bg-navy px-5 py-2 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-60"
         >
-          {saving ? "Saving…" : "Save portfolio"}
+          {saving ? "Saving…" : mode === "direct" ? "Save ledger" : "Save portfolio"}
         </button>
       </div>
 
@@ -128,18 +181,14 @@ export function SeniorLedgerGrid({
           <thead className="border-b-2 border-border-2 bg-bg text-center text-[9px] font-bold uppercase tracking-[0.1em] text-navy-3">
             <tr>
               <th className="sticky left-0 z-10 bg-bg px-4 py-3 text-left">Student</th>
-              {HEAD.map((h, i) => (
-                <th key={h.key} className="px-2.5 py-3">
-                  <div className={h.cls}>{h.label}</div>
+              {CATS.map((c) => (
+                <th key={c.key} className="px-2.5 py-3">
+                  <div className={c.cls}>{c.label}</div>
                   <div className="mt-0.5 font-mono text-[9px] text-navy-3">
-                    {weightPct[i]}%
+                    {weightBy(c.key)}%
                   </div>
                 </th>
               ))}
-              <th className="px-2.5 py-3">
-                <div className="text-terra">Portfolio</div>
-                <div className="mt-0.5 font-mono text-[9px] text-navy-3">{w.portfolio}%</div>
-              </th>
               <th className="bg-navy px-2.5 py-3 text-bg">
                 <div>Weighted</div>
                 <div className="mt-0.5 font-mono text-[9px] text-bg opacity-60">100%</div>
@@ -155,35 +204,34 @@ export function SeniorLedgerGrid({
                     <div className="font-semibold text-navy">{r.name}</div>
                     <div className="font-mono text-[9.5px] text-navy-3">{r.code}</div>
                   </td>
-                  {(["asgn", "midSem", "endSem", "project"] as const).map((k) => (
-                    <td key={k} className="px-2.5 py-2.5 text-center">
-                      {r[k] == null ? (
+                  {CATS.map((c) => (
+                    <td key={c.key} className="px-2.5 py-2.5 text-center">
+                      {editable.has(c.key) ? (
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          placeholder="—"
+                          value={cells[cellKey(r.id, c.key)] ?? ""}
+                          onChange={(e) => setCell(r.id, c.key, e.target.value)}
+                          className={
+                            (cells[cellKey(r.id, c.key)] ?? "").trim() === ""
+                              ? emptyInput
+                              : c.key === "portfolio"
+                                ? filledPortfolio
+                                : plainInput
+                          }
+                        />
+                      ) : r[c.key] == null ? (
                         <span className={emptyCell}>—</span>
                       ) : (
-                        <span className={computedCell}>{fmt(r[k])}</span>
+                        <span className={computedCell}>{r[c.key]!.toFixed(1)}</span>
                       )}
                     </td>
                   ))}
-                  <td className="px-2.5 py-2.5 text-center">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      placeholder="—"
-                      value={portfolio[r.id] ?? ""}
-                      onChange={(e) => setP(r.id, e.target.value)}
-                      className={
-                        (portfolio[r.id] ?? "").trim() === ""
-                          ? "w-16 rounded-md border border-border-2 bg-bg px-2 py-1.5 text-center font-mono text-[13px] text-border-2 outline-none focus:border-gold"
-                          : "w-16 rounded-md border border-gold-soft bg-gold-bg px-2 py-1.5 text-center font-mono text-[13px] font-bold text-navy outline-none focus:border-gold"
-                      }
-                    />
-                  </td>
                   <td className="bg-navy px-2.5 py-2.5 text-center font-mono text-[13px] font-bold text-bg">
-                    {t.value == null || (r.asgn == null && r.midSem == null && r.endSem == null && r.project == null)
-                      ? "—"
-                      : t.value.toFixed(1)}
+                    {t.value == null || !t.anyPresent ? "—" : t.value.toFixed(1)}
                   </td>
                 </tr>
               );

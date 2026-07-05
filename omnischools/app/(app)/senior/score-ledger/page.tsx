@@ -10,10 +10,11 @@ import {
   seniorAssessments,
   seniorAssessmentScores,
   seniorScoreLedger,
+  seniorLedgerPath,
   assessmentWeights,
 } from "@/db/schema";
 import { GradebookSelectors } from "@/components/gradebook/selectors";
-import { PathChooser } from "@/components/senior/path-chooser";
+import { PathChooser, type CapturePath } from "@/components/senior/path-chooser";
 import {
   SeniorAssessmentGrid,
   type AssessmentCategory,
@@ -79,8 +80,22 @@ export default async function ScoreLedgerPage({
     </div>
   );
 
+  let activePath: CapturePath = "AUTO_COMPILE";
+
   if (classId && subjectId && periodId) {
     const data = await withSchool(school.id, async (tx) => {
+      const [pathRow] = await tx
+        .select({ path: seniorLedgerPath.path })
+        .from(seniorLedgerPath)
+        .where(
+          and(
+            eq(seniorLedgerPath.schoolId, school.id),
+            eq(seniorLedgerPath.classId, classId),
+            eq(seniorLedgerPath.subjectId, subjectId),
+            eq(seniorLedgerPath.periodId, periodId),
+          ),
+        );
+      const path = (pathRow?.path ?? "AUTO_COMPILE") as CapturePath;
       const roster = await tx
         .select({
           id: students.id,
@@ -97,7 +112,8 @@ export default async function ScoreLedgerPage({
           ),
         )
         .orderBy(asc(students.lastName));
-      if (roster.length === 0) return { roster, assessments: [], marks: [], ledger: [] };
+      if (roster.length === 0)
+        return { path, roster, assessments: [], marks: [], ledger: [] };
 
       const ids = roster.map((r) => r.id);
       const assessments = await tx
@@ -150,8 +166,9 @@ export default async function ScoreLedgerPage({
           ),
         );
 
-      return { roster, assessments, marks, ledger };
+      return { path, roster, assessments, marks, ledger };
     });
+    activePath = data.path;
 
     if (data.roster.length === 0) {
       workspace = (
@@ -216,6 +233,7 @@ export default async function ScoreLedgerPage({
               classId={classId}
               subjectId={subjectId}
               periodId={periodId}
+              mode={data.path === "DIRECT_ENTRY" ? "direct" : "compiled"}
             />
           </section>
 
@@ -287,29 +305,32 @@ export default async function ScoreLedgerPage({
             </div>
           </div>
 
-          {/* Path A input — record assessments; the ledger above recompiles on save. */}
-          <section className="rounded-[14px] border border-border bg-surface p-4">
-            <h2 className="mb-3 font-display text-lg font-semibold text-navy">
-              Record assessments · <em className="italic text-gold">Path A</em>
-            </h2>
-            <SeniorAssessmentGrid
-              assessments={data.assessments.map((a) => ({
-                id: a.id,
-                category: a.category as AssessmentCategory,
-                title: a.title,
-                maxMark: Number(a.maxMark),
-              }))}
-              roster={rosterRows}
-              scores={data.marks.map((m) => ({
-                assessmentId: m.assessmentId,
-                studentId: m.studentId,
-                raw: m.rawMark ?? "",
-              }))}
-              classId={classId}
-              subjectId={subjectId}
-              periodId={periodId}
-            />
-          </section>
+          {/* Path A only — record assessments; the ledger above recompiles on save.
+              Path C enters the five categories directly in the grid above (no events). */}
+          {data.path === "AUTO_COMPILE" && (
+            <section className="rounded-[14px] border border-border bg-surface p-4">
+              <h2 className="mb-3 font-display text-lg font-semibold text-navy">
+                Record assessments · <em className="italic text-gold">Path A</em>
+              </h2>
+              <SeniorAssessmentGrid
+                assessments={data.assessments.map((a) => ({
+                  id: a.id,
+                  category: a.category as AssessmentCategory,
+                  title: a.title,
+                  maxMark: Number(a.maxMark),
+                }))}
+                roster={rosterRows}
+                scores={data.marks.map((m) => ({
+                  assessmentId: m.assessmentId,
+                  studentId: m.studentId,
+                  raw: m.rawMark ?? "",
+                }))}
+                classId={classId}
+                subjectId={subjectId}
+                periodId={periodId}
+              />
+            </section>
+          )}
         </div>
       );
     }
@@ -343,7 +364,14 @@ export default async function ScoreLedgerPage({
       </div>
 
       <div className="mb-5">
-        <PathChooser />
+        <PathChooser
+          activePath={activePath}
+          context={
+            classId && subjectId && periodId
+              ? { classId, subjectId, periodId }
+              : null
+          }
+        />
       </div>
 
       <div className="mb-5">
