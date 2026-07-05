@@ -32,7 +32,7 @@ export function PathChooser() {
           key={p.letter}
           className={
             p.active
-              ? "relative rounded-xl border border-gold bg-gold-bg/60 p-4"
+              ? "relative rounded-xl border border-gold bg-gold-bg p-4"
               : "relative rounded-xl border-[1.5px] border-border-2 bg-surface p-4 opacity-80 hover:border-gold-soft"
           }
         >

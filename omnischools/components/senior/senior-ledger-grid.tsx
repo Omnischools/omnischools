@@ -142,7 +142,7 @@ export function SeniorLedgerGrid({
               </th>
               <th className="bg-navy px-2.5 py-3 text-bg">
                 <div>Weighted</div>
-                <div className="mt-0.5 font-mono text-[9px] text-bg/60">100%</div>
+                <div className="mt-0.5 font-mono text-[9px] text-bg opacity-60">100%</div>
               </th>
             </tr>
           </thead>

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   SYSTEM_DEFAULT_WEIGHTS,
+  MAX_PERCENT,
   resolveWeights,
   percent,
   exceedsMax,
@@ -48,6 +49,11 @@ describe("percent", () => {
   });
   it("rounds to 2 dp", () => {
     expect(percent(1, 3)).toBe(33.33);
+  });
+  it("caps a pathological over-max at MAX_PERCENT so it never overflows numeric(5,2)", () => {
+    // 500 out of 10 = 5000% → capped, not a DB overflow (Quinn MAJOR).
+    expect(percent(500, 10)).toBe(MAX_PERCENT);
+    expect(percent(999.99, 1)).toBe(MAX_PERCENT);
   });
 });
 
@@ -111,6 +117,22 @@ describe("compileComputableCategories", () => {
       project: null,
     });
   });
+  it("returns all null for a student with only blank marks (a DRAFT row, no total)", () => {
+    const events: EventMark[] = [
+      { category: "ASSIGNMENT", maxMark: 20, rawMark: null },
+      { category: "MID_SEM_EXAM", maxMark: 40, rawMark: null },
+    ];
+    const four = compileComputableCategories(events);
+    expect(four).toEqual({ asgn: null, midSem: null, endSem: null, project: null });
+    expect(computedStatus({ ...four, portfolio: null })).toBe("DRAFT");
+  });
+  it("ignores a 0-max event (never divides by zero)", () => {
+    const events: EventMark[] = [
+      { category: "PROJECT", maxMark: 0, rawMark: 25 },
+      { category: "PROJECT", maxMark: 50, rawMark: 40 }, // 80
+    ];
+    expect(compileComputableCategories(events).project).toBe(80);
+  });
 });
 
 describe("weightedTotalComplete", () => {
@@ -142,6 +164,18 @@ describe("weightedTotalComplete", () => {
     const heavy = { asgn: 10, midSem: 10, endSem: 60, project: 10, portfolio: 10 };
     // 80*.1 + 70*.1 + 60*.6 + 90*.1 + 100*.1 = 8 + 7 + 36 + 9 + 10 = 70
     expect(weightedTotalComplete(full, heavy)).toBe(70);
+  });
+  it("allows a bonus (over-100) category to push the total above 100", () => {
+    // Assignments at 110% (bonus) with the rest at 100 → total exceeds 100, no clamp here.
+    const bonus: CategoryScores = {
+      asgn: 110,
+      midSem: 100,
+      endSem: 100,
+      project: 100,
+      portfolio: 100,
+    };
+    // 110*.15 + 100*.15 + 100*.40 + 100*.15 + 100*.15 = 16.5 + 15 + 40 + 15 + 15 = 101.5
+    expect(weightedTotalComplete(bonus, W)).toBe(101.5);
   });
 });
 

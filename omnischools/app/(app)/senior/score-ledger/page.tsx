@@ -255,7 +255,7 @@ export default async function ScoreLedgerPage({
 
             <div
               className={`rounded-[14px] border p-4 ${
-                ready ? "border-green bg-green-bg/50" : "border-gold bg-gold-bg/50"
+                ready ? "border-green bg-green-bg" : "border-gold bg-gold-bg"
               }`}
             >
               <div className="flex items-start gap-3">

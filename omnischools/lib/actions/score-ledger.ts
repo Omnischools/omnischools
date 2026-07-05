@@ -242,7 +242,8 @@ const CreateAssessmentSchema = z.object({
   periodId: z.string().uuid(),
   category: z.enum(CATEGORIES),
   title: z.string().trim().min(1, "Title is required.").max(80),
-  maxMark: z.coerce.number().positive("Max mark must be greater than 0.").max(1000),
+  // Ceiling is the numeric(5,2) column max (999.99), so max_mark can never overflow.
+  maxMark: z.coerce.number().positive("Max mark must be greater than 0.").max(999.99),
 });
 
 export type CreateAssessmentResult =
@@ -306,46 +307,68 @@ export async function deleteSeniorAssessment(
   if (!parsed.success) return { ok: false, error: "Invalid input." };
   const actor = await resolveActor(school.id);
   try {
-    await withSchool(school.id, async (tx) => {
-      const [ev] = await tx
-        .select({
-          id: seniorAssessments.id,
-          classId: seniorAssessments.classId,
-          subjectId: seniorAssessments.subjectId,
-          periodId: seniorAssessments.periodId,
-          title: seniorAssessments.title,
-        })
-        .from(seniorAssessments)
-        .where(
-          and(
-            eq(seniorAssessments.schoolId, school.id),
-            eq(seniorAssessments.id, parsed.data.assessmentId),
-          ),
-        );
-      if (!ev) return;
-      await tx
-        .delete(seniorAssessments)
-        .where(
-          and(
-            eq(seniorAssessments.schoolId, school.id),
-            eq(seniorAssessments.id, parsed.data.assessmentId),
-          ),
-        );
-      await recordAudit(tx, {
-        schoolId: school.id,
-        actorUserId: actor.id ?? undefined,
-        actorRole: actor.role,
-        actionType: "deleted",
-        entityType: "senior_assessment",
-        entityId: ev.id,
-        before: { title: ev.title },
-      });
-      await compileLedgerContext(tx, school.id, actor.id ?? undefined, {
-        classId: ev.classId,
-        subjectId: ev.subjectId,
-        periodId: ev.periodId,
-      });
-    });
+    const result = await withSchool(
+      school.id,
+      async (tx): Promise<{ ok: true } | { ok: false; error: string }> => {
+        const [ev] = await tx
+          .select({
+            id: seniorAssessments.id,
+            classId: seniorAssessments.classId,
+            subjectId: seniorAssessments.subjectId,
+            periodId: seniorAssessments.periodId,
+            title: seniorAssessments.title,
+          })
+          .from(seniorAssessments)
+          .where(
+            and(
+              eq(seniorAssessments.schoolId, school.id),
+              eq(seniorAssessments.id, parsed.data.assessmentId),
+            ),
+          );
+        if (!ev) return { ok: true }; // already gone
+        // Deleting recompiles the ledger — refuse on a closed (finalised) semester so
+        // final scores can't be silently mutated (Sarah finding).
+        const [pd] = await tx
+          .select({ label: academicPeriod.periodLabel, closedAt: academicPeriod.closedAt })
+          .from(academicPeriod)
+          .where(
+            and(
+              eq(academicPeriod.schoolId, school.id),
+              eq(academicPeriod.periodId, ev.periodId),
+            ),
+          );
+        if (pd?.closedAt) {
+          return {
+            ok: false,
+            error: `${pd.label} is closed — its scores are final. Reopen the semester in Settings → Academic to edit.`,
+          };
+        }
+        await tx
+          .delete(seniorAssessments)
+          .where(
+            and(
+              eq(seniorAssessments.schoolId, school.id),
+              eq(seniorAssessments.id, parsed.data.assessmentId),
+            ),
+          );
+        await recordAudit(tx, {
+          schoolId: school.id,
+          actorUserId: actor.id ?? undefined,
+          actorRole: actor.role,
+          actionType: "deleted",
+          entityType: "senior_assessment",
+          entityId: ev.id,
+          before: { title: ev.title },
+        });
+        await compileLedgerContext(tx, school.id, actor.id ?? undefined, {
+          classId: ev.classId,
+          subjectId: ev.subjectId,
+          periodId: ev.periodId,
+        });
+        return { ok: true };
+      },
+    );
+    if (!result.ok) return result;
     safeRevalidate(LEDGER_PATH);
     return { ok: true };
   } catch {
@@ -376,6 +399,16 @@ export async function saveAssessmentScores(input: unknown): Promise<SaveMarksRes
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid scores." };
   }
   const d = parsed.data;
+  // Reject out-of-range marks up front with a clear message, so a bad entry can never
+  // reach the DB as a numeric(5,2) overflow that surfaces as the generic catch (Quinn MAJOR).
+  for (const s of d.scores) {
+    const t = s.raw.trim();
+    if (t === "") continue;
+    const num = Number(t);
+    if (Number.isFinite(num) && (num < 0 || num > 999.99)) {
+      return { ok: false, error: "Each mark must be between 0 and 999.99." };
+    }
+  }
   const closed = await closedPeriodError(school.id, d.periodId);
   if (closed) return { ok: false, error: closed };
   const actor = await resolveActor(school.id);
@@ -502,8 +535,24 @@ export async function savePortfolioScores(input: unknown): Promise<SavePortfolio
 
   try {
     const saved = await withSchool(school.id, async (tx) => {
+      // Only accept portfolio scores for students actually in this class — symmetry with
+      // saveAssessmentScores, which validates against the context (Sarah/Dex finding). The
+      // composite FK + RLS already confine writes to this school; this stops a same-school
+      // student outside the roster getting an orphan portfolio row.
+      const roster = await tx
+        .select({ id: students.id })
+        .from(students)
+        .where(
+          and(
+            eq(students.schoolId, school.id),
+            eq(students.classId, d.classId),
+            eq(students.status, "ACTIVE"),
+          ),
+        );
+      const validStudents = new Set(roster.map((r) => r.id));
       let n = 0;
       for (const s of d.scores) {
+        if (!validStudents.has(s.studentId)) continue;
         const trimmed = s.value.trim();
         const num = trimmed === "" ? null : Number(trimmed);
         if (num != null && (!Number.isFinite(num) || num < 0 || num > 100)) continue;

@@ -56,11 +56,20 @@ export function resolveWeights(
   return subjectRow ?? schoolDefaultRow ?? SYSTEM_DEFAULT_WEIGHTS;
 }
 
-/** Convert a raw mark out of maxMark to a 0–100 percentage. Null if blank or max ≤ 0. */
+/**
+ * The ceiling for any stored score/percentage — the numeric(5,2) column max. Over-max
+ * (bonus) marks are allowed and a category may exceed 100, but a pathological entry
+ * (e.g. 500 out of 10 → 5000%) is capped here so the compile can never overflow the DB
+ * column and fail the whole transaction (Quinn MAJOR). The UI already soft-warns on over-max.
+ */
+export const MAX_PERCENT = 999.99;
+
+/** Convert a raw mark out of maxMark to a percentage (may exceed 100 for bonus marks).
+ * Null if blank or max ≤ 0; capped at MAX_PERCENT so it always fits numeric(5,2). */
 export function percent(rawMark: number | null, maxMark: number): number | null {
   if (rawMark == null) return null;
   if (!(maxMark > 0)) return null;
-  return round2((rawMark / maxMark) * 100);
+  return Math.min(round2((rawMark / maxMark) * 100), MAX_PERCENT);
 }
 
 /** Does a raw mark exceed its event max? Drives the soft warn (Kofi Q3) — never a hard block. */
