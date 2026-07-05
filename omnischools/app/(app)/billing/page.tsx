@@ -10,6 +10,7 @@ import {
   discountTiers,
   classes,
   invoices,
+  paymentAllocations,
   academicPeriod,
   households,
   students,
@@ -247,6 +248,16 @@ export default async function BillingPage() {
           balance: invoices.balanceAmount,
           status: invoices.status,
           dueAt: invoices.dueAt,
+          // Latest live payment that settled this invoice → its receipt.
+          receiptPaymentId: sql<string | null>`(
+            select pa.payment_id from ${paymentAllocations} pa
+            where pa.invoice_id = ${invoices.id}
+              and pa.school_id = ${school.id}
+              and pa.allocation_type = 'INVOICE'
+              and pa.voided_at is null
+            order by pa.allocated_at desc
+            limit 1
+          )`,
         })
         .from(invoices)
         .innerJoin(students, eq(invoices.studentId, students.id))
@@ -395,6 +406,7 @@ export default async function BillingPage() {
       exempt,
       status,
       overdueDays: od,
+      receiptPaymentId: r.receiptPaymentId,
     };
   });
 

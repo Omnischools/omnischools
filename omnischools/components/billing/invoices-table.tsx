@@ -15,6 +15,7 @@ export type InvoiceRow = {
   exempt: boolean;
   status: "PAID" | "PARTIAL" | "OVERDUE" | "UNPAID" | "EXEMPT";
   overdueDays: number;
+  receiptPaymentId: string | null; // latest payment that settled this invoice → its receipt
 };
 
 type Filter = "ALL" | "UNPAID" | "PARTIAL" | "OVERDUE";
@@ -100,6 +101,7 @@ export function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
                 <th className="px-4 py-3 text-right font-bold">Paid</th>
                 <th className="px-4 py-3 text-right font-bold">Balance</th>
                 <th className="px-4 py-3 font-bold">Status</th>
+                <th className="px-4 py-3 text-right font-bold">Receipt</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -147,6 +149,20 @@ export function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
                       >
                         {st.label(r)}
                       </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      {r.receiptPaymentId ? (
+                        <a
+                          href={`/api/receipts/${r.receiptPaymentId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block rounded-md border border-border-2 px-2.5 py-1 text-xs font-semibold text-navy transition-colors hover:border-gold-soft hover:bg-gold-bg"
+                        >
+                          Receipt
+                        </a>
+                      ) : (
+                        <span className="text-xs text-navy-3">—</span>
+                      )}
                     </td>
                   </tr>
                 );
