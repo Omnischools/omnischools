@@ -228,6 +228,7 @@ export default async function ScoreLedgerPage({
               </span>
             </div>
             <SeniorLedgerGrid
+              key={`${classId}-${subjectId}-${periodId}-${data.path}`}
               rows={ledgerRows}
               weights={weights}
               classId={classId}
@@ -313,6 +314,7 @@ export default async function ScoreLedgerPage({
                 Record assessments · <em className="italic text-gold">Path A</em>
               </h2>
               <SeniorAssessmentGrid
+                key={`${classId}-${subjectId}-${periodId}`}
                 assessments={data.assessments.map((a) => ({
                   id: a.id,
                   category: a.category as AssessmentCategory,

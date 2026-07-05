@@ -21,13 +21,14 @@ export type LedgerRow = {
 
 type CatKey = "asgn" | "midSem" | "endSem" | "project" | "portfolio";
 
-/** The five categories in order, with header colour (§3.4) and weight key. */
-const CATS: { key: CatKey; label: string; cls: string; wkey: keyof CategoryWeights }[] = [
-  { key: "asgn", label: "Assignments", cls: "text-green", wkey: "asgn" },
-  { key: "midSem", label: "Mid-sem", cls: "text-navy-2", wkey: "midSem" },
-  { key: "endSem", label: "End-of-sem", cls: "text-navy-2", wkey: "endSem" },
-  { key: "project", label: "Project", cls: "text-green", wkey: "project" },
-  { key: "portfolio", label: "Portfolio", cls: "text-terra", wkey: "portfolio" },
+/** The five categories in order, with header colour (§3.4). The key doubles as the
+ * CategoryWeights key, so a per-column weight is just `weights[c.key]`. */
+const CATS: { key: CatKey; label: string; cls: string }[] = [
+  { key: "asgn", label: "Assignments", cls: "text-green" },
+  { key: "midSem", label: "Mid-sem", cls: "text-navy-2" },
+  { key: "endSem", label: "End-of-sem", cls: "text-navy-2" },
+  { key: "project", label: "Project", cls: "text-green" },
+  { key: "portfolio", label: "Portfolio", cls: "text-terra" },
 ];
 
 const computedCell = "rounded-md bg-green-bg px-2 py-1 font-mono text-[13px] font-bold text-green";
@@ -152,8 +153,6 @@ export function SeniorLedgerGrid({
     } else setError(res.error);
   }
 
-  const weightBy = (k: CatKey) => weights[CATS.find((c) => c.key === k)!.wkey];
-
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -185,7 +184,7 @@ export function SeniorLedgerGrid({
                 <th key={c.key} className="px-2.5 py-3">
                   <div className={c.cls}>{c.label}</div>
                   <div className="mt-0.5 font-mono text-[9px] text-navy-3">
-                    {weightBy(c.key)}%
+                    {weights[c.key]}%
                   </div>
                 </th>
               ))}

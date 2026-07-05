@@ -632,6 +632,9 @@ export async function setLedgerPath(input: unknown): Promise<SetPathResult> {
   if (d.path === "SCAN_EXTRACT") {
     return { ok: false, error: "Scan & extract (Path B) is coming soon." };
   }
+  // Don't switch the capture medium of a closed (finalised) semester.
+  const closed = await closedPeriodError(school.id, d.periodId);
+  if (closed) return { ok: false, error: closed };
   const actor = await resolveActor(school.id);
   try {
     await withSchool(school.id, async (tx) => {
@@ -715,6 +718,24 @@ export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirect
   const d = parsed.data;
   const closed = await closedPeriodError(school.id, d.periodId);
   if (closed) return { ok: false, error: closed };
+
+  // Validate + parse EVERY cell up-front, before opening the transaction, so a single
+  // out-of-range cell can never leave earlier rows committed (atomicity — Quinn MAJOR).
+  const parsedRows: { studentId: string; cats: CategoryScores }[] = [];
+  for (const s of d.scores) {
+    const vals = {
+      asgn: parseCat(s.asgn),
+      midSem: parseCat(s.midSem),
+      endSem: parseCat(s.endSem),
+      project: parseCat(s.project),
+      portfolio: parseCat(s.portfolio),
+    };
+    if (Object.values(vals).some((v) => v === "invalid")) {
+      return { ok: false, error: "Each category score must be between 0 and 100." };
+    }
+    parsedRows.push({ studentId: s.studentId, cats: vals as CategoryScores });
+  }
+
   const actor = await resolveActor(school.id);
 
   try {
@@ -749,28 +770,42 @@ export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirect
             ),
           );
         const validStudents = new Set(roster.map((r) => r.id));
+        const ids = roster.map((r) => r.id);
+
+        // Preserve an explicit STPSHS_READY sign-off across a re-save (mirrors the Path A
+        // compile, which never silently downgrades a signed-off complete row — Dex).
+        const existing = ids.length
+          ? await tx
+              .select({
+                studentId: seniorScoreLedger.studentId,
+                status: seniorScoreLedger.status,
+              })
+              .from(seniorScoreLedger)
+              .where(
+                and(
+                  eq(seniorScoreLedger.schoolId, school.id),
+                  eq(seniorScoreLedger.subjectId, d.subjectId),
+                  eq(seniorScoreLedger.periodId, d.periodId),
+                  inArray(seniorScoreLedger.studentId, ids),
+                ),
+              )
+          : [];
+        const prevStatus = new Map(existing.map((e) => [e.studentId, e.status]));
 
         const weights = await loadWeights(tx, school.id, d.subjectId);
         let n = 0;
-        for (const s of d.scores) {
-          if (!validStudents.has(s.studentId)) continue;
-          const vals = {
-            asgn: parseCat(s.asgn),
-            midSem: parseCat(s.midSem),
-            endSem: parseCat(s.endSem),
-            project: parseCat(s.project),
-            portfolio: parseCat(s.portfolio),
-          };
-          if (Object.values(vals).some((v) => v === "invalid")) {
-            return { ok: false, error: "Each category score must be between 0 and 100." };
-          }
-          const cats = vals as CategoryScores;
+        for (const { studentId, cats } of parsedRows) {
+          if (!validStudents.has(studentId)) continue;
           const total = weightedTotalComplete(cats, weights);
+          const status =
+            prevStatus.get(studentId) === "STPSHS_READY" && allCategoriesPresent(cats)
+              ? ("STPSHS_READY" as const)
+              : computedStatus(cats);
           await tx
             .insert(seniorScoreLedger)
             .values({
               schoolId: school.id,
-              studentId: s.studentId,
+              studentId,
               subjectId: d.subjectId,
               periodId: d.periodId,
               asgnScore: cats.asgn == null ? null : cats.asgn.toFixed(2),
@@ -785,7 +820,7 @@ export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirect
               projectWeightUsed: weights.project,
               portfolioWeightUsed: weights.portfolio,
               portfolioManual: cats.portfolio != null,
-              status: computedStatus(cats),
+              status,
               compiledByUserId: actor.id ?? undefined,
               compiledAt: new Date(),
               updatedAt: new Date(),
@@ -810,7 +845,7 @@ export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirect
                 projectWeightUsed: weights.project,
                 portfolioWeightUsed: weights.portfolio,
                 portfolioManual: cats.portfolio != null,
-                status: computedStatus(cats),
+                status,
                 compiledByUserId: actor.id ?? undefined,
                 compiledAt: new Date(),
                 updatedAt: new Date(),
