@@ -6,6 +6,7 @@ import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { sendSms } from "@/lib/sms";
 import { safeRevalidate } from "@/lib/revalidate";
+import { randomBytes } from "node:crypto";
 import {
   num,
   round2,
@@ -343,17 +344,20 @@ export async function recordPayment(input: unknown): Promise<RecordPaymentResult
       }
 
       const receiptNumber = await nextReceiptNumber(tx, school.id);
+      const receiptToken = randomBytes(24).toString("base64url");
       await tx.insert(receipts).values({
         schoolId: school.id,
         paymentId: payment.id,
         receiptNumber,
         studentId: d.studentId,
+        publicToken: receiptToken,
       });
 
       return {
         ok: true as const,
         paymentId: payment.id,
         receiptNumber,
+        receiptToken,
         allocated,
         credit,
       };
@@ -375,9 +379,11 @@ export async function recordPayment(input: unknown): Promise<RecordPaymentResult
         .limit(1),
     );
     if (guardian) {
+      const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+      const link = base ? ` View: ${base}/r/${out.receiptToken}` : "";
       await sendSms(
         guardian.phone,
-        `${school.shortName ?? "Omnischools"}: Payment of GHS ${toMoney(d.grossAmount)} received. Receipt ${out.receiptNumber}. Thank you.`,
+        `${school.shortName ?? "Omnischools"}: Payment of GHS ${toMoney(d.grossAmount)} received. Receipt ${out.receiptNumber}.${link} Thank you.`,
       );
     }
 
