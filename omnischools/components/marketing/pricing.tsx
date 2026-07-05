@@ -8,7 +8,7 @@ const PLANS = [
     price: "GHS 10",
     note: "per student / per term",
     featured: false,
-    cta: { label: "Start free trial", href: "/start" },
+    cta: { label: "Start free trial", href: "/start?type=BASIC" },
     features: [
       "Admissions & student records",
       "Fees & mobile money reconciliation",
@@ -26,7 +26,7 @@ const PLANS = [
     note: "per student / per semester",
     featured: true,
     tag: "For SHS",
-    cta: { label: "Start free trial", href: "/start" },
+    cta: { label: "Start free trial", href: "/start?type=SENIOR" },
     features: [
       "Everything in Basic",
       "Boarding house management",

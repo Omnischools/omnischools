@@ -152,11 +152,11 @@ export default async function DashboardPage() {
   if (isAdminOrHead) {
     const steps: ChecklistStep[] = [
       {
-        title: "Set up your school",
-        sub: "Academic year, terms and calendar",
+        title: "Review your school setup",
+        sub: "Calendar, classes, subjects and fees are pre-filled — confirm they fit",
         done: stats.periodConfigured,
         href: "/settings/academic",
-        cta: "Set up →",
+        cta: "Review →",
       },
       {
         title: "Invite your teachers",
