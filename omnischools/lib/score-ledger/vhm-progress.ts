@@ -48,6 +48,27 @@ const INACTIVE_DAYS = 14;
 const DAY_MS = 86_400_000;
 
 /**
+ * The STPSHS "n/5" and tier from the per-category filled counts (surface §1.7 / §1.11).
+ * `categoriesDone` = categories EVERY active student has entered (partials don't count).
+ * Tier: 5/5 = ready · 0/5 = at_risk (incl. never-started) · in between = behind. Pure &
+ * side-effect-free so it is unit-tested directly.
+ */
+export function computeVhmTier(
+  filled: { asgn: number; midSem: number; endSem: number; project: number; portfolio: number },
+  rosterSize: number,
+): { categoriesDone: number; status: VhmStatus } {
+  const categoriesDone =
+    rosterSize > 0
+      ? [filled.asgn, filled.midSem, filled.endSem, filled.project, filled.portfolio].filter(
+          (c) => c === rosterSize,
+        ).length
+      : 0;
+  const status: VhmStatus =
+    categoriesDone === 5 ? "ready" : categoriesDone === 0 ? "at_risk" : "behind";
+  return { categoriesDone, status };
+}
+
+/**
  * Aggregate ledger completion for the Vice Headmaster progress view (spec §6). One row per
  * teaching assignment (senior_subject_teacher) for the period, LEFT JOINed to progress — so a
  * teacher who has started nothing still appears (§6.1). Per-category counts are computed with
@@ -194,13 +215,8 @@ export async function loadVhmProgress(
       project: a?.project ?? 0,
       portfolio: a?.portfolio ?? 0,
     };
-    // "n/5" = categories every active student has entered (partials don't count — §1.11).
-    const categoriesDone =
-      rosterSize > 0
-        ? [filled.asgn, filled.midSem, filled.endSem, filled.project, filled.portfolio].filter(
-            (c) => c === rosterSize,
-          ).length
-        : 0;
+    // "n/5" and STPSHS tier (§1.7 / §1.11) — the same pure function unit tests exercise.
+    const { categoriesDone, status } = computeVhmTier(filled, rosterSize);
 
     // Last activity across the ledger and the path row.
     const stamps: Date[] = [];
@@ -212,11 +228,6 @@ export async function loadVhmProgress(
     const daysInactive = lastActivityAt
       ? Math.floor((now.getTime() - lastActivityAt.getTime()) / DAY_MS)
       : null;
-
-    // STPSHS tier (§1.7): all five done = ready; none done = at_risk (incl. never-started);
-    // in between = behind. Inactivity is a separate flag (§2) + stale styling, not the tier.
-    const status: VhmStatus =
-      categoriesDone === 5 ? "ready" : categoriesDone === 0 ? "at_risk" : "behind";
 
     const flags: string[] = [];
     if (daysInactive != null && daysInactive >= INACTIVE_DAYS && status !== "ready") {
