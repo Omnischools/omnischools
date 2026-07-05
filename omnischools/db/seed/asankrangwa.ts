@@ -23,6 +23,7 @@ import {
   seniorAssessmentScores,
   seniorScoreLedger,
   seniorLedgerPath,
+  seniorSubjectTeacher,
   type appRoleEnum,
 } from "@/db/schema";
 import {
@@ -482,6 +483,39 @@ async function main() {
     path: "DIRECT_ENTRY",
     updatedByUserId: userByPhone.get("+233244000003"),
   });
+
+  // Subject-teacher assignments — the enumeration source for the VHM progress view.
+  // A mix so the view shows every state: Owusu's Maths (Path A, 4/5 behind — portfolio
+  // pending), Owusu's English (Path C, nothing entered → at risk), and two Mensah
+  // assignments never touched → at-risk 0/5 rows (the "never started" case must be visible).
+  const socialStudies = subjectRows.find((s) => s.name === "Social Studies")!;
+  const science = subjectRows.find((s) => s.name === "Integrated Science")!;
+  await db.insert(seniorSubjectTeacher).values([
+    {
+      schoolId: school.id,
+      classId: form2Science.id,
+      subjectId: maths.id,
+      teacherUserId: userByPhone.get("+233244000003")!, // Mr K. Owusu
+    },
+    {
+      schoolId: school.id,
+      classId: form2Science.id,
+      subjectId: english.id,
+      teacherUserId: userByPhone.get("+233244000003")!,
+    },
+    {
+      schoolId: school.id,
+      classId: form2GA.id,
+      subjectId: socialStudies.id,
+      teacherUserId: userByPhone.get("+233244000004")!, // Mr A. Mensah
+    },
+    {
+      schoolId: school.id,
+      classId: form3GA.id,
+      subjectId: science.id,
+      teacherUserId: userByPhone.get("+233244000004")!,
+    },
+  ]);
 
   // --- audit: record the seed itself (append-only) ---
   await db.insert(auditLog).values({

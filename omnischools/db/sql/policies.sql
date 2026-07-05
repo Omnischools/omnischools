@@ -97,6 +97,7 @@ BEGIN
     'senior_assessment_score',
     'senior_score_ledger',
     'senior_ledger_path',
+    'senior_subject_teacher',
     'announcement',
     'sms_template',
     'notification_log',

@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Settings,
   NotebookText,
+  Gauge,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,12 +46,12 @@ const TIER: Record<string, string> = {
   COMBINED: "Combined",
 };
 
-/** Senior (SHS) tier only — the five-category score ledger. Inserted after Gradebook. */
-const SENIOR_ITEM = {
-  href: "/senior/score-ledger",
-  label: "Score ledger",
-  Icon: NotebookText,
-};
+/** Senior (SHS) tier only — inserted after Gradebook. The teacher's score ledger and the
+ * Vice Headmaster's completion view. */
+const SENIOR_ITEMS = [
+  { href: "/senior/score-ledger", label: "Score ledger", Icon: NotebookText },
+  { href: "/senior/academic-progress", label: "Ledger progress", Icon: Gauge },
+];
 
 /** Finance-only (Accountant/Bursar) nav — billing first, then read-only students/classes. */
 const FINANCE_NAV_ORDER = ["/billing", "/fees", "/reports", "/books", "/students", "/classes"];
@@ -89,7 +90,7 @@ export function AppSidebar({
   const isSenior =
     school.schoolType === "SENIOR" || school.schoolType === "COMBINED";
   const fullNav = isSenior
-    ? NAV.flatMap((n) => (n.href === "/gradebook" ? [n, SENIOR_ITEM] : [n]))
+    ? NAV.flatMap((n) => (n.href === "/gradebook" ? [n, ...SENIOR_ITEMS] : [n]))
     : NAV;
   // Finance-only staff see a billing-focused nav; everyone else sees the full set.
   const nav = isFinanceOnly(user.roles)

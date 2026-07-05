@@ -11,12 +11,16 @@ import {
   saveDirectLedgerScores,
 } from "@/lib/actions/score-ledger";
 import { db } from "@/lib/db";
+import { withSchool } from "@/lib/db/rls";
+import { loadVhmProgress } from "@/lib/score-ledger/vhm-progress";
 import {
   students,
   subjects,
   classes,
+  users,
   academicPeriod,
   seniorScoreLedger,
+  seniorSubjectTeacher,
   schools,
 } from "@/db/schema";
 
@@ -206,13 +210,54 @@ async function main() {
     `${rA2?.weightedTotal}/${rA2?.status}`,
   );
 
+  // ---------- Item 3: VHM progress (enumerate from assignments) ----------
+  // A fresh assignment with NO ledger activity must still surface as at-risk 0/5 "never" —
+  // the load-bearing correctness point (enumerate from expected, LEFT JOIN progress).
+  const [anyUser] = await db.select({ id: users.id }).from(users).limit(1);
+  const vClass = await createClass({ name: `VHM-${tag}` });
+  const vSub = await createSubject({ name: `VHMsub-${tag}` });
+  const vStu = await createStudent({ firstName: "Vera", lastName: "Vhm", sex: "FEMALE" });
+  if (!vClass.ok || !vSub.ok || !vSub.id || !vStu.ok || !anyUser) {
+    console.error("vhm setup failed");
+    process.exit(1);
+  }
+  await setStudentClass({ studentId: vStu.studentId, classId: vClass.classId });
+  await db.insert(seniorSubjectTeacher).values({
+    schoolId: school.id,
+    classId: vClass.classId,
+    subjectId: vSub.id,
+    teacherUserId: anyUser.id,
+  });
+  const progress = await withSchool(school.id, (tx) =>
+    loadVhmProgress(tx, school.id, periodId, new Date()),
+  );
+  const vhmRow = progress.find(
+    (r) => r.classId === vClass.classId && r.subjectId === vSub.id,
+  );
+  check("VHM: never-started assignment still appears (enumerate from assignments)", !!vhmRow);
+  check(
+    "VHM: never-started → at_risk, 0/5, last activity 'never'",
+    vhmRow?.status === "at_risk" &&
+      vhmRow?.categoriesDone === 0 &&
+      vhmRow?.lastActivityAt == null,
+    `${vhmRow?.status}/${vhmRow?.categoriesDone}/${vhmRow?.lastActivityAt}`,
+  );
+  check(
+    "VHM: row exposes NO score value (completion only, §6.2)",
+    vhmRow != null && !Object.keys(vhmRow).some((k) => /score|weighted|total/i.test(k)),
+    Object.keys(vhmRow ?? {}).join(","),
+  );
+
   // cleanup — students cascade ledger/assessments/scores; then subject, class, path.
   await db.delete(students).where(eq(students.id, s1.studentId));
   await db.delete(students).where(eq(students.id, s2.studentId));
   await db.delete(students).where(eq(students.id, s3.studentId));
   await db.delete(students).where(eq(students.id, stranger.studentId));
+  await db.delete(students).where(eq(students.id, vStu.studentId));
   await db.delete(subjects).where(eq(subjects.id, subjectId));
+  await db.delete(subjects).where(eq(subjects.id, vSub.id));
   await db.delete(classes).where(eq(classes.id, classId));
+  await db.delete(classes).where(eq(classes.id, vClass.classId));
 
   console.log(
     failures === 0

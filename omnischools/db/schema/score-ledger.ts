@@ -283,3 +283,37 @@ export const seniorLedgerPath = pgTable(
     }).onDelete("cascade"),
   }),
 );
+
+/**
+ * Which teacher teaches a subject to a class — the authoritative assignment (spec §6.1).
+ * This is the ENUMERATION SOURCE for the Vice Headmaster progress view: rows are driven by
+ * the assignments (what's expected), LEFT JOINed to ledger progress (what's started), so a
+ * teacher who has done nothing still appears as an at-risk 0/5 row rather than vanishing.
+ * Period-agnostic (a teacher owns a class-subject for the year). Populated at setup/onboarding.
+ */
+export const seniorSubjectTeacher = pgTable(
+  "senior_subject_teacher",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    teacherUserId: uuid("teacher_user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniq: unique("uniq_subject_teacher_context").on(t.schoolId, t.classId, t.subjectId),
+    classFk: foreignKey({
+      columns: [t.schoolId, t.classId],
+      foreignColumns: [classes.schoolId, classes.id],
+    }).onDelete("cascade"),
+    subjectFk: foreignKey({
+      columns: [t.schoolId, t.subjectId],
+      foreignColumns: [subjects.schoolId, subjects.id],
+    }).onDelete("cascade"),
+  }),
+);
