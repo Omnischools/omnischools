@@ -21,7 +21,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isFinanceOnly } from "@/lib/access";
+import {
+  isFinanceOnly,
+  hasAnyRole,
+  SENIOR_LEDGER_ROLES,
+  SENIOR_MANAGEMENT_ROLES,
+} from "@/lib/access";
 
 const NAV: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
@@ -49,8 +54,18 @@ const TIER: Record<string, string> = {
 /** Senior (SHS) tier only — inserted after Gradebook. The teacher's score ledger and the
  * Vice Headmaster's completion view. */
 const SENIOR_ITEMS = [
-  { href: "/senior/score-ledger", label: "Score ledger", Icon: NotebookText },
-  { href: "/senior/academic-progress", label: "Ledger progress", Icon: Gauge },
+  {
+    href: "/senior/score-ledger",
+    label: "Score ledger",
+    Icon: NotebookText,
+    roles: SENIOR_LEDGER_ROLES,
+  },
+  {
+    href: "/senior/academic-progress",
+    label: "Ledger progress",
+    Icon: Gauge,
+    roles: SENIOR_MANAGEMENT_ROLES,
+  },
 ];
 
 /** Finance-only (Accountant/Bursar) nav — billing first, then read-only students/classes. */
@@ -89,8 +104,15 @@ export function AppSidebar({
   // Senior (SHS) and Combined schools get the Score ledger item after Gradebook.
   const isSenior =
     school.schoolType === "SENIOR" || school.schoolType === "COMBINED";
+  // Senior items are further gated by role — a teacher sees the ledger but not the
+  // management progress view; a student/parent sees neither.
+  const seniorItems = SENIOR_ITEMS.filter((i) => hasAnyRole(user.roles, i.roles));
   const fullNav = isSenior
-    ? NAV.flatMap((n) => (n.href === "/gradebook" ? [n, ...SENIOR_ITEMS] : [n]))
+    ? NAV.flatMap((n) =>
+        n.href === "/gradebook"
+          ? [n, ...seniorItems.map(({ href, label, Icon }) => ({ href, label, Icon }))]
+          : [n],
+      )
     : NAV;
   // Finance-only staff see a billing-focused nav; everyone else sees the full set.
   const nav = isFinanceOnly(user.roles)

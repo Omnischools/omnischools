@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { requireSchool } from "@/lib/auth/server";
+import { requireSchoolRole } from "@/lib/auth/server";
+import { SENIOR_LEDGER_ROLES } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
 import {
   classes,
@@ -31,7 +32,7 @@ export default async function ScoreLedgerPage({
 }: {
   searchParams: { classId?: string; subjectId?: string; periodId?: string };
 }) {
-  const { school } = await requireSchool();
+  const { school } = await requireSchoolRole(SENIOR_LEDGER_ROLES);
   // Senior-only surface — a Basic (KG · Primary · JHS) school has no score ledger.
   if (school.schoolType === "BASIC") redirect("/gradebook");
 

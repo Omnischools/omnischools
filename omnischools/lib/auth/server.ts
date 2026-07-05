@@ -4,8 +4,13 @@ import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { withoutTenantScope } from "@/lib/db/rls";
 import { schools, roleAssignments, roles, users, districts, regions } from "@/db/schema";
-import { getCurrentUser, type AppUser } from "@/lib/auth";
-import { isFinanceOnly, pathAllowedForFinance, FINANCE_HOME } from "@/lib/access";
+import { getCurrentUser, type AppUser, type AppRole } from "@/lib/auth";
+import {
+  isFinanceOnly,
+  pathAllowedForFinance,
+  FINANCE_HOME,
+  hasAnyRole,
+} from "@/lib/access";
 
 export interface ActiveSchool {
   id: string;
@@ -103,6 +108,31 @@ export async function assertWriteAccess(): Promise<void> {
   const user = await getCurrentUser();
   if (user && isFinanceOnly(user.roles)) {
     throw new Error("Forbidden: your role has read-only access to this record.");
+  }
+}
+
+/**
+ * Page guard: ensure a signed-in user + resolvable school AND that the user holds at least
+ * one of the allowed roles, else redirect to their dashboard. For role-restricted surfaces
+ * (the Senior score ledger — teaching; the Vice Headmaster progress view — management).
+ * Extends requireSchool, so the finance-only confinement still applies underneath.
+ */
+export async function requireSchoolRole(
+  allowed: readonly AppRole[],
+): Promise<{ user: AppUser; school: ActiveSchool }> {
+  const { user, school } = await requireSchool();
+  if (!hasAnyRole(user.roles, allowed)) redirect("/dashboard");
+  return { user, school };
+}
+
+/**
+ * Action guard: throw unless the current user holds one of the allowed roles. Call at the
+ * top of a mutating server action so STUDENT/PARENT (and other unlisted roles) cannot POST it.
+ */
+export async function assertAnyRole(allowed: readonly AppRole[]): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user || !hasAnyRole(user.roles, allowed)) {
+    throw new Error("Forbidden: your role cannot perform this action.");
   }
 }
 
