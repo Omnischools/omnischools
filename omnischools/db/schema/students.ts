@@ -10,7 +10,13 @@ import {
   foreignKey,
   index,
 } from "drizzle-orm/pg-core";
-import { sexEnum, studentStatusEnum, guardianRelationEnum } from "./_enums";
+import {
+  sexEnum,
+  studentStatusEnum,
+  guardianRelationEnum,
+  programmeEnum,
+  residencyEnum,
+} from "./_enums";
 import { schools } from "./tenancy";
 import { users } from "./identity";
 
@@ -24,6 +30,10 @@ export const classes = pgTable(
       .references(() => schools.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     level: text("level"), // e.g. "JHS 1"
+    // SHS: "Form 2 General Arts" → GENERAL_ARTS. Nullable — null for Basic classes.
+    // Modelled as the enum column (not a programme_id FK) since programmes are a fixed
+    // GES set, not a per-school table (Kofi ruling Q6).
+    programme: programmeEnum("programme"),
     classTeacherUserId: uuid("class_teacher_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -57,8 +67,36 @@ export const households = pgTable(
 );
 
 /**
+ * SHS boarding house (Aggrey, Guggisberg, Fraser, Slessor, Kingsley, Aryee — seeded per
+ * INSTRUCTIONS_FOR_CLAUDE_CODE.md §1.7). Houses are per-school *config*, not hard-coded:
+ * name + display colour are stored so each school sets its own. `colour` is a raw hex the
+ * roster renders as a House dot via inline style (user data, not a brand token — the
+ * no-alpha-token-opacity rule doesn't apply). This is the only physical table F0 needs;
+ * dormitories, bunks and housemaster staffing are Phase 4.2 boarding tables.
+ */
+export const houses = pgTable(
+  "house",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // "Aggrey", "Guggisberg", ...
+    colour: text("colour"), // hex e.g. "#D87794" — rendered as a House dot via inline style
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqName: unique("uniq_house_per_school").on(t.schoolId, t.name),
+    // Composite-FK target for students.house_id (school_id, id).
+    tenantUk: unique("house_tenant_uk").on(t.schoolId, t.id),
+  }),
+);
+
+/**
  * The student is the central object — the single source of truth every module reads.
- * SHS-specific columns (programme/house/residency) are added in Phase 4.
+ * SHS-specific columns (programme/house/residency) are added here in Phase 4 — all
+ * nullable, staying null for every Basic (KG · Primary · JHS) student.
  * `current_class_label` is kept as a display fallback alongside the class_id FK.
  */
 export const students = pgTable(
@@ -77,6 +115,10 @@ export const students = pgTable(
     status: studentStatusEnum("status").notNull().default("ACTIVE"),
     currentClassLabel: text("current_class_label"), // display fallback
     classId: uuid("class_id"),
+    // SHS-specific — all nullable, null for Basic students.
+    programme: programmeEnum("programme"),
+    residency: residencyEnum("residency"),
+    houseId: uuid("house_id"),
     householdId: uuid("household_id").references(() => households.id, {
       onDelete: "set null",
     }),
@@ -94,6 +136,12 @@ export const students = pgTable(
       columns: [t.schoolId, t.classId],
       foreignColumns: [classes.schoolId, classes.id],
     }),
+    // Composite school-scoped FK — house must belong to the same tenant. SET NULL so
+    // deactivating a house detaches students rather than deleting them (house_id is nullable).
+    houseFk: foreignKey({
+      columns: [t.schoolId, t.houseId],
+      foreignColumns: [houses.schoolId, houses.id],
+    }).onDelete("set null"),
   }),
 );
 

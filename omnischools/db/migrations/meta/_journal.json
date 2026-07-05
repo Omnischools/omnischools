@@ -253,6 +253,13 @@
       "when": 1783259724923,
       "tag": "0035_square_weapon_omega",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1783266966373,
+      "tag": "0036_outgoing_dreadnoughts",
+      "breakpoints": true
     }
   ]
 }

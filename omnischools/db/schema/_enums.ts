@@ -150,3 +150,31 @@ export const inviteStatusEnum = pgEnum("invite_status", [
   "REVOKED",
   "EXPIRED",
 ]);
+
+// Senior (SHS) tier — Phase 4 foundations
+// The four Asankrangwa programmes lead; the fuller GES SHS set follows so the enum
+// never needs a type rebuild when a school adds a programme (values can only be appended).
+export const programmeEnum = pgEnum("programme", [
+  "GENERAL_ARTS",
+  "GENERAL_SCIENCE",
+  "BUSINESS",
+  "AGRICULTURE",
+  "VISUAL_ARTS",
+  "HOME_ECONOMICS",
+  "TECHNICAL",
+]);
+export const residencyEnum = pgEnum("residency", ["BOARDER", "DAY", "DEBOARDINIZED"]);
+
+// Senior score ledger (SHS) — five-category model. Portfolio has NO assessment event
+// (it is a one-shot manual entry, spec §2/§4.1), so it is deliberately not a category here.
+export const assessmentCategoryEnum = pgEnum("assessment_category", [
+  "ASSIGNMENT",
+  "MID_SEM_EXAM",
+  "END_SEM_EXAM",
+  "PROJECT",
+]);
+export const ledgerStatusEnum = pgEnum("ledger_status", [
+  "DRAFT", // some category still null, or portfolio not yet entered
+  "COMPLETE", // all five categories present, weighted total computed
+  "STPSHS_READY", // COMPLETE and signed off for export (explicit teacher action)
+]);
