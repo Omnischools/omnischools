@@ -1,4 +1,4 @@
--- Omnischools — migration 0036: Senior (SHS) tier F0 + Score Ledger Item 1.
+-- Omnischools — migration 0038: Senior (SHS) tier F0 + Score Ledger Item 1.
 -- Adds the SHS foundations (house table; programme/residency/house_id on students;
 -- programme on class) and the five-category score ledger (ref_assessment_weights,
 -- senior_assessment, senior_assessment_score, senior_score_ledger) + their RLS.

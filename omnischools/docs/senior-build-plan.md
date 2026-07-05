@@ -29,7 +29,7 @@
 | Schema design (F0 + ledger + weights, RLS) | Wells | ✅ `docs/senior/f0-ledger-schema.md` |
 | Kofi rulings on the 9 open questions | Kofi | ✅ (in schema commit body) |
 | Schema + migration 0036 + RLS (dev applied, verified) | Claude Code | ✅ commit `9081ca0` |
-| prod-paste-0036 (hand-paste RLS for prod) | Claude Code | ✅ `db/sql/prod-paste-0036-senior-ledger.sql` |
+| prod-paste-0036 (hand-paste RLS for prod) | Claude Code | ✅ `db/sql/prod-paste-0038-senior-ledger.sql` |
 | Compute core + vitest (22 tests green) | Claude Code | ✅ commit `a202293` |
 | Compile orchestration (server actions + audit) | Claude Code | ▶ next |
 | Path A UI (ledger grid, events, portfolio, compile) + F0 roster | Claude Code | ▶ next |
@@ -41,6 +41,6 @@
 | Gate fixes (overflow clamp, closed-guard, roster check, opacity) | Claude Code | ✅ commit `e2c3a2d` |
 
 **INCR-1 COMPLETE — all three gates green.** Ready for the `senior-feat`→`main` milestone PR.
-Deploy note: paste `db/sql/prod-paste-0036-senior-ledger.sql` on prod (RLS is not auto-applied).
+Deploy note: paste `db/sql/prod-paste-0038-senior-ledger.sql` on prod (RLS is not auto-applied).
 
 **INCR-1 done when:** an SHS teacher can enter assignment/mid-sem/end-sem/project events for a class-subject-semester, compile the four computable categories, enter portfolio manually, and see the weighted total using per-(subject×school) weights (default 15/15/40/15/15) — all tenant-scoped, audit-logged, gates green.
