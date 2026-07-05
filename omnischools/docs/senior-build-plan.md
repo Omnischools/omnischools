@@ -34,12 +34,13 @@
 | Compile orchestration (server actions + audit) | Claude Code | ▶ next |
 | Path A UI (ledger grid, events, portfolio, compile) + F0 roster | Claude Code | ▶ next |
 | Seed extension (houses, subjects, J.Manu/Y.Aidoo, weights, sample events) | Claude Code | ▶ next |
-| Build · RLS test on senior tables · preview | Claude Code | pending |
-| QA — ledger math, weights, tenant isolation | Quinn | pending gate |
-| Architecture/portability review | Dex | pending gate |
-| Security/RLS/PII review + merge | Sarah | pending gate |
+| Build · RLS test · preview round-trip | Claude Code | ✅ build/typecheck/26 tests/RLS ✓; live save proven |
+| QA — ledger math, weights, tenant isolation | Quinn | ✅ PASS (1 MAJOR fixed) |
+| Architecture/portability review | Dex | ✅ APPROVE |
+| Security/RLS/PII review + merge gate | Sarah | ✅ APPROVE (prod-RLS parity PASS) |
+| Gate fixes (overflow clamp, closed-guard, roster check, opacity) | Claude Code | ✅ commit `e2c3a2d` |
 
-**Progress:** schema layer + verified math core landed (~40% of INCR-1). Remaining:
-compile server actions → Path A UI + F0 roster → seed → local verification → 3 gates → PR.
+**INCR-1 COMPLETE — all three gates green.** Ready for the `senior-feat`→`main` milestone PR.
+Deploy note: paste `db/sql/prod-paste-0036-senior-ledger.sql` on prod (RLS is not auto-applied).
 
 **INCR-1 done when:** an SHS teacher can enter assignment/mid-sem/end-sem/project events for a class-subject-semester, compile the four computable categories, enter portfolio manually, and see the weighted total using per-(subject×school) weights (default 15/15/40/15/15) — all tenant-scoped, audit-logged, gates green.
