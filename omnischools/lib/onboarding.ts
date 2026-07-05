@@ -379,11 +379,15 @@ export const OnboardSchema = z.object({
   waecCentreCode: z.string().max(40).optional().or(z.literal("")),
   waecOffice: z.string().max(80).optional().or(z.literal("")),
   firstWassceYear: z.string().max(8).optional().or(z.literal("")),
-  headmasterName: z.string().min(2, "Headmaster name is required").max(160),
-  headmasterPhone: z.string().min(7, "Headmaster phone is required").max(40),
+  // Headmaster is optional in the slim onboarding — collected later (post-signup staff
+  // setup or super-admin). When absent, the account owner (admin) stands in.
+  headmasterName: z.string().max(160).optional().or(z.literal("")),
+  headmasterPhone: z.string().max(40).optional().or(z.literal("")),
   headmasterEmail: z.string().email().optional().or(z.literal("")),
-  adminName: z.string().min(2, "Admin name is required").max(160),
-  adminPhone: z.string().min(7, "Admin phone is required").max(40),
+  // The account owner — captured in the School identity step; becomes the ADMIN who
+  // signs in first. The only required person.
+  adminName: z.string().min(2, "Your name is required").max(160),
+  adminPhone: z.string().min(7, "Your phone number is required").max(40),
   adminEmail: z.string().email().optional().or(z.literal("")),
   // Staff step — who handles billing. "ADMIN" = the admin keeps full billing access
   // (combined); "ACCOUNTANT" = a separate Accountant role, invited below.

@@ -206,7 +206,6 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
 
       // users (find-or-create by phone)
       const adminPhone = normalizeGhanaPhone(d.adminPhone);
-      const headmasterPhone = normalizeGhanaPhone(d.headmasterPhone);
       async function upsertUser(phone: string, name: string, email?: string) {
         const [u] = await tx
           .insert(users)
@@ -219,17 +218,28 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
             .id
         );
       }
+      // The account owner is the ADMIN (always created).
       const adminId = await upsertUser(adminPhone, d.adminName, d.adminEmail);
-      const headmasterId = await upsertUser(
-        headmasterPhone,
-        d.headmasterName,
-        d.headmasterEmail,
-      );
-
-      await tx.insert(roleAssignments).values([
+      const roleValues = [
         { userId: adminId, schoolId: school.id, roleId: roleId("ADMIN") },
-        { userId: headmasterId, schoolId: school.id, roleId: roleId("HEADMASTER") },
-      ]);
+      ];
+      // Headmaster is optional in the slim onboarding — create + assign only when both
+      // name and phone were provided (else it's set up post-signup / by super-admin).
+      const hmName = nz(d.headmasterName);
+      const hmPhone = nz(d.headmasterPhone);
+      if (hmName && hmPhone) {
+        const headmasterId = await upsertUser(
+          normalizeGhanaPhone(hmPhone),
+          hmName,
+          d.headmasterEmail,
+        );
+        roleValues.push({
+          userId: headmasterId,
+          schoolId: school.id,
+          roleId: roleId("HEADMASTER"),
+        });
+      }
+      await tx.insert(roleAssignments).values(roleValues);
 
       // Separate accountant → create a pending invite (the accept flow then makes the
       // user + ACCOUNTANT assignment when they set their password). "I'll handle it
@@ -366,7 +376,6 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
         schoolId: school.id,
         periodsCreated,
         adminPhone,
-        headmasterPhone,
         accountantInvite,
       };
     });

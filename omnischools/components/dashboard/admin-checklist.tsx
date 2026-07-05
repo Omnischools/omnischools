@@ -183,8 +183,38 @@ export function AdminChecklist({
             </b>{" "}
             — that&apos;s the way it should be.
           </p>
-          <p className="mt-4 border-t border-border pt-4 text-xs text-navy-3">
-            Need a hand? We&apos;ll reach out this week.
+          {/* Timeline — what happens as the school comes online (surface §01). */}
+          <ol className="mt-4 space-y-3 border-t border-border pt-4">
+            {[
+              { t: "Students get added", s: "Today · then parents are invited" },
+              { t: "Term 1 invoices issued", s: "When you trigger them" },
+              {
+                t: "First payments & grades arrive",
+                s: "Within the first week of class",
+              },
+            ].map((step, i) => (
+              <li key={step.t} className="flex items-start gap-3">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold-bg font-display text-[10px] font-semibold text-navy">
+                  {i + 1}
+                </span>
+                <div>
+                  <div className="text-xs font-semibold text-navy">{step.t}</div>
+                  <div className="text-[11px] text-navy-3">{step.s}</div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* Need help? — the surface's second side panel (§01). Callback is MVP2. */}
+        <div className="mt-3 rounded-xl border border-border bg-surface p-6">
+          <div className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold">
+            Need help?
+          </div>
+          <h3 className="font-display text-base font-semibold text-navy">We can call you</h3>
+          <p className="mt-2 text-xs leading-relaxed text-navy-2">
+            If anything feels stuck, reach out — our team is in Accra and we&apos;ll pick
+            up. We&apos;ll also check in with you this week.
           </p>
         </div>
       </div>
