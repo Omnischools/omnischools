@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { ScrollText } from "lucide-react";
 import { auditLog, users } from "@/db/schema";
 import { BackLink } from "@/components/ui/back-link";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AuditActivityFeed } from "@/components/settings/audit-activity-feed";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Audit log" };
@@ -37,7 +38,27 @@ export default async function AuditLogPage({
   const { school } = await requireSchool();
   const entity = searchParams.entity;
 
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
   const data = await withSchool(school.id, async (tx) => {
+    // §01 feed — today's events, newest first.
+    const todayEvents = await tx
+      .select({
+        id: auditLog.auditId,
+        occurredAt: auditLog.occurredAt,
+        actorName: users.fullName,
+        actorRole: auditLog.actorRole,
+        actionType: auditLog.actionType,
+        entityType: auditLog.entityType,
+        entityId: auditLog.entityId,
+        reason: auditLog.reason,
+      })
+      .from(auditLog)
+      .leftJoin(users, eq(auditLog.actorUserId, users.id))
+      .where(and(eq(auditLog.schoolId, school.id), gte(auditLog.occurredAt, startOfToday)))
+      .orderBy(desc(auditLog.occurredAt))
+      .limit(60);
     const kinds = await tx
       .select({ entityType: auditLog.entityType, n: sql<number>`count(*)` })
       .from(auditLog)
@@ -64,8 +85,14 @@ export default async function AuditLogPage({
       )
       .orderBy(desc(auditLog.occurredAt))
       .limit(200);
-    return { kinds, rows };
+    return { kinds, rows, todayEvents };
   });
+
+  const dayLabel = `Today · ${startOfToday.toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  })}`;
 
   const chip = (label: string, value: string | null, count?: number) => {
     const active = (value ?? undefined) === entity || (!value && !entity);
@@ -92,10 +119,37 @@ export default async function AuditLogPage({
           Audit <em className="not-italic text-gold [font-style:italic]">log.</em>
         </h1>
         <p className="text-sm text-navy-3">
-          An append-only record of who changed what. Showing the latest {data.rows.length}{" "}
-          {entity ? `${title(entity)} ` : ""}events.
+          Every action by every user, recorded as it happens — append-only: entries
+          can&apos;t be edited or deleted.
         </p>
       </div>
+
+      {/* Section 01 — Today's activity feed (surface §01) */}
+      <section className="mb-8">
+        <div className="mb-3 flex flex-wrap items-baseline gap-3">
+          <span className="font-display text-xl font-semibold italic text-gold">01</span>
+          <h2 className="font-display text-lg font-semibold text-navy">
+            Today&apos;s{" "}
+            <em className="not-italic text-gold [font-style:italic]">activity</em> · most
+            recent first
+          </h2>
+          <span className="ml-auto text-[11px] uppercase tracking-wide text-navy-3">
+            {data.todayEvents.length} today
+          </span>
+        </div>
+        <AuditActivityFeed events={data.todayEvents} dayLabel={dayLabel} />
+      </section>
+
+      {/* Section 02 — Full log (the existing table) */}
+      <section>
+        <div className="mb-3 flex flex-wrap items-baseline gap-3">
+          <span className="font-display text-xl font-semibold italic text-gold">02</span>
+          <h2 className="font-display text-lg font-semibold text-navy">Full log</h2>
+          <span className="ml-auto text-[11px] uppercase tracking-wide text-navy-3">
+            latest {data.rows.length}
+            {entity ? ` · ${title(entity)}` : ""}
+          </span>
+        </div>
 
       <div className="mb-4 flex flex-wrap gap-1.5">
         {chip("All", null)}
@@ -155,6 +209,7 @@ export default async function AuditLogPage({
           </table>
         </div>
       )}
+      </section>
     </div>
   );
 }
