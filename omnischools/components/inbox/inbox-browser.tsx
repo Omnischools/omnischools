@@ -15,6 +15,7 @@ export type InboxRow = {
   channel: string;
   topic: string | null;
   routedByRuleName: string | null;
+  unread: boolean;
   lastBody: string | null;
   lastDir: string | null;
 };
@@ -154,6 +155,8 @@ export function InboxBrowser({
               r.assignedToUserId != null && r.assignedToUserId !== currentUserId;
             const topic = r.topic ?? "OTHER";
             const channelLabel = r.channel === "WHATSAPP" ? "WhatsApp" : "SMS";
+            // Unread = an inbound the staffer hasn't opened. Closed threads never show it.
+            const unread = r.unread && r.status === "OPEN";
             return (
               <Link
                 key={r.id}
@@ -167,17 +170,27 @@ export function InboxBrowser({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="truncate font-medium text-navy">
+                    <span
+                      className={`truncate text-navy ${unread ? "font-bold" : "font-medium"}`}
+                    >
                       {r.contactName ?? r.contactPhone}
                       {r.subject ? (
                         <span className="font-normal text-navy-3"> · {r.subject}</span>
                       ) : null}
                     </span>
-                    <span className="shrink-0 text-xs text-navy-3">
+                    <span className="flex shrink-0 items-center gap-1.5 text-xs text-navy-3">
                       {when(r.lastMessageAt)}
+                      {unread ? (
+                        <span
+                          className="h-2 w-2 rounded-full bg-[#25A859]"
+                          aria-label="Unread"
+                        />
+                      ) : null}
                     </span>
                   </div>
-                  <p className="mt-0.5 truncate text-sm text-navy-3">
+                  <p
+                    className={`mt-0.5 truncate text-sm ${unread ? "text-navy-2" : "text-navy-3"}`}
+                  >
                     {r.lastDir === "INBOUND" ? "↩ " : "→ "}
                     {r.lastBody ?? "—"}
                   </p>

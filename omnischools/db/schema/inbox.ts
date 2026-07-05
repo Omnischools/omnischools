@@ -46,6 +46,11 @@ export const conversations = pgTable(
     lastMessageAt: timestamp("last_message_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    /** When a staff member last opened/replied to this thread. A thread is UNREAD when
+     * `read_at IS NULL OR last_message_at > read_at` — a new inbound advances
+     * last_message_at past read_at; opening or replying sets read_at = now(). Null on
+     * threads started by an inbound reply (nobody has opened them yet). */
+    readAt: timestamp("read_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

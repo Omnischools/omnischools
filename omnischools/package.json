@@ -28,6 +28,7 @@
     "db:setup": "drizzle-kit migrate && tsx scripts/apply-policies.ts && tsx db/seed/asankrangwa.ts"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.5.1",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "class-variance-authority": "^0.7.1",
