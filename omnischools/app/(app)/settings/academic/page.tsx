@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
@@ -86,6 +87,24 @@ export default async function AcademicSettingsPage() {
             How class (continuous assessment) and exam scores combine into the term total.
           </p>
           <WeightsForm initialClassWeight={data.classWeight} />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-surface p-6">
+          <div>
+            <h2 className="font-display text-lg font-semibold text-navy">
+              Year-end promotion
+            </h2>
+            <p className="mt-0.5 max-w-xl text-sm text-navy-3">
+              At the end of the year, move every student up a class and graduate the exit
+              year — with a preview you confirm before anything changes.
+            </p>
+          </div>
+          <Link
+            href="/settings/academic/promotion"
+            className="shrink-0 rounded-md border border-navy bg-navy px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep"
+          >
+            Start promotion →
+          </Link>
         </div>
       </div>
     </div>
