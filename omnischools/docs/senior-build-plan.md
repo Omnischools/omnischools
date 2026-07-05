@@ -19,7 +19,8 @@
 - Item 0 — period config ✅ shipped in Basic.
 - Item 1 — 5-category model + Path A auto-compile ✅ merged (PR #131, migration 0038)
 - Item 2 — Path C direct entry ✅ gates green (PR #134, migration 0039)
-- **Item 3 — VHM progress view** ← _next_ · Item 4 — Path B OCR
+- **Item 3 — VHM progress view** ← _in progress_ · Item 4 — Path B OCR
+  - Read-only dashboard: per (class×subject×period) context — completion counts per category, STPSHS-ready count, path pill, derived teacher, last activity, ready/behind/at-risk status. **Counts only, NEVER score values (§6.2).** Teacher derived (path.updatedBy → class teacher), no new schema. At-risk flags reuse seeded `ref_anomaly_rule` (inactive 14+ days). Optional Headmaster roll-up (§6.4).
 - Item 5 — PWA phase 1 · Item 6 — paper ledger book · Item 7 — versioned diff · Item 8 — STPSHS sheet
 
 ## Current increment — INCR-1: F0 + Score Ledger Item 1
