@@ -14,8 +14,22 @@ import {
   genPeriodDefaults,
   anomalyRules,
   auditLog,
+  houses,
+  classes,
+  subjects,
+  students,
+  assessmentWeights,
+  seniorAssessments,
+  seniorAssessmentScores,
+  seniorScoreLedger,
   type appRoleEnum,
 } from "@/db/schema";
+import {
+  compileComputableCategories,
+  computedStatus,
+  SYSTEM_DEFAULT_WEIGHTS,
+  type EventMark,
+} from "@/lib/score-ledger/compute";
 
 type RoleCode = (typeof appRoleEnum.enumValues)[number];
 
@@ -140,24 +154,28 @@ async function main() {
     source: "GES_DEFAULT",
     configuredBy: userByPhone.get("+233244000001"),
   });
-  await db.insert(academicPeriod).values([
-    {
-      schoolId: school.id,
-      academicYear: "2025/26",
-      periodNumber: 1,
-      periodLabel: "Semester 1",
-      startsOn: "2025-09-09",
-      endsOn: "2025-12-19",
-    },
-    {
-      schoolId: school.id,
-      academicYear: "2025/26",
-      periodNumber: 2,
-      periodLabel: "Semester 2",
-      startsOn: "2026-01-13",
-      endsOn: "2026-06-21",
-    },
-  ]);
+  const periodRows = await db
+    .insert(academicPeriod)
+    .values([
+      {
+        schoolId: school.id,
+        academicYear: "2025/26",
+        periodNumber: 1,
+        periodLabel: "Semester 1",
+        startsOn: "2025-09-09",
+        endsOn: "2025-12-19",
+      },
+      {
+        schoolId: school.id,
+        academicYear: "2025/26",
+        periodNumber: 2,
+        periodLabel: "Semester 2",
+        startsOn: "2026-01-13",
+        endsOn: "2026-06-21",
+      },
+    ])
+    .returning();
+  const semester2 = periodRows.find((p) => p.periodNumber === 2)!;
 
   // --- GES default calendars (global reference; illustrative 2025/26 dates) ---
   await db
@@ -260,6 +278,198 @@ async function main() {
     ])
     .onConflictDoNothing({ target: anomalyRules.ruleCode });
 
+  // --- Senior (SHS) F0 + score-ledger Item 1 demo data ---
+  // 6 Houses (canonical names §1.7 + per-House dot colours — colour is user data, not a token).
+  const houseRows = await db
+    .insert(houses)
+    .values([
+      { schoolId: school.id, name: "Aggrey", colour: "#D87794" },
+      { schoolId: school.id, name: "Guggisberg", colour: "#5A7A9F" },
+      { schoolId: school.id, name: "Fraser", colour: "#5A8F6E" },
+      { schoolId: school.id, name: "Slessor", colour: "#C8975B" },
+      { schoolId: school.id, name: "Kingsley", colour: "#1A2B47" },
+      { schoolId: school.id, name: "Aryee", colour: "#B84A39" },
+    ])
+    .returning();
+  const houseId = (name: string) => houseRows.find((h) => h.name === name)!.id;
+
+  // Core SHS subjects.
+  const subjectRows = await db
+    .insert(subjects)
+    .values([
+      { schoolId: school.id, name: "Mathematics", code: "MATH" },
+      { schoolId: school.id, name: "English Language", code: "ENG" },
+      { schoolId: school.id, name: "Integrated Science", code: "SCI" },
+      { schoolId: school.id, name: "Social Studies", code: "SOC" },
+    ])
+    .returning();
+  const maths = subjectRows.find((s) => s.name === "Mathematics")!;
+
+  // SHS classes — programme on the class; Mr K. Owusu teaches the Science form.
+  const classRows = await db
+    .insert(classes)
+    .values([
+      {
+        schoolId: school.id,
+        name: "Form 2 Science",
+        level: "Form 2",
+        programme: "GENERAL_SCIENCE",
+        classTeacherUserId: userByPhone.get("+233244000003"),
+      },
+      {
+        schoolId: school.id,
+        name: "Form 2 General Arts A",
+        level: "Form 2",
+        programme: "GENERAL_ARTS",
+      },
+      {
+        schoolId: school.id,
+        name: "Form 3 General Arts",
+        level: "Form 3",
+        programme: "GENERAL_ARTS",
+      },
+    ])
+    .returning();
+  const form2Science = classRows.find((c) => c.name === "Form 2 Science")!;
+  const form2GA = classRows.find((c) => c.name === "Form 2 General Arts A")!;
+  const form3GA = classRows.find((c) => c.name === "Form 3 General Arts")!;
+
+  // School-default assessment weights (15/15/40/15/15 — end-of-sem dominant, Asankrangwa).
+  await db.insert(assessmentWeights).values({
+    schoolId: school.id,
+    subjectId: null,
+    asgnWeight: SYSTEM_DEFAULT_WEIGHTS.asgn,
+    midSemWeight: SYSTEM_DEFAULT_WEIGHTS.midSem,
+    endSemWeight: SYSTEM_DEFAULT_WEIGHTS.endSem,
+    projectWeight: SYSTEM_DEFAULT_WEIGHTS.project,
+    portfolioWeight: SYSTEM_DEFAULT_WEIGHTS.portfolio,
+    updatedByUserId: userByPhone.get("+233244000002"),
+  });
+
+  // Students — J. Manu (Form 2 GA, Aggrey, boarder) + Y. Aidoo (Form 3, WASSCE) per §1.7,
+  // plus the Form 2 Science roster for the Path A Mathematics demo. Marks are
+  // [asgn1/20, asgn2/20, mid/40, end/100, project/50].
+  type SeedStudent = {
+    code: string;
+    first: string;
+    last: string;
+    sex: "MALE" | "FEMALE";
+    classId: string;
+    programme: "GENERAL_ARTS" | "GENERAL_SCIENCE";
+    residency: "BOARDER" | "DAY";
+    house: string;
+    marks?: [number, number, number, number, number];
+  };
+  const scienceRoster: SeedStudent[] = [
+    { code: "ASK-24-0142", first: "Abena", last: "Mensah", sex: "FEMALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "BOARDER", house: "Aggrey", marks: [16, 15, 30, 72, 40] },
+    { code: "ASK-24-0143", first: "Akwasi", last: "Boateng", sex: "MALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "DAY", house: "Guggisberg", marks: [13, 14, 28, 55, 42] },
+    { code: "ASK-24-0144", first: "Ama", last: "Asante", sex: "FEMALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "BOARDER", house: "Fraser", marks: [18, 19, 36, 89, 46] },
+    { code: "ASK-24-0145", first: "Daniel", last: "Owusu", sex: "MALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "DAY", house: "Slessor", marks: [11, 12, 22, 51, 30] },
+    { code: "ASK-24-0146", first: "Efua", last: "Sarpong", sex: "FEMALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "BOARDER", house: "Kingsley", marks: [17, 16, 33, 78, 44] },
+    { code: "ASK-24-0147", first: "Kwame", last: "Boakye", sex: "MALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "BOARDER", house: "Aryee", marks: [14, 15, 31, 66, 38] },
+    { code: "ASK-24-0148", first: "Yaa", last: "Owusu", sex: "FEMALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "DAY", house: "Aggrey", marks: [15, 17, 29, 70, 41] },
+    { code: "ASK-24-0149", first: "Kofi", last: "Adjei", sex: "MALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "BOARDER", house: "Guggisberg", marks: [12, 13, 26, 60, 35] },
+  ];
+  const pastoralStudents: SeedStudent[] = [
+    { code: "ASK-24-0118", first: "Joseph", last: "Manu", sex: "MALE", classId: form2GA.id, programme: "GENERAL_ARTS", residency: "BOARDER", house: "Aggrey" },
+    { code: "ASK-23-0007", first: "Yaw", last: "Aidoo", sex: "MALE", classId: form3GA.id, programme: "GENERAL_ARTS", residency: "DAY", house: "Fraser" },
+  ];
+  const allStudents = [...scienceRoster, ...pastoralStudents];
+  const studentRows = await db
+    .insert(students)
+    .values(
+      allStudents.map((s) => ({
+        schoolId: school.id,
+        studentCode: s.code,
+        firstName: s.first,
+        lastName: s.last,
+        sex: s.sex,
+        status: "ACTIVE" as const,
+        classId: s.classId,
+        programme: s.programme,
+        residency: s.residency,
+        houseId: houseId(s.house),
+        enrolledOn: "2024-09-09",
+      })),
+    )
+    .returning();
+  const studentIdByCode = new Map(studentRows.map((r) => [r.studentCode, r.id]));
+
+  // Path A assessments for Form 2 Science · Mathematics · Semester 2.
+  const assessmentDefs = [
+    { category: "ASSIGNMENT" as const, title: "Assignment 1", maxMark: 20 },
+    { category: "ASSIGNMENT" as const, title: "Assignment 2", maxMark: 20 },
+    { category: "MID_SEM_EXAM" as const, title: "Mid-Sem Exam", maxMark: 40 },
+    { category: "END_SEM_EXAM" as const, title: "End-of-Sem Exam", maxMark: 100 },
+    { category: "PROJECT" as const, title: "Term Project", maxMark: 50 },
+  ];
+  const assessmentRows = await db
+    .insert(seniorAssessments)
+    .values(
+      assessmentDefs.map((a) => ({
+        schoolId: school.id,
+        classId: form2Science.id,
+        subjectId: maths.id,
+        periodId: semester2.periodId,
+        category: a.category,
+        title: a.title,
+        maxMark: a.maxMark.toFixed(2),
+        assessedOn: "2026-03-15",
+        createdByUserId: userByPhone.get("+233244000003"),
+      })),
+    )
+    .returning();
+  const assessmentByIdx = assessmentDefs.map(
+    (d) => assessmentRows.find((r) => r.title === d.title)!,
+  );
+
+  // Marks + pre-compiled ledger (portfolio deliberately left pending, per the surface).
+  const markValues: (typeof seniorAssessmentScores.$inferInsert)[] = [];
+  const ledgerValues: (typeof seniorScoreLedger.$inferInsert)[] = [];
+  for (const s of scienceRoster) {
+    if (!s.marks) continue;
+    const sid = studentIdByCode.get(s.code)!;
+    const eventMarks: EventMark[] = [];
+    s.marks.forEach((m, i) => {
+      markValues.push({
+        schoolId: school.id,
+        assessmentId: assessmentByIdx[i].id,
+        studentId: sid,
+        rawMark: m.toFixed(2),
+        updatedByUserId: userByPhone.get("+233244000003"),
+      });
+      eventMarks.push({
+        category: assessmentDefs[i].category,
+        maxMark: assessmentDefs[i].maxMark,
+        rawMark: m,
+      });
+    });
+    const four = compileComputableCategories(eventMarks);
+    const cats = { ...four, portfolio: null };
+    ledgerValues.push({
+      schoolId: school.id,
+      studentId: sid,
+      subjectId: maths.id,
+      periodId: semester2.periodId,
+      asgnScore: four.asgn?.toFixed(2) ?? null,
+      midSemScore: four.midSem?.toFixed(2) ?? null,
+      endSemScore: four.endSem?.toFixed(2) ?? null,
+      projectScore: four.project?.toFixed(2) ?? null,
+      weightedTotal: null, // provisional until the portfolio is entered
+      asgnWeightUsed: SYSTEM_DEFAULT_WEIGHTS.asgn,
+      midSemWeightUsed: SYSTEM_DEFAULT_WEIGHTS.midSem,
+      endSemWeightUsed: SYSTEM_DEFAULT_WEIGHTS.endSem,
+      projectWeightUsed: SYSTEM_DEFAULT_WEIGHTS.project,
+      portfolioWeightUsed: SYSTEM_DEFAULT_WEIGHTS.portfolio,
+      portfolioManual: false,
+      status: computedStatus(cats),
+      compiledByUserId: userByPhone.get("+233244000003"),
+      compiledAt: new Date(),
+    });
+  }
+  await db.insert(seniorAssessmentScores).values(markValues);
+  await db.insert(seniorScoreLedger).values(ledgerValues);
+
   // --- audit: record the seed itself (append-only) ---
   await db.insert(auditLog).values({
     schoolId: school.id,
@@ -273,7 +483,10 @@ async function main() {
   });
 
   console.log(
-    `✓ Seeded Asankrangwa SHS — school ${school.id}, ${staff.length} staff, 2 semesters, ${ROLE_CATALOGUE.length} roles.`,
+    `✓ Seeded Asankrangwa SHS — school ${school.id}, ${staff.length} staff, 2 semesters, ` +
+      `${ROLE_CATALOGUE.length} roles, 6 Houses, ${subjectRows.length} subjects, ` +
+      `${classRows.length} classes, ${studentRows.length} students, ` +
+      `${assessmentRows.length} Maths assessments + compiled Semester 2 ledger.`,
   );
 }
 
