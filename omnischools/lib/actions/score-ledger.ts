@@ -5,6 +5,7 @@ import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
+import { round2 } from "@/lib/gradebook-helpers";
 import type { Tx } from "@/lib/db";
 import {
   students,
@@ -697,9 +698,6 @@ function parseCat(v: string): number | null | "invalid" {
   const n = Number(t);
   if (!Number.isFinite(n) || n < 0 || n > 100) return "invalid";
   return round2(n);
-}
-function round2(n: number): number {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
 /**
