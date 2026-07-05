@@ -16,6 +16,7 @@ import {
   Megaphone,
   MessageSquare,
   Settings,
+  NotebookText,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,13 @@ const TIER: Record<string, string> = {
   BASIC: "Basic",
   SENIOR: "Senior",
   COMBINED: "Combined",
+};
+
+/** Senior (SHS) tier only — the five-category score ledger. Inserted after Gradebook. */
+const SENIOR_ITEM = {
+  href: "/senior/score-ledger",
+  label: "Score ledger",
+  Icon: NotebookText,
 };
 
 /** Finance-only (Accountant/Bursar) nav — billing first, then read-only students/classes. */
@@ -77,12 +85,18 @@ export function AppSidebar({
   const tierLoc = [TIER[school.schoolType] ?? school.schoolType, school.location]
     .filter(Boolean)
     .join(" · ");
+  // Senior (SHS) and Combined schools get the Score ledger item after Gradebook.
+  const isSenior =
+    school.schoolType === "SENIOR" || school.schoolType === "COMBINED";
+  const fullNav = isSenior
+    ? NAV.flatMap((n) => (n.href === "/gradebook" ? [n, SENIOR_ITEM] : [n]))
+    : NAV;
   // Finance-only staff see a billing-focused nav; everyone else sees the full set.
   const nav = isFinanceOnly(user.roles)
     ? FINANCE_NAV_ORDER.map((href) => NAV.find((n) => n.href === href)).filter(
         (n): n is (typeof NAV)[number] => !!n,
       )
-    : NAV;
+    : fullNav;
   const roleLabel = user.roles[0] ? titleCase(user.roles[0]) : "";
 
   return (

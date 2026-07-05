@@ -267,6 +267,13 @@
       "when": 1783267472915,
       "tag": "0037_mysterious_jasper_sitwell",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1783273141991,
+      "tag": "0038_strange_havok",
+      "breakpoints": true
     }
   ]
 }

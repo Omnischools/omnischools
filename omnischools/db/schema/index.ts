@@ -17,6 +17,7 @@ export * from "./fees";
 export * from "./billing";
 export * from "./attendance";
 export * from "./gradebook";
+export * from "./score-ledger";
 export * from "./timetable";
 export * from "./comms";
 export * from "./inbox";
