@@ -156,14 +156,20 @@ export default async function PaymentDetailPage({
           Payment from <em className="not-italic text-gold">{payer}</em>
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled
-            title="Coming soon"
-            className="cursor-not-allowed rounded-md border border-border-2 px-3.5 py-2 text-sm font-semibold text-navy-3 opacity-60"
-          >
-            Download receipt PDF
-          </button>
+          {receipt ? (
+            <a
+              href={`/api/receipts/${payment.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md border border-navy bg-navy px-3.5 py-2 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep"
+            >
+              Download receipt PDF
+            </a>
+          ) : (
+            <span className="cursor-not-allowed rounded-md border border-border-2 px-3.5 py-2 text-sm font-semibold text-navy-3 opacity-60">
+              No receipt to download
+            </span>
+          )}
           {payment.voidedAt ? (
             <span
               className={`rounded-md px-3.5 py-2 text-sm font-semibold ${
@@ -280,17 +286,29 @@ export default async function PaymentDetailPage({
                     {receipt.receiptNumber}
                   </span>
                   <div className="flex flex-wrap gap-2">
-                    {["View", "Download", "Email"].map((l) => (
-                      <button
-                        key={l}
-                        type="button"
-                        disabled
-                        title="Coming soon"
-                        className="cursor-not-allowed rounded-md border border-border-2 px-2.5 py-1 text-xs font-semibold text-navy-3 opacity-60"
-                      >
-                        {l}
-                      </button>
-                    ))}
+                    <a
+                      href={`/api/receipts/${payment.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-md border border-border-2 px-2.5 py-1 text-xs font-semibold text-navy transition-colors hover:border-gold-soft"
+                    >
+                      View
+                    </a>
+                    <a
+                      href={`/api/receipts/${payment.id}`}
+                      download
+                      className="rounded-md border border-border-2 px-2.5 py-1 text-xs font-semibold text-navy transition-colors hover:border-gold-soft"
+                    >
+                      Download
+                    </a>
+                    <button
+                      type="button"
+                      disabled
+                      title="Emailing parents is coming soon"
+                      className="cursor-not-allowed rounded-md border border-border-2 px-2.5 py-1 text-xs font-semibold text-navy-3 opacity-60"
+                    >
+                      Email
+                    </button>
                   </div>
                 </div>
                 <p className="mt-3 text-xs text-navy-3">
