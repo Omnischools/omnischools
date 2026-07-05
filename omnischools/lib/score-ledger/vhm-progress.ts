@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { Tx } from "@/lib/db";
 import {
   students,
@@ -52,6 +52,11 @@ const DAY_MS = 86_400_000;
  * `categoriesDone` = categories EVERY active student has entered (partials don't count).
  * Tier: 5/5 = ready · 0/5 = at_risk (incl. never-started) · in between = behind. Pure &
  * side-effect-free so it is unit-tested directly.
+ *
+ * LIMITATION (roster vs enrolment): `rosterSize` is the whole active class. Once elective
+ * subjects exist (only some of a class take a subject), a category could read "partial"
+ * forever because not every class member is enrolled in it. All current subjects are
+ * class-wide; revisit with a per-subject enrolment model (see the follow-up task).
  */
 export function computeVhmTier(
   filled: { asgn: number; midSem: number; endSem: number; project: number; portfolio: number },
@@ -186,12 +191,15 @@ export async function loadVhmProgress(
 
   const pathByCtx = new Map(paths.map((p) => [`${p.classId}:${p.subjectId}`, p]));
 
-  // Resolve teacher names for the assigned teachers.
-  const userIds = new Set(assignments.map((a) => a.teacherUserId));
+  // Resolve teacher names — bounded to the referenced ids (ref_user is a global table).
+  const userIds = Array.from(new Set(assignments.map((a) => a.teacherUserId)));
   const nameById = new Map<string, string | null>();
-  {
-    const rows = await tx.select({ id: users.id, name: users.fullName }).from(users);
-    for (const u of rows) if (userIds.has(u.id)) nameById.set(u.id, u.name);
+  if (userIds.length > 0) {
+    const rows = await tx
+      .select({ id: users.id, name: users.fullName })
+      .from(users)
+      .where(inArray(users.id, userIds));
+    for (const u of rows) nameById.set(u.id, u.name);
   }
 
   const aggByCtx = new Map(
@@ -253,11 +261,14 @@ export async function loadVhmProgress(
 
   // Default sort (§6.1): most-behind first (so the VHM sees who's at risk), then by name.
   const rank: Record<VhmStatus, number> = { at_risk: 0, behind: 1, ready: 2 };
+  // Staleness tiebreak: a never-touched row (null) is the MOST stale — it sorts first among
+  // equals, so a never-started teacher isn't buried under one merely touched today (Quinn).
+  const staleness = (d: number | null) => d ?? Number.MAX_SAFE_INTEGER;
   out.sort(
     (x, y) =>
       rank[x.status] - rank[y.status] ||
       x.categoriesDone - y.categoriesDone ||
-      (y.daysInactive ?? -1) - (x.daysInactive ?? -1) ||
+      staleness(y.daysInactive) - staleness(x.daysInactive) ||
       x.className.localeCompare(y.className) ||
       x.subjectName.localeCompare(y.subjectName),
   );

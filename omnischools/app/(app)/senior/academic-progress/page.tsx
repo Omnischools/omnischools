@@ -45,9 +45,13 @@ export default async function AcademicProgressPage({
   // At-risk flags (§2), computed on-the-fly from the same completion data.
   const inactiveFlags = rows.filter((r) => r.flags.length > 0);
   const notReady = rows.filter((r) => r.status !== "ready");
-  const behindTeachers = Array.from(
+  const behindNames = Array.from(
     new Set(notReady.map((r) => r.teacherName ?? "Unassigned")),
   );
+  const behindLabel =
+    behindNames.length <= 6
+      ? behindNames.join(", ")
+      : `${behindNames.slice(0, 6).join(", ")}, and ${behindNames.length - 6} more`;
 
   return (
     <div className="mx-auto max-w-page">
@@ -163,8 +167,7 @@ export default async function AcademicProgressPage({
                     <strong className="text-navy">
                       {notReady.length} of {total} class-subject combinations
                     </strong>{" "}
-                    are not yet STPSHS-ready. Teachers behind:{" "}
-                    {behindTeachers.join(", ")}.
+                    are not yet STPSHS-ready. Teachers behind: {behindLabel}.
                   </p>
                   <p className="mt-0.5 text-[9.5px] font-bold uppercase tracking-[0.04em] text-navy-3">
                     Rule: STPSHS window approaching with incomplete entries · severity high
