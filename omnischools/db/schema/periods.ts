@@ -69,6 +69,12 @@ export const academicPeriod = pgTable(
     periodLabel: text("period_label").notNull(), // "Semester 1", "Term 2"
     startsOn: date("starts_on").notNull(),
     endsOn: date("ends_on").notNull(),
+    // Term lifecycle — a closed term is finalised: its scores and attendance become
+    // read-only, and the next term is the school's active working term. Null = open.
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedByUserId: uuid("closed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
   },
   (t) => ({
     configFk: foreignKey({

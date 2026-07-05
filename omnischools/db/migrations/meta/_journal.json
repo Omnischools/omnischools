@@ -246,6 +246,13 @@
       "when": 1783251140636,
       "tag": "0034_watery_angel",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1783259724923,
+      "tag": "0035_square_weapon_omega",
+      "breakpoints": true
     }
   ]
 }

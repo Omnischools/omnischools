@@ -16,6 +16,7 @@ import {
   gradebookColumnScores,
   gradeScale,
   reportCards,
+  academicPeriod,
 } from "@/db/schema";
 
 // ----------------------------------------------------------------- subjects
@@ -312,6 +313,25 @@ export async function saveColumnScores(input: unknown): Promise<SaveColumnScores
   }
   const d = parsed.data;
   const actor = await resolveActor(school.id);
+
+  // A closed term is finalised — its scores are read-only.
+  const closed = await withSchool(school.id, (tx) =>
+    tx
+      .select({ label: academicPeriod.periodLabel, closedAt: academicPeriod.closedAt })
+      .from(academicPeriod)
+      .where(
+        and(
+          eq(academicPeriod.periodId, d.periodId),
+          eq(academicPeriod.schoolId, school.id),
+        ),
+      ),
+  );
+  if (closed[0]?.closedAt) {
+    return {
+      ok: false,
+      error: `${closed[0].label} is closed — its scores are final. Reopen the term in Settings → Academic to edit.`,
+    };
+  }
 
   try {
     const saved = await withSchool(school.id, async (tx) => {

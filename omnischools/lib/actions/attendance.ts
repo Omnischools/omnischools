@@ -1,5 +1,5 @@
 "use server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
@@ -14,6 +14,7 @@ import {
   attendanceRecords,
   attendanceCorrections,
   attendanceSettings,
+  academicPeriod,
 } from "@/db/schema";
 
 const STATUSES = ["PRESENT", "ABSENT", "LATE", "EXCUSED", "MEDICAL"] as const;
@@ -119,6 +120,28 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
   }
   const d = parsed.data;
   const actor = await resolveActor(school.id);
+
+  // A closed term is finalised — attendance for dates inside it is read-only.
+  const closedTerm = await withSchool(school.id, (tx) =>
+    tx
+      .select({ label: academicPeriod.periodLabel })
+      .from(academicPeriod)
+      .where(
+        and(
+          eq(academicPeriod.schoolId, school.id),
+          lte(academicPeriod.startsOn, d.date),
+          gte(academicPeriod.endsOn, d.date),
+          isNotNull(academicPeriod.closedAt),
+        ),
+      )
+      .limit(1),
+  );
+  if (closedTerm.length > 0) {
+    return {
+      ok: false,
+      error: `${closedTerm[0].label} is closed — its attendance is final. Reopen the term in Settings → Academic to edit.`,
+    };
+  }
 
   try {
     const out = await withSchool(school.id, async (tx) => {
