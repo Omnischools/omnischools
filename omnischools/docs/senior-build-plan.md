@@ -25,12 +25,21 @@
 
 | Step | Owner | State |
 |---|---|---|
-| Surface map (ledger + SHS roster) | Lucy | in progress |
-| Schema design (F0 + ledger + weights, RLS, migration order) | Wells | in progress |
-| Implement schema + migration + seed extension | Claude Code | blocked on Lucy/Wells |
-| Implement Path A UI (ledger grid, compile, portfolio entry) | Claude Code | blocked |
-| QA — ledger math, weights, tenant isolation | Quinn | pending |
-| Architecture/portability review | Dex | pending |
-| Security/RLS/PII review + merge | Sarah | pending |
+| Surface map (ledger + SHS roster) | Lucy | ✅ `docs/senior/ledger-surface-map.md` |
+| Schema design (F0 + ledger + weights, RLS) | Wells | ✅ `docs/senior/f0-ledger-schema.md` |
+| Kofi rulings on the 9 open questions | Kofi | ✅ (in schema commit body) |
+| Schema + migration 0036 + RLS (dev applied, verified) | Claude Code | ✅ commit `9081ca0` |
+| prod-paste-0036 (hand-paste RLS for prod) | Claude Code | ✅ `db/sql/prod-paste-0036-senior-ledger.sql` |
+| Compute core + vitest (22 tests green) | Claude Code | ✅ commit `a202293` |
+| Compile orchestration (server actions + audit) | Claude Code | ▶ next |
+| Path A UI (ledger grid, events, portfolio, compile) + F0 roster | Claude Code | ▶ next |
+| Seed extension (houses, subjects, J.Manu/Y.Aidoo, weights, sample events) | Claude Code | ▶ next |
+| Build · RLS test on senior tables · preview | Claude Code | pending |
+| QA — ledger math, weights, tenant isolation | Quinn | pending gate |
+| Architecture/portability review | Dex | pending gate |
+| Security/RLS/PII review + merge | Sarah | pending gate |
+
+**Progress:** schema layer + verified math core landed (~40% of INCR-1). Remaining:
+compile server actions → Path A UI + F0 roster → seed → local verification → 3 gates → PR.
 
 **INCR-1 done when:** an SHS teacher can enter assignment/mid-sem/end-sem/project events for a class-subject-semester, compile the four computable categories, enter portfolio manually, and see the weighted total using per-(subject×school) weights (default 15/15/40/15/15) — all tenant-scoped, audit-logged, gates green.
