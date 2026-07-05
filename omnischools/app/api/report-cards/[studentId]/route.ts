@@ -17,6 +17,7 @@ import {
   gradeLegend,
   type GradeBand,
 } from "@/lib/gradebook/grade-scale";
+import { schoolInitials } from "@/lib/school-initials";
 import { renderReportCardPdf } from "@/lib/pdf/render-report-card";
 import type { ReportCardData } from "@/lib/pdf/report-card-document";
 
@@ -26,13 +27,6 @@ export const dynamic = "force-dynamic";
 
 const toNum = (v: unknown): number | null =>
   v == null || v === "" ? null : Number(v);
-const initialsOf = (name: string) =>
-  name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("") || "S";
 const slug = (s: string) => s.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 /**
@@ -160,7 +154,7 @@ export async function GET(
     const overallGrade = average != null ? gradeForScore(bands, average) : null;
 
     return {
-      school: { name: schoolName, initials: initialsOf(schoolName) },
+      school: { name: schoolName, initials: schoolInitials(schoolName) },
       title: "Terminal Report",
       periodLabel: period ? `${period.academicYear} · ${period.periodLabel}` : "—",
       student: {

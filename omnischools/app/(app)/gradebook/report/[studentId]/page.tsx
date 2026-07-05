@@ -10,6 +10,7 @@ import {
   reportCards,
   gradeScale,
   attendanceRecords,
+  schools,
 } from "@/db/schema";
 import {
   averageOfTotals,
@@ -17,6 +18,7 @@ import {
   gradeLegend,
   type GradeBand,
 } from "@/lib/gradebook/grade-scale";
+import { schoolInitials } from "@/lib/school-initials";
 import { PrintButton } from "@/components/gradebook/print-button";
 import { BackLink } from "@/components/ui/back-link";
 
@@ -105,11 +107,17 @@ export default async function ReportCardPage({
       };
     }
 
-    return { student, period, lines, card, scaleRows, attendance };
+    const [sc] = await tx
+      .select({ logoUrl: schools.logoUrl })
+      .from(schools)
+      .where(eq(schools.id, school.id));
+
+    return { student, period, lines, card, scaleRows, attendance, logoUrl: sc?.logoUrl ?? null };
   });
 
   if (!data || !data.student) notFound();
-  const { student, period, lines, card, scaleRows, attendance } = data;
+  const { student, period, lines, card, scaleRows, attendance, logoUrl } = data;
+  const initials = schoolInitials(school.name);
 
   const bands: GradeBand[] = scaleRows.map((g) => ({
     grade: g.grade,
@@ -139,31 +147,62 @@ export default async function ReportCardPage({
         </div>
       </div>
 
-      <div className="bg-surface rounded-xl border border-border p-8">
-        <div className="mb-6 border-b border-border pb-4 text-center">
-          <div className="font-display text-2xl font-semibold text-navy">{school.name}</div>
-          <div className="mt-1 text-sm text-navy-3">
-            Terminal Report ·{" "}
-            {period ? `${period.academicYear} · ${period.periodLabel}` : "—"}
+      <div className="overflow-hidden rounded-xl border border-border bg-surface">
+        {/* Gold top strip */}
+        <div className="h-1.5 bg-gold" />
+        <div className="p-8">
+          {/* Masthead — logo/initials · school name · gold "Terminal Report" · term */}
+          <div className="mb-6 text-center">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt=""
+                className="mx-auto mb-3 h-14 w-14 rounded-[10px] object-cover"
+              />
+            ) : (
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-[10px] bg-navy font-display text-xl font-semibold text-gold">
+                {initials}
+              </div>
+            )}
+            <div className="font-display text-2xl font-semibold text-navy">
+              {school.name}
+            </div>
+            <div className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-gold">
+              Terminal Report
+            </div>
+            <div className="mt-1 text-sm text-navy-3">
+              {period ? `${period.academicYear} · ${period.periodLabel}` : "—"}
+            </div>
           </div>
-        </div>
 
-        <div className="mb-6 grid grid-cols-2 gap-2 text-sm">
-          <div>
-            <span className="text-navy-3">Student: </span>
-            <span className="font-medium text-navy">
-              {student.firstName} {student.otherNames ?? ""} {student.lastName}
-            </span>
+          {/* Student meta — rounded grey box */}
+          <div className="mb-6 grid grid-cols-2 gap-x-6 gap-y-3 rounded-xl border border-border bg-bg px-5 py-4">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-navy-3">
+                Student
+              </div>
+              <div className="mt-0.5 text-sm text-navy">
+                {student.firstName} {student.otherNames ?? ""} {student.lastName}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-navy-3">
+                Student code
+              </div>
+              <div className="mt-0.5 font-mono text-sm text-navy">
+                {student.studentCode}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-navy-3">
+                Class
+              </div>
+              <div className="mt-0.5 text-sm text-navy">
+                {student.currentClassLabel ?? "—"}
+              </div>
+            </div>
           </div>
-          <div className="text-right">
-            <span className="text-navy-3">Code: </span>
-            <span className="font-mono text-navy">{student.studentCode}</span>
-          </div>
-          <div>
-            <span className="text-navy-3">Class: </span>
-            <span className="text-navy">{student.currentClassLabel ?? "—"}</span>
-          </div>
-        </div>
 
         <table className="w-full text-sm">
           <thead className="border-y border-border text-left text-xs uppercase tracking-wide text-navy-3">
@@ -276,6 +315,19 @@ export default async function ReportCardPage({
             </div>
           </div>
         )}
+
+          {/* Class-teacher & Headteacher signatures */}
+          <div className="mt-10 flex justify-between gap-8">
+            <div className="w-[42%]">
+              <div className="mb-1 border-b border-navy" />
+              <div className="text-xs text-navy-3">Class teacher</div>
+            </div>
+            <div className="w-[42%]">
+              <div className="mb-1 border-b border-navy" />
+              <div className="text-xs text-navy-3">Headteacher</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
