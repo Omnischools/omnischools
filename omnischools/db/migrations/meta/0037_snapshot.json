@@ -1,6 +1,6 @@
 {
-  "id": "9588ffd7-304d-42dd-9fac-4d0342be31b4",
-  "prevId": "c96a9858-7f08-4f5f-9a0d-296667148065",
+  "id": "16c0a0b6-267a-4797-ab63-684eedfc847d",
+  "prevId": "9588ffd7-304d-42dd-9fac-4d0342be31b4",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3397,6 +3397,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "public_token": {
+          "name": "public_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "pdf_url": {
           "name": "pdf_url",
           "type": "text",
@@ -3476,6 +3482,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "payment_id"
+          ]
+        },
+        "receipt_public_token_unique": {
+          "name": "receipt_public_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "public_token"
           ]
         },
         "uniq_receipt_number_per_school": {

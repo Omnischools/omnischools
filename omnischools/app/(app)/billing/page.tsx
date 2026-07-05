@@ -1,5 +1,5 @@
 import { Receipt } from "lucide-react";
-import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import {
@@ -10,11 +10,13 @@ import {
   discountTiers,
   classes,
   invoices,
+  paymentAllocations,
   academicPeriod,
   households,
   students,
 } from "@/db/schema";
-import { num } from "@/lib/fees-helpers";
+import { num, daysOverdue } from "@/lib/fees-helpers";
+import { InvoicesTable, type InvoiceRow } from "@/components/billing/invoices-table";
 import { CreateFeeStructureForm } from "@/components/billing/create-fee-structure-form";
 import { FeeStructureCard } from "@/components/billing/fee-structure-card";
 import { IssueInvoicesCard } from "@/components/billing/issue-invoices-card";
@@ -30,6 +32,10 @@ function currentAcademicYear() {
   const start = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
   return `${start}/${String((start + 1) % 100).padStart(2, "0")}`;
 }
+
+const ghs = (v: number) =>
+  `GHS ${v.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 export default async function BillingPage() {
   const { school } = await requireSchool();
@@ -50,6 +56,9 @@ export default async function BillingPage() {
     [activeCount],
     [unInvoicedCount],
     periodRows,
+    [kpi],
+    [overdue],
+    invoiceListRows,
   ] = await Promise.all([
     withSchool(school.id, (tx) =>
       tx
@@ -187,6 +196,81 @@ export default async function BillingPage() {
         .where(eq(academicPeriod.schoolId, school.id))
         .orderBy(asc(academicPeriod.startsOn)),
     ),
+    // KPI aggregates for the year (non-voided invoices).
+    withSchool(school.id, (tx) =>
+      tx
+        .select({
+          billed: sql<string>`coalesce(sum(${invoices.billedAmount}), 0)`,
+          collected: sql<string>`coalesce(sum(${invoices.paidAmount}), 0)`,
+          outstanding: sql<string>`coalesce(sum(case when ${invoices.status} in ('ISSUED','PARTIAL','OVERDUE') then ${invoices.balanceAmount} else 0 end), 0)`,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.schoolId, school.id),
+            eq(invoices.academicYear, year),
+            sql`${invoices.status} <> 'VOIDED'`,
+          ),
+        ),
+    ),
+    // Overdue > 30 days.
+    withSchool(school.id, (tx) =>
+      tx
+        .select({
+          amount: sql<string>`coalesce(sum(${invoices.balanceAmount}), 0)`,
+          students: sql<number>`count(distinct ${invoices.studentId})::int`,
+        })
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.schoolId, school.id),
+            eq(invoices.academicYear, year),
+            sql`${invoices.balanceAmount} > 0`,
+            sql`${invoices.dueAt} is not null and ${invoices.dueAt} < now() - interval '30 days'`,
+          ),
+        ),
+    ),
+    // School-wide invoice list for the year (non-voided), newest first.
+    withSchool(school.id, (tx) =>
+      tx
+        .select({
+          invoiceId: invoices.id,
+          studentId: invoices.studentId,
+          firstName: students.firstName,
+          lastName: students.lastName,
+          className: students.currentClassLabel,
+          invoiceNumber: invoices.invoiceNumber,
+          subtotal: invoices.subtotalAmount,
+          discount: invoices.discountAmount,
+          billed: invoices.billedAmount,
+          paid: invoices.paidAmount,
+          balance: invoices.balanceAmount,
+          status: invoices.status,
+          dueAt: invoices.dueAt,
+          // Latest live payment that settled this invoice → its receipt.
+          receiptPaymentId: sql<string | null>`(
+            select pa.payment_id from ${paymentAllocations} pa
+            where pa.invoice_id = ${invoices.id}
+              and pa.school_id = ${school.id}
+              and pa.allocation_type = 'INVOICE'
+              and pa.voided_at is null
+            order by pa.allocated_at desc
+            limit 1
+          )`,
+        })
+        .from(invoices)
+        .innerJoin(students, eq(invoices.studentId, students.id))
+        .where(
+          and(
+            eq(invoices.schoolId, school.id),
+            eq(invoices.academicYear, year),
+            sql`${invoices.status} <> 'VOIDED'`,
+          ),
+        )
+        .orderBy(desc(invoices.issuedAt))
+        .limit(300),
+    ),
   ]);
 
   const itemsByStructure = new Map<string, { description: string; amount: number }[]>();
@@ -281,6 +365,51 @@ export default async function BillingPage() {
     }))
     .filter((f) => f.members.length > 0);
 
+  // ── §03 admin-billing: KPI strip + school-wide invoices ──────────────
+  const kpiBilled = num(kpi?.billed);
+  const kpiCollected = num(kpi?.collected);
+  const kpiOutstanding = num(kpi?.outstanding);
+  const kpiCount = num(kpi?.count);
+  const collectedPct = kpiBilled > 0 ? Math.round((kpiCollected / kpiBilled) * 100) : 0;
+  const overdueAmount = num(overdue?.amount);
+  const overdueStudents = num(overdue?.students);
+  const outstandingStudents = num(summary?.families);
+
+  const invoiceRows: InvoiceRow[] = invoiceListRows.map((r) => {
+    const billed = num(r.billed);
+    const paid = num(r.paid);
+    const balance = num(r.balance);
+    const subtotal = num(r.subtotal);
+    const discount = num(r.discount);
+    const exempt = r.status === "EXEMPT" || (billed === 0 && subtotal > 0);
+    const discountPct =
+      !exempt && discount > 0 && subtotal > 0
+        ? Math.round((discount / subtotal) * 100)
+        : null;
+    const od = balance > 0 ? daysOverdue(r.dueAt) : 0;
+    let status: InvoiceRow["status"];
+    if (exempt) status = "EXEMPT";
+    else if (balance <= 0) status = "PAID";
+    else if (od > 0 || r.status === "OVERDUE") status = "OVERDUE";
+    else if (paid > 0) status = "PARTIAL";
+    else status = "UNPAID";
+    return {
+      invoiceId: r.invoiceId,
+      studentId: r.studentId,
+      student: `${r.firstName} ${r.lastName}`,
+      className: r.className,
+      invoiceNumber: r.invoiceNumber,
+      billed,
+      paid,
+      balance,
+      discountPct,
+      exempt,
+      status,
+      overdueDays: od,
+      receiptPaymentId: r.receiptPaymentId,
+    };
+  });
+
   return (
     <div className="mx-auto max-w-page space-y-10">
       <div>
@@ -296,6 +425,36 @@ export default async function BillingPage() {
           chase outstanding balances. (Collecting payments lives in Fees.)
         </p>
       </div>
+
+      {kpiCount > 0 && (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <Kpi
+            label="Total billed"
+            value={ghs(kpiBilled)}
+            sub={plural(kpiCount, "invoice")}
+            tone="text-navy"
+          />
+          <Kpi
+            label="Collected"
+            value={ghs(kpiCollected)}
+            sub={`${collectedPct}% collected`}
+            tone="text-green"
+            subTone="text-green"
+          />
+          <Kpi
+            label="Outstanding"
+            value={ghs(kpiOutstanding)}
+            sub={plural(outstandingStudents, "student")}
+            tone="text-terra"
+          />
+          <Kpi
+            label="Overdue > 30d"
+            value={ghs(overdueAmount)}
+            sub={plural(overdueStudents, "student")}
+            tone="text-gold"
+          />
+        </div>
+      )}
 
       <RemindersCard families={num(summary?.families)} total={num(summary?.total)} />
 
@@ -326,6 +485,17 @@ export default async function BillingPage() {
             classesWithoutStructure={classesWithoutStructure}
           />
         )
+      )}
+
+      {/* Invoices — school-wide, this year (sms-mvp1 §03) */}
+      {invoiceRows.length > 0 && (
+        <section>
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-xl font-semibold text-navy">Invoices</h2>
+            <span className="text-xs text-navy-3">{termLabel}</span>
+          </div>
+          <InvoicesTable rows={invoiceRows} />
+        </section>
       )}
 
       {/* Fee structures */}
@@ -372,6 +542,30 @@ export default async function BillingPage() {
         </h2>
         <FamiliesCard families={families} />
       </section>
+    </div>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  sub,
+  tone,
+  subTone,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  tone: string;
+  subTone?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface p-[18px]">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-navy-3">
+        {label}
+      </div>
+      <div className={`mt-2.5 font-display text-2xl font-semibold ${tone}`}>{value}</div>
+      <div className={`mt-1 text-[11px] ${subTone ?? "text-navy-3"}`}>{sub}</div>
     </div>
   );
 }

@@ -21,15 +21,27 @@ type Student = {
   status: string;
 };
 type Guardian = { name: string; phone: string; relationship: string } | null;
+type Health = {
+  bloodGroup: string | null;
+  allergies: string | null;
+  conditions: string | null;
+  medications: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  emergencyContactRelation: string | null;
+  notes: string | null;
+} | null;
 
 export function EditStudentForm({
   student,
   classes,
   guardian,
+  health,
 }: {
   student: Student;
   classes: { id: string; name: string }[];
   guardian: Guardian;
+  health: Health;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +62,14 @@ export function EditStudentForm({
       guardianName: formData.get("guardianName"),
       guardianPhone: formData.get("guardianPhone"),
       guardianRelation: formData.get("guardianRelation"),
+      bloodGroup: formData.get("bloodGroup"),
+      allergies: formData.get("allergies"),
+      conditions: formData.get("conditions"),
+      medications: formData.get("medications"),
+      emergencyContactName: formData.get("emergencyContactName"),
+      emergencyContactPhone: formData.get("emergencyContactPhone"),
+      emergencyContactRelation: formData.get("emergencyContactRelation"),
+      healthNotes: formData.get("healthNotes"),
     });
     setSaving(false);
     if (res.ok) router.push(`/students/${student.id}`);
@@ -170,6 +190,94 @@ export function EditStudentForm({
               <option value="OTHER">Other</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-5">
+        <h3 className="mb-1 font-display text-base font-semibold text-navy">
+          Health &amp; emergency
+        </h3>
+        <p className="mb-3 text-xs text-navy-3">
+          Private to staff — surfaced on the profile for sickbay and emergencies.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+          <div>
+            <label className={labelClass}>Blood group</label>
+            <input
+              name="bloodGroup"
+              defaultValue={health?.bloodGroup ?? ""}
+              placeholder="O+"
+              className={fieldClass}
+            />
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label className={labelClass}>Allergies</label>
+            <textarea
+              name="allergies"
+              rows={2}
+              defaultValue={health?.allergies ?? ""}
+              className={fieldClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Conditions</label>
+            <textarea
+              name="conditions"
+              rows={2}
+              defaultValue={health?.conditions ?? ""}
+              className={fieldClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Medications</label>
+            <textarea
+              name="medications"
+              rows={2}
+              defaultValue={health?.medications ?? ""}
+              className={fieldClass}
+            />
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label className={labelClass}>Emergency contact</label>
+            <input
+              name="emergencyContactName"
+              defaultValue={health?.emergencyContactName ?? ""}
+              className={fieldClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Emergency phone</label>
+            <input
+              name="emergencyContactPhone"
+              defaultValue={health?.emergencyContactPhone ?? ""}
+              placeholder="024 000 0000"
+              className={fieldClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Relationship</label>
+            <input
+              name="emergencyContactRelation"
+              defaultValue={health?.emergencyContactRelation ?? ""}
+              placeholder="Aunt"
+              className={fieldClass}
+            />
+          </div>
+        </div>
+        <div className="mt-4">
+          <label className={labelClass}>
+            Notes <span className="font-medium text-navy-3">— optional</span>
+          </label>
+          <textarea
+            name="healthNotes"
+            rows={2}
+            defaultValue={health?.notes ?? ""}
+            className={fieldClass}
+          />
         </div>
       </div>
 
