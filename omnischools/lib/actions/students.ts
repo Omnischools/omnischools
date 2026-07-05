@@ -11,6 +11,7 @@ import type { Tx } from "@/lib/db";
 import {
   students,
   studentGuardians,
+  studentHealthRecords,
   classes,
   invoices,
   payments,
@@ -118,6 +119,15 @@ const UpdateStudentSchema = z.object({
   guardianName: z.string().max(160).optional().or(z.literal("")),
   guardianPhone: z.string().max(40).optional().or(z.literal("")),
   guardianRelation: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("GUARDIAN"),
+  // Health & emergency record (all optional)
+  bloodGroup: z.string().max(8).optional().or(z.literal("")),
+  allergies: z.string().max(1000).optional().or(z.literal("")),
+  conditions: z.string().max(1000).optional().or(z.literal("")),
+  medications: z.string().max(1000).optional().or(z.literal("")),
+  emergencyContactName: z.string().max(160).optional().or(z.literal("")),
+  emergencyContactPhone: z.string().max(40).optional().or(z.literal("")),
+  emergencyContactRelation: z.string().max(60).optional().or(z.literal("")),
+  healthNotes: z.string().max(2000).optional().or(z.literal("")),
 });
 
 export async function updateStudent(input: unknown): Promise<CreateStudentResult> {
@@ -189,6 +199,34 @@ export async function updateStudent(input: unknown): Promise<CreateStudentResult
           });
         }
       }
+
+      // Health & emergency record (1:1 upsert). All fields optional; blanks → null.
+      const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
+      const health = {
+        bloodGroup: nz(d.bloodGroup),
+        allergies: nz(d.allergies),
+        conditions: nz(d.conditions),
+        medications: nz(d.medications),
+        emergencyContactName: nz(d.emergencyContactName),
+        emergencyContactPhone: d.emergencyContactPhone?.trim()
+          ? normalizeGhanaPhone(d.emergencyContactPhone)
+          : null,
+        emergencyContactRelation: nz(d.emergencyContactRelation),
+        notes: nz(d.healthNotes),
+      };
+      await tx
+        .insert(studentHealthRecords)
+        .values({
+          schoolId: school.id,
+          studentId: d.id,
+          ...health,
+          updatedByUserId: actor.id ?? undefined,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: studentHealthRecords.studentId,
+          set: { ...health, updatedByUserId: actor.id ?? undefined, updatedAt: new Date() },
+        });
 
       await recordAudit(tx, {
         schoolId: school.id,

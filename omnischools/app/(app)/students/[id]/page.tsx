@@ -6,6 +6,7 @@ import { withSchool } from "@/lib/db/rls";
 import {
   students,
   studentGuardians,
+  studentHealthRecords,
   classes,
   users,
   academicPeriod,
@@ -205,11 +206,38 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
           .orderBy(asc(subjects.name))
       : [];
 
-    return { student, term, guardians, attRecs, invs, pays, latestCard, notes, activity, scores };
+    const [health] = await tx
+      .select()
+      .from(studentHealthRecords)
+      .where(eq(studentHealthRecords.studentId, student.id));
+
+    return { student, term, guardians, attRecs, invs, pays, latestCard, notes, activity, scores, health };
   });
 
   if (!data) notFound();
-  const { student, term, guardians, attRecs, invs, pays, latestCard, notes, activity, scores } = data;
+  const { student, term, guardians, attRecs, invs, pays, latestCard, notes, activity, scores, health } = data;
+
+  const healthItems: { label: string; value: string }[] = health
+    ? [
+        { label: "Blood group", value: health.bloodGroup ?? "" },
+        { label: "Allergies", value: health.allergies ?? "" },
+        { label: "Conditions", value: health.conditions ?? "" },
+        { label: "Medications", value: health.medications ?? "" },
+        {
+          label: "Emergency contact",
+          value: [
+            health.emergencyContactName,
+            health.emergencyContactPhone,
+            health.emergencyContactRelation
+              ? `(${cap(health.emergencyContactRelation)})`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        },
+        { label: "Notes", value: health.notes ?? "" },
+      ].filter((i) => i.value.trim() !== "")
+    : [];
 
   // ── Attendance derivations ────────────────────────────────────────────
   const attCounts: Record<string, number> = {};
@@ -508,8 +536,30 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
         )}
       </Section>
 
-      {/* ── 05 · Communications ────────────────────────────────── */}
-      <Section num="05" title="Communications">
+      {/* ── 05 · Health & emergency ────────────────────────────── */}
+      <Section
+        num="05"
+        title="Health & emergency"
+        right={<GoldLink href={`/students/${student.id}/edit`}>Edit →</GoldLink>}
+      >
+        {healthItems.length === 0 ? (
+          <Muted>No health or emergency information recorded.</Muted>
+        ) : (
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+            {healthItems.map((i) => (
+              <div key={i.label}>
+                <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-navy-3">
+                  {i.label}
+                </dt>
+                <dd className="mt-0.5 whitespace-pre-line text-sm text-navy">{i.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </Section>
+
+      {/* ── 06 · Communications ────────────────────────────────── */}
+      <Section num="06" title="Communications">
         {notes.length === 0 ? (
           <Muted>No messages sent for this student yet.</Muted>
         ) : (
@@ -532,8 +582,8 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
         )}
       </Section>
 
-      {/* ── 06 · Recent activity ───────────────────────────────── */}
-      <Section num="06" title="Recent activity">
+      {/* ── 07 · Recent activity ───────────────────────────────── */}
+      <Section num="07" title="Recent activity">
         {activity.length === 0 ? (
           <Muted>No recorded activity for this student yet.</Muted>
         ) : (

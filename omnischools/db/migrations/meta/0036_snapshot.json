@@ -1,5 +1,5 @@
 {
-  "id": "94f51780-e8ed-4e26-911e-b5f2133de96e",
+  "id": "9588ffd7-304d-42dd-9fac-4d0342be31b4",
   "prevId": "c96a9858-7f08-4f5f-9a0d-296667148065",
   "version": "7",
   "dialect": "postgresql",
@@ -1898,6 +1898,165 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.student_health_record": {
+      "name": "student_health_record",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "school_id": {
+          "name": "school_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "blood_group": {
+          "name": "blood_group",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "allergies": {
+          "name": "allergies",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conditions": {
+          "name": "conditions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "medications": {
+          "name": "medications",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emergency_contact_name": {
+          "name": "emergency_contact_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emergency_contact_phone": {
+          "name": "emergency_contact_phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emergency_contact_relation": {
+          "name": "emergency_contact_relation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by_user_id": {
+          "name": "updated_by_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "health_student_idx": {
+          "name": "health_student_idx",
+          "columns": [
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "student_health_record_school_id_ref_school_id_fk": {
+          "name": "student_health_record_school_id_ref_school_id_fk",
+          "tableFrom": "student_health_record",
+          "tableTo": "ref_school",
+          "columnsFrom": [
+            "school_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "student_health_record_updated_by_user_id_ref_user_id_fk": {
+          "name": "student_health_record_updated_by_user_id_ref_user_id_fk",
+          "tableFrom": "student_health_record",
+          "tableTo": "ref_user",
+          "columnsFrom": [
+            "updated_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "student_health_record_school_id_student_id_students_school_id_id_fk": {
+          "name": "student_health_record_school_id_student_id_students_school_id_id_fk",
+          "tableFrom": "student_health_record",
+          "tableTo": "students",
+          "columnsFrom": [
+            "school_id",
+            "student_id"
+          ],
+          "columnsTo": [
+            "school_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "student_health_record_student_id_unique": {
+          "name": "student_health_record_student_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "student_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.students": {
       "name": "students",
       "schema": "",
@@ -3238,12 +3397,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "public_token": {
-          "name": "public_token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "pdf_url": {
           "name": "pdf_url",
           "type": "text",
@@ -3323,13 +3476,6 @@
           "nullsNotDistinct": false,
           "columns": [
             "payment_id"
-          ]
-        },
-        "receipt_public_token_unique": {
-          "name": "receipt_public_token_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "public_token"
           ]
         },
         "uniq_receipt_number_per_school": {
