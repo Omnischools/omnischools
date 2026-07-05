@@ -191,6 +191,9 @@ export const receipts = pgTable(
     paymentId: uuid("payment_id").notNull().unique(),
     receiptNumber: text("receipt_number").notNull(),
     studentId: uuid("student_id").notNull(),
+    // Unguessable token for the parent-facing SMS link (/r/{token}); access to the PDF is
+    // further gated by the student code. Null on receipts issued before this shipped.
+    publicToken: text("public_token").unique(),
     pdfUrl: text("pdf_url"),
     generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
     voidedAt: timestamp("voided_at", { withTimezone: true }),
