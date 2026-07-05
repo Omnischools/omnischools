@@ -79,9 +79,11 @@ export function GradebookEmptyColumns({
         </div>
       </div>
 
-      {/* Faded preview grid with a floating CTA over it */}
-      <div className="relative bg-surface overflow-hidden rounded-xl border border-border">
-        <div className="opacity-45 pointer-events-none">
+      {/* Faded preview grid with the CTA stacked over it. A grid stack (both children in
+          the same cell) sizes the box to the TALLER of {grid, card}, so the card never gets
+          clipped by overflow-hidden on a short roster. */}
+      <div className="grid bg-surface overflow-hidden rounded-xl border border-border">
+        <div className="[grid-area:1/1] opacity-45 pointer-events-none">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
@@ -130,8 +132,9 @@ export function GradebookEmptyColumns({
           </table>
         </div>
 
-        {/* Floating CTA card, centered over the faded grid */}
-        <div className="absolute left-1/2 top-1/2 z-10 w-[360px] max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-gold bg-surface px-7 pb-5 pt-6 text-center shadow-[0_30px_70px_-20px_rgba(26,43,71,0.22)]">
+        {/* CTA stacked over the faded grid (same grid cell, centered) */}
+        <div className="z-10 flex items-center justify-center p-4 [grid-area:1/1]">
+          <div className="w-[360px] max-w-full rounded-2xl border border-gold bg-surface px-7 pb-5 pt-6 text-center shadow-[0_30px_70px_-20px_rgba(26,43,71,0.22)]">
           <div className="mx-auto mb-3.5 flex h-11 w-11 items-center justify-center rounded-full bg-gold-bg font-display text-lg font-bold text-gold">
             +
           </div>
@@ -172,6 +175,7 @@ export function GradebookEmptyColumns({
           )}
 
           {error && <p className="mt-2 text-xs text-terra">{error}</p>}
+          </div>
         </div>
       </div>
     </div>
