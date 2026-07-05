@@ -63,6 +63,16 @@ export default async function ConversationPage({ params }: { params: { id: strin
       .where(and(eq(conversations.id, id), eq(conversations.schoolId, school.id))),
   );
   if (!conv) notFound();
+
+  // Opening a thread marks it read (read_at = now). No revalidate here — that would throw
+  // during render; /inbox is force-dynamic and re-reads the unread state on next visit.
+  await withSchool(school.id, (tx) =>
+    tx
+      .update(conversations)
+      .set({ readAt: new Date() })
+      .where(and(eq(conversations.id, id), eq(conversations.schoolId, school.id))),
+  );
+
   const studentName = conv.studentFirst
     ? `${conv.studentFirst} ${conv.studentLast ?? ""}`.trim()
     : null;

@@ -27,6 +27,7 @@ export default async function InboxPage() {
         channel: conversations.channel,
         topic: conversations.topic,
         routedByRuleName: conversations.routedByRuleName,
+        unread: sql<boolean>`(${conversations.readAt} is null or ${conversations.lastMessageAt} > ${conversations.readAt})`,
         lastBody: sql<
           string | null
         >`(select body from inbox_message m where m.conversation_id = ${conversations.id} order by m.created_at desc limit 1)`,
@@ -42,6 +43,7 @@ export default async function InboxPage() {
   );
 
   const open = rows.filter((r) => r.status === "OPEN").length;
+  const unread = rows.filter((r) => r.unread && r.status === "OPEN").length;
 
   return (
     <div className="mx-auto max-w-page">
@@ -55,7 +57,14 @@ export default async function InboxPage() {
           </h1>
           <div className="mb-3 mt-2 h-0.5 w-16 bg-gold" />
           <p className="max-w-2xl text-sm text-navy-3">
-            {open} open · two-way SMS conversations with parents.
+            {open} open
+            {unread > 0 ? (
+              <>
+                {" · "}
+                <span className="font-semibold text-navy">{unread} unread</span>
+              </>
+            ) : null}{" "}
+            · two-way SMS conversations with parents.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-4">

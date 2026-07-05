@@ -29,6 +29,7 @@ export async function startConversation(input: unknown): Promise<Result> {
   const phone = normalizeGhanaPhone(d.contactPhone);
   const actor = await resolveActor(school.id);
   try {
+    const now = new Date();
     const id = await withSchool(school.id, async (tx) => {
       const [c] = await tx
         .insert(conversations)
@@ -40,6 +41,10 @@ export async function startConversation(input: unknown): Promise<Result> {
           subject: d.subject?.trim() || null,
           status: "OPEN",
           assignedToUserId: actor.id ?? undefined,
+          // Staff started this thread, so it's already "read" by them — stamp both to the
+          // same instant so the unread test (last_message_at > read_at) is false.
+          lastMessageAt: now,
+          readAt: now,
         })
         .returning({ id: conversations.id });
       await tx.insert(inboxMessages).values({
@@ -90,9 +95,11 @@ export async function sendReply(input: unknown): Promise<Result> {
         body: parsed.data.body.trim(),
         sentByUserId: actor.id ?? undefined,
       });
+      const now = new Date();
       await tx
         .update(conversations)
-        .set({ lastMessageAt: new Date(), status: "OPEN" })
+        // Replying implies the staffer has read the thread — keep read_at == last_message_at.
+        .set({ lastMessageAt: now, readAt: now, status: "OPEN" })
         .where(eq(conversations.id, parsed.data.conversationId));
       return c.phone;
     });
