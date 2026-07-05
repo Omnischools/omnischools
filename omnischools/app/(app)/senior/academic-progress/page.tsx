@@ -96,7 +96,7 @@ export default async function AcademicProgressPage({
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gold font-display text-sm italic text-navy">
           i
         </span>
-        <p className="text-xs leading-relaxed text-bg/90">
+        <p className="text-xs leading-relaxed text-bg">
           This view shows{" "}
           <em className="font-display italic text-gold">completion progress</em>, not the
           score values themselves. You see which categories each teacher has entered; the
