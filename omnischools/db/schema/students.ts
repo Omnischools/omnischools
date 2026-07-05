@@ -122,3 +122,39 @@ export const studentGuardians = pgTable(
     }).onDelete("cascade"),
   }),
 );
+
+/**
+ * A student's health & emergency record (1:1). Allergies, chronic conditions, current
+ * medications, blood group and an emergency contact — surfaced to staff on the student
+ * profile. Sensitive; tenant-isolated like every student-scoped table.
+ */
+export const studentHealthRecords = pgTable(
+  "student_health_record",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull().unique(),
+    bloodGroup: text("blood_group"),
+    allergies: text("allergies"),
+    conditions: text("conditions"),
+    medications: text("medications"),
+    emergencyContactName: text("emergency_contact_name"),
+    emergencyContactPhone: text("emergency_contact_phone"),
+    emergencyContactRelation: text("emergency_contact_relation"),
+    notes: text("notes"),
+    updatedByUserId: uuid("updated_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byStudent: index("health_student_idx").on(t.studentId),
+    // Composite school-scoped FK — student must belong to the same tenant.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+  }),
+);

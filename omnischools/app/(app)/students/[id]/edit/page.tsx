@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { students, studentGuardians, classes } from "@/db/schema";
+import { students, studentGuardians, studentHealthRecords, classes } from "@/db/schema";
 import { EditStudentForm } from "@/components/students/edit-student-form";
 import { BackLink } from "@/components/ui/back-link";
 
@@ -32,11 +32,15 @@ export default async function EditStudentPage({ params }: { params: { id: string
       .from(classes)
       .where(and(eq(classes.schoolId, school.id), eq(classes.active, true)))
       .orderBy(asc(classes.name));
-    return { student, guardian, classRows };
+    const [health] = await tx
+      .select()
+      .from(studentHealthRecords)
+      .where(eq(studentHealthRecords.studentId, student.id));
+    return { student, guardian, classRows, health };
   });
 
   if (!data) notFound();
-  const { student, guardian, classRows } = data;
+  const { student, guardian, classRows, health } = data;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -62,6 +66,20 @@ export default async function EditStudentPage({ params }: { params: { id: string
                 name: guardian.name,
                 phone: guardian.phone,
                 relationship: guardian.relationship,
+              }
+            : null
+        }
+        health={
+          health
+            ? {
+                bloodGroup: health.bloodGroup,
+                allergies: health.allergies,
+                conditions: health.conditions,
+                medications: health.medications,
+                emergencyContactName: health.emergencyContactName,
+                emergencyContactPhone: health.emergencyContactPhone,
+                emergencyContactRelation: health.emergencyContactRelation,
+                notes: health.notes,
               }
             : null
         }
