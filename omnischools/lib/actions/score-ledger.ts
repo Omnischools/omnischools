@@ -3,7 +3,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
-import { requireSchool, resolveActor } from "@/lib/auth/server";
+import { requireSchool, resolveActor, assertAnyRole } from "@/lib/auth/server";
+import { SENIOR_LEDGER_ROLES } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
 import { round2 } from "@/lib/gradebook-helpers";
 import type { Tx } from "@/lib/db";
@@ -257,6 +258,7 @@ export async function createSeniorAssessment(
   input: unknown,
 ): Promise<CreateAssessmentResult> {
   const { school } = await requireSchool();
+  await assertAnyRole(SENIOR_LEDGER_ROLES);
   const parsed = CreateAssessmentSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid assessment." };
@@ -306,6 +308,7 @@ export async function deleteSeniorAssessment(
   input: unknown,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { school } = await requireSchool();
+  await assertAnyRole(SENIOR_LEDGER_ROLES);
   const parsed = DeleteAssessmentSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input." };
   const actor = await resolveActor(school.id);
@@ -397,6 +400,7 @@ export type SaveMarksResult = { ok: true; saved: number } | { ok: false; error: 
 
 export async function saveAssessmentScores(input: unknown): Promise<SaveMarksResult> {
   const { school } = await requireSchool();
+  await assertAnyRole(SENIOR_LEDGER_ROLES);
   const parsed = SaveMarksSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid scores." };
@@ -527,6 +531,7 @@ export type SavePortfolioResult =
  */
 export async function savePortfolioScores(input: unknown): Promise<SavePortfolioResult> {
   const { school } = await requireSchool();
+  await assertAnyRole(SENIOR_LEDGER_ROLES);
   const parsed = SavePortfolioSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid scores." };
@@ -625,6 +630,7 @@ export type SetPathResult = { ok: true } | { ok: false; error: string };
 /** Choose the capture path for a (class × subject × period). Switchable per spec §4.4. */
 export async function setLedgerPath(input: unknown): Promise<SetPathResult> {
   const { school } = await requireSchool();
+  await assertAnyRole(SENIOR_LEDGER_ROLES);
   const parsed = SetPathSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid path." };
   const d = parsed.data;
@@ -711,6 +717,7 @@ function parseCat(v: string): number | null | "invalid" {
  */
 export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirectResult> {
   const { school } = await requireSchool();
+  await assertAnyRole(SENIOR_LEDGER_ROLES);
   const parsed = SaveDirectSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid scores." };

@@ -13,6 +13,31 @@
 /** Roles that, on their own, restrict a user to the finance sections. */
 export const FINANCE_ROLES = ["ACCOUNTANT", "BURSAR"];
 
+/**
+ * Senior (SHS) tier role groups. The score ledger is a teaching surface; the Vice
+ * Headmaster progress view is management-only. STUDENT / PARENT never reach either.
+ */
+export const SENIOR_LEDGER_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "VICE_HEADMASTER_ACADEMIC",
+  "TEACHER",
+  "FORM_MASTER",
+];
+export const SENIOR_MANAGEMENT_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "VICE_HEADMASTER_ACADEMIC",
+];
+
+/** True when the user holds at least one of the allowed roles. */
+export function hasAnyRole(
+  roles: readonly string[],
+  allowed: readonly string[],
+): boolean {
+  return roles.some((r) => allowed.includes(r));
+}
+
 /** Section prefixes a finance-only user may reach. Order-independent. */
 export const FINANCE_SECTIONS = [
   "/billing",

@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
-import { requireSchool } from "@/lib/auth/server";
+import { requireSchoolRole } from "@/lib/auth/server";
+import { SENIOR_MANAGEMENT_ROLES } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
 import { academicPeriod } from "@/db/schema";
 import { loadVhmProgress, type VhmProgressRow } from "@/lib/score-ledger/vhm-progress";
@@ -14,8 +15,9 @@ export default async function AcademicProgressPage({
 }: {
   searchParams: { periodId?: string };
 }) {
-  const { school } = await requireSchool();
-  // Senior-only management surface.
+  // Management-only surface (§6.2 / §D14): Vice Headmaster, Headmaster, Admin.
+  const { school } = await requireSchoolRole(SENIOR_MANAGEMENT_ROLES);
+  // Senior-only.
   if (school.schoolType === "BASIC") redirect("/gradebook");
 
   const periods = await withSchool(school.id, (tx) =>
