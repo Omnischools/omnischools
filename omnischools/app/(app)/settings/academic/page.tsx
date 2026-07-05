@@ -9,6 +9,7 @@ import {
 } from "@/db/schema";
 import { currentAcademicYearLabel } from "@/lib/onboarding";
 import { TermDatesForm } from "@/components/settings/term-dates-form";
+import { TermLifecycle } from "@/components/settings/term-lifecycle";
 import { GradeScaleEditor } from "@/components/settings/grade-scale-editor";
 import { WeightsForm } from "@/components/settings/weights-form";
 import { BackLink } from "@/components/ui/back-link";
@@ -69,6 +70,17 @@ export default async function AcademicSettingsPage() {
             label: p.periodLabel,
             startsOn: ymd(p.startsOn),
             endsOn: ymd(p.endsOn),
+          }))}
+        />
+
+        <TermLifecycle
+          terms={data.periods.map((p) => ({
+            periodId: p.periodId,
+            label: p.periodLabel,
+            startsOn: ymd(p.startsOn),
+            endsOn: ymd(p.endsOn),
+            closed: p.closedAt != null,
+            periodNumber: p.periodNumber,
           }))}
         />
 
