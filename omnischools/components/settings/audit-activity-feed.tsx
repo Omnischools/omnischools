@@ -17,7 +17,41 @@ export type AuditEvent = {
   entityType: string | null;
   entityId: string | null;
   reason: string | null;
+  before: unknown;
+  after: unknown;
 };
+
+type DiffRow = { field: string; old: string; new: string };
+
+const fieldLabel = (k: string) =>
+  k
+    .replace(/([A-Z])/g, " $1")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .toLowerCase();
+
+function fmtVal(v: unknown): string {
+  if (v == null) return "—";
+  const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+  return s.length > 44 ? `${s.slice(0, 44)}…` : s;
+}
+
+/** Field-level before→after changes (only fields that actually differ). Empty for creates. */
+function computeDiff(before: unknown, after: unknown): DiffRow[] {
+  if (!before || !after || typeof before !== "object" || typeof after !== "object") {
+    return [];
+  }
+  const b = before as Record<string, unknown>;
+  const a = after as Record<string, unknown>;
+  const keys = Array.from(new Set([...Object.keys(b), ...Object.keys(a)]));
+  const rows: DiffRow[] = [];
+  for (const k of keys) {
+    const oldV = fmtVal(b[k]);
+    const newV = fmtVal(a[k]);
+    if (oldV !== newV) rows.push({ field: fieldLabel(k), old: oldV, new: newV });
+  }
+  return rows.slice(0, 6);
+}
 
 // Money / role / structural changes are "sensitive"; the rest are routine.
 const SENSITIVE = new Set([
@@ -90,6 +124,7 @@ export function AuditActivityFeed({
             const bulk = e.entityType ? BULK_ENTITIES.has(e.entityType) : false;
             const actor = e.actorName ?? title(e.actorRole) ?? "System";
             const moduleLabel = e.entityType ? title(e.entityType) : "System";
+            const diff = computeDiff(e.before, e.after);
             return (
               <div
                 key={e.id}
@@ -132,6 +167,27 @@ export function AuditActivityFeed({
                       </span>
                     ) : null}
                   </div>
+
+                  {/* Per-event diff (before → after) — surface §01 diff block */}
+                  {diff.length > 0 ? (
+                    <div className="mt-2 rounded-md border border-dashed border-border bg-bg p-2.5 font-mono text-[11px] leading-relaxed">
+                      {diff.map((d) => (
+                        <div
+                          key={d.field}
+                          className="grid grid-cols-[92px_1fr] gap-2.5 py-0.5"
+                        >
+                          <span className="pt-px text-[9px] font-semibold uppercase tracking-[0.06em] text-navy-3">
+                            {d.field}
+                          </span>
+                          <span className="break-words text-navy-2">
+                            <span className="text-terra line-through">{d.old}</span>
+                            <span className="mx-1.5 text-navy-3">→</span>
+                            <span className="font-bold text-green">{d.new}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );

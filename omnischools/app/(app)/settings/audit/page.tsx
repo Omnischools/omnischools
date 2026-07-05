@@ -53,6 +53,8 @@ export default async function AuditLogPage({
         entityType: auditLog.entityType,
         entityId: auditLog.entityId,
         reason: auditLog.reason,
+        before: auditLog.beforeState,
+        after: auditLog.afterState,
       })
       .from(auditLog)
       .leftJoin(users, eq(auditLog.actorUserId, users.id))
