@@ -9,13 +9,16 @@
  *
  * Pure module — safe to import from both client (sidebar) and server (guards).
  */
+import type { KnownAppRole } from "@/lib/auth";
 
 /** Roles that, on their own, restrict a user to the finance sections. */
 export const FINANCE_ROLES = ["ACCOUNTANT", "BURSAR"];
 
 /**
- * Senior (SHS) tier role groups. The score ledger is a teaching surface; the Vice
- * Headmaster progress view is management-only. STUDENT / PARENT never reach either.
+ * Senior (SHS) tier role groups. The score ledger is a teaching surface (teachers + form
+ * masters + academic leadership); the Vice Headmaster progress view is management-only
+ * (Admin, Headmaster, Vice Headmaster Academic). STUDENT / PARENT never reach either.
+ * `satisfies readonly KnownAppRole[]` makes a typo'd role code a compile error.
  */
 export const SENIOR_LEDGER_ROLES = [
   "ADMIN",
@@ -23,12 +26,12 @@ export const SENIOR_LEDGER_ROLES = [
   "VICE_HEADMASTER_ACADEMIC",
   "TEACHER",
   "FORM_MASTER",
-];
+] as const satisfies readonly KnownAppRole[];
 export const SENIOR_MANAGEMENT_ROLES = [
   "ADMIN",
   "HEADMASTER",
   "VICE_HEADMASTER_ACADEMIC",
-];
+] as const satisfies readonly KnownAppRole[];
 
 /** True when the user holds at least one of the allowed roles. */
 export function hasAnyRole(
