@@ -73,7 +73,17 @@ export default async function ReportCardPage({
     <div className="mx-auto max-w-3xl">
       <div className="mb-4 flex items-center justify-between print:hidden">
         <BackLink href="/gradebook/reports" label="Report cards" />
-        <PrintButton />
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/report-cards/${student.id}?periodId=${periodId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-navy bg-navy px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep"
+          >
+            Download PDF
+          </a>
+          <PrintButton />
+        </div>
       </div>
 
       <div className="bg-surface rounded-xl border border-border p-8">
