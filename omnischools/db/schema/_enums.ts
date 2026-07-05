@@ -178,3 +178,12 @@ export const ledgerStatusEnum = pgEnum("ledger_status", [
   "COMPLETE", // all five categories present, weighted total computed
   "STPSHS_READY", // COMPLETE and signed off for export (explicit teacher action)
 ]);
+
+// The three medium-agnostic capture paths (spec §4). Chosen per (class × subject × period).
+// AUTO_COMPILE = Path A (from recorded events), SCAN_EXTRACT = Path B (OCR, Item 4),
+// DIRECT_ENTRY = Path C (type category scores straight onto the grid, Item 2).
+export const capturePathEnum = pgEnum("capture_path", [
+  "AUTO_COMPILE",
+  "SCAN_EXTRACT",
+  "DIRECT_ENTRY",
+]);

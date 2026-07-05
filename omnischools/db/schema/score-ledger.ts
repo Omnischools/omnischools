@@ -19,7 +19,7 @@ import { users } from "./identity";
 import { students, classes } from "./students";
 import { subjects } from "./gradebook";
 import { academicPeriod } from "./periods";
-import { assessmentCategoryEnum, ledgerStatusEnum } from "./_enums";
+import { assessmentCategoryEnum, ledgerStatusEnum, capturePathEnum } from "./_enums";
 
 /**
  * Senior (SHS) score ledger — Score Ledger Item 1 (five-category model + Path A auto-compile).
@@ -230,6 +230,48 @@ export const seniorScoreLedger = pgTable(
     studentFk: foreignKey({
       columns: [t.schoolId, t.studentId],
       foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    subjectFk: foreignKey({
+      columns: [t.schoolId, t.subjectId],
+      foreignColumns: [subjects.schoolId, subjects.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.periodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * The capture path a teacher chose for one (class × subject × period) — spec §4.4, chosen
+ * per context and switchable. Absent row = the AUTO_COMPILE (Path A) default. Path drives
+ * how the ledger is written: AUTO_COMPILE compiles from senior_assessment events;
+ * DIRECT_ENTRY (Item 2) writes the five category scores straight onto the ledger.
+ */
+export const seniorLedgerPath = pgTable(
+  "senior_ledger_path",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    periodId: uuid("period_id").notNull(),
+    path: capturePathEnum("path").notNull().default("AUTO_COMPILE"),
+    updatedByUserId: uuid("updated_by_user_id").references(() => users.id),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniq: unique("uniq_ledger_path_context").on(
+      t.schoolId,
+      t.classId,
+      t.subjectId,
+      t.periodId,
+    ),
+    classFk: foreignKey({
+      columns: [t.schoolId, t.classId],
+      foreignColumns: [classes.schoolId, classes.id],
     }).onDelete("cascade"),
     subjectFk: foreignKey({
       columns: [t.schoolId, t.subjectId],

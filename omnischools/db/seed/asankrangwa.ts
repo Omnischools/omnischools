@@ -22,6 +22,7 @@ import {
   seniorAssessments,
   seniorAssessmentScores,
   seniorScoreLedger,
+  seniorLedgerPath,
   type appRoleEnum,
 } from "@/db/schema";
 import {
@@ -469,6 +470,18 @@ async function main() {
   }
   await db.insert(seniorAssessmentScores).values(markValues);
   await db.insert(seniorScoreLedger).values(ledgerValues);
+
+  // Path C demo — Form 2 Science takes English via direct entry (a blank grid the
+  // teacher types category scores straight into; no assessment events).
+  const english = subjectRows.find((s) => s.name === "English Language")!;
+  await db.insert(seniorLedgerPath).values({
+    schoolId: school.id,
+    classId: form2Science.id,
+    subjectId: english.id,
+    periodId: semester2.periodId,
+    path: "DIRECT_ENTRY",
+    updatedByUserId: userByPhone.get("+233244000003"),
+  });
 
   // --- audit: record the seed itself (append-only) ---
   await db.insert(auditLog).values({

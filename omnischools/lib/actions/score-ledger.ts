@@ -5,6 +5,7 @@ import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
+import { round2 } from "@/lib/gradebook-helpers";
 import type { Tx } from "@/lib/db";
 import {
   students,
@@ -12,6 +13,7 @@ import {
   seniorAssessments,
   seniorAssessmentScores,
   seniorScoreLedger,
+  seniorLedgerPath,
   assessmentWeights,
 } from "@/db/schema";
 import {
@@ -20,6 +22,7 @@ import {
   weightedTotalComplete,
   computedStatus,
   allCategoriesPresent,
+  type CategoryScores,
   type CategoryWeights,
   type EventMark,
   type ComputableCategory,
@@ -604,5 +607,268 @@ export async function savePortfolioScores(input: unknown): Promise<SavePortfolio
     return { ok: true, saved };
   } catch {
     return { ok: false, error: "Could not save portfolio scores. Please try again." };
+  }
+}
+
+// ------------------------------------------------------ capture path (§4.4)
+const CAPTURE_PATHS = ["AUTO_COMPILE", "SCAN_EXTRACT", "DIRECT_ENTRY"] as const;
+
+const SetPathSchema = z.object({
+  classId: z.string().uuid(),
+  subjectId: z.string().uuid(),
+  periodId: z.string().uuid(),
+  path: z.enum(CAPTURE_PATHS),
+});
+
+export type SetPathResult = { ok: true } | { ok: false; error: string };
+
+/** Choose the capture path for a (class × subject × period). Switchable per spec §4.4. */
+export async function setLedgerPath(input: unknown): Promise<SetPathResult> {
+  const { school } = await requireSchool();
+  const parsed = SetPathSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid path." };
+  const d = parsed.data;
+  // Path B (scan/OCR) is not built until Item 4 — don't let it be selected yet.
+  if (d.path === "SCAN_EXTRACT") {
+    return { ok: false, error: "Scan & extract (Path B) is coming soon." };
+  }
+  // Don't switch the capture medium of a closed (finalised) semester.
+  const closed = await closedPeriodError(school.id, d.periodId);
+  if (closed) return { ok: false, error: closed };
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      await tx
+        .insert(seniorLedgerPath)
+        .values({
+          schoolId: school.id,
+          classId: d.classId,
+          subjectId: d.subjectId,
+          periodId: d.periodId,
+          path: d.path,
+          updatedByUserId: actor.id ?? undefined,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [
+            seniorLedgerPath.schoolId,
+            seniorLedgerPath.classId,
+            seniorLedgerPath.subjectId,
+            seniorLedgerPath.periodId,
+          ],
+          set: { path: d.path, updatedByUserId: actor.id ?? undefined, updatedAt: new Date() },
+        });
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "senior_ledger_path",
+        entityId: d.classId,
+        after: { subjectId: d.subjectId, periodId: d.periodId, path: d.path },
+        reason: "Capture path changed",
+      });
+    });
+    safeRevalidate(LEDGER_PATH);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not change the path. Please try again." };
+  }
+}
+
+// ------------------------------------------- Path C — direct digital entry
+const DirectRowSchema = z.object({
+  studentId: z.string().uuid(),
+  asgn: z.string(),
+  midSem: z.string(),
+  endSem: z.string(),
+  project: z.string(),
+  portfolio: z.string(),
+});
+const SaveDirectSchema = z.object({
+  classId: z.string().uuid(),
+  subjectId: z.string().uuid(),
+  periodId: z.string().uuid(),
+  scores: z.array(DirectRowSchema),
+});
+
+export type SaveDirectResult = { ok: true; saved: number } | { ok: false; error: string };
+
+/** Parse one direct-entry cell: "" → null; otherwise a 0–100 number, or `invalid`. */
+function parseCat(v: string): number | null | "invalid" {
+  const t = v.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0 || n > 100) return "invalid";
+  return round2(n);
+}
+
+/**
+ * Path C (spec §4.3) — the teacher types the five category scores straight onto the
+ * ledger; the entered values ARE the record (no assessment events, no compile). Each
+ * category is a 0–100 score. The context must be set to DIRECT_ENTRY first (the path
+ * chooser does this) so a Path A ledger can't be overwritten by direct entry.
+ */
+export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirectResult> {
+  const { school } = await requireSchool();
+  const parsed = SaveDirectSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid scores." };
+  }
+  const d = parsed.data;
+  const closed = await closedPeriodError(school.id, d.periodId);
+  if (closed) return { ok: false, error: closed };
+
+  // Validate + parse EVERY cell up-front, before opening the transaction, so a single
+  // out-of-range cell can never leave earlier rows committed (atomicity — Quinn MAJOR).
+  const parsedRows: { studentId: string; cats: CategoryScores }[] = [];
+  for (const s of d.scores) {
+    const vals = {
+      asgn: parseCat(s.asgn),
+      midSem: parseCat(s.midSem),
+      endSem: parseCat(s.endSem),
+      project: parseCat(s.project),
+      portfolio: parseCat(s.portfolio),
+    };
+    if (Object.values(vals).some((v) => v === "invalid")) {
+      return { ok: false, error: "Each category score must be between 0 and 100." };
+    }
+    parsedRows.push({ studentId: s.studentId, cats: vals as CategoryScores });
+  }
+
+  const actor = await resolveActor(school.id);
+
+  try {
+    const outcome = await withSchool(
+      school.id,
+      async (tx): Promise<{ ok: true; saved: number } | { ok: false; error: string }> => {
+        // The context must be on the direct-entry path.
+        const [pathRow] = await tx
+          .select({ path: seniorLedgerPath.path })
+          .from(seniorLedgerPath)
+          .where(
+            and(
+              eq(seniorLedgerPath.schoolId, school.id),
+              eq(seniorLedgerPath.classId, d.classId),
+              eq(seniorLedgerPath.subjectId, d.subjectId),
+              eq(seniorLedgerPath.periodId, d.periodId),
+            ),
+          );
+        if (pathRow?.path !== "DIRECT_ENTRY") {
+          return { ok: false, error: "Switch this class to Direct entry (Path C) first." };
+        }
+
+        // Only students in this class.
+        const roster = await tx
+          .select({ id: students.id })
+          .from(students)
+          .where(
+            and(
+              eq(students.schoolId, school.id),
+              eq(students.classId, d.classId),
+              eq(students.status, "ACTIVE"),
+            ),
+          );
+        const validStudents = new Set(roster.map((r) => r.id));
+        const ids = roster.map((r) => r.id);
+
+        // Preserve an explicit STPSHS_READY sign-off across a re-save (mirrors the Path A
+        // compile, which never silently downgrades a signed-off complete row — Dex).
+        const existing = ids.length
+          ? await tx
+              .select({
+                studentId: seniorScoreLedger.studentId,
+                status: seniorScoreLedger.status,
+              })
+              .from(seniorScoreLedger)
+              .where(
+                and(
+                  eq(seniorScoreLedger.schoolId, school.id),
+                  eq(seniorScoreLedger.subjectId, d.subjectId),
+                  eq(seniorScoreLedger.periodId, d.periodId),
+                  inArray(seniorScoreLedger.studentId, ids),
+                ),
+              )
+          : [];
+        const prevStatus = new Map(existing.map((e) => [e.studentId, e.status]));
+
+        const weights = await loadWeights(tx, school.id, d.subjectId);
+        let n = 0;
+        for (const { studentId, cats } of parsedRows) {
+          if (!validStudents.has(studentId)) continue;
+          const total = weightedTotalComplete(cats, weights);
+          const status =
+            prevStatus.get(studentId) === "STPSHS_READY" && allCategoriesPresent(cats)
+              ? ("STPSHS_READY" as const)
+              : computedStatus(cats);
+          await tx
+            .insert(seniorScoreLedger)
+            .values({
+              schoolId: school.id,
+              studentId,
+              subjectId: d.subjectId,
+              periodId: d.periodId,
+              asgnScore: cats.asgn == null ? null : cats.asgn.toFixed(2),
+              midSemScore: cats.midSem == null ? null : cats.midSem.toFixed(2),
+              endSemScore: cats.endSem == null ? null : cats.endSem.toFixed(2),
+              projectScore: cats.project == null ? null : cats.project.toFixed(2),
+              portfolioScore: cats.portfolio == null ? null : cats.portfolio.toFixed(2),
+              weightedTotal: total == null ? null : total.toFixed(2),
+              asgnWeightUsed: weights.asgn,
+              midSemWeightUsed: weights.midSem,
+              endSemWeightUsed: weights.endSem,
+              projectWeightUsed: weights.project,
+              portfolioWeightUsed: weights.portfolio,
+              portfolioManual: cats.portfolio != null,
+              status,
+              compiledByUserId: actor.id ?? undefined,
+              compiledAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .onConflictDoUpdate({
+              target: [
+                seniorScoreLedger.schoolId,
+                seniorScoreLedger.studentId,
+                seniorScoreLedger.subjectId,
+                seniorScoreLedger.periodId,
+              ],
+              set: {
+                asgnScore: cats.asgn == null ? null : cats.asgn.toFixed(2),
+                midSemScore: cats.midSem == null ? null : cats.midSem.toFixed(2),
+                endSemScore: cats.endSem == null ? null : cats.endSem.toFixed(2),
+                projectScore: cats.project == null ? null : cats.project.toFixed(2),
+                portfolioScore: cats.portfolio == null ? null : cats.portfolio.toFixed(2),
+                weightedTotal: total == null ? null : total.toFixed(2),
+                asgnWeightUsed: weights.asgn,
+                midSemWeightUsed: weights.midSem,
+                endSemWeightUsed: weights.endSem,
+                projectWeightUsed: weights.project,
+                portfolioWeightUsed: weights.portfolio,
+                portfolioManual: cats.portfolio != null,
+                status,
+                compiledByUserId: actor.id ?? undefined,
+                compiledAt: new Date(),
+                updatedAt: new Date(),
+              },
+            });
+          n++;
+        }
+        await recordAudit(tx, {
+          schoolId: school.id,
+          actorUserId: actor.id ?? undefined,
+          actorRole: actor.role,
+          actionType: "updated",
+          entityType: "senior_score_ledger",
+          entityId: d.subjectId,
+          after: { periodId: d.periodId, rows: n, path: "C" },
+          reason: "Direct ledger entry (Path C)",
+        });
+        return { ok: true, saved: n };
+      },
+    );
+    if (outcome.ok) safeRevalidate(LEDGER_PATH);
+    return outcome;
+  } catch {
+    return { ok: false, error: "Could not save scores. Please try again." };
   }
 }

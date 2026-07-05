@@ -274,6 +274,13 @@
       "when": 1783273141991,
       "tag": "0038_strange_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1783282710814,
+      "tag": "0039_late_magdalene",
+      "breakpoints": true
     }
   ]
 }
