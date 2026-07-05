@@ -1,8 +1,7 @@
--- Omnischools — migration 0036 (parent-receipt branch): receipt.public_token. An unguessable
--- token for the parent-facing SMS receipt link (/r/{token}); access to the PDF is further
--- gated by the student code. Idempotent — safe to run more than once. Paste into the Supabase
--- SQL editor on PROD after merging. (Numbering note: the student-health PR is also 0036 — the
--- two are independent; run both pastes. Only the drizzle journal collides at merge, not prod.)
+-- Omnischools — migration 0037: receipt.public_token. An unguessable token for the parent-
+-- facing SMS receipt link (/r/{token}); access to the PDF is further gated by the student
+-- code. Idempotent — safe to run more than once. Paste into the Supabase SQL editor on PROD
+-- after merging.
 --
 -- No RLS changes: this only adds a column to the existing "receipt" table, which is already
 -- tenant-scoped. New columns are covered by the table's existing policies. (The public parent
