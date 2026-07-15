@@ -22,6 +22,7 @@ import {
   type AssessmentCategory,
 } from "@/components/senior/senior-assessment-grid";
 import { SeniorLedgerGrid, type LedgerRow } from "@/components/senior/senior-ledger-grid";
+import { StpshsGenerateButton } from "@/components/senior/stpshs-generate-button";
 import { resolveWeights, type CategoryWeights } from "@/lib/score-ledger/compute";
 
 export const dynamic = "force-dynamic";
@@ -216,6 +217,24 @@ export default async function ScoreLedgerPage({
       ).length;
       const ready = complete === n && n > 0;
 
+      // Over-100 cells (Q5) — flagged in the grid, and they block STPSHS generation until the
+      // teacher corrects them down or acknowledges the cap. Labels mirror the grid columns.
+      const CAT_LABEL: Record<
+        "asgn" | "midSem" | "endSem" | "project" | "portfolio",
+        string
+      > = {
+        asgn: "Assignments",
+        midSem: "Mid-sem",
+        endSem: "End-of-sem",
+        project: "Project",
+        portfolio: "Portfolio",
+      };
+      const overCells = ledgerRows.flatMap((r) =>
+        (["asgn", "midSem", "endSem", "project", "portfolio"] as const)
+          .filter((k) => r[k] != null && r[k]! > 100)
+          .map((k) => ({ name: r.name, category: CAT_LABEL[k] })),
+      );
+
       workspace = (
         <div className="space-y-6">
           <section className="rounded-[14px] border border-border bg-surface p-4">
@@ -303,6 +322,13 @@ export default async function ScoreLedgerPage({
                       STPSHS-ready score sheet generates from this ledger.
                     </p>
                   )}
+                  <StpshsGenerateButton
+                    classId={classId}
+                    subjectId={subjectId}
+                    periodId={periodId}
+                    complete={ready}
+                    overCells={overCells}
+                  />
                 </div>
               </div>
             </div>

@@ -33,10 +33,15 @@ const CATS: { key: CatKey; label: string; cls: string }[] = [
 
 const computedCell = "rounded-md bg-green-bg px-2 py-1 font-mono text-[13px] font-bold text-green";
 const emptyCell = "font-mono text-[13px] text-border-2";
+// Over-100 (Q5): a category above the STPSHS 0–100 scale — flagged terra, value still shown,
+// and it blocks the STPSHS sheet until corrected down or acknowledged-and-capped upstream.
+const overCell = "rounded-md bg-terra-bg px-2 py-1 font-mono text-[13px] font-bold text-terra";
 const plainInput =
   "w-16 rounded-md border border-border-2 bg-bg px-2 py-1.5 text-center font-mono text-[13px] text-navy outline-none focus:border-gold";
 const filledPortfolio =
   "w-16 rounded-md border border-gold-soft bg-gold-bg px-2 py-1.5 text-center font-mono text-[13px] font-bold text-navy outline-none focus:border-gold";
+const overInput =
+  "w-16 rounded-md border border-terra bg-terra-bg px-2 py-1.5 text-center font-mono text-[13px] font-bold text-terra outline-none focus:border-terra";
 const emptyInput =
   "w-16 rounded-md border border-border-2 bg-bg px-2 py-1.5 text-center font-mono text-[13px] text-border-2 outline-none focus:border-gold";
 
@@ -203,32 +208,43 @@ export function SeniorLedgerGrid({
                     <div className="font-semibold text-navy">{r.name}</div>
                     <div className="font-mono text-[9.5px] text-navy-3">{r.code}</div>
                   </td>
-                  {CATS.map((c) => (
-                    <td key={c.key} className="px-2.5 py-2.5 text-center">
-                      {editable.has(c.key) ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          placeholder="—"
-                          value={cells[cellKey(r.id, c.key)] ?? ""}
-                          onChange={(e) => setCell(r.id, c.key, e.target.value)}
-                          className={
-                            (cells[cellKey(r.id, c.key)] ?? "").trim() === ""
-                              ? emptyInput
-                              : c.key === "portfolio"
-                                ? filledPortfolio
-                                : plainInput
-                          }
-                        />
-                      ) : r[c.key] == null ? (
-                        <span className={emptyCell}>—</span>
-                      ) : (
-                        <span className={computedCell}>{r[c.key]!.toFixed(1)}</span>
-                      )}
-                    </td>
-                  ))}
+                  {CATS.map((c) => {
+                    const raw = cells[cellKey(r.id, c.key)] ?? "";
+                    const rawNum = Number(raw);
+                    const inputOver =
+                      raw.trim() !== "" && Number.isFinite(rawNum) && rawNum > 100;
+                    const compiled = r[c.key];
+                    return (
+                      <td key={c.key} className="px-2.5 py-2.5 text-center">
+                        {editable.has(c.key) ? (
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            placeholder="—"
+                            value={raw}
+                            onChange={(e) => setCell(r.id, c.key, e.target.value)}
+                            className={
+                              raw.trim() === ""
+                                ? emptyInput
+                                : inputOver
+                                  ? overInput
+                                  : c.key === "portfolio"
+                                    ? filledPortfolio
+                                    : plainInput
+                            }
+                          />
+                        ) : compiled == null ? (
+                          <span className={emptyCell}>—</span>
+                        ) : (
+                          <span className={compiled > 100 ? overCell : computedCell}>
+                            {compiled.toFixed(1)}
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
                   <td className="bg-navy px-2.5 py-2.5 text-center font-mono text-[13px] font-bold text-bg">
                     {t.value == null || !t.anyPresent ? "—" : t.value.toFixed(1)}
                   </td>
