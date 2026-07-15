@@ -295,6 +295,13 @@
       "when": 1784070584660,
       "tag": "0041_little_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1784152302536,
+      "tag": "0042_easy_blazing_skull",
+      "breakpoints": true
     }
   ]
 }

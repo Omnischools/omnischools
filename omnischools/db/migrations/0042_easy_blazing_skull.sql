@@ -1,0 +1,1 @@
+ALTER TABLE "students" ADD COLUMN "stpshs_ref" text;

@@ -1,0 +1,24 @@
+-- Omnischools — migration 0042: Score Ledger Item 8 (INCR-3) · STPSHS Assessment Reference ID.
+-- Adds one nullable text column, "stpshs_ref", to the students table. It holds the STPSHS-
+-- assigned Assessment Reference ID (format like REF-2024-XXXX) — an external opaque id, so
+-- text, not an enum. Nullable: stays NULL until a future STPSHS bio-data-registration
+-- increment ingests real IDs (the score sheet renders "pending" while null). Owner ruling
+-- Q1 LOCKED (2026-07-15). Idempotent — safe to run more than once.
+--
+-- *** RLS: NOTHING TO DO. ***
+-- This migration adds NO new table. students already carries ENABLE + FORCE ROW LEVEL
+-- SECURITY + the tenant_isolation policy (the primary boundary + session school_id defence in
+-- depth). Adding one column does not change RLS, so there is NO policy delta and NO
+-- cross-tenant leak risk here. Nothing to hand-paste.
+--
+-- 0042 is plain, portable DDL (a single nullable text column). It is applied to prod by the
+-- normal drizzle migrate flow at deploy; this idempotent statement is provided only so the
+-- change can be hand-verified/hand-applied in the Supabase SQL editor if needed.
+-- Prod needs the column ALTER only — NOT new RLS.
+--
+-- NOTE: no UNIQUE constraint yet. Uniqueness is per student for the 3-year cycle (spec §2),
+-- but the column is nullable and unpopulated (many NULLs), so a partial UNIQUE index lands
+-- with the future STPSHS bio-data-ingest increment, not here.
+
+-- ---- new nullable column on the existing tenant table students ----
+ALTER TABLE "students" ADD COLUMN IF NOT EXISTS "stpshs_ref" text;

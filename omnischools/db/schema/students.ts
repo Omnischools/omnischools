@@ -119,6 +119,13 @@ export const students = pgTable(
     programme: programmeEnum("programme"),
     residency: residencyEnum("residency"),
     houseId: uuid("house_id"),
+    // STPSHS Assessment Reference ID (format like "REF-2024-XXXX") assigned by STPSHS at
+    // Year-1 bio-data registration. External opaque id → plain text, not an enum. Nullable:
+    // stays NULL until a future STPSHS bio-data-ingest increment populates real IDs; the
+    // regulator score sheet renders "pending" while null (INCR-3, owner ruling Q1 LOCKED).
+    // Uniqueness is per student for the 3-year cycle (§2), but with many NULLs today we add
+    // no UNIQUE now — a partial unique index lands with the ingest increment.
+    stpshsRef: text("stpshs_ref"),
     householdId: uuid("household_id").references(() => households.id, {
       onDelete: "set null",
     }),
