@@ -6,7 +6,6 @@ import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor, assertAnyRole } from "@/lib/auth/server";
 import { SENIOR_LEDGER_ROLES } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
-import { round2 } from "@/lib/gradebook-helpers";
 import type { Tx } from "@/lib/db";
 import {
   students,
@@ -23,12 +22,14 @@ import {
   weightedTotalComplete,
   computedStatus,
   allCategoriesPresent,
+  parseCategoryCell,
   type CategoryScores,
   type CategoryWeights,
   type EventMark,
   type ComputableCategory,
 } from "@/lib/score-ledger/compute";
-import { reasonRequiredForCommit } from "@/lib/score-ledger/scan-diff";
+import { reasonRequiredForCommit, removalRejectsReGraded } from "@/lib/score-ledger/scan-diff";
+import { ledgerCorrectionReasonEnum } from "@/db/schema/_enums";
 
 const LEDGER_PATH = "/senior/score-ledger";
 const CATEGORIES = [
@@ -697,15 +698,6 @@ const SaveDirectSchema = z.object({
 
 export type SaveDirectResult = { ok: true; saved: number } | { ok: false; error: string };
 
-/** Parse one direct-entry cell: "" → null; otherwise a 0–100 number, or `invalid`. */
-function parseCat(v: string): number | null | "invalid" {
-  const t = v.trim();
-  if (t === "") return null;
-  const n = Number(t);
-  if (!Number.isFinite(n) || n < 0 || n > 100) return "invalid";
-  return round2(n);
-}
-
 /**
  * Path C (spec §4.3) — the teacher types the five category scores straight onto the
  * ledger; the entered values ARE the record (no assessment events, no compile). Each
@@ -728,14 +720,14 @@ export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirect
   const parsedRows: { studentId: string; cats: CategoryScores }[] = [];
   for (const s of d.scores) {
     const vals = {
-      asgn: parseCat(s.asgn),
-      midSem: parseCat(s.midSem),
-      endSem: parseCat(s.endSem),
-      project: parseCat(s.project),
-      portfolio: parseCat(s.portfolio),
+      asgn: parseCategoryCell(s.asgn),
+      midSem: parseCategoryCell(s.midSem),
+      endSem: parseCategoryCell(s.endSem),
+      project: parseCategoryCell(s.project),
+      portfolio: parseCategoryCell(s.portfolio),
     };
     if (Object.values(vals).some((v) => v === "invalid")) {
-      return { ok: false, error: "Each category score must be between 0 and 100." };
+      return { ok: false, error: "Each category score must be between 0 and 999.99." };
     }
     parsedRows.push({ studentId: s.studentId, cats: vals as CategoryScores });
   }
@@ -888,9 +880,10 @@ const CAT_LABEL: Record<ScanCat, string> = {
   project: "project",
   portfolio: "portfolio",
 };
-// The authoritative reason domain — ledger_correction_reason (db/schema/_enums.ts). The chosen
+// The authoritative reason domain IS the DB enum ledger_correction_reason (db/schema/_enums.ts) —
+// derived, not re-declared, so the Zod domain can never drift from the column (Dex-1). The chosen
 // code rides audit_log.reason (Kofi Q1/Q4); there is no ledger column and no image reference.
-const REASON_CODES = ["RE_GRADED", "TRANSCRIPTION_ERROR", "OTHER"] as const;
+const REASON_CODES = ledgerCorrectionReasonEnum.enumValues;
 
 const CommitScanSchema = z.object({
   classId: z.string().uuid(),
@@ -949,14 +942,14 @@ export async function commitScanLedger(input: unknown): Promise<CommitScanResult
   const parsedRows: { studentId: string; cats: CategoryScores }[] = [];
   for (const s of d.scores) {
     const vals = {
-      asgn: parseCat(s.asgn),
-      midSem: parseCat(s.midSem),
-      endSem: parseCat(s.endSem),
-      project: parseCat(s.project),
-      portfolio: parseCat(s.portfolio),
+      asgn: parseCategoryCell(s.asgn),
+      midSem: parseCategoryCell(s.midSem),
+      endSem: parseCategoryCell(s.endSem),
+      project: parseCategoryCell(s.project),
+      portfolio: parseCategoryCell(s.portfolio),
     };
     if (Object.values(vals).some((v) => v === "invalid")) {
-      return { ok: false, error: "Each category score must be between 0 and 100." };
+      return { ok: false, error: "Each category score must be between 0 and 999.99." };
     }
     parsedRows.push({ studentId: s.studentId, cats: vals as CategoryScores });
   }
@@ -1061,6 +1054,14 @@ export async function commitScanLedger(input: unknown): Promise<CommitScanResult
                 error: `A reason is required to ${
                   after == null ? "remove" : "lower"
                 } a ${CAT_LABEL[cat]} score. Review the flagged change before committing.`,
+              };
+            }
+            // Server teeth (Kofi Q2 / Q2-c…e): a removed score can't be re-graded — a re-grade
+            // yields a score, never a blank. Recomputed here, never trusting the client default.
+            if (removalRejectsReGraded(before, after, reason.code)) {
+              return {
+                ok: false,
+                error: `A removed ${CAT_LABEL[cat]} score can't be re-graded — pick why the score is gone (transcription error, or 'Other' with a note).`,
               };
             }
             corrections.push({ studentId, cat, before, after, code: reason.code, note: reason.note });

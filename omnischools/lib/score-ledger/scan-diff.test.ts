@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { MAX_PERCENT } from "./compute";
+import { ledgerCorrectionReasonEnum } from "@/db/schema/_enums";
 import {
   LOW_CONF_FLAG,
   LOW_CONF_FLOOR,
@@ -7,7 +8,11 @@ import {
   scaleExtractedCell,
   diffCell,
   reasonRequiredForCommit,
+  removalRejectsReGraded,
   mapRosterRows,
+  REASON_LABELS,
+  SCORE_DOWN_REASON_CODES,
+  REMOVAL_REASON_CODES,
   type BandedCell,
   type RosterStudent,
 } from "./scan-diff";
@@ -124,6 +129,44 @@ describe("reasonRequiredForCommit (B8 · the authoritative server check, Q4)", (
   it("unchanged / keep-old needs NO reason", () => {
     expect(reasonRequiredForCommit(70, 70)).toBe(false);
     expect(reasonRequiredForCommit(null, null)).toBe(false);
+  });
+});
+
+// ------------------------------- Q2 · a removed score can't be re-graded (server teeth, Kofi Q2)
+describe("removalRejectsReGraded (Q2-c…f · server teeth)", () => {
+  it("Q2-c/Q2-d removal (82 → blank) with RE_GRADED → rejected (blocked, server-recomputed)", () => {
+    expect(removalRejectsReGraded(82, null, "RE_GRADED")).toBe(true);
+  });
+  it("Q2-e removal with TRANSCRIPTION_ERROR or OTHER → allowed", () => {
+    expect(removalRejectsReGraded(82, null, "TRANSCRIPTION_ERROR")).toBe(false);
+    expect(removalRejectsReGraded(82, null, "OTHER")).toBe(false);
+  });
+  it("Q2-a/b score-down (76 → 73) with RE_GRADED → allowed (pre-baked default stays)", () => {
+    expect(removalRejectsReGraded(76, 73, "RE_GRADED")).toBe(false);
+  });
+  it("Q2-f score-up / blank→filled are never removals → never gated by this rule", () => {
+    expect(removalRejectsReGraded(71, 74, "RE_GRADED")).toBe(false);
+    expect(removalRejectsReGraded(null, 64, "RE_GRADED")).toBe(false);
+  });
+  it("a removal excludes RE_GRADED from the picker; a re-grade yields a score, not a blank", () => {
+    expect(REMOVAL_REASON_CODES).not.toContain("RE_GRADED");
+    expect(SCORE_DOWN_REASON_CODES).toContain("RE_GRADED");
+  });
+});
+
+// ------------------------------------------------------------ Dex-1 · reason codes can't drift
+describe("reason codes stay in lockstep with the DB enum (Dex-1)", () => {
+  it("REASON_LABELS keys are exactly ledger_correction_reason's values", () => {
+    expect(Object.keys(REASON_LABELS).sort()).toEqual(
+      [...ledgerCorrectionReasonEnum.enumValues].sort(),
+    );
+  });
+  it("keeps the three locked codes", () => {
+    expect([...ledgerCorrectionReasonEnum.enumValues].sort()).toEqual([
+      "OTHER",
+      "RE_GRADED",
+      "TRANSCRIPTION_ERROR",
+    ]);
   });
 });
 

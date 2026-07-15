@@ -117,6 +117,22 @@ export function exceedsMax(rawMark: number | null, maxMark: number): boolean {
 }
 
 /**
+ * Parse one hand-entered / scanned category cell string: "" → null; a 0–MAX_PERCENT number →
+ * round2; anything else → "invalid". THE single 0–999.99 category bound shared by all three
+ * capture paths (Path A saveAssessmentScores, Path C saveDirectLedgerScores, Path B
+ * commitScanLedger) so they can never disagree — Kofi Owner-Option-A: a bonus mark (category
+ * >100, e.g. 11/10 portfolio → 110) commits, the UI soft-warns; negatives and non-numbers are
+ * rejected; the 999.99 ceiling is the numeric(5,2) overflow guard.
+ */
+export function parseCategoryCell(v: string): number | null | "invalid" {
+  const t = v.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0 || n > MAX_PERCENT) return "invalid";
+  return round2(n);
+}
+
+/**
  * Mean of the non-null event percentages (blank cells excluded, not treated as 0 —
  * Kofi Q2). Equal-weight mean is the default; weight-by-max-mark is deferred (spec §4.1,
  * Kofi Q5). Returns null when there are no events or every event is blank.

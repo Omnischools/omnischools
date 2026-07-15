@@ -124,6 +124,37 @@ export function reasonRequiredForCommit(
   return final < committed; // score-down
 }
 
+// -------------------------------------------------- correction reason codes (Kofi Q2/Q4, Dex-1)
+// Client-safe label metadata for the three locked reason codes. This is the ONE list the diff UI
+// renders from; scan-diff.test locks its keys to ledgerCorrectionReasonEnum (the DB source of
+// truth) and lib/actions/score-ledger derives its Zod domain from that same enum, so the DB enum,
+// the server Zod domain, and this UI list can never drift (Dex-1). Kept here (a pure, client-safe
+// lib) rather than importing the pgEnum so drizzle never lands in the client bundle.
+export type ReasonCode = "RE_GRADED" | "TRANSCRIPTION_ERROR" | "OTHER";
+export const REASON_LABELS: Record<ReasonCode, string> = {
+  RE_GRADED: "Re-graded",
+  TRANSCRIPTION_ERROR: "Transcription error",
+  OTHER: "Other (add a note)",
+};
+// A score-down pre-bakes RE_GRADED (§7.3 — the surface's `Keep 73 · re-graded` primary). A
+// removal (committed → blank) can NEVER be a re-grade — a re-grade yields a score, not a blank —
+// so RE_GRADED is excluded and there is no default; the teacher must actively pick (Kofi Q2).
+export const SCORE_DOWN_REASON_CODES: ReasonCode[] = ["RE_GRADED", "TRANSCRIPTION_ERROR", "OTHER"];
+export const REMOVAL_REASON_CODES: ReasonCode[] = ["TRANSCRIPTION_ERROR", "OTHER"];
+
+/**
+ * Server teeth for the removal reason (Kofi Q2 / Q2-c…e). A removal (committed present → final
+ * blank) submitted with RE_GRADED is incoherent and must be rejected — recomputed server-side
+ * from committed-vs-final, never trusting the client default. A score-down keeps RE_GRADED.
+ */
+export function removalRejectsReGraded(
+  committed: number | null,
+  final: number | null,
+  code: string,
+): boolean {
+  return committed != null && final == null && code === "RE_GRADED";
+}
+
 // ------------------------------------------------------------- roster mapping (Kofi Q5 / D1–D5)
 
 export interface RosterStudent {

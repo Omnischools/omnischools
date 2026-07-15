@@ -13,6 +13,7 @@ import {
   weightedTotalComplete,
   provisionalTotal,
   computedStatus,
+  parseCategoryCell,
   type CategoryScores,
   type CategoryDenominators,
   type EventMark,
@@ -256,3 +257,34 @@ describe("allCategoriesPresent / computedStatus", () => {
     expect(allCategoriesPresent({ ...full, midSem: null })).toBe(false);
   });
 });
+
+// ------------------------------------ Kofi Owner-Option-A: one 0–999.99 bound for all 3 paths
+describe("parseCategoryCell (A8–A11 · unified bonus bound)", () => {
+  it("A8/A11 accepts a bonus mark >100 (11/10 portfolio → 110) — commits, not rejected", () => {
+    expect(parseCategoryCell("110")).toBe(110);
+    // The full Path-B chain: raw 11 under a /10 denom scales to 110, then parses to 110.
+    expect(parseCategoryCell(String(scaleTo110()))).toBe(110);
+  });
+  it("A11 same value parses identically regardless of path (B/C share this one bound)", () => {
+    expect(parseCategoryCell("73")).toBe(73);
+    expect(parseCategoryCell("73.5")).toBe(73.5);
+  });
+  it("A10 rejects negative and non-numeric", () => {
+    expect(parseCategoryCell("-1")).toBe("invalid");
+    expect(parseCategoryCell("abc")).toBe("invalid");
+  });
+  it("A10 rejects above the numeric(5,2) ceiling; caps live in the scaler (MAX_PERCENT)", () => {
+    expect(parseCategoryCell("1000")).toBe("invalid");
+    expect(parseCategoryCell(String(MAX_PERCENT))).toBe(MAX_PERCENT);
+  });
+  it("blank → null (never 0), and rounds to 2dp", () => {
+    expect(parseCategoryCell("")).toBeNull();
+    expect(parseCategoryCell("  ")).toBeNull();
+    expect(parseCategoryCell("80.005")).toBe(80.01);
+  });
+});
+
+/** raw 11 under a /10 denominator → 110 (the A8 bonus that used to be rejected at commit). */
+function scaleTo110(): number {
+  return percent(11, 10)!;
+}

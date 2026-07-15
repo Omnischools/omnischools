@@ -8,6 +8,9 @@ import {
   diffCell,
   reasonRequiredForCommit,
   mapRosterRows,
+  REASON_LABELS,
+  SCORE_DOWN_REASON_CODES,
+  REMOVAL_REASON_CODES,
   type CellBand,
   type ExtractedNameRow,
 } from "@/lib/score-ledger/scan-diff";
@@ -37,11 +40,8 @@ const CAT_FULL: Record<CatKey, string> = {
   project: "Project",
   portfolio: "Portfolio",
 };
-const REASONS: { code: string; label: string }[] = [
-  { code: "RE_GRADED", label: "Re-graded" },
-  { code: "TRANSCRIPTION_ERROR", label: "Transcription error" },
-  { code: "OTHER", label: "Other (add a note)" },
-];
+// Sentinel value for the roster-mapping "not on the roster" option (was a bare magic string).
+const DISCARD_ROW = "__discard__";
 
 type ExtractCell = { raw: number | null; value: number | null; confidence: number };
 type ExtractRow = { readName: string; studentId: string | null; cells: Record<CatKey, ExtractCell> };
@@ -92,7 +92,7 @@ export function ScanWorkspace({
 
   // Verify-phase state.
   const [rows, setRows] = useState<ExtractRow[]>([]);
-  const [assign, setAssign] = useState<string[]>([]); // per extraction row: studentId | "" | "__discard__"
+  const [assign, setAssign] = useState<string[]>([]); // per extraction row: studentId | "" | DISCARD_ROW
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
   const [cellVals, setCellVals] = useState<Record<string, string>>({});
   const [bands, setBands] = useState<Record<string, CellBand>>({});
@@ -237,7 +237,7 @@ export function ScanWorkspace({
   }
 
   // ---- roster mapping validation (Kofi Q5 / D1–D5) ----
-  const assignedIds = assign.filter((a) => a && a !== "__discard__");
+  const assignedIds = assign.filter((a) => a && a !== DISCARD_ROW);
   const dupIds = assignedIds.filter((id, i) => assignedIds.indexOf(id) !== i);
   const unresolvedRows = extractOk
     ? assign.filter((a) => a === "").length
@@ -251,7 +251,7 @@ export function ScanWorkspace({
     const bnds: Record<string, CellBand> = {};
     rows.forEach((row, i) => {
       const sid = assign[i];
-      if (!sid || sid === "__discard__") return;
+      if (!sid || sid === DISCARD_ROW) return;
       for (const cat of CATS) {
         const cell = row.cells[cat.key];
         const b = bandCell(cell.value, cell.confidence);
@@ -266,7 +266,7 @@ export function ScanWorkspace({
 
   const coveredIds = useMemo(() => {
     if (!extractOk) return roster.map((r) => r.id);
-    return assign.filter((a) => a && a !== "__discard__");
+    return assign.filter((a) => a && a !== DISCARD_ROW);
   }, [assign, extractOk, roster]);
   const coveredSet = useMemo(() => new Set(coveredIds), [coveredIds]);
 
@@ -283,7 +283,9 @@ export function ScanWorkspace({
     setCell(id, k, c == null ? "" : String(c));
   }
   function setReason(k: string, patch: Partial<{ code: string; note: string }>) {
-    setReasons((m) => ({ ...m, [k]: { code: m[k]?.code ?? "RE_GRADED", note: m[k]?.note ?? "", ...patch } }));
+    // No forced default here — a score-down's RE_GRADED default lives in the render/commit
+    // fallbacks; a removal must have its code actively chosen (Kofi Q2), never pre-seeded.
+    setReasons((m) => ({ ...m, [k]: { code: m[k]?.code ?? "", note: m[k]?.note ?? "", ...patch } }));
   }
 
   // Per covered cell: current value, committed, and what's still blocking commit.
@@ -318,6 +320,8 @@ export function ScanWorkspace({
       }
     }
     return out;
+    // committedFor closes over `committed`, a stable per-session prop (the diff baseline never
+    // changes while this workspace is mounted), so it is intentionally not a dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cellVals, coveredIds, bands]);
 
@@ -331,14 +335,20 @@ export function ScanWorkspace({
       }
     }
     return n;
+    // CATS is a module constant and `key` is pure; the closure only reads the three listed deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bands, reviewed, coveredIds]);
 
-  // A required change defaults to RE_GRADED (the surface pre-bakes this — Lucy §4.1); only an
-  // explicit OTHER without a note blocks commit.
+  // A score-down defaults to RE_GRADED (the surface pre-bakes this — Lucy §4.1); only an explicit
+  // OTHER without a note blocks. A removal (committed → blank) has NO default — the teacher must
+  // actively pick TRANSCRIPTION_ERROR or OTHER+note; RE_GRADED or a blank pick blocks (Kofi Q2).
   const missingReasons = changes.filter((c) => {
     if (!c.reasonRequired) return false;
     const r = reasons[key(c.id, c.cat)];
+    if (c.final == null) {
+      if (r?.code !== "TRANSCRIPTION_ERROR" && r?.code !== "OTHER") return true;
+      return r.code === "OTHER" && !r.note.trim();
+    }
     return r?.code === "OTHER" && !r.note.trim();
   });
 
@@ -382,10 +392,12 @@ export function ScanWorkspace({
       .filter((c) => c.reasonRequired)
       .map((c) => {
         const r = reasons[key(c.id, c.cat)];
+        // Removals carry the actively-chosen code (canCommit already blocks a removal without a
+        // valid one); score-downs fall back to the pre-baked RE_GRADED default (§7.3).
         return {
           studentId: c.id,
           category: c.cat,
-          code: r?.code ?? "RE_GRADED",
+          code: r?.code || (c.final == null ? "TRANSCRIPTION_ERROR" : "RE_GRADED"),
           note: r?.note?.trim() || undefined,
         };
       });
@@ -549,7 +561,7 @@ export function ScanWorkspace({
                           {s.name}
                         </option>
                       ))}
-                      <option value="__discard__">— not on the roster (discard row) —</option>
+                      <option value={DISCARD_ROW}>— not on the roster (discard row) —</option>
                     </select>
                   </div>
                 ))}
@@ -627,18 +639,23 @@ export function ScanWorkspace({
                             const k = key(r.id, c.key);
                             const v = cellVals[k] ?? "";
                             const low = bands[k] === "LOW_CONF" && !reviewed.has(k);
-                            const cls = v.trim() === "" ? emptyInput : low ? warnInput : goldInput;
+                            // A bonus mark (category >100, e.g. 11/10 portfolio → 110) is allowed
+                            // (Kofi Owner-Option-A) — soft-warn like Path A's overMax, never a block.
+                            const nv = num(v);
+                            const over = nv != null && nv > 100;
+                            const cls =
+                              v.trim() === "" ? emptyInput : low || over ? warnInput : goldInput;
                             return (
                               <td key={c.key} className="px-1.5 py-2 text-center">
                                 <div className="relative inline-block">
                                   <input
                                     type="number"
                                     min="0"
-                                    max="100"
                                     step="0.01"
                                     placeholder="—"
                                     value={v}
                                     disabled={isClosed}
+                                    title={over ? "Above 100 — a bonus mark; it still commits." : undefined}
                                     onChange={(e) => setCell(r.id, c.key, e.target.value)}
                                     className={cls}
                                   />
@@ -739,7 +756,12 @@ function ChangesPanel({
         {changes.map((c) => {
           const k = `${c.id}:${c.cat}`;
           const student = rosterById.get(c.id)?.name ?? c.id;
-          const r = reasons[k] ?? { code: "RE_GRADED", note: "" };
+          // A removal (committed → blank) has no pre-selected reason and excludes RE_GRADED — the
+          // teacher must actively pick why the score is gone (Kofi Q2). A score-down pre-bakes
+          // RE_GRADED (§7.3). "Enter manually" (typing into the grid cell) stays the primary path.
+          const isRemoval = c.final == null;
+          const reasonCodes = isRemoval ? REMOVAL_REASON_CODES : SCORE_DOWN_REASON_CODES;
+          const r = reasons[k] ?? { code: isRemoval ? "" : "RE_GRADED", note: "" };
           return (
             <div key={k} className={`rounded-[10px] border px-4 py-3 ${tone[c.severity] ?? tone.none}`}>
               <div className="text-[12px] text-navy-2">
@@ -764,11 +786,15 @@ function ChangesPanel({
                     <select
                       value={r.code}
                       onChange={(e) => setReason(k, { code: e.target.value })}
-                      className="rounded-md border border-border-2 bg-surface px-2 py-[5px] text-[10px] font-semibold text-navy-2"
+                      className={
+                        "rounded-md border bg-surface px-2 py-[5px] text-[10px] font-semibold text-navy-2 " +
+                        (isRemoval && r.code === "" ? "border-warn" : "border-border-2")
+                      }
                     >
-                      {REASONS.map((o) => (
-                        <option key={o.code} value={o.code}>
-                          {o.label}
+                      {isRemoval && <option value="">— why is it gone? —</option>}
+                      {reasonCodes.map((code) => (
+                        <option key={code} value={code}>
+                          {REASON_LABELS[code]}
                         </option>
                       ))}
                     </select>
