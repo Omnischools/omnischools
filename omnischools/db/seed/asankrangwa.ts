@@ -337,6 +337,9 @@ async function main() {
   const form3GA = classRows.find((c) => c.name === "Form 3 General Arts")!;
 
   // School-default assessment weights (15/15/40/15/15 — end-of-sem dominant, Asankrangwa).
+  // Denominators: portfolio is marked out of 10 at Asankrangwa (Path B scan scale, Item 4);
+  // the other four categories are out of 100, so they inherit the column default (100) and
+  // are left unset here. Seeded real config — the system fallback (all /100) never inflates.
   await db.insert(assessmentWeights).values({
     schoolId: school.id,
     subjectId: null,
@@ -345,6 +348,7 @@ async function main() {
     endSemWeight: SYSTEM_DEFAULT_WEIGHTS.endSem,
     projectWeight: SYSTEM_DEFAULT_WEIGHTS.project,
     portfolioWeight: SYSTEM_DEFAULT_WEIGHTS.portfolio,
+    portfolioDenominator: 10,
     updatedByUserId: userByPhone.get("+233244000002"),
   });
 

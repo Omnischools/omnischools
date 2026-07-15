@@ -25,6 +25,32 @@ export const SYSTEM_DEFAULT_WEIGHTS: CategoryWeights = {
   portfolio: 15,
 };
 
+/**
+ * The five per-category scan denominators (Path B / Item 4). A raw number the extractor read
+ * is interpreted against its category's denominator before it becomes the 0–100 stored value:
+ * raw 8 under a /10 portfolio denominator → 80. Same shape and resolution as the weights.
+ */
+export interface CategoryDenominators {
+  asgn: number;
+  midSem: number;
+  endSem: number;
+  project: number;
+  portfolio: number;
+}
+
+/**
+ * System fallback denominators — all 100 (identity). An unconfigured category never inflates
+ * a mark (raw 8 under /100 → 8); only a smaller configured denominator scales up. The fallback
+ * is deliberately the largest sane denominator so a missing config can never over-award.
+ */
+export const SYSTEM_DEFAULT_DENOMINATORS: CategoryDenominators = {
+  asgn: 100,
+  midSem: 100,
+  endSem: 100,
+  project: 100,
+  portfolio: 100,
+};
+
 /** The four categories Path A auto-compiles from events; portfolio is entered manually. */
 export type ComputableCategory = "ASSIGNMENT" | "MID_SEM_EXAM" | "END_SEM_EXAM" | "PROJECT";
 
@@ -57,6 +83,19 @@ export function resolveWeights(
 }
 
 /**
+ * Resolve the five scan denominators for a (school × subject) — identical precedence to
+ * resolveWeights (subject override → school default → system 100), fed the SAME two
+ * ref_assessment_weights rows the weight resolver already fetched (the denominators are
+ * columns on those very rows, so no extra query). Pure — Kofi Q1b / Wells §5 handoff.
+ */
+export function resolveDenominators(
+  subjectRow: CategoryDenominators | null | undefined,
+  schoolDefaultRow: CategoryDenominators | null | undefined,
+): CategoryDenominators {
+  return subjectRow ?? schoolDefaultRow ?? SYSTEM_DEFAULT_DENOMINATORS;
+}
+
+/**
  * The ceiling for any stored score/percentage — the numeric(5,2) column max. Over-max
  * (bonus) marks are allowed and a category may exceed 100, but a pathological entry
  * (e.g. 500 out of 10 → 5000%) is capped here so the compile can never overflow the DB
@@ -75,6 +114,22 @@ export function percent(rawMark: number | null, maxMark: number): number | null 
 /** Does a raw mark exceed its event max? Drives the soft warn (Kofi Q3) — never a hard block. */
 export function exceedsMax(rawMark: number | null, maxMark: number): boolean {
   return rawMark != null && maxMark > 0 && rawMark > maxMark;
+}
+
+/**
+ * Parse one hand-entered / scanned category cell string: "" → null; a 0–MAX_PERCENT number →
+ * round2; anything else → "invalid". THE single 0–999.99 category bound shared by all three
+ * capture paths (Path A saveAssessmentScores, Path C saveDirectLedgerScores, Path B
+ * commitScanLedger) so they can never disagree — Kofi Owner-Option-A: a bonus mark (category
+ * >100, e.g. 11/10 portfolio → 110) commits, the UI soft-warns; negatives and non-numbers are
+ * rejected; the 999.99 ceiling is the numeric(5,2) overflow guard.
+ */
+export function parseCategoryCell(v: string): number | null | "invalid" {
+  const t = v.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0 || n > MAX_PERCENT) return "invalid";
+  return round2(n);
 }
 
 /**

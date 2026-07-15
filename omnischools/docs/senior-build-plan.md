@@ -19,8 +19,9 @@
 - Item 0 — period config ✅ shipped in Basic.
 - Item 1 — 5-category model + Path A auto-compile ✅ merged (PR #131, migration 0038)
 - Item 2 — Path C direct entry ✅ gates green (PR #134, migration 0039)
-- Item 3 — VHM progress view ✅ gates green (PR pending, migration 0040) · **Item 4 — Path B OCR** ← _next_
+- Item 3 — VHM progress view ✅ merged (PR #137, migration 0040) · RBAC role-gating ✅ merged (PR #138)
   - Read-only dashboard `/senior/academic-progress`: per (class×subject) — completion counts per category, STPSHS `n/5` tier, path pill, teacher, last activity, ready/behind/at-risk. **Counts only, NEVER score values (§6.2).** Rows enumerate from the new `senior_subject_teacher` assignment table (LEFT JOIN progress) so never-started teachers appear. At-risk flags computed on-the-fly (inactive 14+ days, N-not-ready). Headmaster roll-up (§6.4) + full filter bar + role gating deferred.
+- **Item 4 — Path B scan-and-extract** ← _next (INCR-2, below)_ · migration **0041**
 - Item 5 — PWA phase 1 · Item 6 — paper ledger book · Item 7 — versioned diff · Item 8 — STPSHS sheet
 
 ## Current increment — INCR-1: F0 + Score Ledger Item 1
@@ -46,3 +47,133 @@
 Deploy note: paste `db/sql/prod-paste-0038-senior-ledger.sql` on prod (RLS is not auto-applied).
 
 **INCR-1 done when:** an SHS teacher can enter assignment/mid-sem/end-sem/project events for a class-subject-semester, compile the four computable categories, enter portfolio manually, and see the weighted total using per-(subject×school) weights (default 15/15/40/15/15) — all tenant-scoped, audit-logged, gates green.
+
+---
+
+## Next increment — INCR-2: Score Ledger Item 4 · Path B (scan-and-extract) · migration 0041
+
+### Owner rulings — LOCKED (2026-07-14/15)
+
+1. **OCR provider = Claude Vision, Haiku 4.5** (`claude-haiku-4-5-20251001`). Anthropic messages API,
+   image as base64, behind a `LedgerExtractor` interface. Upgrade path to **Sonnet 5**
+   (`claude-sonnet-5`) revisited after go-live once real teacher-ledger feedback lands — a one-constant
+   swap, no rewrite. Implementation must consult the `claude-api` skill for the request shape.
+2. **Cross-border PII consent: yes — the image is never persisted.** Sent to Claude Vision, not stored.
+3. **Image lifecycle = transient.** Photo lives only in the browser + in-flight to Claude; **deleted
+   after extraction** when the teacher clicks complete/done/keep. → **no `score-ledger-uploads` bucket,
+   no storage RLS, no retention job, no image column.**
+4. **Cross-path upload: yes.** A Path A/C teacher may upload a scan; diff runs against what's committed.
+5. **Scale = school-defined per-category denominator** (e.g. portfolio /10, others /100). Raw number is
+   scaled against its category denominator before it becomes the 0–100 stored value.
+6. **Confidence numbers:** `LOW_CONF_FLAG = 0.85`, `LOW_CONF_FLOOR = 0.60` (named constants, retunable).
+7. **Reason codes:** `RE_GRADED` · `TRANSCRIPTION_ERROR` · `OTHER` (free text mandatory on `OTHER`).
+8. **Fallback path label:** `DIRECT_ENTRY` when nothing came from a scan, else `SCAN_EXTRACT`.
+
+**INCR-2 done when:** an SHS teacher can photograph their handwritten paper ledger page, have Claude
+Vision extract the five-category grid, see it side by side with the photo (in-session only), have every
+low-confidence cell flagged and every row's student-mapping confirmed, work the four diff cases against
+the committed values (blank→filled silent-accept · unchanged · score-down needing a reason ·
+score-gone-missing) with each raw number scaled by its category's school-defined denominator, and commit
+the verified grid — writing the same `senior_score_ledger` rows Paths A/C write, with
+`path_used = SCAN_EXTRACT` and full audit trail. **The photograph is discarded on commit; nothing
+persists the image** — all tenant-scoped, gates green.
+
+### Step table
+
+| Step | Owner | State |
+|---|---|---|
+| Rulings on the 7 open questions + acceptance criteria | Kofi | ✅ (rulings + AC below) |
+| Surface map — scan §2 | Lucy | ✅ `docs/senior/path-b-scan-surface-map.md` |
+| Schema — 5 denominator cols on `ref_assessment_weights` + `ledger_correction_reason` enum; migration **0041** applied to dev + verified; prod = column ALTER only (no new RLS) | Wells | ✅ `0041_little_human_torch.sql` · `db/sql/prod-paste-0041-ledger-denominators.sql` · `docs/senior/incr2-denominator-schema.md` |
+| Extend `resolveWeights`→ also resolve denominators (`SYSTEM_DEFAULT_DENOMINATORS` = all 100; reuse `percent()`) | Claude Code | ⬜ |
+| Extract API route — our endpoint proxies base64 → Claude Vision (Haiku 4.5) → grid + per-cell confidence; **image never persisted**; server-held `ANTHROPIC_API_KEY` | Claude Code | ⬜ |
+| Extractor adapter — `LedgerExtractor` interface + Claude Vision impl (+ stub for tests) | Claude Code | ⬜ |
+| Roster row-mapping — extracted name-row → `student_id`, teacher-confirmed (Q5) | Claude Code | ⬜ |
+| Diff + scale engine — pure funcs in `lib/score-ledger/` (denominator scaling + 4 diff cases), vitest, no DB | Claude Code | ⬜ |
+| Verification UI — side-by-side photo/grid (in-session), low-conf flags, 4 diff flags, keep-old/keep-new/manual, commit-and-discard | Claude Code | ⬜ |
+| Commit path — writes `senior_score_ledger` `path_used = SCAN_EXTRACT` + `recordAudit` + reason codes; drops the image | Claude Code | ⬜ |
+| Seed already set (Asankrangwa portfolio denom /10 in `db/seed/asankrangwa.ts`) | Wells | ✅ (not run — seed not idempotent) |
+| Build · typecheck · tests · RLS test · preview round-trip (real photo → extract → commit) | Claude Code | ⬜ |
+| QA — 4 diff cases, denominator scaling, confidence bands, roster mis-map, multi-page, tenant isolation | Quinn | ✅ PASS (build+typecheck+69 tests green; 3 MINOR, below) |
+| Architecture/portability — provider swappable behind `LedgerExtractor`? model id a single constant? API key server-only? | Dex | ✅ APPROVE (3 MINOR, below) |
+| Security — image truly never persisted, key server-side only, cross-tenant read, prod parity | Sarah | ✅ APPROVE (merge held for owner go) |
+| Gate fixes (single aggregated rework brief) | Claude Code | ⬜ (MINOR only — see below) |
+| Live-preview round-trip (real photo → extract → commit) | Claude Code | ⬜ still owed (DB/UI-layer criteria verified by code-read only) |
+| Merge · verify it landed with `git log origin/main` | Sarah | ⬜ pending owner go |
+
+**Gate findings (all MINOR / non-blocking — Sarah cleared the merge):**
+- **Dex-1 — dead enum.** `ledgerCorrectionReasonEnum` documented as the reason-code source of truth but nothing imports it; the Zod domain + UI list are declared separately → 3-way drift risk. Fix: derive `REASON_CODES` from `ledgerCorrectionReasonEnum.enumValues` (1 line), or drop the enum (YAGNI).
+- **Quinn-1 — scaler cap vs commit bound.** A scaled value >100 (bonus mark, e.g. 11/10 portfolio) seeds into the grid then is rejected by `commitScanLedger` (0–100), blocking commit. Safe (no corruption) but inconsistent with Path A (allows bonus to 999.99). **Kofi ruling needed:** should Path B allow bonus marks?
+- **Quinn-2 — reason pre-baked.** Score-down / Case-D keep-blank pre-bakes `RE_GRADED` and commits (only `OTHER`-without-note blocks). A reason is always audited. **Kofi/Lucy confirm** this counts as "teacher-confirmed" for the highest-severity GONE_MISSING keep-blank.
+- **Nits:** bare-surname → `unmapped` not `ambiguous` (still blocks); two `exhaustive-deps` suppressions want a "why safe" comment; `"__discard__"` magic string → named const.
+- **Note (pre-existing, not this diff):** `SENIOR_LEDGER_ROLES` includes `VICE_HEADMASTER_ACADEMIC`, so a VHM can commit/see scores on the *edit* surface (shipped in #138; the completion-only rule targets the progress view).
+- **Deploy:** prod needs `0041` (enum + 5 denominator columns + CHECK) via migrate or `prod-paste-0041-ledger-denominators.sql`. **No new RLS to paste** (no tenant table added).
+
+### Kofi rulings on the gate findings (2026-07-15)
+
+**Correction to the premise:** Path **C** also caps at 0–100 (shares `parseCat`). **Path A is the sole path admitting >100.** This is a 3-path consistency question, not a Path-B patch.
+
+**Quinn-1 — bonus marks (>100).**
+- **Kofi's call (settled, no owner needed): Path B's committer must accept the full range its own scaler emits (0–`MAX_PERCENT` 999.99) with a soft-warn (mirroring Path A `exceedsMax`), never a hard grid-wide block.** The scaler faithfully emits 110 for a `/10` portfolio read of 11; the committer currently rejects it — an internal self-contradiction that must be fixed regardless of policy. All three paths must share one bound.
+- **OWNER CALL — bonus legitimacy direction:**
+  - **Option A (Kofi-recommended):** bonus allowed; unify UP at 999.99 + soft-warn (Path A already ships this). Requires the STPSHS export + report-card boundary (§8) to tolerate/clamp totals >100.
+  - **Option B:** no bonus; cap every category at 100 — **and also clamp Path A at 100** so all three agree (reverses shipped Path A behaviour, discards a faithful 11/10 read).
+- **AC delta (Option A): A8** denom 10 + raw 11 → commits `portfolioScore = 110.00` with a pre-commit soft-warn, no hard block. **A9** one >100 cell never blocks the other rows. **A10** negative/non-numeric still rejected; scaled >999.99 caps at 999.99. **A11** same value commits identically via A/B/C. _(Option B inverts A8–A11 to per-cell reject naming student+category, plus a Path-A-clamp regression.)_
+
+**Quinn-2 — pre-baked `RE_GRADED` reason.**
+- **Score-down (76→73): CONFIRMED — pre-baked, changeable, always-audited `RE_GRADED` default is fine.** §7.3 asks only that the change be visible + timestamped; the surface itself pre-bakes it (`Keep 73 · re-graded` primary). No change.
+- **GONE_MISSING keep-blank (82→blank): REJECTED as implemented — MUST fix before DoD closes.** §7.2 ("either way needs confirmation"), §7.3 (errors + deliberate alterations both live here), and the surface (primary action `Enter manually`, not remove) all require an **active** teacher choice. Required behaviour: removal reason **not pre-selected** and removal **not the default**; **server rejects `RE_GRADED` for a keep-blank** and requires `TRANSCRIPTION_ERROR` or `OTHER`+note (a re-grade yields a score, never a blank — incoherent for a removal). This structurally forces the teacher off the autopilot default.
+- **AC delta: Q2-a** score-down commits with default `RE_GRADED` + audit row. **Q2-b** reason changeable → audit reflects it. **Q2-c** removal with default `RE_GRADED` → **blocked**, atomic, message "a removed score can't be re-graded." **Q2-d** client submitting `RE_GRADED` directly on a removal → **server** rejects. **Q2-e** removal + active `TRANSCRIPTION_ERROR` → commits, audit before=82/after=null. **Q2-f** score-up + blank→filled still commit with NO reason (B4/B8 unchanged).
+- **OWNER CALL (minor, deferrable):** a dedicated removal code (`ENTERED_IN_ERROR`/`SCORE_VOIDED`) — not mandated, `TRANSCRIPTION_ERROR`/`OTHER`+note suffice today.
+
+**Net:** Quinn-2 removal-reason fix + Quinn-1 committer-range fix ship together (both Kofi's call). The one open item is the owner's **bonus direction (Option A vs B)**, which gates the path-unification.
+
+### Critical path
+
+Kofi ✅ + Lucy ✅ + Wells ✅ are done → **implementation is unblocked.** Claude Code: `resolveWeights`
+extension → extract API route + adapter → diff/scale engine → roster mapping → verification UI → commit
+path → self-verify → three gates → Sarah merge. No owner gate remains on the path.
+
+### Kofi rulings (2026-07-14)
+
+- **Q1 — diff-against-committed; no version/upload/history table in Item 4** (that's Item 7). The only
+  new DDL is Q1b's denominator columns. Reason codes ride the existing `recordAudit`→`auditLog`.
+- **Q1b — extend `ref_assessment_weights`** with 5 denominator cols (`smallint NOT NULL DEFAULT 100,
+  CHECK > 0`); same resolution as weights (subject → school-default → system 100). No new table.
+- **Q2 — confidence bands:** ≥0.85 accepted · 0.60–0.85 low-conf (shown, must review) · <0.60 dropped
+  to blank (never show a possibly-wrong number).
+- **Q3 — four diff cases binding; low-confidence overrides silent-accept; compound (changed AND
+  low-conf) always forces review.**
+- **Q4 — reason enum + optional free text; mandatory only on score-down and Case-D keep-blank.**
+- **Q5 — roster mapping is a mandatory teacher-confirmed step** (§5.2 — highest-severity silent
+  failure); never auto-pick an ambiguous name; an absent roster row is NOT a Case-D blank.
+- **Q6 — 1..n images → one merged grid, atomic commit; partial coverage allowed but never silent.**
+- **Q7 — extraction error degrades to Path C blank grid in place; never a hard failure.**
+
+### INCR-2 · Acceptance criteria (for Quinn)
+
+`raw` = number extracted · `denominator` = resolved per-category value (subject → school-default → 100) · `committed` = current `senior_score_ledger` cell.
+
+**A · Denominator scaling** (🟡 own test class)
+- A1 portfolio denom 10, raw 8 → store 80.00. · A2 assignment denom 100, raw 72 → 72.00. · A3 no denom → fall back 100; raw 8 → 8.00 (never inflated). · A4 subject override > school-default > 100. · A5 denom 10, raw 850 → cap MAX_PERCENT (999.99), no overflow. · A6 raw blank → null, not 0. · A7 denom 0 (blocked by CHECK) → insert fails; scaler returns null.
+
+**B · Four diff cases** (§7.2)
+- B1 committed blank + extracted ≥0.85 → silent-accept. · B2 committed==extracted → no flag. · B3 76→73 → flagged + reason required. · B4 71→74 @≥0.85 → review, NO reason. · B5 82→blank → highest severity, never auto-nulls, forces keep/re-upload/manual. · B6 71→74 @0.60–0.85 → forces review, not silent. · B7 blank→val @0.60–0.85 → review, not silent-accept. · B8 up/blank→filled/unchanged commit with NO reason; score-down + Case-D keep-blank blocked until reason. · B9 score-down w/ reason → auditLog row before/after + reason; no image in payload.
+
+**C · Confidence bands** (Q2)
+- C1 ≥0.85 normal. · C2 [0.60,0.85) low-conf, can't commit until reviewed. · C3 <0.60 blank must-enter. · C4 Path A/C context → no cell ever low-conf styled.
+
+**D · Roster mapping** (🟡 own test class; §5.2)
+- D1 "A. Boateng" w/ Akwasi+Abena → row unmapped, commit blocked, no auto-select. · D2 name matching no active student → no commit until mapped/discarded. · D3 active student absent from page → committed row untouched, flagged gap. · D4 two rows → same student → commit blocked. · D5 all rows mapped to exactly one active student → commit proceeds.
+
+**E · Multi-page** (Q6)
+- E1 2-page/37-student → one 37-row grid. · E2 commit atomic. · E3 page 2 missing → commit covered only; uncovered untouched + flagged, never blanked.
+
+**F · Cross-path** (§7.4)
+- F1 Path A committed values → scan diffs against them. · F2 Path C typed values → same. · F3 scan commit → rows `path_used = SCAN_EXTRACT`, appear in VHM view (regression-check). · F4 wholesale failure, teacher types blank grid → `path_used = DIRECT_ENTRY`.
+
+**G · Transient-image guarantee** (🔴 Sarah gates)
+- G1 after commit: no Storage object / column / auditLog payload references or contains the image; zero image columns. · G2 base64 server-side only, key never in client bundle. · G3 extraction error → image still discarded (no temp file, no retained base64, no log/Sentry). · G4 complete/done/keep → in-memory image released.
+
+**H · Fallback** (Q7)
+- H1 wholesale failure → blank five-category grid in place, no dead-end. · H2 single sub-0.60 cell → manual-entry blank inside a `SCAN_EXTRACT` grid; `path_used` stays `SCAN_EXTRACT`.

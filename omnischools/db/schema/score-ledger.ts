@@ -52,6 +52,16 @@ export const assessmentWeights = pgTable(
     endSemWeight: smallint("end_sem_weight").notNull().default(40),
     projectWeight: smallint("project_weight").notNull().default(15),
     portfolioWeight: smallint("portfolio_weight").notNull().default(15),
+    // Per-category scan denominator (Path B / Item 4). A raw number the extractor read is
+    // interpreted against its category's denominator: raw 8 under /10 → 80/100. Same grain
+    // and resolution as the weights above (subject row → school-default row → system 100).
+    // System default 100 = identity (never inflates a mark). Scaling is a pure lib function
+    // (compute.ts:percent) — never a DB trigger. Asankrangwa seeds portfolio /10 (rest /100).
+    asgnDenominator: smallint("asgn_denominator").notNull().default(100),
+    midSemDenominator: smallint("mid_sem_denominator").notNull().default(100),
+    endSemDenominator: smallint("end_sem_denominator").notNull().default(100),
+    projectDenominator: smallint("project_denominator").notNull().default(100),
+    portfolioDenominator: smallint("portfolio_denominator").notNull().default(100),
     updatedByUserId: uuid("updated_by_user_id").references(() => users.id),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -68,6 +78,13 @@ export const assessmentWeights = pgTable(
     sumTo100: check(
       "assessment_weights_sum_100",
       sql`${t.asgnWeight} + ${t.midSemWeight} + ${t.endSemWeight} + ${t.projectWeight} + ${t.portfolioWeight} = 100`,
+    ),
+    // Every per-category denominator must be strictly positive — guards the scan-scale
+    // divide (a /0 denominator would corrupt every mark). One combined CHECK mirrors the
+    // single-constraint style of sumTo100 above.
+    denomPositive: check(
+      "assessment_denominators_positive",
+      sql`${t.asgnDenominator} > 0 AND ${t.midSemDenominator} > 0 AND ${t.endSemDenominator} > 0 AND ${t.projectDenominator} > 0 AND ${t.portfolioDenominator} > 0`,
     ),
     // Composite school-scoped FK — only enforced when subject_id is set (MATCH SIMPLE
     // skips rows with any NULL key column, which is exactly the school-default row).
