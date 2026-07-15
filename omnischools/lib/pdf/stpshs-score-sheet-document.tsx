@@ -44,9 +44,12 @@ export type StpshsSheetData = {
 };
 
 // Column widths for a 515pt A4 content band; name is the flexible column (Lucy §5.6).
+// W_SCORE 38 + a tight 3pt score-cell horizontal pad gives a 32pt text box — a de-scaled
+// 2-decimal value (`71.43` = 5 Courier chars ≈ 31.5pt) fits on one line with a ~6.5pt gap to
+// the next column, while the flexible name still gets ~211pt (Quinn MINOR-1).
 const W_TICK = 22;
 const W_REF = 92;
-const W_SCORE = 30;
+const W_SCORE = 38;
 
 const s = StyleSheet.create({
   // paddingBottom reserves the fixed-footer band; the fixed header sits in normal flow.
@@ -111,7 +114,16 @@ const s = StyleSheet.create({
   refCell: { width: W_REF, fontFamily: MONO, fontSize: 10.5, color: NAVY },
   refPending: { color: NAVY3 },
   nameCell: { flex: 1, fontFamily: SANS, fontSize: 10.5, color: NAVY },
-  scoreCell: { width: W_SCORE, fontFamily: MONO, fontSize: 10.5, color: NAVY, textAlign: "center" },
+  // Own tighter horizontal pad (3 vs 8) so a 5-char `NN.NN` clears its neighbours (Quinn MINOR-1).
+  scoreCell: {
+    width: W_SCORE,
+    fontFamily: MONO,
+    fontSize: 10.5,
+    color: NAVY,
+    textAlign: "center",
+    paddingVertical: 5,
+    paddingHorizontal: 3,
+  },
 
   emptyRow: {
     marginHorizontal: 40,
@@ -209,7 +221,7 @@ export function StpshsScoreSheetDocument({ data }: { data: StpshsSheetData }) {
                 </Text>
                 <Text style={[s.nameCell, s.cellPad]}>{r.name}</Text>
                 {SCORE_COLS.map((c) => (
-                  <Text key={c.key} style={[s.scoreCell, s.cellPad]}>
+                  <Text key={c.key} style={s.scoreCell}>
                     {r[c.key]}
                   </Text>
                 ))}
