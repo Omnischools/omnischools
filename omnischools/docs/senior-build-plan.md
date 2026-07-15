@@ -128,6 +128,90 @@ persists the image** — all tenant-scoped, gates green.
 
 **Net:** Quinn-2 removal-reason fix + Quinn-1 committer-range fix ship together (both Kofi's call). The one open item is the owner's **bonus direction (Option A vs B)**, which gates the path-unification.
 
+_INCR-2 (Item 4 · Path B) — MERGED to main (PR #139), all gates green, CodeQL false-positive dismissed. `senior-feat` synced level with main (`e546605`)._
+
+---
+
+## Next increment — INCR-3: Score Ledger Item 8 · STPSHS printable score sheet
+
+**Payoff-first pick** (owner chose over Item 5 PWA). The printable-PDF workaround for STPSHS's
+no-bulk-upload constraint (§8.1, §11 item 8). **Not blocked on the WAEC ICTD API** — ships as a PDF now.
+
+**Reuse the existing PDF engine:** `@react-pdf/renderer` (Node runtime, portable — no puppeteer/Vercel PDF
+service). Pattern is `app/api/receipts/[paymentId]/route.ts` + `lib/pdf/receipt-document.tsx` +
+`lib/pdf/render-receipt.tsx` + `lib/data/receipt-data.ts` + `lib/pdf/fonts.ts`. Invent no new PDF path.
+
+**Done when:** an authenticated SHS subject teacher / VHM / Headmaster can, from a class×subject×semester
+ledger, download a print-ready PDF mirroring STPSHS's Capture-Per-Subject screen — one row per active
+student in STPSHS column order (**tick · Ass't Ref ID · Student name · Asg · MS · ES · Proj · Port — NO
+weighted-total column**, STPSHS computes GPA itself), values read tenant-scoped from `senior_score_ledger`,
+paginated for a full roster, generation **audit-logged** as a regulator-submission artifact. Three gates green.
+
+### Step table
+
+| Step | Owner | State |
+|---|---|---|
+| Rulings on the 5 open questions + acceptance criteria | Kofi | ⬜ gates everything |
+| Surface map — section 3 of `schoolup-shs-score-ledger.html` (STPSHS export) + Capture-Per-Subject layout | Lucy | ⬜ |
+| Schema **IF Q1 = "store real STPSHS ID"** → nullable ref-ID column on `students`, migration **0042**, prod = column ALTER only (no new RLS). **ELSE confirm-only, no schema** | Wells | ⬜ (conditional) |
+| STPSHS-sheet PDF document — `lib/pdf/stpshs-score-sheet-document.tsx` + `render-stpshs-sheet.tsx`, reuse `@react-pdf/renderer` + fonts (mirror receipt) | Claude Code | ⬜ |
+| Tenant-scoped data builder — `lib/data/stpshs-sheet-data.ts` reading `senior_score_ledger` + name/REF/weights/period via `withSchool`, server-only, pre-formatted rows | Claude Code | ⬜ |
+| Authenticated download route — mirror `app/api/receipts/[paymentId]/route.ts` (`requireSchool` + `assertAnyRole(SENIOR_LEDGER_ROLES)` + `withSchool`), keyed by class×subject×period, streams `application/pdf`, `private, no-store` | Claude Code | ⬜ |
+| Wire the ledger surface "Generate STPSHS sheet →" button + status gating (per Q3) | Claude Code | ⬜ |
+| Audit-log the export (`recordAudit`→`auditLog`: who / class×subject×period / when; no score values in payload) | Claude Code | ⬜ |
+| Build · typecheck · tests · RLS test · preview round-trip (complete ledger → generate → open PDF; cross-tenant denied) | Claude Code | ⬜ |
+| QA — column order exact, REF-ID render (present + null-placeholder), portfolio scale, pagination 37+ roster, incomplete gating, tenant isolation, >100 render per ruling | Quinn | ⬜ |
+| Architecture/portability — stays on `@react-pdf/renderer`, data builder server-only (no client leak), reuses fonts/pattern | Dex | ⬜ |
+| Security — tenant-scoped read, route auth + role gate, audit present, no PII in URL/logs, prod parity | Sarah | ⬜ |
+| Gate fixes (single aggregated rework brief) | Claude Code | ⬜ |
+| Merge · verify via `git log origin/main` | Sarah | ⬜ |
+
+### Critical path
+Kofi Q1 (REF-ID) gates the schema fork (Wells on-path → migration 0042, or one-line confirm). Everything
+else parallelises: Kofi rulings ∥ Lucy map ∥ Wells (conditional). Claude Code path: data builder → PDF
+document → download route → button → audit-log → self-verify → three gates → Sarah merge. PDF-document +
+route are near-mechanical clones of the receipt path; the real work is the data builder (column mapping +
+REF resolution + scale). No owner gate on the build path except Q5 (>100 renderer), which blocks *finalising
+the cell renderer*, not starting.
+
+### Open questions — Kofi rules before implementation (2 are OWNER CALLs)
+1. **REF-2024-XXXX Assessment Reference ID scheme — OWNER CALL.** No column and no ingest path exist today
+   (STPSHS assigns these at Year-1 bio-data registration, unbuilt). (a) store the real ID (nullable now,
+   placeholder until bio-data ingest lands → **Wells migration 0042**), (b) render `student_code` as an
+   interim key, or (c) deterministic placeholder. A manufactured ID that doesn't match STPSHS's real one
+   mis-keys the teacher — worse than none. Uniqueness = per student for the 3-year cycle (§2), not per
+   subject×period. May need WAEC confirmation of the format.
+2. **Column order + portfolio scale.** Confirm no weighted-total column. **Resolve the scale ambiguity:**
+   the surface renders portfolio as a single digit (`8`) while the other four are 0–100, but the ledger
+   stores portfolio *scaled* to 0–100 (INCR-2 denominator rule: raw 8 /10 → stored 80). Does the sheet emit
+   the stored 0–100 uniformly, or de-scale portfolio to its raw denominator to match what the teacher types
+   into STPSHS? Changes the renderer.
+3. **Which rows qualify:** only `STPSHS_READY`, all `COMPLETE`, or all-including-incomplete (and how blanks
+   render / whether the button stays gated).
+4. **Granularity:** one sheet per (class × subject × semester); pagination for 37+ roster.
+5. **>100 → STPSHS render policy — OWNER CALL (specs silent).** Item 4 Option A lets a category/total exceed
+   100 (bonus 11/10 → stored 110); that value can be in `senior_score_ledger` today. On a regulator-facing
+   0–100 field: render as-is (110), clamp to 100, or flag/annotate? WAEC-scale compliance call — may warrant
+   WAEC confirmation of what STPSHS's numeric field accepts. Blocks finalising the cell renderer only.
+
+### Risk flags
+- **>100 → STPSHS compliance (LIVE — was deferred in INCR-2).** A stored 110 must render somehow on a
+  regulator artifact; no safe default without Q5. Highest attention.
+- **PDF-engine portability** — stay on `@react-pdf/renderer` (no puppeteer/chromium/Vercel PDF service). Dex.
+- **Tenant-scoping the read** — all reads via `withSchool` + role gate; consider assignment-scope
+  (`senior_subject_teacher`) for a subject teacher vs VHM/Headmaster unrestricted. Sarah + Kofi.
+- **Audit the export** — a regulator-submission artifact; log the generation, keep score values out of the
+  payload + URL.
+- **Server-only data builder** — `lib/data/stpshs-sheet-data.ts` imports the driver; the client button must
+  trigger a route/download, never import the data module (only `pnpm build` catches the leak).
+
+### Prerequisites / stop-and-ask
+- ✅ `senior-feat` synced to `main` (`e546605`). · WAEC ICTD API is **not** a dependency (PDF now).
+- **OWNER CALLs:** Q1 (REF-ID direction, possibly WAEC-confirmed) + Q5 (>100 render rule). Don't let any
+  agent pick either silently.
+- **Deploy:** IF Wells ships 0042 (stored ref-ID), prod needs the column ALTER (migrate/prod-paste) — **no
+  new RLS** (`students` already tenant-RLS'd). IF derived/`student_code`, no migration.
+
 ### Critical path
 
 Kofi ✅ + Lucy ✅ + Wells ✅ are done → **implementation is unblocked.** Claude Code: `resolveWeights`
@@ -177,3 +261,88 @@ path → self-verify → three gates → Sarah merge. No owner gate remains on t
 
 **H · Fallback** (Q7)
 - H1 wholesale failure → blank five-category grid in place, no dead-end. · H2 single sub-0.60 cell → manual-entry blank inside a `SCAN_EXTRACT` grid; `path_used` stays `SCAN_EXTRACT`.
+
+_INCR-2 (Item 4 · Path B) — MERGED to main (PR #139). Bonus marks = Owner Option A (0–999.99 unified across all 3 paths); gone-missing keep-blank requires an active non-`RE_GRADED` reason (server-enforced). All gates green; CodeQL false-positive dismissed. `senior-feat` synced level with main (`e546605`)._
+
+---
+
+## Next increment — INCR-3: Score Ledger Item 8 · STPSHS printable score sheet
+
+**Payoff-first pick** (owner chose over Item 5 PWA). The printable-PDF workaround for STPSHS's
+no-bulk-upload constraint (§8.1, §11 item 8). **Not blocked on the WAEC ICTD API** — ships as a PDF now.
+
+**Reuse the existing PDF engine:** `@react-pdf/renderer` (Node runtime, portable — no puppeteer/Vercel PDF
+service). Pattern is `app/api/receipts/[paymentId]/route.ts` + `lib/pdf/receipt-document.tsx` +
+`lib/pdf/render-receipt.tsx` + `lib/data/receipt-data.ts` + `lib/pdf/fonts.ts`. Invent no new PDF path.
+
+**Done when:** an authenticated SHS subject teacher / VHM / Headmaster can, from a class×subject×semester
+ledger, download a print-ready PDF mirroring STPSHS's Capture-Per-Subject screen — one row per active
+student in STPSHS column order (**tick · Ass't Ref ID · Student name · Asg · MS · ES · Proj · Port — NO
+weighted-total column**, STPSHS computes GPA itself), values read tenant-scoped from `senior_score_ledger`
+and **bounded to 0–100 for the regulator** (per Q5 below), paginated for a full roster, generation
+**audit-logged** as a regulator-submission artifact. Three gates green.
+
+### Owner decisions — LOCKED (2026-07-15)
+- **Q1 REF-ID → add the nullable column now.** Wells ships **migration 0042**: a nullable `stpshs_ref`
+  column on `students` (prod = column ALTER only, no new RLS — `students` already tenant-RLS'd). The sheet
+  renders **"pending"** in the REF column until a future STPSHS bio-data-registration increment ingests the
+  real IDs. Wells is **on the critical path**. Uniqueness = per student for the 3-year cycle (§2).
+- **Q5 >100 → flag + block generation + cap to 100 (never silent).** An over-100 category/total is
+  **flagged** in the ledger/verify UI; the teacher **cannot generate the STPSHS sheet** until every over-100
+  value is resolved (corrected to ≤100, or explicitly acknowledged); the regulator export is **capped at
+  100**. The cap only applies after the teacher was forced to see + act on the flag — never silent. The
+  internal `senior_score_ledger` value (e.g. 110) is unchanged; only the STPSHS *export* is bounded. (Kofi
+  formalises the exact "resolve" gesture + AC; may warrant WAEC confirmation of STPSHS's accepted range.)
+
+### Step table
+
+| Step | Owner | State |
+|---|---|---|
+| Rulings on the remaining questions (Q2/Q3/Q4) + acceptance criteria (incl. the Q1/Q5 owner decisions above) | Kofi | ⬜ gates everything |
+| Surface map — section 3 of `schoolup-shs-score-ledger.html` (STPSHS export) + Capture-Per-Subject layout | Lucy | ⬜ |
+| Schema — nullable `stpshs_ref` on `students`, **migration 0042**, dev applied + verified, prod-paste (column ALTER, no RLS) | Wells | ⬜ (on path per Q1) |
+| STPSHS-sheet PDF document — `lib/pdf/stpshs-score-sheet-document.tsx` + `render-stpshs-sheet.tsx`, reuse `@react-pdf/renderer` + fonts (mirror receipt) | Claude Code | ⬜ |
+| Tenant-scoped data builder — `lib/data/stpshs-sheet-data.ts` reading `senior_score_ledger` + name/REF/weights/period via `withSchool`, server-only, pre-formatted rows, **export values clamped 0–100** | Claude Code | ⬜ |
+| Authenticated download route — mirror `app/api/receipts/[paymentId]/route.ts` (`requireSchool` + `assertAnyRole(SENIOR_LEDGER_ROLES)` + `withSchool`), keyed by class×subject×period, streams `application/pdf`, `private, no-store` | Claude Code | ⬜ |
+| Over-100 flag + generation gate — flag over-100 cells in the ledger/verify UI; block "Generate STPSHS sheet" until resolved (per Q5) | Claude Code | ⬜ |
+| Wire the "Generate STPSHS sheet →" button + status gating (per Q3) | Claude Code | ⬜ |
+| Audit-log the export (`recordAudit`→`auditLog`: who / class×subject×period / when; no score values in payload) | Claude Code | ⬜ |
+| Build · typecheck · tests · RLS test · preview round-trip (complete ledger → generate → open PDF; cross-tenant denied; over-100 blocks) | Claude Code | ⬜ |
+| QA — column order exact, REF-ID render (present + null-placeholder), portfolio scale, pagination 37+ roster, incomplete gating, tenant isolation, over-100 flag+block+cap | Quinn | ⬜ |
+| Architecture/portability — stays on `@react-pdf/renderer`, data builder server-only (no client leak), reuses fonts/pattern | Dex | ⬜ |
+| Security — tenant-scoped read, route auth + role gate, audit present, no PII in URL/logs, prod parity | Sarah | ⬜ |
+| Gate fixes (single aggregated rework brief) | Claude Code | ⬜ |
+| Merge · verify via `git log origin/main` · then sync `senior-feat` ← `main` | Sarah + Pence | ⬜ |
+
+### Critical path
+Kofi (rules Q2/Q3/Q4 + AC) ∥ Lucy (surface map) ∥ Wells (migration 0042) — all parallel. Claude Code path:
+schema-in-hand → data builder (clamp 0–100) → PDF document → download route → over-100 flag+gate → button →
+audit-log → self-verify → three gates → Sarah merge → **Pence syncs senior-feat←main**. PDF-document + route
+are near-mechanical clones of the receipt path; the real work is the data builder (column mapping + REF
+resolution + scale) and the over-100 flag/gate.
+
+### Open questions — Kofi rules before implementation (Q1/Q5 already owner-locked above)
+2. **Column order + portfolio scale.** Confirm no weighted-total column. **Resolve the scale ambiguity:**
+   the surface renders portfolio as a single digit (`8`) while the other four are 0–100, but the ledger
+   stores portfolio *scaled* to 0–100 (INCR-2 denominator rule: raw 8 /10 → stored 80). Does the sheet emit
+   the stored 0–100 uniformly, or de-scale portfolio to its raw denominator to match what the teacher types
+   into STPSHS? Changes the renderer.
+3. **Which rows qualify:** only `STPSHS_READY`, all `COMPLETE`, or all-including-incomplete (and how blanks
+   render / whether the button stays gated).
+4. **Granularity:** one sheet per (class × subject × semester); pagination for 37+ roster.
+
+### Risk flags
+- **>100 → STPSHS compliance (LOCKED via Q5).** Flag + block + cap-to-100; never silent. Quinn gates the
+  full flag→block→cap behaviour.
+- **PDF-engine portability** — stay on `@react-pdf/renderer` (no puppeteer/chromium/Vercel PDF service). Dex.
+- **Tenant-scoping the read** — all reads via `withSchool` + role gate; consider assignment-scope
+  (`senior_subject_teacher`) for a subject teacher vs VHM/Headmaster unrestricted. Sarah + Kofi.
+- **Audit the export** — a regulator-submission artifact; log the generation, keep score values out of the
+  payload + URL.
+- **Server-only data builder** — `lib/data/stpshs-sheet-data.ts` imports the driver; the client button must
+  trigger a route/download, never import the data module (only `pnpm build` catches the leak).
+
+### Prerequisites
+- ✅ `senior-feat` synced to `main` (`e546605`). · WAEC ICTD API is **not** a dependency (PDF now).
+- **Deploy:** migration 0042 (nullable `stpshs_ref` on `students`) via migrate/prod-paste — **column ALTER
+  only, no new RLS**.
