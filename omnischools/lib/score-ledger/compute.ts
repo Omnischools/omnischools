@@ -25,6 +25,32 @@ export const SYSTEM_DEFAULT_WEIGHTS: CategoryWeights = {
   portfolio: 15,
 };
 
+/**
+ * The five per-category scan denominators (Path B / Item 4). A raw number the extractor read
+ * is interpreted against its category's denominator before it becomes the 0–100 stored value:
+ * raw 8 under a /10 portfolio denominator → 80. Same shape and resolution as the weights.
+ */
+export interface CategoryDenominators {
+  asgn: number;
+  midSem: number;
+  endSem: number;
+  project: number;
+  portfolio: number;
+}
+
+/**
+ * System fallback denominators — all 100 (identity). An unconfigured category never inflates
+ * a mark (raw 8 under /100 → 8); only a smaller configured denominator scales up. The fallback
+ * is deliberately the largest sane denominator so a missing config can never over-award.
+ */
+export const SYSTEM_DEFAULT_DENOMINATORS: CategoryDenominators = {
+  asgn: 100,
+  midSem: 100,
+  endSem: 100,
+  project: 100,
+  portfolio: 100,
+};
+
 /** The four categories Path A auto-compiles from events; portfolio is entered manually. */
 export type ComputableCategory = "ASSIGNMENT" | "MID_SEM_EXAM" | "END_SEM_EXAM" | "PROJECT";
 
@@ -54,6 +80,19 @@ export function resolveWeights(
   schoolDefaultRow: CategoryWeights | null | undefined,
 ): CategoryWeights {
   return subjectRow ?? schoolDefaultRow ?? SYSTEM_DEFAULT_WEIGHTS;
+}
+
+/**
+ * Resolve the five scan denominators for a (school × subject) — identical precedence to
+ * resolveWeights (subject override → school default → system 100), fed the SAME two
+ * ref_assessment_weights rows the weight resolver already fetched (the denominators are
+ * columns on those very rows, so no extra query). Pure — Kofi Q1b / Wells §5 handoff.
+ */
+export function resolveDenominators(
+  subjectRow: CategoryDenominators | null | undefined,
+  schoolDefaultRow: CategoryDenominators | null | undefined,
+): CategoryDenominators {
+  return subjectRow ?? schoolDefaultRow ?? SYSTEM_DEFAULT_DENOMINATORS;
 }
 
 /**

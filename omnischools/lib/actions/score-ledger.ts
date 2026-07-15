@@ -28,6 +28,7 @@ import {
   type EventMark,
   type ComputableCategory,
 } from "@/lib/score-ledger/compute";
+import { reasonRequiredForCommit } from "@/lib/score-ledger/scan-diff";
 
 const LEDGER_PATH = "/senior/score-ledger";
 const CATEGORIES = [
@@ -634,10 +635,6 @@ export async function setLedgerPath(input: unknown): Promise<SetPathResult> {
   const parsed = SetPathSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid path." };
   const d = parsed.data;
-  // Path B (scan/OCR) is not built until Item 4 — don't let it be selected yet.
-  if (d.path === "SCAN_EXTRACT") {
-    return { ok: false, error: "Scan & extract (Path B) is coming soon." };
-  }
   // Don't switch the capture medium of a closed (finalised) semester.
   const closed = await closedPeriodError(school.id, d.periodId);
   if (closed) return { ok: false, error: closed };
@@ -877,5 +874,288 @@ export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirect
     return outcome;
   } catch {
     return { ok: false, error: "Could not save scores. Please try again." };
+  }
+}
+
+// ------------------------------------------- Path B — scan verify & commit (Item 4 / INCR-2)
+const SCAN_PATH = "/senior/score-ledger/scan";
+const SCAN_CATS = ["asgn", "midSem", "endSem", "project", "portfolio"] as const;
+type ScanCat = (typeof SCAN_CATS)[number];
+const CAT_LABEL: Record<ScanCat, string> = {
+  asgn: "assignment",
+  midSem: "mid-sem",
+  endSem: "end-sem",
+  project: "project",
+  portfolio: "portfolio",
+};
+// The authoritative reason domain — ledger_correction_reason (db/schema/_enums.ts). The chosen
+// code rides audit_log.reason (Kofi Q1/Q4); there is no ledger column and no image reference.
+const REASON_CODES = ["RE_GRADED", "TRANSCRIPTION_ERROR", "OTHER"] as const;
+
+const CommitScanSchema = z.object({
+  classId: z.string().uuid(),
+  subjectId: z.string().uuid(),
+  periodId: z.string().uuid(),
+  // Real provenance (Kofi final decision 3 / F4): SCAN_EXTRACT if any cell came from the scan,
+  // DIRECT_ENTRY if extraction failed wholesale and the teacher typed a blank grid in place.
+  origin: z.enum(["SCAN_EXTRACT", "DIRECT_ENTRY"]),
+  scores: z.array(DirectRowSchema),
+  reasons: z
+    .array(
+      z.object({
+        studentId: z.string().uuid(),
+        category: z.enum(SCAN_CATS),
+        code: z.enum(REASON_CODES),
+        note: z.string().trim().max(280).optional(),
+      }),
+    )
+    .default([]),
+});
+
+export type CommitScanResult = { ok: true; saved: number } | { ok: false; error: string };
+
+const numOrNull = (v: string | null) => (v == null ? null : Number(v));
+
+/**
+ * Path B commit (spec §4.2 / Kofi Q6 / E2) — the teacher has verified the extracted grid and
+ * settled every cell; commit writes the confirmed five category values to senior_score_ledger
+ * (the SAME rows Paths A/C write) in ONE transaction, records the real path used + every
+ * correction reason on audit_log, and returns. There is no scan record and no image — the photo
+ * lived only in the browser + in-flight to Claude and is discarded on the client at this point
+ * (owner ruling 3 / G4). A reason is enforced server-side for every score-down and every
+ * committed→blank keep-blank (Q4 / B8), recomputed here from what was actually submitted — never
+ * trusting a client flag. Uncovered students (multi-page partial / D3 / E3) are simply not in the
+ * payload, so their committed rows are untouched, never blanked.
+ */
+export async function commitScanLedger(input: unknown): Promise<CommitScanResult> {
+  const { school } = await requireSchool();
+  await assertAnyRole(SENIOR_LEDGER_ROLES);
+  const parsed = CommitScanSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid scores." };
+  }
+  const d = parsed.data;
+  const closed = await closedPeriodError(school.id, d.periodId);
+  if (closed) return { ok: false, error: closed };
+
+  // A free-text note is mandatory on OTHER (Kofi Q4) — validated before the DB.
+  for (const r of d.reasons) {
+    if (r.code === "OTHER" && !(r.note && r.note.length > 0)) {
+      return { ok: false, error: "Add a short note explaining the 'Other' reason." };
+    }
+  }
+
+  // Validate + parse every cell up-front, before the transaction (atomicity — same as Path C).
+  const parsedRows: { studentId: string; cats: CategoryScores }[] = [];
+  for (const s of d.scores) {
+    const vals = {
+      asgn: parseCat(s.asgn),
+      midSem: parseCat(s.midSem),
+      endSem: parseCat(s.endSem),
+      project: parseCat(s.project),
+      portfolio: parseCat(s.portfolio),
+    };
+    if (Object.values(vals).some((v) => v === "invalid")) {
+      return { ok: false, error: "Each category score must be between 0 and 100." };
+    }
+    parsedRows.push({ studentId: s.studentId, cats: vals as CategoryScores });
+  }
+
+  const reasonByKey = new Map(
+    d.reasons.map((r) => [`${r.studentId}:${r.category}`, r] as const),
+  );
+  const actor = await resolveActor(school.id);
+
+  try {
+    const outcome = await withSchool(
+      school.id,
+      async (tx): Promise<{ ok: true; saved: number } | { ok: false; error: string }> => {
+        // The context must be on Path B (the /scan screen is only reachable then).
+        const [pathRow] = await tx
+          .select({ path: seniorLedgerPath.path })
+          .from(seniorLedgerPath)
+          .where(
+            and(
+              eq(seniorLedgerPath.schoolId, school.id),
+              eq(seniorLedgerPath.classId, d.classId),
+              eq(seniorLedgerPath.subjectId, d.subjectId),
+              eq(seniorLedgerPath.periodId, d.periodId),
+            ),
+          );
+        if (pathRow?.path !== "SCAN_EXTRACT") {
+          return { ok: false, error: "Switch this class to Scan & extract (Path B) first." };
+        }
+
+        // Only ACTIVE students in this class (tenant + roster scope).
+        const roster = await tx
+          .select({ id: students.id })
+          .from(students)
+          .where(
+            and(
+              eq(students.schoolId, school.id),
+              eq(students.classId, d.classId),
+              eq(students.status, "ACTIVE"),
+            ),
+          );
+        const validStudents = new Set(roster.map((r) => r.id));
+        const ids = roster.map((r) => r.id);
+
+        // The currently-committed cells — the diff baseline (Kofi Q1) and the STPSHS_READY carry.
+        const existing = ids.length
+          ? await tx
+              .select({
+                studentId: seniorScoreLedger.studentId,
+                asgnScore: seniorScoreLedger.asgnScore,
+                midSemScore: seniorScoreLedger.midSemScore,
+                endSemScore: seniorScoreLedger.endSemScore,
+                projectScore: seniorScoreLedger.projectScore,
+                portfolioScore: seniorScoreLedger.portfolioScore,
+                status: seniorScoreLedger.status,
+              })
+              .from(seniorScoreLedger)
+              .where(
+                and(
+                  eq(seniorScoreLedger.schoolId, school.id),
+                  eq(seniorScoreLedger.subjectId, d.subjectId),
+                  eq(seniorScoreLedger.periodId, d.periodId),
+                  inArray(seniorScoreLedger.studentId, ids),
+                ),
+              )
+          : [];
+        const committedByStudent = new Map(
+          existing.map((e) => [
+            e.studentId,
+            {
+              asgn: numOrNull(e.asgnScore),
+              midSem: numOrNull(e.midSemScore),
+              endSem: numOrNull(e.endSemScore),
+              project: numOrNull(e.projectScore),
+              portfolio: numOrNull(e.portfolioScore),
+            } as CategoryScores,
+          ]),
+        );
+        const prevStatus = new Map(existing.map((e) => [e.studentId, e.status]));
+
+        // Enforce a reason for every score-down and every committed→blank (Q4 / B8), recomputed
+        // from committed-vs-final. Collect the corrections for the before/after audit trail (B9).
+        type Correction = {
+          studentId: string;
+          cat: ScanCat;
+          before: number | null;
+          after: number | null;
+          code: string;
+          note?: string;
+        };
+        const corrections: Correction[] = [];
+        for (const { studentId, cats } of parsedRows) {
+          if (!validStudents.has(studentId)) continue;
+          const committed = committedByStudent.get(studentId) ?? null;
+          for (const cat of SCAN_CATS) {
+            const before = committed ? committed[cat] : null;
+            const after = cats[cat];
+            if (!reasonRequiredForCommit(before, after)) continue;
+            const reason = reasonByKey.get(`${studentId}:${cat}`);
+            if (!reason) {
+              return {
+                ok: false,
+                error: `A reason is required to ${
+                  after == null ? "remove" : "lower"
+                } a ${CAT_LABEL[cat]} score. Review the flagged change before committing.`,
+              };
+            }
+            corrections.push({ studentId, cat, before, after, code: reason.code, note: reason.note });
+          }
+        }
+
+        const weights = await loadWeights(tx, school.id, d.subjectId);
+        let n = 0;
+        for (const { studentId, cats } of parsedRows) {
+          if (!validStudents.has(studentId)) continue;
+          const total = weightedTotalComplete(cats, weights);
+          const status =
+            prevStatus.get(studentId) === "STPSHS_READY" && allCategoriesPresent(cats)
+              ? ("STPSHS_READY" as const)
+              : computedStatus(cats);
+          const row = {
+            asgnScore: cats.asgn == null ? null : cats.asgn.toFixed(2),
+            midSemScore: cats.midSem == null ? null : cats.midSem.toFixed(2),
+            endSemScore: cats.endSem == null ? null : cats.endSem.toFixed(2),
+            projectScore: cats.project == null ? null : cats.project.toFixed(2),
+            portfolioScore: cats.portfolio == null ? null : cats.portfolio.toFixed(2),
+            weightedTotal: total == null ? null : total.toFixed(2),
+            asgnWeightUsed: weights.asgn,
+            midSemWeightUsed: weights.midSem,
+            endSemWeightUsed: weights.endSem,
+            projectWeightUsed: weights.project,
+            portfolioWeightUsed: weights.portfolio,
+            // A scanned portfolio is still human-written → manual (spec §4.1).
+            portfolioManual: cats.portfolio != null,
+            status,
+            compiledByUserId: actor.id ?? undefined,
+            compiledAt: new Date(),
+            updatedAt: new Date(),
+          };
+          await tx
+            .insert(seniorScoreLedger)
+            .values({
+              schoolId: school.id,
+              studentId,
+              subjectId: d.subjectId,
+              periodId: d.periodId,
+              ...row,
+            })
+            .onConflictDoUpdate({
+              target: [
+                seniorScoreLedger.schoolId,
+                seniorScoreLedger.studentId,
+                seniorScoreLedger.subjectId,
+                seniorScoreLedger.periodId,
+              ],
+              set: row,
+            });
+          n++;
+        }
+
+        // Commit summary — path_used lives here (no ledger column exists; single migration 0041
+        // is denominators + reason enum only). Never carries the image or a reference to it (B9/G1).
+        await recordAudit(tx, {
+          schoolId: school.id,
+          actorUserId: actor.id ?? undefined,
+          actorRole: actor.role,
+          actionType: "updated",
+          entityType: "senior_score_ledger",
+          entityId: d.subjectId,
+          after: {
+            periodId: d.periodId,
+            rows: n,
+            pathUsed: d.origin,
+            corrections: corrections.length,
+          },
+          reason: "Scan verified & committed (Path B)",
+        });
+        // One before/after row per correction, carrying the reason code (Kofi Q4 / B9).
+        for (const c of corrections) {
+          await recordAudit(tx, {
+            schoolId: school.id,
+            actorUserId: actor.id ?? undefined,
+            actorRole: actor.role,
+            actionType: "updated",
+            entityType: "senior_score_ledger",
+            entityId: c.studentId,
+            before: { category: c.cat, value: c.before },
+            after: { category: c.cat, value: c.after },
+            reason: c.note ? `${c.code}: ${c.note}` : c.code,
+          });
+        }
+        return { ok: true, saved: n };
+      },
+    );
+    if (outcome.ok) {
+      safeRevalidate(LEDGER_PATH);
+      safeRevalidate(SCAN_PATH);
+    }
+    return outcome;
+  } catch {
+    return { ok: false, error: "Could not commit the scan. Please try again." };
   }
 }

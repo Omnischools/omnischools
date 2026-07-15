@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   SYSTEM_DEFAULT_WEIGHTS,
+  SYSTEM_DEFAULT_DENOMINATORS,
   MAX_PERCENT,
   resolveWeights,
+  resolveDenominators,
   percent,
   exceedsMax,
   meanPercent,
@@ -12,6 +14,7 @@ import {
   provisionalTotal,
   computedStatus,
   type CategoryScores,
+  type CategoryDenominators,
   type EventMark,
 } from "./compute";
 
@@ -29,6 +32,39 @@ describe("resolveWeights", () => {
   it("falls back to the system constant when neither exists", () => {
     expect(resolveWeights(null, null)).toEqual(W);
     expect(resolveWeights(undefined, undefined)).toEqual(W);
+  });
+});
+
+describe("resolveDenominators (A · denominator resolution)", () => {
+  const subj: CategoryDenominators = {
+    asgn: 100,
+    midSem: 100,
+    endSem: 100,
+    project: 100,
+    portfolio: 20,
+  };
+  const school: CategoryDenominators = {
+    asgn: 100,
+    midSem: 100,
+    endSem: 100,
+    project: 100,
+    portfolio: 10,
+  };
+  it("A4 prefers the per-subject override over the school default", () => {
+    expect(resolveDenominators(subj, school)).toBe(subj);
+  });
+  it("falls back to the school default when there is no subject row", () => {
+    expect(resolveDenominators(null, school)).toBe(school);
+  });
+  it("A3 falls back to the system 100s when neither row exists (never inflates)", () => {
+    expect(resolveDenominators(null, null)).toEqual(SYSTEM_DEFAULT_DENOMINATORS);
+    expect(SYSTEM_DEFAULT_DENOMINATORS).toEqual({
+      asgn: 100,
+      midSem: 100,
+      endSem: 100,
+      project: 100,
+      portfolio: 100,
+    });
   });
 });
 

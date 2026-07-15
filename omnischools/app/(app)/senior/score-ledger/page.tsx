@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { requireSchoolRole } from "@/lib/auth/server";
@@ -306,6 +307,30 @@ export default async function ScoreLedgerPage({
               </div>
             </div>
           </div>
+
+          {/* Path B — scan a paper ledger page; extract, verify and commit on the /scan screen. */}
+          {data.path === "SCAN_EXTRACT" && (
+            <section className="rounded-[14px] border border-gold-soft bg-gold-bg p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-lg font-semibold text-navy">
+                    Scan your paper ledger · <em className="italic text-gold">Path B</em>
+                  </h2>
+                  <p className="mt-1 max-w-xl text-[12.5px] text-navy-2">
+                    Photograph a page of your paper book; Omnischools reads the five category scores and
+                    you verify each one before it commits. The photo is read once and discarded — never
+                    saved.
+                  </p>
+                </div>
+                <Link
+                  href={`/senior/score-ledger/scan?classId=${classId}&subjectId=${subjectId}&periodId=${periodId}`}
+                  className="rounded-md bg-navy px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep"
+                >
+                  Scan a ledger page →
+                </Link>
+              </div>
+            </section>
+          )}
 
           {/* Path A only — record assessments; the ledger above recompiles on save.
               Path C enters the five categories directly in the grid above (no events). */}

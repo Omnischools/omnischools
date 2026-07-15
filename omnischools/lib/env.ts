@@ -19,6 +19,11 @@ const schema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 
+  // Claude Vision — score-ledger scan extraction (Path B / Item 4). Server-only (NOT
+  // NEXT_PUBLIC): the base64 photo is sent to Claude from our own API route, never the
+  // client. Absent in dev/CI → the extractor falls back to the deterministic stub.
+  ANTHROPIC_API_KEY: z.string().optional(),
+
   // SMS / email providers (stubbed until credentials exist)
   HUBTEL_CLIENT_ID: z.string().optional(),
   HUBTEL_CLIENT_SECRET: z.string().optional(),

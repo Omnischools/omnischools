@@ -288,6 +288,13 @@
       "when": 1783286276085,
       "tag": "0040_green_captain_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1784070584660,
+      "tag": "0041_little_human_torch",
+      "breakpoints": true
     }
   ]
 }

@@ -187,3 +187,15 @@ export const capturePathEnum = pgEnum("capture_path", [
   "SCAN_EXTRACT",
   "DIRECT_ENTRY",
 ]);
+
+// Score-ledger correction reason (Path B scan diff — Item 4/INCR-2). This is the
+// authoritative DOMAIN of allowed reason codes; it is deliberately NOT a table column.
+// The chosen code persists as the free-text `reason` on auditLog (lib/db/audit.ts) when a
+// teacher accepts a score-down or a Case-D "keep blank" — no new ledger column (Kofi Q1/Q4).
+// Exposed as a pgEnum (matching the codebase's enum-heavy style) so the app + any future
+// Item 7 version-chain column share one typed source of truth. Free text is mandatory on OTHER.
+export const ledgerCorrectionReasonEnum = pgEnum("ledger_correction_reason", [
+  "RE_GRADED",
+  "TRANSCRIPTION_ERROR",
+  "OTHER",
+]);

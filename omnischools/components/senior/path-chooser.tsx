@@ -29,7 +29,7 @@ const PATHS: {
     letter: "B",
     name: "Scan my paper ledger",
     desc: "I keep a paper book; photograph it and Omnischools extracts the scores. I verify cell-by-cell.",
-    available: false,
+    available: true,
   },
   {
     path: "DIRECT_ENTRY",
