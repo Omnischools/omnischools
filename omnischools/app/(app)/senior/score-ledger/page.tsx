@@ -22,7 +22,13 @@ import {
   type AssessmentCategory,
 } from "@/components/senior/senior-assessment-grid";
 import { SeniorLedgerGrid, type LedgerRow } from "@/components/senior/senior-ledger-grid";
+import { StpshsGenerateButton } from "@/components/senior/stpshs-generate-button";
 import { resolveWeights, type CategoryWeights } from "@/lib/score-ledger/compute";
+import {
+  overHundredCells,
+  rosterQualifies,
+  STPSHS_CATEGORY_LABEL,
+} from "@/lib/score-ledger/stpshs-sheet";
 
 export const dynamic = "force-dynamic";
 
@@ -211,10 +217,25 @@ export default async function ScoreLedgerPage({
         { label: "Individual project work", done: count("projectScore") },
       ];
       const portfolioDone = count("portfolioScore");
-      const complete = data.ledger.filter(
-        (l) => l.status === "COMPLETE" || l.status === "STPSHS_READY",
-      ).length;
-      const ready = complete === n && n > 0;
+      // Same Q3 gate the download route enforces — every active student COMPLETE/STPSHS_READY.
+      const ready = rosterQualifies(ledgerRows.map((r) => r.status));
+
+      // Over-100 cells (Q5) — flagged in the grid, and they block STPSHS generation until the
+      // teacher corrects them down or acknowledges the cap. Reuses the shared predicate + labels
+      // so the client preview reads identically to the server 409 (Dex #1/#2).
+      const overCells = overHundredCells(
+        ledgerRows.map((r) => ({
+          studentId: r.id,
+          name: r.name,
+          cats: {
+            asgn: r.asgn,
+            midSem: r.midSem,
+            endSem: r.endSem,
+            project: r.project,
+            portfolio: r.portfolio,
+          },
+        })),
+      ).map((c) => ({ name: c.name, category: STPSHS_CATEGORY_LABEL[c.category] }));
 
       workspace = (
         <div className="space-y-6">
@@ -303,6 +324,13 @@ export default async function ScoreLedgerPage({
                       STPSHS-ready score sheet generates from this ledger.
                     </p>
                   )}
+                  <StpshsGenerateButton
+                    classId={classId}
+                    subjectId={subjectId}
+                    periodId={periodId}
+                    complete={ready}
+                    overCells={overCells}
+                  />
                 </div>
               </div>
             </div>
