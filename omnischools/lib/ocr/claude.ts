@@ -11,12 +11,15 @@ import type {
  * Hubtel): the vendor is called over plain `fetch`, never a vendor SDK, so this file is the only
  * place that knows the wire shape — a Sonnet 5 upgrade later is a one-constant swap (owner ruling 1).
  *
- * Request shape (verified against the Anthropic Messages API for Haiku 4.5, `anthropic-version:
- * 2023-06-01`): structured output is obtained with a FORCED tool call — a single tool whose
- * `input_schema` is our grid shape + `tool_choice: {type:"tool"}` — the GA, model-agnostic way to
- * constrain output. (The salvaged WIP used `output_config` + `thinking:{type:"adaptive"}`; neither
- * is a valid Messages-API field, so both were dropped. Haiku 4.5 needs no thinking to transcribe a
- * grid, and forcing a tool is incompatible with extended thinking anyway.)
+ * Request shape (verified against the Anthropic Messages API + the claude-api reference for Haiku
+ * 4.5, `anthropic-version: 2023-06-01`): structured output is a FORCED, STRICT tool call — a single
+ * tool whose `input_schema` is our grid shape + `tool_choice: {type:"tool"}` + `strict:true` — a GA,
+ * model-agnostic way to constrain output that Haiku 4.5 supports (`strict` guarantees the grid
+ * validates against the schema). `output_config: {format:{type:"json_schema"}}` is also valid on
+ * Haiku 4.5 and would work; the forced tool is chosen for provider-neutrality. The salvaged WIP set
+ * `thinking:{type:"adaptive"}` — a Claude-4.6+ feature Haiku 4.5 does NOT support (Haiku 4.5 uses
+ * `{type:"enabled", budget_tokens}` and has no `effort`) — so thinking is dropped: transcription
+ * needs none.
  *
  * The image is transient: it is read from the in-memory data URL, sent once, and never stored or
  * logged (G1–G4) — this module holds no reference to it after the request resolves.
@@ -134,6 +137,7 @@ export class ClaudeLedgerExtractor implements LedgerExtractor {
             description:
               "Record the extracted five-category score grid, one entry per handwritten row.",
             input_schema: EXTRACTION_SCHEMA,
+            strict: true,
           },
         ],
         tool_choice: { type: "tool", name: TOOL_NAME },
