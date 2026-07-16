@@ -337,6 +337,22 @@ export default async function ScoreLedgerPage({
                     complete={ready}
                     overCells={overCells}
                   />
+                  {/* Blank paper book — pre-printed names + empty grid, printed BEFORE scores
+                      exist, so it is never gated on completeness (INCR-5 · Item 6). */}
+                  <div className="mt-3 border-t border-border pt-3">
+                    <a
+                      href={`/api/senior/ledger-book?classId=${classId}&subjectId=${subjectId}&periodId=${periodId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex rounded-md border border-navy px-5 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-navy hover:text-bg"
+                    >
+                      Print ledger book →
+                    </a>
+                    <p className="mt-2 text-[12px] text-navy-3">
+                      The Omnischools blank paper book — pre-printed names, empty five-category
+                      grid — to hand-write scores into. Available before any score is entered.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
