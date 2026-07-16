@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { requireSchoolRole } from "@/lib/auth/server";
+import { requireSchoolRole, resolveActor } from "@/lib/auth/server";
 import { SENIOR_LEDGER_ROLES } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
 import {
@@ -13,6 +13,7 @@ import {
   seniorAssessmentScores,
   seniorScoreLedger,
   seniorLedgerPath,
+  seniorSubjectTeacher,
   assessmentWeights,
 } from "@/db/schema";
 import { GradebookSelectors } from "@/components/gradebook/selectors";
@@ -22,8 +23,10 @@ import {
   type AssessmentCategory,
 } from "@/components/senior/senior-assessment-grid";
 import { SeniorLedgerGrid, type LedgerRow } from "@/components/senior/senior-ledger-grid";
+import { PwaLedger, type PwaClass } from "@/components/senior/pwa-ledger";
 import { StpshsGenerateButton } from "@/components/senior/stpshs-generate-button";
 import { resolveWeights, type CategoryWeights } from "@/lib/score-ledger/compute";
+import { computeVhmTier } from "@/lib/score-ledger/vhm-progress";
 import {
   overHundredCells,
   rosterQualifies,
@@ -39,7 +42,7 @@ export default async function ScoreLedgerPage({
 }: {
   searchParams: { classId?: string; subjectId?: string; periodId?: string };
 }) {
-  const { school } = await requireSchoolRole(SENIOR_LEDGER_ROLES);
+  const { school, user } = await requireSchoolRole(SENIOR_LEDGER_ROLES);
   // Senior-only surface — a Basic (KG · Primary · JHS) school has no score ledger.
   if (school.schoolType === "BASIC") redirect("/gradebook");
 
@@ -89,6 +92,9 @@ export default async function ScoreLedgerPage({
   );
 
   let activePath: CapturePath = "AUTO_COMPILE";
+  // The installable phone form factor (INCR-4) — the SAME route responsive-down. Populated below
+  // when a full context is chosen; rendered md:hidden while the desktop grid renders md:block.
+  let pwaView: React.ReactNode = null;
 
   if (classId && subjectId && periodId) {
     const data = await withSchool(school.id, async (tx) => {
@@ -392,11 +398,139 @@ export default async function ScoreLedgerPage({
     }
   }
 
+  // ---- Phone (PWA) data: the teacher's classes for this subject×semester, each a switchable
+  // ledger. Loaded together so a class switch is a non-destructive in-tab state change that
+  // preserves the pending buffer + cursor (INCR-4 / S6). Teacher-scoped via senior_subject_teacher;
+  // the active URL class is always included, and a single class suppresses the chevron (S2).
+  if (classId && subjectId && periodId) {
+    const actor = await resolveActor(school.id);
+    const pwa = await withSchool(school.id, async (tx) => {
+      const assignments = await tx
+        .select({
+          classId: seniorSubjectTeacher.classId,
+          teacherUserId: seniorSubjectTeacher.teacherUserId,
+        })
+        .from(seniorSubjectTeacher)
+        .where(
+          and(
+            eq(seniorSubjectTeacher.schoolId, school.id),
+            eq(seniorSubjectTeacher.subjectId, subjectId),
+          ),
+        );
+      const mine = actor.id ? assignments.filter((a) => a.teacherUserId === actor.id) : [];
+      let classIds = (mine.length ? mine : assignments).map((a) => a.classId);
+      if (!classIds.includes(classId)) classIds.push(classId);
+      classIds = Array.from(new Set(classIds));
+
+      const roster = await tx
+        .select({
+          id: students.id,
+          firstName: students.firstName,
+          lastName: students.lastName,
+          code: students.studentCode,
+          classId: students.classId,
+        })
+        .from(students)
+        .where(
+          and(
+            eq(students.schoolId, school.id),
+            inArray(students.classId, classIds),
+            eq(students.status, "ACTIVE"),
+          ),
+        )
+        .orderBy(asc(students.lastName));
+      const ids = roster.map((r) => r.id);
+      const ledger = ids.length
+        ? await tx
+            .select()
+            .from(seniorScoreLedger)
+            .where(
+              and(
+                eq(seniorScoreLedger.schoolId, school.id),
+                eq(seniorScoreLedger.subjectId, subjectId),
+                eq(seniorScoreLedger.periodId, periodId),
+                inArray(seniorScoreLedger.studentId, ids),
+              ),
+            )
+        : [];
+      const paths = await tx
+        .select({ classId: seniorLedgerPath.classId, path: seniorLedgerPath.path })
+        .from(seniorLedgerPath)
+        .where(
+          and(
+            eq(seniorLedgerPath.schoolId, school.id),
+            eq(seniorLedgerPath.subjectId, subjectId),
+            eq(seniorLedgerPath.periodId, periodId),
+            inArray(seniorLedgerPath.classId, classIds),
+          ),
+        );
+      return { classIds, roster, ledger, paths };
+    });
+
+    const ledgerByStudent = new Map(pwa.ledger.map((l) => [l.studentId, l]));
+    const pathByClass = new Map(pwa.paths.map((p) => [p.classId, p.path]));
+    const classNameById = new Map(base.cls.map((c) => [c.id, c.name]));
+
+    const pwaClasses: PwaClass[] = pwa.classIds.map((cid) => {
+      const rosterRows = pwa.roster.filter((r) => r.classId === cid);
+      const rows: LedgerRow[] = rosterRows.map((r) => {
+        const l = ledgerByStudent.get(r.id);
+        return {
+          id: r.id,
+          name: `${r.lastName}, ${r.firstName}`,
+          code: r.code,
+          asgn: l ? numOrNull(l.asgnScore) : null,
+          midSem: l ? numOrNull(l.midSemScore) : null,
+          endSem: l ? numOrNull(l.endSemScore) : null,
+          project: l ? numOrNull(l.projectScore) : null,
+          portfolio: l ? numOrNull(l.portfolioScore) : null,
+          status: (l?.status ?? "DRAFT") as LedgerRow["status"],
+        };
+      });
+      const n = rows.length;
+      const filled = {
+        asgn: rows.filter((r) => r.asgn != null).length,
+        midSem: rows.filter((r) => r.midSem != null).length,
+        endSem: rows.filter((r) => r.endSem != null).length,
+        project: rows.filter((r) => r.project != null).length,
+        portfolio: rows.filter((r) => r.portfolio != null).length,
+      };
+      const { categoriesDone } = computeVhmTier(filled, n);
+      return {
+        classId: cid,
+        className: classNameById.get(cid) ?? "Class",
+        subjectName,
+        studentCount: n,
+        path: (pathByClass.get(cid) ?? "AUTO_COMPILE") as PwaClass["path"],
+        categoriesDone,
+        rows,
+        weights,
+      };
+    });
+
+    const semesterMeta = `${period?.periodLabel ?? "This semester"} · ${
+      period?.academicYear ?? ""
+    }`.replace(/ · $/, "");
+
+    pwaView = (
+      <PwaLedger
+        classes={pwaClasses}
+        activeClassId={classId}
+        subjectId={subjectId}
+        periodId={periodId}
+        teacherId={user.id}
+        teacherName={user.name ?? "Teacher"}
+        semesterMeta={semesterMeta}
+      />
+    );
+  }
+
   const weightSummary = `${weights.asgn}/${weights.midSem}/${weights.endSem}/${weights.project}/${weights.portfolio}`;
 
   return (
     <div className="mx-auto max-w-page">
-      <div className="mb-5">
+      {/* Desktop lede — the phone form factor carries its own context header (§2). */}
+      <div className="mb-5 hidden md:block">
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">
           Omnischools Senior · Score ledger
         </div>
@@ -419,7 +553,7 @@ export default async function ScoreLedgerPage({
         </p>
       </div>
 
-      <div className="mb-5">
+      <div className="mb-5 hidden md:block">
         <PathChooser
           activePath={activePath}
           context={
@@ -445,7 +579,9 @@ export default async function ScoreLedgerPage({
         />
       </div>
 
-      {workspace}
+      {/* Desktop grid (md+) and the responsive phone PWA (mobile) render the SAME ledger data. */}
+      <div className="hidden md:block">{workspace}</div>
+      {pwaView && <div className="md:hidden">{pwaView}</div>}
     </div>
   );
 }

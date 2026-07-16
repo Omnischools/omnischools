@@ -8,6 +8,7 @@ import { SENIOR_LEDGER_ROLES } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
 import type { Tx } from "@/lib/db";
 import {
+  classes,
   students,
   academicPeriod,
   seniorAssessments,
@@ -517,7 +518,7 @@ const SavePortfolioSchema = z.object({
   scores: z.array(
     z.object({
       studentId: z.string().uuid(),
-      value: z.string(), // "" → clear; otherwise 0–100
+      value: z.string(), // "" → clear; otherwise 0–999.99 (parseCategoryCell, shared with Paths A/B/C)
     }),
   ),
 });
@@ -541,6 +542,19 @@ export async function savePortfolioScores(input: unknown): Promise<SavePortfolio
   const d = parsed.data;
   const closed = await closedPeriodError(school.id, d.periodId);
   if (closed) return { ok: false, error: closed };
+
+  // Validate + parse EVERY portfolio cell up-front through the SAME parseCategoryCell path Paths
+  // A/B/C use (0–MAX_PERCENT / 999.99, INCR-2 Option A) so the paths can't disagree. An
+  // out-of-range value REJECTS with an error — never silently dropped then falsely reported as
+  // saved (Quinn MAJOR / B6 / R4): the PWA buffer's bufferReject then drives the red errored cell.
+  const parsedScores: { studentId: string; value: number | null }[] = [];
+  for (const s of d.scores) {
+    const v = parseCategoryCell(s.value);
+    if (v === "invalid") {
+      return { ok: false, error: "Portfolio score must be between 0 and 999.99." };
+    }
+    parsedScores.push({ studentId: s.studentId, value: v });
+  }
   const actor = await resolveActor(school.id);
 
   try {
@@ -561,16 +575,13 @@ export async function savePortfolioScores(input: unknown): Promise<SavePortfolio
         );
       const validStudents = new Set(roster.map((r) => r.id));
       let n = 0;
-      for (const s of d.scores) {
-        if (!validStudents.has(s.studentId)) continue;
-        const trimmed = s.value.trim();
-        const num = trimmed === "" ? null : Number(trimmed);
-        if (num != null && (!Number.isFinite(num) || num < 0 || num > 100)) continue;
+      for (const { studentId, value: num } of parsedScores) {
+        if (!validStudents.has(studentId)) continue;
         await tx
           .insert(seniorScoreLedger)
           .values({
             schoolId: school.id,
-            studentId: s.studentId,
+            studentId,
             subjectId: d.subjectId,
             periodId: d.periodId,
             portfolioScore: num == null ? null : num.toFixed(2),
@@ -677,6 +688,53 @@ export async function setLedgerPath(input: unknown): Promise<SetPathResult> {
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not change the path. Please try again." };
+  }
+}
+
+// ----------------------------------------- class switch audit (PWA · INCR-4)
+const SwitchClassSchema = z.object({
+  classId: z.string().uuid(),
+  subjectId: z.string().uuid(),
+  periodId: z.string().uuid(),
+});
+
+/**
+ * Record a class-context switch from the PWA bottom sheet (INCR-4 / S5). The switch is
+ * "who looked at which class, when" — the same class-context audit trail every other
+ * class action writes, so the phone adds no new audit surface. Tenant-scoped: the class
+ * must belong to the caller's school (RLS + the existence check) or nothing is logged.
+ * Read-only navigation — never touches senior_score_ledger.
+ */
+export async function logClassSwitch(
+  input: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { school } = await requireSchool();
+  await assertAnyRole(SENIOR_LEDGER_ROLES);
+  const parsed = SwitchClassSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid class." };
+  const d = parsed.data;
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      const [cls] = await tx
+        .select({ id: classes.id })
+        .from(classes)
+        .where(and(eq(classes.schoolId, school.id), eq(classes.id, d.classId)));
+      if (!cls) return; // not this school's class — RLS-safe no-op
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "viewed",
+        entityType: "senior_score_ledger",
+        entityId: d.classId,
+        after: { subjectId: d.subjectId, periodId: d.periodId, via: "pwa_switcher" },
+        reason: "Class switched (PWA)",
+      });
+    });
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not record the switch." };
   }
 }
 
