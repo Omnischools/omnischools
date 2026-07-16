@@ -3,6 +3,7 @@ import {
   uuid,
   text,
   smallint,
+  integer,
   boolean,
   numeric,
   date,
@@ -332,5 +333,108 @@ export const seniorSubjectTeacher = pgTable(
       columns: [t.schoolId, t.subjectId],
       foreignColumns: [subjects.schoolId, subjects.id],
     }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * Score Ledger Item 7 (INCR-6) — the retained, immutable version snapshot of a
+ * senior_score_ledger row at commit time, forming a per-grain supersedes chain.
+ *
+ * GRAIN: one snapshot per (school × student × subject × period) per commit, all grains of a
+ * single upload sharing one `batch_id` (backs the "supersedes the <date> upload" provenance;
+ * partial re-upload → batch spans only its covered grains — B3/B5).
+ *
+ * APPEND-ONLY IMMUTABLE (Kofi Q2): each commit writes ONE new snapshot per grain that
+ * self-FKs the *existing* prior latest for that grain (`supersedes_id`, NULL for genesis);
+ * rows are never UPDATE/DELETEd except the Q6 period-scoped prune. The live
+ * senior_score_ledger row stays the "latest verified" projection; this table is queryable
+ * history + the new-vs-prior cell diff, deliberately distinct from audit_log (event log).
+ *
+ * PATH-AGNOSTIC: Path B (`commitScanLedger`) is the only writer today (Q7b), but `path_used`
+ * is stored so a future Path-C checkpoint needs no migration.
+ *
+ * PRUNE (Q6, lazy): prunePriorPeriodVersions deletes rows whose period maps to a CLOSED
+ * academic_period (`closed_at IS NOT NULL`) inside the same write tx — indexed on
+ * (school_id, period_id). A reopened period is spared; supersedes is co-periodic and always
+ * resolved from an existing row at write time, so a whole-chain prune never dangles the FK.
+ * See INCR-6 in docs/senior-build-plan.md and docs/senior/item7-ledger-versions.md.
+ */
+export const seniorScoreLedgerVersion = pgTable(
+  "senior_score_ledger_version",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    periodId: uuid("period_id").notNull(),
+    // Monotonic per grain: exactly one row per (grain, version_number) — the concurrency +
+    // chain-integrity guard (AC I1). v1 = genesis, v2 supersedes v1, …
+    versionNumber: integer("version_number").notNull(),
+    // Shared by every grain committed in one upload (B3); a partial re-upload's batch spans
+    // only its covered grains (B5).
+    batchId: uuid("batch_id").notNull(),
+    // Faithful snapshot of the five category cells + weighted total + status at commit time
+    // (same names/types as senior_score_ledger) — reproduces the grid and backs the
+    // new-vs-prior cell diff (§7.2/D3). Weights_used / portfolio_manual are deliberately NOT
+    // snapshotted: the version's job is provenance + cell diff, and the frozen weights live
+    // on the durable senior_score_ledger row (a future weighted-total reconstruction from a
+    // version would be an additive column, not needed now).
+    asgnScore: score("asgn_score"),
+    midSemScore: score("mid_sem_score"),
+    endSemScore: score("end_sem_score"),
+    projectScore: score("project_score"),
+    portfolioScore: score("portfolio_score"),
+    weightedTotal: score("weighted_total"),
+    status: ledgerStatusEnum("status").notNull(),
+    // Which capture path wrote this version (Path B = SCAN_EXTRACT today; path-agnostic).
+    pathUsed: capturePathEnum("path_used").notNull(),
+    committedByUserId: uuid("committed_by_user_id").references(() => users.id),
+    committedAt: timestamp("committed_at", { withTimezone: true }).notNull().defaultNow(),
+    // Composite self-FK → the prior latest version for this grain (co-periodic, same school).
+    // NULL = genesis (B1). Nullable, so MATCH SIMPLE skips the FK check on genesis rows.
+    supersedesId: uuid("supersedes_id"),
+  },
+  (t) => ({
+    // Composite tenant UK — the target of the supersedes self-FK. Emitted INLINE in CREATE
+    // TABLE; the self-FK is a later ALTER, so the UK always exists first (no 0033-class
+    // FK-before-UNIQUE ordering hazard).
+    tenantUk: unique("senior_score_ledger_version_tenant_uk").on(t.schoolId, t.id),
+    // Exactly one version_number per grain — concurrency guard (AC I1) + chain integrity.
+    // Its btree also serves latest-version-by-grain lookup (grain columns lead, version_number
+    // trails → ORDER BY version_number DESC LIMIT 1 is an index scan), so no separate grain
+    // index is needed. This is the conflict target the versioned-write path guards on.
+    uniqGrainVersion: unique("uniq_ledger_version_grain_number").on(
+      t.schoolId,
+      t.studentId,
+      t.subjectId,
+      t.periodId,
+      t.versionNumber,
+    ),
+    // Tenant-scoped prune index — prunePriorPeriodVersions deletes rows whose period maps to a
+    // closed academic_period (period-scoped DELETE in the write tx).
+    prune: index("senior_ledger_version_prune_idx").on(t.schoolId, t.periodId),
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    subjectFk: foreignKey({
+      columns: [t.schoolId, t.subjectId],
+      foreignColumns: [subjects.schoolId, subjects.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.periodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
+    // Composite self-FK (school_id, supersedes_id) → (school_id, id) — intra-tenant, so
+    // composite per the tenant-FK rule: a cross-tenant supersedes is structurally impossible
+    // (J2). NO ACTION (default, not SET NULL): a composite SET NULL would also null school_id,
+    // and supersedes_id is write-once immutable (A3); the whole-period prune deletes an entire
+    // co-periodic chain in one statement (NO ACTION is satisfied at statement end).
+    supersedesFk: foreignKey({
+      columns: [t.schoolId, t.supersedesId],
+      foreignColumns: [t.schoolId, t.id],
+    }),
   }),
 );

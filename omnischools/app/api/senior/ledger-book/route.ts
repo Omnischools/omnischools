@@ -104,7 +104,7 @@ export async function GET(req: Request) {
       actorUserId: actor.id ?? undefined,
       actorRole: actor.role,
       actionType: "LEDGER_BOOK_GENERATED",
-      entityType: "senior_score_ledger",
+      entityType: "ledger_book",
       entityId: ctx.subjectId,
       after: {
         classId: ctx.classId,

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { requireSchoolRole } from "@/lib/auth/server";
 import { SENIOR_LEDGER_ROLES } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
@@ -11,6 +11,7 @@ import {
   academicPeriod,
   seniorLedgerPath,
   seniorScoreLedger,
+  seniorScoreLedgerVersion,
   assessmentWeights,
 } from "@/db/schema";
 import {
@@ -108,6 +109,24 @@ export default async function ScanPage({
             ),
           )
       : [];
+    // Item 7 (INCR-6) provenance lede — the most recent EXISTING version's committedAt for this
+    // class×subject×period = the prior upload this in-progress scan will supersede. Null = first
+    // upload (D2 — never fabricate a predecessor date).
+    const priorVersion = ids.length
+      ? await tx
+          .select({ committedAt: seniorScoreLedgerVersion.committedAt })
+          .from(seniorScoreLedgerVersion)
+          .where(
+            and(
+              eq(seniorScoreLedgerVersion.schoolId, school.id),
+              eq(seniorScoreLedgerVersion.subjectId, subjectId),
+              eq(seniorScoreLedgerVersion.periodId, periodId),
+              inArray(seniorScoreLedgerVersion.studentId, ids),
+            ),
+          )
+          .orderBy(desc(seniorScoreLedgerVersion.committedAt))
+          .limit(1)
+      : [];
     return {
       cls,
       sub,
@@ -116,6 +135,7 @@ export default async function ScanPage({
       roster,
       weightRows,
       ledger,
+      priorUploadedAt: priorVersion[0]?.committedAt ?? null,
     };
   });
 
@@ -152,6 +172,31 @@ export default async function ScanPage({
     defaultWeightRow ? toW(defaultWeightRow) : null,
   );
 
+  // Provenance lede (Item 7). "Uploaded <today>" always; "supersedes the <priorDate> upload" only
+  // when a prior version exists (else "first upload for this semester" — never a fabricated date,
+  // D2). The "· N changes to review" tail is deliberately NOT server-rendered: the live count lives
+  // in ScanWorkspace's ChangesPanel ("· {N} to review") — no stale server duplicate (Lucy / D1).
+  const dateFmt = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const todayLabel = dateFmt.format(new Date());
+  const priorLabel = data.priorUploadedAt ? dateFmt.format(data.priorUploadedAt) : null;
+  const lede = (
+    <p className="mt-2 max-w-[820px] text-[13px] text-navy-3">
+      Uploaded <span className="font-semibold text-navy-2">{todayLabel}</span>
+      {priorLabel ? (
+        <>
+          {" "}
+          · supersedes the <span className="font-semibold text-navy-2">{priorLabel}</span> upload
+        </>
+      ) : (
+        <> · first upload for this semester</>
+      )}
+    </p>
+  );
+
   const roster: RosterEntry[] = data.roster.map((r) => ({
     id: r.id,
     name: `${r.firstName} ${r.lastName}`,
@@ -171,7 +216,7 @@ export default async function ScanPage({
   return (
     <div className="mx-auto max-w-page">
       <BackLink href={ctxHref} />
-      <Head className={className} subject={subjectName} term={termLabel} />
+      <Head className={className} subject={subjectName} term={termLabel} lede={lede} />
 
       {/* Verify-first contract (spec §4.2) + transient-image note — non-negotiable. */}
       <div className="mb-5 grid grid-cols-[auto_1fr] gap-3 rounded-xl border border-gold-soft bg-gold-bg px-[22px] py-4">
@@ -229,10 +274,12 @@ function Head({
   className,
   subject,
   term,
+  lede,
 }: {
   className: string;
   subject: string;
   term?: string;
+  lede?: React.ReactNode;
 }) {
   return (
     <div className="mb-5">
@@ -243,6 +290,7 @@ function Head({
       <h1 className="mt-1 font-display text-3xl font-semibold text-navy">
         End-of-semester upload · <em className="italic text-gold">verify the read.</em>
       </h1>
+      {lede}
       <div className="mb-3 mt-2 h-0.5 w-16 bg-gold" />
     </div>
   );

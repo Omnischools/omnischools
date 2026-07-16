@@ -6,6 +6,23 @@
  */
 import { round2 } from "@/lib/gradebook-helpers";
 
+/**
+ * Academic-period label helpers, shared by the STPSHS sheet (Item 8) AND the paper ledger book
+ * (Item 6, which re-exports these) so the Trap-1 domain fix has ONE definition across both printed
+ * artifacts. "Semester 2" → "S2": SHS is semesters — NEVER print "T2"/"Term", even if a stray
+ * label read "Term" (Kofi Q4 / AC C2).
+ */
+export function semLabel(periodLabel: string): string {
+  const m = periodLabel.match(/(\d)/);
+  return m ? `S${m[1]}` : periodLabel;
+}
+
+/** "Form 2 Science" → "Y2"; falls back to the class name when it carries no form digit. */
+export function yearLabel(className: string): string {
+  const m = className.match(/(\d)/);
+  return m ? `Y${m[1]}` : className;
+}
+
 /** The regulator field is a 0–100 scale — the export caps here before de-scaling (Q5). */
 export const STPSHS_CAP = 100;
 

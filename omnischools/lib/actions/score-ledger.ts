@@ -30,6 +30,11 @@ import {
   type ComputableCategory,
 } from "@/lib/score-ledger/compute";
 import { reasonRequiredForCommit, removalRejectsReGraded } from "@/lib/score-ledger/scan-diff";
+import {
+  grainHasChange,
+  writeLedgerVersion,
+  prunePriorPeriodVersions,
+} from "@/lib/score-ledger/ledger-version";
 import { ledgerCorrectionReasonEnum } from "@/db/schema/_enums";
 
 const LEDGER_PATH = "/senior/score-ledger";
@@ -1127,6 +1132,9 @@ export async function commitScanLedger(input: unknown): Promise<CommitScanResult
         }
 
         const weights = await loadWeights(tx, school.id, d.subjectId);
+        // One shared batch_id for every grain versioned by THIS commit (AC B3); a partial
+        // re-upload's batch spans only its covered+changed grains (B5).
+        const versionBatchId = crypto.randomUUID();
         let n = 0;
         for (const { studentId, cats } of parsedRows) {
           if (!validStudents.has(studentId)) continue;
@@ -1172,8 +1180,37 @@ export async function commitScanLedger(input: unknown): Promise<CommitScanResult
               ],
               set: row,
             });
+          // Item 7 (INCR-6) — purely ADDITIVE version write. The senior_score_ledger upsert
+          // above is byte-unchanged from Item 4 (A4/H1). Append one immutable snapshot only for
+          // a grain this commit actually changed vs the live latest (B6 — no empty churn);
+          // writeLedgerVersion resolves the grain's prior VERSION and sets version_number +
+          // supersedes (B1/B2), guarded on uniq_ledger_version_grain_number (I1).
+          if (grainHasChange(committedByStudent.get(studentId) ?? null, cats)) {
+            await writeLedgerVersion(
+              tx,
+              { schoolId: school.id, studentId, subjectId: d.subjectId, periodId: d.periodId },
+              {
+                asgnScore: row.asgnScore,
+                midSemScore: row.midSemScore,
+                endSemScore: row.endSemScore,
+                projectScore: row.projectScore,
+                portfolioScore: row.portfolioScore,
+                weightedTotal: row.weightedTotal,
+                status,
+                // Real provenance: SCAN_EXTRACT, or DIRECT_ENTRY when extraction failed wholesale
+                // and the teacher typed a blank grid in place (same origin the audit summary logs).
+                pathUsed: d.origin,
+                committedByUserId: actor.id ?? undefined,
+                batchId: versionBatchId,
+              },
+            );
+          }
           n++;
         }
+
+        // Lazy period-scoped prune (F) — a commit into an OPEN period sweeps CLOSED-period
+        // version snapshots in the same tx; tenant-scoped, never touches senior_score_ledger.
+        await prunePriorPeriodVersions(tx, school.id);
 
         // Commit summary — path_used lives here (no ledger column exists; single migration 0041
         // is denominators + reason enum only). Never carries the image or a reference to it (B9/G1).
