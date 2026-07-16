@@ -716,3 +716,121 @@ Sarah merge → Pence sync. The diff engine (`scan-diff.ts`) is **reused, not re
   activation/rollover action, period-close, or lazy prune-on-first-write-to-new-period? Find the existing
   period-rollover hook (or flag its absence) and attach the prune (a `lib/` function, never a DB trigger /
   external cron). Wells indexes the version table on `periodId` for an efficient prune.
+
+### Kofi rulings + AC (2026-07-16) — Wells UNBLOCKED
+**Q2 supersede/immutability → CONFIRM append-only immutable.** Each commit writes one new snapshot per
+grain that self-FKs the *existing* prior latest for that grain (composite `(school_id, supersedes_id)→
+(school_id, id)`), sharing one `batch_id`; snapshots never UPDATE/DELETE except the Q6 prune; live
+`senior_score_ledger` row = latest projection.
+**Q4 who sees history → inherits the ledger EDIT-surface gate; NOT a new surface.** `SENIOR_LEDGER_ROLES`
+(ADMIN/HEADMASTER/VICE_HEADMASTER_ACADEMIC/TEACHER/FORM_MASTER); TEACHER/FORM_MASTER scoped to their
+`senior_subject_teacher` class×subject. NEVER on the VHM counts-only progress view (§6.2), NEVER
+student/parent. **No AUDITOR role exists** — `audit_log` serves that need; no new role/grant.
+**Q5 gate re-open → CONFIRM natural re-evaluation, no explicit re-lock.** Completeness/over-100/
+STPSHS_READY already evaluate the current row at generate-time = the new latest, so they re-evaluate
+automatically; STPSHS_READY carry downgrades naturally if a supersede breaks completeness.
+**Q7(a) STPSHS/export → an STPSHS_READY/exported ledger CAN be superseded while the period is OPEN;** the
+real lock is `closedAt` (not export). A generated sheet is a point-in-time audit-logged artifact — a later
+supersede doesn't mutate it; the next generation reflects the new latest. No hard export lock in Item 7.
+**Q7(b) paths → VERSION ON PATH B (`commitScanLedger`) ONLY.** Path A (`compileLedgerContext`) + Path C
+(`saveDirectLedgerScores`/`savePortfolioScores`) keep writing `senior_score_ledger` UNVERSIONED, as today.
+**SCOPE-HOLD (deliberate):** routing A/C through a shared snapshot helper would mint a version on *every*
+mark entry (`saveAssessmentScores`→compile), exploding volume + trivializing the §7.1 upload-checkpoint
+provenance. The §7.4 cross-path case is still caught — the Path-B scan diffs against the live (A/C) values
+before committing its own version. A versioned Path-C checkpoint, if ever wanted, is a distinct explicit
+save gesture (NOT the incremental PWA save) — flagged, not built.
+
+**PRUNE TRIGGER (pinned):** NO period-activation/rollover action exists; only `closeTerm`/`reopenTerm`
+(`lib/actions/terms.ts`) + `updateAcademicPeriods` (`settings.ts`); "current period" is derived (date
+windows), the ledger lifecycle gate is `academic_period.closedAt`. `closeTerm` is REVERSIBLE, so a
+destructive prune-on-close is a footgun (close→prune→reopen loses history). → **Ruling: LAZY
+prune-on-version-write keyed off `closedAt`.** `prunePriorPeriodVersions(tx, schoolId)` runs inside the
+versioned-write helper (same tx), deletes `senior_score_ledger_version` rows whose `periodId` maps to an
+`academic_period` with `closedAt IS NOT NULL`; a REOPENED period (`closedAt`→NULL) is spared; index on
+`periodId`. `ponytail:` ceiling — a school that never closes a period never prunes (acceptable; no
+corruption). Supersedes always resolved from the *existing* latest at write time (or NULL), so a prune can
+never leave a dangling FK.
+
+#### INCR-6 · Acceptance criteria (for Quinn)
+`grain` = `(school×student×subject×period)`. `version` = a `senior_score_ledger_version` snapshot.
+`latest` = the live `senior_score_ledger` row.
+- **A · Snapshot retained + immutable.** A1 a Path-B commit changing ≥1 cell writes one new version per
+  covered grain; prior row byte-unchanged. A2 second commit → BOTH snapshots present. A3 no path (but the
+  Q6 prune) UPDATE/DELETEs a version; category values/`batch_id`/`committed_by/at`/`supersedes_id`
+  write-once. A4 `senior_score_ledger` upsert unchanged from Item 4 (version write is purely additive).
+- **B · Supersedes-chain (per-row + shared batch_id).** B1 first commit → `supersedes_id=NULL` (genesis),
+  provenance shows "uploaded <date>" with NO supersedes clause. B2 second → `supersedes_id`=prior latest
+  id, chain length 2. B3 all grains in one commit share one `batch_id`, distinct from any prior. B4
+  `supersedes_id` references an existing version in the SAME grain+school (co-periodic) or NULL — never
+  cross-grain/cross-tenant. B5 partial re-upload → only covered grains get a new version+supersedes; the
+  `batch_id` spans only covered grains. B6 a no-op commit (payload == latest) writes a version only when
+  the diff yields ≥1 accepted change (no empty churn; if impl snapshots unconditionally, provenance "N
+  changes" must still read 0 honestly).
+- **C · Diff still fires all four §7.2 cases (regression).** C1 blank→filled silent-accept, unchanged→no
+  flag, score-down→reason, gone-missing→never-auto-null all fire as Item 4 (`scan-diff.ts` unchanged). C2
+  score-down/gone-missing reasons still land on `audit_log` before/after.
+- **D · Provenance from stored data (not fabricated).** D1 line fields: uploaded=new version
+  `committed_at`; supersedes=superseded version's `committed_at`; N=cells differing new-vs-prior — all from
+  stored rows. D2 genesis → omit supersedes clause (never a placeholder/mock date; retires surface
+  line-638 mock). D3 "changes since prior upload" panel enumerates exactly the cells differing new-vs-
+  immediately-superseded.
+- **E · Downstream reads LATEST, output unchanged.** E1 STPSHS sheet/VHM/report cards read the new latest;
+  a superseded version never feeds downstream. E2 downstream bytes/counts/totals identical to pre-Item-7.
+- **F · Period-scoped prune.** F1 a version-write into an open period deletes only versions whose period is
+  CLOSED; open-period snapshots survive. F2 prune never touches `senior_score_ledger`. F3 a REOPENED period
+  is spared. F4 a commit into a grain whose priors were pruned → fresh genesis (supersedes NULL), no
+  dangling FK. F5 prune tenant-scoped, `lib/` call in the write tx (no trigger/cron).
+- **G · Role-gated history — no value leak.** G1 reachable only via the ledger edit surface,
+  `assertAnyRole(SENIOR_LEDGER_ROLES)`; STUDENT/PARENT/BURSAR/boarding roles denied. G2 TEACHER/FORM_MASTER
+  only their assigned class×subject; HM/VHM/ADMIN any in-school. G3 VHM counts-only view shows NO history/
+  values/churn (§6.2). G4 report cards show only finalised latest.
+- **H · Paths A/B/C + STPSHS gates unbroken.** H1 Path A/C produce identical `senior_score_ledger` to
+  pre-Item-7 (no version per incremental write). H2 STPSHS completeness/over-100/STPSHS_READY behave as
+  INCR-3 on the new latest. H3 closed-period guard still blocks every write (no version on a closed period).
+- **I · Concurrency.** I1 two concurrent Path-B commits for the same grain → exactly one vN+1 persists;
+  loser retries or fails cleanly; never two rows with the same `(grain, version_number)`, never a lost
+  `senior_score_ledger` update (unique `(school_id,student_id,subject_id,period_id,version_number)` or
+  guarded read-then-write). I2 no two versions share a `supersedes_id` pointing at the same prior.
+- **J · Tenant isolation.** J1 version rows `tenant_isolation` FORCE RLS; cross-tenant read → 0 rows/403-404.
+  J2 composite supersedes self-FK makes a cross-tenant supersedes structurally impossible. J3 prod-paste-0043
+  parity verified.
+
+#### Domain traps (Kofi)
+- Trap 1 — batch_id on partial re-upload: HANDLED, test (B5); it groups only covered grains, not "all
+  re-versioned". Trap 2 — first commit no predecessor: HANDLED (B1/D2), never fabricate a date. Trap 3 —
+  pruned prior period + dangling FK: NO TRAP (supersedes is co-periodic; prune deletes whole co-periodic
+  chains; resolved from existing rows at write time). Trap 4 — reopen-after-close: HANDLED by keying prune
+  on `closedAt` (F3). Trap 5 — resit/withdrawal mid-history: minor, no special path (non-ACTIVE skipped;
+  priors freeze until prune). No trap on §7.4 cross-path (Path-B-only still catches it).
+
+#### Deferrable OWNER items (proceeding on Kofi defaults unless told otherwise)
+- **Standalone multi-version history browser — NOT built** (YAGNI; the real lede + diff panel satisfy
+  §7.1–7.3). Q4 conditional "view versions" screen is NOT designed.
+- **STPSHS "sheet is stale" hint — NOT built in Item 7.** Recommend later a soft note ("ledger changed
+  since the last STPSHS sheet on <date>", from `STPSHS_SHEET_GENERATED` audit ts vs latest `committed_at`)
+  rather than a hard export lock. Owner may request the hard re-generate lock later.
+
+### Lucy surface map (LIGHT) — no dedicated history screen
+**CORRECTION to Pence:** the provenance lede is **NOT shipped** — `grep supersede` is zero hits in
+`app/`+`components/`+`lib/` (docs only); the mock string lives ONLY in `Surfaces/schoolup-shs-score-
+ledger.html` line 638. Shipped `scan/page.tsx` `Head` (228–249) renders crumb + h1, NO lede sub-line. So
+Item 7's provenance work is **ADDITIVE — add a new server-fed lede element under the h1**, not swap a prop.
+- **Provenance lede** (surface line 638 verbatim: `Uploaded 26 June 2026 · supersedes the 8 May mid-
+  semester upload · 4 changes to review`). Tokens: `.lede` = `13px`, `navy-3 #5C6675`, `max-width:820px`;
+  emphasis `navy-2 #2D3F5C` `font-weight:600`; Manrope; no gold; no slash-opacity. Add under the h1 in
+  `scan/page.tsx` `Head` (~line 245). **Three fields, two sources:** `uploaded <date>` = new version
+  `committedAt`; `supersedes the <date> upload` = prior latest version `committedAt` (NEW query in the
+  `withSchool` block — the real work); `N changes` = the LIVE `changes.length` already computed in
+  `ScanWorkspace` (scan-workspace.tsx 292–326), do NOT stale-duplicate it server-side.
+  **First-upload state:** no predecessor → `Uploaded <date> · first upload for this semester`, suppress the
+  supersedes clause entirely. **"mid-semester" honesty flag:** that descriptor is NOT a stored field at the
+  per-row+batch grain — drop it; the honest line is `supersedes the <date> upload`.
+- **"Changes since prior upload" diff panel — REUSE UNCHANGED.** Shipped `ChangesPanel` (scan-workspace.tsx
+  715–818), baseline = the `committed` prop = current `senior_score_ledger` row = the latest-version
+  projection, so it already diffs against "the prior upload" with zero change. Header keep the shipped
+  honest neutral `Changes since the committed ledger · {N} to review` (surface's "mid-semester" is mock).
+  The four §7.2 kinds already render: SILENT_ACCEPT (gold), REVIEW (warn), SCORE_DOWN (warn + reason),
+  GONE_MISSING (terra + reason). Item 7 does NOT touch this panel.
+- **Copy/honesty (binding):** no false supersede on a first upload; NO restore/undo language anywhere (Q3
+  read-only — no "Restore v1" control; "undo" = a fresh commit); no stored mid-sem/end-sem claim unless
+  derived; don't stale-duplicate the change count.
