@@ -485,7 +485,7 @@ soft-gated on Kofi Q4 (brand asset — owner input, below).
 
 ---
 
-## Next increment — INCR-5: Score Ledger Item 6 · Omnischools-branded paper ledger book · NO new migration
+## INCR-5 ✅ MERGED (PR #144, `d14d8be`+`190888a`) — Score Ledger Item 6 · Omnischools-branded paper ledger book · NO new migration
 
 **A print artifact, not a screen.** §11 item 6 ("design and (optionally) commission the printed
 Omnischools ledger book · low-priority engineering, high-marketing-value · pairs with Path B").
@@ -591,3 +591,112 @@ Book is **blank** (no scores anywhere). "Roster" = ACTIVE students of the reques
 - **Trap 3 — `Pj/Pf` vs `Proj/Port`: RESOLVED** (Q3 → `Proj/Port`; flagged so nobody re-corrects it from the mock).
 - **No trap on** portfolio scale hint (`/10` on the header) — Path B reads the denominator from config at scan time, not the book; adding it re-introduces scale math we deliberately stripped. Leave plain labels.
 - **No trap on** teacher identity in the stamp — keep the teacher OUT (needless staff PII; route already keyed by class×subject×period).
+
+---
+
+## Next increment — INCR-6: Score Ledger Item 7 · versioned upload + supersedes-chain · migration 0043
+### CLOSES MODULE 4.1 (last of Items 1–8)
+
+> **⛔ BLOCKED ON OWNER before Wells cuts schema.** Three questions are genuine OWNER CALLs that
+> shape the table, not Kofi's to settle: **Q1 (version granularity)**, **Q3 (revert)**, **Q6
+> (retention)**. Kofi + Lucy proceed in parallel meanwhile; Wells (heavy, critical path) does not
+> start until Q1/Q3/Q6 land.
+
+### What Item 4 built vs. what Item 7 adds (the deferred half of Path B)
+Item 4 (INCR-2) ships **diff-against-committed**: `scan-diff.ts` compares each extracted cell to the
+**single live `senior_score_ledger` row**, and `commitScanLedger` **overwrites** that row on commit
+(`onConflictDoUpdate`). The only prior-value trace is `audit_log` — and only for *reasoned* corrections
+(score-down + gone-missing); silent-accepts / score-ups / unchanged cells leave no snapshot. **There is
+no retained version; the surface's "supersedes the 8 May mid-sem upload" provenance (surface line
+638/729) is not backed by stored data.** Item 7 adds the **retained, immutable version snapshot +
+supersedes self-FK** (§7.1). The diff *engine* is reused — the current row stays the latest-version
+projection; the new work is persisting the snapshot + supersedes pointer on commit and making the
+provenance real.
+
+### Goal
+Every ledger commit becomes a retained, immutable **version** of the record, linked to the version it
+**supersedes** (self-referential, tenant-scoped). The latest verified version feeds downstream (STPSHS
+sheet, VHM view, report cards); earlier versions are kept for audit + diff-comparison, backing the
+surface's "uploaded <date> · supersedes the <date> upload" provenance.
+
+### Done when
+A teacher who uploads (Path B) a second time over an existing ledger sees a **real** provenance line
+sourced from a stored prior version (not a fabricated string); the prior grid is retained immutably and
+never overwritten; the diff still flags the four §7.2 cases against the prior version; the committed grid
+becomes the new latest version with a supersedes pointer to its predecessor; downstream reads (STPSHS
+sheet, VHM progress, report cards) draw the **latest** version, output unchanged; history is visible only
+to roles Kofi/owner rule in (never student/parent churn, never score values in the VHM counts-only view
+§6.2); Paths A/B/C write paths and the STPSHS completeness/over-100 gates are **not broken**; all history
+logic in `lib/` (no DB triggers); tenant-scoped, audit-logged, three gates green. **Module 4.1 closes.**
+
+### Step table
+| Step | Owner | State |
+|---|---|---|
+| Rulings on the 7 open questions + acceptance criteria (**Q1 granularity gates the schema shape**) | Kofi | ⬜ gates Wells |
+| Surface map — provenance lede (surface line 638) + "changes since prior upload" panel (lines 693–720). **Finding: NO dedicated history screen; reuse the shipped Path-B verify UI + make the provenance line real.** Confirm if Q4 wants a light "view versions" read | Lucy | ⬜ (light) |
+| **Schema (HEAVY — critical path).** New tenant table `senior_score_ledger_version` (grain per Q1) snapshotting the five categories + weighted total + status + path_used + committed_by/at; **composite supersedes self-FK `(school_id, supersedes_id) → (school_id, id)`**; version-number uniqueness per grain; indexes; **`tenant_isolation` FORCE RLS**; migration **0043** dev-applied + verified; **prod-paste-0043 RLS SQL** | Wells | ⬜ blocked on Q1/Q3/Q6; blocks Claude Code |
+| Versioned-write path — on every commit, persist an immutable version snapshot + set the supersedes pointer to the prior latest; the current `senior_score_ledger` row stays the "latest verified" projection; reuse `scan-diff.ts` diff engine unchanged | Claude Code | ⬜ blocked on Wells |
+| Provenance surfacing — wire the real "uploaded <date> · supersedes the <date> upload · N changes" line + "changes since prior upload" from the version chain (replaces the mock string) | Claude Code | ⬜ |
+| History read (CONDITIONAL on Q4) — list prior versions for a grain, role-gated; **never expose score churn to student/parent, never to the VHM counts-only view** | Claude Code | ⬜ (conditional) |
+| Build · typecheck · tests (snapshot + supersedes-chain, pure lib) · RLS test · preview round-trip (two uploads → chain + diff + downstream reads latest; cross-tenant denied) | Claude Code | ⬜ |
+| QA — version retained/immutable, supersedes-chain correct, diff still fires all 4 cases, latest feeds downstream, Paths A/B/C unbroken, gates re-evaluate per Q5, concurrency (two commits racing), tenant isolation | Quinn | ⬜ |
+| Architecture/portability — history logic in `lib/` (no DB trigger); composite self-FK correct; version table (snapshot) not a dup of `audit_log` (event log); optimistic-version / last-writer concurrency guard | Dex | ⬜ |
+| Security — version rows tenant-scoped (RLS FORCE), prod-paste RLS parity, no cross-tenant read, history role-gated, no score values leaked to VHM/student/parent, prod parity | Sarah | ⬜ holds merge |
+| Gate fixes (single aggregated rework brief) | Claude Code | ⬜ |
+| Merge · verify via `git log origin/main` · **Pence syncs senior-feat ← main** | Sarah + Pence | ⬜ |
+
+### Dependencies / critical path
+**Wells is ON the critical path (unlike Item 6).** Kofi (Q1/Q3/Q6 owner-ruled first) ∥ Lucy (light map)
+in parallel, but **Claude Code's write path blocks on Wells's schema**, and Wells blocks on the owner
+ruling Q1/Q3/Q6. Sequence: owner rules Q1/Q3/Q6 → Wells (table + composite self-FK + RLS + 0043 +
+prod-paste) → Claude Code (versioned-write + provenance + conditional history) → self-verify → gates →
+Sarah merge → Pence sync. The diff engine (`scan-diff.ts`) is **reused, not rewritten**.
+
+### Open questions — Kofi rules before implementation (Q1/Q3/Q6 are OWNER CALLs)
+1. **Granularity — OWNER CALL (schema-shaping).** Per cell / per `(student×subject×period)` row / per
+   upload batch? §7.1 says "each *upload* is a version" (batch, surface line 638) but "a version of the
+   *record*" (row). _Recommend: per-row snapshot grouped by a commit-batch id — batch gives the
+   "supersedes the 8 May upload" line, per-row gives queryable history + diff at the ledger's grain._
+2. **Supersede + immutability.** New commit supersedes the whole prior version; prior retained immutable
+   (append-only)? _Recommend: append-only immutable; new version self-FKs the prior; current row = latest
+   projection._
+3. **Revert — OWNER CALL.** Can teacher/HM restore a superseded version, or read-only? _Recommend:
+   read-only for Item 7 — a "revert" is a fresh commit of the old values through the same diff+audit, no
+   special restore path._
+4. **Who sees history.** Teacher/VHM/HM/admin/auditor; student/parent never see churn. Constraint: VHM
+   view is counts-only, NEVER values (§6.2) — history-with-values must not leak there.
+5. **Superseding commit re-open gates?** Re-pass Q3 completeness / Q5 over-100 / STPSHS_READY? _Note:
+   those gates evaluate the current row at generate-time, so they re-evaluate naturally on the new latest —
+   confirm no extra lock intended._ (Kofi rules, check-in.)
+6. **Retention — OWNER CALL.** Keep all forever or cap/prune? _Recommend: keep all for the academic cycle;
+   revisit prune only if volume bites (YAGNI)._
+7. **STPSHS + Path A/C interaction.** (a) Can an already-`STPSHS_READY`/exported ledger still be
+   superseded, and does that invalidate a generated sheet? (No export lock today.) (b) Do Path A/C also
+   version, or only Path B? _If only B, the chain has cross-path gaps — decide if A/C snapshot too (touches
+   shipped write paths)._ (Kofi rules, check-in.)
+
+### Risk flags
+- **Migration ORDERING + composite-FK rule.** Supersedes self-FK is intra-tenant → **composite
+  `(school_id, supersedes_id) → (school_id, id)`**, needs the composite tenant UK `(school_id, id)` in
+  place before the self-FK. Emit: table-create → tenant-UK → `ALTER TABLE ADD` self-FK (recall the 0033
+  FK-before-UNIQUE class of bug). Wells verifies DDL ordering.
+- **NEW tenant table ⇒ prod-paste RLS (explicit deploy step).** `db:policies` hits dev only; the new
+  table needs `tenant_isolation` FORCE RLS hand-pasted on prod via `db/sql/prod-paste-0043-ledger-versions.sql`
+  or it leaks across schools.
+- **Write-path concurrency.** Two commits racing to supersede the same latest → collide on
+  predecessor/version-number. Need last-writer / optimistic version check (unique `(grain, version_number)`
+  or guarded read-then-write).
+- **Don't break shipped Path A/B/C or the STPSHS gates.** `saveDirectLedgerScores`, `savePortfolioScores`,
+  `commitScanLedger` all upsert `senior_score_ledger` today; version writes must be additive.
+- **Portability.** Version + supersedes logic in `lib/` (mirror `compute.ts`/`scan-diff.ts`), NEVER a DB
+  trigger. Dex gates.
+- **Don't duplicate `audit_log`.** Version table = queryable full-grid snapshot; `audit_log` = append-only
+  event log. Keep distinct.
+
+### Prerequisites / stop-and-ask
+- ✅ `senior-feat` level with `main`, ahead by `190888a` (Item-6 follow-ups). Next migration is **0043**
+  (latest `0042`). New-tenant-table prod-paste pattern established (`prod-paste-0038/0039/0040`).
+- **OWNER CALLs before Wells cuts schema — don't let an agent pick silently:** Q1 (granularity), Q3
+  (revert), Q6 (retention). Q5 + Q7 are Kofi's with a check-in.
+- **Deploy note (pre-write for merge):** migration 0043 (new table + composite self-FK + RLS) via migrate,
+  **plus hand-paste `prod-paste-0043-ledger-versions.sql` on prod**.
