@@ -381,7 +381,7 @@ _INCR-3 (Item 8 · STPSHS score sheet) — MERGED to main (PR #142). All gates g
 
 ---
 
-## Next increment — INCR-4: Score Ledger Item 5 · PWA phase 1 · NO new migration
+## INCR-4 ✅ MERGED (PR #143, `ef8822f`+`683f7ff`) — Score Ledger Item 5 · PWA phase 1 · NO new migration
 
 > **Scaffolding is a placeholder, not a PWA** (Phase-0 deliverable 7, confirmed): `public/manifest.webmanifest`
 > has only a favicon (not installable); `public/sw.js` is a documented no-op pass-through; `components/
@@ -482,3 +482,84 @@ soft-gated on Kofi Q4 (brand asset — owner input, below).
 ### Owner items (proceeding on Kofi defaults unless told otherwise)
 - **Q4 icons:** ship placeholder gold-"O" mark now (installable today), swap real mark later.
 - **Q3 warn-threshold:** none (rely on live pending count + `beforeunload`).
+
+---
+
+## Next increment — INCR-5: Score Ledger Item 6 · Omnischools-branded paper ledger book · NO new migration
+
+**A print artifact, not a screen.** §11 item 6 ("design and (optionally) commission the printed
+Omnischools ledger book · low-priority engineering, high-marketing-value · pairs with Path B").
+The book is the standard template a teacher hand-writes scores into, which Path B then scans (§4.2):
+a printed grid with known column positions to help OCR, pre-printed student names in the leftmost
+column (Omnischools knows the roster), and a per-page class/subject/semester identifier. **Framed as
+a feature, not a transitional artifact** (§4.4) — "Omnischools' name in every classroom."
+
+> **No dedicated surface exists.** The book is described by **spec §4.2** + the Path-B **scan-mock
+> corner-stamp** in `schoolup-shs-score-ledger.html` (`.scan-corner-stamp`, line 653:
+> `PAGE 1/2 · F2 SCI · MATHS · T2`; line 733 confirms this text *is* the QR's metadata — class ·
+> subject · semester · page). Lucy's map is **light**: from the spec + that stamp + brand tokens.
+
+### Reuse the Item 8 (INCR-3) PDF stack — clone, invent nothing
+Clone the just-merged STPSHS-sheet pattern one-for-one:
+- **Route** — `app/api/senior/stpshs-sheet/route.ts` → `app/api/senior/ledger-book/route.ts`
+  (`requireSchool` + role gate + `seniorSubjectTeacher` teacher-scope + `withSchool` tx +
+  `runtime="nodejs"` + streams `application/pdf` `private, no-store` + `recordAudit`).
+- **Data builder** — `lib/data/stpshs-sheet-data.ts` → `lib/data/ledger-book-data.ts`. Its **exact
+  roster+period read is what Item 6 needs** (active students by `classId` ordered `lastName/firstName/id`,
+  `academicPeriod.periodLabel`, class/subject/school names — **all existing columns**); strip the
+  score columns + export/scale math (the book is blank).
+- **Document + render** — `stpshs-score-sheet-document.tsx` + `render-stpshs-sheet.tsx` →
+  `ledger-book-document.tsx` + `render-ledger-book.tsx`.
+- **Fonts** — reuse `lib/pdf/fonts.ts` core fonts; brand-TTF stays the documented follow-up.
+
+### Done when
+An authenticated SHS subject teacher / VHM / Headmaster can, from a class×subject×semester, download a
+print-ready **Omnischools-branded blank paper ledger book PDF** — brand header, **pre-printed active-student
+roster rows** in the leftmost column, an **empty five-category handwriting grid** (Asg · MS · ES · Proj ·
+Port, no weighted-total column), and a **per-page class/subject/semester identifier** (human-readable
+corner-stamp mirroring the surface; scannable QR only per the owner ruling on Q2), paginated for a full
+roster, the roster read **tenant-scoped**, generation **audit-logged**. **No schema, no migration.** Three gates green.
+
+### Step table
+| Step | Owner | State |
+|---|---|---|
+| Rulings on the 5 open questions + acceptance criteria | Kofi | ⬜ gates everything |
+| Surface map (LIGHT) — spec §4.2 + `.scan-corner-stamp` + brand tokens; no dedicated surface | Lucy | ⬜ |
+| **Confirm no schema** — roster + period reads already exist (proven by `stpshs-sheet-data.ts`); a QR over existing UUIDs needs no column | Wells | ⬜ confirm-only |
+| Data builder — `lib/data/ledger-book-data.ts` (`server-only`), clone STPSHS roster+period read, **minus scores** | Claude Code | ⬜ |
+| PDF document — `ledger-book-document.tsx` + `render-ledger-book.tsx`: brand header, pre-printed roster rows, empty 5-category grid, reuse `fonts.ts`, paginate | Claude Code | ⬜ |
+| Per-page identifier — human-readable corner-stamp string; **scannable QR only if Kofi/owner require it (Q2)** | Claude Code | ⬜ (QR sub-step soft-gated on Q2) |
+| Download route — `app/api/senior/ledger-book/route.ts`, clone STPSHS auth + teacher-scope + `withSchool` + nodejs + `application/pdf` `private, no-store` | Claude Code | ⬜ |
+| Wire the ledger surface "Print ledger book →" button (keyed by class×subject×period) | Claude Code | ⬜ |
+| Audit-log generation (`recordAudit`→`auditLog`: who / class×subject×period / when; **no PII, no scores**) | Claude Code | ⬜ |
+| Build · typecheck · tests · RLS test · preview round-trip (generate → open PDF → cross-tenant denied) | Claude Code | ⬜ |
+| QA — roster completeness+order, pagination 37+, blank grid (no scores leak), stamp/QR content, tenant isolation, brand header | Quinn | ⬜ |
+| Architecture/portability — `@react-pdf/renderer` (nodejs, no puppeteer/PDF service); QR (if any) pure-JS dep-free via react-pdf primitives; data builder server-only | Dex | ⬜ |
+| Security — tenant-scoped roster read, route auth + role gate, **QR/stamp = IDs only (no PII, no marks)**, audit present, prod parity | Sarah | ⬜ holds merge |
+| Gate fixes (single aggregated rework brief) | Claude Code | ⬜ |
+| Merge · verify via `git log origin/main` · **Pence syncs senior-feat ← main** | Sarah + Pence | ⬜ |
+
+### Dependencies / critical path
+Kofi ∥ Lucy ∥ Wells parallel (Wells confirm-only, off the critical path — no schema). Claude Code path:
+data builder (clone, minus scores) → PDF document → corner-stamp/QR → download route → button → audit-log
+→ self-verify → three gates → Sarah merge → Pence sync. **Document + route + data builder are
+near-mechanical clones of the merged Item 8 stack** — the only genuinely new work is a *blank* grid and
+the per-page identifier. No owner gate blocks the build path except Q2 (finalising the identifier
+sub-step) and Q5 (the header art).
+
+### Open questions — Kofi rules before implementation (Q2 + Q5 carry OWNER CALLs)
+1. **Blank vs pre-filled.** _Recommend: blank grid + pre-printed roster names, no scores — the artifact teachers write into._
+2. **QR content + format + Path-B consumption — OWNER CALL.** Corner-stamp encodes class × subject × period (the three UUIDs the route is keyed by) + page index. Is a **real scannable QR** required now, or is the human-readable stamp enough? (No QR lib is installed; the only "QR" is a non-functional navy placeholder square in `receipt-document.tsx` — a real QR is net-new.) Does Item 6 **wire Path B to consume** the QR, or is that a separate follow-up? (Item 4 deliberately did NOT OCR the stamp — context comes from the UI — so nothing consumes a QR today.) _Recommend: human-readable stamp only; scannable QR + Path-B consumption deferred to a later item._
+3. **Layout.** _Recommend: pre-printed per-student rows, five empty category columns, no weighted-total column, paginate like the STPSHS sheet._
+4. **Which roster + ordering.** _Recommend: reuse `stpshs-sheet-data`'s read — active students, ordered `lastName / firstName / id`, deterministic._
+5. **Branding — OWNER CALL.** Final logo/trademark, or a token-based placeholder mark like Item 5's gold-"O"? _Recommend: placeholder now, swap the real mark before the print run is commissioned (same posture as INCR-4 Q4)._
+
+### Risk flags
+- **QR library portability (LIVE).** No QR dep installed; only precedent is a non-functional placeholder square. Do NOT add a heavy/native dep or hand-roll a spec-compliant encoder. If Q2 requires a real QR: small pure-JS no-native generator rendered via react-pdf `Svg`/`Rect` (mirror Item 5's dep-free icon posture). If stamp-only, the corner-stamp is dep-free and matches the surface.
+- **PDF-engine portability.** Stay on `@react-pdf/renderer` `runtime="nodejs"` — no puppeteer/chromium/Vercel PDF service. Dex gates.
+- **Tenant-scoping.** All reads via `withSchool` + role gate; teacher-scope via `seniorSubjectTeacher`; mirror the STPSHS route. Sarah + Dex.
+- **QR/stamp = IDs only — no PII, no marks.** Book is blank (no scores to leak); identifier carries class/subject/period IDs only. Sarah asserts the roster query never pulls score columns.
+
+### Prerequisites / stop-and-ask
+- ✅ `senior-feat` level with `main` (`60a2a66`). · No new migration (Wells confirm-only). · WAEC ICTD not a dependency (paper artifact from data the school owns).
+- **OWNER CALLs — don't let an agent pick silently:** Q2 (scannable-QR required? + Path-B consumption in scope?) and Q5 (branding mark).
