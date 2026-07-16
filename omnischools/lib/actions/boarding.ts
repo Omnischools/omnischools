@@ -172,8 +172,14 @@ export async function reassignBunk(input: unknown): Promise<Result> {
     if ("error" in outcome) return { ok: false, error: outcome.error };
     safeRevalidate(`/senior/boarding/houses/${outcome.houseId}/roster`);
     return { ok: true };
-  } catch {
-    // Lost the race for the bunk (partial-unique violation) or another DB error — clean message.
-    return { ok: false, error: REASSIGN_MESSAGES.bunk_occupied };
+  } catch (err) {
+    // A lost race for the bunk trips the partial unique `uniq_student_current_bunk` (SQLSTATE 23505,
+    // which postgres.js surfaces on `.code`) → whole-tx rollback; that's the one expected failure, so
+    // surface the honest "just taken" (AC D2). Any OTHER error (connection drop, unrelated constraint)
+    // is genuinely unexpected — don't mask it as a bunk conflict; rethrow so it's logged/surfaced.
+    if (err && typeof err === "object" && (err as { code?: string }).code === "23505") {
+      return { ok: false, error: REASSIGN_MESSAGES.bunk_occupied };
+    }
+    throw err;
   }
 }
