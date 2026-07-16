@@ -18,6 +18,7 @@ import {
   Settings,
   NotebookText,
   Gauge,
+  BedDouble,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ import {
   hasAnyRole,
   SENIOR_LEDGER_ROLES,
   SENIOR_MANAGEMENT_ROLES,
+  BOARDING_ROLES,
 } from "@/lib/access";
 
 const NAV: { href: string; label: string; Icon: LucideIcon }[] = [
@@ -65,6 +67,12 @@ const SENIOR_ITEMS = [
     label: "Ledger progress",
     Icon: Gauge,
     roles: SENIOR_MANAGEMENT_ROLES,
+  },
+  {
+    href: "/senior/boarding",
+    label: "Boarding",
+    Icon: BedDouble,
+    roles: BOARDING_ROLES,
   },
 ];
 

@@ -12,6 +12,7 @@ export * from "./audit";
 export * from "./anomaly";
 export * from "./marketing";
 export * from "./students";
+export * from "./boarding";
 export * from "./admissions";
 export * from "./fees";
 export * from "./billing";

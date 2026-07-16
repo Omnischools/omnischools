@@ -165,6 +165,21 @@ export const programmeEnum = pgEnum("programme", [
 ]);
 export const residencyEnum = pgEnum("residency", ["BOARDER", "DAY", "DEBOARDINIZED"]);
 
+// Senior boarding (SHS module 4.2) — House→Dormitory→Bunk spine (INCR-7).
+// One unified gender list on the House (BUILD_STACK #3): a COED house admits either sex.
+// Gender-vs-student-sex is enforced at the app reassign/placement action, not the DB
+// (a cross-table check would need a forbidden trigger — Kofi trap J3).
+export const houseGenderEnum = pgEnum("house_gender", ["BOYS", "GIRLS", "COED"]);
+// The five prefect designations. Nullable on a bunk: a set value marks that bunk's
+// occupant a prefect (display-only in F0; appointment workflow deferred — Kofi OQ4).
+export const prefectRoleEnum = pgEnum("prefect_role", [
+  "HEAD",
+  "DINING",
+  "SANITATION",
+  "PREP",
+  "SICKBAY",
+]);
+
 // Senior score ledger (SHS) — five-category model. Portfolio has NO assessment event
 // (it is a one-shot manual entry, spec §2/§4.1), so it is deliberately not a category here.
 export const assessmentCategoryEnum = pgEnum("assessment_category", [

@@ -7,18 +7,22 @@ import {
   integer,
   timestamp,
   unique,
+  uniqueIndex,
   foreignKey,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import {
   sexEnum,
   studentStatusEnum,
   guardianRelationEnum,
   programmeEnum,
   residencyEnum,
+  houseGenderEnum,
 } from "./_enums";
 import { schools } from "./tenancy";
 import { users } from "./identity";
+import { boardingBunk } from "./boarding";
 
 /** A class/form students belong to (e.g. "JHS 1A"). Attendance is taken per class. */
 export const classes = pgTable(
@@ -83,12 +87,20 @@ export const houses = pgTable(
       .references(() => schools.id, { onDelete: "cascade" }),
     name: text("name").notNull(), // "Aggrey", "Guggisberg", ...
     colour: text("colour"), // hex e.g. "#D87794" — rendered as a House dot via inline style
+    // Boarding F0 (INCR-7) — all nullable, backward-compatible with Basic/day schools.
+    gender: houseGenderEnum("gender"), // BOYS/GIRLS/COED; null → identity strip renders no gender pill
+    capacity: integer("capacity"), // planning figure (advisory), NOT a hard cap — real limit is physical bunks
+    // Resident housemaster. Single-column SET NULL FK to the global ref_user (mirrors
+    // classes.class_teacher_user_id) — global-table + SET NULL both keep it single-column.
+    hmUserId: uuid("hm_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     uniqName: unique("uniq_house_per_school").on(t.schoolId, t.name),
-    // Composite-FK target for students.house_id (school_id, id).
+    // Composite-FK target for students.house_id + boarding_dormitory.house_id (school_id, id).
     tenantUk: unique("house_tenant_uk").on(t.schoolId, t.id),
   }),
 );
@@ -119,6 +131,12 @@ export const students = pgTable(
     programme: programmeEnum("programme"),
     residency: residencyEnum("residency"),
     houseId: uuid("house_id"),
+    // Boarding F0 (INCR-7) — the live "which bunk does this boarder sleep in" pointer. Nullable:
+    // null = unallocated (day students, or a boarder awaiting placement — Kofi trap J1). One
+    // student holds ≤1 bunk (single-valued), and one bunk holds ≤1 student (the partial unique
+    // index below). Composite (school_id, current_bunk_id) FK → boarding_bunk keeps the reference
+    // intra-tenant. Reassign moves this pointer atomically with the bunk_allocation history.
+    currentBunkId: uuid("current_bunk_id"),
     // STPSHS Assessment Reference ID (format like "REF-2024-XXXX") assigned by STPSHS at
     // Year-1 bio-data registration. External opaque id → plain text, not an enum. Nullable:
     // stays NULL until a future STPSHS bio-data-ingest increment populates real IDs; the
@@ -149,6 +167,23 @@ export const students = pgTable(
       columns: [t.schoolId, t.houseId],
       foreignColumns: [houses.schoolId, houses.id],
     }).onDelete("set null"),
+    // Composite school-scoped FK — the bunk must belong to the same tenant (a cross-tenant bunk
+    // pointer is structurally impossible). SET NULL mirrors houseFk: a bunk is soft-deleted via
+    // `active`, and deboardinization nulls this pointer explicitly in lib/ — so the composite
+    // SET NULL never fires against the NOT-NULL school_id in normal operation (same contract as
+    // the shipped houseFk above).
+    currentBunkFk: foreignKey({
+      columns: [t.schoolId, t.currentBunkId],
+      foreignColumns: [boardingBunk.schoolId, boardingBunk.id],
+    }).onDelete("set null"),
+    // ONE-STUDENT-PER-BUNK (AC D1) — DB-enforced. Partial unique on current_bunk_id alone (bunk
+    // ids are globally unique uuids, so a single-column index already isolates per tenant); the
+    // WHERE excludes the many NULLs (unallocated students). This is the conflict target the
+    // atomic reassign guards on: two concurrent claims of the same vacant bunk → one commits, the
+    // loser fails this unique and its whole tx rolls back (AC D2).
+    oneStudentPerBunk: uniqueIndex("uniq_student_current_bunk")
+      .on(t.currentBunkId)
+      .where(sql`${t.currentBunkId} IS NOT NULL`),
   }),
 );
 
