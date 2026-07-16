@@ -11,8 +11,17 @@ import {
   boardingDormitory,
   boardingBunk,
   bunkAllocation,
+  boardingSettings,
+  dailyScheduleTemplate,
+  boardingCalendarEvent,
 } from "@/db/schema";
 import type { PrefectRole } from "@/lib/boarding/roster";
+import {
+  CANONICAL_SCHEDULE_TEMPLATES,
+  SEED_CALENDAR_EVENTS,
+} from "@/lib/boarding/defaults";
+
+const ACADEMIC_YEAR = "2025/26";
 
 /**
  * Boarding F0 (INCR-7) demo seed for Asankrangwa — dorms A–H × 15 bunks per House, prefect-tagged
@@ -38,13 +47,16 @@ const PREFECT_AT_BUNK1: Record<string, PrefectRole> = {
   F: "SICKBAY",
 };
 
-const HOUSE_META: Record<string, { gender: "BOYS" | "GIRLS"; colour: string }> = {
-  Aggrey: { gender: "BOYS", colour: "#B43A2F" },
-  Guggisberg: { gender: "BOYS", colour: "#1A2B47" },
-  Fraser: { gender: "BOYS", colour: "#2F6B47" },
-  Slessor: { gender: "GIRLS", colour: "#FFFFFF" }, // white — exercises the border-2 guard
-  Kingsley: { gender: "GIRLS", colour: "#E5C44A" },
-  Aryee: { gender: "GIRLS", colour: "#9B6FAA" },
+const HOUSE_META: Record<
+  string,
+  { gender: "BOYS" | "GIRLS"; colour: string; foundedYear: number; namedAfter: string }
+> = {
+  Aggrey: { gender: "BOYS", colour: "#B43A2F", foundedYear: 1956, namedAfter: "Dr J. E. K. Aggrey" },
+  Guggisberg: { gender: "BOYS", colour: "#1A2B47", foundedYear: 1956, namedAfter: "Governor Sir Gordon Guggisberg" },
+  Fraser: { gender: "BOYS", colour: "#2F6B47", foundedYear: 1958, namedAfter: "Rev A. G. Fraser, first Principal" },
+  Slessor: { gender: "GIRLS", colour: "#FFFFFF", foundedYear: 1965, namedAfter: "Mary Slessor, missionary" }, // white — exercises the border-2 guard
+  Kingsley: { gender: "GIRLS", colour: "#E5C44A", foundedYear: 1972, namedAfter: "Mary Kingsley, explorer" },
+  Aryee: { gender: "GIRLS", colour: "#9B6FAA", foundedYear: 2014, namedAfter: "Rev Dr Joyce Aryee, alumna" },
 };
 
 // The J3 fix — move each mismatched boarder into a gender-matching House by student_code.
@@ -73,7 +85,7 @@ async function main() {
   const [hm] = await db.select({ id: users.id }).from(users).where(eq(users.phone, "+233244000004")); // Mr A. Mensah
   const staffId = hm?.id ?? null;
 
-  // 1) Backfill House config (gender / capacity / colour / Aggrey HM). Idempotent.
+  // 1) Backfill House config (gender / capacity / colour / founded / named / Aggrey HM). Idempotent.
   for (const [name, meta] of Object.entries(HOUSE_META)) {
     await db
       .update(houses)
@@ -81,6 +93,8 @@ async function main() {
         gender: meta.gender,
         capacity: CAPACITY,
         colour: meta.colour,
+        foundedYear: meta.foundedYear,
+        namedAfter: meta.namedAfter,
         ...(name === "Aggrey" ? { hmUserId: staffId } : {}),
       })
       .where(and(eq(houses.schoolId, schoolId), eq(houses.name, name)));
@@ -241,6 +255,56 @@ async function main() {
       .where(and(eq(students.schoolId, schoolId), eq(students.id, sid(ptr.code))));
   }
 
+  // 7) Programme config (INCR-8) — GES-default settings, canonical rhythm templates, VISITING/EXEAT
+  //    calendar events. All re-run-safe: settings is bare-insert (DB DEFAULTs) on conflict-do-nothing
+  //    so an admin's later edits are never clobbered; templates + events upsert on their business key.
+  await db
+    .insert(boardingSettings)
+    .values({ schoolId }) // bare insert → every GES default via the column DEFAULTs (AC A1)
+    .onConflictDoNothing({ target: boardingSettings.schoolId });
+
+  for (const tpl of CANONICAL_SCHEDULE_TEMPLATES) {
+    await db
+      .insert(dailyScheduleTemplate)
+      .values({
+        schoolId,
+        dayType: tpl.dayType,
+        formScope: tpl.formScope,
+        activitiesJson: tpl.activities,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [
+          dailyScheduleTemplate.schoolId,
+          dailyScheduleTemplate.dayType,
+          dailyScheduleTemplate.formScope,
+        ],
+        set: { activitiesJson: tpl.activities, updatedAt: new Date() },
+      });
+  }
+
+  for (const ev of SEED_CALENDAR_EVENTS) {
+    await db
+      .insert(boardingCalendarEvent)
+      .values({
+        schoolId,
+        academicYear: ACADEMIC_YEAR,
+        eventType: ev.eventType,
+        eventDate: ev.eventDate,
+        label: ev.label,
+        formScope: ev.formScope,
+        sequence: ev.sequence,
+      })
+      .onConflictDoNothing({
+        target: [
+          boardingCalendarEvent.schoolId,
+          boardingCalendarEvent.academicYear,
+          boardingCalendarEvent.eventType,
+          boardingCalendarEvent.eventDate,
+        ],
+      });
+  }
+
   await db.insert(auditLog).values({
     schoolId,
     actorUserId: staffId ?? undefined,
@@ -253,12 +317,15 @@ async function main() {
       dorms: dormRows.length,
       bunks: bunkRows.length,
       allocations: allocValues.length,
+      scheduleTemplates: CANONICAL_SCHEDULE_TEMPLATES.length,
+      calendarEvents: SEED_CALENDAR_EVENTS.length,
     },
-    reason: "Boarding F0 demo seed (dorms · bunks · allocations · J3 gender fix)",
+    reason: "Boarding F0 + INCR-8 config demo seed (dorms · bunks · settings · rhythm · calendar)",
   });
 
   console.log(
     `✓ Boarding seed — ${dormRows.length} dorms, ${bunkRows.length} bunks, ${allocValues.length} allocations, ` +
+      `${CANONICAL_SCHEDULE_TEMPLATES.length} rhythm templates, ${SEED_CALENDAR_EVENTS.length} calendar events, ` +
       `J3 gender fix applied (Abena→Slessor, Ama→Aryee, Kwame→Aggrey), J. Manu at Aggrey D-03.`,
   );
 }
