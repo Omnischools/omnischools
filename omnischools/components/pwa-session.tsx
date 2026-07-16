@@ -15,6 +15,7 @@ export function PwaSession({ uid }: { uid: string }) {
     navigator.serviceWorker.ready
       .then((reg) => {
         if (cancelled) return;
+        // CONTRACT: "omnischools-session" is the SW message protocol in public/sw.js — keep in sync.
         (reg.active ?? navigator.serviceWorker.controller)?.postMessage({
           type: "omnischools-session",
           uid,

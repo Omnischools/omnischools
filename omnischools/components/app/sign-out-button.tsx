@@ -13,11 +13,15 @@ async function purgePwaCaches(): Promise<void> {
   try {
     if (typeof caches !== "undefined") {
       const keys = await caches.keys();
+      // CONTRACT: the "omnischools-" prefix must match public/sw.js `VERSION` — renaming the SW
+      // cache prefix here or there silently breaks the logout purge → shared-device cache leak,
+      // with no compile error.
       await Promise.all(
         keys.filter((k) => k.startsWith("omnischools-")).map((k) => caches.delete(k)),
       );
     }
     if (typeof navigator !== "undefined" && navigator.serviceWorker?.controller) {
+      // CONTRACT: "omnischools-clear" is the SW message protocol in public/sw.js — keep in sync.
       navigator.serviceWorker.controller.postMessage({ type: "omnischools-clear" });
     }
   } catch {

@@ -12,23 +12,19 @@ import {
   PWA_CATS,
   type PwaCat,
   cellId,
-  studentOfCell,
   emptyBuffer,
   bufferEdit,
-  bufferConfirm,
-  bufferHold,
-  bufferReject,
   bufferSetOnline,
   cellStatus,
   cellHeld,
   hasPending,
   heldCount,
-  pendingStudentIds,
   stripTone,
   heldStripText,
   heldBadgeText,
   type PendingBuffer,
 } from "@/lib/score-ledger/pwa-buffer";
+import { flushPending, type FlushLatch } from "@/lib/score-ledger/pwa-flush";
 import {
   readViewPref,
   writeViewPref,
@@ -152,8 +148,8 @@ export function PwaLedger(props: Props) {
   cellsRef.current = cells;
   const bufferRef = useRef(buffer);
   bufferRef.current = buffer;
-  const inFlight = useRef(false);
-  const rerun = useRef(false); // an edit landed mid-flush → drain again so nothing sticks pending
+  // Re-entrancy latch (inFlight + rerun) — a mid-flush edit drains again so nothing sticks pending.
+  const latch = useRef<FlushLatch>({ inFlight: false, rerun: false });
   const flushTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const classOfStudent = useMemo(() => {
@@ -173,81 +169,23 @@ export function PwaLedger(props: Props) {
     return row ? row[cat] : null;
   };
 
-  const flush = useCallback(async () => {
-    if (inFlight.current) {
-      rerun.current = true; // a flush is already running — make it drain again after
-      return;
-    }
-    inFlight.current = true;
-    try {
-      do {
-        rerun.current = false;
-        const ids = pendingStudentIds(bufferRef.current);
-        if (ids.length === 0) break;
-        if (typeof navigator !== "undefined" && !navigator.onLine) {
-          setBuffer((s) => bufferHold(s)); // offline — keep held, retry on `online`
-          break;
-        }
-        // Pending can span classes (edited class1, switched, edited class2) — each save action is
-        // class-scoped, so flush groups by class and interprets each result independently.
-        const byClass = new Map<string, string[]>();
-        for (const sid of ids) {
-          const c = classOfStudent.get(sid);
-          if (!c) continue;
-          const arr = byClass.get(c.classId) ?? [];
-          arr.push(sid);
-          byClass.set(c.classId, arr);
-        }
-        for (const [cid, sids] of Array.from(byClass)) {
-          const cls = classes.find((c) => c.classId === cid);
-          if (!cls) continue;
-          // Snapshot exactly the cells being flushed for this student group, with their values.
-          const groupCells = Object.keys(bufferRef.current.pending).filter((id) =>
-            sids.includes(studentOfCell(id)),
-          );
-          const snapshot = new Map(groupCells.map((id) => [id, bufferRef.current.pending[id]]));
-          const val = (sid: string, cat: PwaCat) => cellsRef.current[cellId(sid, cat)] ?? "";
-          let res: { ok: true; saved: number } | { ok: false; error: string };
-          try {
-            res =
-              cls.path === "DIRECT_ENTRY"
-                ? await saveDirectLedgerScores({
-                    classId: cid,
-                    subjectId,
-                    periodId,
-                    scores: sids.map((sid) => ({
-                      studentId: sid,
-                      asgn: val(sid, "asgn"),
-                      midSem: val(sid, "midSem"),
-                      endSem: val(sid, "endSem"),
-                      project: val(sid, "project"),
-                      portfolio: val(sid, "portfolio"),
-                    })),
-                  })
-                : await savePortfolioScores({
-                    classId: cid,
-                    subjectId,
-                    periodId,
-                    scores: sids.map((sid) => ({
-                      studentId: sid,
-                      value: val(sid, "portfolio"),
-                    })),
-                  });
-          } catch {
-            setBuffer((s) => bufferHold(s)); // transport failure → hold + retry (R4)
-            continue;
-          }
-          // Only clear cells whose value the teacher hasn't changed since we sent them — a cell
-          // re-edited mid-flight stays pending and the rerun loop resends its new value.
-          const settled = groupCells.filter((id) => bufferRef.current.pending[id] === snapshot.get(id));
-          if (res.ok) setBuffer((s) => bufferConfirm(s, settled, Date.now()));
-          else setBuffer((s) => bufferReject(s, settled, res.error)); // domain error → surface (R4)
-        }
-      } while (rerun.current);
-    } finally {
-      inFlight.current = false;
-    }
-  }, [classes, classOfStudent, subjectId, periodId]);
+  const flush = useCallback(
+    () =>
+      flushPending({
+        latch: latch.current,
+        getBuffer: () => bufferRef.current,
+        setBuffer,
+        getCell: (sid, cat) => cellsRef.current[cellId(sid, cat)] ?? "",
+        classOf: (sid) => classOfStudent.get(sid),
+        isOnline: () => typeof navigator === "undefined" || navigator.onLine,
+        saveDirect: saveDirectLedgerScores,
+        savePortfolio: savePortfolioScores,
+        subjectId,
+        periodId,
+        now: Date.now,
+      }),
+    [classOfStudent, subjectId, periodId],
+  );
 
   const scheduleFlush = useCallback(() => {
     clearTimeout(flushTimer.current);
