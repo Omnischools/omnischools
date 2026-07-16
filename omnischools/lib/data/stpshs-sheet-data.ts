@@ -12,6 +12,8 @@ import {
 import { resolveDenominators, type CategoryDenominators } from "@/lib/score-ledger/compute";
 import {
   categoryExport,
+  semLabel,
+  yearLabel,
   type LedgerStatus,
   type StpshsCats,
 } from "@/lib/score-ledger/stpshs-sheet";
@@ -32,18 +34,6 @@ const numOrNull = (v: string | null) => (v == null ? null : Number(v));
 /** "27 June 2026" — day month year, no ordinal (the component does no date work). */
 const fmtDate = (d: Date) =>
   d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-
-/** "Form 2 Science" → "Y2"; falls back to the class name when it carries no form digit. */
-const yearLabel = (className: string) => {
-  const m = className.match(/(\d)/);
-  return m ? `Y${m[1]}` : className;
-};
-
-/** "Semester 2" → "S2" (Kofi Q4 — always "S", never "T"/"Term", even if the label read Term). */
-const semLabel = (periodLabel: string) => {
-  const m = periodLabel.match(/(\d)/);
-  return m ? `S${m[1]}` : periodLabel;
-};
 
 export type StpshsGateRow = {
   studentId: string;

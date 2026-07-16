@@ -14,18 +14,12 @@
  */
 export const SPARE_ROWS = 4;
 
-/** "Semester 2" → "S2" (Trap 1 / AC C2 — SHS is semesters; NEVER print "T2"/"Term", even if a
- * stray label read "Term"). Reused from the Item 8 helper so the domain fix is identical. */
-export function semLabel(periodLabel: string): string {
-  const m = periodLabel.match(/(\d)/);
-  return m ? `S${m[1]}` : periodLabel;
-}
-
-/** "Form 2 Science" → "Y2"; falls back to the class name when it carries no form digit. */
-export function yearLabel(className: string): string {
-  const m = className.match(/(\d)/);
-  return m ? `Y${m[1]}` : className;
-}
+/**
+ * The two period/class label helpers live in the Item 8 pure module (the earlier shared code) so
+ * the Trap-1 fix ("S2", never "T2"/"Term") has ONE definition across both printed artifacts;
+ * re-exported here for this module's consumers (the builder, the PDF doc, and the test).
+ */
+export { semLabel, yearLabel } from "./stpshs-sheet";
 
 /** A pre-printed roster row on the blank book — name ONLY, zero score fields (the book is blank). */
 export type BookRow = { name: string };
