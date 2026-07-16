@@ -36,6 +36,14 @@ describe("grainHasChange (no empty churn)", () => {
     const after = cats({ asgn: 85, endSem: 90 });
     expect(grainHasChange(before, after)).toBe(true);
   });
+  it("every one of the five category cells is compared (portfolio/project included)", () => {
+    // The manual portfolio (5th) and project (4th) must mint a version when they alone move —
+    // guards against CELL_KEYS ever dropping a category from the diff (Quinn high-risk: portfolio).
+    const base = cats({ asgn: 80, midSem: 70, endSem: 90, project: 60, portfolio: 8 });
+    expect(grainHasChange(base, { ...base, portfolio: 9 })).toBe(true);
+    expect(grainHasChange(base, { ...base, project: 61 })).toBe(true);
+    expect(grainHasChange(base, { ...base, midSem: 71 })).toBe(true);
+  });
   it("genesis with data (no ledger row yet) → version", () => {
     expect(grainHasChange(null, cats({ endSem: 90 }))).toBe(true);
   });

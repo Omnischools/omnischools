@@ -108,7 +108,9 @@ const MAX_VERSION_ATTEMPTS = 3;
  * insert skip WITHOUT poisoning the transaction (a raw unique violation would abort the whole
  * tx); the loop then re-reads the now-committed winner and mints vN+2. Exactly one row per
  * (grain, version_number) persists; senior_score_ledger is a full-row upsert so it never loses
- * an update either.
+ * an update either. NOTE: this relies on the withSchool default READ COMMITTED isolation — under
+ * REPEATABLE READ / SERIALIZABLE, onConflictDoNothing raises a 40001 serialization error instead
+ * of returning 0 rows, which would break this retry; revisit if the tenant tx isolation is raised.
  *
  * ponytail: bounded 3-try optimistic loop on the grain-number unique. A single grain hammered by
  * >3 truly-simultaneous scan commits fails the 4th cleanly (the whole commit tx rolls back and
