@@ -594,8 +594,8 @@ Book is **blank** (no scores anywhere). "Roster" = ACTIVE students of the reques
 
 ---
 
-## Next increment — INCR-6: Score Ledger Item 7 · versioned upload + supersedes-chain · migration 0043
-### CLOSES MODULE 4.1 (last of Items 1–8)
+## INCR-6 ✅ MERGED (PR #145, `1a326d2`+`4fae2b5`) — Score Ledger Item 7 · versioned upload + supersedes-chain · migration 0043 · CLOSES MODULE 4.1
+### CLOSES MODULE 4.1 (last of Items 1–8) — ⚠️ prod deploy: hand-paste `prod-paste-0043-ledger-versions.sql`
 
 > **⛔ BLOCKED ON OWNER before Wells cuts schema.** Three questions are genuine OWNER CALLs that
 > shape the table, not Kofi's to settle: **Q1 (version granularity)**, **Q3 (revert)**, **Q6
@@ -834,3 +834,217 @@ Item 7's provenance work is **ADDITIVE — add a new server-fed lede element und
 - **Copy/honesty (binding):** no false supersede on a first upload; NO restore/undo language anywhere (Q3
   read-only — no "Restore v1" control; "undo" = a fresh commit); no stored mid-sem/end-sem claim unless
   derived; don't stale-duplicate the change count.
+
+---
+
+# MODULE 4.2 — BOARDING
+
+**Branch:** `senior-feat` off `main`. **Cadence:** milestone merges, one per increment, independent branches off
+`main` (not stacked — verify each landed via `git log origin/main`). **Spec authority:** `md files/BUILD_STACK.md`
+"Boarding · architectural decisions worth preserving" (9 decisions — **constitution, wins on conflict**) ·
+`INSTRUCTIONS_FOR_CLAUDE_CODE.md` §4.2 · `README.md` §"SHS · Boarding" (lines 372–427, ~15-table schema sketch).
+**Cross-cutting rule (BUILD_STACK #1):** Boarding is **structurally adjacent** to the school module — the only join
+is `residency_type` on the student; every boarding surface filters on it, every academic surface ignores it; a
+day-only school flips the whole module off. **F0 partially shipped already:** `houses` table, `students.house_id`
+(composite FK, SET NULL), `students.residency` enum (BOARDER/DAY/DEBOARDINIZED); roles HOUSEMASTER/DEAN_OF_BOARDING/
+MATRON already in `appRoleEnum`. Next migration **0044**.
+
+### Surface inventory (7-file `Surfaces/schoolup-boarding-*.html` batch)
+| # | Surface | Screen |
+|---|---|---|
+| 01 | programme-setup | Config OS — 6 Houses (gender·colour·capacity·resident HM), daily rhythm template, 3 policy doctrines (exeat quota, visiting, deboardinization ladder), GES calendar |
+| 02 | house-roster | Housemaster spatial view — House strip, 5 prefect cards, 8 dorms A–H × 15 bunks = 120 beds, **bunk = the unit**, drag-reassign (logged), bunk states, student detail card |
+| 03 | resumption-day | Twice-a-year ops — staggered arrival windows by Form, prospectus 6-pip checklist, fee-owing flags; same surface flips to Vacation mode |
+| 04 | daily-life | Housemaster live daily view ("used most") — half-hour timeline, morning inspection, prep, sick-bay/exeat counts |
+| 05 | exeat-management | Exeat workflow — request→review→card→depart→return, approval chain, fee-owing-collect, return-by-16:00 + late SMS, printable card (PDF) |
+| 06 | visiting-day | Digital Visitor's Book — 2nd-Sunday, parent RSVP via SMS, approved-visitor list (max 6), gate verification, zones |
+| 07 | discipline | 5-rung append-only ladder (Note→Warning→Bond→Suspension→Deboardinization), DB-enforced co-signs, Board-review, **3× fee penalty → auto-invoice (first discipline→billing trigger)**, VLC pastoral bypass |
+
+### Roadmap — INCR-7…13 (dependency graph)
+```
+INCR-7 (F0 spine + roster) ──┬─> INCR-8 (config OS) ──┬─> INCR-9  (Exeat)      [+billing read, +comms, +PDF]
+   [gates EVERYTHING]        │   [config before        ├─> INCR-10 (Daily life) [+inspections]
+                             │    its consumers]        └─> INCR-13 (Discipline) [+billing penalty, +VLC stub] ← CLOSER
+                             ├─> INCR-11 (Resumption/Vacation)  [spine + billing read only]
+                             └─> INCR-12 (Visiting day)         [spine + comms; near-independent]
+```
+- **Critical path:** INCR-7 → INCR-8 → INCR-13. **INCR-7 is the trunk** (all block on it). 9/10/13 hang off 8; 11/12 hang
+  off 7 directly. 9/10/11/12 are independent siblings — branch each off `main` after its parent lands (orphan-PR trap).
+- Payoff-first among siblings is a live reprioritisation lever once 7+8 merge.
+- **Forward dep:** INCR-13's VLC pastoral bypass reads `vlc_pastoral_flags` (module **4.5**, after Boarding) → **stubbed** in 4.2.
+- Draft each of INCR-8…13's board when its predecessor merges (roadmap one-liners suffice to sequence now).
+
+## Next increment — INCR-7 · Boarding F0 — House→Dormitory→Bunk spine + residency + House Roster · migration 0044
+
+> **Nothing blocks INCR-7.** Kofi + Lucy start now; Wells waits only on Kofi's OQ1 (residency/bunk schema shape —
+> a Kofi call under BUILD_STACK authority, NOT an owner call). The 7 module-scope OWNER decisions (below) gate
+> INCR-9/11/12/13, NOT F0 — rule them in parallel.
+
+### Goal
+The spatial/residency bedrock: the **House → Dormitory → Bunk** three-level hierarchy with the **bunk as primary
+spatial key** (BUILD_STACK #2) + the residency join (BUILD_STACK #1). Ships **surface 02 (house-roster)** as the
+first payoff so a Housemaster can see + manage where every boarder sleeps.
+
+### Done when
+An authenticated Housemaster (or Senior HM / Headmaster / Admin) opens their House roster: House identity strip
+(gender·capacity·resident HM·filled/vacant), all **8 dormitories × 15 bunks**, each occupied bunk showing its
+boarder + the four bunk states (prefect·pastoral-flag·moved-this-sem·vacant); click a bunk → the student;
+**reassign a boarder within the House**, writing an **append-only allocation history** (from/to bunk, reason,
+staff, timestamp); **one-student-per-bunk / one-bunk-per-student enforced at the DB** (partial unique on
+`current_bunk_id WHERE NOT NULL`). Houses carry `gender`, `capacity`, resident HM. Residency is the only join; a
+day student never appears; a day-only school renders the module empty/disabled. Tenant-scoped (composite
+`(school_id,id)` FKs, `tenant_isolation` FORCE RLS on every new table + prod-paste), audit-logged, three gates green.
+
+### Step table
+| Step | Owner | State |
+|---|---|---|
+| Rulings on OQ1–OQ5 + acceptance criteria (**OQ1 residency/bunk shape gates Wells**) | Kofi | ⬜ gates Wells |
+| Surface map — **02 house-roster** (identity strip · 5 prefect cards · 8-dorm×15-bunk grid · bunk states · student detail · swap log) + the House-config header of 01. Bunk-dot colours = **user House data via inline style**, NOT brand tokens (no-alpha-token discipline) | Lucy | ⬜ |
+| **Schema (HEAVY — critical path).** Per OQ1: extend `houses` (`gender` enum, `capacity`, `hm_user_id`→users.id; backfill seeded houses' gender); NEW tenant tables `boarding_dormitory`, `boarding_bunk` (+nullable `prefect_role`), bunk-allocation history (append-only) + `current_bunk_id` live pointer; new enums `house_gender`/`prefect_role`; composite `(school_id,id)` UKs + composite intra-tenant FKs (dorm→house, bunk→dorm, allocation→student+bunk); **partial unique on `current_bunk_id WHERE NOT NULL`**; migration **0044** dev-applied; **prod-paste-0044 RLS** | Wells | ⬜ blocked on OQ1; blocks Claude Code |
+| `BOARDING_ROLES` group in `lib/access.ts` (`ADMIN`, `HEADMASTER`, `DEAN_OF_BOARDING`, `HOUSEMASTER`) `as const satisfies readonly KnownAppRole[]`; no enum add | Claude Code | ⬜ |
+| Roster read + reassign — `app/(app)/senior/boarding/…` route, roster builder (`withSchool`, boarders by house→dorm→bunk), reassign action (append history + move `current_bunk_id` atomically, guarded by partial-unique), `recordAudit` | Claude Code | ⬜ blocked on Wells |
+| House Roster UI (surface 02) — identity strip, dorm/bunk grid, bunk states, student detail card, reassign gesture, swap-log panel | Claude Code | ⬜ |
+| Seed — demo Asankrangwa dorms A–H × 15 bunks/House, prefects, boarder→bunk allocations, J. Manu in Aggrey D-03 (marker-scoped, re-run-safe) | Wells/Claude Code | ⬜ |
+| Build · typecheck · tests (allocation invariant, move-history append, one-bunk-per-student race) · RLS test · preview round-trip | Claude Code | ⬜ |
+| QA — dorm/bunk render vs surface, reassign writes history + moves pointer, one-bunk-per-student DB-enforced under race, residency filter (day student absent), tenant isolation | Quinn | ⬜ |
+| Architecture/portability — composite FKs, allocation logic in `lib/` (no trigger), history ≠ `audit_log` dup, roster builder server-only | Dex | ⬜ |
+| Security — every new tenant table `tenant_isolation` FORCE RLS, **prod-paste-0044 parity**, cross-tenant read denied, route auth + `BOARDING_ROLES`, no cross-tenant bunk ref possible | Sarah | ⬜ holds merge |
+| Gate fixes (aggregated rework) | Claude Code | ⬜ |
+| Merge · verify `git log origin/main` · **Pence syncs senior-feat ← main** | Sarah + Pence | ⬜ |
+
+### Open questions — Kofi rules before implementation (OQ1 gates Wells; NONE are owner calls)
+1. **OQ1 — residency/bunk schema shape (gates Wells).** BUILD_STACK #2 specs a separate `student_residency` table;
+   F0 already shipped `students.residency`+`house_id`. Rule: (a) keep residency on `students`, add `current_bunk_id`
+   + a `bunk_allocation` history table (leaner, reuses shipped columns — recommend, YAGNI on a 2nd residency store);
+   or (b) build the full `student_residency` table per spec. BUILD_STACK wins on conflict, but the column is live —
+   Kofi reconciles. The one call Wells waits on.
+2. **OQ2 — House-config fields.** `gender` enum (one unified list, BUILD_STACK #3), `capacity`, resident-HM (`hm_user_id`
+   → users.id, mirror `classes.class_teacher_user_id`); backfill seeded houses' gender.
+3. **OQ3 — bunk invariant.** One-student-per-bunk / one-bunk-per-student via partial unique on `current_bunk_id WHERE
+   NOT NULL`; reassign atomic (release old + claim new in one tx).
+4. **OQ4 — prefect roles.** 5 designations (Head/Dining/Sanitation/Prep/SickBay) as nullable `prefect_role` enum;
+   appointment display-only in F0 (workflow deferred).
+5. **OQ5 — F0 UI scope.** F0 ships surface 02 (roster); House-config *editing* UI rides in INCR-8 (schema lands in 0044).
+   Confirm the split + nav path.
+
+### Risk flags
+- **NEW tenant tables ⇒ prod-paste RLS** (`prod-paste-0044-boarding-spine.sql`; db:policies is dev-only). Sarah gates parity.
+- **Composite intra-tenant FKs** (dorm→house, bunk→dorm, allocation→student+bunk) so a cross-tenant bunk ref is
+  impossible; DDL order table→UK→ADD-FK (0033 class of bug). Wells verifies.
+- **Allocation race** — partial-unique rejects the loser cleanly (atomic release-then-claim). Quinn tests.
+- **Portability** — allocation/move-history in `lib/` (no trigger); history ≠ `audit_log`. Dex gates.
+- **Residency-as-filter** (BUILD_STACK #1) — roster reads only BOARDER (+DEBOARDINIZED tile); DAY never appears;
+  day-only school renders empty, not broken.
+- **Seed not idempotent** — marker-scoped, re-run-safe, or prod-paste to shared dev DB.
+
+### Prerequisites
+- ✅ `senior-feat` level with `main` (`cec5659`); Module 4.1 closed. Next migration **0044**.
+- No owner call gates INCR-7. **Deploy note:** migration 0044 + hand-paste `prod-paste-0044-boarding-spine.sql` on prod.
+
+## MODULE 4.2 — OWNER decisions (surface at the module gate; NONE block INCR-7)
+1. **v1 scope — all 7 surfaces, or operational core (7–10) first, deferring 11–13?** (gates roadmap tail) _Rec:
+   sequence all 7, gate 13 on the billing/VLC calls below; reprioritise after 7+8._
+2. **Discipline → billing penalty (BUILD_STACK #6) — writes into shipped, paying-customer billing.** (gates INCR-13)
+   3× boarding-fee auto-invoice on infraction log. **STOP-AND-ASK — production financial write.** Auto-invoice vs
+   review-queue; who adjusts; category naming.
+3. **SMS + fee-owing via comms — SMS is a PAID external service.** (gates INCR-9/11/12) Exeat late-return, resumption
+   reminders, visiting RSVP. **STOP-AND-ASK on the SMS *sends*** (billing reads are safe). Go-live vs stub/queue-not-sent.
+4. **Sickbay (4.4) after Boarding — confirm counts-only placeholder** in surfaces 02/04. (gates INCR-10) Mostly settled by phase order.
+5. **VLC pastoral bypass (BUILD_STACK #9) — forward dep on module 4.5.** (gates INCR-13) Stub in 4.2 (manual "escalate
+   via Dean" + nullable flag), wire real VLC when 4.5 lands.
+6. **Deboardinization "reversible only by Board" (BUILD_STACK #5) — no Board role exists.** (gates INCR-13 schema)
+   Model Board review as a first-class record + guarded reinstatement (3 co-signs + logged decision), not a new RBAC role.
+7. **"Senior Housemaster" == `DEAN_OF_BOARDING`?** (Kofi ruling; owner confirm only if titles differ) Fixes `BOARDING_ROLES`
+   + co-sign checks; `MATRON` stays sickbay-only.
+
+### Kofi rulings — INCR-7 (2026-07-16) — Wells UNBLOCKED
+- **OQ1 → Option (a).** Keep residency on `students`; add `current_bunk_id` pointer + append-only `bunk_allocation`
+  history table. NO `student_residency` table (BUILD_STACK #2's intent — hierarchy · bunk-as-key · live pointer +
+  append-only history · DB-enforced one-per-bunk — is fully satisfied; the separate table adds no invariant. `became_*`
+  lifecycle timestamps not load-bearing in F0). **Concrete schema for migration 0044:**
+  - `ALTER houses` + `gender house_gender NULL` (BOYS/GIRLS/COED) + `capacity int NULL` (planning figure, not a hard cap)
+    + `hm_user_id uuid NULL → users.id SET NULL` (mirror `classes.class_teacher_user_id`). Column ALTER only (already RLS'd).
+  - `ALTER students` + `current_bunk_id uuid NULL`, composite FK `(school_id, current_bunk_id) → boarding_bunk(school_id, id)`
+    SET NULL, **PARTIAL UNIQUE (current_bunk_id) WHERE current_bunk_id IS NOT NULL** (one-student-per-bunk, DB). Column ALTER only.
+  - NEW `boarding_dormitory` (tenant): id, school_id, house_id, name (A–H), section_label NULL, bunk_count int DEFAULT 15,
+    active, created_at · tenant UK (school_id,id) · composite FK (school_id,house_id)→house CASCADE · UNIQUE (school_id,house_id,name).
+  - NEW `boarding_bunk` (tenant): id, school_id, dormitory_id, position_number, prefect_role prefect_role NULL, active,
+    created_at · tenant UK (school_id,id) · composite FK (school_id,dormitory_id)→dorm CASCADE · UNIQUE (school_id,dormitory_id,position_number).
+  - NEW `bunk_allocation` (tenant, APPEND-ONLY): id, school_id, student_id, bunk_id, from_at DEFAULT now, to_at NULL (open=current),
+    reason text NOT NULL, allocated_by_user_id uuid→users.id SET NULL, created_at · composite FKs (school_id,student_id)→students,
+    (school_id,bunk_id)→boarding_bunk · index (school_id,student_id).
+  - NEW ENUMS `house_gender` (BOYS,GIRLS,COED), `prefect_role` (HEAD,DINING,SANITATION,PREP,SICKBAY). residency enum already exists.
+  - RLS: `boarding_dormitory`+`boarding_bunk`+`bunk_allocation` → `tenant_isolation` FORCE + **prod-paste-0044-boarding-spine.sql**.
+  - DDL order: table → tenant UK → ADD composite FK (0033 FK-before-UNIQUE class of bug).
+- **OQ2/OQ3/OQ4/OQ5 → confirmed** (gender enum + capacity + hm_user_id; partial-unique invariant + atomic reassign;
+  `prefect_role` nullable on the bunk, appointment workflow deferred; F0 ships surface 02, config-editing UI → INCR-8).
+- **OQ7 → `BOARDING_ROLES = [ADMIN, HEADMASTER, DEAN_OF_BOARDING, HOUSEMASTER] as const satisfies readonly KnownAppRole[]`**
+  (Senior HM = DEAN_OF_BOARDING; MATRON sickbay-only). No enum add.
+
+#### INCR-7 · Acceptance criteria (for Quinn)
+Roster = (school × house). "Active boarder of House H" = students where school=tenant, house_id=H, residency=BOARDER, status=ACTIVE.
+- **A · Membership + ordering (residency-as-filter, BUILD_STACK #1).** A1 BOARDER of Aggrey ACTIVE → on roster (grid if
+  bunked, else unallocated tray). A2 DAY → NEVER on any roster/count (the load-bearing filter). A3 DEBOARDINIZED → holds no
+  bunk, absent from grid, only a house-level count/tile. A4 non-ACTIVE (WITHDRAWN/etc.) excluded. A5 order dormitory-major
+  (A→H) then bunk 1→15, occupants by bunk position not alphabetical. A6 wrong-house boarder excluded.
+- **B · House→Dorm→Bunk render + 4 states.** B1 8 dorms × 15 bunks = 120 slots **from data, not hard-coded 8×15**. B2
+  occupied shows name, vacant shows dashed/italic. B3 four states from data: prefect (`prefect_role`≠null→gold), pastoral-flag
+  (active flag→terra, stub source until 4.5), moved-this-sem (open `bunk_allocation.from_at` in current sem→green), vacant. B4
+  click occupied→detail, click vacant→placement target. B5 prefect strip = the ≤5 tagged bunks; missing role renders empty.
+- **C · Reassign — atomic history + pointer.** C1 one tx: set `current_bunk_id`, close prior open `bunk_allocation` (to_at=now),
+  insert new open row (reason, allocated_by), all-or-nothing. C2 append-only (prior row not deleted; ≥2 rows after). C3 reassign
+  to occupied → rejected, tx rolls back, no orphan row. C4 no `reason` → rejected before any write. C5 swap-log newest-first
+  (from·to·reason·staff·ts).
+- **D · One-per-bunk DB invariant under race (🔴 headline).** D1 partial unique exists + Postgres-enforced. D2 two concurrent
+  reassigns to the same vacant bunk → exactly one commits, loser fails unique + whole-tx rollback + clean "bunk taken" error.
+  D3 one-bunk-per-student inherent (single-valued pointer). D4 re-point to same bunk (no-op) → no dup open history row.
+- **E · Residency-as-filter edges.** E1 zero BOARDER school → module empty/disabled, not 500. E2 no houses/dorms/bunks →
+  "not configured" empty state. E3 house with boarders but no dorms → identity strip + unallocated state, no crash.
+- **F · Tenant isolation.** F1 all 3 new tables `tenant_isolation` FORCE + prod-paste-0044 parity. F2 cross-tenant read/reassign
+  denied. F3 cross-tenant bunk_id ref structurally impossible (composite FK).
+- **G · Role-gating (BOARDING_ROLES).** G1 {ADMIN,HEADMASTER,DEAN_OF_BOARDING,HOUSEMASTER} load + reassign. G2
+  STUDENT/PARENT/TEACHER/FORM_MASTER/BURSAR/MATRON/VHM denied. G3 reassign action re-checks server-side. **G4 (Kofi ruling —
+  enforce in F0): plain HOUSEMASTER is house-scoped** (only where `houses.hm_user_id` = their user); ADMIN/HEADMASTER/DEAN
+  school-scoped.
+- **H · Audit.** H1 reassign writes one `auditLog` (actor·BUNK_REASSIGNED·student·from·to·reason·ts). H2 reads not logged. H3
+  no PII beyond ids in payload. (`bunk_allocation` = operational history; `auditLog` = audit record — distinct.)
+- **I · House-config fields (identity strip).** I1 strip: gender · capacity · resident-HM name · filled/vacant (filled=occupied
+  bunks, vacant=total−filled). I2 backfill Aggrey/Guggisberg/Fraser=BOYS, Slessor/Kingsley/Aryee=GIRLS, capacity 120, Aggrey
+  HM=Mr Mensah. I3 gender-null house renders strip without gender pill, no crash. I4 counts = BOARDER-with-bunk only.
+
+#### Domain traps (Kofi)
+- **J1 boarder-with-no-bunk (real):** BOARDER `current_bunk_id`=null → unallocated tray/count, occupies no cell, never dropped.
+- **J2 deboardinized bunk:** on deboardinization `current_bunk_id`→null + open alloc closed; F0 doesn't perform it (INCR-13) but
+  must render such a student bunk-less.
+- **J3 gender-mismatch (🔴 LIVE must-fix seed):** house gender must match student sex (BOYS⇒MALE, GIRLS⇒FEMALE, COED⇒either),
+  enforced at the **app reassign/placement action, NOT the DB** (cross-table check needs a trigger, which Dex bars). **The shipped
+  seed violates this** (score-ledger science roster cross-assigned boarders ignoring sex — Abena Mensah FEMALE in Aggrey BOYS,
+  Kwame Boakye MALE in Aryee GIRLS). The boarding seed MUST reassign demo boarders so each boarder's sex matches house gender
+  before placing them; J. Manu (MALE, Aggrey D-03) is coherent. Assert reassign refuses a cross-gender target + seed is coherent.
+- **J4 capacity overflow:** `capacity` is a planning figure (advisory flag), NOT a hard cap; the real limit is physical bunks
+  (must exist + be free); a full house → next boarder to unallocated tray, never force-place/crash.
+- **J5 dorm/bunk ≠ 8×15:** 8×15 is seed data not a constraint; render N dorms × M bunks from data (a 6-dorm house must render).
+- **J-note pastoral state:** `vlc_pastoral_flags` is module 4.5 → stubbed; terra state renders on a seed stub, absent otherwise (honest).
+
+### Lucy surface map (surface 02) — load-bearing build facts
+- **🔴 House colour = USER DATA, inline `style`, NOT a brand token.** Identity-strip bg, crest text, setup 6px band all render
+  `house.colour` inline. Hex collisions are coincidental (Guggisberg `#1A2B47` == brand navy, Fraser `#2F6B47` == brand green,
+  Aggrey `#B43A2F` ≠ terra `#B84A39`) — NEVER recognise-and-swap a brand token; NEVER slash-opacity a raw hex (no-alpha discipline,
+  verify tints in live preview). White House (`#FFFFFF`, Slessor) needs a `border-2` guard. Seeded colours: Aggrey `#B43A2F`,
+  Guggisberg `#1A2B47`, Fraser `#2F6B47`, Slessor `#FFFFFF`, Kingsley `#E5C44A`, Aryee `#9B6FAA`.
+- **Bunk grid geometry:** `.dorm-grid` = 2 dorms/row × 4 rows = 8 dorms A–H; each dorm `.bunks` = 5-wide, 15 bunks flow 3 deep.
+  Bunk `pos` = zero-padded mono `01`–`15` per dorm; address `Dorm {L} bunk {NN}` (short `D-03`).
+- **4 bunk states = BRAND tokens** (Tailwind classes, not house.colour): prefect `.prefect` gold (`bg-gold-bg`/`border-gold`/dot
+  `bg-gold`/name ` *`), pastoral `.flagged` terra 1.5px (`bg-terra-bg`/`border-terra`), moved `.new` green (`bg-green-bg`), vacant
+  `.empty` white dashed `border-2` italic. Badge dot only on prefect/flagged/new. **Precedence (Lucy rec, confirm):** flagged >
+  prefect > moved > occupied > vacant. Gender pill = brand token keyed off enum (`.boys` navy, `.girls` terra), NOT house colour.
+- **F0 BUILDS:** identity strip; summary strip (counts derived); prefect strip **display-only**; 8×15 grid + 4 states; bunk-click →
+  student detail card; **within-House reassign** writing append-only history + moving `current_bunk_id`; last-swap summary;
+  House-config fields surfaced **read-only**. Route `/senior/boarding` (roster at `/boarding/houses/[houseId]/roster`).
+- **F0 does NOT build (render seeded/stub only):** House-config editing UI (INCR-8); prefect appointment workflow; **VLC
+  cross-link / "Open VLC case file" / pastoral case copy (forward dep 4.5 — copy MUST NOT imply a working VLC system, stub it)**;
+  inspection times / boarding-behaviour / exeat / visiting (INCR-9/10/12, display-only seeded strings); discipline; **swap→SMS to
+  parents (comms, INCR-9+ — F0 writes history, sends NOTHING)**; history viewer; Print bed map; House-to-House transfer.
+- **Open UI flags (team decisions, no owner call):** define the unassigned-boarder tray (J1); a selected-bunk state (rec
+  `border-gold` ring); the unflagged detail-card default variant (rec neutral/navy, not terra); derive ALL counts/addresses from
+  data (the mock's occupancy numbers don't reconcile — hardcode nothing).

@@ -33,6 +33,43 @@ export const SENIOR_MANAGEMENT_ROLES = [
   "VICE_HEADMASTER_ACADEMIC",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * Boarding (SHS module 4.2 / INCR-7) — who may see and manage House rosters. Admin +
+ * Headmaster + Dean of Boarding are school-scoped (any House); a plain HOUSEMASTER is
+ * house-scoped (only the House they master — Kofi G4, enforced by `canAccessHouse`).
+ * MATRON is sickbay-only and NOT here. STUDENT / PARENT / TEACHER never reach it.
+ */
+export const BOARDING_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "DEAN_OF_BOARDING",
+  "HOUSEMASTER",
+] as const satisfies readonly KnownAppRole[];
+
+/** Boarding roles that see EVERY House in the school (not confined to one they master). */
+export const BOARDING_SCHOOL_SCOPED_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "DEAN_OF_BOARDING",
+] as const satisfies readonly KnownAppRole[];
+
+/**
+ * True when the user may view/reassign within a given House (Kofi G4). School-scoped roles
+ * (Admin/Headmaster/Dean) reach any House; a plain HOUSEMASTER only the House whose
+ * `hm_user_id` is their own user id. Pure — used by the page guard and the reassign action.
+ */
+export function canAccessHouse(
+  roles: readonly string[],
+  userId: string | null | undefined,
+  houseHmUserId: string | null | undefined,
+): boolean {
+  if (hasAnyRole(roles, BOARDING_SCHOOL_SCOPED_ROLES)) return true;
+  if (roles.includes("HOUSEMASTER")) {
+    return !!userId && !!houseHmUserId && houseHmUserId === userId;
+  }
+  return false;
+}
+
 /** True when the user holds at least one of the allowed roles. */
 export function hasAnyRole(
   roles: readonly string[],
