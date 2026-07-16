@@ -1,11 +1,13 @@
 import { requireSchool } from "@/lib/auth/server";
-import { signOutAction } from "@/lib/actions/auth";
 import { AppSidebar } from "@/components/app/sidebar";
+import { SignOutButton } from "@/components/app/sign-out-button";
+import { PwaSession } from "@/components/pwa-session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { school, user } = await requireSchool();
   return (
     <div className="flex min-h-screen bg-bg">
+      <PwaSession uid={user.id} />
       <AppSidebar
         school={{
           name: school.name,
@@ -26,14 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className="flex items-center gap-1.5 rounded-pill bg-green-bg px-2.5 py-1 text-xs font-medium text-green">
               ● Connected
             </span>
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="rounded-md px-3 py-1.5 text-xs font-semibold text-navy-2 transition-colors hover:bg-bg"
-              >
-                Sign out
-              </button>
-            </form>
+            <SignOutButton />
           </div>
         </header>
         <main className="flex-1 p-6">{children}</main>

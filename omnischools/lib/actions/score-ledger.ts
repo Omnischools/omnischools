@@ -8,6 +8,7 @@ import { SENIOR_LEDGER_ROLES } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
 import type { Tx } from "@/lib/db";
 import {
+  classes,
   students,
   academicPeriod,
   seniorAssessments,
@@ -677,6 +678,53 @@ export async function setLedgerPath(input: unknown): Promise<SetPathResult> {
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not change the path. Please try again." };
+  }
+}
+
+// ----------------------------------------- class switch audit (PWA · INCR-4)
+const SwitchClassSchema = z.object({
+  classId: z.string().uuid(),
+  subjectId: z.string().uuid(),
+  periodId: z.string().uuid(),
+});
+
+/**
+ * Record a class-context switch from the PWA bottom sheet (INCR-4 / S5). The switch is
+ * "who looked at which class, when" — the same class-context audit trail every other
+ * class action writes, so the phone adds no new audit surface. Tenant-scoped: the class
+ * must belong to the caller's school (RLS + the existence check) or nothing is logged.
+ * Read-only navigation — never touches senior_score_ledger.
+ */
+export async function logClassSwitch(
+  input: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { school } = await requireSchool();
+  await assertAnyRole(SENIOR_LEDGER_ROLES);
+  const parsed = SwitchClassSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid class." };
+  const d = parsed.data;
+  const actor = await resolveActor(school.id);
+  try {
+    await withSchool(school.id, async (tx) => {
+      const [cls] = await tx
+        .select({ id: classes.id })
+        .from(classes)
+        .where(and(eq(classes.schoolId, school.id), eq(classes.id, d.classId)));
+      if (!cls) return; // not this school's class — RLS-safe no-op
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "viewed",
+        entityType: "senior_score_ledger",
+        entityId: d.classId,
+        after: { subjectId: d.subjectId, periodId: d.periodId, via: "pwa_switcher" },
+        reason: "Class switched (PWA)",
+      });
+    });
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not record the switch." };
   }
 }
 
