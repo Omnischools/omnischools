@@ -700,3 +700,19 @@ Sarah merge → Pence sync. The diff engine (`scan-diff.ts`) is **reused, not re
   (revert), Q6 (retention). Q5 + Q7 are Kofi's with a check-in.
 - **Deploy note (pre-write for merge):** migration 0043 (new table + composite self-FK + RLS) via migrate,
   **plus hand-paste `prod-paste-0043-ledger-versions.sql` on prod**.
+
+### Owner decisions on the three schema-shaping calls (2026-07-16) — Wells UNBLOCKED
+- **Q1 granularity → PER-ROW + BATCH TAG.** One immutable snapshot per `(student×subject×period)` per
+  commit, tagged with a commit/upload `batch_id` — batch backs the "supersedes the <date> upload"
+  provenance; per-row gives queryable per-student history + diff at the ledger's grain.
+- **Q3 revert → READ-ONLY HISTORY.** No restore mutation path in Item 7; "undo" = a fresh commit of the
+  correct values through the normal diff+audit (becomes a new version). A one-click restore can be added
+  later with no schema change.
+- **Q6 retention → PERIOD-SCOPED, PRUNE ON ROLLOVER.** Keep versions only for the **current semester/term**;
+  **prune the prior period's version snapshots at the start of the next semester/term.** The version grain
+  already carries `periodId`, so this is a period-scoped DELETE — **no retention column needed**; the
+  finalised latest values stay in `senior_score_ledger` (only the version *history* snapshots are pruned).
+  **OPEN (Kofi/Wells to pin, NOT an owner call):** what concrete event fires the prune — an academic-period
+  activation/rollover action, period-close, or lazy prune-on-first-write-to-new-period? Find the existing
+  period-rollover hook (or flag its absence) and attach the prune (a `lib/` function, never a DB trigger /
+  external cron). Wells indexes the version table on `periodId` for an efficient prune.
