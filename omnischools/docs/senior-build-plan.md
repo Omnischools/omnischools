@@ -956,3 +956,95 @@ day student never appears; a day-only school renders the module empty/disabled. 
    Model Board review as a first-class record + guarded reinstatement (3 co-signs + logged decision), not a new RBAC role.
 7. **"Senior Housemaster" == `DEAN_OF_BOARDING`?** (Kofi ruling; owner confirm only if titles differ) Fixes `BOARDING_ROLES`
    + co-sign checks; `MATRON` stays sickbay-only.
+
+### Kofi rulings — INCR-7 (2026-07-16) — Wells UNBLOCKED
+- **OQ1 → Option (a).** Keep residency on `students`; add `current_bunk_id` pointer + append-only `bunk_allocation`
+  history table. NO `student_residency` table (BUILD_STACK #2's intent — hierarchy · bunk-as-key · live pointer +
+  append-only history · DB-enforced one-per-bunk — is fully satisfied; the separate table adds no invariant. `became_*`
+  lifecycle timestamps not load-bearing in F0). **Concrete schema for migration 0044:**
+  - `ALTER houses` + `gender house_gender NULL` (BOYS/GIRLS/COED) + `capacity int NULL` (planning figure, not a hard cap)
+    + `hm_user_id uuid NULL → users.id SET NULL` (mirror `classes.class_teacher_user_id`). Column ALTER only (already RLS'd).
+  - `ALTER students` + `current_bunk_id uuid NULL`, composite FK `(school_id, current_bunk_id) → boarding_bunk(school_id, id)`
+    SET NULL, **PARTIAL UNIQUE (current_bunk_id) WHERE current_bunk_id IS NOT NULL** (one-student-per-bunk, DB). Column ALTER only.
+  - NEW `boarding_dormitory` (tenant): id, school_id, house_id, name (A–H), section_label NULL, bunk_count int DEFAULT 15,
+    active, created_at · tenant UK (school_id,id) · composite FK (school_id,house_id)→house CASCADE · UNIQUE (school_id,house_id,name).
+  - NEW `boarding_bunk` (tenant): id, school_id, dormitory_id, position_number, prefect_role prefect_role NULL, active,
+    created_at · tenant UK (school_id,id) · composite FK (school_id,dormitory_id)→dorm CASCADE · UNIQUE (school_id,dormitory_id,position_number).
+  - NEW `bunk_allocation` (tenant, APPEND-ONLY): id, school_id, student_id, bunk_id, from_at DEFAULT now, to_at NULL (open=current),
+    reason text NOT NULL, allocated_by_user_id uuid→users.id SET NULL, created_at · composite FKs (school_id,student_id)→students,
+    (school_id,bunk_id)→boarding_bunk · index (school_id,student_id).
+  - NEW ENUMS `house_gender` (BOYS,GIRLS,COED), `prefect_role` (HEAD,DINING,SANITATION,PREP,SICKBAY). residency enum already exists.
+  - RLS: `boarding_dormitory`+`boarding_bunk`+`bunk_allocation` → `tenant_isolation` FORCE + **prod-paste-0044-boarding-spine.sql**.
+  - DDL order: table → tenant UK → ADD composite FK (0033 FK-before-UNIQUE class of bug).
+- **OQ2/OQ3/OQ4/OQ5 → confirmed** (gender enum + capacity + hm_user_id; partial-unique invariant + atomic reassign;
+  `prefect_role` nullable on the bunk, appointment workflow deferred; F0 ships surface 02, config-editing UI → INCR-8).
+- **OQ7 → `BOARDING_ROLES = [ADMIN, HEADMASTER, DEAN_OF_BOARDING, HOUSEMASTER] as const satisfies readonly KnownAppRole[]`**
+  (Senior HM = DEAN_OF_BOARDING; MATRON sickbay-only). No enum add.
+
+#### INCR-7 · Acceptance criteria (for Quinn)
+Roster = (school × house). "Active boarder of House H" = students where school=tenant, house_id=H, residency=BOARDER, status=ACTIVE.
+- **A · Membership + ordering (residency-as-filter, BUILD_STACK #1).** A1 BOARDER of Aggrey ACTIVE → on roster (grid if
+  bunked, else unallocated tray). A2 DAY → NEVER on any roster/count (the load-bearing filter). A3 DEBOARDINIZED → holds no
+  bunk, absent from grid, only a house-level count/tile. A4 non-ACTIVE (WITHDRAWN/etc.) excluded. A5 order dormitory-major
+  (A→H) then bunk 1→15, occupants by bunk position not alphabetical. A6 wrong-house boarder excluded.
+- **B · House→Dorm→Bunk render + 4 states.** B1 8 dorms × 15 bunks = 120 slots **from data, not hard-coded 8×15**. B2
+  occupied shows name, vacant shows dashed/italic. B3 four states from data: prefect (`prefect_role`≠null→gold), pastoral-flag
+  (active flag→terra, stub source until 4.5), moved-this-sem (open `bunk_allocation.from_at` in current sem→green), vacant. B4
+  click occupied→detail, click vacant→placement target. B5 prefect strip = the ≤5 tagged bunks; missing role renders empty.
+- **C · Reassign — atomic history + pointer.** C1 one tx: set `current_bunk_id`, close prior open `bunk_allocation` (to_at=now),
+  insert new open row (reason, allocated_by), all-or-nothing. C2 append-only (prior row not deleted; ≥2 rows after). C3 reassign
+  to occupied → rejected, tx rolls back, no orphan row. C4 no `reason` → rejected before any write. C5 swap-log newest-first
+  (from·to·reason·staff·ts).
+- **D · One-per-bunk DB invariant under race (🔴 headline).** D1 partial unique exists + Postgres-enforced. D2 two concurrent
+  reassigns to the same vacant bunk → exactly one commits, loser fails unique + whole-tx rollback + clean "bunk taken" error.
+  D3 one-bunk-per-student inherent (single-valued pointer). D4 re-point to same bunk (no-op) → no dup open history row.
+- **E · Residency-as-filter edges.** E1 zero BOARDER school → module empty/disabled, not 500. E2 no houses/dorms/bunks →
+  "not configured" empty state. E3 house with boarders but no dorms → identity strip + unallocated state, no crash.
+- **F · Tenant isolation.** F1 all 3 new tables `tenant_isolation` FORCE + prod-paste-0044 parity. F2 cross-tenant read/reassign
+  denied. F3 cross-tenant bunk_id ref structurally impossible (composite FK).
+- **G · Role-gating (BOARDING_ROLES).** G1 {ADMIN,HEADMASTER,DEAN_OF_BOARDING,HOUSEMASTER} load + reassign. G2
+  STUDENT/PARENT/TEACHER/FORM_MASTER/BURSAR/MATRON/VHM denied. G3 reassign action re-checks server-side. **G4 (Kofi ruling —
+  enforce in F0): plain HOUSEMASTER is house-scoped** (only where `houses.hm_user_id` = their user); ADMIN/HEADMASTER/DEAN
+  school-scoped.
+- **H · Audit.** H1 reassign writes one `auditLog` (actor·BUNK_REASSIGNED·student·from·to·reason·ts). H2 reads not logged. H3
+  no PII beyond ids in payload. (`bunk_allocation` = operational history; `auditLog` = audit record — distinct.)
+- **I · House-config fields (identity strip).** I1 strip: gender · capacity · resident-HM name · filled/vacant (filled=occupied
+  bunks, vacant=total−filled). I2 backfill Aggrey/Guggisberg/Fraser=BOYS, Slessor/Kingsley/Aryee=GIRLS, capacity 120, Aggrey
+  HM=Mr Mensah. I3 gender-null house renders strip without gender pill, no crash. I4 counts = BOARDER-with-bunk only.
+
+#### Domain traps (Kofi)
+- **J1 boarder-with-no-bunk (real):** BOARDER `current_bunk_id`=null → unallocated tray/count, occupies no cell, never dropped.
+- **J2 deboardinized bunk:** on deboardinization `current_bunk_id`→null + open alloc closed; F0 doesn't perform it (INCR-13) but
+  must render such a student bunk-less.
+- **J3 gender-mismatch (🔴 LIVE must-fix seed):** house gender must match student sex (BOYS⇒MALE, GIRLS⇒FEMALE, COED⇒either),
+  enforced at the **app reassign/placement action, NOT the DB** (cross-table check needs a trigger, which Dex bars). **The shipped
+  seed violates this** (score-ledger science roster cross-assigned boarders ignoring sex — Abena Mensah FEMALE in Aggrey BOYS,
+  Kwame Boakye MALE in Aryee GIRLS). The boarding seed MUST reassign demo boarders so each boarder's sex matches house gender
+  before placing them; J. Manu (MALE, Aggrey D-03) is coherent. Assert reassign refuses a cross-gender target + seed is coherent.
+- **J4 capacity overflow:** `capacity` is a planning figure (advisory flag), NOT a hard cap; the real limit is physical bunks
+  (must exist + be free); a full house → next boarder to unallocated tray, never force-place/crash.
+- **J5 dorm/bunk ≠ 8×15:** 8×15 is seed data not a constraint; render N dorms × M bunks from data (a 6-dorm house must render).
+- **J-note pastoral state:** `vlc_pastoral_flags` is module 4.5 → stubbed; terra state renders on a seed stub, absent otherwise (honest).
+
+### Lucy surface map (surface 02) — load-bearing build facts
+- **🔴 House colour = USER DATA, inline `style`, NOT a brand token.** Identity-strip bg, crest text, setup 6px band all render
+  `house.colour` inline. Hex collisions are coincidental (Guggisberg `#1A2B47` == brand navy, Fraser `#2F6B47` == brand green,
+  Aggrey `#B43A2F` ≠ terra `#B84A39`) — NEVER recognise-and-swap a brand token; NEVER slash-opacity a raw hex (no-alpha discipline,
+  verify tints in live preview). White House (`#FFFFFF`, Slessor) needs a `border-2` guard. Seeded colours: Aggrey `#B43A2F`,
+  Guggisberg `#1A2B47`, Fraser `#2F6B47`, Slessor `#FFFFFF`, Kingsley `#E5C44A`, Aryee `#9B6FAA`.
+- **Bunk grid geometry:** `.dorm-grid` = 2 dorms/row × 4 rows = 8 dorms A–H; each dorm `.bunks` = 5-wide, 15 bunks flow 3 deep.
+  Bunk `pos` = zero-padded mono `01`–`15` per dorm; address `Dorm {L} bunk {NN}` (short `D-03`).
+- **4 bunk states = BRAND tokens** (Tailwind classes, not house.colour): prefect `.prefect` gold (`bg-gold-bg`/`border-gold`/dot
+  `bg-gold`/name ` *`), pastoral `.flagged` terra 1.5px (`bg-terra-bg`/`border-terra`), moved `.new` green (`bg-green-bg`), vacant
+  `.empty` white dashed `border-2` italic. Badge dot only on prefect/flagged/new. **Precedence (Lucy rec, confirm):** flagged >
+  prefect > moved > occupied > vacant. Gender pill = brand token keyed off enum (`.boys` navy, `.girls` terra), NOT house colour.
+- **F0 BUILDS:** identity strip; summary strip (counts derived); prefect strip **display-only**; 8×15 grid + 4 states; bunk-click →
+  student detail card; **within-House reassign** writing append-only history + moving `current_bunk_id`; last-swap summary;
+  House-config fields surfaced **read-only**. Route `/senior/boarding` (roster at `/boarding/houses/[houseId]/roster`).
+- **F0 does NOT build (render seeded/stub only):** House-config editing UI (INCR-8); prefect appointment workflow; **VLC
+  cross-link / "Open VLC case file" / pastoral case copy (forward dep 4.5 — copy MUST NOT imply a working VLC system, stub it)**;
+  inspection times / boarding-behaviour / exeat / visiting (INCR-9/10/12, display-only seeded strings); discipline; **swap→SMS to
+  parents (comms, INCR-9+ — F0 writes history, sends NOTHING)**; history viewer; Print bed map; House-to-House transfer.
+- **Open UI flags (team decisions, no owner call):** define the unassigned-boarder tray (J1); a selected-bunk state (rec
+  `border-gold` ring); the unflagged detail-card default variant (rec neutral/navy, not terra); derive ALL counts/addresses from
+  data (the mock's occupancy numbers don't reconcile — hardcode nothing).
