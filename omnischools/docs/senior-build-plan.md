@@ -874,7 +874,7 @@ INCR-7 (F0 spine + roster) ──┬─> INCR-8 (config OS) ──┬─> INCR-9
 - **Forward dep:** INCR-13's VLC pastoral bypass reads `vlc_pastoral_flags` (module **4.5**, after Boarding) → **stubbed** in 4.2.
 - Draft each of INCR-8…13's board when its predecessor merges (roadmap one-liners suffice to sequence now).
 
-## Next increment — INCR-7 · Boarding F0 — House→Dormitory→Bunk spine + residency + House Roster · migration 0044
+## INCR-7 ✅ MERGED (PR #146, `2a5bda5`+`f2566fb`) — Boarding F0 · House→Dormitory→Bunk spine + residency + House Roster · migration 0044 · ⚠️ prod deploy: hand-paste `prod-paste-0044-boarding-spine.sql`
 
 > **Nothing blocks INCR-7.** Kofi + Lucy start now; Wells waits only on Kofi's OQ1 (residency/bunk schema shape —
 > a Kofi call under BUILD_STACK authority, NOT an owner call). The 7 module-scope OWNER decisions (below) gate
@@ -1048,3 +1048,185 @@ Roster = (school × house). "Active boarder of House H" = students where school=
 - **Open UI flags (team decisions, no owner call):** define the unassigned-boarder tray (J1); a selected-bunk state (rec
   `border-gold` ring); the unflagged detail-card default variant (rec neutral/navy, not terra); derive ALL counts/addresses from
   data (the mock's occupancy numbers don't reconcile — hardcode nothing).
+
+---
+
+## Next increment — INCR-8 · Boarding programme config — surface 01 (programme-setup) · migration 0045
+
+> **Nothing blocks INCR-8.** `senior-feat` is level with `main` (`b6c9cce`); INCR-7/F0 merged. Kofi + Lucy
+> start now; Wells waits only on Kofi's OQ1/OQ4 (config-table shapes + calendar model — Kofi calls under
+> BUILD_STACK authority, **NONE are owner calls**). INCR-8 stores config and **sends nothing / writes no
+> billing**, so the MODULE 4.2 owner decisions (#2 billing penalty, #3 SMS sends, #6 Board reversal) do **not**
+> gate it — they gate INCR-9/11/12/13. Next migration **0045** (latest is 0044).
+
+### Goal
+The **config OS** every later boarding surface reads (the surface's own words: "everything else reads from
+this"). What the Senior HM (`DEAN_OF_BOARDING`) + Admin configure once at start-of-session: the **House-config
+editing UI F0 deferred** (create/rename House · set colour/gender/capacity · assign resident HM · provision
+dorms/bunks), the **daily-rhythm template** (4:30 AM to 9:30 PM, weekday + separate Sat/Sun + F3 WASSCE
+extension), the **three policy doctrines** (exeat · visiting · inspection), the **GES single-track calendar**
+(resumption / vacation / visiting / exeat windows, F3 early post-WASSCE), and the **5-rung deboardinization
+ladder** rendered from the canonical definition. Config lives in tables + `lib/` (portable, no hardcoding, no
+triggers).
+
+### Done when
+A Dean/Headmaster/Admin opens `/senior/boarding/programme` and can: **edit House identity** (name, inline-style
+colour, gender pill, capacity as a planning figure, resident HM) and **provision dormitories + bunks** for a
+House; **edit the daily-rhythm template** per day_type (weekday / Saturday / Sunday) with the **F3 prep
+extension** variant; **set exeat policy** (scheduled quota, return-by time, special-exeat + fee-owing rules),
+**visiting policy** (2nd-Sunday cadence, hours, approved-visitor rule), and **inspection cadence** (daily /
+weekly / mid-week scrubbing); **manage the boarding calendar** (resumption/vacation **derived from
+`academic_period`** — SENIOR for F1/F2, **SENIOR_F3** for Form 3 — plus editable visiting + exeat event rows);
+and **see the 5-rung ladder** read-only from the canonical definition. **Every config edit is audit-logged**
+("audit catches everything"). Every downstream increment reads this config through **one stable typed contract**
+(`lib/boarding/config.ts`). Tenant-scoped (each new config table `tenant_isolation` FORCE RLS + prod-paste),
+role-gated (`BOARDING_ROLES`; write = Senior HM/Admin), three gates green.
+
+### Config-read contract — the load-bearing deliverable (9–13 build against it)
+`lib/boarding/config.ts`, server-only, `withSchool`, one stable typed shape per doctrine so later increments
+never re-derive config. **Define + freeze this shape in INCR-8; a later change is a cross-increment break.**
+- `getScheduleTemplate(schoolId, dayType, form?)` → INCR-10 (daily life) reads the rhythm + F3 variant.
+- `getExeatPolicy(schoolId)` (quota · return-by · special-exeat · fee-owing) → INCR-9 (exeat) **enforces** it.
+- `getVisitingPolicy(schoolId)` (cadence · hours · approved-visitor rule) → INCR-12 (visiting).
+- `getInspectionPolicy(schoolId)` (daily/weekly/scrubbing times) → INCR-10.
+- `getBoardingCalendar(schoolId, academicYear)` (resumption/vacation from `academic_period` + event rows) → INCR-11 + INCR-9/12.
+- `getDeboardinizationLadder(schoolId)` → INCR-13 (discipline) reads the rung definition (co-sign counts stay DB-enforced there, BUILD_STACK #4).
+
+### Step table
+| Step | Owner | State |
+|---|---|---|
+| Rulings on OQ1–OQ6 + acceptance criteria (**OQ1 config-table shape + OQ4 calendar model gate Wells**) | Kofi | ⬜ gates Wells |
+| Surface map — **surface 01** all 6 blocks: summary strip · **Houses config** (colour=user-data inline style, no-alpha discipline carried from F0) · **daily-rhythm** (weekday rows + `NOW` state · Sat/Sun separate · F3 ext) · **3 policy cards Exeat/Visiting/Inspection** · **GES calendar** · **deboardinization ladder** (navy card, 5 rungs). **NOTE the F0-orientation slip:** the 3 policy *cards* are Exeat/Visiting/**Inspection**; deboardinization is a *separate* ladder block — map both exactly | Lucy | ⬜ |
+| **Schema (config tables — critical path).** Per OQ1/OQ4: NEW tenant `daily_schedule_template` (day_type enum × `activities_json` × active); NEW tenant `boarding_settings` **one-row-per-school, mirror `attendance_settings`** (school_id UNIQUE + typed exeat/visiting/inspection scalars + GES defaults — leaf table, single-col FK, no composite UK); boarding calendar = **derive resumption/vacation from `academic_period`** + NEW tenant `boarding_calendar_event` (visiting/exeat rows) **or** reuse `school_holiday` kind=EVENT (OQ4); new enum `boarding_day_type` (WEEKDAY/SAT/SUN/VISITING); **[conditional OQ5]** `founded_year`/`named_after` column ALTER on `houses`; migration **0045** dev-applied + **prod-paste-0045-boarding-config.sql** (FORCE RLS each new tenant table); DDL order table→UK→ADD-FK (0033 class) | Wells | ⬜ blocked on OQ1/OQ4; blocks Claude Code |
+| **Config-read API** — `lib/boarding/config.ts` (the contract above), stable typed shape, server-only, `withSchool` | Claude Code | ⬜ blocked on Wells |
+| House-config editing UI (F0-deferred) — create/rename House · colour/gender/capacity · assign HM · **provision dorms/bunks** (per OQ5) over existing `houses`/`boarding_dormitory`/`boarding_bunk` (no new tenant table) | Claude Code | ⬜ |
+| Daily-rhythm template editor — weekday/Sat/Sun rows + **F3 extension** variant; seed canonical YAGSHS template | Claude Code | ⬜ |
+| Policy editors — exeat/visiting/inspection over `boarding_settings` (typed fields + free-text notes) | Claude Code | ⬜ |
+| Boarding calendar editor — resumption/vacation **read-only from `academic_period`**; add/edit visiting + exeat event rows | Claude Code | ⬜ |
+| Deboardinization ladder — **read-only** render from `lib/boarding/` canonical constants (per OQ6; editable-text + Board-reversal model deferred to INCR-13) | Claude Code | ⬜ |
+| Edit audit — every config write → `recordAudit`→`auditLog` ("audit catches everything"; **no versioning table** per OQ3) | Claude Code | ⬜ |
+| Seed — Asankrangwa config (YAGSHS schedule, exeat 3/return-16:00, visiting 2nd-Sun 12–16:00, inspection cadence, GES calendar events), marker-scoped re-run-safe | Wells/Claude Code | ⬜ |
+| Build · typecheck · tests (config-read shape, calendar-derivation-not-duplicated, day_type + F3 variants) · RLS test · preview round-trip (edit → persist → read via contract) | Claude Code | ⬜ |
+| QA — config edit→persist→read, day_type/F3 variants, calendar derived (not duplicated) from `academic_period`, ladder read-only, tenant isolation, role-gate | Quinn | ⬜ |
+| Architecture/portability — **config-read contract stable for 9–13**; `boarding_settings` reuses `attendance_settings`; calendar **extends `academic_period`, not duplicated**; no versioning over-build; logic in `lib/`, no trigger | Dex | ⬜ |
+| Security — every NEW tenant table `tenant_isolation` FORCE + **prod-paste-0045 parity**, cross-tenant denied, editors role-gated (`BOARDING_ROLES`; Senior HM/Admin write) | Sarah | ⬜ holds merge |
+| Gate fixes (single aggregated rework brief) | Claude Code | ⬜ |
+| Merge · verify `git log origin/main` · **Pence syncs senior-feat ← main** | Sarah + Pence | ⬜ |
+
+**Wells is on the critical path** (new config tenant tables: schedule template, `boarding_settings`, calendar
+events) and is blocked on Kofi OQ1 + OQ4. **The House-config editing UI is NOT blocked on Wells** (houses/dorm/
+bunk shipped in 0044) — Claude Code can build that surface in parallel with the schema cut.
+
+### Dependencies / critical path
+- **INCR-8 depends on F0's spine** (INCR-7, merged): `houses` (name/colour/gender/capacity/hm_user_id),
+  `boarding_dormitory`/`boarding_bunk`/`bunk_allocation`, `students.residency`/`current_bunk_id`,
+  `BOARDING_ROLES`, the `/senior/boarding` route.
+- **INCR-8 depends on the existing academic-period model** for the calendar — `academic_period`
+  (starts_on/ends_on, product lines **SENIOR + SENIOR_F3**), `school_holiday`, `lib/actions/terms.ts`. Do not
+  re-model term dates.
+- **INCR-9/10/11/12/13 READ this config** (roadmap: `INCR-8 → 9/10/13`; `11/12 hang off 7` but read 8's
+  policy/calendar). The **config-read contract is the gate**: freeze `lib/boarding/config.ts` here so siblings
+  build against a stable shape. Module critical path: **INCR-7 → INCR-8 → INCR-13**.
+
+### Open questions — Kofi rules before implementation (**NONE are owner calls** — all Kofi/BUILD_STACK)
+1. **OQ1 — config-table shapes (gates Wells).** `daily_schedule_template` = `activities_json` per day_type
+   (surface rows are heterogeneous — JSON is the lazy fit) vs relational rows. `boarding_settings` =
+   one-row-per-school typed columns (mirror `attendance_settings`) vs a policy blob. _Rec: JSON template + typed
+   `boarding_settings`._
+2. **OQ2 — schedule configurability.** Surface says "Configurable per school." Seed the canonical YAGSHS
+   template + edit-times, or fully-editable rows? Weekday/Sat/Sun as `boarding_day_type` enum; **F3 extension =
+   a per-template variant or a form-scoped flag** (drives how INCR-10 reads it). _Rec: seed canonical + editable,
+   F3 as a variant on the weekday template._
+3. **OQ3 — versioned edits.** The aside promises "capacity 120→132 creates a new version; prior stays in
+   audit." Build point-in-time config versioning, or **`audit_log` the edits + defer true versioning**? No
+   downstream increment reads *historical* config. _Rec: audit-only now (YAGNI on a versioning table);
+   portability call for Dex._
+4. **OQ4 — boarding calendar model (the "don't duplicate `academic_period`" call, gates Wells).**
+   Resumption = `academic_period.starts_on`, vacation = `.ends_on` (**SENIOR_F3 already models F3's early
+   post-WASSCE date**). Add only boarding-specific events (visiting Sundays, exeat windows) via a new
+   `boarding_calendar_event` table **or** `school_holiday` kind=EVENT reuse. _Rec: derive resumption/vacation +
+   add events; do not copy term dates into a boarding table._
+5. **OQ5 — House-config editing scope.** Identity (name/colour/gender/capacity/HM) only, or **also dorm/bunk
+   provisioning** (create/rename dorms, set bunk counts)? Add `founded_year`/`named_after` columns (surface
+   shows them; **no downstream reader** — YAGNI) or omit? _Rec: identity + capacity + HM + dorm/bunk
+   provisioning; omit founded/named unless the owner wants the decorative House-card fields (minor)._
+6. **OQ6 — deboardinization ladder definition storage.** Store editable per-school ladder text/penalty in a
+   config table now, or **render read-only from `lib/boarding/` canonical constants** and defer the editable
+   store + Board-reversal model to **INCR-13** (its actual consumer)? Severity enum + co-sign counts are
+   **already LOCKED** (BUILD_STACK #4); "reversible only by Board" is **MODULE 4.2 owner decision #6 → gates
+   INCR-13, not 8**. _Rec: read-only render now, defer editable store to INCR-13._
+
+**Genuine OWNER CALLs: none gate INCR-8.** Configurability ("Editable per school · GES default values shown")
+and every table shape are settled by surface copy + the README schema sketch → Kofi rules under BUILD_STACK.
+INCR-8 stores config, sends no SMS, writes no billing, models no Board reversal — so the module-gate owner
+decisions stay at 9/11/12/13. The only owner-adjacent scrap is OQ5's decorative `founded_year`/`named_after`
+columns (deferrable, non-blocking).
+
+### Risk flags
+- **NEW tenant tables ⇒ prod-paste RLS** (`prod-paste-0045-boarding-config.sql`; `db:policies` is dev-only).
+  Each new config table gets `tenant_isolation` FORCE. `boarding_settings`, like `attendance_settings`, is a
+  leaf (single-col `school_id`, no composite UK) but **still needs FORCE RLS**. Sarah gates parity.
+- **Config-read contract is load-bearing** — 9/10/11/12/13 all consume `lib/boarding/config.ts`. Freeze the
+  typed shape in INCR-8; a later shape change is a cross-increment break. Dex + Kofi gate the contract.
+- **Don't duplicate the academic-period model** — resumption/vacation derive from `academic_period`
+  (SENIOR + SENIOR_F3); the boarding calendar adds only boarding-specific events. Copying term dates diverges
+  from the source of truth. Dex.
+- **Sat/Sun/F3 variant modelling** — get the `boarding_day_type` axis + F3 extension right so INCR-10 reads the
+  correct template per day/form. Kofi/Lucy.
+- **Portability** — config in tables + `lib/`, no hardcoding, no DB triggers; schedule as JSON activities
+  (heterogeneous rows). Dex.
+- **House colours = USER DATA, inline `style`, NOT brand tokens** (no-alpha discipline carried from F0; White
+  House needs the `border-2` guard). Lucy.
+- **Seed not idempotent** — marker-scoped, re-run-safe, or prod-paste to the shared dev DB.
+
+### Prerequisites / stop-and-ask
+- ✅ `senior-feat` level with `main` (`b6c9cce`); INCR-7/F0 merged; `houses`/dorm/bunk/residency shipped in
+  0044. Next migration **0045**.
+- **No owner call gates INCR-8.** Kofi + Lucy start now; Wells waits on Kofi OQ1/OQ4; the House-config editing
+  UI parallelises (no new table).
+- **Deploy note:** migration 0045 + hand-paste `prod-paste-0045-boarding-config.sql` (FORCE RLS for each new
+  tenant config table).
+- **Still deferred to their own increments** (surface aside — do NOT build here): per-student bed = surface 02
+  (F0 ✓); prep attendance = INCR-10; exeat in flight = INCR-9; visitors = INCR-12; bond/deboardinization ops =
+  INCR-13. The MODULE 4.2 owner decisions (#2 billing, #3 SMS, #6 Board) surface at **those** increments.
+
+### Kofi rulings — INCR-8 (2026-07-16, none owner) — Wells UNBLOCKED
+- **OQ1 → three new tenant tables (migration 0045):**
+  - `daily_schedule_template` — id, school_id (single-col FK, leaf), `day_type boarding_day_type NOT NULL`, `form_scope text NOT NULL DEFAULT 'ALL'`, `activities_json jsonb NOT NULL` (ordered block array `{kind:'section'|'activity', label?/range?/start?/end?/activity?/who?/note?}`), active, updated_at · UNIQUE(school_id,day_type,form_scope) · FORCE RLS. New enum `boarding_day_type = WEEKDAY|SATURDAY|SUNDAY|VISITING_SUNDAY`.
+  - `boarding_settings` — one-row-per-school, **mirror `attendance_settings`** (single-col `school_id UNIQUE` FK, leaf, no composite UK, FORCE RLS). Typed scalar columns, all GES-default-seeded + editable: exeat (scheduled_per_term smallint DEFAULT 3, return_by text '16:00', fee_owing_must_collect bool, special_approver, parent_initiated, dress_code, card_signer), visiting (cadence, hours_start/end, lunch_time, dormitories_rule, approved_visitors, book_owner), inspection (daily_start/end, daily_scope, weekly, weekly_scope, scrubbing, washing_days, inspector). **No ladder columns.**
+  - `boarding_calendar_event` — id, school_id (single-col, leaf), academic_year text, `event_type boarding_event_type NOT NULL` (enum `VISITING|EXEAT_WINDOW`), event_date date, label text, form_scope text NULL, sequence smallint NULL, created_at · UNIQUE(school_id,academic_year,event_type,event_date) · index(school_id,academic_year) · FORCE RLS. **Stores ONLY boarding events — never resumption/vacation.**
+- **OQ2/OQ3 → every policy scalar editable-with-GES-default (all in `boarding_settings`); audit-only, NO versioning table** (no downstream reads historical config; `View change history` reads `auditLog`).
+- **OQ4 → calendar DERIVES, doesn't duplicate.** resumption=`academic_period.starts_on`, vacation=`.ends_on`; F3 early post-WASSCE vac = the **SENIOR_F3** product-line period's `.ends_on` (already modelled). Reject `school_holiday` reuse (academic-calendar-shared, would pollute the day counter).
+- **OQ5 → ADD `founded_year smallint NULL` + `named_after text NULL` to `houses`** (column ALTER, no RLS change; the surface renders them today + INCR-8 IS the House-config editor).
+- **Deboardinization ladder → READ-ONLY from `lib/boarding/` canonical constants** (`getDeboardinizationLadder(schoolId)`); NO per-school store, NO Board-reversal model in INCR-8 — the editable store + co-sign enforcement + 3× fee billing write all defer to **INCR-13**. (schoolId stays in the signature for a future override.)
+- **House-config editing UI → House identity (name/colour/gender/capacity/HM/founded/named) + dorm/bunk provisioning** (over the shipped 0044 tables, no new table); per-student bed assignment stays surface 02 (F0).
+- **Role-gating → WRITE = `BOARDING_SCHOOL_SCOPED_ROLES` (ADMIN/HEADMASTER/DEAN_OF_BOARDING); READ = `BOARDING_ROLES`** (HOUSEMASTER read-only). Both consts already in `lib/access.ts`.
+
+### Config-read contract — `lib/boarding/config.ts` (server-only, `withSchool`) — FROZEN COMPLETE (9–13 read it)
+- `getScheduleTemplate(schoolId, dayType, form?)` → **INCR-10**: `{dayType, formScope, activities[], active}`; resolve `(dayType,form)` → else `(dayType,'ALL')`; absent day_type → `null` (never fabricate).
+- `getExeatPolicy(schoolId)` → **INCR-9**: `{scheduledPerTerm, returnByTime, feeOwingMustCollect, specialApprover, parentInitiated, dressCode, cardSigner}`.
+- `getVisitingPolicy(schoolId)` → **INCR-12**: `{cadence, hoursStart, hoursEnd, lunchTime, dormitoriesRule, approvedVisitors, bookOwner}`.
+- `getInspectionPolicy(schoolId)` → **INCR-10**: `{dailyStart, dailyEnd, dailyScope, weekly, weeklyScope, scrubbing, washingDays, inspector}`.
+- `getBoardingCalendar(schoolId, academicYear)` → **INCR-11/9/12**: `{resumption[], vacation[]}` derived from `academic_period` (`{productLine:'SENIOR'|'SENIOR_F3', periodLabel, date}`) + `events[]` from `boarding_calendar_event`; `nextVisiting` derived (never a settings column).
+- `getDeboardinizationLadder(schoolId)` → **INCR-13**: `rungs[]` = `{stage 1..5, severity NOTE|WARNING|BOND|SUSPENSION|DEBOARDINIZATION, name, description, penaltyLabel, coSignCount, coSignRoles[], reversalNote}` from the `lib/` constant (co-sign ENFORCEMENT stays DB-enforced in INCR-13).
+- **Readers coalesce a missing `boarding_settings` row to the GES-default constant** (never throw/empty); schedule is the exception (absent day_type → null).
+
+#### INCR-8 · Acceptance criteria (for Quinn)
+- **A · GES defaults.** A1 fresh boarding school seeds one `boarding_settings` GES-default row. A2 no row → readers return GES-default constant (never throw/empty). A3 day-only school never reaches readers (or coalesces to defaults). A4 schedule seeds WEEKDAY/SAT/SUN/VISITING_SUNDAY; unseeded day_type → `null` not a fabricated rhythm.
+- **B · Policy persist/read-back.** B1 edit exeat quota 3→2 persists, `getExeatPolicy.scheduledPerTerm===2`, another tenant unchanged. B2 visiting/inspection round-trip verbatim. B3 every policy-card scalar round-trips per-school.
+- **C · Schedule resolution.** C1 WEEKDAY/SATURDAY/SUNDAY return distinct templates. C2 SUNDAY ≠ VISITING_SUNDAY. C3 WEEKDAY/FORM_3 override returns 22:00 lights-out; FORM_1 with no row falls back to `'ALL'`. C4 `activities_json` preserves order + both block kinds.
+- **D · Calendar derives.** D1 resumption/vacation == SENIOR `academic_period` dates, NO such row in `boarding_calendar_event`. D2 F3 vacation from SENIOR_F3 `.ends_on`, distinct from F1/F2. D3 only VISITING/EXEAT_WINDOW stored; formScope + sequence round-trip. D4 changing a term date shifts the calendar with no boarding-table edit.
+- **E · House-config edits.** E1 create/rename House + colour/gender/capacity/HM persist. E2 founded_year/named_after persist + render 1:1. E3 provision dorm+bunks → rows created, Dorms/Beds reflect them (not hard-coded 8×15). E4 editing capacity doesn't alter occupancy (derived). E5 white House renders the `border-2` guard (inline style, no-alpha).
+- **F · Ladder display.** F1 `getDeboardinizationLadder` returns 5 ordered rungs matching the navy block. F2 rung 5 = coSignCount 3, roles [HM, Senior HM, Headmaster], Board-only reversalNote — read-only (no store in INCR-8).
+- **G · Tenant isolation.** G1 all 3 config tables FORCE RLS. G2 prod-paste-0045 re-applies. G3 cross-tenant config invisible.
+- **H · Role-gating.** H1 ADMIN/HEADMASTER/DEAN edit all sections. H2 plain HOUSEMASTER views but every write rejected server-side. H3 STUDENT/PARENT/TEACHER/MATRON/BURSAR denied route. H4 server-enforced (page + action).
+- **I · Audit.** I1 every config write → one `auditLog` row (actor/section/before→after/ts), no versioning table. I2 quota change logs before=3 after=2, live value new.
+
+### Lucy surface map (surface 01) — load-bearing facts
+- **Route** `/senior/boarding/programme`; write-gate `BOARDING_SCHOOL_SCOPED_ROLES`, read-gate `BOARDING_ROLES` (mirror `app/(app)/senior/boarding/page.tsx`).
+- **🔴 TRAP 1 (House colour = user data):** `.h-band`/gender bands render `house.colour` inline `style`; white Slessor (`#FFFFFF`) needs the `isLightColour()` `border-2` guard. Never slash-opacity a raw hex.
+- **🔴 TRAP 2 (navy ladder alpha tints):** the `.lad` rung tints are `rgba` on gold-soft/terra/warn → `border-gold-soft/15`, `bg-terra/15`, `bg-warn/12` **silently break** on raw-hex tokens. Use `opacity-N` / a `-bg` tint / `bg-white/[0.04]` (white is safe). Same on the featured-card sub + cal-foot. Verify in live preview.
+- **Regions:** summary strip (5 cards, DERIVED reads — only exeat-quota is config, "board review pending" = INCR-13 count); Houses grid (F0-deferred editing UI, 6 cards, verbatim seed data in the map); daily rhythm (15 rows / 4 section-markers — weekday shown, Sat/Sun are separate templates the impl lays out as tabs/panels, **F3 is an inline form-variant not a separate template**); 3 policy cards Exeat/Visiting/Inspection; deboardinization = **separate navy ladder block, read-only**; calendar (12 events — resumption/vacation DERIVED from period, VISITING/EXEAT are config).
+- **Provenance:** user-data (House identity, schedule rows, VISITING/EXEAT events) · GES-default-seeded-editable (all policy fields) · derived-from-period (resumption/vacation incl. SENIOR_F3, read-only) · derived-from-roster/clock (summary cards 1–4, occupancy %, `.now` marker, relative-time strings).
+- **F0-slip:** `houses` has NO founded_year/named_after (Kofi OQ5 → add via 0045). Inspection window `06:10–06:20` appears in BOTH schedule + inspection card → read from ONE source (contract), never diverge.
+- **Open UI (team, no owner call):** occupancy `.fill.warn` threshold undefined (don't hardcode 97 — compute from roster, confirm rule); Sat/Sun layout is implementer's inference (tabs vs stacked); `who`/policy values are free-text-with-suggestions, not hard enums — preserve the Ghanaian voice verbatim in seeds.
