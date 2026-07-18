@@ -39,6 +39,14 @@ export default async function BoardingLandingPage() {
           Every House&apos;s boarders and where each one sleeps. Open a House to see its
           dormitories, the four bunk states and to reassign a boarder within the House.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href="/senior/boarding/exeats"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-[13px] font-semibold text-navy hover:border-gold hover:text-gold"
+          >
+            Operations · Exeat management →
+          </Link>
+        </div>
       </div>
 
       {houses.length === 0 ? (
