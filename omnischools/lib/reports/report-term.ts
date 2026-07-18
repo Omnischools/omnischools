@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import { academicPeriod } from "@/db/schema";
 import type { TermInfo } from "./period";
@@ -18,7 +18,10 @@ export async function getReportTerm(schoolId: string): Promise<TermInfo> {
         endsOn: academicPeriod.endsOn,
       })
       .from(academicPeriod)
-      .where(eq(academicPeriod.schoolId, schoolId))
+      // Exclude the non-instructional SENIOR_F3 pseudo-period (added in migration 0048 for the
+      // boarding F3-vacation calendar) — it is not a real reporting term, and its late-vacation
+      // window could otherwise win the "latest started" fallback during the long break.
+      .where(and(eq(academicPeriod.schoolId, schoolId), ne(academicPeriod.productLine, "SENIOR_F3")))
       .orderBy(asc(academicPeriod.startsOn)),
   );
   if (!rows.length) return null;

@@ -1,5 +1,5 @@
 import "../_loadenv";
-import { and, eq, gte, inArray, lt, ne } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, ne, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   schools,
@@ -88,7 +88,6 @@ async function main() {
     process.exit(1);
   }
   const dormIds = dorms.map((d) => d.id);
-  const dormByName = new Map(dorms.map((d) => [d.name, d.id]));
 
   // Re-run-safe: clear only TODAY's Aggrey inspections + prep (date + house scoped — not baseline).
   await db
@@ -96,7 +95,8 @@ async function main() {
     .where(
       and(
         eq(inspections.schoolId, schoolId),
-        inArray(inspections.dormitoryId, dormIds),
+        // DAILY rows anchor on dormitory_id; the WEEKLY row now anchors on house_id (tweak #3).
+        or(inArray(inspections.dormitoryId, dormIds), eq(inspections.houseId, houseId)),
         gte(inspections.inspectedAt, dayStart),
         lt(inspections.inspectedAt, dayEnd),
       ),
@@ -130,10 +130,12 @@ async function main() {
   });
   await db.insert(inspections).values(dailyRows);
 
-  // WEEKLY whole-house — anchored to Dorm A, dated this morning 08:05 (PARTIAL: chop-box issue).
+  // WEEKLY whole-house — anchored on the HOUSE (INCR-11 tweak #3: house_id, dormitory_id NULL), dated
+  // this morning 08:05 (PARTIAL: chop-box issue). Survives a later dorm deactivation.
   await db.insert(inspections).values({
     schoolId,
-    dormitoryId: dormByName.get("A") ?? dormIds[0],
+    dormitoryId: null,
+    houseId,
     type: "WEEKLY",
     result: "PARTIAL",
     bunksClean: null,

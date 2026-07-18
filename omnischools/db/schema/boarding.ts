@@ -27,6 +27,7 @@ import {
   inspectionTypeEnum,
   inspectionResultEnum,
   attendanceStatusEnum,
+  boardingModeEnum,
 } from "./_enums";
 
 /**
@@ -461,6 +462,13 @@ export const exeatNotification = pgTable(
  * escalation is STUBBED to INCR-13 (AC E). Composite (school_id, dormitory_id) FK keeps the dorm
  * intra-tenant (cross-tenant structurally impossible); actor stamp is the single-column SET NULL
  * users FK (exeat pattern). Index (school_id, dormitory_id, inspected_at) serves the latest-wins read.
+ *
+ * INCR-11 tweak #3 (Kofi AC K): a WEEKLY whole-house check anchors on the HOUSE, not a dormitory, so
+ * it survives a later dorm deactivation. `dormitory_id` is now NULLABLE (DAILY sets it, WEEKLY leaves
+ * it NULL) and a parallel nullable `house_id` (composite (school_id, house_id) FK → house) is added
+ * (WEEKLY sets it, DAILY leaves it NULL). The DAILY-vs-WEEKLY column discipline is app-enforced in
+ * lib/ (no DB CHECK — portability); with MATCH SIMPLE a NULL in either composite FK simply skips that
+ * FK. Existing WEEKLY rows are backfilled house_id = their dormitory's house in migration 0048.
  */
 export const inspections = pgTable(
   "inspections",
@@ -469,7 +477,8 @@ export const inspections = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    dormitoryId: uuid("dormitory_id").notNull(),
+    dormitoryId: uuid("dormitory_id"), // nullable (tweak #3): DAILY anchor; NULL for WEEKLY
+    houseId: uuid("house_id"), // nullable (tweak #3): WEEKLY anchor; NULL for DAILY
     type: inspectionTypeEnum("type").notNull(),
     result: inspectionResultEnum("result").notNull(),
     bunksClean: smallint("bunks_clean"), // DAILY only; NULL for WEEKLY
@@ -486,10 +495,19 @@ export const inspections = pgTable(
   (t) => ({
     // Latest-wins read: max(inspected_at) per (school, dormitory, type) filtered to a UTC-date.
     byDormTime: index("inspections_dorm_time_idx").on(t.schoolId, t.dormitoryId, t.inspectedAt),
+    // WEEKLY latest-wins read anchors on the House (tweak #3): max(inspected_at) per (school, house, type).
+    byHouseTime: index("inspections_house_time_idx").on(t.schoolId, t.houseId, t.inspectedAt),
     // Composite intra-tenant FK — a cross-tenant dormitory reference is structurally impossible.
+    // Nullable dormitory_id: with MATCH SIMPLE a WEEKLY row's NULL dormitory_id skips this FK.
     dormitoryFk: foreignKey({
       columns: [t.schoolId, t.dormitoryId],
       foreignColumns: [boardingDormitory.schoolId, boardingDormitory.id],
+    }).onDelete("cascade"),
+    // Composite intra-tenant FK — the WEEKLY anchor House (tweak #3). Nullable house_id: a DAILY
+    // row's NULL house_id skips this FK. Not a new tenant UK target — inspections stays a LEAF table.
+    houseFk: foreignKey({
+      columns: [t.schoolId, t.houseId],
+      foreignColumns: [houses.schoolId, houses.id],
     }).onDelete("cascade"),
   }),
 );
@@ -540,6 +558,97 @@ export const prepAttendance = pgTable(
     houseFk: foreignKey({
       columns: [t.schoolId, t.houseId],
       foreignColumns: [houses.schoolId, houses.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * Boarding resumption / vacation (SHS module 4.2 / INCR-11) — surface 03, the two chaos days of
+ * the year. ONE NEW tenant table `boarding_arrival` records each boarder's gate-check on both
+ * days, discriminated by `mode` (RESUMPTION | VACATION) — one surface, one table, mode flag (Kofi
+ * OQ1). FORCE RLS (db:policies dev + prod-paste-0048-boarding-resumption.sql prod). All arrival/
+ * window/counter/checklist logic lives in lib/boarding/ (no trigger — portability): windows,
+ * counters and the issues queue are pure DERIVATIONS with NO storage (Kofi OQ3/OQ5), and the
+ * checklist is Zod-in-lib with NO DB CHECK.
+ * ==========================================================================*/
+
+/**
+ * One gate-check per boarder per (semester × mode) — the STORED half of surface 03. `mode`
+ * disambiguates the two days: RESUMPTION (staggered arrival, F3-first) records the GES 6-item
+ * prospectus checklist; VACATION (departure inverse) records the 5-item departure checklist. There
+ * is deliberately NO arrived/departed split and NO window column — one `checked_at` (arrived_at for
+ * RESUMPTION / departed_at for VACATION) and windows DERIVE from the calendar + Form (Kofi OQ1/OQ3).
+ *
+ * LEAF table (mirror inspections / prep_attendance): single-column school_id FK + composite
+ * (school_id, X) intra-tenant FKs, FORCE RLS, but NO composite (school_id, id) tenant UK — nothing
+ * references it. `house_id` is a SNAPSHOT of the boarder's House at check time; `academic_period_id`
+ * is the resolved SENIOR semester (F3 early vacation still records against the SENIOR period_id — the
+ * SENIOR_F3 calendar only shifts the derived date). NO bunk_id column — the confirmed bunk is a live
+ * read of students.current_bunk_id (Kofi OQ1, AC F1).
+ *
+ * `checklist_json` shape is discriminated by `mode` and Zod-validated in lib/ (RESUMPTION 6 keys /
+ * VACATION 5 keys, each ok|partial|missing) — NO DB CHECK/trigger (portability, the inspections
+ * pattern). `fee_owing_snapshot numeric(12,2)` freezes the live feeOwingForStudent balance at check
+ * (never re-read per view — AC E4; NULL = fees clear); it is a FLAG that never blocks (GES
+ * cannot-detain — mirrors boarding_exeat.fee_owing_snapshot). `note` is the one lean issue note
+ * (Kofi OQ5 — no issues table; the other issue categories all DERIVE). `checked_by_user_id` is the
+ * single-column SET NULL users actor stamp (exeat pattern).
+ *
+ * UNIQUE(school_id, student_id, academic_period_id, mode) is the upsert / re-scan idempotency target
+ * (AC M1 — re-scanning the same boarder+mode+period updates the one row, never a dup) and lets one
+ * RESUMPTION + one VACATION row coexist per (student × period) (AC H5 — mode is in the key). Index
+ * (school_id, house_id, academic_period_id, mode) serves the per-House per-mode progress read (AC B).
+ */
+export const boardingArrival = pgTable(
+  "boarding_arrival",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    houseId: uuid("house_id").notNull(), // snapshot of House at check time
+    academicPeriodId: uuid("academic_period_id").notNull(), // resolved SENIOR semester
+    mode: boardingModeEnum("mode").notNull(), // RESUMPTION | VACATION
+    checklistJson: jsonb("checklist_json").notNull(), // shape discriminated by `mode`, Zod-validated in lib/
+    // Live fee balance frozen at check (GHS). Null = fees clear. Flag, never a block (GES cannot-detain).
+    feeOwingSnapshot: numeric("fee_owing_snapshot", { precision: 12, scale: 2 }),
+    note: text("note"), // the one lean issue note (Kofi OQ5) — nullable
+    // arrived_at (RESUMPTION) / departed_at (VACATION); mode disambiguates the single stamp.
+    checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+    // Global-table SET NULL → single column (exeat actor-stamp pattern).
+    checkedByUserId: uuid("checked_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Upsert / re-scan idempotency target; mode in the key lets a RESUMPTION + VACATION row coexist.
+    uniqPerMode: unique("uniq_boarding_arrival").on(
+      t.schoolId,
+      t.studentId,
+      t.academicPeriodId,
+      t.mode,
+    ),
+    // Per-House per-mode progress read.
+    byHousePeriodMode: index("boarding_arrival_house_period_mode_idx").on(
+      t.schoolId,
+      t.houseId,
+      t.academicPeriodId,
+      t.mode,
+    ),
+    // Composite intra-tenant FKs — a cross-tenant student/House/period reference is structurally impossible.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    houseFk: foreignKey({
+      columns: [t.schoolId, t.houseId],
+      foreignColumns: [houses.schoolId, houses.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.academicPeriodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
     }).onDelete("cascade"),
   }),
 );

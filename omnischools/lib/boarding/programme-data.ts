@@ -18,6 +18,7 @@ import {
   academicPeriod,
 } from "@/db/schema";
 import { isLightColour } from "./roster";
+import { getCurrentPeriod } from "./period";
 import {
   getAllScheduleTemplates,
   getBoardingCalendar,
@@ -83,9 +84,15 @@ export interface ProgrammeConfig {
 const OCCUPANCY_WARN_AT = 0.95;
 const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
 
-/** The current academic year for the school (latest configured), for the calendar derivation. */
+/**
+ * The current academic year the boarding calendar keys on — resolved through the ONE canonical
+ * period resolver (INCR-11 tweak #2), so this surface and the calendar agree on the year. Falls back
+ * to the latest configured year when no SENIOR period covers today (behaviour-preserving default).
+ */
 async function currentAcademicYear(schoolId: string): Promise<string> {
   return withSchool(schoolId, async (tx) => {
+    const period = await getCurrentPeriod(tx, schoolId);
+    if (period) return period.academicYear;
     const rows = await tx
       .selectDistinct({ y: academicPeriod.academicYear })
       .from(academicPeriod)

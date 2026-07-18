@@ -64,7 +64,8 @@ export async function getDiscountsReport(
         endsOn: academicPeriod.endsOn,
       })
       .from(academicPeriod)
-      .where(eq(academicPeriod.schoolId, schoolId))
+      // Exclude the non-instructional SENIOR_F3 pseudo-period (migration 0048, boarding F3-vacation).
+      .where(and(eq(academicPeriod.schoolId, schoolId), ne(academicPeriod.productLine, "SENIOR_F3")))
       .orderBy(asc(academicPeriod.startsOn));
 
     const todayIso = new Date().toISOString().slice(0, 10);

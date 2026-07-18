@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, ne, sql } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import { academicPeriod, classes, roleAssignments, roles, students, users } from "@/db/schema";
 
@@ -112,7 +112,8 @@ export async function getSchoolStats(schoolId: string): Promise<SchoolStats> {
         endsOn: academicPeriod.endsOn,
       })
       .from(academicPeriod)
-      .where(eq(academicPeriod.schoolId, schoolId))
+      // Exclude the non-instructional SENIOR_F3 pseudo-period (migration 0048, boarding F3-vacation).
+      .where(and(eq(academicPeriod.schoolId, schoolId), ne(academicPeriod.productLine, "SENIOR_F3")))
       .orderBy(asc(academicPeriod.academicYear), asc(academicPeriod.periodNumber));
 
     const terms: SchoolStatsTerm[] = periodRows.map((r) => ({

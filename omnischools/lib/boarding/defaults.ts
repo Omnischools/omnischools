@@ -350,9 +350,10 @@ export interface RawF3Vacation {
 /**
  * Derive the boarding calendar (AC D). resumption/vacation come from the school's academic_period
  * rows (productLine SENIOR — live, so a term-date edit shifts the calendar with no boarding write,
- * D1/D4). The Form 3 early post-WASSCE vacation comes from the SENIOR_F3 product-line period
- * (`gen_period_defaults`), tagged SENIOR_F3 — the only distinct-from-F1/F2 vacation (D2). Only the
- * stored VISITING/EXEAT_WINDOW events are passed in (resumption/vacation are NEVER event rows, D3).
+ * D1/D4). The Form 3 early post-WASSCE vacation comes from the school's own SENIOR_F3 academic_period
+ * row (INCR-11 tweak #1 — seeded from gen_period_defaults, school-editable after), tagged SENIOR_F3
+ * — the only distinct-from-F1/F2 vacation (D2). Only the stored VISITING/EXEAT_WINDOW events are
+ * passed in (resumption/vacation are NEVER event rows, D3).
  */
 export function buildCalendar(
   academicYear: string,

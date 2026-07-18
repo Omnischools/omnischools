@@ -232,6 +232,13 @@ export const exeatNotificationKindEnum = pgEnum("exeat_notification_kind", [
 export const inspectionTypeEnum = pgEnum("inspection_type", ["DAILY", "WEEKLY"]);
 export const inspectionResultEnum = pgEnum("inspection_result", ["PASS", "PARTIAL", "FAIL"]);
 
+// Senior boarding resumption/vacation (SHS module 4.2) — INCR-11 (Kofi OQ1).
+// ONE boarding_arrival table holds both chaos days of the year, discriminated by `mode`: the
+// staggered RESUMPTION gate-check (F3-first → F1-last) and its VACATION departure inverse (one
+// surface, one table, mode flag). `checked_at` is arrived_at (RESUMPTION) / departed_at (VACATION)
+// — the mode disambiguates one stamp, so there is deliberately no arrived/departed split.
+export const boardingModeEnum = pgEnum("boarding_mode", ["RESUMPTION", "VACATION"]);
+
 // Senior score ledger (SHS) — five-category model. Portfolio has NO assessment event
 // (it is a one-shot manual entry, spec §2/§4.1), so it is deliberately not a category here.
 export const assessmentCategoryEnum = pgEnum("assessment_category", [

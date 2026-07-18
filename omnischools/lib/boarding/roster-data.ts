@@ -4,7 +4,7 @@
  * Every query is tenant-scoped through withSchool (RLS boundary). Residency is the load-bearing
  * filter: only ACTIVE BOARDERs of the House appear; DAY students never do (BUILD_STACK #1 / AC A2).
  */
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import {
   houses,
@@ -108,7 +108,8 @@ export async function getHouseRoster(
         periodLabel: academicPeriod.periodLabel,
       })
       .from(academicPeriod)
-      .where(eq(academicPeriod.schoolId, schoolId))
+      // Exclude the non-instructional SENIOR_F3 pseudo-period (migration 0048, boarding F3-vacation).
+      .where(and(eq(academicPeriod.schoolId, schoolId), ne(academicPeriod.productLine, "SENIOR_F3")))
       .orderBy(asc(academicPeriod.startsOn));
     const currentPeriod = pickCurrentPeriod(periodList);
     const movedThreshold = currentPeriod ? new Date(currentPeriod.startsOn).getTime() : null;

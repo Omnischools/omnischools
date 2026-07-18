@@ -16,7 +16,6 @@ import {
   boardingSettings,
   boardingCalendarEvent,
   academicPeriod,
-  genPeriodDefaults,
 } from "@/db/schema";
 import {
   buildCalendar,
@@ -161,6 +160,8 @@ export async function getBoardingCalendar(
   academicYear: string,
 ): Promise<BoardingCalendar> {
   return withSchool(schoolId, async (tx) => {
+    // Main resumption/vacation source — the school's own SENIOR semesters (INCR-11 tweak #1: scoped
+    // to product_line='SENIOR' so the SENIOR_F3 row never leaks into the F1/F2 lists — AC J2).
     const periods = await tx
       .select({
         periodLabel: academicPeriod.periodLabel,
@@ -169,25 +170,33 @@ export async function getBoardingCalendar(
       })
       .from(academicPeriod)
       .where(
-        and(eq(academicPeriod.schoolId, schoolId), eq(academicPeriod.academicYear, academicYear)),
+        and(
+          eq(academicPeriod.schoolId, schoolId),
+          eq(academicPeriod.academicYear, academicYear),
+          eq(academicPeriod.productLine, "SENIOR"),
+        ),
       )
       .orderBy(asc(academicPeriod.periodNumber));
 
-    // The SENIOR_F3 product line models Form 3's early post-WASSCE vacation (gen_period_defaults is
-    // global GES reference; readable here as the app owner). Take its last period's ends_on.
+    // Form 3's early post-WASSCE vacation — now the school's OWN academic_period SENIOR_F3 row
+    // (INCR-11 tweak #1: was the global gen_period_defaults; editing the school row shifts F3 — AC
+    // J1), seeded from gen_period_defaults at onboarding / the 0048 backfill. Take its last period's
+    // ends_on. No SENIOR_F3 row → f3 undefined → null → no F3 vacation entry, no throw (AC J4). The
+    // BoardingCalendar shape + buildCalendar signature are byte-for-byte unchanged (AC J3).
     const [f3] = await tx
       .select({
-        periodLabel: genPeriodDefaults.periodLabel,
-        endsOn: genPeriodDefaults.endsOn,
+        periodLabel: academicPeriod.periodLabel,
+        endsOn: academicPeriod.endsOn,
       })
-      .from(genPeriodDefaults)
+      .from(academicPeriod)
       .where(
         and(
-          eq(genPeriodDefaults.academicYear, academicYear),
-          eq(genPeriodDefaults.productLine, "SENIOR_F3"),
+          eq(academicPeriod.schoolId, schoolId),
+          eq(academicPeriod.academicYear, academicYear),
+          eq(academicPeriod.productLine, "SENIOR_F3"),
         ),
       )
-      .orderBy(desc(genPeriodDefaults.periodNumber))
+      .orderBy(desc(academicPeriod.periodNumber))
       .limit(1);
 
     const rawEvents = await tx

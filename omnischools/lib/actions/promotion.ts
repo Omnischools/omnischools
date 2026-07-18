@@ -227,6 +227,7 @@ export async function runPromotion(input: unknown): Promise<RunPromotionResult> 
               periodLabel: p.periodLabel,
               startsOn: shiftYearIso(String(p.startsOn)),
               endsOn: shiftYearIso(String(p.endsOn)),
+              productLine: p.productLine, // carry the term's product line forward (INCR-11 tweak #1)
             })),
           );
           nextYearCreated = true;

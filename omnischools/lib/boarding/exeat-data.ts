@@ -28,6 +28,7 @@ import {
 } from "@/db/schema";
 import { canAccessHouse } from "@/lib/access";
 import { getExeatPolicy, getBoardingCalendar, type ExeatPolicy } from "./config";
+import { getCurrentPeriod } from "./period";
 import {
   isOverdue,
   isReturnedLate,
@@ -84,30 +85,9 @@ export async function feeOwingForStudent(
   return Number(row?.total ?? 0);
 }
 
-/** The student's current SHS semester (quota scope) — the period covering today, else the latest. */
-export async function getCurrentPeriod(
-  tx: Tx,
-  schoolId: string,
-): Promise<{ periodId: string; academicYear: string; periodLabel: string } | null> {
-  const rows = await tx
-    .select({
-      periodId: academicPeriod.periodId,
-      academicYear: academicPeriod.academicYear,
-      periodLabel: academicPeriod.periodLabel,
-      startsOn: academicPeriod.startsOn,
-      endsOn: academicPeriod.endsOn,
-    })
-    .from(academicPeriod)
-    .where(eq(academicPeriod.schoolId, schoolId))
-    .orderBy(desc(academicPeriod.startsOn));
-  if (rows.length === 0) return null;
-  const today = new Date().toISOString().slice(0, 10);
-  const cur =
-    rows.find((r) => r.startsOn <= today && r.endsOn >= today) ??
-    rows.find((r) => r.startsOn <= today) ??
-    rows[rows.length - 1];
-  return { periodId: cur.periodId, academicYear: cur.academicYear, periodLabel: cur.periodLabel };
-}
+// The current SHS semester (quota scope) is resolved by the canonical resolver (INCR-11 tweak #2 —
+// co-located beside config.ts). Re-exported here so INCR-9/10's `from "./exeat-data"` imports hold.
+export { getCurrentPeriod };
 
 /**
  * Quota used = count(SCHEDULED+FEE_COLLECTION, status≠DECLINED) for this student × semester
