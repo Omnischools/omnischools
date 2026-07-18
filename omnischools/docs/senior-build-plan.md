@@ -1596,7 +1596,7 @@ surface-03 two-mode UI → SMS chain (console) → 3 gates → Sarah merge → P
 
 ---
 
-## Next increment — INCR-12 · Boarding visiting day — surface 06 · migration 0049
+## INCR-12 ✅ MERGED (PR #156, `867ed5d`+`8c1b7ac`) — Boarding visiting day · surface 06 · migration 0049 · ⚠️ prod deploy: hand-paste `prod-paste-0049-boarding-visiting.sql`
 
 > **Nothing structural blocks INCR-12, and no OWNER CALL blocks the build.** `senior-feat` level with `main`
 > (`d72f50d`); INCR-7/F0, INCR-8 (frozen `getVisitingPolicy` + `getBoardingCalendar` VISITING events), INCR-9
@@ -1730,3 +1730,102 @@ gate-check ∥ derivations ∥ zone/max-N constants → surface-06 UI → SMS ch
 - **🔴 list-CHECK not list-RECORD (§2 tenet):** the gate pulls the student's approved list + matches the visitor; not-on-list → FLAG → SoD calls HM for verbal auth (actor-stamped HM_AUTHORISED); never silent, never a hard turn-away; the override does NOT append to the list.
 - **Regions (all DERIVED unless noted):** countdown strip (date derived + window config); 5 summary cards; RSVP-by-House 6 counters (respect formScope — F3 excluded on FORMS_1_2; plain `.rsvp-cell`, no House-colour band by default); indicated-arrivals per-student list (the STORED visit + list-match); approved-visitor detail card (6 slots + empty slot = the add affordance; the CRUD editor with PENDING→APPROVED + Dean/VLC stub); 3-zone allocation (constant + derived occupancy); OOB/overstay reminder (static copy + overstay-on-read 16:15/16:30). Fee-cleared analog: n/a (no fee dimension).
 - **Copy/honesty:** "RSVP via SMS link" is aspirational (staff-entered v1, no public page) — keep the console reminder-SMS affordance, drop any parent-self-serve implication. VLC pastoral cross-link + "HM checks in on J. Manu" = 4.5 stub (must not imply a working VLC journal). House names = per-school config (Aggrey/Guggisberg/... is Asankrangwa's set), render from data.
+
+---
+
+## Next increment — INCR-13 · Boarding discipline & deboardinization — surface 07 · migration 0050 · **CLOSES MODULE 4.2**
+
+> **🟥 SCOPE BOUNDARY (OWNER-SETTLED — DO NOT RE-OPEN): BUILD ALL OF INCR-13 EXCEPT THE INVOICE WRITE.** The 3× boarding-fee penalty →
+> production-billing invoice write (BUILD_STACK #6 / module owner decision #2) is **STUBBED**: model
+> `deboardinization_records.fee_penalty_invoice_id` (nullable, **LEFT NULL**, **NO FK to `invoices`**) + a **"penalty pending — billing
+> not yet wired"** display, but write **NO `invoices` row, touch NO billing/finance table, create NO PENALTY fee-category**. The billing
+> trigger is a clearly-marked follow-up for a later owner decision. **The single most important scope guard — Sarah + Dex gate NO-WRITE
+> (grep=0 on `invoices`/finance).**
+>
+> **MODULE 4.2 CLOSER — the last Boarding increment.** `senior-feat` level with `main` (`0803587`); INCR-7/8/9/10/11/12 merged. The
+> trunk closer (INCR-7 → INCR-8 → INCR-13), the frozen ladder's real consumer. **Wells on the critical path** (THREE new tenant tables:
+> append-only infraction ledger + `bond_artefacts` + `deboardinization_records`) blocked on Kofi OQ1. Next migration **0050**.
+
+### Goal
+The disciplinary ledger (surface 07): the **5-rung ladder** (NOTE→WARNING→BOND→SUSPENSION→DEBOARDINIZATION) rendered from the **frozen
+`getDeboardinizationLadder(schoolId)`** (READ-only, schema-locked, BUILD_STACK #4); an **append-only infraction ledger**
+(`boarding_infractions` — no delete/edit, corrections are superseding rows); **co-sign counts + roles enforced from the frozen constant**
+(Deboardinization = 3-way HM + Senior HM + Headmaster); a **`deboardinization_records`** object with the 3-way co-sign + first-class
+**Board-review** + Headmaster-gated **reinstatement**; deboardinization **flips `students.residency` BOARDER→DEBOARDINIZED** + releases
+the bunk (INCR-7 J2), **reversible only by the Board** (record + guarded action — NO "Board" RBAC role); the **four parked module stubs
+now write REAL infractions**; the **3× penalty is DISPLAYED** but the **invoice write is STUBBED**; the **VLC pastoral bypass** routes a
+flagged student to the Dean (module 4.5 STUB, `isPastorallyFlagged`). Parent-notify SMS at Warning+ → `sendSms()` console.
+
+### Done when
+A HM/Senior-HM/Headmaster (`BOARDING_ROLES`, house-scoped for plain HM) opens surface 07: sees the 5-rung ladder from the **frozen
+constant** + the append-only ledger grouped by severity; **logs an infraction** at a rung (rung defs from the constant; a
+**pastorally-flagged** student → Dean route NOT the ladder — VLC 4.5 stub; parent notified console SMS at Warning+); **runs a Bond**
+(`bond_artefacts` witnessed by HM + Senior HM + the student's signature); **imposes a Deboardinization** only when all **3 co-signs
+(HM=HOUSEMASTER / Senior HM=DEAN_OF_BOARDING / Headmaster=HEADMASTER) present** → sets `effective_at`, **flips residency
+BOARDER→DEBOARDINIZED**, nulls `current_bunk_id`, closes the open `bunk_allocation_history` row (INCR-7 J2), all audited; files a
+**Board-review** + records the outcome; **reinstates** (Board-only → Headmaster-gated, requires `board_decision_text`, residency flips
+back → `reinstated_at`). The **4 parked stubs write real `boarding_infractions`** idempotently — (a) exeat +1hr → NOTE, (b) inspection
+FAIL daily → NOTE / weekly → WARNING, (c) visiting overstay → NOTE, (d) resumption "absent" → NOTE. The **3× penalty is DISPLAYED**
+(days × boarding-fee/day × 3 + Head-discretion adjusted figure/reason stored) but **`fee_penalty_invoice_id` is LEFT NULL, NO
+`invoices`/finance row written** — the surface shows **"penalty pending — billing not yet wired."** THREE NEW tenant tables (FORCE RLS
++ **prod-paste-0050**, composite FKs, tenant UK on the parent ledger); frozen contract READ-only; all logic in `lib/boarding/` (**no
+trigger, no cross-table trigger — same-table CHECK only**); audit-logged; three gates green. **🏁 MODULE 4.2 CLOSED.**
+
+### Step table
+| Step | Owner | State |
+|---|---|---|
+| Rulings on OQ1–OQ7 + acceptance criteria (**OQ1 3-table shape gates Wells**); confirm co-sign app-in-lib (reads frozen `coSignCount`/`coSignRoles`; role map HM=HOUSEMASTER · Senior-HM=DEAN_OF_BOARDING · Headmaster=HEADMASTER), rung-map for the 4 stubs, append-only-vs-supersede, Head-discretion penalty-DISPLAY fields, Board-reinstatement guard, the frozen-ladder-vs-surface co-sign-copy reconciliation. **Confirm invoice-write STUB owner-settled + the 4 parked-stub wirings in scope** | Kofi | ⬜ gates Wells |
+| Surface map — surface 07 all blocks: header · ledger head-row + actions · 5 summary cards (incl. PENALTY FEES card = STUB display) · the 5-rung ladder (SCHEMA-LOCKED, render from frozen constant) · active-cases ledger grouped-by-severity (append-only) · currently-deboardinized cards (3 co-sign chips + Board-review-pending + penalty rows) · bond-artefact-in-flight (serif form + 3 sig slots) · penalty-invoices table = STUB · pastoral cross-ref (VLC stub) · foot. Confirm route. **🔴 Flag frozen-ladder-vs-surface co-sign-copy discrepancy** (frozen Bond=2/Suspension=0 vs surface Bond "3 incl student"/Suspension "HM+Headmaster") — frozen constant is AUTHORITATIVE | Lucy | ⬜ |
+| **Schema (3 tables + enums — critical path, migration 0050).** `boarding_infractions` (PARENT, append-only, **tenant UK**; student/house composite FKs; `severity infraction_severity_enum` NOTE/WARNING/BOND/SUSPENSION/DEBOARDINIZATION; `narrative_text`; `status` OPEN/RESOLVED/SUPERSEDED; `co_signs_json`; `parent_infraction_id` composite self-FK; **`source_kind`/`source_ref_id` idempotency key** MANUAL/EXEAT_OVERDUE/INSPECTION_DAILY/INSPECTION_WEEKLY/VISIT_OVERSTAY/RESUMPTION_ABSENT; logged_by/at; parents_notified_at). `bond_artefacts` (LEAF, ref infraction: student_signature_at, hm_witness+at, senior_hm_witness+at, scanned_pdf_file_id, bond_text). `deboardinization_records` (LEAF, ref student+infraction: 3 discrete signs+at, `effective_at` NULL gated by **same-table CHECK** (all 3 sign_at present), `board_review_at`, `board_decision_text`, `reinstated_at`, **`fee_penalty_invoice_id uuid NULL — no FK, LEFT NULL, no write`**, penalty-display `penalty_days`/`penalty_adjusted_amount`/`penalty_adjustment_reason`). New enums; FORCE RLS on all 3; DDL order enums→infractions(+UK)→bond_artefacts→deboardinization_records. **prod-paste-0050-boarding-discipline.sql** | Wells | ⬜ blocked on Kofi OQ1 |
+| Frozen-ladder read + actions — read `getDeboardinizationLadder` (READ-only); `logInfraction` (rung from constant; **pastoral-bypass `isPastorallyFlagged` → Dean route NOT ladder**; parent SMS console at Warning+); `coSign`/`witnessBond` (app-enforced vs frozen `coSignCount` + role check); `createBondArtefact`; **`deboardinize`** (3-co-sign gate → `effective_at` → **flip residency + null current_bunk_id + close open alloc**, INCR-7 J2); `fileBoardReview` + **`reinstate`** (Headmaster-gated, requires board_decision_text, flips residency back). `lib/boarding/`, atomic + audit, **no trigger** | Claude Code | ⬜ |
+| **Wire the 4 parked stubs → real infractions (idempotent, source-keyed).** (a) `exeat-notify.ts` OVERDUE_STAGE_3/`EXEAT_OVERDUE_NOTE_STUB` → NOTE; (b) `boarding-daily.ts` `escalationStub:"INCR-13"`: daily FAIL → NOTE / weekly FAIL → WARNING; (c) `visiting-notify.ts` OVERSTAY → NOTE; (d) INCR-11 resumption "absent" → NOTE. Each replaces its audit-marker-only stub with an idempotent `boarding_infractions` insert guarded by `NOT EXISTS(source_kind, source_ref_id)` — the sweeps repeat on-read, MUST NOT double-log | Claude Code | ⬜ |
+| Constants + derivations — reuse frozen ladder (no re-model); auto-escalation eligibility (3 Notes → Warning prompt, 2 Warnings → Bond eligibility — **HM decides, NOT an auto-write**) as pure funcs; **penalty-DISPLAY** pure func (days × boarding-fee/day × 3 + Head-discretion), DISPLAY only, vitest DB-free, **no invoice write** | Claude Code | ⬜ |
+| Discipline UI (surface 07) — route `/senior/boarding/discipline` (from Boarding landing, NOT a new sidebar row); ladder (frozen) · ledger grouped-by-severity · deboardinized cards + Board-review · bond-artefact signing room (serif form, 3 sigs) · **penalty table clearly marked "penalty pending — billing not yet wired"** · pastoral cross-ref (VLC stub); house-scope for plain HM | Claude Code | ⬜ |
+| Parent-notification SMS (Warning+) → `sendSms()` (console); idempotent per (infraction × kind); NEVER provision `HUBTEL_*` | Claude Code | ⬜ (SMS-live gated on owner #3) |
+| Seed — demo ledger (Notes/Warnings/Bonds/Suspension), 3 deboardinized incl. one Board-review-pending, one bond-in-flight, **J. Manu pastorally-flagged → Dean (not laddered)**; penalty rows with `fee_penalty_invoice_id` NULL; marker-scoped re-run-safe | Wells/Claude Code | ⬜ |
+| Build · typecheck · tests (rung from frozen constant, 3-co-sign gate, **residency-flip + bunk-release**, reinstate guard, **4 stub-wirings idempotent**, append-only/supersede, **penalty DISPLAY-only NO invoice write**, VLC bypass stub, SMS console, tenant isolation) · RLS test · preview round-trip | Claude Code | ⬜ |
+| QA — ladder from frozen constant, 3-of-3 co-sign gate + role map, residency flip + bunk release + reinstatement, 4 stubs write real infractions idempotently, append-only (corrections supersede), pastoral bypass → Dean, **grep-proof ZERO writes to invoices/finance · `fee_penalty_invoice_id` NULL**, SMS console, tenant isolation, role/house-scope | Quinn | ⬜ |
+| Architecture/portability — logic in `lib/boarding/` (no trigger; same-table CHECK only); frozen ladder READ-only; co-sign app-in-lib vs frozen `coSignCount`; append-only + supersede-chain; **confirm NO billing coupling — `fee_penalty_invoice_id` no FK, penalty display-only**; VLC STUBBED; idempotent source-keyed auto-log | Dex | ⬜ |
+| Security — 3 new tenant tables **FORCE RLS + prod-paste-0050 parity**; cross-tenant denied; composite FKs; route auth + `BOARDING_ROLES` + house-scope; **🟥 THE SCOPE GUARD: confirm NO `invoices` row, NO billing/finance write, NO PENALTY fee-category, `fee_penalty_invoice_id` LEFT NULL/no FK**; **residency-flip audited + guarded**; discipline `narrative_text`/`bond_text` PII tenant-scoped; no real SMS send; frozen contract READ-only | Sarah | ⬜ holds merge |
+| Gate fixes (aggregated) | Claude Code | ⬜ |
+| Merge · verify `git log origin/main` · **Pence syncs senior-feat ← main** · **🏁 MODULE 4.2 CLOSED** | Sarah + Pence | ⬜ |
+
+### Dependencies / critical path
+Reads INCR-8's frozen `getDeboardinizationLadder` (rung defs, `coSignCount`, `coSignRoles`, `reversalNote` — READ-only, do NOT re-model).
+Sits on F0's spine (`students.residency`, `current_bunk_id`, `bunk_allocation_history`, House, house-scope) + **performs INCR-7 J2**
+(deboardinization releases the bunk + closes the open alloc — F0 deferred it here). **Consumes the four parked module stubs** →
+real infractions (exeat-notify OVERDUE_STAGE_3, boarding-daily escalationStub, visiting-notify OVERSTAY, INCR-11 resumption "absent").
+Reuses `isPastorallyFlagged` for the VLC bypass + `sendSms()` console. **Flips `students.residency`** (real student-record state change).
+**Does NOT write billing** (invoice write STUBBED — `fee_penalty_invoice_id` LEFT NULL). Critical path: Kofi OQ1 → Wells (0050) →
+Claude Code (frozen-ladder read → log/co-sign/bond/deboardinize/reinstate ∥ 4 stub-wirings ∥ penalty-display) → surface-07 UI →
+SMS console → 3 gates → Sarah merge → Pence sync → **MODULE 4.2 CLOSED**.
+
+### Open questions — Kofi rules (**the sole OWNER CALL — the penalty invoice write — is OWNER-SETTLED as STUBBED; none below is owner-gated**)
+1. **OQ1 (gates Wells) — the 3-table shape** (per BUILD_STACK #4/#5 + the `source_kind`/`source_ref_id` idempotency addition for the auto-logged stubs; enums align to the frozen `DeboardinizationSeverity`).
+2. **OQ2 — co-sign enforcement:** app-enforced in `lib/` (reads frozen `coSignCount`/`coSignRoles`, exeat posture, no cross-table trigger) + a same-table CHECK on `deboardinization_records` (`effective_at` requires all 3 sign_at). Role map HM=HOUSEMASTER / Senior-HM=DEAN_OF_BOARDING / Headmaster=HEADMASTER (no "Senior HM" role).
+3. **OQ3 — Board-review + reinstatement (no "Board" RBAC role):** model Board as a first-class record + a HEADMASTER-gated `reinstate` action (requires `board_decision_text`, flips residency back, audited). Confirm reinstatement authority.
+4. **OQ4 — rung-map for the 4 stubs:** (a) exeat overdue → NOTE; (b) inspection FAIL daily → NOTE / weekly → WARNING (FAIL only, not PARTIAL); (c) overstay → NOTE; (d) resumption absent → NOTE. All idempotent via `source_kind`/`source_ref_id` NOT-EXISTS.
+5. **OQ5 — append-only vs void/supersede:** append-only (surface §2 "no infraction deletable"); a correction is a superseding infraction (`parent_infraction_id` + `status=SUPERSEDED`), never in-place edit/delete.
+6. **OQ6 — Head-discretion penalty adjustment + DISPLAY (invoice STAYS stubbed):** store `penalty_days`/`penalty_adjusted_amount`/`penalty_adjustment_reason` (display/snapshot only); show the 3× formula + "penalty pending — billing not yet wired". Confirm whether the GHS figure is computed from a boarding-fee/day READ (a read is allowed) or formula-only. **No `invoices` write either way.**
+7. **OQ7 — frozen-ladder vs surface co-sign-copy + auto-escalation:** the frozen constant is AUTHORITATIVE for enforcement (Bond=2 witnesses + student sig; Suspension=0); the surface's per-rung signer text is display. Auto-escalation is a derived prompt (HM decides), NOT an automatic rung write.
+
+### Risk flags
+- **NEW tenant tables ⇒ prod-paste RLS** (`prod-paste-0050-boarding-discipline.sql`). Sarah gates parity.
+- **🟥 THE INVOICE WRITE IS STUBBED — the #1 scope guard.** Sarah + Dex confirm NO billing/finance write, NO `invoices` row, NO PENALTY fee-category, `fee_penalty_invoice_id` LEFT NULL/no FK (grep=0 on invoices/finance mutations). The 3× penalty is display-only.
+- **Ladder append-only + schema-locked** (BUILD_STACK #4) — no silent edits/deletes; corrections supersede. Dex + Quinn.
+- **Co-sign enforcement** — a Deboardinization needs all 3 co-signs (correct roles) or no `effective_at`/no residency flip. App-enforced vs frozen `coSignCount` + same-table CHECK. Quinn + Sarah.
+- **Deboardinization flips residency + releases bunk** (INCR-7 J2) — a real student-record state change; audit + guard; reinstatement (Board/Headmaster-gated) flips back. Quinn + Sarah.
+- **VLC pastoral bypass STUBBED** (4.5) — `isPastorallyFlagged` → Dean route, NOT the ladder; copy must not imply a working VLC. Dex.
+- **Frozen ladder READ-only** — never re-modeled/edited; enforcement reads `coSignCount`/`coSignRoles` from it. Dex + Kofi.
+- **Idempotent auto-logging** — the 4 stubs fire from repeating on-read sweeps; `source_kind`/`source_ref_id` NOT-EXISTS prevents duplicate NOTEs. Quinn + Dex.
+- **Portability** — all discipline logic in `lib/boarding/` (no DB trigger, no cross-table trigger; same-table CHECK only). Dex.
+- **Composite intra-tenant FKs** + tenant UK on the PARENT ledger; DDL order table→UK→ADD-FK. Wells.
+- **Discipline PII/audit** — `narrative_text`/`bond_text` sensitive; tenant-scoped; audit every rung + the residency flip. Sarah.
+- **SMS PAID (STOP-AND-ASK)** — never provision `HUBTEL_*` without owner #3; console-only. **Seed not idempotent** — marker-scoped.
+
+### Prerequisites / stop-and-ask
+- ✅ `senior-feat` level with `main` (`0803587`); INCR-7..12 merged. Next migration **0050**.
+- **🟥 OWNER-SETTLED (do NOT re-open):** the 3× penalty **invoice write is STUBBED** (`fee_penalty_invoice_id` nullable/LEFT NULL + "penalty pending — billing not yet wired" display; NO `invoices`/finance write, NO PENALTY category). Billing trigger = clearly-marked follow-up for a later owner decision.
+- **In scope:** the 4 parked-stub wirings (exeat overdue / inspection FAIL / visiting overstay / resumption absent → real `boarding_infractions`).
+- **No owner call before Wells cuts schema** — OQ1 is a Kofi call. Kofi ∥ Lucy start now. **Deploy note:** migration 0050 + hand-paste `prod-paste-0050-boarding-discipline.sql`.
+- **Forward deps to STUB:** VLC pastoral bypass (4.5); the 3× penalty invoice write (owner follow-up); real SMS send (owner Hubtel).
