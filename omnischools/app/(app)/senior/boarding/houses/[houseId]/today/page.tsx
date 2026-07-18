@@ -21,13 +21,12 @@ const shiftDate = (iso: string, days: number): string => {
   return d.toISOString().slice(0, 10);
 };
 
-export default async function HouseTodayPage({
-  params,
-  searchParams,
-}: {
-  params: { houseId: string };
-  searchParams: { date?: string };
+export default async function HouseTodayPage(props: {
+  params: Promise<{ houseId: string }>;
+  searchParams: Promise<{ date?: string }>;
 }) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { school, user } = await requireSchoolRole(BOARDING_ROLES);
   if (school.schoolType === "BASIC") redirect("/dashboard");
 
