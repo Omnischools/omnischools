@@ -23,6 +23,7 @@
     "db:seed-boarding": "tsx db/seed/boarding.ts",
     "db:seed-exeat": "tsx db/seed/boarding-exeat.ts",
     "db:seed-daily": "tsx db/seed/boarding-daily.ts",
+    "db:seed-resumption": "tsx db/seed/boarding-resumption.ts",
     "db:rls-test": "tsx scripts/rls-test.ts",
     "db:verify-boarding": "tsx scripts/verify-boarding.ts",
     "db:verify-onboarding": "tsx scripts/verify-onboarding.ts",

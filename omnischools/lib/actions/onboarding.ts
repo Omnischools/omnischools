@@ -287,6 +287,7 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
             periodLabel: t.label?.trim() || `Period ${i + 1}`,
             startsOn: t.startsOn as string,
             endsOn: t.endsOn as string,
+            productLine, // SENIOR | BASIC (INCR-11 tweak #1 NOT NULL column)
           })),
         );
         periodsCreated = datedTerms.length;
@@ -309,9 +310,39 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
               periodLabel: p.periodLabel,
               startsOn: p.startsOn,
               endsOn: p.endsOn,
+              productLine, // SENIOR | BASIC (INCR-11 tweak #1 NOT NULL column)
             })),
           );
           periodsCreated = defaults.length;
+        }
+      }
+
+      // SENIOR_F3 hook (INCR-11 tweak #1 / Kofi OQ6): an SHS school also carries a per-school
+      // SENIOR_F3 academic_period row modelling Form 3's early post-WASSCE vacation. Seed its LAST
+      // period from the global gen_period_defaults SENIOR_F3 calendar (getBoardingCalendar reads the
+      // last one). School-editable after. Wells backfilled EXISTING SHS in 0048; this is the
+      // new-school hook. Guarded to productLine SENIOR so a Basic school never gets an F3 row.
+      if (productLine === "SENIOR") {
+        const f3Defaults = await tx
+          .select()
+          .from(genPeriodDefaults)
+          .where(
+            and(
+              eq(genPeriodDefaults.academicYear, academicYear),
+              eq(genPeriodDefaults.productLine, "SENIOR_F3"),
+            ),
+          );
+        const lastF3 = f3Defaults.sort((a, b) => b.periodNumber - a.periodNumber)[0];
+        if (lastF3) {
+          await tx.insert(academicPeriod).values({
+            schoolId: school.id,
+            academicYear,
+            periodNumber: lastF3.periodNumber,
+            periodLabel: lastF3.periodLabel,
+            startsOn: lastF3.startsOn,
+            endsOn: lastF3.endsOn,
+            productLine: "SENIOR_F3",
+          });
         }
       }
 

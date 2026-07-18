@@ -102,6 +102,7 @@ BEGIN
     'exeat_notification',
     'inspections',
     'prep_attendance',
+    'boarding_arrival',
     'ref_assessment_weights',
     'senior_assessment',
     'senior_assessment_score',

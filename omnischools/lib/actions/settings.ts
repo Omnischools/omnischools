@@ -341,6 +341,8 @@ export async function updateAcademicPeriods(
             periodLabel: p.label.trim(),
             startsOn: p.startsOn,
             endsOn: p.endsOn,
+            // INCR-11 tweak #1 NOT NULL column — derive from the term model (SEMESTER→SENIOR, TERM→BASIC).
+            productLine: (parsed.data.periodType ?? "TERM") === "SEMESTER" ? "SENIOR" : "BASIC",
           });
         }
       }

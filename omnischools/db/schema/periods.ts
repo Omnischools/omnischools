@@ -69,6 +69,14 @@ export const academicPeriod = pgTable(
     periodLabel: text("period_label").notNull(), // "Semester 1", "Term 2"
     startsOn: date("starts_on").notNull(),
     endsOn: date("ends_on").notNull(),
+    // Product-line discriminator (SENIOR | BASIC | SENIOR_F3) — INCR-11 tweak #1 (Kofi OQ6).
+    // Backfilled from ref_academic_period_config.period_type (SEMESTER→SENIOR, TERM→BASIC); the
+    // per-school SENIOR_F3 rows model Form 3's early post-WASSCE vacation, seeded from the global
+    // gen_period_defaults SENIOR_F3 calendar and school-editable after. getBoardingCalendar scopes
+    // its main resumption/vacation query to 'SENIOR' and takes F3 from the school's own 'SENIOR_F3'
+    // row (migration 0048 replaced the global gen_period_defaults read). NOT NULL: every row
+    // carries its line (0048 adds nullable → backfills → sets NOT NULL — see the migration).
+    productLine: text("product_line").notNull(),
     // Term lifecycle — a closed term is finalised: its scores and attendance become
     // read-only, and the next term is the school's active working term. Null = open.
     closedAt: timestamp("closed_at", { withTimezone: true }),

@@ -144,8 +144,9 @@ const WeeklyInspectionInput = z.object({
 
 /**
  * Record the Saturday WEEKLY whole-house inspection (AC D). One row (type=WEEKLY, WEEKLY findings
- * area-list, bunks_clean/total NULL) anchored to the House's first dormitory — it stays out of the
- * daily grid/count (the read filters latest-wins by type). Same recording gate as daily; a FAIL
+ * area-list, bunks_clean/total NULL) anchored to the HOUSE via house_id (INCR-11 tweak #3, AC K1 —
+ * dormitory_id NULL; it survives a dorm deactivation and stays out of the daily grid/count, the read
+ * filters latest-wins by type). Same recording gate as daily; a FAIL
  * records result + anomalies but writes NO discipline row (Warning STUBBED to INCR-13, AC E2). Not
  * weekday-constrained (a WEEKLY on a Wednesday is accepted, D3). Audited, atomic.
  */
@@ -165,7 +166,6 @@ export async function recordWeeklyInspection(input: unknown): Promise<ActionResu
   if (!canAccessHouse(user.roles, user.id, wctx.hmUserId)) {
     return { ok: false, error: "You can only inspect the House you are assigned to." };
   }
-  if (!wctx.firstDormId) return { ok: false, error: "This House has no dormitory configured." };
   const anomalies = computeAnomalies(findings.data);
 
   await withSchool(school.id, async (tx) => {
@@ -173,7 +173,11 @@ export async function recordWeeklyInspection(input: unknown): Promise<ActionResu
       .insert(inspections)
       .values({
         schoolId: school.id,
-        dormitoryId: wctx.firstDormId!, // whole-house, anchored to the first dorm
+        // INCR-11 tweak #3 (AC K1): a WEEKLY whole-house check anchors on the HOUSE, not a dorm, so
+        // it survives a later dorm deactivation. dormitory_id NULL, house_id set (app-enforced — no
+        // DB CHECK). The DAILY write stays on dormitory_id.
+        dormitoryId: null,
+        houseId: d.houseId,
         type: "WEEKLY",
         result: d.result,
         bunksClean: null,

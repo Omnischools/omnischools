@@ -274,7 +274,8 @@ export async function getDailyLife(
       if (dormId) boardersByDorm.set(dormId, (boardersByDorm.get(dormId) ?? 0) + 1);
     }
 
-    // Inspections for the day window (both cadences) — reduced latest-wins per (dorm × type).
+    // DAILY per-dorm inspections for the day window — reduced latest-wins per dorm (INCR-11 tweak
+    // #3: DAILY still anchors on dormitory_id).
     const inspRows = dormIds.length
       ? await tx
           .select({
@@ -294,6 +295,7 @@ export async function getDailyLife(
           .where(
             and(
               eq(inspections.schoolId, schoolId),
+              eq(inspections.type, "DAILY"),
               inArray(inspections.dormitoryId, dormIds),
               gte(inspections.inspectedAt, dayStart),
               lt(inspections.inspectedAt, dayEnd),
@@ -302,13 +304,35 @@ export async function getDailyLife(
           .orderBy(asc(inspections.inspectedAt))
       : [];
 
-    // Latest-wins: last row (rows are ordered ascending by inspected_at) per (dorm, type) wins.
+    // WEEKLY whole-house inspection for the day window — anchored on house_id (INCR-11 tweak #3, AC
+    // K3: the WEEKLY read is by house_id, so it survives a dorm deactivation).
+    const weeklyRows = await tx
+      .select({
+        result: inspections.result,
+        findingsJson: inspections.findingsJson,
+        anomaliesCount: inspections.anomaliesCount,
+        inspectedAt: inspections.inspectedAt,
+        inspectorName: users.fullName,
+      })
+      .from(inspections)
+      .leftJoin(users, eq(inspections.inspectedByUserId, users.id))
+      .where(
+        and(
+          eq(inspections.schoolId, schoolId),
+          eq(inspections.type, "WEEKLY"),
+          eq(inspections.houseId, houseId),
+          gte(inspections.inspectedAt, dayStart),
+          lt(inspections.inspectedAt, dayEnd),
+        ),
+      )
+      .orderBy(asc(inspections.inspectedAt));
+
+    // Latest-wins: last row (rows ordered ascending by inspected_at) per dorm / for the house wins.
     const latestDaily = new Map<string, (typeof inspRows)[number]>();
-    let latestWeekly: (typeof inspRows)[number] | null = null;
     for (const r of inspRows) {
-      if (r.type === "DAILY") latestDaily.set(r.dormitoryId, r);
-      else if (!latestWeekly || r.inspectedAt >= latestWeekly.inspectedAt) latestWeekly = r;
+      if (r.dormitoryId != null) latestDaily.set(r.dormitoryId, r);
     }
+    const latestWeekly = weeklyRows.length ? weeklyRows[weeklyRows.length - 1] : null;
 
     const dormInspections: DormInspection[] = houseDorms.map((d) => {
       const r = latestDaily.get(d.id) ?? null;

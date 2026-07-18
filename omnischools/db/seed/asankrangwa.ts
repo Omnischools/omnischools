@@ -166,6 +166,7 @@ async function main() {
         periodLabel: "Semester 1",
         startsOn: "2025-09-09",
         endsOn: "2025-12-19",
+        productLine: "SENIOR", // SEMESTER config → SENIOR (INCR-11 tweak #1 NOT NULL column)
       },
       {
         schoolId: school.id,
@@ -174,6 +175,7 @@ async function main() {
         periodLabel: "Semester 2",
         startsOn: "2026-01-13",
         endsOn: "2026-06-21",
+        productLine: "SENIOR",
       },
     ])
     .returning();
