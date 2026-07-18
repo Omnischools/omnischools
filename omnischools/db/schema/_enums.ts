@@ -239,6 +239,36 @@ export const inspectionResultEnum = pgEnum("inspection_result", ["PASS", "PARTIA
 // — the mode disambiguates one stamp, so there is deliberately no arrived/departed split.
 export const boardingModeEnum = pgEnum("boarding_mode", ["RESUMPTION", "VACATION"]);
 
+// Senior boarding visiting day (SHS module 4.2) — INCR-12 (Kofi OQ1).
+// The durable approved-visitor lifecycle: HM adds a name PENDING_REVIEW, HM/Dean approves → APPROVED
+// (the state the gate verifies an arriving visitor against). Max-6 is app-enforced in lib/, not the DB.
+export const visitorApprovalStatusEnum = pgEnum("visitor_approval_status", [
+  "PENDING_REVIEW",
+  "APPROVED",
+]);
+// The visit's two-stamp lifecycle: RSVP (staff-entered pre-arrival) → ARRIVED (in-stamp) → DEPARTED
+// (out-stamp). A walk-in inserts directly at ARRIVED. Overstay is DERIVED on-read (ARRIVED ∧ no depart
+// ∧ now > hoursEnd+grace), never a stored status.
+export const visitStatusEnum = pgEnum("visit_status", ["RSVP", "ARRIVED", "DEPARTED"]);
+// The gate list-check outcome (§2 tenet: list-CHECK not list-RECORD). Default FLAGGED is a SAFE default —
+// a visit is never silently VERIFIED. APPROVED-list match → VERIFIED; not-on-list/PENDING → FLAGGED;
+// admitting a FLAGGED visitor needs an actor-stamped HM override → HM_AUTHORISED (never a hard turn-away).
+export const visitVerificationEnum = pgEnum("visit_verification", [
+  "VERIFIED",
+  "FLAGGED",
+  "HM_AUTHORISED",
+]);
+// boarding_visit_notification kinds (dual-scoped log). Cohort/event-scoped: INVITATION, REMINDER_T3,
+// REMINDER_T1 (visit_id NULL). Per-visit-scoped: ARRIVAL_CONFIRM, OVERSTAY. One row per (scope × kind)
+// is the idempotency guard — resend blocked by NOT EXISTS(scope, kind).
+export const visitNotificationKindEnum = pgEnum("visit_notification_kind", [
+  "INVITATION",
+  "REMINDER_T3",
+  "REMINDER_T1",
+  "ARRIVAL_CONFIRM",
+  "OVERSTAY",
+]);
+
 // Senior score ledger (SHS) — five-category model. Portfolio has NO assessment event
 // (it is a one-shot manual entry, spec §2/§4.1), so it is deliberately not a category here.
 export const assessmentCategoryEnum = pgEnum("assessment_category", [
