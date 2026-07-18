@@ -16,13 +16,12 @@ export const dynamic = "force-dynamic";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export default async function ResumptionOperationsPage({
-  params,
-  searchParams,
-}: {
-  params: { mode: string };
-  searchParams: { date?: string };
+export default async function ResumptionOperationsPage(props: {
+  params: Promise<{ mode: string }>;
+  searchParams: Promise<{ date?: string }>;
 }) {
+  const params = await props.params;
+  const searchParams = await props.searchParams;
   const { school, user } = await requireSchoolRole(BOARDING_ROLES);
   if (school.schoolType === "BASIC") redirect("/dashboard");
 
