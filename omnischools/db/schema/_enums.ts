@@ -225,6 +225,13 @@ export const exeatNotificationKindEnum = pgEnum("exeat_notification_kind", [
   "OVERDUE_STAGE_3",
 ]);
 
+// Senior boarding daily life (SHS module 4.2) — INCR-10 (Kofi OQ1).
+// One `inspections` table holds both cadences, discriminated by `type` (BUILD_STACK #8:
+// daily = bunks/lockers/attire, weekly = whole-house deep). The 3-state result supersedes
+// BUILD_STACK's `pass_fail` bool — surface 04 shows PASS/PARTIAL/FAIL + N/M bunks clean.
+export const inspectionTypeEnum = pgEnum("inspection_type", ["DAILY", "WEEKLY"]);
+export const inspectionResultEnum = pgEnum("inspection_result", ["PASS", "PARTIAL", "FAIL"]);
+
 // Senior score ledger (SHS) — five-category model. Portfolio has NO assessment event
 // (it is a one-shot manual entry, spec §2/§4.1), so it is deliberately not a category here.
 export const assessmentCategoryEnum = pgEnum("assessment_category", [

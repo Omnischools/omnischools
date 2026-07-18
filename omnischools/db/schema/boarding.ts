@@ -24,6 +24,9 @@ import {
   exeatTypeEnum,
   exeatStatusEnum,
   exeatNotificationKindEnum,
+  inspectionTypeEnum,
+  inspectionResultEnum,
+  attendanceStatusEnum,
 } from "./_enums";
 
 /**
@@ -427,6 +430,116 @@ export const exeatNotification = pgTable(
     exeatFk: foreignKey({
       columns: [t.schoolId, t.exeatId],
       foreignColumns: [boardingExeat.schoolId, boardingExeat.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * Boarding daily life (SHS module 4.2 / INCR-10) — the Housemaster's live Today view (surface
+ * 04). Two NEW tenant tables record what the timeline/NOW/counts only DERIVE: `inspections`
+ * (per-dorm DAILY + whole-house WEEKLY) and `prep_attendance` (per-boarder exception log). Both
+ * are LEAF tables — single-column `school_id` FK + composite (school_id, X) intra-tenant FKs,
+ * FORCE RLS, but NO composite (school_id, id) tenant UK (nothing references them — mirror
+ * bunk_allocation, not the F0 spine). Write/derive logic lives in lib/boarding/ (no trigger —
+ * portability). RLS: db:policies (dev) + prod-paste-0047-boarding-inspections.sql (prod).
+ * Timeline/NOW/exeat-and-in-House counts are pure derivation with NO storage (Kofi OQ4/OQ5).
+ * ==========================================================================*/
+
+/**
+ * APPEND-ONLY, latest-wins dormitory inspection (Kofi OQ1). One `inspections` table holds both
+ * cadences discriminated by `type` (BUILD_STACK #8): a DAILY per-dorm morning check and a WEEKLY
+ * whole-house deep check. There is deliberately NO unique-per-day and NO tenant UK — a re-inspection
+ * simply appends; the read is latest-wins per (dormitory × type × UTC-date) by max `inspected_at`.
+ *
+ * `result` is a 3-state PASS/PARTIAL/FAIL (supersedes BUILD_STACK's `pass_fail` bool — surface 04
+ * shows "N/M bunks clean" alongside a tri-state). `bunks_clean`/`bunks_total` are populated for
+ * DAILY, NULL for WEEKLY; `bunks_total` is a SNAPSHOT taken at write (a later-added bunk must not
+ * change a past inspection's denominator — AC C3), never re-derived. `findings_json` is plain jsonb
+ * whose shape is discriminated by `type` and Zod-validated in lib/ (DAILY {kind,checks,flaggedBunks?,
+ * notes?} vs WEEKLY {kind,areas[],notes?}) — deliberately NO DB CHECK/trigger (portability). A
+ * PARTIAL/FAIL records `anomalies_count` (computed in lib at write) but writes ZERO discipline rows —
+ * escalation is STUBBED to INCR-13 (AC E). Composite (school_id, dormitory_id) FK keeps the dorm
+ * intra-tenant (cross-tenant structurally impossible); actor stamp is the single-column SET NULL
+ * users FK (exeat pattern). Index (school_id, dormitory_id, inspected_at) serves the latest-wins read.
+ */
+export const inspections = pgTable(
+  "inspections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    dormitoryId: uuid("dormitory_id").notNull(),
+    type: inspectionTypeEnum("type").notNull(),
+    result: inspectionResultEnum("result").notNull(),
+    bunksClean: smallint("bunks_clean"), // DAILY only; NULL for WEEKLY
+    bunksTotal: smallint("bunks_total"), // DAILY only; snapshot at write, never re-derived; NULL for WEEKLY
+    findingsJson: jsonb("findings_json").notNull(), // shape discriminated by `type`, Zod-validated in lib/
+    anomaliesCount: smallint("anomalies_count").notNull().default(0), // computed in lib at write
+    inspectedAt: timestamp("inspected_at", { withTimezone: true }).notNull().defaultNow(),
+    // Global-table SET NULL → single column (exeat actor-stamp pattern).
+    inspectedByUserId: uuid("inspected_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Latest-wins read: max(inspected_at) per (school, dormitory, type) filtered to a UTC-date.
+    byDormTime: index("inspections_dorm_time_idx").on(t.schoolId, t.dormitoryId, t.inspectedAt),
+    // Composite intra-tenant FK — a cross-tenant dormitory reference is structurally impossible.
+    dormitoryFk: foreignKey({
+      columns: [t.schoolId, t.dormitoryId],
+      foreignColumns: [boardingDormitory.schoolId, boardingDormitory.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * Per-boarder prep-attendance EXCEPTION log (Kofi OQ3) — one upserted row per (boarder × night)
+ * for the exceptions only. The writer inserts only LATE/ABSENT/EXCUSED/MEDICAL (the existing
+ * canonical 5-status attendance enum, reused — PRESENT is NEVER a row: present-by-default is the
+ * absence of a row, AC F1/F3). `session_date` is a STORED date, not derived from a timestamp —
+ * avoids the tz-boundary trap (Kofi OQ3). `house_id` is a SNAPSHOT of the boarder's House at log
+ * time. UNIQUE(school_id, student_id, session_date) is the upsert conflict target (re-logging the
+ * same boarder the same night updates the one row, never a second — AC F2). LEAF table: NO tenant
+ * UK. Composite (school_id, X) FKs to students/houses keep both refs intra-tenant; actor stamp is
+ * the single-column SET NULL users FK. Index (school_id, house_id, session_date) serves the
+ * per-House per-night roster read. Write logic in lib/boarding/ (no trigger).
+ */
+export const prepAttendance = pgTable(
+  "prep_attendance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    houseId: uuid("house_id").notNull(), // snapshot of House at log time
+    sessionDate: date("session_date").notNull(), // stored date (not derived) — avoids tz-boundary trap
+    // Reuses the canonical 5-status attendance enum; writer only ever uses LATE/ABSENT/EXCUSED/MEDICAL.
+    status: attendanceStatusEnum("status").notNull(),
+    minutesLate: smallint("minutes_late"), // nullable — set for LATE
+    note: text("note"),
+    loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
+    // Global-table SET NULL → single column (exeat actor-stamp pattern).
+    loggedByUserId: uuid("logged_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One exception row per boarder per night — the upsert conflict target.
+    uniqPerNight: unique("uniq_prep_attendance").on(t.schoolId, t.studentId, t.sessionDate),
+    // Per-House per-night roster read.
+    byHouseDate: index("prep_attendance_house_date_idx").on(t.schoolId, t.houseId, t.sessionDate),
+    // Composite intra-tenant FKs — a cross-tenant student/House reference is structurally impossible.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    houseFk: foreignKey({
+      columns: [t.schoolId, t.houseId],
+      foreignColumns: [houses.schoolId, houses.id],
     }).onDelete("cascade"),
   }),
 );

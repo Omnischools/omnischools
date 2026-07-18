@@ -100,6 +100,8 @@ BEGIN
     'boarding_calendar_event',
     'boarding_exeat',
     'exeat_notification',
+    'inspections',
+    'prep_attendance',
     'ref_assessment_weights',
     'senior_assessment',
     'senior_assessment_score',
