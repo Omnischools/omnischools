@@ -23,7 +23,7 @@ Sentry/PostHog. Local dev uses **Docker Postgres**; production uses **Supabase P
 pnpm install
 cp .env.example .env.local        # local defaults already point at Docker Postgres
 pnpm db:up                        # start Docker Postgres (docker-compose.yml)
-pnpm db:setup                     # push schema + apply RLS policies + seed Asankrangwa SHS
+pnpm db:setup                     # run migrations + apply RLS policies + seed Asankrangwa SHS
 pnpm dev                          # http://localhost:3000
 ```
 
