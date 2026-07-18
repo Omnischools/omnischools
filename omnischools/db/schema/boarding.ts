@@ -7,6 +7,7 @@ import {
   smallint,
   boolean,
   jsonb,
+  numeric,
   timestamp,
   unique,
   index,
@@ -15,10 +16,14 @@ import {
 import { schools } from "./tenancy";
 import { users } from "./identity";
 import { houses, students } from "./students";
+import { academicPeriod } from "./periods";
 import {
   prefectRoleEnum,
   boardingDayTypeEnum,
   boardingEventTypeEnum,
+  exeatTypeEnum,
+  exeatStatusEnum,
+  exeatNotificationKindEnum,
 } from "./_enums";
 
 /**
@@ -270,5 +275,158 @@ export const boardingCalendarEvent = pgTable(
     ),
     // Per-year calendar read (getBoardingCalendar).
     byYear: index("boarding_calendar_event_year_idx").on(t.schoolId, t.academicYear),
+  }),
+);
+
+/* ============================================================================
+ * Boarding exeat (SHS module 4.2 / INCR-9) — the request → HM review → (Sr-HM sign) → depart →
+ * return gate-crossing lifecycle for a boarder (Kofi OQ1). Two NEW tenant tables:
+ * boarding_exeat (the exeat itself, one row per trip) + exeat_notification (append-only SMS log).
+ * Both FORCE RLS (db:policies dev + prod-paste-0046-boarding-exeat.sql prod). Lifecycle lives in
+ * lib/boarding/ server actions (no trigger — portability). Config is READ through the frozen
+ * getExeatPolicy contract; fee-owing is a live READ of invoices.balance_amount. NOTHING is derived
+ * in the DB: quota_used = count(SCHEDULED+FEE_COLLECTION, status≠DECLINED, per student×period);
+ * returned_late = returned_at > return_by; overdue = DEPARTED ∧ now>return_by ∧ returned_at IS NULL
+ * — all computed in lib/, so there is deliberately NO quota counter and NO overdue/returned_late col.
+ * ==========================================================================*/
+
+/**
+ * One exeat (leave-of-absence) for a boarder. Five timestamped, actor-stamped stages
+ * (requested → hm_approved → sr_hm_signed → departed → returned) plus a terminal decline. A
+ * scheduled-clean exeat skips sr_hm_signed; a SPECIAL needs the Senior HM signature (Kofi OQ4).
+ *
+ * FK shapes (composite-tenant-FK rule): student_id / house_id / academic_period_id are composite
+ * (school_id, …) intra-tenant FKs — a cross-tenant student, House or semester is structurally
+ * impossible (CASCADE, mirroring bunk_allocation / gradebook). calendar_event_id is the ONE
+ * exception: a nullable "which EXEAT_WINDOW does this fill" pointer, single-column SET NULL →
+ * boarding_calendar_event(id). It takes the rule's SET-NULL exemption because (a) a composite SET
+ * NULL would try to null the NOT-NULL school_id too (the score-ledger supersedesFk trap), and
+ * boarding_calendar_event is HARD-deletable (no `active` soft-delete, unlike house/bunk), so a
+ * composite FK would behave like RESTRICT and block editing a window an exeat references — the
+ * opposite of the intended SET NULL; and (b) it is a weak informational link, not an authorization
+ * boundary — RLS on boarding_calendar_event + tenant-scoped getBoardingCalendar already prevent a
+ * cross-tenant event id ever reaching the insert. So NO tenant UK is added to the INCR-8 table.
+ *
+ * ref_code (e.g. ASA-EX-2026-0341) is human-facing and unique per school — unique(school_id,
+ * ref_code) is the collision guard + the upsert/idempotency target for the code generator.
+ * fee_owing_snapshot freezes the live balance at approval (read once, not re-read per view — T5).
+ */
+export const boardingExeat = pgTable(
+  "boarding_exeat",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    houseId: uuid("house_id").notNull(), // House at time of exeat (snapshot)
+    academicPeriodId: uuid("academic_period_id").notNull(), // SHS semester = quota scope
+    // Nullable single-column SET NULL FK — the scheduled EXEAT_WINDOW this trip fills (see doc).
+    calendarEventId: uuid("calendar_event_id").references(() => boardingCalendarEvent.id, {
+      onDelete: "set null",
+    }),
+    exeatType: exeatTypeEnum("exeat_type").notNull(),
+    status: exeatStatusEnum("status").notNull().default("REQUESTED"),
+    refCode: text("ref_code").notNull(), // e.g. ASA-EX-2026-0341
+    reason: text("reason"), // app-required for SPECIAL, auto-prefilled for FEE_COLLECTION
+    parentInitiated: boolean("parent_initiated").notNull().default(true),
+    departAt: timestamp("depart_at", { withTimezone: true }), // planned out
+    returnBy: timestamp("return_by", { withTimezone: true }), // planned in (return-by deadline)
+    // --- 5 stage stamps, each + actor (global-table SET NULL → single-column FK) ---
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    requestedByUserId: uuid("requested_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    hmApprovedAt: timestamp("hm_approved_at", { withTimezone: true }),
+    hmApprovedByUserId: uuid("hm_approved_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    srHmSignedAt: timestamp("sr_hm_signed_at", { withTimezone: true }),
+    srHmSignedByUserId: uuid("sr_hm_signed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    departedAt: timestamp("departed_at", { withTimezone: true }),
+    departedByUserId: uuid("departed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    returnedAt: timestamp("returned_at", { withTimezone: true }),
+    returnedByUserId: uuid("returned_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // --- terminal decline ---
+    declinedAt: timestamp("declined_at", { withTimezone: true }),
+    declinedByUserId: uuid("declined_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    declineReason: text("decline_reason"),
+    // Live fee balance frozen at approval (GHS). Null = fees clear at approval time.
+    feeOwingSnapshot: numeric("fee_owing_snapshot", { precision: 12, scale: 2 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for exeat_notification (school_id, id). MUST exist before that FK.
+    tenantUk: unique("boarding_exeat_tenant_uk").on(t.schoolId, t.id),
+    // Human-facing code unique per school; the code-generator collision + idempotency target.
+    uniqRefCode: unique("uniq_exeat_ref_code").on(t.schoolId, t.refCode),
+    // Quota read: count SCHEDULED+FEE_COLLECTION per (student × semester).
+    byStudentPeriod: index("boarding_exeat_student_period_idx").on(
+      t.schoolId,
+      t.studentId,
+      t.academicPeriodId,
+    ),
+    // Composite intra-tenant FKs — cross-tenant student/House/period structurally impossible.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    houseFk: foreignKey({
+      columns: [t.schoolId, t.houseId],
+      foreignColumns: [houses.schoolId, houses.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.academicPeriodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * APPEND-ONLY exeat SMS log (NOT audit_log — needs delivery metadata + idempotency the audit trail
+ * doesn't carry). One row per send attempt for the late-return escalation chain (Kofi OQ3/OQ5);
+ * idempotency for the +5/+30/+60 chain is `NOT EXISTS(kind for this exeat)` before each stage send.
+ * `provider` = console | hubtel (sends nothing real until Hubtel go-live). `ok`/`error`/
+ * `provider_message_id` are the delivery result. Human lifecycle actions still go to audit_log, not
+ * here. Composite (school_id, exeat_id) FK → boarding_exeat keeps it intra-tenant; CASCADE with the
+ * exeat. FORCE RLS (prod-paste-0046).
+ */
+export const exeatNotification = pgTable(
+  "exeat_notification",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    exeatId: uuid("exeat_id").notNull(),
+    kind: exeatNotificationKindEnum("kind").notNull(),
+    toPhone: text("to_phone").notNull(), // E.164
+    body: text("body").notNull(),
+    provider: text("provider").notNull(), // console | hubtel
+    providerMessageId: text("provider_message_id"),
+    error: text("error"),
+    ok: boolean("ok").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+    // Global-table SET NULL → single column (null for system-fired chain sends).
+    sentByUserId: uuid("sent_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => ({
+    // Per-exeat log read + the idempotency existence check.
+    byExeat: index("exeat_notification_exeat_idx").on(t.schoolId, t.exeatId),
+    // Composite intra-tenant FK — a cross-tenant exeat reference is structurally impossible.
+    exeatFk: foreignKey({
+      columns: [t.schoolId, t.exeatId],
+      foreignColumns: [boardingExeat.schoolId, boardingExeat.id],
+    }).onDelete("cascade"),
   }),
 );

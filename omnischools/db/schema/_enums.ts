@@ -196,6 +196,35 @@ export const boardingEventTypeEnum = pgEnum("boarding_event_type", [
   "EXEAT_WINDOW",
 ]);
 
+// Senior boarding exeat (SHS module 4.2) — INCR-9 (Kofi OQ1).
+// FEE_COLLECTION is a first-class type, NOT a flag: a fee-owing boarder at a scheduled exeat is
+// re-typed to FEE_COLLECTION (goes home to collect — GES cannot-detain) rather than blocked (OQ2).
+export const exeatTypeEnum = pgEnum("exeat_type", [
+  "SCHEDULED",
+  "SPECIAL",
+  "FEE_COLLECTION",
+]);
+// The 5-stage lifecycle + terminal DECLINED. Supersedes BUILD_STACK's OVERDUE/CANCELLED:
+// overdue is a DERIVED predicate (DEPARTED ∧ now>return_by ∧ returned_at IS NULL), never a stored
+// status; cancelled = DECLINED (Kofi OQ1). A scheduled-clean exeat skips SR_HM_SIGNED.
+export const exeatStatusEnum = pgEnum("exeat_status", [
+  "REQUESTED",
+  "HM_APPROVED",
+  "SR_HM_SIGNED",
+  "DEPARTED",
+  "RETURNED",
+  "DECLINED",
+]);
+// The late-return SMS escalation kinds (exeat_notification.kind). One row per (exeat × kind) is the
+// idempotency guard for the +5/+30/+60 chain (Kofi OQ5) — resend is blocked by NOT EXISTS(kind).
+export const exeatNotificationKindEnum = pgEnum("exeat_notification_kind", [
+  "DEPARTURE",
+  "REMINDER",
+  "OVERDUE_STAGE_1",
+  "OVERDUE_STAGE_2",
+  "OVERDUE_STAGE_3",
+]);
+
 // Senior score ledger (SHS) — five-category model. Portfolio has NO assessment event
 // (it is a one-shot manual entry, spec §2/§4.1), so it is deliberately not a category here.
 export const assessmentCategoryEnum = pgEnum("assessment_category", [

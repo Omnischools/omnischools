@@ -98,6 +98,8 @@ BEGIN
     'daily_schedule_template',
     'boarding_settings',
     'boarding_calendar_event',
+    'boarding_exeat',
+    'exeat_notification',
     'ref_assessment_weights',
     'senior_assessment',
     'senior_assessment_score',
