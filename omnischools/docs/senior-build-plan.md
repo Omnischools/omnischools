@@ -1454,7 +1454,7 @@ prep-attendance table in BUILD_STACK — a genuinely new modelling call (OQ3), w
 
 ---
 
-## Next increment — INCR-11 · Boarding resumption / vacation day — surface 03 · migration 0048
+## INCR-11 ✅ MERGED (PR #155, `5d538d7`) — Boarding resumption/vacation · surface 03 · migration 0048 (+ 3 tweaks) · ⚠️ prod deploy: hand-paste `prod-paste-0048-boarding-resumption.sql`
 
 > **Nothing structural blocks INCR-11, and no OWNER CALL gates the build.** `senior-feat` level with `main`
 > (`a572c47`); INCR-7/F0, INCR-8 (frozen `getBoardingCalendar`), INCR-9 (`boarding_exeat` + `feeOwingForStudent`) and
@@ -1593,3 +1593,107 @@ surface-03 two-mode UI → SMS chain (console) → 3 gates → Sarah merge → P
 - **Regions (all DERIVED unless noted):** mode-switch bar; live counter strip (clock/arrived/rate/peak); arrival-window rail (6 windows done/active/pending — 2 pending sub-states: `0/N·0%` vs `— pending —`); House-by-House grid (6 cards, band=House colour, arrived/expected + per-Form + fee-shortfall + status pill live/done/waiting + bar green/warn); **live-arrivals checklist card = the STORED gate-check** (6 pips ok/partial/missing + fee CLEAR/owed + bunk + View/Note/Process action; the 90-sec scan→mark→auto-fee/bunk→SMS **gate-check modal** is the write path); issues queue (terra alarm card, derived + routing HM/Senior-HM/Dean); foot bar (4 stats + close-gate CTA).
 - **Genuinely-open UI (confirm/decide, not owner calls):** (a) gate-close 6PM/supper/lock-down times have **no config source** — recommend a resumption/vacation calendar field or a `lib/boarding/` default, do NOT overload `getExeatPolicy`; (b) empty-issues-queue = a NEW calm `bg-green-bg` "No open issues" state (surface only shows the terra alarm); (c) VACATION House-card "Fee shortfalls → Rooms cleared/Keys returned" swap + VACATION issue-type set (proposed); (d) `?date=` query vs path segment.
 - **STUB (build wires, doesn't activate):** real SMS send (owner Hubtel — console-only, never provision `HUBTEL_*`); unaccounted-bell on-read + triggered send (no cron); "absent for resumption" → discipline note (INCR-13, no discipline row).
+
+---
+
+## Next increment — INCR-12 · Boarding visiting day — surface 06 · migration 0049
+
+> **Nothing structural blocks INCR-12, and no OWNER CALL blocks the build.** `senior-feat` level with `main`
+> (`d72f50d`); INCR-7/F0, INCR-8 (frozen `getVisitingPolicy` + `getBoardingCalendar` VISITING events), INCR-9
+> (`sendSms()` + the `exeat_notification` idempotent-log + the exeat two-stamp in/out) and INCR-11
+> (`boarding_arrival` upsert-idempotency + the canonical year resolver) merged. The digital Visitor's Book — the
+> school's front door, one Sunday a month. **Wells on the critical path** (TWO new tenant tables — a durable
+> approved-visitor list + the visit record) blocked on Kofi OQ1. **Second-to-last Boarding increment (only INCR-13
+> discipline remains).** **OWNER scope/security call (does NOT block the build — OQ-A):** is the parent RSVP link a
+> PUBLIC unauthenticated tokenised surface, or **staff-entered RSVP** for v1? _Rec: staff-entered v1 (authed app),
+> defer the public link._ **Latent owner gate (does NOT block build):** module #3 SMS go-live via Hubtel
+> (invitation/reminder/arrival/overstay SMS → `sendSms()` console-only). Next migration **0049**.
+
+### Goal
+Visiting-day ops (surface 06): the monthly **2nd-Sunday · 12:00–16:00** cadence (lunch 11:30, dormitories out of
+bounds), keyed to a **VISITING calendar event** from the frozen `getBoardingCalendar`; **parent RSVP** (staff-entered
+v1 — the "indicated arrivals" list; the public tokenised link = OQ-A/deferred); the **approved-visitor list per student**
+(max ~6 durable names, HM-curated, Dean-approved for pastoral-sensitive) the gate **verifies against**; per-visitor
+**in/out timestamping** (arrive→depart, exeat two-stamp pattern); **RSVP-by-House + zone occupancy + arrival counters**
+(all DERIVED); **unauthorised-visitor flag** (not on list → flag + actor-stamped HM verbal-auth override, never silent,
+never a hard turn-away) + **overstay** (past `hoursEnd`+grace, on-read, HM notified). Reads the frozen `getVisitingPolicy`
++ `getBoardingCalendar` VISITING events; RSVP/arrival/overstay SMS → `sendSms()` console. **Visiting is NOT fee- or
+discipline-gated** (OQ-F — no `feeOwingForStudent` call).
+
+### Done when
+A Housemaster/SoD (`BOARDING_ROLES`, house-scoped for plain HM; Dean/HM/Admin school-wide) opens surface 06 for a
+VISITING event and: sees the countdown + 5 DERIVED cards + **RSVP-by-House counters** (per House arrived/expected, per-Form,
+respecting the event `formScope` e.g. "Forms 1 & 2 only") derived from records; **manages a student's approved-visitor
+list** (add/remove ≤ max, PENDING→APPROVED, Dean-gate on pastoral — VLC 4.5 STUB); **records a gate check per visitor** —
+RSVP (staff-entered) → **arrive** (in-stamp; matched to approved list = VERIFIED, else FLAGGED requiring an actor-stamped
+HM authorisation, never silent, never hard-block) → **depart** (out-stamp); sees **zone allocation + occupancy** (zones a
+`lib/boarding/` constant, occupancy derived) + the **overstay** state (past `hoursEnd`+grace, on-read, HM notified via
+console SMS — NO discipline write, INCR-13 stub). NEW tenant tables (durable `boarding_approved_visitor` + `boarding_visit`;
+FORCE RLS + **prod-paste-0049**, composite FKs, per-boarder); frozen contract READ-only; all logic in `lib/boarding/` (no
+trigger); **PII (visitor names/phones/IDs) tenant-scoped, never in a URL/SMS log**; audit-logged; three gates green.
+
+### Step table
+| Step | Owner | State |
+|---|---|---|
+| Rulings on OQ1–OQ7 + acceptance criteria (**OQ1 approved-visitor + visit table shape gates Wells**); surface OQ-A (RSVP-link scope/security — OWNER) + module #3 SMS; confirm not fee/discipline-gated (OQ-F) | Kofi | ⬜ gates Wells |
+| Surface map — surface 06 all blocks: countdown strip · 5 summary cards (DERIVED) · RSVP-by-House 6 counters · indicated-arrivals per-student list (student·visitor·relationship·VERIFIED/NEEDS-REVIEW·action) · approved-visitor detail card (max-6 slots + empty) · 3-zone allocation + capacity · OOB/overstay reminder · §2 editorial security tenets (list-CHECK not list-RECORD; flag→HM verbal auth; no photos/QR in front of parent). Confirm route | Lucy | ⬜ |
+| **Schema (approved-visitor + visit — critical path).** NEW tenant `boarding_approved_visitor` (DURABLE, **referenced by visits → needs `(school_id,id)` tenant UK**): student_id (composite FK), name, relationship, id_hint/phone (PII), `status` enum PENDING_REVIEW\|APPROVED, pastoral_review flag (Dean/VLC stub), added_by/at; max-N app-enforced in `lib/`. NEW tenant `boarding_visit` (two-stamp in/out, mirrors exeat depart/return): student_id+house_id (snapshot)+calendar_event_id (composite FKs), `approved_visitor_id` NULL SET NULL (NULL=flagged not-on-list), visitor_name/phone snapshot, `status` enum RSVP\|ARRIVED\|DEPARTED + `verification` VERIFIED\|FLAGGED\|HM_AUTHORISED, `zone_key` NULL, arrived_at/departed_at + actor `*_by_user_id`, authorised_by/at, note; composite `(school_id,id)` UKs + composite FKs; new enums; FORCE RLS; migration **0049** + **prod-paste-0049-boarding-visiting.sql**. (Optional OQ7) lean `boarding_visit_notification` idempotent log OR flags | Wells | ⬜ blocked on Kofi OQ1 |
+| Config reads — `getVisitingPolicy` READ-ONLY (window/lunch/dormitories-rule/`approvedVisitors` **policy-string label ONLY, NOT the per-student list**/bookOwner) + `getBoardingCalendar` VISITING events (date + formScope; `nextVisiting`, `?date=`/`?eventId=`); reuse canonical resolver (#2). **NO `feeOwingForStudent`** (OQ-F). `withSchool` server-only | Claude Code | ⬜ |
+| Approved-visitor CRUD — add/remove ≤ max, PENDING→APPROVED, Dean-gate on pastoral (VLC 4.5 STUB); `lib/boarding/`, atomic + audit; max-N in `lib/` | Claude Code | ⬜ |
+| Visit gate-check actions — RSVP (staff-entered) → arrive (in-stamp; verify vs approved list → VERIFIED else FLAGGED needing actor-stamped HM auth before admit — flag+override, never silent, never hard-block) → depart (out-stamp); `lib/boarding/`, atomic + audit; upsert-idempotent per (student×event×visitor) | Claude Code | ⬜ |
+| Derivations — RSVP-by-House (respect `formScope`), zone occupancy, arrival counter, overstay-on-read — pure funcs, vitest DB-free, **NO counter/occupancy columns** | Claude Code | ⬜ |
+| Canonical constants — visitor zones (`lib/boarding/` constant, name·for-whom·capacity, schoolId-in-sig) + max-N/relationship rule | Claude Code | ⬜ |
+| RSVP/arrival/overstay SMS chain — invitation (T-7) + reminders + arrival-confirm + overstay → `sendSms()` (**console, no cost until Hubtel**); overstay on-read; idempotent (OQ7); NEVER provision `HUBTEL_*` | Claude Code | ⬜ (SMS-live gated on owner #3) |
+| Visiting-day UI (surface 06) — route `/senior/boarding/operations/visiting` (Lucy confirms; from Boarding landing, NOT a new sidebar row); countdown · summary · RSVP-by-House · indicated-arrivals list · approved-visitor detail+editor · zones+occupancy · OOB/overstay · gate-check modal (list-check + flag→HM-auth); house-scope for plain HM | Claude Code | ⬜ |
+| Seed — demo visiting day (RSVPs across Houses respecting a `FORMS_1_2` event, approved lists incl. J. Manu pastoral/Dean-approved 5-of-6, one flagged not-on-list, zone allocations), marker-scoped re-run-safe | Wells/Claude Code | ⬜ |
+| Build · typecheck · tests (list-verify vs flag+override, in/out two-stamp, RSVP-by-House w/ formScope, zone occupancy, overstay-on-read, max-N, SMS-console, tenant isolation) · RLS test · preview round-trip | Claude Code | ⬜ |
+| QA — cadence/window from `getVisitingPolicy`, VISITING event keying + formScope cohorts, approved-list gate-verify + flag→HM-auth (never silent/never hard-block), in/out timestamps, RSVP-by-House + zone counters (derived), overstay-on-read, max-N, not-fee/discipline-gated, PII scoping, SMS console-only, tenant isolation, role/house-scope | Quinn | ⬜ |
+| Architecture/portability — CRUD + gate-check + derivation in `lib/` (no trigger); zone/max-N Zod-in-lib; counters/occupancy DERIVED; frozen contract READ-only; SMS behind `sendSms()`; VLC STUBBED; no fee coupling | Dex | ⬜ |
+| Security — both new tenant tables FORCE RLS + **prod-paste-0049 parity**; cross-tenant denied; composite FKs; route auth + `BOARDING_ROLES` + house-scope; **visitor-list PII (names/phones/IDs) tenant-scoped, never in URL/SMS log — the biggest external-PII surface in Boarding**; no real send without owner go-live; **IF OQ-A ships the public link → its own unauthenticated-surface envelope (token signing/expiry, no-session tenant scope, rate-limit, minimal exposure)** | Sarah | ⬜ holds merge |
+| Gate fixes (aggregated) | Claude Code | ⬜ |
+| Merge · verify `git log origin/main` · **Pence syncs senior-feat ← main** | Sarah + Pence | ⬜ |
+
+### Dependencies / critical path
+Reads INCR-8's frozen `getVisitingPolicy` + `getBoardingCalendar` VISITING events (READ-only); sits on F0's spine
+(per-boarder, House, house-scope); reuses INCR-9's `sendSms()` console + `exeat_notification` idempotent pattern; the
+visit record's in/out mirrors the **exeat depart/return two-stamp** (needs BOTH arrive AND depart on one row — closer than
+`boarding_arrival`'s single `checked_at`); reuses INCR-11's upsert-idempotency + canonical year resolver (#2). **Does NOT
+read billing** (not fee-gated — OQ-F). Critical path: Kofi OQ1 (+ owner OQ-A) → Wells (0049) → Claude Code reads → CRUD ∥
+gate-check ∥ derivations ∥ zone/max-N constants → surface-06 UI → SMS chain (console) → 3 gates → Sarah merge → Pence sync.
+
+### Open questions — Kofi rules (**OQ-A is the OWNER-facing scope/security call; module #3 SMS is a latent owner gate**)
+1. **OQ1 (gates Wells) — table shapes.** DURABLE `boarding_approved_visitor` (referenced by visits → **needs a
+   `(school_id,id)` tenant UK**, unlike the INCR-10/11 LEAF tables) + `boarding_visit` (two-stamp in/out, nullable
+   `approved_visitor_id`, verification state, zone key). _Rec: two tables; verification vocab Zod-in-lib._
+2. **OQ-A — RSVP-link scope + security (OWNER CALL · scope + Sarah).** Public unauthenticated tokenised parent link vs
+   staff-entered RSVP v1. Public = a NEW unauthenticated surface collecting external PII with no session (token
+   signing/expiry, no-session tenant scope, rate-limit) + depends on SMS go-live. _Rec: staff-entered v1 (the
+   "indicated arrivals" list the surface renders); defer the public link with a dedicated security envelope._
+3. **OQ3 — approved-visitor SOURCE + max.** HM-managed CRUD (no admissions-ingest exists) vs first-RSVP-captured. _Rec:
+   HM CRUD now, schoolId-in-sig for a future ingest, max ~6 in `lib/`, Dean-approval on pastoral (VLC stub)._ Confirm max.
+4. **OQ4 — unauthorised visitor: flag vs hard-block.** §2 editorial: list-CHECK not list-RECORD; not-on-list → flag +
+   SoD calls HM for verbal auth (actor-stamped override), never silent, never a hard turn-away. _Rec: FLAGGED → needs
+   HM_AUTHORISED to admit; the visit records both flag + authoriser._
+5. **OQ5 — zones/capacity: derived or stored.** _Rec: zones a `lib/boarding/` constant + nullable `zone_key` on the visit; occupancy DERIVED._
+6. **OQ-F — visiting gated on anything?** Surface has no fee column, no discipline gate. _Rec: NOT fee-gated, NOT
+   discipline-gated — no `feeOwingForStudent` call; overstay is a notification NOT a discipline write (INCR-13 stub)._ Confirm.
+7. **OQ7 — SMS idempotency.** Reminders are cohort-batch (pre-visit, no visit row); arrival/overstay are per-visit. _Rec:
+   a lean `boarding_visit_notification` log (mirror `exeat_notification`, event-scoped reminders / visit-scoped arrival) or flags; pick the smaller; overstay on-read._
+
+### Risk flags
+- **NEW tenant tables ⇒ prod-paste RLS** (`prod-paste-0049-boarding-visiting.sql`; db:policies dev-only). Sarah gates parity.
+- **🔴 The RSVP link, IF public, is an UNAUTHENTICATED surface** (parent, no session, reads/writes tenant PII) — a real new attack surface. _Rec: staff-entered v1, defer public (OQ-A); if it ships, Sarah gates the full token/expiry/no-session-scope/rate-limit/minimal-exposure envelope._
+- **🔴 PII — the approved-visitor list is the biggest external-PII surface in Boarding** (adults' names, relationships, phones, ID hints). FORCE RLS, no PII in URL/SMS log, minimal exposure. Sarah.
+- **SMS is a PAID external service (STOP-AND-ASK)** — never provision `HUBTEL_*` without owner #3; console-only build.
+- **Frozen contract READ-ONLY** — `getVisitingPolicy`/`getBoardingCalendar` never re-modeled. `approvedVisitors` config is a **policy STRING label, NOT the per-student list** — don't conflate. Dex + Kofi.
+- **Counters/occupancy DERIVED — no storage.** Dex.
+- **Overstay on-read + triggered send** (no cron); overstay is a notification, **no discipline write** (INCR-13 stub). Dex/Quinn.
+- **VLC pastoral cross-link STUBBED** (module 4.5) — nullable flag + manual. **Composite intra-tenant FKs**; DDL order table→UK→ADD-FK. Wells.
+- **Don't wire fee-owing** (OQ-F — no fee dimension). **Seed not idempotent** — marker-scoped, re-run-safe.
+
+### Prerequisites / stop-and-ask
+- ✅ `senior-feat` level with `main` (`d72f50d`); INCR-7/8/9/10/11 merged. Next migration **0049**.
+- **OWNER scope/security call (does NOT block the build): OQ-A — public tokenised RSVP link vs staff-entered.** Default staff-entered v1; don't build a public unauthenticated surface silently.
+- **Latent owner gate (does NOT block build):** module #3 SMS go-live (provision Hubtel = paid); console-only build.
+- **Deploy note:** migration 0049 + hand-paste `prod-paste-0049-boarding-visiting.sql` on prod.
+- **Forward deps to STUB:** VLC pastoral cross-link (module 4.5); overstay "discipline note" (INCR-13 — no discipline row); real SMS send (owner Hubtel); the timed scheduler (overstay on-read + triggered send).
