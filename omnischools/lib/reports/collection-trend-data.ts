@@ -105,7 +105,8 @@ export async function getCollectionTrend(schoolId: string) {
         endsOn: academicPeriod.endsOn,
       })
       .from(academicPeriod)
-      .where(eq(academicPeriod.schoolId, schoolId))
+      // Exclude the non-instructional SENIOR_F3 pseudo-period (migration 0048, boarding F3-vacation).
+      .where(and(eq(academicPeriod.schoolId, schoolId), ne(academicPeriod.productLine, "SENIOR_F3")))
       .orderBy(asc(academicPeriod.academicYear), asc(academicPeriod.periodNumber)),
   );
 
