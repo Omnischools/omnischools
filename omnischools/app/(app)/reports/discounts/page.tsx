@@ -38,11 +38,12 @@ const kLabel = (n: number) =>
     ? `${(n / 1000).toLocaleString("en-GH", { maximumFractionDigits: n % 1000 === 0 ? 0 : 1 })}k`
     : String(Math.round(n));
 
-export default async function DiscountsPage({
-  searchParams,
-}: {
-  searchParams: { period?: string; from?: string; to?: string };
-}) {
+export default async function DiscountsPage(
+  props: {
+    searchParams: Promise<{ period?: string; from?: string; to?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { school } = await requireSchool();
   const term = await getReportTerm(school.id);
   const period = resolvePeriod(searchParams, term, new Date());

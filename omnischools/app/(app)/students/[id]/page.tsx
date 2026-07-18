@@ -55,7 +55,8 @@ const ageFrom = (dob: string, today: string) => {
 
 const pctToneOf = (p: number) => (p >= 90 ? "text-green" : p >= 70 ? "text-gold" : "text-terra");
 
-export default async function StudentDetailPage({ params }: { params: { id: string } }) {
+export default async function StudentDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { school } = await requireSchool();
   const today = new Date().toISOString().slice(0, 10);
 

@@ -88,7 +88,7 @@ type SupabaseAuthApi = {
 
 async function authApi(): Promise<SupabaseAuthApi> {
   const { createClient } = await import("@/lib/supabase/server");
-  return createClient().auth as unknown as SupabaseAuthApi;
+  return (await createClient()).auth as unknown as SupabaseAuthApi;
 }
 
 /** Begin phone-OTP sign-in (sends an SMS code in live mode). */

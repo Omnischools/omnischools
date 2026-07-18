@@ -5,7 +5,8 @@ import { ApplyForm } from "@/components/admissions/apply-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function ApplyPage({ params }: { params: { code: string } }) {
+export default async function ApplyPage(props: { params: Promise<{ code: string }> }) {
+  const params = await props.params;
   const code = decodeURIComponent(params.code);
   const found = await withoutTenantScope((tx) =>
     tx.select({ name: schools.name }).from(schools).where(eq(schools.gesCode, code)),

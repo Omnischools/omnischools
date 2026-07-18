@@ -80,13 +80,14 @@ const fmtCloseAt = (ms: number) =>
     }),
   );
 
-export default async function TakeAttendancePage({
-  params,
-  searchParams,
-}: {
-  params: { classId: string };
-  searchParams: { date?: string };
-}) {
+export default async function TakeAttendancePage(
+  props: {
+    params: Promise<{ classId: string }>;
+    searchParams: Promise<{ date?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { school } = await requireSchool();
   const date =
     searchParams.date && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date)

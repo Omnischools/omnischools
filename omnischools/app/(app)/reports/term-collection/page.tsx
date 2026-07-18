@@ -28,11 +28,12 @@ const METHOD_SWATCH: Record<string, string> = {
 const fmtWeek = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-export default async function TermCollectionPage({
-  searchParams,
-}: {
-  searchParams: { period?: string; from?: string; to?: string };
-}) {
+export default async function TermCollectionPage(
+  props: {
+    searchParams: Promise<{ period?: string; from?: string; to?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { school } = await requireSchool();
   const term = await getReportTerm(school.id);
   const period = resolvePeriod(searchParams, term, new Date());

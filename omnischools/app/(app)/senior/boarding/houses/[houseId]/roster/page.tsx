@@ -19,7 +19,8 @@ function crestInitial(name: string) {
   return name.charAt(0).toUpperCase();
 }
 
-export default async function HouseRosterPage({ params }: { params: { houseId: string } }) {
+export default async function HouseRosterPage(props: { params: Promise<{ houseId: string }> }) {
+  const params = await props.params;
   const { school, user } = await requireSchoolRole(BOARDING_ROLES);
   if (school.schoolType === "BASIC") redirect("/dashboard");
 

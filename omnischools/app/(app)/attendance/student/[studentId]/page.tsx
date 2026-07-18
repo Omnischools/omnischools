@@ -88,11 +88,12 @@ function buildWeeks(start: string, end: string, today: string, byDate: Map<strin
   return weeks;
 }
 
-export default async function StudentAttendancePage({
-  params,
-}: {
-  params: { studentId: string };
-}) {
+export default async function StudentAttendancePage(
+  props: {
+    params: Promise<{ studentId: string }>;
+  }
+) {
+  const params = await props.params;
   const { school } = await requireSchool();
   const today = new Date().toISOString().slice(0, 10);
 

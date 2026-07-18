@@ -37,11 +37,12 @@ export const dynamic = "force-dynamic";
 
 const numOrNull = (v: string | null) => (v == null ? null : Number(v));
 
-export default async function ScoreLedgerPage({
-  searchParams,
-}: {
-  searchParams: { classId?: string; subjectId?: string; periodId?: string };
-}) {
+export default async function ScoreLedgerPage(
+  props: {
+    searchParams: Promise<{ classId?: string; subjectId?: string; periodId?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { school, user } = await requireSchoolRole(SENIOR_LEDGER_ROLES);
   // Senior-only surface — a Basic (KG · Primary · JHS) school has no score ledger.
   if (school.schoolType === "BASIC") redirect("/gradebook");

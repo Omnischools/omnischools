@@ -13,11 +13,12 @@ export const metadata = { title: "Books · Financial reports" };
 const ghs = (n: number) =>
   `GHS ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export default async function BooksReportsPage({
-  searchParams,
-}: {
-  searchParams: { year?: string };
-}) {
+export default async function BooksReportsPage(
+  props: {
+    searchParams: Promise<{ year?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { school } = await requireSchool();
   const thisYear = new Date().getFullYear();
   const year = searchParams.year && /^\d{4}$/.test(searchParams.year)

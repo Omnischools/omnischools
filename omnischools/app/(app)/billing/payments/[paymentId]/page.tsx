@@ -35,11 +35,12 @@ const fmtDateTime = (d: Date | string) =>
     minute: "2-digit",
   });
 
-export default async function PaymentDetailPage({
-  params,
-}: {
-  params: { paymentId: string };
-}) {
+export default async function PaymentDetailPage(
+  props: {
+    params: Promise<{ paymentId: string }>;
+  }
+) {
+  const params = await props.params;
   const { school } = await requireSchool();
 
   const data = await withSchool(school.id, async (tx) => {

@@ -10,11 +10,12 @@ export const metadata: Metadata = {
 
 const VALID_TYPES = ["BASIC", "SENIOR", "MULTI"] as const;
 
-export default function StartPage({
-  searchParams,
-}: {
-  searchParams: { type?: string };
-}) {
+export default async function StartPage(
+  props: {
+    searchParams: Promise<{ type?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // A pricing plan may pre-select the school type (?type=BASIC|SENIOR); when it does,
   // the wizard skips straight to School identity.
   const raw = searchParams.type?.toUpperCase();

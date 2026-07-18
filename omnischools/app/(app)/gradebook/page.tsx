@@ -18,11 +18,12 @@ import { GradebookEmptyColumns } from "@/components/gradebook/empty-columns";
 
 export const dynamic = "force-dynamic";
 
-export default async function GradebookPage({
-  searchParams,
-}: {
-  searchParams: { classId?: string; subjectId?: string; periodId?: string };
-}) {
+export default async function GradebookPage(
+  props: {
+    searchParams: Promise<{ classId?: string; subjectId?: string; periodId?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { school } = await requireSchool();
   const { classId, subjectId, periodId } = searchParams;
 

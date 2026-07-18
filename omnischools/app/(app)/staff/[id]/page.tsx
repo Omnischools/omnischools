@@ -79,7 +79,8 @@ const initialsOf = (full: string) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-export default async function StaffDetailPage({ params }: { params: { id: string } }) {
+export default async function StaffDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { school } = await requireSchool();
   const today = new Date().toISOString().slice(0, 10);
 

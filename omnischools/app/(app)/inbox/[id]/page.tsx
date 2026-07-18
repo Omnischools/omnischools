@@ -37,7 +37,8 @@ function topicChipClass(topic: string): string {
   }
 }
 
-export default async function ConversationPage({ params }: { params: { id: string } }) {
+export default async function ConversationPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { user, school } = await requireSchool();
   const id = params.id;
 

@@ -50,11 +50,12 @@ const BREAKDOWN: { k: AttendanceStatus; letter: string; tone: string }[] = [
   { k: "ABSENT", letter: "A", tone: "text-terra" },
 ];
 
-export default async function TermGridPage({
-  searchParams,
-}: {
-  searchParams: { classId?: string; end?: string };
-}) {
+export default async function TermGridPage(
+  props: {
+    searchParams: Promise<{ classId?: string; end?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { school } = await requireSchool();
   const today = new Date().toISOString().slice(0, 10);
 
