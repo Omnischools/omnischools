@@ -10,11 +10,12 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: { accepted?: string };
-}) {
+export default async function LoginPage(
+  props: {
+    searchParams: Promise<{ accepted?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // Live: real Supabase phone-OTP / password. Dev bypass: a shortcut into the app.
   if (authIsLive()) {
     return (

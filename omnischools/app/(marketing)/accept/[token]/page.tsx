@@ -12,11 +12,12 @@ function maskPhone(p: string) {
   return p.length > 6 ? `${p.slice(0, 7)} •••• ${p.slice(-2)}` : p;
 }
 
-export default async function AcceptInvitePage({
-  params,
-}: {
-  params: { token: string };
-}) {
+export default async function AcceptInvitePage(
+  props: {
+    params: Promise<{ token: string }>;
+  }
+) {
+  const params = await props.params;
   const data = await withoutTenantScope(async (tx) => {
     const [inv] = await tx
       .select({

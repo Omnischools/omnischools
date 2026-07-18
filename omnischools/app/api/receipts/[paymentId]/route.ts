@@ -13,10 +13,8 @@ export const dynamic = "force-dynamic";
  * requireSchool + withSchool, so a staffer can only ever pull their own school's receipts.
  * (The public, tokened parent-facing link is lib/actions/public-receipt.ts.)
  */
-export async function GET(
-  _req: Request,
-  { params }: { params: { paymentId: string } },
-) {
+export async function GET(_req: Request, props: { params: Promise<{ paymentId: string }> }) {
+  const params = await props.params;
   const { school } = await requireSchool();
 
   const built = await withSchool(school.id, (tx) =>

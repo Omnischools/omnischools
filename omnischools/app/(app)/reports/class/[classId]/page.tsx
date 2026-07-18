@@ -17,11 +17,12 @@ const ghs = (n: number) =>
   `GHS ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const num = (v: unknown) => Number(v ?? 0);
 
-export default async function ClassReportPage({
-  params,
-}: {
-  params: { classId: string };
-}) {
+export default async function ClassReportPage(
+  props: {
+    params: Promise<{ classId: string }>;
+  }
+) {
+  const params = await props.params;
   const { school } = await requireSchool();
   const data = await withSchool(school.id, async (tx) => {
     const [cls] = await tx

@@ -30,11 +30,12 @@ function when(d: Date | string): string {
   )}:${p(date.getMinutes())}`;
 }
 
-export default async function AuditLogPage({
-  searchParams,
-}: {
-  searchParams: { entity?: string };
-}) {
+export default async function AuditLogPage(
+  props: {
+    searchParams: Promise<{ entity?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { school } = await requireSchool();
   const entity = searchParams.entity;
 

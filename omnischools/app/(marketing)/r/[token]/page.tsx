@@ -15,11 +15,12 @@ export const metadata = {
  * page can address the parent — student name, amount and the PDF stay hidden until the code
  * is verified in <ReceiptGate>.
  */
-export default async function PublicReceiptPage({
-  params,
-}: {
-  params: { token: string };
-}) {
+export default async function PublicReceiptPage(
+  props: {
+    params: Promise<{ token: string }>;
+  }
+) {
+  const params = await props.params;
   const info = await withoutTenantScope(async (tx) => {
     const [r] = await tx
       .select({ schoolId: receipts.schoolId })

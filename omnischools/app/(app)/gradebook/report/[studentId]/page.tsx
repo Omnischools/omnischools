@@ -24,13 +24,14 @@ import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReportCardPage({
-  params,
-  searchParams,
-}: {
-  params: { studentId: string };
-  searchParams: { periodId?: string };
-}) {
+export default async function ReportCardPage(
+  props: {
+    params: Promise<{ studentId: string }>;
+    searchParams: Promise<{ periodId?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const periodId = searchParams.periodId;
   if (!periodId) notFound();
   const { school } = await requireSchool();
@@ -146,7 +147,6 @@ export default async function ReportCardPage({
           <PrintButton />
         </div>
       </div>
-
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
         {/* Gold top strip */}
         <div className="h-1.5 bg-gold" />

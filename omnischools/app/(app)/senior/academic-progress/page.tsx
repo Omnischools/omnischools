@@ -10,11 +10,12 @@ import { VhmProgressTable } from "@/components/senior/vhm-progress-table";
 
 export const dynamic = "force-dynamic";
 
-export default async function AcademicProgressPage({
-  searchParams,
-}: {
-  searchParams: { periodId?: string };
-}) {
+export default async function AcademicProgressPage(
+  props: {
+    searchParams: Promise<{ periodId?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // Management-only surface (§6.2 / §D14): Vice Headmaster, Headmaster, Admin.
   const { school } = await requireSchoolRole(SENIOR_MANAGEMENT_ROLES);
   // Senior-only.

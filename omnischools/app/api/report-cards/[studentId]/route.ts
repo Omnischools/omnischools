@@ -35,10 +35,8 @@ const slug = (s: string) => s.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g,
  * for a student × period to a PDF and streams it inline. Tenant-scoped via requireSchool +
  * withSchool. Mirrors app/(app)/gradebook/report/[studentId].
  */
-export async function GET(
-  req: Request,
-  { params }: { params: { studentId: string } },
-) {
+export async function GET(req: Request, props: { params: Promise<{ studentId: string }> }) {
+  const params = await props.params;
   const { school } = await requireSchool();
   const periodId = new URL(req.url).searchParams.get("periodId");
   if (!periodId) return new Response("Missing periodId", { status: 400 });

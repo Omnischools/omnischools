@@ -10,11 +10,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReportsPage({
-  searchParams,
-}: {
-  searchParams: { classId?: string; periodId?: string };
-}) {
+export default async function ReportsPage(
+  props: {
+    searchParams: Promise<{ classId?: string; periodId?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { school } = await requireSchool();
   const { classId, periodId } = searchParams;
 

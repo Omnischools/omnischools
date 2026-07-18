@@ -93,7 +93,7 @@ export async function requireSchool(): Promise<{ user: AppUser; school: ActiveSc
   // Runs on every app page (and its server actions) via this shared guard; the path
   // comes from the middleware-stamped `x-pathname` header.
   if (isFinanceOnly(user.roles)) {
-    const pathname = headers().get("x-pathname") ?? "";
+    const pathname = (await headers()).get("x-pathname") ?? "";
     if (pathname && !pathAllowedForFinance(pathname)) redirect(FINANCE_HOME);
   }
   return { user, school };

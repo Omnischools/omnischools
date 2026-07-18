@@ -3,9 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   // @react-pdf/renderer (receipt/report-card PDFs) is a Node-only lib pulling in fontkit;
   // keep it out of the webpack bundle so the server route can require it at runtime.
-  experimental: {
-    serverComponentsExternalPackages: ["@react-pdf/renderer"],
-  },
+  serverExternalPackages: ["@react-pdf/renderer"],
   // Portability (BUILD_STACK): keep image optimisation host-agnostic.
   images: {
     remotePatterns: [

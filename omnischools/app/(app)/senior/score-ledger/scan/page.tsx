@@ -25,11 +25,12 @@ export const dynamic = "force-dynamic";
 
 const numOrNull = (v: string | null) => (v == null ? null : Number(v));
 
-export default async function ScanPage({
-  searchParams,
-}: {
-  searchParams: { classId?: string; subjectId?: string; periodId?: string };
-}) {
+export default async function ScanPage(
+  props: {
+    searchParams: Promise<{ classId?: string; subjectId?: string; periodId?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { school } = await requireSchoolRole(SENIOR_LEDGER_ROLES);
   if (school.schoolType === "BASIC") redirect("/gradebook");
 

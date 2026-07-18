@@ -9,7 +9,8 @@ import { BackLink } from "@/components/ui/back-link";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Edit student" };
 
-export default async function EditStudentPage({ params }: { params: { id: string } }) {
+export default async function EditStudentPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { school } = await requireSchool();
 
   const data = await withSchool(school.id, async (tx) => {

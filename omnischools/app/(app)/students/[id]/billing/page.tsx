@@ -35,11 +35,12 @@ const INV_STATUS: Record<string, string> = {
   EXEMPT: "bg-bg text-navy-3",
 };
 
-export default async function StudentBillingPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function StudentBillingPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const { school } = await requireSchool();
 
   const data = await withSchool(school.id, async (tx) => {
