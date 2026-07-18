@@ -150,7 +150,6 @@ export function GateCheckPanel({
   const [walkName, setWalkName] = useState("");
   const [walkRel, setWalkRel] = useState("");
   const [walkPhone, setWalkPhone] = useState("");
-  const [walkId, setWalkId] = useState("");
   const [zoneKey, setZoneKey] = useState("");
   const [noteText, setNoteText] = useState("");
 
@@ -163,7 +162,6 @@ export function GateCheckPanel({
     setWalkName("");
     setWalkRel("");
     setWalkPhone("");
-    setWalkId("");
     setZoneKey("");
     setNoteText("");
   };
@@ -295,10 +293,6 @@ export function GateCheckPanel({
           <label className="text-[10px] font-semibold uppercase tracking-wide text-navy-3">
             Phone (stored, rendered masked)
             <input className={input} value={walkPhone} onChange={(e) => setWalkPhone(e.target.value)} />
-          </label>
-          <label className="text-[10px] font-semibold uppercase tracking-wide text-navy-3">
-            ID hint (not a document)
-            <input className={input} value={walkId} onChange={(e) => setWalkId(e.target.value)} />
           </label>
         </div>
       )}
