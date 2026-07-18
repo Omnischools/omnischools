@@ -344,6 +344,13 @@
       "when": 1784397823636,
       "tag": "0048_motionless_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1784409648184,
+      "tag": "0049_windy_jack_flag",
+      "breakpoints": true
     }
   ]
 }

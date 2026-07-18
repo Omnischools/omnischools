@@ -28,6 +28,10 @@ import {
   inspectionResultEnum,
   attendanceStatusEnum,
   boardingModeEnum,
+  visitorApprovalStatusEnum,
+  visitStatusEnum,
+  visitVerificationEnum,
+  visitNotificationKindEnum,
 } from "./_enums";
 
 /**
@@ -649,6 +653,237 @@ export const boardingArrival = pgTable(
     periodFk: foreignKey({
       columns: [t.schoolId, t.academicPeriodId],
       foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * Boarding visiting day (SHS module 4.2 / INCR-12) — surface 06, the digital Visitor's Book, one
+ * Sunday a month. THREE NEW tenant tables (Kofi OQ1): a DURABLE per-student approved-visitor list
+ * (boarding_approved_visitor), the visit record with the exeat two-stamp in/out (boarding_visit),
+ * and a lean dual-scoped SMS log (boarding_visit_notification). All three FORCE RLS (db:policies dev
+ * + prod-paste-0049-boarding-visiting.sql prod). Every gate-check / CRUD / derivation lives in
+ * lib/boarding/ (no trigger — portability); RSVP-by-House, zone occupancy, arrival counters and
+ * overstay are pure DERIVATIONS with NO storage (Kofi OQ5, AC K). Reads the frozen getVisitingPolicy
+ * + getBoardingCalendar VISITING events READ-only. NOT fee- or discipline-gated (OQ-F) — deliberately
+ * NO fee_owing_snapshot column, unlike boarding_exeat / boarding_arrival.
+ *
+ * TENANT-UK vs LEAF doctrine here: the first two tables are DURABLE and REFERENCED, so both carry a
+ * composite (school_id, id) tenant UK (mirror the F0 spine + boarding_exeat, NOT the INCR-10/11 LEAF
+ * tables): boarding_approved_visitor is referenced by boarding_visit.approved_visitor_id, and
+ * boarding_visit is referenced by boarding_visit_notification.visit_id. boarding_visit_notification is
+ * a LEAF (nothing references it) so it gets FORCE RLS but NO tenant UK (mirror exeat_notification).
+ * ==========================================================================*/
+
+/**
+ * DURABLE per-student approved-visitor list (Kofi OQ1/OQ3) — the HM-curated set of adults the gate
+ * VERIFIES an arriving visitor against (§2 tenet: list-CHECK not list-RECORD). One row per approved
+ * adult per student. `relationship` is FREE TEXT (not an enum — a visitor relationship is open-ended,
+ * unlike guardian_relation), `id_hint`/`phone` are the biggest external-PII surface in Boarding (adults'
+ * names/phones/ID hints — FORCE RLS, stored full, rendered MASKED in lib/, never in a URL/SMS log — AC J4).
+ * `status` defaults PENDING_REVIEW; HM/Dean approval flips it to APPROVED (only APPROVED matches at the
+ * gate → VERIFIED). `pastoral_review` is the Dean/VLC-4.5 STUB flag (manual, no VLC write). Max-6 is
+ * APP-ENFORCED in lib/ (MAX_APPROVED_VISITORS) — deliberately NO DB cardinality constraint (a COUNT
+ * check would need a forbidden trigger; zero approved visitors is also valid — AC B5).
+ *
+ * DURABLE + REFERENCED by boarding_visit.approved_visitor_id → needs the composite (school_id, id)
+ * tenant UK (the F0-spine/exeat pattern, NOT the INCR-10/11 LEAF pattern). Composite (school_id,
+ * student_id) FK keeps the student intra-tenant (cross-tenant structurally impossible, CASCADE); the
+ * two actor stamps are single-column SET NULL users FKs (exeat pattern). Index (school_id, student_id)
+ * serves the per-student list read (the gate's match lookup).
+ */
+export const boardingApprovedVisitor = pgTable(
+  "boarding_approved_visitor",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    name: text("name").notNull(),
+    relationship: text("relationship").notNull(), // FREE TEXT (not an enum) — open-ended
+    idHint: text("id_hint"), // PII — ID hint (not a document), nullable
+    phone: text("phone"), // PII — E.164, nullable
+    status: visitorApprovalStatusEnum("status").notNull().default("PENDING_REVIEW"),
+    pastoralReview: boolean("pastoral_review").notNull().default(false), // Dean/VLC-4.5 stub flag
+    note: text("note"),
+    // Global-table SET NULL → single-column actor stamps (exeat pattern).
+    addedByUserId: uuid("added_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    approvedByUserId: uuid("approved_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for boarding_visit.approved_visitor_id (single-col → id, see doc). Also the
+    // durable tenant UK. MUST exist before that FK — carried INLINE in CREATE TABLE.
+    tenantUk: unique("boarding_approved_visitor_tenant_uk").on(t.schoolId, t.id),
+    // Per-student list read + the gate's match lookup.
+    byStudent: index("boarding_approved_visitor_student_idx").on(t.schoolId, t.studentId),
+    // Composite intra-tenant FK — a cross-tenant student reference is structurally impossible.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * The visit record — the exeat two-stamp in/out lifecycle for a visiting-day gate check (Kofi OQ1).
+ * `status` RSVP → ARRIVED → DEPARTED (a walk-in inserts directly at ARRIVED — D5); `verification`
+ * defaults FLAGGED (the SAFE default — a visit is never silently VERIFIED). `visitor_name` is a NOT-NULL
+ * SNAPSHOT (visitor_phone/relationship nullable snapshots) so the visit is a durable record even after
+ * the approved-visitor row is removed (AC B6). NO fee_owing_snapshot — visiting is NOT fee-gated (OQ-F).
+ *
+ * FK shapes: student_id / house_id are composite (school_id, …) intra-tenant FKs (cross-tenant
+ * structurally impossible, CASCADE; house_id is a snapshot of the boarder's House at check time —
+ * mirrors boarding_exeat / boarding_arrival). calendar_event_id and approved_visitor_id are BOTH the
+ * single-column SET-NULL exemption (the exeat calendar_event_id doctrine): (a) a composite SET NULL
+ * would try to null the NOT-NULL school_id (the score-ledger supersedesFk trap), (b) both targets are
+ * HARD-deletable and this is a weak informational link, not an authorization boundary — RLS + the
+ * tenant-scoped getters already prevent a cross-tenant id reaching the insert. approved_visitor_id NULL
+ * = a flagged walk-in not on the list OR a later-removed visitor; the visitor_name snapshot is the
+ * durable record either way (AC B6 — remove a visitor → past visits keep the snapshot, id nulled).
+ * The six actor/time stamps (rsvp_by / arrived_at+by / departed_at+by / authorised_at+by) mirror the
+ * exeat two-stamp; every actor is a single-column SET NULL users FK.
+ *
+ * tenant UK (school_id, id) — DURABLE + REFERENCED by boarding_visit_notification.visit_id (composite
+ * FK) → carried INLINE, MUST exist before that FK. UNIQUE (school_id, student_id, calendar_event_id,
+ * approved_visitor_id) is the re-RSVP idempotency target (D6). ⚠ NULL-DISTINCT (Postgres default): a
+ * row with a NULL approved_visitor_id is DISTINCT from any other, so multiple FLAGGED walk-ins (NULL
+ * approved_visitor_id) for the same student × event COEXIST — while a duplicate at the non-null grain
+ * (same student × event × approved visitor) is rejected. This is the intended behaviour, NOT a bug: the
+ * constraint idempotency-guards a named-visitor RSVP but never collapses two distinct walk-ins into one.
+ * Index (school_id, calendar_event_id, house_id) serves the RSVP-by-House per-event read.
+ */
+export const boardingVisit = pgTable(
+  "boarding_visit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    houseId: uuid("house_id").notNull(), // snapshot of the boarder's House at check time
+    // Nullable single-column SET NULL FK — the VISITING event this visit belongs to (exeat exemption).
+    calendarEventId: uuid("calendar_event_id").references(() => boardingCalendarEvent.id, {
+      onDelete: "set null",
+    }),
+    // Nullable single-column SET NULL FK — the matched approved visitor. NULL = flagged walk-in / removed
+    // visitor; the visitor_name snapshot below is the durable record. → id (PK), NOT the tenant UK.
+    approvedVisitorId: uuid("approved_visitor_id").references(() => boardingApprovedVisitor.id, {
+      onDelete: "set null",
+    }),
+    visitorName: text("visitor_name").notNull(), // SNAPSHOT — durable even if the approved row is removed
+    visitorPhone: text("visitor_phone"), // PII snapshot, nullable
+    relationship: text("relationship"), // snapshot, nullable
+    status: visitStatusEnum("status").notNull().default("RSVP"),
+    verification: visitVerificationEnum("verification").notNull().default("FLAGGED"), // SAFE default
+    zoneKey: text("zone_key"), // lib/boarding/ zone constant key; occupancy DERIVED (Kofi OQ5)
+    note: text("note"),
+    // --- two-stamp in/out + the flag override, each + actor (global-table SET NULL → single-column FK) ---
+    rsvpByUserId: uuid("rsvp_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    arrivedAt: timestamp("arrived_at", { withTimezone: true }),
+    arrivedByUserId: uuid("arrived_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    departedAt: timestamp("departed_at", { withTimezone: true }),
+    departedByUserId: uuid("departed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    authorisedAt: timestamp("authorised_at", { withTimezone: true }), // set when a FLAGGED visit is HM-overridden
+    authorisedByUserId: uuid("authorised_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for boarding_visit_notification (school_id, id). MUST exist before that FK.
+    tenantUk: unique("boarding_visit_tenant_uk").on(t.schoolId, t.id),
+    // Re-RSVP idempotency (D6). NULL-DISTINCT: flagged walk-ins (NULL approved_visitor_id) COEXIST; a
+    // duplicate at the non-null (student × event × visitor) grain is rejected. See table doc.
+    uniqRsvp: unique("uniq_boarding_visit_rsvp").on(
+      t.schoolId,
+      t.studentId,
+      t.calendarEventId,
+      t.approvedVisitorId,
+    ),
+    // RSVP-by-House per-event read (respecting formScope in lib/).
+    byEventHouse: index("boarding_visit_event_house_idx").on(
+      t.schoolId,
+      t.calendarEventId,
+      t.houseId,
+    ),
+    // Composite intra-tenant FKs — a cross-tenant student/House reference is structurally impossible.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    houseFk: foreignKey({
+      columns: [t.schoolId, t.houseId],
+      foreignColumns: [houses.schoolId, houses.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * LEAF dual-scoped visiting-day SMS log (Kofi OQ7) — mirrors exeat_notification (delivery metadata +
+ * idempotency the audit trail doesn't carry). One row per send attempt. DUAL-SCOPED: cohort/event sends
+ * (INVITATION / REMINDER_T3 / REMINDER_T1) carry a calendar_event_id and a NULL visit_id (no visit row
+ * exists pre-arrival); per-visit sends (ARRIVAL_CONFIRM / OVERSTAY) carry a visit_id. Idempotency for a
+ * given (scope × kind) is NOT EXISTS(scope, kind) before each send; overstay is on-read (no cron), grace
+ * 15 min. `provider` = console | hubtel (console-only until Hubtel go-live). PII discipline: only the
+ * delivery `to_phone` lives here — never the visitor name/ID hint (AC J4).
+ *
+ * FK shapes: (school_id, visit_id) is a composite intra-tenant FK → boarding_visit's tenant UK, CASCADE
+ * with the visit. It is MATCH SIMPLE (Drizzle's default — no MATCH clause emitted): a cohort row's NULL
+ * visit_id SKIPS the composite FK entirely (the inspections tweak-#3 pattern), so an event-scoped send
+ * with visit_id NULL is allowed while school_id is still NOT NULL. calendar_event_id is the single-column
+ * SET-NULL exemption (exeat pattern). LEAF table (nothing references it) → FORCE RLS but NO tenant UK
+ * (mirror exeat_notification). Two indexes: (school_id, visit_id) for per-visit sends + the ARRIVAL/
+ * OVERSTAY idempotency check; (school_id, calendar_event_id) for cohort sends + the INVITATION/REMINDER
+ * idempotency check.
+ */
+export const boardingVisitNotification = pgTable(
+  "boarding_visit_notification",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    visitId: uuid("visit_id"), // nullable — NULL for cohort/event-scoped sends (MATCH SIMPLE skips the FK)
+    // Nullable single-column SET NULL FK — the VISITING event for cohort sends (exeat exemption).
+    calendarEventId: uuid("calendar_event_id").references(() => boardingCalendarEvent.id, {
+      onDelete: "set null",
+    }),
+    kind: visitNotificationKindEnum("kind").notNull(),
+    toPhone: text("to_phone").notNull(), // E.164 — the ONLY PII in this log (delivery target)
+    body: text("body").notNull(),
+    provider: text("provider").notNull(), // console | hubtel
+    providerMessageId: text("provider_message_id"),
+    error: text("error"),
+    ok: boolean("ok").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+    // Global-table SET NULL → single column (null for system-fired cohort sends).
+    sentByUserId: uuid("sent_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => ({
+    // Per-visit send read + the ARRIVAL_CONFIRM/OVERSTAY idempotency existence check.
+    byVisit: index("boarding_visit_notification_visit_idx").on(t.schoolId, t.visitId),
+    // Cohort send read + the INVITATION/REMINDER_T3/T1 idempotency existence check.
+    byEvent: index("boarding_visit_notification_event_idx").on(t.schoolId, t.calendarEventId),
+    // Composite intra-tenant FK — MATCH SIMPLE (Drizzle default): a cohort row's NULL visit_id skips
+    // this FK, so an event-scoped send is allowed with visit_id NULL. CASCADE with the visit.
+    visitFk: foreignKey({
+      columns: [t.schoolId, t.visitId],
+      foreignColumns: [boardingVisit.schoolId, boardingVisit.id],
     }).onDelete("cascade"),
   }),
 );

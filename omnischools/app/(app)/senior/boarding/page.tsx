@@ -52,6 +52,12 @@ export default async function BoardingLandingPage() {
           >
             Operations · Resumption / Vacation day →
           </Link>
+          <Link
+            href="/senior/boarding/operations/visiting"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-[13px] font-semibold text-navy hover:border-gold hover:text-gold"
+          >
+            Operations · Visiting Sunday →
+          </Link>
         </div>
       </div>
 
