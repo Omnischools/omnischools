@@ -5,6 +5,7 @@ import {
   date,
   boolean,
   integer,
+  smallint,
   timestamp,
   unique,
   uniqueIndex,
@@ -90,6 +91,10 @@ export const houses = pgTable(
     // Boarding F0 (INCR-7) — all nullable, backward-compatible with Basic/day schools.
     gender: houseGenderEnum("gender"), // BOYS/GIRLS/COED; null → identity strip renders no gender pill
     capacity: integer("capacity"), // planning figure (advisory), NOT a hard cap — real limit is physical bunks
+    // House-card decorative fields the programme-setup surface renders (INCR-8 / Kofi OQ5).
+    // No downstream reader beyond the House card; both nullable, backward-compatible with Basic.
+    foundedYear: smallint("founded_year"),
+    namedAfter: text("named_after"),
     // Resident housemaster. Single-column SET NULL FK to the global ref_user (mirrors
     // classes.class_teacher_user_id) — global-table + SET NULL both keep it single-column.
     hmUserId: uuid("hm_user_id").references(() => users.id, {
