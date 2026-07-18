@@ -34,7 +34,7 @@ Run as the project's `postgres` user so the RLS bypass role is granted to it.
 ```bash
 # point at prod just for these commands (do NOT commit this value)
 export DATABASE_URL="<DIRECT_URL>"
-pnpm db:migrate        # creates all tables (migrations 0000–0006)
+pnpm db:migrate        # creates all tables (migrations 0000–0045)
 pnpm db:policies       # enables/forces RLS + tenant policies + app/admin roles
 pnpm db:seed           # optional: seeds the Asankrangwa demo school
 ```
