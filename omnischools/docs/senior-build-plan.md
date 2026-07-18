@@ -1331,7 +1331,7 @@ A boarder's exeat moves **REQUESTED → HM-APPROVED (auto if scheduled + clean) 
 
 ---
 
-## Next increment — INCR-10 · Boarding daily life — surface 04 (daily-life) · migration 0047
+## INCR-10 ✅ MERGED (PR #153, `fbb406e`) — Boarding daily life · surface 04 · migration 0047 · ⚠️ prod deploy: hand-paste `prod-paste-0047-boarding-inspections.sql`
 
 > **Nothing structural blocks INCR-10, and no OWNER CALL gates it.** `senior-feat` level with `main` (`2e54337`);
 > INCR-7/F0, INCR-8 (config OS + frozen `getScheduleTemplate`/`getInspectionPolicy`) and INCR-9 (`boarding_exeat`)
@@ -1451,3 +1451,115 @@ prep-attendance table in BUILD_STACK — a genuinely new modelling call (OQ3), w
 - **Weekly inspection has NO UI on surface 04** (only the grid meta + notes panel) — the board's "weekly pane" is a design addition; recommend a **Saturday-scoped view** of this route; findings shape from the notes panel (washrooms/drying-lines/chop-box/bicycle-shed). Confirm placement.
 - **Classification:** DERIVED (timeline/NOW/lights-out from `getScheduleTemplate`+clock; exeats-today+in-House from `boarding_exeat`; inspection pass-count + prep per-form counts). CONFIG frozen READ-only (`getScheduleTemplate`/`getInspectionPolicy`/`getBoardingCalendar`). STORED new (`inspections`, `prep_attendance`). STUB later (sick-bay count/list = 4.4; inspection-fail→discipline Note/Warning = INCR-13 — render result, write nothing). Editorial tenets to honour as behaviour: quiet-when-fine/loud-when-wrong (tiles flip green→warn, fail→terra), be-honest (PARTIAL shown as PARTIAL), be-current (live NOW).
 - **Open UI (team, no owner call):** club-accent source (schedule block or static negative state); on-duty-prefect/SoD source (ScheduleBlock.who / F0 prefect roster, no new storage); the prep "4 classrooms" copy vs 3 rendered cells — derive from the allocation, don't hardcode.
+
+---
+
+## Next increment — INCR-11 · Boarding resumption / vacation day — surface 03 · migration 0048
+
+> **Nothing structural blocks INCR-11, and no OWNER CALL gates the build.** `senior-feat` level with `main`
+> (`a572c47`); INCR-7/F0, INCR-8 (frozen `getBoardingCalendar`), INCR-9 (`boarding_exeat` + `feeOwingForStudent`) and
+> INCR-10 (`inspections`/`prep_attendance`) merged. The two chaos days of the year — a Housemaster runs a high-volume
+> staggered arrival (F3 first → F1 last), and the same surface flips to Vacation/departure. **Wells on the critical
+> path** (ONE new tenant table + THREE co-migrated deferred tweaks) blocked on Kofi OQ1. Everything on top is
+> READ/DERIVED. **Latent owner gate (does NOT block the build):** module #3 — SMS go-live via Hubtel (arrival/unaccounted
+> SMS wire to `sendSms()` console-only until provisioned). Next migration **0048**.
+
+### The 3 deferred tweaks fold into 0048 (flag each)
+- **#1 F3 `product_line`** (INCR-8 follow-up): Wells adds `product_line` to `academic_period` (column ALTER, backfill
+  existing rows to SENIOR/BASIC, seed the per-school `SENIOR_F3` row from `gen_period_defaults` via onboarding); Claude
+  Code swaps `getBoardingCalendar`'s F3 SOURCE from the global `gen_period_defaults` to the school's own
+  `academic_period` `product_line='SENIOR_F3'`, and scopes the main resumption/vacation query to `product_line='SENIOR'`.
+  **The frozen `BoardingCalendar` return shape + `buildCalendar()` signature are UNCHANGED — only the F3 source moves.**
+- **#3 inspections `dormitory_id` nullable + `house_id`** (INCR-10 follow-up, Dex): Wells additive migration (nullable
+  `dormitory_id`, add composite `house_id` FK, backfill existing WEEKLY rows' `house_id`); Claude Code points
+  `recordWeeklyInspection` (`lib/actions/boarding-daily.ts` — the `dormitoryId: wctx.firstDormId!` anchor) at
+  `house_id`+NULL `dormitory_id`, and the weekly read (`daily-data.ts`) at `house_id`. Independently-testable INCR-10 fix.
+- **#2 canonical academic-year resolver** (INCR-8 follow-up, Claude Code, no migration): co-locate ONE resolver beside
+  `config.ts` (today `getCurrentPeriod` lives in `exeat-data.ts`; billing/onboarding/programme-data diverge); route
+  INCR-11 + 9/12 through it. Rides the reads step.
+
+### Goal
+Resumption-day ops (surface 03): the staggered **arrival windows** (F3 all-Houses first → F2 → F1 → Late, defaulted from
+`getBoardingCalendar` + Form); **House-by-House arrival progress**; the per-arrival **GES prospectus 6-item checklist**
+(CHOP·MATTRESS·MAC·NET·BUCKET·BIBLE, each ok/partial/missing) + **fee-owing flag** (live read, never a detention — GES
+cannot-detain) + **bunk confirm** (F0 `current_bunk_id`); the **live counter** + foot stats (derived); the **issues
+queue** (transport/prospectus-shortfall/unaccounted/fee-shortfall → Senior HM resolves/escalates). **Same surface flips
+to VACATION** — the inverse departure checklist (bunk-cleared · locker-emptied · chop-box · transport-verified ·
+exeat-card-returned) with departure timestamps. Reads the frozen calendar (F3 now live via #1); reuses the fee-owing
+read + the canonicalised resolver (#2); ships the inspections `house_id` fix (#3). Arrival/unaccounted SMS → `sendSms()`
+console (no real send until Hubtel go-live).
+
+### Done when
+A Housemaster (`BOARDING_ROLES`, house-scoped for plain HM; Dean/HM/Admin school-wide) opens surface 03 and: sees the
+staggered arrival windows (F3 first → F1 last) with per-window %arrived DERIVED from the arrival records; sees
+House-by-House progress (arrived/expected, per-Form, fee shortfalls — derived); **records each boarder's gate check** —
+the GES 6-item prospectus checklist (ok/partial/missing), the live fee-owing flag (`feeOwingForStudent`, surfaced never
+blocking, mirrors exeat), the bunk confirmed from `current_bunk_id` — staff+time-stamped; the issues queue surfaces
+every shortfall for the Senior HM; the live counter + foot bar derive from the records (**no counter columns**). **The
+surface flips to VACATION** and runs the inverse departure checklist with `departed_at` + "safe travels" SMS.
+Arrival/unaccounted SMS invoke `sendSms()` (console, no real send) until Hubtel go-live; the "absent for resumption"
+past-gate-close state is DERIVED (no discipline write — INCR-13 stub). NEW tenant arrival/departure table (FORCE RLS +
+**prod-paste-0048**, composite `(school_id,id)` FKs, per-boarder); frozen contract READ-only; all logic in
+`lib/boarding/` (no trigger); audit-logged; three gates green. **Co-shipped in 0048:** tweak #1 (F3 live) + tweak #3
+(weekly survives a dorm deactivation).
+
+### Step table
+| Step | Owner | State |
+|---|---|---|
+| Rulings on OQ1–OQ6 + acceptance criteria (**OQ1 arrival-record + checklist shape gates Wells**); confirm NONE owner (SMS go-live = provisioning, not build) | Kofi | ⬜ gates Wells |
+| Surface map — surface 03 both modes: mode switch (Resumption↔Vacation, one surface inverse) · counter strip (DERIVED) · arrival-window rail (6 windows F3→F1→Late, per-window %) · House-by-House progress grid · live-arrivals checklist card (6 prospectus pips + fee + bunk + action) · issues queue · foot bar · **the VACATION inverse** (departing counter, 5-item departure checklist, safe-travels SMS, locked-down state). Confirm route | Lucy | ⬜ |
+| **Schema (arrival table + 3 tweaks — critical path).** NEW tenant `boarding_arrival`: student_id+house_id (snapshot)+academic_period_id (composite FKs), `mode` enum (RESUMPTION\|VACATION — one table, mode flag), arrival/departure stamp + actor `*_by_user_id` (SET NULL), `checklist_json jsonb` (shape discriminated by `mode`, Zod-in-lib, no DB CHECK), `fee_owing_snapshot numeric(12,2) NULL`, nullable window/note, checked_at, created_at; composite `(school_id,id)` tenant UK + composite intra-tenant FKs; FORCE RLS. **+ TWEAK #1** `academic_period.product_line` (ALTER + backfill + seed SENIOR_F3). **+ TWEAK #3** `inspections.dormitory_id`→nullable + add `house_id` FK + backfill WEEKLY rows. migration **0048** + **prod-paste-0048-boarding-resumption.sql** (new table only) | Wells | ⬜ blocked on Kofi OQ1 |
+| Config + fee-owing + canonical-year reads — **#2** co-locate ONE canonical period/year resolver beside `config.ts` (move `getCurrentPeriod` out of `exeat-data.ts`; point 9/12+billing/onboarding/programme at it); **#1 source-swap** in `getBoardingCalendar` (F3 from `academic_period` `product_line='SENIOR_F3'`, main query scoped `='SENIOR'` — **frozen return shape UNCHANGED**); reuse `feeOwingForStudent` (READ-only); `withSchool` server-only | Claude Code | ⬜ |
+| Gate-check server actions — record arrival (resumption)/departure (vacation) per boarder: checklist state + freeze `fee_owing_snapshot` + confirm bunk; `lib/boarding/` (no trigger), atomic + `recordAudit`. **Fee-owing NEVER blocks** (flag, mirror exeat). Wire the INCR-10 weekly write/read to `house_id` (#3) | Claude Code | ⬜ |
+| Window + counter + House-progress derivations — pure funcs (default windows from calendar+Form F3→F1→Late; per-window %, House progress, live counter, unaccounted-past-window, derivable issues), vitest DB-free, **NO storage/window-state row** | Claude Code | ⬜ |
+| GES prospectus + vacation checklist canonical constants — the fixed 6-item resumption + 5-item vacation lists as `lib/boarding/` constants (deboardinization-ladder pattern, `schoolId` in signature for a future override, no config table now) | Claude Code | ⬜ |
+| Resumption/Vacation UI (surface 03) — route `/senior/boarding/operations/[mode]` (Lucy confirms; from Boarding landing, NOT a new sidebar row); mode switch · counter strip · window rail · House-progress grid · live-arrivals checklist + gate-check modal · issues queue; house-scope for plain HM; the vacation inverse | Claude Code | ⬜ |
+| Arrival/unaccounted SMS chain — arrival-confirmation + unaccounted-at-window (60-min-past) → `sendSms()` (**console, no cost until Hubtel go-live**); unaccounted computed **on-read** (defer timed scheduler, same as INCR-9); NEVER provision `HUBTEL_*` | Claude Code | ⬜ (SMS-live gated on owner #3) |
+| Seed — demo resumption-in-progress (arrivals across windows, ~one PARTIAL/missing checklist, a fee-owing arrival, an unaccounted; coherent with F0 boarders incl. J. Manu clean), marker-scoped re-run-safe | Wells/Claude Code | ⬜ |
+| Build · typecheck · tests (window/counter/House-progress derivation, checklist write, fee-flag-not-block, mode inverse, unaccounted-on-read, SMS-console, **tweak-1 F3-live + frozen-shape**, **tweak-3 weekly-by-house_id**) · RLS test · preview round-trip | Claude Code | ⬜ |
+| QA — staggered windows F3→F1, House progress vs records, prospectus 3-state + fee flag (never blocks), bunk confirm, issues queue, VACATION inverse, unaccounted-derived, SMS console-only, tweak-1 (F3 shifts w/ custom dates + frozen shape) + tweak-3 (weekly survives dorm deactivate), tenant isolation, role/house-scope | Quinn | ⬜ |
+| Architecture/portability — derivation+gate-check in `lib/` (no trigger); checklist jsonb Zod-in-lib; windows/counter DERIVED (no counter/window-state); fee-owing READ; SMS behind `sendSms()`; **tweak #1 changes `getBoardingCalendar` INTERNALS only, frozen shape intact**; canonical resolver de-duplicated | Dex | ⬜ |
+| Security — new arrival table FORCE RLS + **prod-paste-0048 parity**; cross-tenant denied; composite FKs; route auth + `BOARDING_ROLES` + house-scope; no PII in URL/SMS log; no real send without owner go-live; frozen contract READ-only; tweak ALTERs leak nothing cross-tenant | Sarah | ⬜ holds merge |
+| Gate fixes (aggregated) | Claude Code | ⬜ |
+| Merge · verify `git log origin/main` · **Pence syncs senior-feat ← main** | Sarah + Pence | ⬜ |
+
+### Dependencies / critical path
+Primary consumer of INCR-8's frozen `getBoardingCalendar` (resumption/vacation by Form incl. F3 early return, live via
+#1); reuses INCR-9's `feeOwingForStudent`; sits on F0's spine (per-boarder, House + `current_bunk_id`, house-scope);
+reuses `sendSms()` (console). Critical path: Kofi OQ1 → Wells (0048: arrival table + #1 + #3) → Claude Code reads
+(canonical resolver ∥ calendar source-swap ∥ fee-owing) → gate-check actions ∥ derivations ∥ checklist constants →
+surface-03 two-mode UI → SMS chain (console) → 3 gates → Sarah merge → Pence sync.
+
+### Open questions — Kofi rules (**none is an OWNER CALL** — operational)
+1. **OQ1 (gates Wells):** ONE `boarding_arrival` table + `mode` enum (RESUMPTION\|VACATION), checklist as `checklist_json`
+   (Zod-in-lib, the inspections pattern) vs discrete columns. _Rec: one table + mode flag + jsonb (one-surface-inverse)._
+2. **OQ2:** prospectus checklist fixed vs configurable. _Rec: canonical `lib/boarding/` constant now, `schoolId` in sig
+   for a future override; defer a config table (YAGNI)._
+3. **OQ3:** arrival-window model derived vs stored. _Rec: derive-with-defaults (calendar+Form), no window-state table._
+4. **OQ4:** fee-owing at arrival → **flag never block** (GES cannot-detain, mirror exeat); no override role.
+5. **OQ5:** issues queue derived vs stored. _Rec: derive what's derivable (missing/snapshot>0/unaccounted) + a lean
+   note/flag on the arrival record; a separate issues table only if Kofi wants an independent assign/resolve lifecycle._
+6. **OQ6 (folds into #1):** F3 `product_line` seed — source dates from global `gen_period_defaults` `SENIOR_F3` at
+   onboarding, school-editable after; backfill existing `academic_period` rows to their product line.
+
+### Risk flags
+- **NEW tenant table ⇒ prod-paste RLS** (`prod-paste-0048-boarding-resumption.sql`; db:policies dev-only). Sarah gates parity.
+- **Tweak #1 must NOT alter the frozen `getBoardingCalendar` return shape** — change only the F3 SOURCE + scope the main
+  query to `product_line='SENIOR'`; `buildCalendar()` signature intact. Dex + Kofi gate the invariant.
+- **Tweak #3 additive** — `dormitory_id`→nullable + add `house_id` + backfill WEEKLY rows; DAILY sets `dormitory_id`,
+  WEEKLY sets `house_id`+NULL (app-enforced in `lib/`, no DB CHECK). Wells + Quinn.
+- **Billing a READ** — `feeOwingForStudent`, tenant-scoped, no billing write. Dex + Sarah.
+- **SMS is a PAID external service (STOP-AND-ASK)** — never provision `HUBTEL_*` without owner #3; console-only build.
+- **Unaccounted-bell computed on-read + triggered send** (no cron infra, same as INCR-9). Dex/Kofi.
+- **Windows/counter/House-progress DERIVED — no storage** (no counter column, no window-state row, no trigger). Dex.
+- **Portability** — gate-check + derivation in `lib/boarding/`; checklist jsonb Zod-in-lib; canonical resolver de-duped (#2). Dex.
+- **Composite intra-tenant FKs** (arrival→student/house/period; new `inspections.house_id`); DDL order table→UK→ADD-FK. Wells.
+- **"Absent for resumption" discipline STUBBED** (INCR-13); records + audits, NO discipline row. Quinn.
+- **Seed not idempotent** — marker-scoped, re-run-safe.
+
+### Prerequisites / stop-and-ask
+- ✅ `senior-feat` level with `main` (`a572c47`); INCR-7/8/9/10 merged. Next migration **0048**.
+- **No owner call before Wells cuts schema** — OQ1 is a Kofi call. Kofi ∥ Lucy start now.
+- **Latent owner gate (does NOT block build):** module #3 SMS go-live (provision Hubtel = paid); console-only build, don't provision creds.
+- **Deploy note:** migration 0048 + hand-paste `prod-paste-0048-boarding-resumption.sql` (new arrival table). Tweaks #1/#3 are ALTERs on already-RLS'd tables (no new RLS) but must be in 0048 + prod-applied.
+- **Forward deps to STUB:** the "absent for resumption" discipline note (INCR-13); real SMS send (owner Hubtel); the timed auto-escalation scheduler (unaccounted on-read + triggered send).
