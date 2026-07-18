@@ -1233,7 +1233,7 @@ columns (deferrable, non-blocking).
 
 ---
 
-## Next increment — INCR-9 · Boarding exeat management — surface 05 (exeat-management) · migration 0046
+## INCR-9 ✅ MERGED (PR #151, `df0d529`) — Boarding exeat management · surface 05 · migration 0046 · ⚠️ prod deploy: hand-paste `prod-paste-0046-boarding-exeat.sql`
 
 > **Nothing structural blocks INCR-9.** `senior-feat` is level with `main` (`108b8e1`); INCR-7/F0 (the House→Dorm→Bunk spine + residency) and INCR-8 (config OS + the FROZEN `getExeatPolicy` contract) are merged. Kofi + Lucy start now; Wells waits only on Kofi's OQ1 (exeat-table shape — a Kofi call under BUILD_STACK, **not** an owner call). **One genuine OWNER CALL gates one slice, not the build:** MODULE 4.2 owner decision **#3 — do the late-return / reminder SMS go LIVE via Hubtel (real sends, real cost) or stay console-only (no real sends)?** Because `sendSms()` (`lib/sms/index.ts`) already degrades to the console provider when no `HUBTEL_CLIENT_ID/SECRET` env creds exist, Claude Code wires the whole SMS chain now and it **sends nothing real until the owner provisions Hubtel** — the owner gate blocks *provisioning creds / go-live*, never the build. **Billing reads are safe** (fee-owing is a pure READ of `invoices.balance_amount`). Next migration **0046** (latest 0045).
 
@@ -1328,3 +1328,97 @@ A boarder's exeat moves **REQUESTED → HM-APPROVED (auto if scheduled + clean) 
 - **Config-read `getExeatPolicy` (READ-only, frozen):** dressCode→card Dress; cardSigner→card signer label; returnByTime→return line + chain base; scheduledPerTerm→quota + "SCHED 1 OF 3"; feeOwingMustCollect→routing; specialApprover→SR-HM requirement; parentInitiated. Also `getBoardingCalendar` EXEAT_WINDOW for next window/sequence.
 - **🔴 alpha-on-hex trap (no-alpha discipline):** the featured summary card's muted text (`rgba(232,212,184,.7/.6)` = gold-soft on navy) + card-art foot — do NOT `text-gold-soft/70`/`bg-gold/[0.08]` on raw-hex; use a tint token / `opacity-N`, verify in live preview. (The real PDF card uses @react-pdf where rgba is fine.)
 - **Later-increment (render/stub only):** +1hr NOTE + penalty/3×-invoice = INCR-13 (no discipline/invoice write here); SMS go-live = owner Hubtel; timed auto-escalation scheduler = deferred (overdue on-read + triggered send, no cron infra).
+
+---
+
+## Next increment — INCR-10 · Boarding daily life — surface 04 (daily-life) · migration 0047
+
+> **Nothing structural blocks INCR-10, and no OWNER CALL gates it.** `senior-feat` level with `main` (`2e54337`);
+> INCR-7/F0, INCR-8 (config OS + frozen `getScheduleTemplate`/`getInspectionPolicy`) and INCR-9 (`boarding_exeat`)
+> merged. The Housemaster's homepage — operational, not policy. **Wells on the critical path** (two new tenant tables:
+> `inspections` DAILY+WEEKLY, prep-attendance) blocked on Kofi OQ1. Everything else is READ/DERIVED, no storage: timeline
+> resolves from `getScheduleTemplate`, `.now` from the clock, exeats-today from INCR-9's `boarding_exeat`, sick-bay count
+> is a **counts-only PLACEHOLDER** (module 4.4 unbuilt). Next migration **0047**.
+
+### Goal
+The Housemaster's live daily view (surface 04). The half-hour timeline (done/NOW/upcoming) resolved from
+`getScheduleTemplate(schoolId, dayType, form)` with the F3 prep-ext variant; the NOW card (current activity, minutes
+in/left) from the clock; 5 summary cards (in-House · morning inspection N/8 · tonight's prep · Wed scrubbing · sick-bay);
+the per-dorm **morning DAILY inspection** (PASS/PARTIAL/FAIL + bunks-clean + findings) AND the separate-cadence Saturday
+**WEEKLY whole-house inspection** (BUILD_STACK #8 — two datasets, one table, distinct `type`); prep attendance; Wed
+scrubbing/washing accents; sick-bay (stub) + exeats-today (real) counts. Reads the frozen config; writes only
+inspection + prep records.
+
+### Done when
+On a House's Today view a Housemaster (`BOARDING_ROLES`, house-scoped for a plain HM) sees the live day timeline resolved
+from `getScheduleTemplate` (F3 variant before the `ALL` base; unseeded day_type → empty, never fabricated) with each slot
+done/NOW/upcoming **purely from the clock (no stored slot state)** + the NOW card; **records the morning per-dorm DAILY
+inspection** (PASS/PARTIAL/FAIL + `N/M bunks clean` + findings, staff-stamped, `type=DAILY`) AND the Saturday **WEEKLY**
+whole-house inspection (`type=WEEKLY`, separate findings shape); **marks prep attendance** (Kofi's model); sees the
+**exeats-today count** (DERIVED read of INCR-9 `boarding_exeat`) + the **sick-bay count** (counts-only PLACEHOLDER — 4.4
+unbuilt, copy must not imply a working sickbay). Config reads via the frozen `getScheduleTemplate`/`getInspectionPolicy`
+(never re-modeled); the two new records are NEW tenant tables (FORCE RLS + **prod-paste-0047**, composite `(school_id,id)`
+FKs, per-dorm / per-boarder); a failed inspection's **discipline escalation (daily→Note, weekly→Warning) is STUBBED**
+(INCR-13 — records result + audits, writes NO discipline row); all logic in `lib/boarding/` (no trigger); audit-logged;
+three gates green.
+
+### Step table
+| Step | Owner | State |
+|---|---|---|
+| Rulings on OQ1–OQ5 + acceptance criteria (**OQ1 inspection + prep table shape gates Wells**); confirm NONE is owner (sick-bay placeholder settled by module decision #4) | Kofi | ⬜ gates Wells |
+| Surface map — surface 04 every block: house strip · NOW strip · 5 summary cards (DERIVED) · day-timeline rail (done/now/upcoming) + 4 rail-foot mini-cards (Wed scrubbing/washing, F3 prep-ext, club) · per-dorm daily-inspection grid (pass/partial/fail + score + findings) + weekly-cadence meta · tonight's-prep card · Wed scrubbing accent (+ "Attendance for scrubbing" button — flag scope) · sick-bay `LIGHT·PLACEHOLDER` card + `sb-note` (must NOT imply a working sickbay). Confirm route | Lucy | ⬜ |
+| **Schema (inspection + prep — critical path).** NEW tenant `inspections` (dormitory_id composite FK, inspected_at, actor `*_by_user_id` SET NULL, `type inspection_type_enum` DAILY/WEEKLY, `result inspection_result_enum` PASS/PARTIAL/FAIL [3-state supersedes BUILD_STACK's `pass_fail` bool], bunks_clean/bunks_total, findings_json, anomalies_count) + NEW tenant prep-attendance (shape per OQ3); composite `(school_id,id)` UK + composite intra-tenant FKs; FORCE RLS; migration **0047** + **prod-paste-0047-boarding-inspections.sql**; DDL order table→UK→ADD-FK | Wells | ⬜ blocked on Kofi OQ1 |
+| Config + counts reads — `getScheduleTemplate`+`getInspectionPolicy` READ-ONLY (never re-derive); resolve day_type from date (+ `getBoardingCalendar` for SUNDAY vs VISITING_SUNDAY); DERIVED counts — exeats-today = live read of `boarding_exeat`; in-House = BOARDER count − departed-exeats − sick-bay(stub 0); **sick-bay = PLACEHOLDER stub**; all `withSchool` server-only | Claude Code | ⬜ |
+| Timeline + `.now` derivation — pure funcs in `lib/boarding/` (resolve template incl. F3, mark done/now/upcoming from clock, minutes-in/remaining) — **display-only, NO storage, NO trigger**; vitest DB-free | Claude Code | ⬜ |
+| Inspection record actions — daily per-dorm + weekly whole-house in `lib/boarding/` (no trigger), atomic + audit; PARTIAL/FAIL records result + anomalies but **STUBS discipline escalation** (INCR-13 — NO infraction row); reads `getInspectionPolicy` cadence/scope | Claude Code | ⬜ |
+| Prep-attendance action — Kofi's OQ3 model in `lib/boarding/` (no trigger), atomic + audit, roster from BOARDER set; "Attendance for scrubbing" reuses this or stubs (OQ4) | Claude Code | ⬜ |
+| Daily-life UI (surface 04) — route `/senior/boarding/houses/[houseId]/today` (Lucy confirms; reach from Boarding landing/roster, NOT a new sidebar row); house strip + NOW strip + 5 cards + timeline rail + rail-foot + per-dorm daily-inspection grid + record modal + weekly pane + tonight's-prep + attendance + Wed scrubbing (Wed-only) + sick-bay placeholder; house-scope for plain HM | Claude Code | ⬜ |
+| Seed — demo Today (~7/8 daily pass + one PARTIAL, one weekly row, a prep roster; coherent with F0 boarders incl. J. Manu clean), marker-scoped re-run-safe | Wells/Claude Code | ⬜ |
+| Build · typecheck · tests (timeline/now across day-types + F3, daily vs weekly write, prep, exeat-count read, sick-bay stub, tenant isolation) · RLS test · preview round-trip | Claude Code | ⬜ |
+| QA — timeline vs clock, F3 variant, unseeded day_type empty, daily 3-state + bunks-clean, weekly separate cadence, inspection-fail STUBS discipline (no infraction), prep, exeats-today real vs sick-bay stub, in-House math, tenant isolation, role/house-scope | Quinn | ⬜ |
+| Architecture/portability — timeline/now + inspection + prep in `lib/` (no trigger), `.now`/timeline NO storage, config READ-only, escalation stubbed, counts derived (no counter) | Dex | ⬜ |
+| Security — `inspections` + prep FORCE RLS + **prod-paste-0047 parity**, cross-tenant denied, composite FKs, route auth + `BOARDING_ROLES` + house-scope, contract READ-only, sick-bay stub leaks no medical PII | Sarah | ⬜ holds merge |
+| Gate fixes (aggregated) | Claude Code | ⬜ |
+| Merge · verify `git log origin/main` · **Pence syncs senior-feat ← main** | Sarah + Pence | ⬜ |
+
+### Dependencies / critical path
+Reads INCR-8's frozen `getScheduleTemplate` (timeline, `(dayType,form)→(dayType,'ALL')→null`, F3 variant) +
+`getInspectionPolicy` (cadence/scope/inspector) READ-ONLY; reads `getBoardingCalendar` (SUNDAY vs VISITING_SUNDAY); reads
+INCR-9's `boarding_exeat` (exeats-today count, live). Sits on F0's dorm/bunk spine (inspections per-dorm; prep/in-House
+per-boarder). NEW writes = `inspections` (DAILY+WEEKLY) + prep-attendance → Wells → 0047 → prod-paste-0047. **Stub, don't
+build:** sick-bay count (4.4); inspection-fail → discipline Note/Warning (INCR-13). Critical path: Kofi OQ1 → Wells (0047)
+→ Claude Code reads → timeline/now ∥ inspection actions ∥ prep → surface-04 UI → 3 gates → Sarah merge → Pence sync.
+
+### Open questions — Kofi rules (**none is an OWNER CALL** — operational under BUILD_STACK #8 / surface)
+1. **Inspection granularity + result shape (gates Wells).** Per-dormitory (not per-bunk); BUILD_STACK's `pass_fail` bool
+   superseded by **3-state `inspection_result_enum` PASS/PARTIAL/FAIL** + bunks-clean count + `findings_json`; confirm daily
+   vs weekly findings shapes differ (#8: daily = bunks/lockers/attire; weekly = whole-house deep). One `inspections` table,
+   `type` DAILY/WEEKLY.
+2. **Who records + gating.** Staff-stamped `*_by_user_id` (SET NULL → users, exeat actor-stamp pattern); `BOARDING_ROLES` +
+   house-scope for plain HM (daily), Dean/Senior-HM weekly; prefects assist but don't own the row.
+3. **Prep-attendance model (gates Wells).** _Rec: a per-boarder EXCEPTION log (late/absent) over a full present/absent
+   roster — matches the surface's "log exceptions", smallest table._
+4. **`.now`/timeline storage + scrubbing accents.** Timeline + NOW = pure derivation, NO storage/slot-state row. Wed
+   scrubbing/washing from `getScheduleTemplate` + policy. "Attendance for scrubbing" button → reuse prep model or stub (no 3rd table).
+5. **Sick-bay count — stub confirm.** Counts-only PLACEHOLDER, no boarding table backs it (4.4); exeats-today is real
+   (INCR-9). Keep the `LIGHT · PLACEHOLDER` badge + `sb-note`; must not imply a working sickbay.
+
+### Risk flags
+- **NEW tenant tables ⇒ prod-paste RLS** (`prod-paste-0047-boarding-inspections.sql`; db:policies dev-only). Sarah gates parity.
+- **Frozen contract READ-ONLY** — `getScheduleTemplate`/`getInspectionPolicy` never re-modeled (cross-increment break for 11–13). Dex + Kofi.
+- **`.now`/timeline derived — NO storage** (computed from clock vs template each render; no slot column, no trigger). Dex.
+- **Sick-bay = PLACEHOLDER/STUB** (4.4); copy keeps `LIGHT · PLACEHOLDER` + `sb-note`, must not imply a working sickbay; exeats-today is real (don't conflate). Quinn + Kofi.
+- **Inspection-fail → discipline escalation STUBBED** (daily→Note, weekly→Warning = INCR-13); records result + audits, NO `boarding_infractions` row. Quinn.
+- **Portability** — timeline/now + inspection + prep all in `lib/boarding/` (no DB trigger). Dex.
+- **Day-type + timezone** — resolve day_type from the date against the school clock (Ghana = UTC); a Wednesday reads WEEKDAY, a visiting Sunday reads VISITING_SUNDAY. Quinn.
+- **Seed not idempotent** — marker-scoped, re-run-safe.
+
+### Prerequisites / stop-and-ask
+- ✅ `senior-feat` level with `main` (`2e54337`); INCR-7/8/9 merged; `getScheduleTemplate`/`getInspectionPolicy` frozen; `boarding_exeat` shipped. Next migration **0047**.
+- **No owner call before Wells cuts schema** — OQ1 is a Kofi call under BUILD_STACK #8. Kofi ∥ Lucy start now.
+- **Deploy note:** migration 0047 + hand-paste `prod-paste-0047-boarding-inspections.sql` on prod.
+- **Forward deps to STUB, not build:** sick-bay count/queue (real sickbay = module 4.4); inspection-fail → discipline Note/Warning (INCR-13); "Attendance for scrubbing" write if OQ4 defers it.
+
+**Load-bearing schema notes:** (1) BUILD_STACK's `inspections.pass_fail` boolean does NOT match surface 04's PASS/PARTIAL/FAIL
++ `N/M bunks clean` — OQ1 blesses a 3-state `inspection_result_enum` (surface beats the sketch here). (2) There is NO
+prep-attendance table in BUILD_STACK — a genuinely new modelling call (OQ3), which is why Wells is on the critical path.
