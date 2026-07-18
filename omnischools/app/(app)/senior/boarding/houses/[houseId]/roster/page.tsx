@@ -101,6 +101,12 @@ export default async function HouseRosterPage({ params }: { params: { houseId: s
             {currentTermLabel ? ` · ${currentTermLabel}` : ""}
           </div>
         </div>
+        <Link
+          href={`/senior/boarding/houses/${house.id}/today`}
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-[13px] font-semibold text-navy hover:border-gold hover:text-gold"
+        >
+          Today&apos;s operational view →
+        </Link>
       </div>
 
       {/* Summary strip — every number derived from data, nothing hard-coded. */}
