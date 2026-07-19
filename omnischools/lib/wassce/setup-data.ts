@@ -1,12 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
 import type { Tx } from "@/lib/db";
 import {
-  wassceCohort,
   wassceProgrammes,
   wassceSubjects,
   wassceCandidates,
   students,
 } from "@/db/schema";
+import { getActiveCohort } from "@/lib/wassce/active-cohort";
 import { PROGRAMME_ORDER, WAEC_FEE_PER_CANDIDATE, formatGhsCompact } from "@/lib/wassce/constants";
 import type { WassceProgrammeKey } from "@/lib/wassce/constants";
 import type { WassceRosterRow } from "@/components/senior/wassce-roster-table";
@@ -89,12 +89,10 @@ export type WassceSetupData = {
 
 /** Load the frozen WASSCE cohort's setup surface, tenant-scoped. Call inside `withSchool(...)`. */
 export async function loadWassceSetup(tx: Tx, schoolId: string): Promise<WassceSetupData> {
-  // Latest cohort by exam year (one per school×year — the frozen F3-2026 cohort).
-  const [cohort] = await tx
-    .select()
-    .from(wassceCohort)
-    .where(eq(wassceCohort.schoolId, schoolId))
-    .orderBy(asc(wassceCohort.examYear));
+  // The ACTIVE cohort = the frozen cohort with the greatest exam year (getActiveCohort). Fixes Dex
+  // MINOR-1: the old `asc(examYear)` first-row was right only by accident with one cohort and picks
+  // the WRONG cohort once INCR-16 seeds the unfrozen F2-2027. With F3-2026 frozen it resolves to F3-2026.
+  const cohort = await getActiveCohort(tx, schoolId);
 
   if (!cohort) {
     return {
