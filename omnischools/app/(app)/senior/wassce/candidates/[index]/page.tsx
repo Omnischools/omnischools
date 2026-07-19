@@ -5,8 +5,19 @@ import { withSchool } from "@/lib/db/rls";
 import { loadCandidateReadiness } from "@/lib/wassce/readiness-data";
 import { WassceAggregateVisualizer } from "@/components/senior/wassce-aggregate-visualizer";
 import { WassceReadinessPanel } from "@/components/senior/wassce-readiness-panel";
+import {
+  WassceAddTargetTile,
+  WassceTargetControls,
+} from "@/components/senior/wassce-target-panel";
 import { GRADE_COLORS, GRADE_CHIP_TEXT } from "@/lib/wassce/grade-colors";
-import type { SubjectTrajectoryView } from "@/lib/wassce/readiness-view";
+import {
+  MATCH_LEGEND,
+  MATCH_TIER_CLASS,
+  MATCH_TIER_LABEL,
+  AGGREGATE_MIN,
+  AGGREGATE_MAX,
+} from "@/lib/wassce/university-match";
+import type { SubjectTrajectoryView, UniversityMatchTileView } from "@/lib/wassce/readiness-view";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +51,7 @@ export default async function WassceCandidateReadinessPage(props: {
   }
 
   const p = data.projection;
+  const m = data.universityMatch;
   const aggText = p.computable ? String(p.aggregate) : "—";
 
   return (
@@ -186,6 +198,93 @@ export default async function WassceCandidateReadinessPage(props: {
         </div>
       </section>
 
+      {/* ================= §6 university match — CROWN JEWEL (INCR-17b) ================= */}
+      <section id="match" className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.12em] text-navy-3">
+              {data.shortName} › University match
+            </div>
+            <h2 className="mt-1 font-display text-2xl font-medium text-navy">
+              {m.computable && m.tiles.length > 0 ? (
+                <>
+                  {m.tiles.length === 1 ? "One " : `${m.tiles.length} `}
+                  <em className="italic text-gold">{m.tiles.length === 1 ? "programme" : "programmes"}</em>{" "}
+                  · matched and ranked
+                </>
+              ) : (
+                <>
+                  University <em className="italic text-gold">match</em>
+                </>
+              )}
+            </h2>
+            {m.computable && m.tiles.length > 0 ? (
+              <div className="mt-0.5 text-[12px] text-navy-3">
+                {m.tallyLabel} · projected aggregate <b className="font-mono text-navy">{m.aggregate}</b>
+              </div>
+            ) : null}
+          </div>
+          <a
+            href="/senior/wassce/setup#university-targets"
+            className="rounded-md border border-border-2 bg-surface px-4 py-2 text-[12px] font-semibold text-navy hover:bg-gold-bg"
+          >
+            View cut-off table
+          </a>
+        </div>
+
+        {!m.computable ? (
+          <div className="rounded-lg border border-dashed border-border-2 bg-surface p-5 text-[13px] text-navy-3">
+            <b className="text-navy-2">Projection pending.</b> The university match compares the
+            candidate&apos;s projected aggregate against each programme&apos;s published cut-off — with no
+            computable best-3 aggregate there is no honest comparison to draw, so no band is shown.
+            {m.taggedNames.length > 0 ? (
+              <>
+                {" "}
+                Tagged programmes: <b className="text-navy-2">{m.taggedNames.join(" · ")}</b>.
+              </>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3.5 lg:grid-cols-2">
+              {m.tiles.map((t) => (
+                <MatchTile key={t.targetId} tile={t} aggregate={m.aggregate} />
+              ))}
+              <WassceAddTargetTile
+                candidateId={data.candidateId}
+                programmeOptions={data.programmeOptions}
+              />
+            </div>
+
+            {/* match-logic legend — static copy, renders even with zero targets */}
+            <div className="rounded-lg border border-border bg-surface px-[22px] py-[18px]">
+              <div className="mb-2.5 font-display text-[14px] font-medium text-navy">
+                Match logic — five-tier band
+              </div>
+              <div className="grid gap-2.5 text-[11px] md:grid-cols-3 xl:grid-cols-5">
+                {MATCH_LEGEND.map((l) => (
+                  <div key={l.tier}>
+                    <span
+                      className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${MATCH_TIER_CLASS[l.tier]}`}
+                    >
+                      {MATCH_TIER_LABEL[l.tier]}
+                    </span>
+                    <span className="mt-1.5 block text-navy-3">{l.gloss}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 border-t border-border pt-2.5 text-[11px] text-navy-3">
+                Cut-offs are a <b className="text-navy-2">published snapshot</b> of the year stamped beside
+                each figure — not live admissions data. Universities sometimes adjust cut-offs after WASSCE
+                results come in if the applicant pool changes; the figures here are{" "}
+                <b className="text-navy-2">indicative, not guarantees</b>. The match band is derived on
+                every read from this candidate&apos;s projected aggregate — it is never stored.
+              </p>
+            </div>
+          </>
+        )}
+      </section>
+
       {/* ================= §7 readiness statement + SC xmod + write panel ================= */}
       <section id="context" className="space-y-4">
         <h2 className="font-display text-2xl font-medium text-navy">
@@ -299,6 +398,93 @@ function TrajCell({
       </div>
       {band ? <div className="mt-1.5 text-[11px] text-navy-2">{band}</div> : null}
     </div>
+  );
+}
+
+/**
+ * One §6 university-match tile. Every figure arrives pre-derived from the loader; the ONLY layout maths
+ * here is placing the two markers at their already-computed percentages on the shared 6→54 scale (Lucy
+ * A.8 — the surface's hand-tuned inline `left:` values are deliberately NOT copied). The five badge
+ * tints are solid classes from `MATCH_TIER_CLASS` — no slash-opacity on a raw-hex token.
+ */
+function MatchTile({ tile, aggregate }: { tile: UniversityMatchTileView; aggregate: number }) {
+  const preClass =
+    tile.prerequisiteStatus === "UNMET"
+      ? "text-terra"
+      : tile.prerequisiteStatus === "PENDING"
+        ? "text-warn"
+        : "text-navy-3";
+  return (
+    <div
+      className={`relative overflow-hidden rounded-lg border border-border bg-surface px-5 py-[18px] ${tile.isPrimary ? "border-l-4 border-l-gold" : ""}`}
+      style={
+        tile.isPrimary
+          ? { background: "linear-gradient(to right, var(--gold-bg) 0%, var(--surface) 12%)" }
+          : undefined
+      }
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="font-display text-[15px] font-medium text-navy">{tile.name}</div>
+          <div className="text-[12px] text-navy-3">{tile.programmeLine}</div>
+        </div>
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${tile.tierClass}`}
+        >
+          {tile.tierLabel}
+        </span>
+      </div>
+
+      {/* projected-vs-cut-off bar — both markers on ONE linear 6→54 scale */}
+      <div className="mt-5 grid grid-cols-[64px_1fr_64px] items-center gap-2.5 text-[11px] text-navy-3">
+        <span>
+          Best <b className="font-mono text-navy">{AGGREGATE_MIN}</b>
+        </span>
+        <div
+          className="relative h-2 rounded"
+          style={{
+            background: "linear-gradient(to right, var(--green) 0%, var(--gold) 70%, var(--terra) 100%)",
+          }}
+        >
+          <Marker pct={tile.cutOffPct} label={`Cut-off · ${tile.cutOff}`} tone="cutoff" />
+          {/* "You · N" is the §5 headline aggregate, passed down — ONE number per candidate (AC7). */}
+          <Marker pct={tile.youPct} label={`You · ${aggregate}`} tone="you" />
+        </div>
+        <span className="text-right">
+          Worst <b className="font-mono text-navy">{AGGREGATE_MAX}</b>
+        </span>
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-2.5 text-[11px] text-navy-3">
+        <span>
+          <b className="text-navy">Cut-off</b> · {tile.cutOffLabel}
+        </span>
+        {tile.trendLabel ? <span>{tile.trendLabel}</span> : null}
+        <span>{tile.marginLabel}</span>
+        {tile.likelyOutcomeLabel ? <span>{tile.likelyOutcomeLabel}</span> : null}
+        <span className={preClass}>{tile.prerequisiteLabel}</span>
+      </div>
+
+      <WassceTargetControls tile={tile} />
+    </div>
+  );
+}
+
+/** A bar marker: a 2px navy/terra tick with its value label above the bar. */
+function Marker({ pct, label, tone }: { pct: number; label: string; tone: "you" | "cutoff" }) {
+  return (
+    <span
+      className="absolute -top-1 flex w-0 flex-col items-center"
+      style={{ left: `${pct}%` }}
+      aria-hidden={false}
+    >
+      <span
+        className={`absolute -top-4 whitespace-nowrap text-[10px] font-semibold ${tone === "you" ? "text-navy" : "text-terra"}`}
+      >
+        {label}
+      </span>
+      <span className={`block h-3.5 w-0.5 ${tone === "you" ? "bg-navy" : "bg-terra"}`} />
+    </span>
   );
 }
 

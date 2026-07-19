@@ -14,6 +14,7 @@ import {
   formatGhs,
   waecPolicyAnchors,
 } from "@/lib/wassce/constants";
+import { MATCH_EXPLAINER_STEPS } from "@/lib/wassce/university-match";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export default async function WassceSetupPage() {
     );
   }
 
-  const { counts, cohort } = data;
+  const { counts, cohort, targets: t } = data;
   const examYear = cohort.examYear;
 
   return (
@@ -225,6 +226,203 @@ export default async function WassceSetupPage() {
               </>
             }
           />
+        </div>
+      </section>
+
+      {/* ================= §3 — University target system · per-student tagging (INCR-17b) ============ */}
+      <section id="university-targets">
+        <SectionHead
+          crumb={<>WASSCE · Setup · University targets</>}
+          titlePre="University "
+          titleEm="target system."
+          lede={
+            <>
+              Every F3 student tags <b className="text-navy-2">up to three target programmes</b> after
+              Mock 1 (revised after Mock 2). The system stores the WAEC cut-off for each programme and
+              matches it against the student&apos;s projected aggregate.{" "}
+              <b className="text-navy-2">The Dean runs a guidance interview</b> with every student whose
+              Mock 2 aggregate exceeds their lowest target&apos;s cut-off.
+            </>
+          }
+          actions={[]}
+        />
+
+        {/* §3.2 tier-band strip — the cohort's projected-AGGREGATE distribution (NOT the match tiers) */}
+        <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {t.bands.map((b, i) => (
+            <div
+              key={b.key}
+              className={`rounded-lg border p-4 ${i === 0 ? "border-gold" : "border-border-2 bg-surface"}`}
+              style={
+                i === 0
+                  ? { background: "linear-gradient(135deg, var(--gold-bg), var(--surface))" }
+                  : undefined
+              }
+            >
+              <span
+                className={`inline-block rounded-full px-2 py-0.5 font-mono text-[11px] font-bold ${i === 0 ? "bg-gold text-navy" : "bg-bg text-navy"}`}
+              >
+                {b.range}
+              </span>
+              <div className="mt-1.5 font-display text-[15px] font-medium text-navy">
+                Tier <em className="italic text-gold">{b.name.replace("Tier ", "")}</em>
+              </div>
+              <div className="mt-1 text-[11px] leading-relaxed text-navy-3">
+                {b.copy}{" "}
+                <b className="text-navy-2">
+                  {b.studentCount} student{b.studentCount === 1 ? "" : "s"}
+                </b>{" "}
+                in this band.
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* §3.3 top destinations — first-choice tally, all figures derived */}
+        <div className="mb-5 rounded-xl border border-border bg-surface p-4">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="font-display text-lg font-semibold text-navy">
+              Top <em className="italic text-gold">destinations</em> · how the cohort is targeting
+            </h3>
+            <span className="text-[10px] uppercase tracking-wide text-navy-3">
+              First-choice university (most popular)
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-[11px]">
+              <thead>
+                <tr className="bg-bg text-[9px] uppercase tracking-[0.14em] text-navy-3">
+                  <th className="p-2 text-left font-bold">University</th>
+                  <th className="p-2 text-right font-bold">Median cut-off</th>
+                  <th className="p-2 text-right font-bold">Students targeting</th>
+                  <th className="p-2 text-right font-bold">% F3</th>
+                </tr>
+              </thead>
+              <tbody>
+                {t.destinations.map((d) => (
+                  <tr key={d.universityId} className="border-b border-border">
+                    <td className="p-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-navy text-[10px] font-bold text-gold">
+                          {d.initials}
+                        </span>
+                        <span>
+                          <b className="text-navy-2">{d.name}</b>
+                          <span className="block text-[10px] text-navy-3">{d.locationLabel}</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-2 text-right font-mono font-bold text-navy-2">
+                      {d.medianCutOffLabel}
+                      <span className="block font-body text-[10px] font-normal text-navy-3">
+                        {d.rangeLabel}
+                      </span>
+                    </td>
+                    <td className="p-2 text-right font-mono font-bold text-navy-2">
+                      {d.studentsTargeting}
+                    </td>
+                    <td className="p-2 text-right font-mono text-navy-3">{d.sharePctLabel}</td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 border-navy bg-bg">
+                  <td className="p-2 italic text-navy-3">No first-choice tagged yet</td>
+                  <td className="p-2 text-right text-terra">
+                    flag
+                    <span className="block text-[10px] text-terra">Dean follow-up</span>
+                  </td>
+                  <td className="p-2 text-right font-mono font-bold text-terra">{t.untaggedCount}</td>
+                  <td className="p-2 text-right font-mono text-navy-3">{t.untaggedSharePctLabel}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div
+            className="mt-3.5 rounded-lg border-l-[3px] border-warn bg-warn-bg px-3.5 py-3 text-[11px] leading-relaxed text-navy-2"
+          >
+            <b>
+              {t.untaggedCount === 1
+                ? "1 student has not tagged a first-choice university"
+                : `${t.untaggedCount} students have not tagged a first-choice university`}
+            </b>{" "}
+            in this cohort. The Dean meets each individually before the guidance deadline — untagged is a{" "}
+            <b>worklist, not a fault</b>: some F3 students legitimately have not decided, and the
+            interview surfaces that earlier than a parent SMS would.
+          </div>
+        </div>
+
+        <div className="grid gap-3.5 lg:grid-cols-2">
+          {/* §3.4 how the match works — 5-step explainer */}
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="font-display text-lg font-semibold text-navy">
+                How the <em className="italic text-gold">match</em> works
+              </h3>
+              <span className="text-[10px] uppercase tracking-wide text-navy-3">
+                Per student × per programme
+              </span>
+            </div>
+            <div className="flex flex-col gap-2.5 text-[12px] leading-relaxed text-navy-2">
+              {MATCH_EXPLAINER_STEPS.map((step, i) => (
+                <div key={step.heading} className="grid grid-cols-[30px_1fr] items-start gap-3">
+                  <span className="font-display text-lg font-semibold italic text-gold">{i + 1}.</span>
+                  <div>
+                    <b className="text-navy">{step.heading}</b> {step.body}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* §3.5 cut-off table — the seeded published SNAPSHOT, read-only to schools */}
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="font-display text-lg font-semibold text-navy">
+                Cut-off <em className="italic text-gold">table</em>
+              </h3>
+              <span className="text-[10px] uppercase tracking-wide text-navy-3">
+                Snapshot {t.referenceYears} · {t.cutOffRows.length} referenced programmes
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[380px] border-collapse text-[11px]">
+                <thead>
+                  <tr className="bg-bg text-[9px] uppercase tracking-[0.14em] text-navy-3">
+                    <th className="p-2 text-left font-bold">University</th>
+                    <th className="p-2 text-left font-bold">Programme</th>
+                    <th className="p-2 text-right font-bold">Cut-off</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {t.cutOffRows.map((r) => (
+                    <tr
+                      key={r.programmeId}
+                      className={`border-b border-border ${r.targeted ? "bg-gold-bg" : ""}`}
+                    >
+                      <td className="p-2 font-semibold text-navy-2">{r.universityShortName}</td>
+                      <td className="p-2 text-navy-2">{r.programmeName}</td>
+                      <td className={`p-2 text-right font-mono font-bold ${r.cutOffClass}`}>
+                        {r.cutOffLabel}
+                      </td>
+                    </tr>
+                  ))}
+                  {t.cutOffRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="p-4 text-center text-navy-3">
+                        No cut-off reference has been loaded yet.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 rounded-lg bg-bg px-3 py-2.5 text-[10px] leading-relaxed text-navy-3">
+              Each figure is a <b>published snapshot stamped with its reference year</b>, re-verified from
+              every university&apos;s admissions portal each admission cycle — not a live feed. Universities
+              sometimes adjust cut-offs after WASSCE results come in if the applicant pool changes. The
+              figures here are <b>indicative, not guarantees</b>. Cut-off colour is difficulty-coded and
+              deliberately inverted: terra = the hardest (lowest) cut-offs, green = the easiest.
+            </div>
+          </div>
         </div>
       </section>
 

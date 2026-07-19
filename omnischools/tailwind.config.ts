@@ -11,6 +11,12 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./features/**/*.{js,ts,jsx,tsx,mdx}",
+    // `lib/` too: several display maps live there and hand back Tailwind class STRINGS
+    // (`MATCH_TIER_CLASS`, `cutOffDifficultyClass`, the roster avatar tints, the grading bands).
+    // Without this glob an ARBITRARY value declared only in lib — `bg-[#E5EAF2]`, `text-[#1E5A35]`,
+    // `bg-[rgba(45,63,92,0.12)]` — is never emitted, so the element renders with NO background at all.
+    // It fails SILENTLY: typecheck and `next build` both pass. Caught in the live preview, not the build.
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {

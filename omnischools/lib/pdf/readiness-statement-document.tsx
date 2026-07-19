@@ -6,8 +6,10 @@ import { SERIF, SANS, MONO } from "./fonts";
  * Printable WASSCE readiness statement PDF (SHS module 4.3 / INCR-17). Re-rendered ON DEMAND from the
  * FROZEN `readiness_statements` snapshot — the values arrive pre-formatted from the loader, so this
  * component does no data access. ACADEMIC BLOCK ONLY: the projected aggregate, its best-3 construction,
- * the Mock 1 → Mock 2 trajectory, and the parent acknowledgement. The university-target block is
- * INCR-17b and is deliberately OMITTED (AC16/AC17 — no university leak). Mirrors the #136 receipt trio.
+ * the Mock 1 → Mock 2 trajectory, and the parent acknowledgement. INCR-17b adds the UNIVERSITY TARGET
+ * block, rendered from the statement's FROZEN `target_universities_json` (AC20) — never the live board,
+ * so a later cut-off/target edit leaves an issued PDF byte-identical. Mirrors the #136 receipt trio.
+ * No new dependency: same @react-pdf/renderer primitives as the academic block.
  */
 
 const NAVY = "#1A2B47";
@@ -29,6 +31,17 @@ export type ReadinessSubjectLine = {
   counted: boolean;
 };
 
+/** One frozen university target, pre-formatted by the loader from `target_universities_json`. */
+export type ReadinessTargetLine = {
+  name: string; // "KNUST · Biochemistry"
+  programmeLine: string; // "B.Sc. · Kumasi"
+  tierLabel: string; // "Target" | "Comfortable" | "Match" | "Stretch" | "Safety"
+  isPrimary: boolean;
+  cutOffLabel: string; // "11 (2025)" — the reference year always renders
+  marginLabel: string; // "Margin · 1 inside"
+  prerequisiteLabel: string;
+};
+
 export type ReadinessStatementData = {
   school: { name: string; initials: string };
   candidate: { fullName: string; indexNumber: string; programmeLabel: string };
@@ -39,6 +52,7 @@ export type ReadinessStatementData = {
   mock1Aggregate: number | null;
   mock2Aggregate: number;
   subjects: ReadinessSubjectLine[];
+  universityTargets: ReadinessTargetLine[]; // frozen at generation; `[]` when none were tagged
   parentAck: {
     acknowledgedAtLabel: string;
     methodLabel: string;
@@ -141,6 +155,24 @@ const s = StyleSheet.create({
   },
   totalLbl: { fontSize: 8.5, color: NAVY3, fontWeight: "bold", letterSpacing: 1 },
   totalVal: { fontFamily: SERIF, fontWeight: "bold", fontSize: 20, color: GREEN },
+
+  // --- university block (INCR-17b) — rendered from the FROZEN target_universities_json ---
+  uniRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    borderStyle: "dashed",
+  },
+  uniPrimary: { backgroundColor: GOLD_BG, borderLeftWidth: 3, borderLeftColor: GOLD, paddingLeft: 6 },
+  uniMain: { flex: 1 },
+  uniName: { fontFamily: SERIF, fontSize: 10.5, color: NAVY },
+  uniSub: { fontSize: 8, color: NAVY3, marginTop: 1 },
+  uniTier: { fontSize: 8, fontWeight: "bold", letterSpacing: 0.5, width: 78, textAlign: "right", color: NAVY2 },
+  uniCut: { fontFamily: MONO, fontSize: 9, color: NAVY2, width: 66, textAlign: "right" },
+  uniMargin: { fontSize: 8, color: NAVY3, width: 96, textAlign: "right" },
+  uniEmpty: { fontSize: 9, color: NAVY3, fontStyle: "italic", paddingVertical: 6 },
 
   ackBox: {
     marginTop: 16,
@@ -297,6 +329,33 @@ export function ReadinessStatementDocument({ data }: { data: ReadinessStatementD
             <Text style={s.totalLbl}>AGGREGATE · BEST 3 CORES + BEST 3 ELECTIVES</Text>
             <Text style={s.totalVal}>{aggText}</Text>
           </View>
+
+          {/* university targets — FROZEN at generation, not the live board (AC15/AC20) */}
+          <Text style={s.sectionTitle}>UNIVERSITY TARGETS · MATCHED AGAINST THE PUBLISHED CUT-OFF</Text>
+          {data.universityTargets.length === 0 ? (
+            <Text style={s.uniEmpty}>
+              No target programmes were tagged when this statement was generated.
+            </Text>
+          ) : (
+            data.universityTargets.map((t, i) => (
+              <View key={i} style={[s.uniRow, ...(t.isPrimary ? [s.uniPrimary] : [])]}>
+                <View style={s.uniMain}>
+                  <Text style={s.uniName}>{t.name}</Text>
+                  <Text style={s.uniSub}>
+                    {t.programmeLine} · {t.prerequisiteLabel}
+                  </Text>
+                </View>
+                <Text style={s.uniTier}>{t.tierLabel.toUpperCase()}</Text>
+                <Text style={s.uniCut}>{t.cutOffLabel}</Text>
+                <Text style={s.uniMargin}>{t.marginLabel}</Text>
+              </View>
+            ))
+          )}
+          <Text style={[s.uniSub, { marginTop: 6 }]}>
+            Cut-offs are a published SNAPSHOT of the year shown beside each figure, not live admissions
+            data. Universities adjust cut-offs after results if the applicant pool changes — these figures
+            are indicative, not guarantees.
+          </Text>
 
           {/* parent acknowledgement */}
           <View style={s.ackBox}>
