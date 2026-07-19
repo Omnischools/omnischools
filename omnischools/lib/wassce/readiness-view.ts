@@ -1,5 +1,6 @@
 import type { WassceGrade } from "./mock-grades";
 import type { WassceSubjectType, ProjectionReason } from "./projection";
+import type { MatchTier, PrerequisiteStatus } from "./university-match";
 
 /**
  * PURE view-model types for the WASSCE readiness surface (SHS module 4.3 / INCR-17). Shared by the
@@ -73,6 +74,47 @@ export type StatementView = {
   pdfHref: string; // /api/senior/readiness-statement/{id}
 };
 
+/**
+ * One §6 university-match tile — every figure PRE-DERIVED (INCR-17b). Marker positions come from the ONE
+ * linear 6→54 aggregate scale (`aggregateScalePct`), never the surface's hand-tuned inline percentages.
+ */
+export type UniversityMatchTileView = {
+  targetId: string;
+  programmeId: string;
+  name: string; // "KNUST · Biochemistry"
+  programmeLine: string; // "B.Sc. · 4 years · Kumasi"
+  tier: MatchTier;
+  tierLabel: string; // "Target · primary choice" | "Stretch · highly competitive"
+  tierClass: string; // MATCH_TIER_CLASS — solid, no slash-opacity
+  isPrimary: boolean;
+  targetRank: string | null; // FIRST_CHOICE | SECOND_CHOICE | THIRD_CHOICE | null
+  cutOff: number;
+  cutOffLabel: string; // "11 (2025)" — NEVER a bare number (snapshot honesty)
+  youPct: number; // 0–100 on the shared 6→54 scale
+  cutOffPct: number;
+  trendLabel: string | null; // null unless ≥2 years of seeded history back the claim
+  marginLabel: string; // "Margin · 1 inside" | "Gap · 2 outside"
+  likelyOutcomeLabel: string | null; // only when OUTSIDE the cut-off
+  prerequisiteLabel: string;
+  prerequisiteStatus: PrerequisiteStatus;
+};
+
+/**
+ * The whole §6 board. NOT computable → "projection pending" and the match lib is never called (AC6):
+ * no band, no margin, no cut-off comparison — only the tagged programme names.
+ */
+export type UniversityMatchView =
+  | { computable: false; taggedNames: string[] }
+  | {
+      computable: true;
+      aggregate: number; // == the §5 headline — ONE aggregate (AC7)
+      tallyLabel: string; // "1 target · 1 comfortable · 2 stretch · 1 safety"
+      tiles: UniversityMatchTileView[];
+    };
+
+/** One selectable programme for the "+ Add programme" control (GLOBAL reference, read-only to schools). */
+export type ProgrammeOptionView = { id: string; label: string };
+
 /** Everything the candidate readiness page renders (pre-formatted; the page passes slices to clients). */
 export type CandidateReadinessData = {
   candidateId: string;
@@ -85,6 +127,8 @@ export type CandidateReadinessData = {
   scForms: ScFormView[];
   openMedicalSc: ScFormView | null;
   statement: StatementView | null;
+  universityMatch: UniversityMatchView; // §6 — DERIVED on read, never stored (INCR-17b)
+  programmeOptions: ProgrammeOptionView[]; // the "+ Add programme" catalogue (untagged only)
   predictorMockName: string;
   markingComplete: boolean;
   canGenerate: boolean; // marking complete AND projection computable

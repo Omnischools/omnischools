@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
  * module 4.3 / INCR-17). Re-renders the ACADEMIC block ON DEMAND from the frozen `readiness_statements`
  * snapshot (Ruling 4; no files table, no new PDF dep — mirrors the #136 receipt route). Enforced
  * server-side: requireSchool + WASSCE_SETUP_ROLES (STUDENT/PARENT/TEACHER denied 403); withSchool scopes
- * every read so a statement can never leak across tenants (AC19). University block omitted (AC16/AC17).
+ * every read so a statement can never leak across tenants (AC19). Since INCR-17b/AC20 it ALSO renders the
+ * university block — read from the same frozen `target_universities_json` snapshot, never live.
  */
 export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
   const { school } = await requireSchool();

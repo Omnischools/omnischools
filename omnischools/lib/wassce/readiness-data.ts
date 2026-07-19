@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, notInArray } from "drizzle-orm";
 import type { Tx } from "@/lib/db";
 import {
   schools,
@@ -14,6 +14,9 @@ import {
   mockResults,
   waecSpecialConsideration,
   readinessStatements,
+  universities,
+  universityProgrammes,
+  universityTargets,
 } from "@/db/schema";
 import {
   projectAggregate,
@@ -26,13 +29,37 @@ import {
 } from "@/lib/wassce/projection";
 import { effectiveGrade, type WassceGrade } from "@/lib/wassce/mock-grades";
 import { SC_FORMS } from "@/lib/wassce/constants";
+import {
+  aggregateScalePct,
+  checkPrerequisites,
+  cutOffLabel,
+  cutOffTrendLabel,
+  likelyOutcomeLabel,
+  marginLabel,
+  matchBand,
+  matchMargin,
+  matchTally,
+  matchTier,
+  parseCutOffHistory,
+  parsePrerequisiteRules,
+  prerequisiteLabel,
+  tierLabel,
+  MATCH_TIER_CLASS,
+  MATCH_TIER_LABEL,
+  type CutOffHistoryEntry,
+  type FrozenTargetUniversity,
+  type PrerequisiteCheck,
+  type PrerequisiteRule,
+} from "@/lib/wassce/university-match";
 import type {
   CandidateReadinessData,
+  ProgrammeOptionView,
   ProjectionRowView,
   ProjectionView,
   ScFormView,
   StatementView,
   SubjectTrajectoryView,
+  UniversityMatchView,
 } from "@/lib/wassce/readiness-view";
 import type { ReadinessStatementData } from "@/lib/pdf/readiness-statement-document";
 
@@ -199,6 +226,179 @@ export function buildSnapshot(mock1: ProjectionResult, mock2: ProjectionResult):
       counted: s.counted,
     })),
   };
+}
+
+/* ─────────────────── INCR-17b · university targets — DERIVED on read, NOTHING computed is stored ─────
+ * The §6 board recomputes the band/margin/prereq on every read from the candidate's derived aggregate +
+ * the GLOBAL programme snapshot, so it never drifts when either moves. The only frozen copy is
+ * `readiness_statements.target_universities_json`, written once by the generation action (R4/AC14).
+ * ──────────────────────────────────────────────────────────────────────────────────────────────────── */
+
+/** One tagged target joined to its GLOBAL programme + university, prerequisite check already run. */
+export type CandidateTargetMatch = {
+  targetId: string;
+  programmeId: string;
+  universityName: string;
+  shortName: string;
+  universityType: string;
+  programmeName: string;
+  qualification: string;
+  durationYears: number | null;
+  location: string;
+  cutOff: number;
+  cutOffReferenceYear: number;
+  history: CutOffHistoryEntry[];
+  rules: PrerequisiteRule[];
+  prerequisites: PrerequisiteCheck;
+  targetRank: string | null;
+  isPrimary: boolean; // target_rank === FIRST_CHOICE — drives the TARGET overlay
+};
+
+/**
+ * Load a candidate's tagged targets (tenant-scoped) joined to the GLOBAL programme/university reference,
+ * and run the pure prerequisite check against the candidate's REGISTERED subjects + predictor grades.
+ * Ordered primary-first (target_rank ASC puts FIRST/SECOND/THIRD ahead of the NULL-rank tail), then by
+ * tag order. Shared by the §6 board and the statement-generation snapshot — one source of truth.
+ */
+export async function loadCandidateTargets(
+  tx: Tx,
+  schoolId: string,
+  candidateId: string,
+  rows: SubjectRow[],
+): Promise<CandidateTargetMatch[]> {
+  const targets = await tx
+    .select({
+      targetId: universityTargets.id,
+      targetRank: universityTargets.targetRank,
+      programmeId: universityProgrammes.id,
+      programmeName: universityProgrammes.name,
+      qualification: universityProgrammes.qualification,
+      durationYears: universityProgrammes.durationYears,
+      cutOff: universityProgrammes.currentCutOff,
+      cutOffReferenceYear: universityProgrammes.cutOffReferenceYear,
+      cutOffHistoryJson: universityProgrammes.cutOffHistoryJson,
+      prerequisiteSubjectsJson: universityProgrammes.prerequisiteSubjectsJson,
+      universityName: universities.name,
+      shortName: universities.shortName,
+      universityType: universities.universityType,
+      location: universities.location,
+    })
+    .from(universityTargets)
+    .innerJoin(universityProgrammes, eq(universityProgrammes.id, universityTargets.universityProgrammeId))
+    .innerJoin(universities, eq(universities.id, universityProgrammes.universityId))
+    .where(
+      and(eq(universityTargets.schoolId, schoolId), eq(universityTargets.candidateId, candidateId)),
+    )
+    .orderBy(asc(universityTargets.targetRank), asc(universityTargets.taggedAt));
+
+  // The prereq inputs: which subjects the candidate is REGISTERED for + their effective predictor grade.
+  const registered = rows.map((r) => r.name);
+  const effectiveGrades: Record<string, WassceGrade> = {};
+  for (const r of rows) if (r.mock2) effectiveGrades[r.name] = effectiveGrade(r.mock2);
+
+  return targets.map((t) => {
+    const rules = parsePrerequisiteRules(t.prerequisiteSubjectsJson);
+    return {
+      targetId: t.targetId,
+      programmeId: t.programmeId,
+      universityName: t.universityName,
+      shortName: t.shortName,
+      universityType: t.universityType,
+      programmeName: t.programmeName,
+      qualification: t.qualification,
+      durationYears: t.durationYears,
+      location: t.location,
+      cutOff: t.cutOff,
+      cutOffReferenceYear: t.cutOffReferenceYear,
+      history: parseCutOffHistory(t.cutOffHistoryJson),
+      rules,
+      prerequisites: checkPrerequisites(rules, effectiveGrades, registered),
+      targetRank: t.targetRank,
+      isPrimary: t.targetRank === "FIRST_CHOICE",
+    };
+  });
+}
+
+/** "B.Sc. · 4 years · Kumasi" — the tile's sub-line (duration omitted when the programme has none). */
+const programmeLine = (t: CandidateTargetMatch) =>
+  [t.qualification, t.durationYears != null ? `${t.durationYears} years` : null, t.location]
+    .filter(Boolean)
+    .join(" · ");
+
+/**
+ * Build the §6 board. When the projection is NOT computable the match lib is never called (AC6) — no
+ * band, no margin, no cut-off comparison; the section renders "projection pending" over the tagged names.
+ */
+export function buildUniversityMatchView(
+  targets: CandidateTargetMatch[],
+  projection: ProjectionResult,
+): UniversityMatchView {
+  if (!projection.computable) {
+    return {
+      computable: false,
+      taggedNames: targets.map((t) => `${t.shortName} · ${t.programmeName}`),
+    };
+  }
+  const projected = projection.aggregate;
+
+  const tiles = targets.map((t) => {
+    const tier = matchTier(projected, t.cutOff, t.isPrimary);
+    const margin = matchMargin(projected, t.cutOff);
+    return {
+      targetId: t.targetId,
+      programmeId: t.programmeId,
+      name: `${t.shortName} · ${t.programmeName}`,
+      programmeLine: programmeLine(t),
+      tier,
+      tierLabel: tierLabel(tier, margin),
+      tierClass: MATCH_TIER_CLASS[tier],
+      isPrimary: t.isPrimary,
+      targetRank: t.targetRank,
+      cutOff: t.cutOff,
+      cutOffLabel: cutOffLabel(t.cutOff, t.cutOffReferenceYear),
+      youPct: aggregateScalePct(projected),
+      cutOffPct: aggregateScalePct(t.cutOff),
+      trendLabel: cutOffTrendLabel(t.history),
+      marginLabel: marginLabel(margin),
+      likelyOutcomeLabel: likelyOutcomeLabel(margin),
+      prerequisiteLabel: prerequisiteLabel(t.prerequisites, t.rules, t.isPrimary),
+      prerequisiteStatus: t.prerequisites.status,
+    };
+  });
+
+  return {
+    computable: true,
+    aggregate: projected, // the SAME number as the §5 headline — one aggregate (AC7)
+    tallyLabel: matchTally(tiles.map((t) => t.tier)),
+    tiles,
+  };
+}
+
+/**
+ * FREEZE the candidate's live targets + computed match into `target_universities_json` (R4/AC14). Called
+ * ONLY by the generation action, where the projection is already proven computable. No targets → `[]`.
+ */
+export function buildTargetSnapshot(
+  targets: CandidateTargetMatch[],
+  projectedAggregate: number,
+): FrozenTargetUniversity[] {
+  return targets.map((t) => ({
+    universityName: t.universityName,
+    shortName: t.shortName,
+    universityType: t.universityType,
+    programmeName: t.programmeName,
+    qualification: t.qualification,
+    location: t.location,
+    cutOff: t.cutOff,
+    cutOffReferenceYear: t.cutOffReferenceYear,
+    targetRank: t.targetRank,
+    isPrimary: t.isPrimary,
+    projectedAggregate,
+    matchBand: matchBand(projectedAggregate, t.cutOff),
+    displayTier: matchTier(projectedAggregate, t.cutOff, t.isPrimary),
+    margin: matchMargin(projectedAggregate, t.cutOff),
+    prerequisites: t.prerequisites,
+  }));
 }
 
 /**
@@ -379,20 +579,19 @@ export async function loadCandidateReadiness(
   });
   const openMedicalSc = scForms.find((s) => s.scForm === "SC-12" && s.open) ?? null;
 
-  // Current readiness statement (the single non-superseded row).
-  const [stmt] = await tx
+  // Current readiness statement — the single non-superseded row. The `superseded_at IS NULL` predicate
+  // is what lets the PARTIAL UNIQUE `readiness_statements_current_idx` serve this hot read (AC22).
+  const [current] = await tx
     .select()
     .from(readinessStatements)
     .where(
       and(
         eq(readinessStatements.schoolId, schoolId),
         eq(readinessStatements.candidateId, cand.id),
-        // current = not superseded; the partial index serves this hot read
+        isNull(readinessStatements.supersededAt),
       ),
     )
-    .orderBy(desc(readinessStatements.generatedAt))
-    .limit(5);
-  const current = stmt && stmt.supersededAt == null ? stmt : undefined;
+    .limit(1);
   const statement: StatementView | null = current
     ? {
         id: current.id,
@@ -416,6 +615,28 @@ export async function loadCandidateReadiness(
       }
     : null;
 
+  // §6 university match — DERIVED on read (INCR-17b). The "+ Add programme" catalogue is the GLOBAL
+  // programme reference minus what is already tagged; it is READ-ONLY to schools (no write path).
+  const targets = await loadCandidateTargets(tx, schoolId, cand.id, rows);
+  const universityMatch = buildUniversityMatchView(targets, mock2);
+  const taggedIds = targets.map((t) => t.programmeId);
+  const optionRows = await tx
+    .select({
+      id: universityProgrammes.id,
+      name: universityProgrammes.name,
+      cutOff: universityProgrammes.currentCutOff,
+      year: universityProgrammes.cutOffReferenceYear,
+      shortName: universities.shortName,
+    })
+    .from(universityProgrammes)
+    .innerJoin(universities, eq(universities.id, universityProgrammes.universityId))
+    .where(taggedIds.length ? notInArray(universityProgrammes.id, taggedIds) : undefined)
+    .orderBy(asc(universities.shortName), asc(universityProgrammes.name));
+  const programmeOptions: ProgrammeOptionView[] = optionRows.map((o) => ({
+    id: o.id,
+    label: `${o.shortName} · ${o.name} · cut-off ${cutOffLabel(o.cutOff, o.year)}`,
+  }));
+
   const markingComplete = predictorMock?.markingComplete ?? false;
   const canGenerate = markingComplete && mock2.computable;
   const generateBlockedReason = !predictorMock
@@ -437,6 +658,8 @@ export async function loadCandidateReadiness(
     scForms,
     openMedicalSc,
     statement,
+    universityMatch,
+    programmeOptions,
     predictorMockName: predictorMock?.name ?? "Mock 2",
     markingComplete,
     canGenerate,
@@ -501,7 +724,9 @@ function buildProjectionView(
 
 /**
  * Build the readiness-statement PDF data from the FROZEN snapshot (Ruling 4 — re-render on demand, never
- * recompute). Academic block only — the university block is INCR-17b (omitted, AC16/AC17). Tenant-scoped.
+ * recompute). BOTH blocks read frozen json: the academic block from `projection_snapshot_json`, the
+ * university block from `target_universities_json` (INCR-17b/AC20) — a later cut-off or target edit moves
+ * the LIVE §6 board and never this PDF (AC15). A legacy INCR-17 statement has NULL there → no block.
  */
 export async function loadReadinessStatementForPdf(
   tx: Tx,
@@ -562,6 +787,23 @@ export async function loadReadinessStatementForPdf(
       grade: s.grade,
       pointsLabel: PT(s.points),
       counted: s.counted,
+    })),
+    // The university block — pre-formatted from the FROZEN json, never re-derived (AC20).
+    universityTargets: (Array.isArray(stmt.targetUniversitiesJson)
+      ? (stmt.targetUniversitiesJson as FrozenTargetUniversity[])
+      : []
+    ).map((t) => ({
+      name: `${t.shortName} · ${t.programmeName}`,
+      programmeLine: [t.qualification, t.location].filter(Boolean).join(" · "),
+      tierLabel: MATCH_TIER_LABEL[t.displayTier] ?? t.displayTier,
+      isPrimary: t.isPrimary,
+      cutOffLabel: cutOffLabel(t.cutOff, t.cutOffReferenceYear),
+      marginLabel: marginLabel(t.margin),
+      prerequisiteLabel: t.prerequisites.met
+        ? "prerequisites met"
+        : t.prerequisites.status === "PENDING"
+          ? `prerequisites pending · ${t.prerequisites.pending.join(" + ")}`
+          : `prerequisites NOT met · ${t.prerequisites.unmet.join(" + ")}`,
     })),
     parentAck: stmt.parentAcknowledgedAt
       ? {

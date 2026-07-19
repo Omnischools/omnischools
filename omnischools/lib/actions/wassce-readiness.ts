@@ -8,7 +8,12 @@ import { WASSCE_SETUP_ROLES } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
 import { sendSms } from "@/lib/sms";
 import { wassceCandidates, waecSpecialConsideration, readinessStatements } from "@/db/schema";
-import { computeCandidateProjection, buildSnapshot } from "@/lib/wassce/readiness-data";
+import {
+  computeCandidateProjection,
+  buildSnapshot,
+  buildTargetSnapshot,
+  loadCandidateTargets,
+} from "@/lib/wassce/readiness-data";
 
 /**
  * WASSCE readiness write actions (SHS module 4.3 / INCR-17). Three flows, all gated to
@@ -165,7 +170,7 @@ export async function generateReadinessStatement(input: unknown): Promise<Action
       const cand = await requireCandidate(tx, school.id, parsed.data.candidateId);
       if (!cand) return { ok: false, error: "That candidate is not in this school." };
 
-      const { predictorMock, mock1, mock2 } = await computeCandidateProjection(
+      const { predictorMock, rows, mock1, mock2 } = await computeCandidateProjection(
         tx,
         school.id,
         cand.id,
@@ -184,8 +189,17 @@ export async function generateReadinessStatement(input: unknown): Promise<Action
       const snapshot = buildSnapshot(mock1, mock2);
       if (!snapshot) return { ok: false, error: "Projection is not computable." };
 
-      // Single-current invariant — SUPERSEDE first, THEN insert (the current index is non-unique so the
-      // app owns this order; a re-moderation never mutates an existing statement, it supersedes it).
+      // INCR-17b/AC14: ALSO freeze the candidate's CURRENT live targets + their computed match. This is
+      // the ONLY writer of `target_universities_json` — target CRUD never touches it (AC13), and a later
+      // cut-off/target edit moves the live §6 board but never this frozen copy (AC15). None → `[]`.
+      const targets = await loadCandidateTargets(tx, school.id, cand.id, rows);
+      const targetSnapshot = buildTargetSnapshot(targets, mock2.aggregate);
+
+      // Single-current invariant — SUPERSEDE first, THEN insert. Since INCR-17b/AC21 the partial index
+      // `readiness_statements_current_idx` is UNIQUE, so the DB is the structural backstop and a
+      // concurrent second generation loses on a unique-violation (degraded by the catch below); this
+      // write ORDER is still required so the normal path never trips it. A re-moderation never mutates
+      // an existing statement, it supersedes it.
       await tx
         .update(readinessStatements)
         .set({ supersededAt: new Date() })
@@ -206,7 +220,7 @@ export async function generateReadinessStatement(input: unknown): Promise<Action
           projectedAggregate: mock2.aggregate,
           projectedBand: mock2.band,
           projectionSnapshotJson: snapshot,
-          targetUniversitiesJson: null, // INCR-17b — no university leak (AC17)
+          targetUniversitiesJson: targetSnapshot, // frozen live targets + match; `[]` when none (AC14)
           generatedAt: new Date(),
           generatedByUserId: actor.id ?? undefined,
         })
@@ -219,8 +233,14 @@ export async function generateReadinessStatement(input: unknown): Promise<Action
         actionType: "created",
         entityType: "readiness_statement",
         entityId: row.id,
-        after: { candidateId: cand.id, aggregate: mock2.aggregate, band: mock2.band, mock2Id: predictorMock.id },
-        reason: "Readiness statement generated (projection frozen)",
+        after: {
+          candidateId: cand.id,
+          aggregate: mock2.aggregate,
+          band: mock2.band,
+          mock2Id: predictorMock.id,
+          targetsFrozen: targetSnapshot.length,
+        },
+        reason: "Readiness statement generated (projection + university targets frozen)",
       });
       return { ok: true, id: cand.indexNumber };
     });

@@ -33,6 +33,8 @@ import {
   scFormEnum,
   scStatusEnum,
   parentAckMethodEnum,
+  universityTypeEnum,
+  targetRankEnum,
 } from "./_enums";
 
 /**
@@ -718,8 +720,11 @@ export const readinessStatements = pgTable(
   (t) => ({
     // Per-candidate statement history read (§7) — includes superseded rows (no UNIQUE: many over time).
     byCandidate: index("readiness_statements_candidate_idx").on(t.schoolId, t.candidateId),
-    // The "current statement" hot read — the single non-superseded row per candidate (partial index).
-    currentByCandidate: index("readiness_statements_current_idx")
+    // The "current statement" hot read — the single non-superseded row per candidate. PARTIAL UNIQUE
+    // (AC21, INCR-17b): at most ONE current statement per candidate. Closes the concurrent-generation
+    // race — a 2nd concurrent same-candidate insert hits a unique-violation the generation action's
+    // try/catch degrades (supersede-then-insert stays the write order; this is the structural backstop).
+    currentByCandidate: uniqueIndex("readiness_statements_current_idx")
       .on(t.schoolId, t.candidateId)
       .where(sql`${t.supersededAt} IS NULL`),
     // Frozen best-3 aggregate stays in the WAEC 6 (six A1) … 54 (six F9) range — same-row guard (portable).
@@ -735,6 +740,141 @@ export const readinessStatements = pgTable(
     mock2Fk: foreignKey({
       columns: [t.schoolId, t.mock2Id],
       foreignColumns: [mockExams.schoolId, mockExams.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/* ────────────────────────────────────────────────────────────────────────────────────────────────
+ * INCR-17b · University targets + match (SHS module 4.3, migration 0054) — Kofi rulings 2026-07-19.
+ * Closes the INCR-17 split: the university-match half deferred out of 0053. Three tables — TWO
+ * deliberately GLOBAL reference (`universities`, `university_programmes`: bare ENABLE RLS, no FORCE,
+ * no tenant_isolation — the benchmark_reference idiom) + ONE TENANT (`university_targets`: FORCE RLS,
+ * prod-paste). Cut-off data is a SEEDED published snapshot (owner decision) — global reference,
+ * refreshed per cycle via `cut_off_reference_year`, no external feed, no per-school entry.
+ *
+ * NO TRIGGERS (portability): the match band + margin (SAFETY/COMFORTABLE/MATCH/STRETCH + the TARGET
+ * primary overlay) and the prerequisite check are PURE LIBS (lib/wassce/university-match.ts), DERIVED
+ * on read — nothing stored, no match_tier column/enum. The frozen copy lives ONLY in
+ * readiness_statements.target_universities_json, snapshotted once at statement (re)generation (R4).
+ * The tenant target→candidate ref is a COMPOSITE (school_id, candidate_id) FK; links to the global
+ * programme reference + the actor stamp are single-column (RESTRICT / SET NULL). Kofi trimmed
+ * BUILD_STACK's `updated_*`/`public_or_private`/`accreditation_status` (seed-only, no update UI — YAGNI).
+ * ──────────────────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A GLOBAL university / tertiary institution reference (Kofi R1). DELIBERATELY GLOBAL: there is NO
+ * `school_id` (KNUST exists for every tenant), so it gets a BARE `ENABLE ROW LEVEL SECURITY` — NO
+ * FORCE, NO tenant_isolation policy — the benchmark_reference idiom (owner stays exempt; the Data API
+ * is denied by having no permissive policy). Added to the GLOBAL block of policies.sql + prod-paste-0054,
+ * NOT the tenant block. Single-column FKs only (it references nothing). `region`/`notes` nullable.
+ * REFERENCED by university_programmes via a single-column FK (global→global, no composite).
+ */
+export const universities = pgTable("universities", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(), // canonical, e.g. "Kwame Nkrumah University of Science and Technology"
+  shortName: text("short_name").notNull(), // §6 badge, e.g. "KNUST"
+  universityType: universityTypeEnum("university_type").notNull(),
+  location: text("location").notNull(), // city/town, e.g. "Kumasi"
+  region: text("region"), // nullable
+  notes: text("notes"), // nullable
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * A GLOBAL programme offered by a university (Kofi R1) — the §3 cut-off table row + the §6 match target.
+ * GLOBAL like `universities` (bare ENABLE RLS, no school_id). Single-column FK → universities(id) ON
+ * DELETE RESTRICT (a referenced university can't be deleted out from under its programmes). Seed-only in
+ * 17b — no update UI, so no `updated_*` audit columns (Kofi trim).
+ *
+ * `current_cut_off` is the published aggregate cut-off (worst admitted; lower = stronger), same 6..54
+ * WAEC scale as the projection — same-row CHECK 6..54 (portable, no trigger). `cut_off_reference_year`
+ * labels it as a SNAPSHOT (every surface cut-off renders "(year)"; "updated annually"/"trend stable" is
+ * editorial). `cut_off_history_json` backs the 3-yr trend; `prerequisite_subjects_json` grounds the
+ * §6 prereq check — `[{subject,minGrade}|{anyOf:[…],minGrade}]`, EVERY seed row carries the universal
+ * English≥C6 + Core-Maths≥C6 baseline (R6, checkPrerequisites is a pure lib). REFERENCED by
+ * university_targets via a single-column FK (global reference — no tenant composite).
+ */
+export const universityProgrammes = pgTable(
+  "university_programmes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    universityId: uuid("university_id")
+      .notNull()
+      .references(() => universities.id, { onDelete: "restrict" }),
+    name: text("name").notNull(), // "Biochemistry", "Pharmacy", "Medicine"
+    qualification: text("qualification").notNull(), // "BSc", "PharmD", "MBChB"
+    durationYears: smallint("duration_years"), // nullable
+    currentCutOff: smallint("current_cut_off").notNull(), // 6..54 aggregate (CHECK); worst admitted
+    cutOffReferenceYear: smallint("cut_off_reference_year").notNull(), // the snapshot year (rendered "(2025)")
+    cutOffHistoryJson: jsonb("cut_off_history_json"), // 3-yr trend backing, nullable
+    prerequisiteSubjectsJson: jsonb("prerequisite_subjects_json"), // [{subject,minGrade}|{anyOf,minGrade}], R6
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Cut-off stays on the WAEC 6 (six A1) … 54 (six F9) aggregate scale — same-row guard (portable).
+    cutOffRange: check(
+      "university_programmes_current_cut_off_range",
+      sql`${t.currentCutOff} BETWEEN 6 AND 54`,
+    ),
+    // "All programmes for a university" read (§3 cut-off table grouped by institution).
+    byUniversity: index("university_programmes_university_idx").on(t.universityId),
+  }),
+);
+
+/**
+ * A TENANT university target — one candidate's tagged programme choice (Kofi R1). FORCE RLS +
+ * tenant_isolation + prod-paste (this is the ONLY tenant table in 0054). LEAF (nothing references it) →
+ * NO tenant UK. The §6 match band is DERIVED on read (pure lib) — nothing computed is stored here; the
+ * frozen copy is readiness_statements.target_universities_json (R4). Target CRUD writes THIS table ONLY;
+ * it never creates/supersedes a statement (AC13).
+ *
+ * `target_rank` is NULLABLE (an untagged target has no rank); FIRST_CHOICE drives the §6 "TARGET"
+ * overlay. `parent_acknowledged_at` is authored now but has NO writer in 17b — the §7 ack is ONE bundled
+ * statement-level ack (readiness_statements), not per-programme (R5, write-flow INCR-19).
+ *
+ * TENANCY: composite (school_id, candidate_id) → wassce_candidates(school_id, id) CASCADE keeps the target
+ * intra-tenant (a cross-tenant candidate reference is structurally impossible — AC9). The link to the
+ * GLOBAL programme is a SINGLE-column FK → university_programmes(id) ON DELETE RESTRICT (a referenced
+ * programme can't be deleted while targeted — AC10). `tagged_by_user_id` is single-column SET NULL → users
+ * (the boarding/ledger actor idiom). UNIQUE(school_id, candidate_id, university_programme_id) rejects a dup
+ * programme; the partial UNIQUE(school_id, candidate_id, target_rank) WHERE target_rank IS NOT NULL rejects
+ * a 2nd FIRST/SECOND/THIRD while allowing many NULL-rank targets (AC12).
+ */
+export const universityTargets = pgTable(
+  "university_targets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id").notNull(),
+    universityProgrammeId: uuid("university_programme_id")
+      .notNull()
+      .references(() => universityProgrammes.id, { onDelete: "restrict" }),
+    targetRank: targetRankEnum("target_rank"), // nullable; FIRST_CHOICE = the §6 TARGET overlay
+    taggedAt: timestamp("tagged_at", { withTimezone: true }).notNull().defaultNow(),
+    taggedByUserId: uuid("tagged_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    parentAcknowledgedAt: timestamp("parent_acknowledged_at", { withTimezone: true }), // column now, no writer in 17b (R5)
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // No duplicate programme per candidate — dup-target guard + seed conflict target (AC12).
+    uniqProgramme: unique("uniq_university_target_programme").on(
+      t.schoolId,
+      t.candidateId,
+      t.universityProgrammeId,
+    ),
+    // One FIRST/SECOND/THIRD choice per candidate — partial UNIQUE (NULL-rank targets exempt, AC12).
+    uniqRank: uniqueIndex("uniq_university_target_rank")
+      .on(t.schoolId, t.candidateId, t.targetRank)
+      .where(sql`${t.targetRank} IS NOT NULL`),
+    // The §6 board read — all targets for a candidate.
+    byCandidate: index("university_targets_candidate_idx").on(t.schoolId, t.candidateId),
+    // Composite intra-tenant FK — a cross-tenant candidate reference is structurally impossible (AC9).
+    candidateFk: foreignKey({
+      columns: [t.schoolId, t.candidateId],
+      foreignColumns: [wassceCandidates.schoolId, wassceCandidates.id],
     }).onDelete("cascade"),
   }),
 );

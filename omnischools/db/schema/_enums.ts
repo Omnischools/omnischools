@@ -461,3 +461,29 @@ export const parentAckMethodEnum = pgEnum("parent_ack_method", [
   "IN_PERSON",
   "PDF_UPLOAD",
 ]);
+
+// Senior WASSCE university targets + match (SHS module 4.3) — INCR-17b (Kofi rulings 2026-07-19).
+// Migration 0054. TWO enums only. Deliberately NOT an enum (Kofi): the 5-tier match band
+// (SAFETY/COMFORTABLE/MATCH/STRETCH + the TARGET primary overlay) is a DERIVED lib label
+// (lib/wassce/university-match.ts, derived-on-read) — storing it too would be two sources of truth.
+
+// The institution category on the GLOBAL `universities` reference (Kofi R1). Ghana's tertiary
+// landscape: public/private universities, technical universities & polytechnics, plus the
+// nursing/education colleges. Values append-only (a new category never rebuilds the type).
+export const universityTypeEnum = pgEnum("university_type", [
+  "PUBLIC_UNIVERSITY",
+  "PRIVATE_UNIVERSITY",
+  "TECHNICAL_UNIVERSITY",
+  "POLYTECHNIC",
+  "NURSING_COLLEGE",
+  "EDUCATION_COLLEGE",
+]);
+// A candidate's ranked choice on a `university_targets` row (Kofi R1, AMENDED). Stores the CHOICE
+// ORDER only — the stretch/match/safety words are the DERIVED computed band, not stored here (two
+// sources of truth). NULLABLE: an untagged target carries no rank; a FIRST_CHOICE drives the §6
+// "TARGET" overlay. The partial UNIQUE(school_id, candidate_id, target_rank) allows only one of each.
+export const targetRankEnum = pgEnum("target_rank", [
+  "FIRST_CHOICE",
+  "SECOND_CHOICE",
+  "THIRD_CHOICE",
+]);
