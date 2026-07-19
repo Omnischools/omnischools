@@ -28,7 +28,7 @@ const config: Config = {
           bg: "var(--gold-bg)",
         },
         green: { DEFAULT: "var(--green)", bg: "var(--green-bg)" },
-        terra: { DEFAULT: "var(--terra)", bg: "var(--terra-bg)" },
+        terra: { DEFAULT: "var(--terra)", bg: "var(--terra-bg)", deep: "var(--terra-deep)" },
         warn: { DEFAULT: "var(--warn)", bg: "var(--warn-bg)" },
 
         // brand surfaces (used directly: bg-bg, text-bg, bg-surface)

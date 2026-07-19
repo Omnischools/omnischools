@@ -1,5 +1,5 @@
 "use server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
@@ -7,7 +7,15 @@ import { requireSchool, resolveActor, type ActiveSchool } from "@/lib/auth/serve
 import { getCurrentUser, type AppUser } from "@/lib/auth";
 import { hasAnyRole, BOARDING_ROLES, canAccessHouse } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
-import { inspections, prepAttendance, students, houses } from "@/db/schema";
+import type { Tx } from "@/lib/db";
+import {
+  inspections,
+  prepAttendance,
+  students,
+  houses,
+  boardingBunk,
+  boardingDormitory,
+} from "@/db/schema";
 import {
   getDormHouseContext,
   getHouseWriteContext,
@@ -17,6 +25,93 @@ import {
   weeklyFindingsSchema,
   computeAnomalies,
 } from "@/lib/boarding/daily-life";
+import { insertInfraction } from "@/lib/boarding/discipline-core";
+import type { InfractionSeverity } from "@/lib/boarding/discipline";
+
+/**
+ * A failed inspection has no single offender — the responsible party is the dorm/house PREFECT (a
+ * boarder whose current bunk carries a prefect_role). INCR-13 attributes the inspection→infraction to
+ * them; when no prefect is resolvable there is no attributable student, so no infraction is written
+ * (the inspection + audit still record). Returns the resolved prefect's studentId or null.
+ * ponytail: first-prefect heuristic — a dorm has one designated prefect bunk; refine only if a school
+ * splits accountability across several.
+ */
+async function resolveResponsiblePrefect(
+  tx: Tx,
+  schoolId: string,
+  scope: { dormId: string } | { houseId: string },
+): Promise<string | null> {
+  const base = tx
+    .select({ studentId: students.id })
+    .from(students)
+    .innerJoin(
+      boardingBunk,
+      and(eq(boardingBunk.schoolId, students.schoolId), eq(boardingBunk.id, students.currentBunkId)),
+    );
+  const rows =
+    "dormId" in scope
+      ? await base
+          .where(
+            and(
+              eq(students.schoolId, schoolId),
+              eq(students.residency, "BOARDER"),
+              eq(students.status, "ACTIVE"),
+              eq(boardingBunk.dormitoryId, scope.dormId),
+              isNotNull(boardingBunk.prefectRole),
+            ),
+          )
+          .limit(1)
+      : await base
+          .innerJoin(
+            boardingDormitory,
+            and(
+              eq(boardingDormitory.schoolId, boardingBunk.schoolId),
+              eq(boardingDormitory.id, boardingBunk.dormitoryId),
+            ),
+          )
+          .where(
+            and(
+              eq(students.schoolId, schoolId),
+              eq(students.residency, "BOARDER"),
+              eq(students.status, "ACTIVE"),
+              eq(boardingDormitory.houseId, scope.houseId),
+              isNotNull(boardingBunk.prefectRole),
+            ),
+          )
+          .limit(1);
+  return rows[0]?.studentId ?? null;
+}
+
+/**
+ * Wire an inspection FAIL to a real infraction (INCR-13 stub (b)) — daily FAIL → NOTE, weekly FAIL →
+ * WARNING (FAIL only; PARTIAL writes nothing). Idempotent on (source_kind, inspection.id) — a
+ * re-inspection is a NEW inspection id, so re-running the escalation never double-logs the same one.
+ * Respects the pastoral bypass at the shared insert site. NO invoice/finance write.
+ */
+async function escalateInspectionFail(
+  tx: Tx,
+  schoolId: string,
+  inspectionId: string,
+  cadence: "INSPECTION_DAILY" | "INSPECTION_WEEKLY",
+  scope: { dormId: string } | { houseId: string },
+  anomalies: number,
+  actor: { id: string | null; role: string },
+): Promise<void> {
+  const studentId = await resolveResponsiblePrefect(tx, schoolId, scope);
+  if (!studentId) return;
+  const severity: InfractionSeverity = cadence === "INSPECTION_DAILY" ? "NOTE" : "WARNING";
+  const where = cadence === "INSPECTION_DAILY" ? "dormitory" : "House";
+  await insertInfraction(tx, {
+    schoolId,
+    studentId,
+    severity,
+    narrativeText: `Failed ${cadence === "INSPECTION_DAILY" ? "daily" : "weekly"} inspection (${anomalies} anomal${anomalies === 1 ? "y" : "ies"}) — ${where} prefect accountability.`,
+    sourceKind: cadence,
+    sourceRefId: inspectionId,
+    loggedByUserId: actor.id,
+    actorRole: actor.role,
+  });
+}
 
 type ActionResult = { ok: boolean; error?: string; message?: string };
 const forbidden: ActionResult = { ok: false, error: "Your role cannot perform this action." };
@@ -112,10 +207,14 @@ export async function recordDailyInspection(input: unknown): Promise<ActionResul
         bunksClean: d.bunksClean,
         bunksTotal: d.bunksTotal,
         anomalies,
-        // Discipline escalation (daily→Note) is STUBBED to INCR-13 — no infraction row written.
-        escalationStub: d.result !== "PASS" ? "INCR-13" : null,
+        // Discipline escalation (daily FAIL → Note) is now wired (INCR-13); FAIL only, PARTIAL none.
+        escalation: d.result === "FAIL" ? "NOTE" : null,
       },
     });
+    // INCR-13 stub (b): a FAIL logs a NOTE against the dorm prefect (FAIL only, PARTIAL none).
+    if (d.result === "FAIL") {
+      await escalateInspectionFail(tx, school.id, row.id, "INSPECTION_DAILY", { dormId: d.dormId }, anomalies, actor);
+    }
   });
 
   safeRevalidate(todayPath(dorm.houseId));
@@ -200,9 +299,14 @@ export async function recordWeeklyInspection(input: unknown): Promise<ActionResu
         result: d.result,
         areas: d.areas.length,
         anomalies,
-        escalationStub: d.result !== "PASS" ? "INCR-13" : null,
+        // Weekly FAIL → Warning is now wired (INCR-13); FAIL only, PARTIAL none.
+        escalation: d.result === "FAIL" ? "WARNING" : null,
       },
     });
+    // INCR-13 stub (b): a FAIL logs a WARNING against a House prefect (FAIL only, PARTIAL none).
+    if (d.result === "FAIL") {
+      await escalateInspectionFail(tx, school.id, row.id, "INSPECTION_WEEKLY", { houseId: d.houseId }, anomalies, actor);
+    }
   });
 
   safeRevalidate(todayPath(d.houseId));

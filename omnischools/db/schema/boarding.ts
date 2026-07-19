@@ -10,9 +10,12 @@ import {
   numeric,
   timestamp,
   unique,
+  uniqueIndex,
   index,
   foreignKey,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { schools } from "./tenancy";
 import { users } from "./identity";
 import { houses, students } from "./students";
@@ -32,6 +35,9 @@ import {
   visitStatusEnum,
   visitVerificationEnum,
   visitNotificationKindEnum,
+  infractionSeverityEnum,
+  infractionStatusEnum,
+  infractionSourceEnum,
 } from "./_enums";
 
 /**
@@ -884,6 +890,262 @@ export const boardingVisitNotification = pgTable(
     visitFk: foreignKey({
       columns: [t.schoolId, t.visitId],
       foreignColumns: [boardingVisit.schoolId, boardingVisit.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * Boarding discipline & deboardinization (SHS module 4.2 / INCR-13) — surface 07, the MODULE 4.2
+ * CLOSER. THREE NEW tenant tables (Kofi OQ1): the append-only infraction ledger (boarding_infractions
+ * — the PARENT), the witnessed bond artefact (bond_artefacts), and the deboardinization record with
+ * its 3-way co-sign + Board-review + Headmaster reinstatement (deboardinization_records). All three
+ * FORCE RLS (db:policies dev + prod-paste-0050-boarding-discipline.sql prod). The 5-rung ladder
+ * (NOTE→WARNING→BOND→SUSPENSION→DEBOARDINIZATION) renders READ-only from the frozen
+ * getDeboardinizationLadder constant (schema-locked, BUILD_STACK #4); co-sign counts/roles are
+ * ENFORCED in lib/boarding/ against that constant (no cross-table trigger — exeat posture) with a
+ * same-table CHECK backstop on deboardinization_records. Every action lives in lib/boarding/ (no
+ * trigger — portability). The 3× fee penalty is DISPLAYED from stored snapshots only —
+ * fee_penalty_invoice_id is LEFT NULL with NO FK (the invoice-write STUB, owner-settled).
+ *
+ * TENANT-UK vs LEAF doctrine here: boarding_infractions is DURABLE + REFERENCED (its supersede self-
+ * chain, bond_artefacts.infraction_id, deboardinization_records.infraction_id all point at it), so it
+ * carries a composite (school_id, id) tenant UK (the F0-spine / boarding_exeat pattern). bond_artefacts
+ * and deboardinization_records are LEAF (nothing references them) → FORCE RLS but NO tenant UK (mirror
+ * exeat_notification / the INCR-10/11 LEAF tables).
+ * ==========================================================================*/
+
+/**
+ * APPEND-ONLY disciplinary infraction ledger (the PARENT, Kofi OQ1/OQ5) — one row per logged
+ * infraction at a ladder rung. NO delete, NO content edit: a correction is a NEW row carrying
+ * parent_infraction_id (composite self-FK → this table's tenant UK) with the original flipped to
+ * status=SUPERSEDED; `status` otherwise moves OPEN→RESOLVED. `severity` is the frozen 5-rung
+ * DeboardinizationSeverity (rung defs read from getDeboardinizationLadder, never re-declared here).
+ *
+ * `co_signs_json` is an AUDIT MIRROR of who co-signed, NOT the enforcement point — deboardinization
+ * co-signs live on the discrete deboardinization_records.*_sign columns; this jsonb is a convenience
+ * snapshot (Kofi OQ2). `house_id` is a nullable SNAPSHOT of the student's House at log time (composite
+ * SET NULL, mirroring students.houseFk — a House is soft-deleted via `active`, so this SET NULL never
+ * fires against the NOT-NULL school_id in normal operation).
+ *
+ * source_kind/source_ref_id are the IDEMPOTENCY KEY for the four auto-logged module stubs (Kofi OQ4):
+ * a MANUAL log carries source_ref_id NULL; an auto-log carries EXEAT_OVERDUE=exeat.id /
+ * INSPECTION_DAILY|WEEKLY=inspections.id / VISIT_OVERSTAY=boarding_visit.id / RESUMPTION_ABSENT=
+ * "${eventOrPeriodId}:${studentId}". The PARTIAL UNIQUE (school_id, source_kind, source_ref_id) WHERE
+ * source_ref_id IS NOT NULL is the DB backstop behind lib/'s NOT EXISTS guard — a repeating on-read
+ * sweep can never double-log. ⚠ Because it is PARTIAL, MANUAL rows (source_ref_id NULL) are exempt, so
+ * any number of manual infractions for the same student COEXIST while a duplicate auto-log is rejected.
+ *
+ * tenant UK (school_id, id) — carried INLINE, MUST exist before the self-FK + the two LEAF tables'
+ * composite FKs (all added by ALTER after every CREATE TABLE). logged_by_user_id is the single-column
+ * SET NULL actor stamp (exeat pattern) — NULL for a system auto-log (no human logger). Indexes serve
+ * the per-student case read and the by-status grouped ledger (surface 07 groups by severity, filters
+ * by status). FORCE RLS.
+ */
+export const boardingInfractions = pgTable(
+  "boarding_infractions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    houseId: uuid("house_id"), // nullable snapshot of the student's House at log time (composite SET NULL)
+    severity: infractionSeverityEnum("severity").notNull(),
+    narrativeText: text("narrative_text").notNull(),
+    status: infractionStatusEnum("status").notNull().default("OPEN"),
+    coSignsJson: jsonb("co_signs_json"), // audit mirror of co-signers — NOT the enforcement point
+    parentInfractionId: uuid("parent_infraction_id"), // supersede chain → composite self-FK
+    sourceKind: infractionSourceEnum("source_kind").notNull().default("MANUAL"),
+    sourceRefId: text("source_ref_id"), // idempotency ref for auto-logs; NULL for MANUAL
+    // Global-table SET NULL → single column; NULL for a system auto-log (no human logger).
+    loggedByUserId: uuid("logged_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
+    parentsNotifiedAt: timestamp("parents_notified_at", { withTimezone: true }), // set at Warning+ console SMS
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for the supersede self-FK + bond_artefacts + deboardinization_records
+    // (school_id, id). MUST exist before those FKs — carried INLINE in CREATE TABLE.
+    tenantUk: unique("boarding_infractions_tenant_uk").on(t.schoolId, t.id),
+    // Idempotency backstop for the 4 auto-logged stubs. PARTIAL: MANUAL rows (source_ref_id NULL) are
+    // exempt (coexist); a duplicate (school_id, source_kind, source_ref_id) auto-log is rejected.
+    uniqSource: uniqueIndex("uniq_infraction_source")
+      .on(t.schoolId, t.sourceKind, t.sourceRefId)
+      .where(sql`${t.sourceRefId} IS NOT NULL`),
+    // Per-student case history read.
+    byStudent: index("boarding_infractions_student_idx").on(t.schoolId, t.studentId),
+    // By-status grouped ledger read (surface 07 groups active cases by severity, filters by status).
+    byStatus: index("boarding_infractions_status_idx").on(t.schoolId, t.status),
+    // Composite intra-tenant FK — a cross-tenant student reference is structurally impossible. CASCADE.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    // Composite intra-tenant FK — the House snapshot. SET NULL mirrors students.houseFk (a House is
+    // soft-deleted via `active`, so this never fires against the NOT-NULL school_id in normal use).
+    houseFk: foreignKey({
+      columns: [t.schoolId, t.houseId],
+      foreignColumns: [houses.schoolId, houses.id],
+    }).onDelete("set null"),
+    // Composite self-FK — the supersede chain. A correction row points at the superseded original,
+    // intra-tenant (cross-tenant structurally impossible) → this table's own tenant UK. No onDelete:
+    // append-only never deletes a single row, and a whole-school cascade via school_id removes the set
+    // together (the self-FK is satisfied at statement end).
+    parentFk: foreignKey({
+      columns: [t.schoolId, t.parentInfractionId],
+      foreignColumns: [t.schoolId, t.id],
+    }),
+  }),
+);
+
+/**
+ * The witnessed BOND artefact (LEAF, Kofi OQ1) — one bond per infraction (UNIQUE(school_id,
+ * infraction_id)). A BOND-rung infraction runs a standard-form bond the student signs
+ * (student_signature_at) witnessed by the HM (hm_witness_*) and Senior HM (senior_hm_witness_*) — the
+ * surface's three independently-flipping signature slots (the frozen Bond coSignCount=2 staff
+ * witnesses + the student's own signature = the "3 slots", Kofi OQ7). Each slot flips independently in
+ * lib/boarding/ (no trigger); the nullable timestamps are the source of truth. `bond_text` is the
+ * standard-form body (sensitive PII, tenant-scoped). `scanned_pdf_file_id` is a nullable opaque
+ * pointer to a future scanned-copy artefact — plain uuid, NO FK (no files table exists yet; a weak
+ * informational stub, same posture as fee_penalty_invoice_id).
+ *
+ * LEAF: composite (school_id, infraction_id) FK keeps the ref intra-tenant (CASCADE with the
+ * infraction → boarding_infractions' tenant UK); the two witness stamps are single-column SET NULL
+ * users FKs (exeat pattern). NO tenant UK — nothing references it. FORCE RLS.
+ */
+export const bondArtefacts = pgTable(
+  "bond_artefacts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    infractionId: uuid("infraction_id").notNull(),
+    studentSignatureAt: timestamp("student_signature_at", { withTimezone: true }),
+    // Global-table SET NULL → single-column witness stamps (exeat pattern).
+    hmWitnessUserId: uuid("hm_witness_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    hmWitnessAt: timestamp("hm_witness_at", { withTimezone: true }),
+    seniorHmWitnessUserId: uuid("senior_hm_witness_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    seniorHmWitnessAt: timestamp("senior_hm_witness_at", { withTimezone: true }),
+    scannedPdfFileId: uuid("scanned_pdf_file_id"), // opaque pointer to a future scan artefact — NO FK
+    bondText: text("bond_text").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One bond per infraction — the conflict target + the per-infraction lookup index.
+    uniqPerInfraction: unique("uniq_bond_per_infraction").on(t.schoolId, t.infractionId),
+    // Composite intra-tenant FK → boarding_infractions' tenant UK. CASCADE with the infraction.
+    infractionFk: foreignKey({
+      columns: [t.schoolId, t.infractionId],
+      foreignColumns: [boardingInfractions.schoolId, boardingInfractions.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * The DEBOARDINIZATION record (LEAF, Kofi OQ1/OQ2/OQ3) — the 3-way co-sign + first-class Board-review
+ * + Headmaster-gated reinstatement for the top ladder rung. One record per deboardinization, tied to
+ * the triggering infraction (composite FK) and the student (composite FK). The three DISCRETE co-sign
+ * columns are the ENFORCEMENT point (not co_signs_json): HM=HOUSEMASTER / Senior-HM=DEAN_OF_BOARDING /
+ * Headmaster=HEADMASTER (Kofi OQ2, role map app-checked in lib/). `effective_at` is the go-live stamp
+ * that flips students.residency BOARDER→DEBOARDINIZED + releases the bunk (INCR-7 J2, done atomically
+ * in lib/ — no trigger).
+ *
+ * TWO same-table CHECKs (the portable backstop behind lib/'s enforcement — no cross-table trigger):
+ *   • deboard_effective_needs_all_signs: effective_at IS NULL OR all three *_sign_at present — a 2-of-3
+ *     draft can never carry an effective_at (so no residency flip). The app enforces each signer's
+ *     ROLE; this CHECK enforces the presence/COUNT (a wrong-role signer is an app-layer reject).
+ *   • reinstate_needs_board_decision: reinstated_at IS NULL OR board_decision_text present —
+ *     reinstatement is Board-reviewed (OQ3), so a reinstate stamp with no recorded decision is rejected.
+ * PARTIAL UNIQUE one_active_deboard_per_student (school_id, student_id) WHERE effective_at IS NOT NULL
+ * AND reinstated_at IS NULL — at most one ACTIVE deboardinization per student (a reinstated record
+ * frees the slot; drafts with a NULL effective_at are exempt).
+ *
+ * Board is a first-class RECORD, not an RBAC role (Kofi OQ3): board_review_at/board_decision_text
+ * capture the motion + outcome; `reinstate` is HEADMASTER/ADMIN-gated in lib/ (flips residency back,
+ * stamps reinstated_at/by — the bunk is NOT restored, AC C5/D5). The penalty block is DISPLAY-ONLY
+ * snapshots (Kofi OQ6): penalty_days × penalty_per_day_amount × 3 (+ Head-discretion
+ * penalty_adjusted_amount/reason) is a pure DB-free func in lib/ — NO billing read at render, NO
+ * invoices write.
+ *
+ * 🟥 fee_penalty_invoice_id is the INVOICE-WRITE STUB (owner-settled): a plain nullable uuid with NO FK
+ * to invoices, LEFT NULL — the surface shows "penalty pending — billing not yet wired." Writing an
+ * invoices/finance row is a clearly-marked later owner decision; there is deliberately no FK so no
+ * billing coupling exists at the schema layer.
+ *
+ * LEAF: composite (school_id, student_id)/(school_id, infraction_id) FKs keep both refs intra-tenant
+ * (CASCADE); every actor stamp is a single-column SET NULL users FK. NO tenant UK — nothing references
+ * it. FORCE RLS.
+ */
+export const deboardinizationRecords = pgTable(
+  "deboardinization_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    infractionId: uuid("infraction_id").notNull(),
+    // --- 3 discrete co-signs (the enforcement point), each + actor (global-table SET NULL) ---
+    hmSignUserId: uuid("hm_sign_user_id").references(() => users.id, { onDelete: "set null" }),
+    hmSignAt: timestamp("hm_sign_at", { withTimezone: true }),
+    seniorHmSignUserId: uuid("senior_hm_sign_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    seniorHmSignAt: timestamp("senior_hm_sign_at", { withTimezone: true }),
+    headmasterSignUserId: uuid("headmaster_sign_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    headmasterSignAt: timestamp("headmaster_sign_at", { withTimezone: true }),
+    // --- go-live + Board-review + reinstatement ---
+    effectiveAt: timestamp("effective_at", { withTimezone: true }), // set → residency flip + bunk release
+    boardReviewAt: timestamp("board_review_at", { withTimezone: true }),
+    boardDecisionText: text("board_decision_text"),
+    reinstatedAt: timestamp("reinstated_at", { withTimezone: true }),
+    reinstatedByUserId: uuid("reinstated_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // 🟥 INVOICE-WRITE STUB — plain nullable uuid, NO FK, LEFT NULL (owner-settled; no billing coupling).
+    feePenaltyInvoiceId: uuid("fee_penalty_invoice_id"),
+    // --- penalty DISPLAY snapshots (Kofi OQ6) — never a live billing read; no invoice write ---
+    penaltyDays: integer("penalty_days"),
+    penaltyPerDayAmount: numeric("penalty_per_day_amount", { precision: 12, scale: 2 }),
+    penaltyAdjustedAmount: numeric("penalty_adjusted_amount", { precision: 12, scale: 2 }),
+    penaltyAdjustmentReason: text("penalty_adjustment_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // At most one ACTIVE deboardinization per student (drafts with NULL effective_at exempt; a
+    // reinstated record frees the slot). PARTIAL unique index.
+    oneActivePerStudent: uniqueIndex("one_active_deboard_per_student")
+      .on(t.schoolId, t.studentId)
+      .where(sql`${t.effectiveAt} IS NOT NULL AND ${t.reinstatedAt} IS NULL`),
+    // effective_at requires all three co-signs present — the same-table backstop (the app enforces
+    // each signer's ROLE; this CHECK enforces presence/COUNT). No cross-table trigger.
+    effectiveNeedsAllSigns: check(
+      "deboard_effective_needs_all_signs",
+      sql`${t.effectiveAt} IS NULL OR (${t.hmSignAt} IS NOT NULL AND ${t.seniorHmSignAt} IS NOT NULL AND ${t.headmasterSignAt} IS NOT NULL)`,
+    ),
+    // reinstatement requires a recorded Board decision (OQ3) — the non-empty check is app-layer.
+    reinstateNeedsBoardDecision: check(
+      "reinstate_needs_board_decision",
+      sql`${t.reinstatedAt} IS NULL OR ${t.boardDecisionText} IS NOT NULL`,
+    ),
+    // Composite intra-tenant FKs — a cross-tenant student/infraction reference is structurally
+    // impossible. CASCADE with the student / the triggering infraction.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    infractionFk: foreignKey({
+      columns: [t.schoolId, t.infractionId],
+      foreignColumns: [boardingInfractions.schoolId, boardingInfractions.id],
     }).onDelete("cascade"),
   }),
 );

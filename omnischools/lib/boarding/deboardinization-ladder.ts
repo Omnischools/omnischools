@@ -82,8 +82,12 @@ export const DEBOARDINIZATION_LADDER: readonly DeboardinizationRung[] = [
     description:
       "2 weeks external. Student is sent home formally. Counselling continues. Re-entry conditional on bond re-affirmation. School board notified at next meeting.",
     penaltyLabel: "2 WK EXT · CONDITIONAL RE-ENTRY",
-    coSignCount: 0,
-    coSignRoles: [],
+    // Corrected in INCR-13 (0 → 2) per BUILD_STACK #4 (constitution wins on conflict) + surface 07:
+    // an external suspension is co-signed by the HM and the Headmaster. The frozen Suspension co-sign
+    // was an acknowledged back-derived placeholder; INCR-13 is the ladder's designated co-sign-
+    // ENFORCEMENT consumer, so this data correction aligns the constant with the constitution.
+    coSignCount: 2,
+    coSignRoles: ["HM", "Headmaster"],
     reversalNote: null,
   },
   {

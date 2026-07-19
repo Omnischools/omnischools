@@ -25,6 +25,7 @@
     "db:seed-daily": "tsx db/seed/boarding-daily.ts",
     "db:seed-resumption": "tsx db/seed/boarding-resumption.ts",
     "db:seed-visiting": "tsx db/seed/boarding-visiting.ts",
+    "db:seed-discipline": "tsx db/seed/boarding-discipline.ts",
     "db:rls-test": "tsx scripts/rls-test.ts",
     "db:verify-boarding": "tsx scripts/verify-boarding.ts",
     "db:verify-visiting": "tsx --tsconfig scripts/tsconfig.json scripts/verify-visiting.ts",

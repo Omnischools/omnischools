@@ -58,6 +58,12 @@ export default async function BoardingLandingPage() {
           >
             Operations · Visiting Sunday →
           </Link>
+          <Link
+            href="/senior/boarding/discipline"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-[13px] font-semibold text-navy hover:border-gold hover:text-gold"
+          >
+            Discipline &amp; deboardinization →
+          </Link>
         </div>
       </div>
 

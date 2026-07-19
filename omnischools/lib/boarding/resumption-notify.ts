@@ -17,6 +17,8 @@ import type { Tx } from "@/lib/db";
 import { withSchool } from "@/lib/db/rls";
 import { students, studentGuardians } from "@/db/schema";
 import { sendSms, type SmsResult } from "@/lib/sms";
+import { insertInfraction } from "./discipline-core";
+import { getCurrentPeriod } from "./period";
 import { getResumptionBoard } from "./resumption-data";
 import { arrivalSms, departureSms, unaccountedSms, type BoardingMode } from "./resumption";
 
@@ -88,7 +90,23 @@ export async function runUnaccountedSweep(
 
   let sent = 0;
   await withSchool(schoolId, async (tx) => {
+    const period = await getCurrentPeriod(tx, schoolId);
     for (const studentId of studentIds) {
+      // INCR-13: an unaccounted boarder (past their arrival window, no arrival row) now gets a REAL
+      // NOTE, idempotent on (RESUMPTION_ABSENT, "${periodId}:${studentId}") — a re-swept absentee is
+      // never double-logged. Respects the pastoral bypass at the shared insert site. NO invoice write.
+      if (period) {
+        await insertInfraction(tx, {
+          schoolId,
+          studentId,
+          severity: "NOTE",
+          narrativeText: "Unaccounted at resumption — no arrival recorded past the arrival window.",
+          sourceKind: "RESUMPTION_ABSENT",
+          sourceRefId: `${period.periodId}:${studentId}`,
+          loggedByUserId: null,
+          actorRole: "SYSTEM",
+        });
+      }
       const [stu] = await tx
         .select({ firstName: students.firstName, lastName: students.lastName })
         .from(students)
