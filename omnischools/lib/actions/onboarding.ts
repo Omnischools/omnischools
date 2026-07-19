@@ -452,8 +452,12 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
     // Match on the unwrapped SQLSTATE/constraint, NOT the thrown error's message: Drizzle's wrapper
     // message is only "Failed query: …" — "duplicate key" and the constraint name live on `.cause`,
     // so the old string match never fired and this degraded to the generic error.
+    // Match the NAMED constraint only (verified against pg_constraint). Deliberately no bare
+    // `code === "23505"` fallback: this transaction also creates classes, subjects, roles, fees and
+    // payment methods, so a duplicate in any of those would otherwise be reported as a GES-code clash
+    // and send the admin down the wrong path. An unrelated dupe gets the honest generic message below.
     const pg = pgError(err);
-    if (pg.constraint === "ref_school_ges_code_unique" || pg.code === "23505") {
+    if (pg.constraint === "ref_school_ges_code_unique") {
       return { ok: false, error: "A school with this GES code already exists." };
     }
     return { ok: false, error: "Could not complete onboarding. Please try again." };

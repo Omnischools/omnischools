@@ -109,8 +109,10 @@ export async function saveTemplate(input: unknown): Promise<Result> {
     // message is only "Failed query: …" — "duplicate key" and the constraint name live on `.cause`,
     // so the old string match never fired. (The `locked` check above stays message-based: that error
     // is thrown by our own code, not the driver, so it is not wrapped.)
+    // Constraint name verified against pg_constraint — it is ..._per_school, NOT ..._name. (The old
+    // code got away with `msg.includes("uniq_whatsapp_template_name")` because a substring matched.)
     const pg = pgError(e);
-    if (pg.constraint === "uniq_whatsapp_template_name" || pg.code === "23505") {
+    if (pg.constraint === "uniq_whatsapp_template_name_per_school" || pg.code === "23505") {
       return { ok: false, error: "A template with this name already exists." };
     }
     return { ok: false, error: "Could not save the template." };
