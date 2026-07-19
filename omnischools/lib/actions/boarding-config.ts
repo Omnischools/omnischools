@@ -9,7 +9,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { withSchool } from "@/lib/db/rls";
+import { withSchool, isUniqueViolation } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -233,7 +233,7 @@ export async function createCalendarEvent(input: unknown): Promise<Result> {
     safeRevalidate(PROGRAMME_PATH);
     return { ok: true };
   } catch (err) {
-    if (err && typeof err === "object" && (err as { code?: string }).code === "23505") {
+    if (isUniqueViolation(err)) {
       return { ok: false, error: "An event of that type already exists on that date." };
     }
     return { ok: false, error: "Could not add the calendar event." };
@@ -296,7 +296,7 @@ export async function updateCalendarEvent(input: unknown): Promise<Result> {
     safeRevalidate(PROGRAMME_PATH);
     return { ok: true };
   } catch (err) {
-    if (err && typeof err === "object" && (err as { code?: string }).code === "23505") {
+    if (isUniqueViolation(err)) {
       return { ok: false, error: "An event of that type already exists on that date." };
     }
     return { ok: false, error: "Could not update the calendar event." };
@@ -409,7 +409,7 @@ export async function updateHouse(input: unknown): Promise<Result> {
     safeRevalidate(PROGRAMME_PATH);
     return { ok: true };
   } catch (err) {
-    if (err && typeof err === "object" && (err as { code?: string }).code === "23505") {
+    if (isUniqueViolation(err)) {
       return { ok: false, error: "Another House already uses that name." };
     }
     return { ok: false, error: "Could not save the House." };
@@ -467,7 +467,7 @@ export async function addDormitory(input: unknown): Promise<Result> {
     safeRevalidate(PROGRAMME_PATH);
     return { ok: true };
   } catch (err) {
-    if (err && typeof err === "object" && (err as { code?: string }).code === "23505") {
+    if (isUniqueViolation(err)) {
       return { ok: false, error: "That House already has a dormitory with that name." };
     }
     return { ok: false, error: "Could not provision the dormitory." };

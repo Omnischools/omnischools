@@ -1,7 +1,7 @@
 "use server";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
-import { withSchool } from "@/lib/db/rls";
+import { withSchool, isUniqueViolation } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -173,11 +173,14 @@ export async function reassignBunk(input: unknown): Promise<Result> {
     safeRevalidate(`/senior/boarding/houses/${outcome.houseId}/roster`);
     return { ok: true };
   } catch (err) {
-    // A lost race for the bunk trips the partial unique `uniq_student_current_bunk` (SQLSTATE 23505,
-    // which postgres.js surfaces on `.code`) → whole-tx rollback; that's the one expected failure, so
-    // surface the honest "just taken" (AC D2). Any OTHER error (connection drop, unrelated constraint)
-    // is genuinely unexpected — don't mask it as a bunk conflict; rethrow so it's logged/surfaced.
-    if (err && typeof err === "object" && (err as { code?: string }).code === "23505") {
+    // A lost race for the bunk trips the partial unique `uniq_student_current_bunk` (SQLSTATE 23505)
+    // → whole-tx rollback; that's the one expected failure, so surface the honest "just taken" (AC D2).
+    // Any OTHER error (connection drop, unrelated constraint) is genuinely unexpected — don't mask it
+    // as a bunk conflict; rethrow so it's logged/surfaced.
+    // MUST go through `isUniqueViolation`: Drizzle wraps the driver error and hangs the real
+    // PostgresError off `.cause`, so reading `.code` off the THROWN error always missed and this
+    // expected race threw instead of returning the message.
+    if (isUniqueViolation(err)) {
       return { ok: false, error: REASSIGN_MESSAGES.bunk_occupied };
     }
     throw err;

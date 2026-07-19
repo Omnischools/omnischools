@@ -1,7 +1,7 @@
 "use server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { withSchool } from "@/lib/db/rls";
+import { withSchool, pgError } from "@/lib/db/rls";
 import { requireSchool, resolveActor, assertWriteAccess } from "@/lib/auth/server";
 import { recordAudit } from "@/lib/db/audit";
 import { safeRevalidate } from "@/lib/revalidate";
@@ -105,7 +105,12 @@ export async function saveTemplate(input: unknown): Promise<Result> {
     if (msg.includes("locked")) {
       return { ok: false, error: "Submitted templates can't be edited — duplicate it as a new version." };
     }
-    if (msg.includes("uniq_whatsapp_template_name") || msg.includes("duplicate key")) {
+    // Match on the unwrapped SQLSTATE/constraint, NOT the thrown error's message: Drizzle's wrapper
+    // message is only "Failed query: …" — "duplicate key" and the constraint name live on `.cause`,
+    // so the old string match never fired. (The `locked` check above stays message-based: that error
+    // is thrown by our own code, not the driver, so it is not wrapped.)
+    const pg = pgError(e);
+    if (pg.constraint === "uniq_whatsapp_template_name" || pg.code === "23505") {
       return { ok: false, error: "A template with this name already exists." };
     }
     return { ok: false, error: "Could not save the template." };
