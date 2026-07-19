@@ -1,6 +1,6 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
-import { academicPeriod } from "@/db/schema";
+import { academicPeriod, classes } from "@/db/schema";
 
 /**
  * A real academic term for the Reports TERM / YEAR filters. Unlike the finance
@@ -50,6 +50,24 @@ export async function listAcademicTerms(schoolId: string): Promise<AcademicTerm[
     endsOn: r.endsOn,
     closed: r.closedAt != null,
   }));
+}
+
+export type ReportClass = { classId: string; name: string };
+
+/** Active classes for the report CLASS filter (teacher-scoped when a teacher id is given). */
+export async function listReportClasses(
+  schoolId: string,
+  teacherUserId?: string | null,
+): Promise<ReportClass[]> {
+  const filters = [eq(classes.schoolId, schoolId), eq(classes.active, true)];
+  if (teacherUserId) filters.push(eq(classes.classTeacherUserId, teacherUserId));
+  return withSchool(schoolId, (tx) =>
+    tx
+      .select({ classId: classes.id, name: classes.name })
+      .from(classes)
+      .where(and(...filters))
+      .orderBy(asc(classes.name)),
+  );
 }
 
 /**
