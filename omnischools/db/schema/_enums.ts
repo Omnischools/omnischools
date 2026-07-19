@@ -269,6 +269,36 @@ export const visitNotificationKindEnum = pgEnum("visit_notification_kind", [
   "OVERSTAY",
 ]);
 
+// Senior boarding discipline & deboardinization (SHS module 4.2) — INCR-13 (Kofi OQ1). The
+// disciplinary ladder's real consumer (surface 07, MODULE 4.2 closer). `infraction_severity` ==
+// the frozen `DeboardinizationSeverity` 5-value set (getDeboardinizationLadder) — schema-locked
+// (BUILD_STACK #4); the enum is the DB mirror of that constant so a rung can never drift. `status`
+// is the append-only lifecycle: OPEN → RESOLVED (closed) or OPEN → SUPERSEDED (corrected by a newer
+// row via parent_infraction_id) — never delete/edit (Kofi OQ5). `source` discriminates a MANUAL log
+// from the four auto-logged module stubs (exeat overdue / inspection daily+weekly FAIL / visit
+// overstay / resumption absent); it pairs with source_ref_id as the idempotency key so a repeating
+// on-read sweep never double-logs (Kofi OQ4).
+export const infractionSeverityEnum = pgEnum("infraction_severity", [
+  "NOTE",
+  "WARNING",
+  "BOND",
+  "SUSPENSION",
+  "DEBOARDINIZATION",
+]);
+export const infractionStatusEnum = pgEnum("infraction_status", [
+  "OPEN",
+  "RESOLVED",
+  "SUPERSEDED",
+]);
+export const infractionSourceEnum = pgEnum("infraction_source", [
+  "MANUAL",
+  "EXEAT_OVERDUE",
+  "INSPECTION_DAILY",
+  "INSPECTION_WEEKLY",
+  "VISIT_OVERSTAY",
+  "RESUMPTION_ABSENT",
+]);
+
 // Senior score ledger (SHS) — five-category model. Portfolio has NO assessment event
 // (it is a one-shot manual entry, spec §2/§4.1), so it is deliberately not a category here.
 export const assessmentCategoryEnum = pgEnum("assessment_category", [

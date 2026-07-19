@@ -351,6 +351,13 @@
       "when": 1784409648184,
       "tag": "0049_windy_jack_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1784419986530,
+      "tag": "0050_flat_kid_colt",
+      "breakpoints": true
     }
   ]
 }

@@ -13,7 +13,6 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import type { Tx } from "@/lib/db";
 import { withSchool } from "@/lib/db/rls";
-import { recordAudit } from "@/lib/db/audit";
 import {
   boardingExeat,
   exeatNotification,
@@ -21,6 +20,7 @@ import {
   studentGuardians,
 } from "@/db/schema";
 import { sendSms } from "@/lib/sms";
+import { insertInfraction } from "./discipline-core";
 import { getExeatBoard } from "./exeat-data";
 import {
   buildExeatSms,
@@ -175,17 +175,26 @@ export async function runOverdueChain(
           if (res === "sent") sent += 1;
           if (kind === "OVERDUE_STAGE_3") {
             stage3Stubs += 1;
-            // STUB — record the overdue escalation only; NO discipline row, NO invoice (INCR-13).
-            await recordAudit(tx, {
-              schoolId,
-              actorUserId: actorUserId ?? undefined,
-              actorRole,
-              actionType: "EXEAT_OVERDUE_NOTE_STUB",
-              entityType: "boarding_exeat",
-              entityId: row.id,
-              after: { stage: "OVERDUE_STAGE_3", refCode: row.refCode, note: "stub — no discipline/invoice written (INCR-13)" },
-              reason: "Late-return +1hr escalation (stub)",
-            });
+            // INCR-13: the +1hr escalation now writes a REAL NOTE against the overdue boarder,
+            // idempotent on (EXEAT_OVERDUE, exeat.id) — a repeat sweep never double-logs. Still NO
+            // invoice/finance write. Respects the pastoral bypass at the shared insert site.
+            const [ex] = await tx
+              .select({ studentId: boardingExeat.studentId })
+              .from(boardingExeat)
+              .where(and(eq(boardingExeat.schoolId, schoolId), eq(boardingExeat.id, row.id)))
+              .limit(1);
+            if (ex) {
+              await insertInfraction(tx, {
+                schoolId,
+                studentId: ex.studentId,
+                severity: "NOTE",
+                narrativeText: `Late return from exeat ${row.refCode} — not returned by the agreed time (+1hr escalation).`,
+                sourceKind: "EXEAT_OVERDUE",
+                sourceRefId: row.id,
+                loggedByUserId: actorUserId,
+                actorRole,
+              });
+            }
           }
         }
       }

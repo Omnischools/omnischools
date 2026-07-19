@@ -10,7 +10,8 @@
  * Per-visit kinds (ARRIVAL_CONFIRM/OVERSTAY) are visit-scoped. Overstay is on-read (no cron), grace 15
  * min. PII discipline: only the delivery to_phone is logged — never a visitor name/ID hint (AC J4).
  *
- * Overstay writes ZERO discipline rows (INCR-13 stub) — it is a notification only (AC G3).
+ * Overstay now ALSO writes a real NOTE against the visited student (INCR-13, idempotent on the visit
+ * id) in addition to the HM console SMS — still NO invoice/finance write.
  */
 import "server-only";
 import { and, eq, isNull, inArray } from "drizzle-orm";
@@ -28,6 +29,7 @@ import {
 } from "@/db/schema";
 import { canAccessHouse } from "@/lib/access";
 import { sendSms } from "@/lib/sms";
+import { insertInfraction } from "./discipline-core";
 import { isPastorallyFlagged } from "./pastoral-stub";
 import {
   cohortSms,
@@ -207,6 +209,7 @@ export async function sendVisitNotification(
 
   const [v] = await tx
     .select({
+      studentId: boardingVisit.studentId,
       houseId: boardingVisit.houseId,
       firstName: students.firstName,
       lastName: students.lastName,
@@ -217,6 +220,22 @@ export async function sendVisitNotification(
     .where(and(eq(boardingVisit.schoolId, schoolId), eq(boardingVisit.id, visitId)))
     .limit(1);
   if (!v) return "skipped";
+
+  // INCR-13: an OVERSTAY writes a REAL NOTE against the VISITED student (their visitor over-stayed the
+  // window), idempotent on (VISIT_OVERSTAY, visit.id) — the on-read overstay sweep never double-logs.
+  // Respects the pastoral bypass at the shared insert site. Still NO invoice/finance write.
+  if (kind === "OVERSTAY") {
+    await insertInfraction(tx, {
+      schoolId,
+      studentId: v.studentId,
+      severity: "NOTE",
+      narrativeText: "Visitor over-stayed the visiting-day window (out of bounds past gate-close).",
+      sourceKind: "VISIT_OVERSTAY",
+      sourceRefId: visitId,
+      loggedByUserId: actorUserId,
+      actorRole: "HOUSEMASTER",
+    });
+  }
 
   const [school] = await tx.select({ name: schools.name }).from(schools).where(eq(schools.id, schoolId)).limit(1);
   const schoolName = school?.name ?? "School";
