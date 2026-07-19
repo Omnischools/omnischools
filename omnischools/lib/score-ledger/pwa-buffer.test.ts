@@ -42,7 +42,7 @@ describe("pwa buffer — the R4 correctness state machine", () => {
     expect(pendingCount(s)).toBe(3);
     expect(stripTone(s)).toBe("gold");
     expect(heldStripText(pendingCount(s))).toBe(
-      "Connection lost · 3 scores held locally, will sync when reconnected",
+      "3 scores held offline · will sync when you're back online",
     );
   });
 
@@ -130,20 +130,25 @@ describe("pwa buffer — the R4 correctness state machine", () => {
     expect(heldCount(s)).toBe(0);
   });
 
-  it("held-strip / badge copy is honest and pluralises (R1)", () => {
+  it("held-strip / badge copy is honest and pluralises (R1 · INCR-14 phase-2 line)", () => {
     expect(heldStripText(1)).toBe(
-      "Connection lost · 1 score held locally, will sync when reconnected",
+      "1 score held offline · will sync when you're back online",
     );
     expect(heldBadgeText(1)).toBe(
-      "1 score on this card is held locally · will save when connection returns",
+      "1 score on this card held offline · will save when you're back online",
     );
     expect(heldBadgeText(3)).toBe(
-      "3 scores on this card are held locally · will save when connection returns",
+      "3 scores on this card held offline · will save when you're back online",
     );
-    // R1: never the banned words
+    // R1: phase 2 may honestly say "held offline" (extended single-device offline), but NEVER the
+    // Phase-3 claims — no "works offline", no multi-device/cross-device, no conflict-free, and a
+    // held score is never rendered "saved".
     for (const text of [heldStripText(2), heldBadgeText(2)]) {
-      expect(text.toLowerCase()).not.toContain("offline");
-      expect(text.toLowerCase()).not.toContain("saved");
+      const t = text.toLowerCase();
+      expect(t).not.toContain("works offline");
+      expect(t).not.toContain("saved");
+      expect(t).not.toContain("device");
+      expect(t).not.toContain("conflict");
     }
   });
 });

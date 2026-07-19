@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { requireSchoolRole, resolveActor } from "@/lib/auth/server";
+import { getSessionId } from "@/lib/auth";
 import { SENIOR_LEDGER_ROLES } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
 import {
@@ -529,6 +530,9 @@ export default async function ScoreLedgerPage(
       period?.academicYear ?? ""
     }`.replace(/ · $/, "");
 
+    // The stable session id partitions the phone ledger's durable IndexedDB buffer (INCR-14).
+    const sessionId = await getSessionId();
+
     pwaView = (
       <PwaLedger
         classes={pwaClasses}
@@ -538,6 +542,7 @@ export default async function ScoreLedgerPage(
         teacherId={user.id}
         teacherName={user.name ?? "Teacher"}
         semesterMeta={semesterMeta}
+        sessionId={sessionId}
       />
     );
   }

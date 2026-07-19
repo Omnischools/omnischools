@@ -1733,7 +1733,7 @@ gate-check ∥ derivations ∥ zone/max-N constants → surface-06 UI → SMS ch
 
 ---
 
-## Next increment — INCR-13 · Boarding discipline & deboardinization — surface 07 · migration 0050 · **CLOSES MODULE 4.2**
+## INCR-13 ✅ MERGED (PR #157, `6c50ec8`) — Boarding discipline & deboardinization · surface 07 · migration 0050 · 🏁 CLOSED MODULE 4.2 · ⚠️ prod deploy: hand-paste `prod-paste-0050-boarding-discipline.sql`
 
 > **🟥 SCOPE BOUNDARY (OWNER-SETTLED — DO NOT RE-OPEN): BUILD ALL OF INCR-13 EXCEPT THE INVOICE WRITE.** The 3× boarding-fee penalty →
 > production-billing invoice write (BUILD_STACK #6 / module owner decision #2) is **STUBBED**: model
@@ -1924,3 +1924,132 @@ SMS console → 3 gates → Sarah merge → Pence sync → **MODULE 4.2 CLOSED**
 - **Empty/interaction states to BUILD (some not in the mock):** no-active-cases (EmptyState); bond mid-signing 1-of-3 (slot flips, pill
   "Awaiting N signatures"); **deboardinization 2-of-3 pending = an uncommitted DRAFT** (status "Awaiting co-signs (2 of 3)", NOT off-roll,
   excluded from the DEBOARDINIZED count until all 3 land); Board-review-pending (`.review` ring + motion box); penalty stub; pastorally-flagged.
+
+---
+
+## Next increment — INCR-14 · Score Ledger Item 9 · PWA phase 2 — offline buffering for extended sessions · NO new migration · REOPENS MODULE 4.1
+
+> Module 4.1 was closed at Item 7/INCR-6; **Item 9 was deferred as a v2 item (§11 line 372 "Later — PWA phase 2 IF real demand surfaces");
+> the owner now wants it.** `senior-feat` level with `main` (`c03f93d`); Boarding (4.2) complete. **No migration; Wells OFF the critical path**
+> (client-side IndexedDB; the Path-C write `saveDirectLedgerScores`/`savePortfolioScores` is an `onConflictDoUpdate` upsert on
+> `student×subject×period`, so an extended-offline replay is naturally idempotent — no dup rows, no idempotency-key column, no schema).
+> Two OWNER CALLs gate copy + pre-cache scope — **PROCEEDING ON DEFAULTS** (below): honest line "Enter a full class's scores with no signal
+> — they save when you're back online" (single-device); pre-cache **all current-semester assigned rosters** (warn-and-keep, no cap).
+
+### Goal
+Make the Phase-1 pending buffer + rosters **durable across a full offline session** via IndexedDB, so a teacher can enter a **whole
+class's scores with no signal**, close and reopen the app, and still have every entry + the roster present, then flush to the server on
+reconnect. **Single-device only — NO multi-device conflict resolution (Phase 3 / Item 10, OUT).** The honest promise EVOLVES here: Phase 1
+was "works on your phone, handles bad connections" (never "offline"); Phase 2 **can honestly promise extended single-device offline** — but
+STILL never "works across your devices" / conflict-free. Also closes Item 5's tracked **shared-device follow-up**: bind the IndexedDB store
++ the SW cache partition to the **session token** (not just the uid) so a logout/re-login can't surface a prior user's pending scores.
+
+### Done when
+A teacher enters a **full class's scores with NO connectivity**; the entries (typed cells + pending/errored buffer state) AND the roster
+**persist in IndexedDB across an app close/reopen** (not just a network drop with the tab open — that was Phase 1); on reconnect the buffer
+**auto-flushes to the same Path-C server actions** — no lost work, no duplicate write (idempotent upsert), no false "saved"; a domain
+`{ok:false}` on flush surfaces the **red errored cell** and that red state **survives the reopen** (never re-parked as "will sync" —
+MAJOR-1). On a shared tablet, after logout (or a different teacher logging in), the prior teacher's pending scores are **gone** (IndexedDB
+store + SW cache keyed to the session token, wiped on logout). Still single-device; Phase-1's in-memory path + the desktop web ledger
+unchanged. **IndexedDB + Cache API only — no `next-pwa`, no Vercel KV/Blob/Postgres.** Tenant-scoped; three gates green.
+
+### Architecture crux
+The **pure buffer reducer (`lib/score-ledger/pwa-buffer.ts`) stays source-of-truth** — IndexedDB is a persistence layer BENEATH it, not a
+rewrite. Phase 2 = (a) an IndexedDB store module snapshotting the reducer state (`pending`/`errored`/`episode`/`lastError`/`lastSyncedAt`) +
+the typed `cells` map + the pre-cached rosters, keyed to the **session token**; (b) `pwa-ledger.tsx` **hydrates from IndexedDB on mount**
+(replaces Phase-1's "fall back to last server-confirmed on reload") and **persists on every edit/confirm/reject**; (c) the SW ledger-cache
+partition (`public/sw.js` `LEDGER_PREFIX`) re-keyed `<uid>`→**session token** (closes the Phase-1 shared-device ceiling); (d) the logout
+purge (`sign-out-button.tsx` + SW `omnischools-clear`) extended to **also wipe the IndexedDB store**. The **server write path is UNCHANGED**
+— flush (`pwa-flush.ts`) still calls the Path-C upserts (idempotent replay). No new schema.
+
+### Step table
+| Step | Owner | State |
+|---|---|---|
+| Rulings on the open questions + Phase-2 AC (durability boundary · honest phase-2 line · pre-cache scope · session-token partition · flush/domain-reject persistence · single-device confirm); confirm the DEFAULT owner calls | Kofi | ⬜ gates build |
+| Surface confirm — `Surfaces/schoolup-shs-score-ledger-pwa.html`: NO dedicated phase-2 UI; phase 2 **deepens the gold sync strip** into a durable-across-reopen state + **graduates the roadmap "Phase 2 · later" card to "ships now"** + the evolved marketing caption. Note new copy | Lucy | ⬜ small |
+| **NO schema — Wells confirm-only** (Pence already confirmed the Path-C write is `onConflictDoUpdate`; extended-offline replay idempotent; no idempotency-key column). Flag ONLY if a non-idempotent write surfaces | Wells | ⬜ confirm-only (satisfied) |
+| IndexedDB store module — snapshot reducer state + `cells` + pre-cached rosters, keyed to the **session token**; single store-version constant; Cache API only, no `next-pwa`/Vercel KV | Claude Code | ⬜ |
+| Hydrate + persist wiring — `pwa-ledger.tsx` loads on mount (replaces Phase-1 reload fallback) + writes on every edit/confirm/reject; reducer stays source-of-truth; retire the Phase-1 pending-buffer `beforeunload` warning now that pending is durable (keep an unsynced indicator) | Claude Code | ⬜ |
+| Pre-cache rosters — persist the teacher's `senior_subject_teacher` current-semester assignments into IndexedDB (all assigned, per the default); eager on first online load so a later signal-less open of any assigned class works; staleness = refresh on any successful online load | Claude Code | ⬜ |
+| Session-token partition (Item-5 follow-up) — re-key the SW ledger cache + IndexedDB store `<uid>`→session token; purge non-current-session partitions on identify (`pwa-session.tsx`) | Claude Code | ⬜ |
+| Logout / shared-device purge — extend `sign-out-button.tsx` + SW `omnischools-clear` to **delete the IndexedDB store** so pending scores never survive logout on a shared tablet | Claude Code | ⬜ |
+| Flush-on-reconnect + domain-reject persistence — reuse `pwa-flush.ts` (transport-hold vs domain-`{ok:false}`); **persist the errored red state to IndexedDB so it survives reopen** — never re-park as "will sync" (MAJOR-1) | Claude Code | ⬜ |
+| Honest copy / roadmap evolution — apply the phase-2 line; graduate the roadmap Phase-2 card; NEVER promise multi-device/conflict-free | Claude Code | ⬜ |
+| Build · lint · typecheck · self-verify (DevTools: full class offline → close+reopen the installed app → entries+roster present → reconnect → syncs; domain-reject survives reopen as red; logout wipes IndexedDB; **a real `pnpm build` to catch a Vercel/`next-pwa` portability leak**) | Claude Code | ⬜ |
+| QA — full offline session survives close/reopen (entries+roster); flush no-loss/no-dup; domain-`{ok:false}` red survives reopen; logout wipes IndexedDB; shared-device session-token partition (B never sees A's pending); Phase-1 in-memory + desktop web unbroken; **copy never promises multi-device** | Quinn | ⬜ |
+| Architecture/portability — IndexedDB + Cache API only (no `next-pwa`/Vercel KV/Blob/Postgres); server write path unchanged; buffer reducer still source-of-truth; single store+cache version constant | Dex | ⬜ |
+| Security — pending SCORES (PII) now durable in IndexedDB on a shared tablet; **session-token partition + logout purge MUST wipe them**; cross-session/cross-tenant isolation; prod parity | Sarah | ⬜ holds merge |
+| Gate fixes (aggregated) | Claude Code | ⬜ |
+| Merge · verify `git log origin/main` · **Pence syncs senior-feat←main** | Sarah + Pence | ⬜ |
+
+### Dependencies / critical path
+**Extends Item 5 (INCR-4):** `pwa-buffer.ts` (reducer state = what's persisted), `pwa-flush.ts` (reused UNCHANGED), `public/sw.js` (cache
+partition re-keyed uid→session token), `pwa-ledger.tsx` (hydrate/persist), `pwa-session.tsx` + `sign-out-button.tsx` (session-token identify
++ IndexedDB purge). **Flushes to the existing Path-C server actions** (unchanged, idempotent upsert). **Closes the Item-5 shared-device
+follow-up.** Kofi ∥ Lucy ∥ Wells(confirm-only) parallel. Claude Code: IndexedDB store → hydrate/persist → roster pre-cache → session-token
+partition → logout purge → flush/domain-reject persistence → honest copy → self-verify → 3 gates → Sarah merge → Pence sync. **No forward deps, no migration.**
+
+### Open questions — Kofi rules (OWNER CALLs Q1/Q2 = PROCEEDING ON DEFAULTS)
+1. **Honest phase-2 marketing line (OWNER CALL — default taken).** _"Enter a full class's scores with no signal — they save when you're
+   back online"_ (single-device). OFF-LIMITS: any "works across your devices" / conflict-free / multi-device claim. Owner may swap the exact string.
+2. **Extended scope (OWNER CALL — default taken):** pre-cache **all the teacher's current-semester assigned rosters** (`senior_subject_teacher`);
+   NO hard cap (reuse Item-5 live-count warn-and-keep, never-block, never-silently-drop); staleness = refresh on any successful online load.
+3. **Which rosters + when.** Eager pre-fetch of the assigned set on first online load (a lazy-only would silently fail an unvisited class offline).
+4. **Sync-queue flush semantics + single-device confirm.** Order per-class groups; retry on `online`; **domain-`{ok:false}` → red errored cell (MAJOR-1),
+   PERSISTED across reopen, never "will sync"/never dropped.** Flush hits the unchanged Path-C actions. **Single-device: a second device's edits are Item 10, NOT reconciled (no last-write-wins — Phase 3).**
+5. **Session-token partition (Sarah gates).** Bind the IndexedDB store + SW cache partition to the **session token** (not the uid) so a shared-device logout/re-login can't surface a prior user's pending scores. Confirm a stable client-side session identifier is available.
+6. **Idempotency (confirm no schema).** Path-C write is `onConflictDoUpdate` on `student×subject×period` → replay-idempotent; no dup rows, no idempotency-key column, no migration. (Confirmed by Pence.)
+7. **`beforeunload` fate.** Pending is durable now → drop the pending-buffer close-warning; keep a visible unsynced indicator (errored cells still visible).
+
+### Risk flags
+- **R1 — Honesty line (BINDING, evolves):** phase 2 unlocks an honest extended single-device offline claim; **NEVER** multi-device/conflict-free (Phase 3). A pending score still never renders "saved." The roadmap Phase-2 card graduates; Phase-3 stays "later still." Kofi + Quinn gate copy.
+- **R2 — Portability (memory-critical):** **IndexedDB + Cache API ONLY — no `next-pwa`, no Vercel KV/Blob/Postgres.** Server write path UNCHANGED. A `@vercel/kv`/`next-pwa` leak fails only at `pnpm build` (not typecheck) — self-verify MUST run a real build. Dex gates.
+- **R3 — Shared-device PII (Sarah holds merge):** phase 2 makes pending **scores** durable in IndexedDB on a shared tablet; the **session-token partition + logout purge MUST wipe them** (zero of the prior teacher's pending scores survive a logout / a different login). Strictly heavier than Phase-1's cache-only leak.
+- **R4 — No silent data loss (MAJOR-1):** a domain-`{ok:false}` on flush surfaces the red errored cell + persists it across reopen — never "will sync," never dropped. The "enter offline, sync when back" promise must not quietly become "drop the rejected ones." Quinn gates.
+- **R5 — Don't break Phase 1 / desktop:** the reducer stays source-of-truth (IndexedDB is persistence beneath it, not a fork); the in-memory transport-hold path + the desktop web ledger (no IndexedDB) untouched. Quinn asserts both.
+
+### Prerequisites / stop-and-ask
+- ✅ `senior-feat` level with `main` (`c03f93d`). Item-9 demand-trigger satisfied by owner direction. No migration; no paid external service (IndexedDB/Cache API in-browser).
+- **OWNER CALLs Q1 (marketing line) + Q2 (extended scope) — proceeding on the recommended defaults** (swap-on-word); not blocking.
+
+### Kofi rulings + AC (2026-07-19) — no schema (Wells confirm-only)
+- **Q1/Q2 (owner defaults, restated):** honest line "Enter a full class's scores with no signal — they save when you're back online" (single-device; NEVER multi-device/conflict-free); pre-cache **all current-semester `senior_subject_teacher` assigned rosters**, no cap (warn-and-keep), refresh-on-online, current-semester only.
+- **Q4 durability + reject persistence:** IndexedDB persists the reducer snapshot (`pending`/`errored`/`episode`/`lastError`/`lastSyncedAt`) + the `cells` map + pre-cached rosters, keyed to the **session token**, surviving app close/reopen; **local persist is IMMEDIATE per edit/confirm/reject** (only the network flush keeps the 700ms debounce, so no edit lost in the close window); flush per-class groups, retries on `online` AND on mount-while-online-with-pending, hits the unchanged Path-C actions; a domain-`{ok:false}` → **red errored cell PERSISTED** so it survives reopen (MAJOR-1 deepened).
+- **Q5 single-device (confirm boundary):** a 2nd device's edits are NOT reconciled (Phase 3/Item 10, OUT); no last-write-wins; the reducer stays source-of-truth, IndexedDB is persistence beneath it.
+- **Session-token partition (Sarah gates):** key BOTH the IndexedDB store and the SW `LEDGER_PREFIX` to the **Supabase session id** (`getSession().data.session`) — stable across close/reopen + across hourly token refresh, rotates on logout/re-login. **Add `getSessionId()` to `lib/auth/index.ts`; do NOT touch `supabase.auth.*` in feature code (portability). Use the session ID, NEVER the raw access-token JWT** (a bearer secret + rotates hourly → would orphan the buffer). Dev-bypass (no Supabase session) → fall back to uid (single-user by construction). Logout purge wipes BOTH the SW cache AND the IndexedDB store.
+- **Q7 `beforeunload`:** **DROP it entirely** (pending + errored are both durable now); keep the visible unsynced indicators (gold strip, red cells, error banner).
+- **Honest invariant (binding):** a pending score NEVER renders "saved"; on hydrate a pending cell = GOLD/held, an errored cell = RED (status from the persisted reducer, never inferred green from a typed value); roadmap Phase-2 card graduates "later"→"ships now", Phase-3 stays "later still"; copy never promises multi-device.
+- **🔴 Trap-1 remedy — ORCHESTRATOR DECISION = Option A (Kofi flagged for owner; decided as an engineering-precision call, invariant preserved either way):** both Path-C actions (`saveDirectLedgerScores` :857, `savePortfolioScores` :584) **silently skip** a non-ACTIVE student yet return `{ok:true, saved:N}` → Phase 2's long offline window makes roster drift likely → the flush's `bufferConfirm` would green a dropped student's cell from `{ok:true}` alone (false-save = MAJOR-1 re-entering). **Fix: ADDITIVELY extend the two Path-C result shapes to return the WRITTEN student ids** (keep `saved:N` for existing desktop callers — additive, no break), so the flush confirms EXACTLY the written ids and routes the rest to **red errored** ("student no longer in this class — score not saved"). Return-shape only — the DB write is unchanged, no schema, no migration, replay-idempotent.
+
+#### INCR-14 · Acceptance criteria (for Quinn)
+- **AC1 durability:** a full class's scores entered offline + the roster PERSIST in IndexedDB across an app **close/reopen** (not just a tab-open drop); each entered cell renders gold/held, never green.
+- **AC2 flush:** reconnect (or reopen-while-online-with-pending) auto-flushes to the Path-C actions with NO lost work; a reopen-online must flush without waiting for an offline→online event.
+- **AC3 idempotent:** re-flushing the same batch → NO duplicate rows (one per `student×subject×period`), identical values.
+- **AC4 rerun latch:** a mid-flush re-edited cell stays pending + resends its new value (phase-1 behavior unbroken).
+- **AC5 MAJOR-1 deepened:** a domain-`{ok:false}` cell → red errored, persisted, **survives close/reopen still red** — never "will sync"/dropped/green. **Trap-1: a written-off (stale-roster) cell also goes red** ("not saved — student no longer in this class"), never green, via the Option-A written-ids return.
+- **AC6 re-edit clears:** editing a hydrated red cell clears the error → pending → re-flush (errored must hydrate into `reducer.errored`, not pending/clean).
+- **AC7 pre-cache:** after an eager online load, any assigned current-semester class is offline-openable (incl. one not visited this session); historical/closed-semester classes are NOT.
+- **AC8 warn-and-keep:** a large assigned set warns-and-keeps (never blocks/silently drops); rosters refresh on next online load.
+- **AC9 logout purge:** teacher A logs out → ZERO of A's pending scores/rosters remain in IndexedDB OR the SW cache.
+- **AC10 shared-device:** teacher B logs in on the same tablet (A didn't log out) → B sees NONE of A's pending/rosters (session-token partition + purge-on-identify).
+- **AC11 token refresh:** an hourly access-token refresh does NOT change the partition key (keyed to the stable session id, not the JWT) — buffer not orphaned.
+- **AC12/13 no regression:** phase-1 in-memory transport-hold path unbroken; desktop web ledger (no SW/IndexedDB) works unchanged, no console error.
+- **AC14 copy:** the phase-2 caption reads the settled line, NOWHERE claims multi-device/conflict-free; roadmap Phase-2 = "ships now", Phase-3 = "later still".
+- **AC15 portability:** IndexedDB + Cache API only (no `next-pwa`/`@vercel/kv`/Blob/Postgres); server write path unchanged (bar the additive Path-C return field); a **real `pnpm build`** passes (the leak class fails only at build); single store-version + single SW VERSION constant.
+- **Traps (Kofi):** (2) a since-revoked `senior_subject_teacher` assignment — no new write path, authz is whatever Path-C already enforces; actively rejecting a revoked-assignment offline score = a server change, OUT of Item 9 (flag). (3) **store-version bump must NOT blind-wipe a store holding unsynced pending/errored** — SW cache (rebuildable, wipe-safe) vs IndexedDB store (only copy of unsynced work) get SEPARATE version constants + policies; migrate-forward / flush-then-clear, never silent drop. (4) two tabs of one session — IndexedDB origin-shared; hydrate MERGES persisted pending/errored (never zero another tab's unsynced); live cross-tab sync NOT a phase-2 requirement (documented ceiling; the server upsert is the reconciliation point). (5) session id stable across offline; (6) errored+re-edit handled by existing `bufferEdit`; (7) **hydration re-derives `online` live from `navigator.onLine`** (not the persisted `online:false`) + `episode = hasPending`, else a reopened-online buffer sits gold forever without flushing.
+
+### Lucy surface confirm (PWA phase 2 — states/copy deepening, NO new surface)
+- **Gold sync strip (copy edit in 2 helpers, tokens unchanged):** the buffer survives close/reopen so on a signal-less reopen there is NO live "Connection lost" event — drop the event-framed prefix. `heldStripText(n)` → **"{n} score{s} held offline · will sync when you're back online"**; `heldBadgeText(n)` → **"{n} score{s} on this card held offline · will save when you're back online"** (`lib/score-ledger/pwa-buffer.ts`). Green "All scores synced · last …" UNCHANGED; a held score still never renders "saved".
+- **Roadmap panel (Section 4, mechanical):** graduate the Phase-2 card eyebrow **"Phase 2 · later · trigger = real demand" → "Phase 2 · ships now"** + re-tone muted-navy-3 → shipped-state (green eyebrow, opacity 1, gold-bg — match the Phase-1 card); Section-04 meta **"Three phases · only one ships now" → "…two now shipped"**; **Phase-3 card UNCHANGED ("later still", opacity 0.55)**.
+- **Honest caption → the settled line** ("Enter a full class's scores with no signal — they save when you're back online", single-device) replaces the phase-1 "works on your phone, handles bad connections / Not works offline" caption. **MUST NOT show anywhere:** "works across your devices"/multi-device/cross-device, "conflict-free"/conflict-resolution/last-write-wins/offline-first, or "works offline" used to imply the Phase-3 story — those stay Phase 3 "later still". Keep single-device explicit.
+- **Red errored cell:** treatment UNCHANGED (`border-terra bg-terra-bg text-terra` on the input + the error banner from `buffer.lastError`); now PERSISTS across reopen (the `errored` map + `lastError` are in the persisted snapshot). No new tint.
+- **No-alpha discipline clean** — all status tints are solid `-bg` brand tokens (gold-bg/green-bg/terra-bg), no slash-opacity; phase 2 adds no new tint.
+
+### INCR-14 · Build + gate outcomes (impl `dd88cd6`, +test `b960a00`)
+- **Files (13 + 1 test):** `lib/auth/index.ts` (new `getSessionId()`/`sessionIdFromJwt` — server-only, decodes the stable `session_id` claim, never the rotating raw JWT), `lib/score-ledger/pwa-store.ts` (NEW plain-IndexedDB layer), `pwa-flush.ts` (Trap-1 confirm/reject + `STALE_ROSTER_ERROR`), `pwa-buffer.ts` (phase-2 copy), `lib/actions/score-ledger.ts` (additive `writtenIds` on both Path-C actions — `{ok,saved}` unchanged), `components/senior/pwa-ledger.tsx` (hydrate/persist, `beforeunload` removed), `components/pwa-session.tsx` + `components/app/sign-out-button.tsx` (session-keyed purge on identify + logout, wipes IndexedDB **and** SW cache), `public/sw.js` (`LEDGER_PREFIX` uid→session id), `app/(app)/layout.tsx` + `app/(app)/senior/score-ledger/page.tsx` (thread `getSessionId()`), + `lib/score-ledger/pwa-store.test.ts` (NEW, fake-indexeddb).
+- **Gates ALL GREEN:** Quinn **GREEN** (323/323 tests, typecheck+build clean; Trap-1 red-path proven; idempotent upsert byte-for-byte intact; desktop grid + phase-1 hold path unbroken; copy honest). Dex **APPROVE** (IndexedDB+CacheAPI only, no new runtime dep, seam confined to `lib/auth`; `DB_VERSION`/`STORE_VERSION`/SW `VERSION` correctly 3-way separated; `loadSnapshot` never wipes on a version delta). Sarah **CLEAR-TO-MERGE** (isolation is **structural** — session-prefixed keys mean B can't read A's records regardless of purge timing; unverified claim used only to name a client cache partition, never authz; RLS untouched; **no schema/migration/RLS/prod-paste** this increment — nothing to hand-paste on prod).
+- **AC15 build:** a clean `pnpm exec next build` on the installed **Next 15.5.20** passes end-to-end (full route table, exit 0). Dex's build caveat was his subagent invoking a stale pnpm-cached `next@14.2.35`, not the diff.
+- **Coverage follow-up DONE (Quinn note #2):** added `fake-indexeddb` (test-only devDep) + `pwa-store.test.ts` — 7 cases covering the durable round-trip (pending+errored survive), subject-partition non-bleed, and the AC9/AC10 purge isolation (the shared-tablet children's-PII path). The store is no longer the untested mechanism.
+- **🟠 AC7 RATIFIED as within-subject for Phase 2 (orchestrator scope note; Quinn #1):** eager pre-cache makes any assigned **same-subject** class offline-openable incl. one not visited this session (all same-subject classes load into one page render; the class switcher is pure client state — no refetch). A **cross-subject** unvisited class is NOT eagerly pre-loaded: the reducer is single-subject (`cellId`/`weights`/flush routing scope one `subjectId`), and merging cross-subject rosters into one view would misroute a held score — **both Dex and Quinn independently ruled the boundary sound, not an under-build.** The cross-subject miss fails **honestly and loudly** — an explicit "can't load this class without a connection; your held scores are safe and will sync" page (`sw.js` offline fallback), never a false-empty roster, never a false-save, **no data loss** (MAJOR-1 invariant intact). True cross-subject eager offline (SW warm-fetch of every assigned-subject URL, or a multi-subject view) is **Phase 3 / Item 10**. Kofi's Q3 "eager pre-fetch of the assigned SET" is honoured **per subject**; the cross-subject clause is explicitly deferred here rather than silently narrowed. `snapshot.rosters` is persisted now (board-mandated) but read-only until that Phase-3 reconstruction lands.
+- **Live DevTools self-verify = the remaining manual E2E proof (owner, at merge):** the offline close/reopen, logout-wipe, and shared-device flows can't run in the node test runner. Checklist: (1) offline → enter a full class's scores → **close & reopen the app still offline** → scores present & GOLD, none green; (2) reconnect → auto-flush → all green, no dup rows on a second flush; (3) a deliberately-invalid score → RED, **survives close/reopen still red**; (4) log out teacher A → A's pending scores/rosters gone from IndexedDB **and** the SW cache; (5) log in teacher B on the same tablet → B sees **none** of A's held scores.
+- **Deferred (unchanged owner calls, NOT this increment):** cross-tab live sync (documented ceiling; server upsert is the reconciliation point); a pre-existing marketing FAQ "offline-first" line (`components/marketing/faq.tsx`, NOT touched by this diff — flag to Lucy separately); the untracked `Surfaces/schoolup-shs-score-ledger-pwa.html` roadmap/caption graduation (design artifact in the parent tree, no app component renders it — Lucy to sync the mockup: Phase-2 card → "ships now", Section-04 meta → "two now shipped", caption → the honest single-device line).

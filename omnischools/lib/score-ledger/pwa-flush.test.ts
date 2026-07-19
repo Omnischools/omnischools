@@ -134,6 +134,23 @@ describe("pwa flush — transport-fail vs domain-{ok:false} routing (the wiring 
     expect(portfolio).not.toHaveBeenCalled();
   });
 
+  it("Trap-1: a submitted-but-unwritten (off-roster) cell goes RED; the written one greens (MAJOR-1)", async () => {
+    const S1 = "stu-1";
+    const S2 = "stu-2";
+    const c1 = cellId(S1, "portfolio");
+    const c2 = cellId(S2, "portfolio");
+    const { deps, getBuf } = harness("DIRECT_ENTRY", { [c1]: "70", [c2]: "80" });
+    // The Path-C action silently skipped S2 (no longer on the roster) and returns only S1 written.
+    deps.saveDirect = async (): Promise<SaveResult> => ({ ok: true, saved: 1, writtenIds: [S1] });
+
+    await flushPending(deps);
+
+    expect(cellStatus(getBuf(), c1)).toBe("clean"); // written → confirmed green
+    expect(cellStatus(getBuf(), c2)).toBe("errored"); // unwritten → RED, never a false "saved"
+    expect(getBuf().errored[c2]).toBe("80"); // value preserved for the teacher
+    expect(getBuf().lastError).toContain("no longer in this class");
+  });
+
   it("snapshot compare + rerun latch: a cell re-edited mid-flight is resent, not falsely confirmed", async () => {
     const { deps, getBuf, cells } = harness("AUTO_COMPILE", { [PORT]: "80" });
     const seen: string[] = [];

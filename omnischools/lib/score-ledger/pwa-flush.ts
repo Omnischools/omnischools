@@ -16,8 +16,18 @@ import {
   type PwaCat,
 } from "./pwa-buffer";
 
-/** The two save actions share this result shape (SaveDirectResult / SavePortfolioResult). */
-export type SaveResult = { ok: true; saved: number } | { ok: false; error: string };
+/** The two save actions share this result shape (SaveDirectResult / SavePortfolioResult).
+ *  `writtenIds` (INCR-14 · Trap-1, Option A) is the OPTIONAL additive list of student ids actually
+ *  upserted; when present the flush confirms EXACTLY those and reds any submitted-but-unwritten cell
+ *  (a student silently dropped for no longer being on the class roster). When absent, behaviour is
+ *  the Phase-1 all-settled confirm (keeps existing desktop callers and unit tests unchanged). */
+export type SaveResult =
+  | { ok: true; saved: number; writtenIds?: string[] }
+  | { ok: false; error: string };
+
+/** Surfaced (red) when a held score was flushed for a student the server no longer finds on the
+ *  class roster — an extended offline window makes roster drift likely (MAJOR-1: never green). */
+export const STALE_ROSTER_ERROR = "Student no longer in this class — score not saved";
 
 /** Only the fields the flush needs off a PwaClass — its id and its capture path. */
 export interface FlushClass {
@@ -135,8 +145,19 @@ export async function flushPending(deps: FlushDeps): Promise<void> {
         const settled = groupCells.filter(
           (id) => deps.getBuffer().pending[id] === snapshot.get(id),
         );
-        if (res.ok) deps.setBuffer((s) => bufferConfirm(s, settled, deps.now()));
-        else deps.setBuffer((s) => bufferReject(s, settled, res.error)); // domain error → surface (R4)
+        if (!res.ok) {
+          deps.setBuffer((s) => bufferReject(s, settled, res.error)); // domain error → surface (R4)
+        } else if (!res.writtenIds) {
+          deps.setBuffer((s) => bufferConfirm(s, settled, deps.now())); // Phase-1 path (no drift info)
+        } else {
+          // Trap-1 (MAJOR-1 deepened): confirm EXACTLY the written ids (green); a submitted cell the
+          // server did NOT write (student off the roster now) goes RED, never falsely "saved".
+          const written = new Set(res.writtenIds);
+          const confirmed = settled.filter((id) => written.has(studentOfCell(id)));
+          const dropped = settled.filter((id) => !written.has(studentOfCell(id)));
+          if (confirmed.length) deps.setBuffer((s) => bufferConfirm(s, confirmed, deps.now()));
+          if (dropped.length) deps.setBuffer((s) => bufferReject(s, dropped, STALE_ROSTER_ERROR));
+        }
       }
     } while (latch.rerun);
   } finally {

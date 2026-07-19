@@ -17,7 +17,6 @@ import {
   bufferSetOnline,
   cellStatus,
   cellHeld,
-  hasPending,
   heldCount,
   stripTone,
   heldStripText,
@@ -25,6 +24,7 @@ import {
   type PendingBuffer,
 } from "@/lib/score-ledger/pwa-buffer";
 import { flushPending, type FlushLatch } from "@/lib/score-ledger/pwa-flush";
+import { loadSnapshot, saveSnapshot } from "@/lib/score-ledger/pwa-store";
 import {
   readViewPref,
   writeViewPref,
@@ -58,6 +58,9 @@ type Props = {
   teacherId: string;
   teacherName: string;
   semesterMeta: string; // "Semester 2 · 2025/26"
+  /** Stable Supabase session id (lib/auth getSessionId) — the IndexedDB durable-buffer partition
+   *  key (INCR-14). Survives the hourly token refresh; rotates on logout / a new teacher. */
+  sessionId: string;
 };
 
 // Card uses the fuller labels; Grid uses the tight 3-letter header (surface §1.2 / §1.3).
@@ -104,7 +107,7 @@ const PILL_CLS: Record<SwitcherPill, string> = {
 };
 
 export function PwaLedger(props: Props) {
-  const { classes, subjectId, periodId, teacherId, teacherName, semesterMeta } = props;
+  const { classes, subjectId, periodId, teacherId, teacherName, semesterMeta, sessionId } = props;
 
   const [activeClassId, setActiveClassId] = useState(props.activeClassId);
   const active = classes.find((c) => c.classId === activeClassId) ?? classes[0];
@@ -191,6 +194,9 @@ export function PwaLedger(props: Props) {
     clearTimeout(flushTimer.current);
     flushTimer.current = setTimeout(() => void flush(), 700);
   }, [flush]);
+  // A ref so the one-shot hydrate effect can auto-flush without taking `flush` as a dependency.
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
 
   // Connectivity: reflect the true state at mount, then track events and auto-flush on reconnect.
   useEffect(() => {
@@ -209,18 +215,70 @@ export function PwaLedger(props: Props) {
     };
   }, [flush]);
 
-  // Warn before a hard reload/close while scores are still held (B5) — the in-memory buffer does
-  // NOT survive a reload; on reload cells fall back to the last server-confirmed value.
+  // Hydrate the durable buffer on mount (INCR-14 · Phase 2) — replaces Phase-1's "fall back to the
+  // last server-confirmed value on reload". Runs ONCE. Held scores + errored cells now survive a
+  // full app close/reopen, so there is no more `beforeunload` unsaved-warning (dropped): the visible
+  // gold strip / red cells / error banner are the indicators.
+  const [hydrated, setHydrated] = useState(false);
+  const didHydrate = useRef(false);
   useEffect(() => {
-    const warn = (e: BeforeUnloadEvent) => {
-      if (hasPending(bufferRef.current)) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
+    if (didHydrate.current) return;
+    didHydrate.current = true;
+    let cancelled = false;
+    void loadSnapshot({ sessionId, subjectId, periodId })
+      .then((snap) => {
+        if (cancelled) return;
+        if (snap) {
+          // Overlay ONLY the unsynced (pending/errored) typed values — a clean cell keeps the fresh
+          // server/cached render, never a stale persisted copy. The value lives in the reducer maps.
+          const held = { ...snap.buffer.pending, ...snap.buffer.errored };
+          if (Object.keys(held).length) setCells((c) => ({ ...c, ...held }));
+          setBuffer((cur) => {
+            // Trap-4: MERGE (union) persisted pending/errored with this tab's — never zero another
+            // tab's unsynced work. This tab's live value wins a key collision (fresher in-tab edit).
+            const pending = { ...snap.buffer.pending, ...cur.pending };
+            const errored = { ...snap.buffer.errored, ...cur.errored };
+            return {
+              ...snap.buffer,
+              pending,
+              errored,
+              // Trap-7: re-derive `online` LIVE — NEVER trust a persisted online:false, or a
+              // reopened-online buffer would sit gold forever without flushing.
+              online: typeof navigator === "undefined" || navigator.onLine,
+              episode: Object.keys(pending).length > 0, // gold iff held work remains; else green
+              lastError: cur.lastError ?? snap.buffer.lastError, // errored cells hydrate RED + banner
+            };
+          });
+          // AC2: a reopen-while-online-with-pending auto-flushes WITHOUT waiting for an
+          // offline→online event (that event only fires on a live transition, not on reopen).
+          const online = typeof navigator === "undefined" || navigator.onLine;
+          if (online && Object.keys(snap.buffer.pending).length > 0) {
+            setTimeout(() => {
+              if (!cancelled) void flushRef.current();
+            }, 0);
+          }
+        }
+        setHydrated(true);
+      });
+    return () => {
+      cancelled = true;
     };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, []);
+  }, [sessionId, subjectId, periodId]);
+
+  // Persist IMMEDIATELY on every reducer/cells change (Q4 — local persist is NOT debounced; only
+  // the network flush keeps the 700ms debounce), so no edit is lost in the close window. Guarded on
+  // `hydrated` so the pre-hydration empty buffer never overwrites a good snapshot. Rosters ride
+  // along so the assigned set is durable + refreshed on each online render (AC8 warn-and-keep; a
+  // large set never blocks — saveSnapshot is best-effort).
+  // ponytail: whole-snapshot put per edit; split the roster + buffer stores only if a large roster
+  // makes the per-edit put measurably slow.
+  useEffect(() => {
+    if (!hydrated) return;
+    void saveSnapshot(
+      { sessionId, subjectId, periodId },
+      { buffer, cells, rosters: classes, updatedAt: Date.now() },
+    );
+  }, [hydrated, buffer, cells, classes, sessionId, subjectId, periodId]);
 
   // Tick so the green strip's "last N ago" stays fresh.
   useEffect(() => {

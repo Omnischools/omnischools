@@ -529,7 +529,10 @@ const SavePortfolioSchema = z.object({
 });
 
 export type SavePortfolioResult =
-  | { ok: true; saved: number }
+  // `writtenIds` (INCR-14 · Trap-1, Option A) is ADDITIVE: the student ids actually upserted, i.e.
+  // EXCLUDING the silently-skipped non-ACTIVE / off-roster students. Existing `{ok, saved}` callers
+  // (desktop grid) are untouched; the PWA flush confirms EXACTLY these ids and reds the rest.
+  | { ok: true; saved: number; writtenIds: string[] }
   | { ok: false; error: string };
 
 /**
@@ -579,7 +582,7 @@ export async function savePortfolioScores(input: unknown): Promise<SavePortfolio
           ),
         );
       const validStudents = new Set(roster.map((r) => r.id));
-      let n = 0;
+      const writtenIds: string[] = [];
       for (const { studentId, value: num } of parsedScores) {
         if (!validStudents.has(studentId)) continue;
         await tx
@@ -606,7 +609,7 @@ export async function savePortfolioScores(input: unknown): Promise<SavePortfolio
               updatedAt: new Date(),
             },
           });
-        n++;
+        writtenIds.push(studentId);
       }
       // Recompute totals/status now that the fifth category may be present.
       await compileLedgerContext(tx, school.id, actor.id ?? undefined, {
@@ -621,13 +624,13 @@ export async function savePortfolioScores(input: unknown): Promise<SavePortfolio
         actionType: "updated",
         entityType: "senior_score_ledger",
         entityId: d.subjectId,
-        after: { periodId: d.periodId, portfolioCells: n },
+        after: { periodId: d.periodId, portfolioCells: writtenIds.length },
         reason: "Portfolio scores entered (manual)",
       });
-      return n;
+      return writtenIds;
     });
     safeRevalidate(LEDGER_PATH);
-    return { ok: true, saved };
+    return { ok: true, saved: saved.length, writtenIds: saved };
   } catch {
     return { ok: false, error: "Could not save portfolio scores. Please try again." };
   }
@@ -759,7 +762,11 @@ const SaveDirectSchema = z.object({
   scores: z.array(DirectRowSchema),
 });
 
-export type SaveDirectResult = { ok: true; saved: number } | { ok: false; error: string };
+export type SaveDirectResult =
+  // `writtenIds` (INCR-14 · Trap-1, Option A) is ADDITIVE — see SavePortfolioResult. The ids
+  // actually upserted, excluding the silently-skipped off-roster students.
+  | { ok: true; saved: number; writtenIds: string[] }
+  | { ok: false; error: string };
 
 /**
  * Path C (spec §4.3) — the teacher types the five category scores straight onto the
@@ -800,7 +807,9 @@ export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirect
   try {
     const outcome = await withSchool(
       school.id,
-      async (tx): Promise<{ ok: true; saved: number } | { ok: false; error: string }> => {
+      async (
+        tx,
+      ): Promise<{ ok: true; saved: number; writtenIds: string[] } | { ok: false; error: string }> => {
         // The context must be on the direct-entry path.
         const [pathRow] = await tx
           .select({ path: seniorLedgerPath.path })
@@ -852,7 +861,7 @@ export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirect
         const prevStatus = new Map(existing.map((e) => [e.studentId, e.status]));
 
         const weights = await loadWeights(tx, school.id, d.subjectId);
-        let n = 0;
+        const writtenIds: string[] = [];
         for (const { studentId, cats } of parsedRows) {
           if (!validStudents.has(studentId)) continue;
           const total = weightedTotalComplete(cats, weights);
@@ -910,7 +919,7 @@ export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirect
                 updatedAt: new Date(),
               },
             });
-          n++;
+          writtenIds.push(studentId);
         }
         await recordAudit(tx, {
           schoolId: school.id,
@@ -919,10 +928,10 @@ export async function saveDirectLedgerScores(input: unknown): Promise<SaveDirect
           actionType: "updated",
           entityType: "senior_score_ledger",
           entityId: d.subjectId,
-          after: { periodId: d.periodId, rows: n, path: "C" },
+          after: { periodId: d.periodId, rows: writtenIds.length, path: "C" },
           reason: "Direct ledger entry (Path C)",
         });
-        return { ok: true, saved: n };
+        return { ok: true, saved: writtenIds.length, writtenIds };
       },
     );
     if (outcome.ok) safeRevalidate(LEDGER_PATH);

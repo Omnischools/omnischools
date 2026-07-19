@@ -1,15 +1,20 @@
 "use client";
 import { useRef } from "react";
 import { signOutAction } from "@/lib/actions/auth";
+import { purgeSnapshots } from "@/lib/score-ledger/pwa-store";
 
 /**
- * Sign-out that PURGES the PWA cache before the redirect (INCR-4 · R3 / K4 — Sarah gate).
- * The Score-Ledger SW caches authenticated `force-dynamic` content; on logout every
- * `omnischools-*` cache is cleared so the next person on a shared device never inherits the
- * previous teacher's cached scores. Still a real `<form action>` so sign-out works with JS off
- * (no JS ⇒ no service worker ⇒ no cache to leak, so the bare server action is correct there).
+ * Sign-out that PURGES the PWA cache AND the durable IndexedDB buffer before the redirect
+ * (INCR-4 · R3 / K4 · INCR-14 · R3 — Sarah gate). The Score-Ledger SW caches authenticated
+ * `force-dynamic` content and (Phase 2) the IndexedDB store now holds durable pending SCORES (PII);
+ * on logout every `omnischools-*` cache is cleared and the whole snapshot store is wiped so the
+ * next person on a shared tablet inherits ZERO of the previous teacher's data. Still a real
+ * `<form action>` so sign-out works with JS off (no JS ⇒ no SW / no IndexedDB write ⇒ nothing to
+ * leak, so the bare server action is correct there).
  */
 async function purgePwaCaches(): Promise<void> {
+  // Wipe the durable pending-score buffer (all sessions) — never blocks sign-out on a failure.
+  await purgeSnapshots();
   try {
     if (typeof caches !== "undefined") {
       const keys = await caches.keys();

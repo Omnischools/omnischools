@@ -1,13 +1,15 @@
 import { requireSchool } from "@/lib/auth/server";
+import { getSessionId } from "@/lib/auth";
 import { AppSidebar } from "@/components/app/sidebar";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { PwaSession } from "@/components/pwa-session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { school, user } = await requireSchool();
+  const sessionId = await getSessionId();
   return (
     <div className="flex min-h-screen bg-bg">
-      <PwaSession uid={user.id} />
+      <PwaSession sessionId={sessionId} />
       <AppSidebar
         school={{
           name: school.name,

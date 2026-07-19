@@ -163,18 +163,18 @@ export function heldCount(s: PendingBuffer): number {
 }
 
 // --- Copy builders (R1 · BINDING) -------------------------------------------------------------
-// Honest strings only: "held locally / will sync / will save when connection returns". NEVER
-// "works offline" / "offline mode". A pending score is never rendered as "saved".
+// Honest strings only: "held offline / will sync / will save when you're back online". NEVER
+// "works offline" / "offline mode" / multi-device. A pending score is never rendered as "saved".
+// Phase 2 (INCR-14): the buffer now survives a close/reopen, so a signal-less reopen fires NO live
+// "Connection lost" event — the event-framed prefix is dropped for the durable "held offline" line.
 const plural = (n: number) => (n === 1 ? "" : "s");
 
 /** The gold sync-strip line (§3.1, verbatim shape) — N is the live pending count. */
 export function heldStripText(n: number): string {
-  return `Connection lost · ${n} score${plural(n)} held locally, will sync when reconnected`;
+  return `${n} score${plural(n)} held offline · will sync when you're back online`;
 }
 
-/** The card-level "held locally" badge (§3.3, verbatim shape). */
+/** The card-level "held offline" badge (§3.3, verbatim shape). */
 export function heldBadgeText(n: number): string {
-  return `${n} score${plural(n)} on this card ${
-    n === 1 ? "is" : "are"
-  } held locally · will save when connection returns`;
+  return `${n} score${plural(n)} on this card held offline · will save when you're back online`;
 }
