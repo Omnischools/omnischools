@@ -333,3 +333,46 @@ export const ledgerCorrectionReasonEnum = pgEnum("ledger_correction_reason", [
   "TRANSCRIPTION_ERROR",
   "OTHER",
 ]);
+
+// Senior WASSCE cohort spine (SHS module 4.3) — INCR-15 (Kofi rulings 2026-07-19). Migration 0051.
+// The programme axis reuses the existing `programmeEnum` above (a fixed GES set shared with
+// classes.programme) — NOT a new wassce-specific programme enum — so class→programme cross-module
+// joins stay enum-equal and there is one programme vocabulary. BUILD_STACK's redundant
+// programme_type_enum is deliberately not added.
+
+// WAEC candidate lifecycle ONLY (Kofi K3 / Decision 5). Fee/NHIS/medical are NEVER a status here
+// and never block — they are display flags (wassce_reg_flag) surfaced separately. So this enum is
+// the pure registration lifecycle: REGISTERED (with WAEC) → ACTIVE (writing) → COMPLETED, or WITHDRAWN.
+export const wassceCandidateStatusEnum = pgEnum("wassce_candidate_status", [
+  "REGISTERED",
+  "ACTIVE",
+  "WITHDRAWN",
+  "COMPLETED",
+]);
+// Subject classification per programme (BUILD_STACK subject_type_enum). Maps to the §1.4 surface tags:
+// CORE ↔ "Core" (the 4 shared cores) · ELECTIVE ↔ "Elec" · OPTIONAL ↔ "Alt"/"(or)" (the choose-4-from-N
+// / elective-maths-OR alternative). K1: subjects are per-programme rows, no subject-master table.
+export const wassceSubjectTypeEnum = pgEnum("wassce_subject_type", [
+  "CORE",
+  "ELECTIVE",
+  "OPTIONAL",
+]);
+// WAEC paper structure (BUILD_STACK paper_type_enum). ESSAY/OBJECTIVE are the English Lang 1/2 split
+// (§1.2 "Essay" + "Objective"); PRACTICAL/ORAL for science/language papers; COMBINED where WAEC merges.
+export const wasscePaperTypeEnum = pgEnum("wassce_paper_type", [
+  "OBJECTIVE",
+  "ESSAY",
+  "PRACTICAL",
+  "ORAL",
+  "COMBINED",
+]);
+// The §4.5 reg-status DISPLAY pill vocabulary — NOT candidate_status (Kofi K3: fee/NHIS/medical are
+// display flags, never a lifecycle status, never a blocker). NULL on wassce_candidates = the happy
+// path → rendered "Confirmed" (237 of 240). A set value is the one flag chip to show. Seeded static in
+// INCR-15 (live billing/sickbay derivation is a later increment); a candidate can carry at most one
+// flag for display. The surface's CSS-only terra "critical" tier appends here when a case first needs it.
+export const wassceRegFlagEnum = pgEnum("wassce_reg_flag", [
+  "ON_MEDICAL", // Y. Aidoo — inpatient, WAEC SC-12 filed (display only, no sickbay write)
+  "NHIS_ISSUE", // S. Asante — NHIS card admin issue (does not affect writing)
+  "FEE", // P. Donkor — Free-SHS reconciliation lag (GES cannot-deny; still REGISTERED)
+]);

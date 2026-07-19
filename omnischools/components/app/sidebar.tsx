@@ -19,6 +19,7 @@ import {
   NotebookText,
   Gauge,
   BedDouble,
+  Award,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ import {
   SENIOR_LEDGER_ROLES,
   SENIOR_MANAGEMENT_ROLES,
   BOARDING_ROLES,
+  WASSCE_SETUP_ROLES,
 } from "@/lib/access";
 
 const NAV: { href: string; label: string; Icon: LucideIcon }[] = [
@@ -73,6 +75,12 @@ const SENIOR_ITEMS = [
     label: "Boarding",
     Icon: BedDouble,
     roles: BOARDING_ROLES,
+  },
+  {
+    href: "/senior/wassce/setup",
+    label: "WASSCE",
+    Icon: Award,
+    roles: WASSCE_SETUP_ROLES,
   },
 ];
 

@@ -34,6 +34,19 @@ export const SENIOR_MANAGEMENT_ROLES = [
 ] as const satisfies readonly KnownAppRole[];
 
 /**
+ * WASSCE setup/registration surface (SHS module 4.3 / INCR-15) — the frozen cohort spine is
+ * school-wide leadership data: Admin + Headmaster + Vice Headmaster Academic (= Head of Academics;
+ * the two freeze co-signers). Same set as SENIOR_MANAGEMENT_ROLES today but named per-surface so a
+ * later WASSCE write-flow can diverge (e.g. a WAEC liaison) without touching the ledger gate.
+ * STUDENT / PARENT / TEACHER never reach it.
+ */
+export const WASSCE_SETUP_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "VICE_HEADMASTER_ACADEMIC",
+] as const satisfies readonly KnownAppRole[];
+
+/**
  * Boarding (SHS module 4.2 / INCR-7) — who may see and manage House rosters. Admin +
  * Headmaster + Dean of Boarding are school-scoped (any House); a plain HOUSEMASTER is
  * house-scoped (only the House they master — Kofi G4, enforced by `canAccessHouse`).
