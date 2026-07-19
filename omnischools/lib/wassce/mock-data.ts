@@ -23,6 +23,8 @@ import {
   meanGrade,
   toPct,
   isFocusBand,
+  isCredit,
+  isDistinction,
   type WassceGrade,
 } from "@/lib/wassce/mock-grades";
 import type {
@@ -385,12 +387,12 @@ export async function loadSubjectTeacherSurface(
     candidates: rows.length,
     creditPct: toPct(creditRate(predictorGrades)),
     distinctionPct: toPct(distinctionRate(predictorGrades)),
-    distinctionCount: predictorGrades.filter((g) => WASSCE_GRADES.indexOf(g) <= 1).length,
+    distinctionCount: predictorGrades.filter(isDistinction).length,
     meanGrade: meanGrade(predictorGrades),
     mock1MeanGrade: meanGrade(mock1Grades),
     histogram,
     histogramMax,
-    aboveCredit: predictorGrades.filter((g) => WASSCE_GRADES.indexOf(g) <= 5).length,
+    aboveCredit: predictorGrades.filter(isCredit).length,
   };
 
   // --- 5) benchmark (R4): my cohort DERIVED; school/national/region from the tenant + global tables ---
