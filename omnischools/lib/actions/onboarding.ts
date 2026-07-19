@@ -10,7 +10,7 @@ import {
   defaultFees,
   DEFAULT_PAYMENT_METHODS,
 } from "@/lib/onboarding";
-import { withoutTenantScope } from "@/lib/db/rls";
+import { withoutTenantScope, pgError } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { normalizeGhanaPhone } from "@/lib/auth";
 import { sendSms } from "@/lib/sms";
@@ -449,8 +449,15 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
     };
   } catch (err) {
     captureError(err, { action: "onboardSchool", gesCode: d.gesCode });
-    const msg = String((err as Error)?.message ?? err);
-    if (msg.includes("ref_school_ges_code_unique") || msg.includes("duplicate key")) {
+    // Match on the unwrapped SQLSTATE/constraint, NOT the thrown error's message: Drizzle's wrapper
+    // message is only "Failed query: …" — "duplicate key" and the constraint name live on `.cause`,
+    // so the old string match never fired and this degraded to the generic error.
+    // Match the NAMED constraint only (verified against pg_constraint). Deliberately no bare
+    // `code === "23505"` fallback: this transaction also creates classes, subjects, roles, fees and
+    // payment methods, so a duplicate in any of those would otherwise be reported as a GES-code clash
+    // and send the admin down the wrong path. An unrelated dupe gets the honest generic message below.
+    const pg = pgError(err);
+    if (pg.constraint === "ref_school_ges_code_unique") {
       return { ok: false, error: "A school with this GES code already exists." };
     }
     return { ok: false, error: "Could not complete onboarding. Please try again." };

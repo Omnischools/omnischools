@@ -1,7 +1,7 @@
 "use server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { withSchool } from "@/lib/db/rls";
+import { withSchool, isUniqueViolation } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor, type ActiveSchool } from "@/lib/auth/server";
 import { getCurrentUser, type AppUser } from "@/lib/auth";
@@ -231,7 +231,11 @@ export async function requestExeat(input: unknown): Promise<ExeatResult> {
       safeRevalidate(EXEAT_PATH);
       return { ok: true, refCode: out.refCode };
     } catch (err) {
-      if (err && typeof err === "object" && (err as { code?: string }).code === "23505") continue;
+      // A ref-code collision is the EXPECTED failure this loop exists to retry. MUST go through
+      // `isUniqueViolation`: Drizzle wraps the driver error and hangs the real PostgresError off
+      // `.cause`, so reading `.code` off the THROWN error always missed — which made this retry
+      // dead code and hard-failed exeat creation on any collision.
+      if (isUniqueViolation(err)) continue;
       throw err;
     }
   }
