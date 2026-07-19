@@ -128,6 +128,7 @@ BEGIN
     'benchmark_data_points',
     'waec_special_consideration',
     'readiness_statements',
+    'university_targets',
     'announcement',
     'sms_template',
     'notification_log',
@@ -165,6 +166,10 @@ $$;
 --   benchmark_reference — WASSCE WAEC national + directional regional benchmarks (INCR-16 / 0052).
 --     A benchmark exists for every tenant, so it is deliberately GLOBAL (no school_id, no tenant
 --     isolation); "my cohort vs region/national" is DERIVED on read, never a stored cross-tenant join.
+--   universities / university_programmes — the WASSCE university + cut-off reference (INCR-17b / 0054).
+--     KNUST and its published cut-offs exist for every tenant, so both are deliberately GLOBAL (no
+--     school_id, no tenant isolation) — a seeded published snapshot, read across tenants. Only the
+--     per-candidate university_targets (above) is tenant data; the match band itself is derived on read.
 -- We enable RLS but intentionally do NOT FORCE it and add NO policy. The postgres table
 -- owner (the app's direct connection) is therefore exempt and keeps full access, while the
 -- Data API roles (anon / authenticated) are denied — closing the anon-key exposure the
@@ -181,7 +186,9 @@ BEGIN
     'gen_period_defaults',
     'ref_user',
     'marketing_lead',
-    'benchmark_reference'
+    'benchmark_reference',
+    'universities',
+    'university_programmes'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);
