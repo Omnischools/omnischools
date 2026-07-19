@@ -30,6 +30,9 @@ import {
   benchmarkQualityEnum,
   benchmarkMetricEnum,
   benchmarkScopeEnum,
+  scFormEnum,
+  scStatusEnum,
+  parentAckMethodEnum,
 } from "./_enums";
 
 /**
@@ -591,3 +594,147 @@ export const benchmarkReference = pgTable("benchmark_reference", {
   referenceYear: smallint("reference_year").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/* ────────────────────────────────────────────────────────────────────────────────────────────────
+ * INCR-17 · Projection engine + readiness statement + SC-form (SHS module 4.3, migration 0053) — Kofi
+ * rulings 2026-07-19. The analytical spine's two PERSISTED artifacts. The projection ITSELF is a PURE
+ * LIB (lib/wassce/projection.ts) — DERIVED on read, NO trigger, NO stored live aggregate; the live
+ * `wassce_candidates.projected_aggregate` stays NULL and this is the only stored copy (the frozen
+ * snapshot on readiness_statements). Two TENANT tables, both LEAF (nothing references them in 0053) →
+ * FORCE RLS + tenant_isolation, NO tenant UK.
+ *
+ * SPLIT to INCR-17b/0054: the university match (universities / university_programmes / university_targets
+ * + per-target ack) — `target_universities_json` stays NULL here and NO university enum/table/column ships
+ * (AC17 no-leak). `wassce_results` (post-release actuals) is DEFERRED entirely.
+ *
+ * NO TRIGGERS (portability): projectAggregate is a pure lib; the frozen snapshot is written ONCE by the
+ * generation server action, then immutable — never by a trigger. Composite (school_id, …) FKs keep every
+ * intra-tenant ref structurally in-tenant; actor stamps are single-column SET NULL users FKs. The
+ * *_file_id columns are nullable placeholders — there is NO files table, so they carry NO FK, stay NULL.
+ * ──────────────────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A WAEC Special Consideration filing — one MUTABLE workflow row per (candidate × SC form), the §5 write
+ * artifact (Ruling 3). SC-3 pre-exam accommodations · SC-7 chronic-condition extra time · SC-12 in-window
+ * medical disruption. MANUAL filing (Sickbay→SC-12 auto-suggest is DEFERRED to 4.4); gated to
+ * WASSCE_SETUP_ROLES app-side (no new exams-officer/matron role). Setup §5's SC list stays a lib/wassce
+ * policy-display constant — THIS is the real filing artifact (on the student-readiness surface).
+ *
+ * REFILE = UPDATE: UNIQUE(school_id, candidate_id, sc_form) means a re-filed/re-opened form reuses the one
+ * row (also the seed conflict target). The (school_id, candidate_id) prefix of that UNIQUE already serves
+ * the per-candidate SC read, so NO separate candidate index is added (the mock_exams uniq-prefix idiom).
+ *
+ * The *_file_id columns (medical_cert / clinician_letter) are nullable id placeholders with NO FK — no
+ * files table exists yet, they stay NULL. `filed_at` is NULL while DRAFT. LEAF → FORCE RLS, NO tenant UK.
+ * Composite FK (school_id, candidate_id) → wassce_candidates keeps it intra-tenant; `filed_by_user_id` is
+ * a single-column SET NULL users FK (the boarding/ledger actor idiom).
+ */
+export const waecSpecialConsideration = pgTable(
+  "waec_special_consideration",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id").notNull(),
+    scForm: scFormEnum("sc_form").notNull(),
+    status: scStatusEnum("status").notNull(),
+    filedAt: timestamp("filed_at", { withTimezone: true }), // NULL while DRAFT
+    filedByUserId: uuid("filed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    // File placeholders — NO files table yet → NO FK, stay NULL (no file-storage layer).
+    medicalCertFileId: uuid("medical_cert_file_id"),
+    clinicianLetterFileId: uuid("clinician_letter_file_id"),
+    // WAEC workflow stamps (all nullable; advance as the filing progresses through sc_status).
+    waecAcknowledgedAt: timestamp("waec_acknowledged_at", { withTimezone: true }),
+    waecRef: text("waec_ref"),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    makeUpScheduledAt: timestamp("make_up_scheduled_at", { withTimezone: true }),
+    makeUpCentre: text("make_up_centre"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One filing per (candidate × SC form) — refile UPDATEs this row (Ruling 3, AC10). Its (school_id,
+    // candidate_id) prefix also serves the per-candidate SC read → no separate candidate index.
+    uniqForm: unique("uniq_waec_sc_candidate_form").on(t.schoolId, t.candidateId, t.scForm),
+    // Composite intra-tenant FK — a cross-tenant candidate reference is structurally impossible (AC11).
+    candidateFk: foreignKey({
+      columns: [t.schoolId, t.candidateId],
+      foreignColumns: [wassceCandidates.schoolId, wassceCandidates.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * A frozen readiness statement — the immutable projection artifact (Ruling 4). Generated MANUALLY by
+ * WASSCE_SETUP_ROLES, gated on the predictor mock's `marking_complete_at IS NOT NULL` AND a computable
+ * best-3 aggregate; lib/wassce/projection.ts runs ONCE and its output is frozen here. The live aggregate
+ * is DERIVED on read (no drift, no trigger) and `wassce_candidates.projected_aggregate` stays NULL in the
+ * live path — this row is the ONLY stored copy (AC9/AC12).
+ *
+ * REGENERATION SUPERSEDES: a new statement is a NEW ROW; the prior row's `superseded_at` is stamped. The
+ * "current vs historical" state is DERIVED from `superseded_at` (+ `parent_acknowledged_at`) — NO status
+ * enum (Ruling 4, AC14). The partial index below serves the "current statement" read (superseded_at IS
+ * NULL); the single-current invariant is enforced by the generation action (supersede-then-insert), NOT a
+ * unique constraint, so the app owns its write order (index is non-unique deliberately — see report flag).
+ *
+ * `projection_snapshot_json` (jsonb, NOT NULL) freezes the §5 visualizer + Mock1→Mock2 trajectory:
+ * {mock1Aggregate, mock2Aggregate, projectedAggregate, band, subjects:[{name,type,grade,points,counted}]}.
+ * `target_universities_json` stays NULL (17b). `projected_aggregate` is the frozen 6–54 best-3 sum (same-
+ * row range CHECK: six A1 = 6 … six F9 = 54); `projected_band` is the frozen text label (lib
+ * bandForAggregate()). Parent-ack is SCHOOL-CAPTURED in INCR-17 (parent-facing signing UI is INCR-19).
+ *
+ * LEAF → FORCE RLS, NO tenant UK. Composite FKs (school_id, candidate_id) → wassce_candidates and
+ * (school_id, mock_2_id) → mock_exams keep both intra-tenant; `generated_by_user_id` is single-col SET
+ * NULL → users. `parent_signature_pdf_file_id` is a nullable placeholder with NO FK (no files table).
+ */
+export const readinessStatements = pgTable(
+  "readiness_statements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id").notNull(),
+    mock2Id: uuid("mock_2_id").notNull(), // the predictor mock this projection froze (AC13)
+    projectedAggregate: smallint("projected_aggregate"), // frozen best-3 sum, 6..54 (CHECK); NULL guard-only
+    projectedBand: text("projected_band"), // frozen text label (lib bandForAggregate())
+    projectionSnapshotJson: jsonb("projection_snapshot_json").notNull(), // §5 visualizer + trajectory, frozen
+    targetUniversitiesJson: jsonb("target_universities_json"), // NULL until 17b (no university leak, AC17)
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull(),
+    generatedByUserId: uuid("generated_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    supersededAt: timestamp("superseded_at", { withTimezone: true }), // set when a newer statement replaces it
+    // --- parent acknowledgement (SCHOOL-CAPTURED in INCR-17; parent-facing signing UI is INCR-19) ---
+    parentAcknowledgedAt: timestamp("parent_acknowledged_at", { withTimezone: true }),
+    parentAcknowledgedSignatureMethod: parentAckMethodEnum("parent_acknowledged_signature_method"),
+    parentAcknowledgedPhone: text("parent_acknowledged_phone"),
+    parentConcernsText: text("parent_concerns_text"),
+    parentSignaturePdfFileId: uuid("parent_signature_pdf_file_id"), // placeholder, NO FK (no files table)
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Per-candidate statement history read (§7) — includes superseded rows (no UNIQUE: many over time).
+    byCandidate: index("readiness_statements_candidate_idx").on(t.schoolId, t.candidateId),
+    // The "current statement" hot read — the single non-superseded row per candidate (partial index).
+    currentByCandidate: index("readiness_statements_current_idx")
+      .on(t.schoolId, t.candidateId)
+      .where(sql`${t.supersededAt} IS NULL`),
+    // Frozen best-3 aggregate stays in the WAEC 6 (six A1) … 54 (six F9) range — same-row guard (portable).
+    aggregateRange: check(
+      "readiness_statements_projected_aggregate_range",
+      sql`${t.projectedAggregate} IS NULL OR (${t.projectedAggregate} BETWEEN 6 AND 54)`,
+    ),
+    // Composite intra-tenant FKs — cross-tenant candidate/mock structurally impossible.
+    candidateFk: foreignKey({
+      columns: [t.schoolId, t.candidateId],
+      foreignColumns: [wassceCandidates.schoolId, wassceCandidates.id],
+    }).onDelete("cascade"),
+    mock2Fk: foreignKey({
+      columns: [t.schoolId, t.mock2Id],
+      foreignColumns: [mockExams.schoolId, mockExams.id],
+    }).onDelete("cascade"),
+  }),
+);
