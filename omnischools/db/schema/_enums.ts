@@ -427,3 +427,37 @@ export const benchmarkScopeEnum = pgEnum("benchmark_scope", [
   "REGION",
   "NATIONAL",
 ]);
+
+// Senior WASSCE projection + readiness + SC-form (SHS module 4.3) — INCR-17 (Kofi rulings 2026-07-19).
+// Migration 0053. THREE enums only. Deliberately NOT enums (Kofi Ruling 4): the readiness-statement
+// STATE is DERIVED from `parent_acknowledged_at` + `superseded_at` (no status enum); `projected_band`
+// is a TEXT label from lib `bandForAggregate()` (no band enum). University enums (`university_type`,
+// `target_rank`) are DEFERRED to INCR-17b/0054 — none ship here (AC17 no-leak).
+
+// WAEC Special Consideration form kind (Ruling 3). Values keep WAEC's canonical HYPHENATED codes so they
+// stay 1:1 with the SC marker already carried in wassce_candidates.accommodations_json ({scForm:
+// SC-3|SC-7|SC-12}) — pgEnum accepts the hyphen as a quoted label, so a later app-side comparison of the
+// json marker to this enum needs no remap. SC-3 = pre-exam sensory/physical accommodations; SC-7 =
+// chronic-condition extra time; SC-12 = in-window medical disruption / missed papers.
+export const scFormEnum = pgEnum("sc_form", ["SC-3", "SC-7", "SC-12"]);
+// SC filing workflow lifecycle (Ruling 3, mutable). DRAFT (unfiled) → FILED → ACKNOWLEDGED (WAEC ref in)
+// → APPROVED → SCHEDULED (make-up sitting) → COMPLETED; REJECTED is the terminal decline. A refile
+// UPDATEs the one (school_id, candidate_id, sc_form) row (the table's UNIQUE), never a second row.
+export const scStatusEnum = pgEnum("sc_status", [
+  "DRAFT",
+  "FILED",
+  "ACKNOWLEDGED",
+  "APPROVED",
+  "SCHEDULED",
+  "COMPLETED",
+  "REJECTED",
+]);
+// How a parent's readiness-statement acknowledgement was captured (Ruling 4). PHONE_OTP = SMS one-time
+// code (OWNER-gated Hubtel — console-degrades in dev, no creds); IN_PERSON = HoA records a face-to-face
+// ack; PDF_UPLOAD = a signed sheet scanned back (parent_signature_pdf_file_id placeholder). The
+// parent-facing signing UI is INCR-19; in INCR-17 the ack is SCHOOL-CAPTURED by the HoA.
+export const parentAckMethodEnum = pgEnum("parent_ack_method", [
+  "PHONE_OTP",
+  "IN_PERSON",
+  "PDF_UPLOAD",
+]);

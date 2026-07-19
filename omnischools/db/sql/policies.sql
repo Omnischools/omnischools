@@ -126,6 +126,8 @@ BEGIN
     'mock_exams',
     'mock_results',
     'benchmark_data_points',
+    'waec_special_consideration',
+    'readiness_statements',
     'announcement',
     'sms_template',
     'notification_log',

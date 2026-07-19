@@ -7,6 +7,7 @@ import {
   students,
 } from "@/db/schema";
 import { getActiveCohort } from "@/lib/wassce/active-cohort";
+import { computeCohortAggregates } from "@/lib/wassce/readiness-data";
 import { PROGRAMME_ORDER, WAEC_FEE_PER_CANDIDATE, formatGhsCompact } from "@/lib/wassce/constants";
 import type { WassceProgrammeKey } from "@/lib/wassce/constants";
 import type { WassceRosterRow } from "@/components/senior/wassce-roster-table";
@@ -160,6 +161,12 @@ export async function loadWassceSetup(tx: Tx, schoolId: string): Promise<WassceS
     )
     .where(and(eq(wassceCandidates.schoolId, schoolId), eq(wassceCandidates.cohortId, cohort.id)));
 
+  // The roster's Mock-2-agg column now reads the DERIVED best-3 aggregate (INCR-17 cleanup — one source
+  // of truth via the pure projectAggregate lib), NOT the INCR-15 seeded static. A candidate without ≥3
+  // graded cores+electives in the predictor mock is not-computable → we fall back to the seeded literal
+  // (the only signal we have for them). Y. Aidoo, fully graded, now shows her real computed 10.
+  const derivedAgg = await computeCohortAggregates(tx, schoolId, cohort.id);
+
   // --- roster rows (pre-formatted strings — the client table imports NO db) ---
   const progIdByKey = new Map(programmes.map((p) => [p.programme as WassceProgrammeKey, p.id]));
   const roster: WassceRosterRow[] = candRows.map((c) => {
@@ -181,7 +188,11 @@ export async function loadWassceSetup(tx: Tx, schoolId: string): Promise<WassceS
       regStatusClass: flag.cls,
       noteStrong: strong,
       note: rest,
-      mock2Agg: c.mock2 == null ? "—" : String(c.mock2),
+      mock2Agg: derivedAgg.has(c.id)
+        ? String(derivedAgg.get(c.id))
+        : c.mock2 == null
+          ? "—"
+          : String(c.mock2),
       isLive: c.regFlag === "ON_MEDICAL",
       isFlagged: c.regFlag != null,
       hasAccommodation: structuralAcc,

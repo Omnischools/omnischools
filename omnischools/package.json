@@ -28,6 +28,7 @@
     "db:seed-discipline": "tsx db/seed/boarding-discipline.ts",
     "db:seed-wassce": "tsx db/seed/wassce.ts",
     "db:seed-wassce-mock": "tsx db/seed/wassce-mock.ts",
+    "db:seed-wassce-readiness": "tsx db/seed/wassce-readiness.ts",
     "db:rls-test": "tsx scripts/rls-test.ts",
     "db:verify-boarding": "tsx scripts/verify-boarding.ts",
     "db:verify-visiting": "tsx --tsconfig scripts/tsconfig.json scripts/verify-visiting.ts",
