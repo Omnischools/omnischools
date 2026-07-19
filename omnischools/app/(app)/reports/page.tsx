@@ -87,9 +87,9 @@ export default async function ReportsPage() {
       iconTone: "bg-gold-bg text-gold",
       name: "Class performance",
       desc: "Average grades by class, with term-on-term comparison.",
-      snapshotLabel: "Grades by class",
+      snapshotLabel: "Per-class averages",
       snapshotValue: "View →",
-      snapshotSub: "Averages by class, term-on-term",
+      snapshotSub: "On your grade scale, compared with last term",
     },
     {
       category: "academic",
@@ -100,7 +100,7 @@ export default async function ReportsPage() {
       desc: "Per-subject averages across the school on your grade scale.",
       snapshotLabel: "Per-subject averages",
       snapshotValue: "View →",
-      snapshotSub: "Strong & weak subjects, school-wide",
+      snapshotSub: "Which subjects are strong or slipping, school-wide",
     },
     {
       category: "operational",
@@ -120,9 +120,9 @@ export default async function ReportsPage() {
       iconTone: "bg-gold-bg text-gold",
       name: "Attendance summary",
       desc: "Term attendance rates by class and the students needing attention.",
-      snapshotLabel: "Attendance rates",
+      snapshotLabel: "Rate by class",
       snapshotValue: "View →",
-      snapshotSub: "Rates by class + who needs attention",
+      snapshotSub: "Plus the students below the attention threshold",
     },
     {
       category: "operational",
@@ -131,9 +131,9 @@ export default async function ReportsPage() {
       iconTone: "bg-navy text-gold",
       name: "Enrolment & roll",
       desc: "Admissions this term, and the current roll with lifetime exits.",
-      snapshotLabel: "Enrolment flow",
+      snapshotLabel: "Roll & intake",
       snapshotValue: "View →",
-      snapshotSub: "Intake this term + lifetime exits",
+      snapshotSub: "Who joined this term; exits as lifetime totals",
     },
   ];
 

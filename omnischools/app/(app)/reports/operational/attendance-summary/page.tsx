@@ -161,13 +161,17 @@ export default async function AttendanceSummaryPage(props: {
                     vs {priorTerm!.label}
                   </span>
                 ) : (
-                  "present + late ÷ marked"
+                  "(present + late) ÷ all marks"
                 )
               }
             />
-            <Kpi label="Sessions marked" value={String(data.totalMarked)} sub={<>this term</>} />
             <Kpi
-              label="Needs attention"
+              label="Marks recorded"
+              value={String(data.totalMarked)}
+              sub={<>student-days marked this term</>}
+            />
+            <Kpi
+              label="Students needing attention"
               value={<span className="text-terra">{data.needsAttention.length}</span>}
               sub={
                 <>
@@ -178,7 +182,7 @@ export default async function AttendanceSummaryPage(props: {
             <Kpi
               label="Perfect attendance"
               value={<span className="text-green">{data.perfectCount}</span>}
-              sub={<>no absences this term</>}
+              sub={<>students with zero absences</>}
             />
           </KpiStrip>
 

@@ -48,6 +48,7 @@ export default async function ClassPerformancePage(props: {
   });
   const { term, terms, priorTerm, rows, scoped } = data;
   const hasPrior = !!priorTerm;
+  const ungraded = data.totalClasses - data.classesGraded;
 
   const csvRows = rows.map((r) => [
     r.name,
@@ -129,19 +130,25 @@ export default async function ClassPerformancePage(props: {
                     vs {priorTerm!.label}
                   </span>
                 ) : (
-                  "first graded term"
+                  "no earlier term to compare"
                 )
               }
             />
             <Kpi
-              label="Classes graded"
+              label="Classes with scores"
               value={`${data.classesGraded}/${data.totalClasses}`}
-              sub={<>with ≥1 score this term</>}
+              sub={
+                ungraded === 0
+                  ? "every class has scores entered"
+                  : `${ungraded} class${ungraded === 1 ? "" : "es"} with nothing entered yet`
+              }
             />
             <Kpi
               label="Highest class"
               value={data.highest ? <span className="text-green">{data.highest.average}</span> : "—"}
-              sub={data.highest ? data.highest.name : "no scores yet"}
+              sub={
+                data.highest ? `${data.highest.name} · top class average` : "no scores entered yet"
+              }
             />
             <Kpi
               label="Needs support"
@@ -152,7 +159,11 @@ export default async function ClassPerformancePage(props: {
                   "—"
                 )
               }
-              sub={data.needsSupport ? data.needsSupport.name : "no scores yet"}
+              sub={
+                data.needsSupport
+                  ? `${data.needsSupport.name} · lowest class average`
+                  : "no scores entered yet"
+              }
             />
           </KpiStrip>
 

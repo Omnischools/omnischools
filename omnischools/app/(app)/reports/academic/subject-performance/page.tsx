@@ -44,6 +44,7 @@ export default async function SubjectPerformancePage(props: {
   ]);
   const { term, terms, priorTerm, rows } = data;
   const hasPrior = !!priorTerm;
+  const unassessed = data.subjectsTaught - data.subjectsAssessed;
   const scopeLabel = data.classId
     ? (classes.find((c) => c.classId === data.classId)?.name ?? null)
     : null;
@@ -127,19 +128,27 @@ export default async function SubjectPerformancePage(props: {
                     vs {priorTerm!.label}
                   </span>
                 ) : (
-                  "first graded term"
+                  "no earlier term to compare"
                 )
               }
             />
             <Kpi
               label="Subjects assessed"
-              value={String(data.subjectsAssessed)}
-              sub={<>of {data.subjectsTaught} active</>}
+              value={`${data.subjectsAssessed}/${data.subjectsTaught}`}
+              sub={
+                unassessed === 0
+                  ? "every active subject has scores"
+                  : `${unassessed} subject${unassessed === 1 ? "" : "s"} with nothing entered yet`
+              }
             />
             <Kpi
               label="Strongest"
               value={data.strongest ? <span className="text-green">{data.strongest.average}</span> : "—"}
-              sub={data.strongest ? data.strongest.name : "no scores yet"}
+              sub={
+                data.strongest
+                  ? `${data.strongest.name} · highest subject average`
+                  : "no scores entered yet"
+              }
             />
             <Kpi
               label="Needs attention"
@@ -150,7 +159,11 @@ export default async function SubjectPerformancePage(props: {
                   "—"
                 )
               }
-              sub={data.needsAttention ? data.needsAttention.name : "no scores yet"}
+              sub={
+                data.needsAttention
+                  ? `${data.needsAttention.name} · lowest subject average`
+                  : "no scores entered yet"
+              }
             />
           </KpiStrip>
 

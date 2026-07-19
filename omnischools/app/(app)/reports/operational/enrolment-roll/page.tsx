@@ -146,10 +146,15 @@ export default async function EnrolmentRollPage(props: {
               label="Current roll"
               value={data.currentRoll}
               sub={
-                <span>
-                  <span className="text-green">↑</span>{" "}
-                  <b className="font-semibold text-bg">+{data.admissionsThisTerm}</b> joined this term
-                </span>
+                data.admissionsThisTerm > 0 ? (
+                  <span>
+                    <span className="text-green">↑</span>{" "}
+                    <b className="font-semibold text-bg">+{data.admissionsThisTerm}</b> of these
+                    joined this term
+                  </span>
+                ) : (
+                  "active students on the roll today"
+                )
               }
             />
             <Kpi
@@ -157,16 +162,16 @@ export default async function EnrolmentRollPage(props: {
               value={<span className="text-green">+{data.admissionsThisTerm}</span>}
               sub={
                 hasPrior && data.priorAdmissions != null ? (
-                  <>vs +{data.priorAdmissions} last term</>
+                  <>vs +{data.priorAdmissions} admitted last term</>
                 ) : (
-                  <>first term on record</>
+                  <>no earlier term to compare</>
                 )
               }
             />
             <Kpi
               label="Intake mix"
               value={`${data.intakeFemale}/${data.intakeMale}`}
-              sub={<>girls / boys admitted</>}
+              sub={<>girls / boys in this term&apos;s intake</>}
             />
             <Kpi
               label="Lifetime exits"
