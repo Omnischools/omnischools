@@ -83,6 +83,11 @@ type SupabaseAuthApi = {
     password: string;
   }): Promise<{ error: { message: string } | null }>;
   getUser(): Promise<{ data: { user: { phone?: string | null } | null } }>;
+  getSession(): Promise<{
+    data: {
+      session: { access_token?: string | null; user?: { id?: string | null } | null } | null;
+    };
+  }>;
   signOut(): Promise<unknown>;
 };
 
@@ -191,6 +196,42 @@ export async function getCurrentUser(): Promise<AppUser | null> {
       roles: ra.map((r) => r.code) as AppRole[],
     } satisfies AppUser;
   });
+}
+
+/**
+ * A STABLE client-side partition key for the current auth session — used to key the Score-Ledger
+ * PWA IndexedDB store + SW ledger cache (INCR-14 · Item 9). The key must:
+ *   - SURVIVE the hourly access-token refresh (else the offline buffer is orphaned every hour), and
+ *   - ROTATE on logout / a different teacher signing in on the same tablet (else teacher B inherits
+ *     teacher A's durable pending SCORES — a shared-device PII leak; Sarah gate).
+ *
+ * The Supabase client `Session` exposes no first-class "session id" field, but the access-token JWT
+ * carries a `session_id` claim: the PARENT session's opaque id — constant across every token
+ * refresh within one login, regenerated on a fresh login. We read ONLY that claim, never the raw
+ * JWT (it rotates hourly and is a bearer secret). The signature is intentionally NOT verified: this
+ * value only names a client-side cache partition, it is not an authorization decision (RLS remains
+ * the boundary). Kept inside lib/auth (portability seam — feature code never touches supabase.auth).
+ * Dev-bypass (no Supabase session) → the uid, which is single-user by construction.
+ */
+export async function getSessionId(): Promise<string> {
+  if (!authIsLive()) return DEV_USER.id;
+  const {
+    data: { session },
+  } = await (await authApi()).getSession();
+  const fromClaim = session?.access_token ? sessionIdFromJwt(session.access_token) : null;
+  return fromClaim ?? session?.user?.id ?? DEV_USER.id;
+}
+
+/** Decode the `session_id` claim from a Supabase access-token JWT (unverified — partition key only). */
+function sessionIdFromJwt(jwt: string): string | null {
+  try {
+    const payload = jwt.split(".")[1];
+    if (!payload) return null;
+    const claim = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))?.session_id;
+    return typeof claim === "string" && claim ? claim : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Throw if the current user lacks the required role. */
