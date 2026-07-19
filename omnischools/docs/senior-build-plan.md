@@ -1927,7 +1927,7 @@ SMS console → 3 gates → Sarah merge → Pence sync → **MODULE 4.2 CLOSED**
 
 ---
 
-## Next increment — INCR-14 · Score Ledger Item 9 · PWA phase 2 — offline buffering for extended sessions · NO new migration · REOPENS MODULE 4.1
+## INCR-14 ✅ MERGED (PR #158, `dd88cd6`+`b960a00`+`d1ef624`) — Score Ledger Item 9 · PWA phase 2 · NO new migration · 🏁 RE-CLOSES MODULE 4.1 (Items 1–9) · no prod-paste (idempotent upsert)
 
 > Module 4.1 was closed at Item 7/INCR-6; **Item 9 was deferred as a v2 item (§11 line 372 "Later — PWA phase 2 IF real demand surfaces");
 > the owner now wants it.** `senior-feat` level with `main` (`c03f93d`); Boarding (4.2) complete. **No migration; Wells OFF the critical path**
@@ -2053,3 +2053,50 @@ partition → logout purge → flush/domain-reject persistence → honest copy �
 - **🟠 AC7 RATIFIED as within-subject for Phase 2 (orchestrator scope note; Quinn #1):** eager pre-cache makes any assigned **same-subject** class offline-openable incl. one not visited this session (all same-subject classes load into one page render; the class switcher is pure client state — no refetch). A **cross-subject** unvisited class is NOT eagerly pre-loaded: the reducer is single-subject (`cellId`/`weights`/flush routing scope one `subjectId`), and merging cross-subject rosters into one view would misroute a held score — **both Dex and Quinn independently ruled the boundary sound, not an under-build.** The cross-subject miss fails **honestly and loudly** — an explicit "can't load this class without a connection; your held scores are safe and will sync" page (`sw.js` offline fallback), never a false-empty roster, never a false-save, **no data loss** (MAJOR-1 invariant intact). True cross-subject eager offline (SW warm-fetch of every assigned-subject URL, or a multi-subject view) is **Phase 3 / Item 10**. Kofi's Q3 "eager pre-fetch of the assigned SET" is honoured **per subject**; the cross-subject clause is explicitly deferred here rather than silently narrowed. `snapshot.rosters` is persisted now (board-mandated) but read-only until that Phase-3 reconstruction lands.
 - **Live DevTools self-verify = the remaining manual E2E proof (owner, at merge):** the offline close/reopen, logout-wipe, and shared-device flows can't run in the node test runner. Checklist: (1) offline → enter a full class's scores → **close & reopen the app still offline** → scores present & GOLD, none green; (2) reconnect → auto-flush → all green, no dup rows on a second flush; (3) a deliberately-invalid score → RED, **survives close/reopen still red**; (4) log out teacher A → A's pending scores/rosters gone from IndexedDB **and** the SW cache; (5) log in teacher B on the same tablet → B sees **none** of A's held scores.
 - **Deferred (unchanged owner calls, NOT this increment):** cross-tab live sync (documented ceiling; server upsert is the reconciliation point); a pre-existing marketing FAQ "offline-first" line (`components/marketing/faq.tsx`, NOT touched by this diff — flag to Lucy separately); the untracked `Surfaces/schoolup-shs-score-ledger-pwa.html` roadmap/caption graduation (design artifact in the parent tree, no app component renders it — Lucy to sync the mockup: Phase-2 card → "ships now", Section-04 meta → "two now shipped", caption → the honest single-device line).
+
+---
+
+# MODULE 4.3 — WASSCE READINESS (5 surfaces · reads the ledger trajectory · size L)
+
+> Pence plan (2026-07-19). Next after 4.1 (closed, Items 1–9) + 4.2 (closed, 7 surfaces). `senior-feat` level with `main`.
+
+**Two module-framing findings (settled by authority order — logged, not owner-blocking):**
+- **(A) Schema source = BUILD_STACK, not spec §4.3.** `INSTRUCTIONS_FOR_CLAUDE_CODE.md §4.3` sketches 5 tables; `BUILD_STACK.md` (the constitution, wins on conflict) defines the **full ~14-table + 8-enum WASSCE batch** (`wassce_programmes/subjects/candidates/papers/paper_sittings`, `mock_exams/mock_results`, `universities/university_programmes/university_targets`, `waec_special_consideration`, `wassce_results`, `readiness_statements`, `benchmark_data_points`). Module builds to the BUILD_STACK batch. Kofi logs this at INCR-15 start.
+- **(B) Prediction is Mock-2-anchored, NOT ledger-weighted-total→band math.** Per-subject predicted grade = teacher-marked **Mock 2 grade** (`mock_results.grade`, BUILD_STACK Decision 2; Mock 1 = calibration). Aggregate projection = deterministic **best-3 cores + best-3 electives** (min 6 / max 54, Decision 12), and it **HOLDS through medical disruption** (Decision 11). The **6-semester ledger trajectory is CONTEXTUAL** — rendered on student-readiness under *"Ledger trajectory · what the predictor sees that STPSHS does not,"* a supporting strip, not the formula. Centre of gravity = **mock capture + deterministic projection, ledger as context.** (The one open domain nuance — is the trajectory purely contextual or a tie-breaker/confidence adjust — is a Kofi call at INCR-16/17, NOT a weighted-total formula.)
+
+**Module reads (READ-ONLY / frozen ledger contracts):** `senior_score_ledger` (`weightedTotal` + 5 category scores per student×subject×period = the trajectory strip; NEVER written here), `senior_subject_teacher` (mock-marking gate + "my cohort"), the **frozen `*_weight_used` snapshot** on the ledger row (display that, never re-resolve live weights), `academic_period` (6 SHS semesters + `period.weight` for STPSHS aggregation). Must NOT import/re-run `compile.ts`/`resolveWeights` — consume stored values.
+
+## MODULE 4.3 — increments (INCR-15 → INCR-20)
+
+| # | Title | Surface(s) | Migration | Depends on | Position |
+|---|---|---|---|---|---|
+| **INCR-15** | **F0 — WASSCE cohort spine** | `wassce-setup` §1 (programmes/subjects/electives), §4 (registration roster · the 240), §5 (policy anchors/frozen state) | **0051** | Senior F0 (shipped) + `students` | **ROOT** — everything FKs to candidates/subjects |
+| **INCR-16** | Subject-teacher + mock cycle | `wassce-subject-teacher` (Mr Asiedu) + `wassce-setup` §2 (mock config) | **0052** | INCR-15 | Prediction **input** (mocks before projection) |
+| **INCR-17** | Projection engine + university targets + readiness statement + SC-form | `wassce-setup` §3 (uni targets) + the readiness-statement artifact | **0053** | INCR-16 | **Analytical spine** (heaviest; split `university_*`→INCR-17b if it runs long) |
+| **INCR-18** | Cohort-readiness (HoA) | `wassce-cohort-readiness` | none (read/aggregate) | INCR-16,17 | HoA moderation gate on mock marking |
+| **INCR-19** | Parent-tracker | `wassce-parent-tracker` | none new; **parent-scoped RLS policy** (prod-paste) | INCR-17 | Parent-facing capstone (read-only, one child) |
+| **INCR-20** | Student-readiness (LAST) | `wassce-student-readiness` (Y. Aidoo · 7 sections) | none new | **all prior** | Built last per §4.3 — pulls from every table |
+
+Only INCR-15/16/17 add tables → **0051/0052/0053** + a `db/sql/prod-paste-005X-*.sql` each. INCR-18/19/20 are read surfaces (don't burn a migration number); INCR-19 adds a **parent-scoped RLS policy** only.
+
+**Portability/RLS (Wells):** tenant tables (composite `(school_id,id)` FKs + `tenant_isolation` FORCE + prod-paste): all `wassce_*` except universities, plus `mock_*`, `university_targets`, `waec_special_consideration`, `readiness_statements`. **Global** (bare ENABLE RLS, never FORCE/tenant_isolation): `universities`, `university_programmes`. **`benchmark_data_points` is MIXED** (`SCHOOLUP_DIRECT`=tenant, `WAEC_NATIONAL/REGIONAL`=global) → **lean split-the-table** over nullable-`school_id`-with-conditional-RLS (Kofi/Wells joint call). **No triggers** (best-3 aggregate = pure lib like `compile.ts`; freeze = app-layer; Sickbay→SC-12 auto-suggest deferred to 4.4). **Reuse the portable receipt-PDF path** (#136) for `readiness_statements.parent_signature_pdf_file_id` — no new PDF dep.
+
+**OWNER calls (surface at module gate; block a *slice*, not the build):** parent-ack SMS provider (same Hubtel gate as 4.2 — blocks the parent-ack slice of INCR-17/19); university cut-off dataset source (licensed vs school-entered — blocks uni-match slice of INCR-17/20); benchmark national/region data + multi-school pooling (ship region as `DIRECTIONAL` placeholder; **do NOT build cross-tenant pooling** — depends on Oversight tier / Phase 5); public mock-accuracy figure (73–82%) + its update policy; WAEC ICTD API vs printable (build manual/printable path). **No paid-service provisioning needed for the core** (mocks are teacher-entered) → no stop-and-ask beyond SMS.
+
+**Cross-module hooks DEFERRED to 4.4 Sickbay / senior backlog (Kofi):** Sickbay→SC-12 auto-suggest (Decision 9) and F3 discipline-pause / WASSCE-window absence-exemption (Decision 6) touch Sickbay (not yet built). INCR-17 ships **SC-12 as manual filing**; auto-suggest is a later app-layer cross-module call (never a trigger).
+
+## Next increment — INCR-15 · F0 WASSCE cohort spine · migration 0051
+
+**Recommended first (Pence):** the sole increment nothing can precede — every other WASSCE table + all four remaining surfaces FK into `wassce_candidates`/`wassce_subjects`; carries the most schema-shaped Kofi rulings that block Wells; maps to the read-only, lowest-risk part of the setup surface (§1/§4/§5), letting the loop shake out the module's RLS/composite-FK/freeze patterns with no write-side projection math. Exact analogue of 4.2 opening on the House→Dorm→Bunk spine.
+
+**Spine tables:** `wassce_programmes → wassce_subjects → wassce_candidates → wassce_papers → wassce_paper_sittings` + a per-school **freeze marker** (`wassce_setup_frozen_at`, Decision 1).
+
+**Kofi must rule before Wells designs schema:**
+1. **Freeze mechanism (Decision 1):** where `wassce_setup_frozen_at` lives (per-school SHS config row vs per-cohort table), HoA+Headmaster co-sign semantics, which dependent tables lock on freeze, the change-control typo exception. *(WHAT=Kofi, WHERE=Wells.)*
+2. **`subjects_sitting_json` vs a normalized `wassce_candidate_subject` join** — BUILD_STACK says JSON on `wassce_candidates`; repo composite-FK discipline argues for a normalized join with FK integrity to `wassce_subjects`. Kofi call; likely the join table for RLS/FK integrity — **flag owner if it goes the other way.**
+3. **`index_number` uniqueness scope** — BUILD_STACK writes `UNIQUE(index_number)` (nationally unique WAEC numbers); a *global* unique across tenants leaks row existence + fights isolation. **Flag owner if they choose global** over tenant-scoped.
+4. **`wassce_subjects` tenancy** — must carry `school_id` + composite FK to `wassce_programmes(school_id,id)` so isolation is enforceable (no through-join escape).
+
+**Owner map:** Kofi (rulings + AC for the frozen read-only roster) ‖ Lucy (`wassce-setup` §1/§4/§5 → `docs/senior/wassce-spine-surface-map.md`) → Wells (6-table spine + freeze marker + migration 0051 + `prod-paste-0051-wassce-spine.sql`; composite FKs; FORCE RLS) → Claude Code (read-only setup/registration surface + apply/verify 0051 on dev + PR) → Quinn/Dex/Sarah gates.
+
+**INCR-15 done when:** an SHS admin can view the frozen WASSCE registration roster (programmes, subjects/electives, the candidate list with index numbers, papers/sittings, policy anchors) for the cohort — tenant-scoped, RLS-enforced, freeze-state signalled, no write-side projection — three gates green + `prod-paste-0051` ready to hand-paste.
