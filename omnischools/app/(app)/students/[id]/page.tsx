@@ -186,17 +186,43 @@ export default async function StudentDetailPage(props: { params: Promise<{ id: s
         .limit(8),
     ]);
 
-    // Per-subject scores for the latest card's period (or current term if a card exists).
-    const scorePeriodId = latestCard[0]?.periodId ?? null;
+    // Which period's per-subject scores to show. Prefer the latest report card's period;
+    // otherwise fall back to the most recent period this student actually has scores in —
+    // scores are entered well before a report card is generated, and the school may also be
+    // between terms (so "the current term" can be null and is not a usable fallback).
+    const [latestScored] = latestCard[0]
+      ? []
+      : await tx
+          .select({ periodId: gradebookScores.periodId })
+          .from(gradebookScores)
+          .innerJoin(
+            academicPeriod,
+            and(
+              eq(academicPeriod.periodId, gradebookScores.periodId),
+              eq(academicPeriod.schoolId, gradebookScores.schoolId),
+            ),
+          )
+          .where(
+            and(
+              eq(gradebookScores.schoolId, school.id),
+              eq(gradebookScores.studentId, student.id),
+            ),
+          )
+          .orderBy(desc(academicPeriod.academicYear), desc(academicPeriod.periodNumber))
+          .limit(1);
+
+    const scorePeriodId = latestCard[0]?.periodId ?? latestScored?.periodId ?? null;
     const scores = scorePeriodId
       ? await tx
           .select({
             subject: subjects.name,
             total: gradebookScores.total,
             grade: gradebookScores.grade,
+            periodLabel: academicPeriod.periodLabel,
           })
           .from(gradebookScores)
           .innerJoin(subjects, eq(gradebookScores.subjectId, subjects.id))
+          .leftJoin(academicPeriod, eq(gradebookScores.periodId, academicPeriod.periodId))
           .where(
             and(
               eq(gradebookScores.schoolId, school.id),
@@ -412,21 +438,29 @@ export default async function StudentDetailPage(props: { params: Promise<{ id: s
           )
         }
       >
-        {!card ? (
-          <Muted>No report card generated yet.</Muted>
+        {!card && scores.length === 0 ? (
+          <Muted>No scores or report card recorded yet.</Muted>
         ) : (
           <>
-            <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="font-display text-3xl font-semibold text-navy">
-                {card.overallGrade ?? "—"}
-              </span>
-              <span className="text-sm text-navy-2">
-                {card.overallTotal != null ? `${num(card.overallTotal).toFixed(1)} overall` : "no overall total"}
-              </span>
-              <span className="text-[11px] uppercase tracking-wide text-navy-3">
-                {card.periodLabel ?? "latest term"}
-              </span>
-            </div>
+            {card ? (
+              <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="font-display text-3xl font-semibold text-navy">
+                  {card.overallGrade ?? "—"}
+                </span>
+                <span className="text-sm text-navy-2">
+                  {card.overallTotal != null ? `${num(card.overallTotal).toFixed(1)} overall` : "no overall total"}
+                </span>
+                <span className="text-[11px] uppercase tracking-wide text-navy-3">
+                  {card.periodLabel ?? "latest term"}
+                </span>
+              </div>
+            ) : (
+              // Scores exist but no report card has been generated — show them anyway, labelled.
+              <div className="mb-4 text-[11px] uppercase tracking-wide text-navy-3">
+                {scores[0]?.periodLabel ?? "latest term"} · scores entered, report card not generated
+                yet
+              </div>
+            )}
             {scores.length === 0 ? (
               <Muted>No subject scores recorded for this period.</Muted>
             ) : (
