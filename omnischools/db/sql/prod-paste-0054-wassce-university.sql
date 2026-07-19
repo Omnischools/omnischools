@@ -142,11 +142,24 @@ CREATE INDEX IF NOT EXISTS "university_targets_candidate_idx"
 -- check and leave TWO current statements. With the UNIQUE, the 2nd insert hits a unique-violation the
 -- generation action's try/catch degrades. Drop-then-create (an index cannot be made unique in place).
 --
--- ⚠ PRE-CHECK before running on PROD — this CREATE fails if duplicate current statements already exist.
--- Run this first; it must return ZERO rows:
---   SELECT school_id, candidate_id, count(*) FROM readiness_statements
---    WHERE superseded_at IS NULL GROUP BY 1,2 HAVING count(*) > 1;
--- If it returns rows, supersede the older duplicate(s) (set superseded_at) BEFORE creating the index.
+-- ⚠ PRE-CHECK — SELF-ENFORCING. This aborts BEFORE the DROP if duplicate current statements exist, so a
+-- failed upgrade can never leave the table with no index at all. (Pasting the whole file as one batch is
+-- also implicitly transactional, but this does not rely on that — it holds even if pasted in chunks.)
+-- If it raises: supersede the older duplicate(s) (set superseded_at) and re-run.
+DO $$
+DECLARE dup_count int;
+BEGIN
+  SELECT count(*) INTO dup_count FROM (
+    SELECT 1 FROM readiness_statements
+     WHERE superseded_at IS NULL
+     GROUP BY school_id, candidate_id HAVING count(*) > 1
+  ) d;
+  IF dup_count > 0 THEN
+    RAISE EXCEPTION
+      'ABORT: % candidate(s) have duplicate CURRENT readiness statements. Supersede the older duplicate(s) before upgrading readiness_statements_current_idx to UNIQUE.', dup_count;
+  END IF;
+END $$;
+
 DROP INDEX IF EXISTS "readiness_statements_current_idx";
 CREATE UNIQUE INDEX IF NOT EXISTS "readiness_statements_current_idx"
   ON "readiness_statements" USING btree ("school_id","candidate_id") WHERE "superseded_at" IS NULL;

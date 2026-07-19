@@ -195,8 +195,11 @@ export async function generateReadinessStatement(input: unknown): Promise<Action
       const targets = await loadCandidateTargets(tx, school.id, cand.id, rows);
       const targetSnapshot = buildTargetSnapshot(targets, mock2.aggregate);
 
-      // Single-current invariant — SUPERSEDE first, THEN insert (the current index is non-unique so the
-      // app owns this order; a re-moderation never mutates an existing statement, it supersedes it).
+      // Single-current invariant — SUPERSEDE first, THEN insert. Since INCR-17b/AC21 the partial index
+      // `readiness_statements_current_idx` is UNIQUE, so the DB is the structural backstop and a
+      // concurrent second generation loses on a unique-violation (degraded by the catch below); this
+      // write ORDER is still required so the normal path never trips it. A re-moderation never mutates
+      // an existing statement, it supersedes it.
       await tx
         .update(readinessStatements)
         .set({ supersededAt: new Date() })
