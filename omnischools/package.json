@@ -26,6 +26,7 @@
     "db:seed-resumption": "tsx db/seed/boarding-resumption.ts",
     "db:seed-visiting": "tsx db/seed/boarding-visiting.ts",
     "db:seed-discipline": "tsx db/seed/boarding-discipline.ts",
+    "db:seed-wassce": "tsx db/seed/wassce.ts",
     "db:rls-test": "tsx scripts/rls-test.ts",
     "db:verify-boarding": "tsx scripts/verify-boarding.ts",
     "db:verify-visiting": "tsx --tsconfig scripts/tsconfig.json scripts/verify-visiting.ts",
