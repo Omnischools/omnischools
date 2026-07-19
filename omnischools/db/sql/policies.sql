@@ -123,6 +123,9 @@ BEGIN
     'wassce_candidate_subject',
     'wassce_papers',
     'wassce_paper_sittings',
+    'mock_exams',
+    'mock_results',
+    'benchmark_data_points',
     'announcement',
     'sms_template',
     'notification_log',
@@ -157,6 +160,9 @@ $$;
 --     reference data, read across tenants (often inside withSchool, GUC set, bypass off).
 --   ref_user — identity table, read under withoutTenantScope during pre-tenant auth lookups.
 --   marketing_lead — pre-signup demo-form leads, written with no tenant context at all.
+--   benchmark_reference — WASSCE WAEC national + directional regional benchmarks (INCR-16 / 0052).
+--     A benchmark exists for every tenant, so it is deliberately GLOBAL (no school_id, no tenant
+--     isolation); "my cohort vs region/national" is DERIVED on read, never a stored cross-tenant join.
 -- We enable RLS but intentionally do NOT FORCE it and add NO policy. The postgres table
 -- owner (the app's direct connection) is therefore exempt and keeps full access, while the
 -- Data API roles (anon / authenticated) are denied — closing the anon-key exposure the
@@ -172,7 +178,8 @@ BEGIN
     'ref_anomaly_rule',
     'gen_period_defaults',
     'ref_user',
-    'marketing_lead'
+    'marketing_lead',
+    'benchmark_reference'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);

@@ -5,10 +5,12 @@ import {
   smallint,
   integer,
   boolean,
+  numeric,
   jsonb,
   date,
   timestamp,
   unique,
+  uniqueIndex,
   index,
   foreignKey,
   check,
@@ -23,6 +25,11 @@ import {
   wassceSubjectTypeEnum,
   wasscePaperTypeEnum,
   wassceRegFlagEnum,
+  wassceGradeEnum,
+  benchmarkSourceEnum,
+  benchmarkQualityEnum,
+  benchmarkMetricEnum,
+  benchmarkScopeEnum,
 } from "./_enums";
 
 /**
@@ -385,3 +392,202 @@ export const wasscePaperSittings = pgTable(
     }).onDelete("cascade"),
   }),
 );
+
+/* ────────────────────────────────────────────────────────────────────────────────────────────────
+ * INCR-16 · Subject-teacher + mock cycle (SHS module 4.3, migration 0052) — Kofi rulings 2026-07-19.
+ *
+ * The prediction INPUT built ON the INCR-15 spine: mock grades make the per-subject predicted grade
+ * (= the Mock-2/predictor grade) real; whole-candidate best-3 aggregate stays INCR-17. Four tables —
+ * three TENANT (FORCE RLS, prod-paste) + one deliberately GLOBAL benchmark reference (bare ENABLE RLS,
+ * no FORCE, no tenant_isolation — the module's first global table, the ref_region idiom).
+ *
+ * NO TRIGGERS (portability): the predicted grade is a DERIVED-ON-READ `COALESCE(moderated_grade, grade)`
+ * of the predictor mock (no stored predicted_grade column — R2); moderation-supersede is the same
+ * app-layer COALESCE; raw→band mapping is the existing per-school `grade_scale` lib read (no invented
+ * ladder). The only structural invariant is the same-row moderation-trail CHECK (INCR-15 idiom).
+ * ──────────────────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A mock exam sitting for a cohort — cohort-WIDE, cohort-scoped (R1). Asankrangwa runs two (Mock 1 Nov
+ * calibration + Mock 2 Mar predictor) but `mock_number` carries NO CHECK ceiling (">2 allowed, not
+ * seeded" — the surface's "Mark Mock 3" button must be expressible). RATIFIED DEVIATION from BUILD_STACK:
+ * the cohort link is a COMPOSITE FK `(school_id, cohort_id)` → wassce_cohort(school_id, id), NOT a loose
+ * `cohort_year` scalar — keeps the ref intra-tenant and structurally correct.
+ *
+ * PREDICTOR is an EXPLICIT flag, not "highest mock_number" (R1): `is_predictor` + a partial
+ * UNIQUE(school_id, cohort_id) WHERE is_predictor enforces exactly one predictor per cohort, so the
+ * per-subject predicted grade always resolves to a single mock even after a "Mark Mock 3" re-point.
+ *
+ * MARKING LOCK is INDEPENDENT of the registration freeze (R3b key ruling): `marking_complete_at` locks
+ * MARK-ENTRY/config-edit for this mock; wassce_cohort.setup_frozen_at locks the ROSTER. Mock 2 is marked
+ * in March, after Feb reg close — the two locks are orthogonal (resolves Decision-1's apparent conflict).
+ *
+ * REFERENCED by mock_results → carries the composite tenant UK.
+ */
+export const mockExams = pgTable(
+  "mock_exams",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    cohortId: uuid("cohort_id").notNull(),
+    name: text("name").notNull(), // "Mock 1", "Mock 2 (Predictor)"
+    mockNumber: smallint("mock_number").notNull(), // NO CHECK ceiling — >2 allowed (R1)
+    isPredictor: boolean("is_predictor").notNull().default(false), // explicit predictor (R1), not max(mock_number)
+    scheduledStart: date("scheduled_start"),
+    scheduledEnd: date("scheduled_end"),
+    // NULL = marking open (mark-entry + config editable); set = marking closed (both locked). Orthogonal
+    // to the registration freeze (R3b) — locks MARKING only, never gated by setup_frozen_at.
+    markingCompleteAt: timestamp("marking_complete_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One mock per (cohort × mock_number) — natural key + seed conflict target. Its (school_id, cohort_id)
+    // prefix also serves the "all mocks for a cohort" read, so no separate cohort index is needed.
+    uniqNumber: unique("uniq_mock_exam_number").on(t.schoolId, t.cohortId, t.mockNumber),
+    // Exactly ONE predictor per cohort (R1) — partial unique index. Emitted with the other indexes.
+    onePredictor: uniqueIndex("uniq_mock_exam_predictor")
+      .on(t.schoolId, t.cohortId)
+      .where(sql`${t.isPredictor}`),
+    // Composite-FK target for mock_results (school_id, id). Emitted INLINE in CREATE TABLE.
+    tenantUk: unique("mock_exams_tenant_uk").on(t.schoolId, t.id),
+    // Composite intra-tenant FK — a cross-tenant cohort reference is structurally impossible.
+    cohortFk: foreignKey({
+      columns: [t.schoolId, t.cohortId],
+      foreignColumns: [wassceCohort.schoolId, wassceCohort.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * One mock grade per (candidate × subject × mock) — the LEAF the teacher mark-entry surface writes (R2).
+ * The teacher enters a WAEC `grade` A1–F9 DIRECTLY and it is AUTHORITATIVE (`wassce_grade NOT NULL`); the
+ * per-school `grade_scale` table already maps score→letter, so NO raw→band ladder is invented here.
+ * `raw_score`/`max_score` are nullable DIAGNOSTIC only (the surface's optional raw column).
+ *
+ * MODERATION (R3, Decision 10): store BOTH — `grade` (teacher, immutable) + a nullable `moderated_grade`
+ * with its actor/timestamp/reason. Effective grade = COALESCE(moderated_grade, grade) DERIVED ON READ (no
+ * stored effective column). The moderation WRITE UI is INCR-18; the columns + the trail CHECK are authored
+ * now so the derived read already COALESCEs. Same-row CHECK `moderated_grade IS NULL OR (moderator_user_id
+ * IS NOT NULL AND moderated_at IS NOT NULL)` makes the audit trail structural + portable (no trigger) —
+ * a half-populated moderation is rejected. Moderator role (VICE_HEADMASTER_ACADEMIC) is app-enforced.
+ *
+ * LEAF (nothing references it) → FORCE RLS but NO tenant UK. Composite FKs to mock, candidate and subject
+ * keep all three intra-tenant (a cross-tenant/cross-cohort mark is structurally impossible — the R5 seam).
+ * Actor stamps (marked_by / moderator) are single-column SET NULL users FKs (the boarding/ledger idiom).
+ */
+export const mockResults = pgTable(
+  "mock_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    mockId: uuid("mock_id").notNull(),
+    candidateId: uuid("candidate_id").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    grade: wassceGradeEnum("grade").notNull(), // teacher-entered, authoritative, immutable (R2)
+    rawScore: numeric("raw_score", { precision: 5, scale: 2 }), // diagnostic only, nullable
+    maxScore: numeric("max_score", { precision: 5, scale: 2 }), // diagnostic only, nullable
+    markedByUserId: uuid("marked_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    markedAt: timestamp("marked_at", { withTimezone: true }),
+    // --- moderation trail (columns now; write UI is INCR-18; read already COALESCEs) ---
+    moderatedGrade: wassceGradeEnum("moderated_grade"), // NULL = un-moderated → effective = grade
+    moderatorUserId: uuid("moderator_user_id").references(() => users.id, { onDelete: "set null" }),
+    moderatedAt: timestamp("moderated_at", { withTimezone: true }),
+    moderationReason: text("moderation_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One grade per (candidate × subject) within a mock — natural key + seed/upsert conflict target.
+    uniqResult: unique("uniq_mock_result").on(
+      t.schoolId,
+      t.mockId,
+      t.candidateId,
+      t.subjectId,
+    ),
+    // The mark-entry grid read: a mock's results for one subject (Mr Asiedu → Chemistry F3).
+    byMockSubject: index("mock_results_mock_subject_idx").on(t.schoolId, t.mockId, t.subjectId),
+    // Trajectory read: a candidate's grades across mocks (Mock1→Mock2 ↑/→/↓).
+    byCandidate: index("mock_results_candidate_idx").on(t.schoolId, t.candidateId),
+    // Same-row moderation-trail CHECK (R3) — a set moderated_grade needs both actor + timestamp.
+    moderationTrail: check(
+      "mock_results_moderation_trail",
+      sql`${t.moderatedGrade} IS NULL OR (${t.moderatorUserId} IS NOT NULL AND ${t.moderatedAt} IS NOT NULL)`,
+    ),
+    // Composite intra-tenant FKs — cross-tenant mock/candidate/subject structurally impossible (R5 seam).
+    mockFk: foreignKey({
+      columns: [t.schoolId, t.mockId],
+      foreignColumns: [mockExams.schoolId, mockExams.id],
+    }).onDelete("cascade"),
+    candidateFk: foreignKey({
+      columns: [t.schoolId, t.candidateId],
+      foreignColumns: [wassceCandidates.schoolId, wassceCandidates.id],
+    }).onDelete("cascade"),
+    subjectFk: foreignKey({
+      columns: [t.schoolId, t.subjectId],
+      foreignColumns: [wassceSubjects.schoolId, wassceSubjects.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * A TENANT benchmark data point — this school's OWN computed rate (SCHOOLUP_DIRECT), the school side of
+ * the R4 benchmark split. FORCE RLS + prod-paste. `subject_id` is NULLABLE: a non-null row is a
+ * per-subject rate (composite FK `(school_id, subject_id)` → wassce_subjects, MATCH SIMPLE skips the NULL
+ * row); a NULL row is a school-wide rate. `metric` (credit/distinction) × `scope` describes the numeric
+ * `value`; `quality` + `confidence_interval_pp` carry the confidence tier. "My cohort vs region/national"
+ * is DERIVED on read against benchmark_reference — never a stored cross-tenant join (no pooling logic).
+ */
+export const benchmarkDataPoints = pgTable(
+  "benchmark_data_points",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    subjectId: uuid("subject_id"), // NULL = school-wide; set = per-subject (composite FK below)
+    metric: benchmarkMetricEnum("metric").notNull(),
+    scope: benchmarkScopeEnum("scope").notNull(),
+    value: numeric("value", { precision: 5, scale: 2 }).notNull(), // e.g. 68.50 (a percentage rate)
+    source: benchmarkSourceEnum("source").notNull(),
+    quality: benchmarkQualityEnum("quality").notNull(),
+    confidenceIntervalPp: numeric("confidence_interval_pp", { precision: 5, scale: 2 }), // ±pp, nullable
+    referenceYear: smallint("reference_year").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite intra-tenant FK, only enforced when subject_id is set (MATCH SIMPLE skips the NULL
+    // school-wide row) — the ref_assessment_weights idiom. Cross-tenant subject structurally impossible.
+    subjectFk: foreignKey({
+      columns: [t.schoolId, t.subjectId],
+      foreignColumns: [wassceSubjects.schoolId, wassceSubjects.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * A GLOBAL benchmark reference — WAEC national + directional regional summaries (R4), the reference side
+ * of the split. DELIBERATELY GLOBAL: there is NO `school_id` (a benchmark exists for every tenant), so it
+ * gets a BARE `ENABLE ROW LEVEL SECURITY` — NO FORCE, NO tenant_isolation policy — the ref_region idiom
+ * (owner stays exempt; the Data API is denied by having no permissive policy). Added to the GLOBAL block
+ * of policies.sql + prod-paste, NOT the tenant block.
+ *
+ * Keyed by `subject_name` TEXT (not an FK) so it is tenant-agnostic — a national Chemistry rate is not tied
+ * to any one school's wassce_subjects row. `region` is set for a REGION-scope row (e.g. "Western Region"),
+ * NULL for NATIONAL. Region ships DIRECTIONAL (±4–5pp via confidence_interval_pp). No composite FK (global).
+ */
+export const benchmarkReference = pgTable("benchmark_reference", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  subjectName: text("subject_name").notNull(), // tenant-agnostic key, e.g. "Chemistry"
+  region: text("region"), // set for REGION scope (e.g. "Western Region"); NULL for NATIONAL
+  metric: benchmarkMetricEnum("metric").notNull(),
+  scope: benchmarkScopeEnum("scope").notNull(),
+  value: numeric("value", { precision: 5, scale: 2 }).notNull(),
+  source: benchmarkSourceEnum("source").notNull(),
+  quality: benchmarkQualityEnum("quality").notNull(),
+  confidenceIntervalPp: numeric("confidence_interval_pp", { precision: 5, scale: 2 }), // ±pp (directional)
+  referenceYear: smallint("reference_year").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
