@@ -365,6 +365,13 @@
       "when": 1784462130659,
       "tag": "0051_soft_changeling",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1784469974923,
+      "tag": "0052_bitter_squadron_sinister",
+      "breakpoints": true
     }
   ]
 }

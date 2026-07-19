@@ -27,6 +27,7 @@
     "db:seed-visiting": "tsx db/seed/boarding-visiting.ts",
     "db:seed-discipline": "tsx db/seed/boarding-discipline.ts",
     "db:seed-wassce": "tsx db/seed/wassce.ts",
+    "db:seed-wassce-mock": "tsx db/seed/wassce-mock.ts",
     "db:rls-test": "tsx scripts/rls-test.ts",
     "db:verify-boarding": "tsx scripts/verify-boarding.ts",
     "db:verify-visiting": "tsx --tsconfig scripts/tsconfig.json scripts/verify-visiting.ts",
@@ -37,6 +38,7 @@
     "db:verify-gradebook": "tsx scripts/verify-gradebook.ts",
     "db:verify-comms": "tsx scripts/verify-comms.ts",
     "db:verify-score-ledger": "tsx scripts/verify-score-ledger.ts",
+    "db:verify-wassce-mock": "tsx scripts/verify-wassce-mock.ts",
     "db:verify-stpshs-sheet": "tsx --tsconfig scripts/tsconfig.json scripts/verify-stpshs-sheet.ts",
     "db:setup": "drizzle-kit migrate && tsx scripts/apply-policies.ts && tsx db/seed/asankrangwa.ts"
   },

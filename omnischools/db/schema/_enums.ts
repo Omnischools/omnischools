@@ -376,3 +376,54 @@ export const wassceRegFlagEnum = pgEnum("wassce_reg_flag", [
   "NHIS_ISSUE", // S. Asante — NHIS card admin issue (does not affect writing)
   "FEE", // P. Donkor — Free-SHS reconciliation lag (GES cannot-deny; still REGISTERED)
 ]);
+
+// Senior WASSCE subject-teacher + mock cycle (SHS module 4.3) — INCR-16 (Kofi rulings 2026-07-19).
+// Migration 0052. The prediction INPUT: mock grades + the benchmark split.
+//
+// The WAEC 9-grade band, the SINGLE source of truth for a mock grade (teacher-entered, authoritative)
+// and its moderated override. The value ORDER is load-bearing: it MUST match lib/wassce/constants.ts
+// WASSCE_GRADING_BANDS (A1 best → F9 fail) so the app's band metadata (points/caption/colour) lines up
+// index-for-index and a future ordinal comparison (trajectory ↑/→/↓, credit = ≤ C6) is enum-monotonic.
+export const wassceGradeEnum = pgEnum("wassce_grade", [
+  "A1",
+  "B2",
+  "B3",
+  "C4",
+  "C5",
+  "C6",
+  "D7",
+  "E8",
+  "F9",
+]);
+
+// Benchmark provenance (R4). SCHOOLUP_DIRECT is the only source used by the tenant benchmark_data_points
+// (a school's own computed rate); WAEC_NATIONAL / WAEC_REGIONAL_SUMMARY / INTERPOLATED live on the global
+// benchmark_reference. MULTI_SCHOOL_POOL is RESERVED — no pooling logic ships in INCR-16 (no cross-tenant
+// reads); the value exists so a later pooled benchmark needs no enum rebuild.
+export const benchmarkSourceEnum = pgEnum("benchmark_source", [
+  "SCHOOLUP_DIRECT",
+  "WAEC_NATIONAL",
+  "WAEC_REGIONAL_SUMMARY",
+  "INTERPOLATED",
+  "MULTI_SCHOOL_POOL",
+]);
+// Benchmark confidence tier (R4). National WAEC = STRONG; interpolated = MODERATE; the regional summary
+// ships DIRECTIONAL (±4–5pp) — the surface renders the "±4–5pp" caption off this + confidence_interval_pp.
+export const benchmarkQualityEnum = pgEnum("benchmark_quality", [
+  "STRONG",
+  "MODERATE",
+  "DIRECTIONAL",
+]);
+// What the benchmark measures. CREDIT_RATE = share at ≤ C6 (WAEC "credit"); DISTINCTION_RATE = share at
+// ≤ B3. A pure descriptor of the numeric `value` — no logic keys off it in 0052 (derived on read).
+export const benchmarkMetricEnum = pgEnum("benchmark_metric", [
+  "CREDIT_RATE",
+  "DISTINCTION_RATE",
+]);
+// The comparison level a benchmark row sits at. SCHOOL = this tenant's own rate; REGION / NATIONAL are the
+// global reference points ("my cohort vs region vs national" is DERIVED on read, never a stored join).
+export const benchmarkScopeEnum = pgEnum("benchmark_scope", [
+  "SCHOOL",
+  "REGION",
+  "NATIONAL",
+]);
