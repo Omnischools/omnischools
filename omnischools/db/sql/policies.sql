@@ -64,6 +64,7 @@ BEGIN
     'audit_log',
     'students',
     'student_guardian',
+    'student_health_record',
     'household',
     'admission_application',
     'admission_document',
@@ -216,14 +217,17 @@ $$;
 --     byte-identical to before this block existed);
 --   • parent session          → pu set → the <rule> decides, AND'd on top of tenant_isolation.
 --
--- LAYERS:
+-- LAYERS (applied in the order below — scope FIRST, deny catalog LAST):
+--   2. parent_scope — restrictive USING (pu IS NULL OR <child reaches this row>) on the small
+--      readable set. Child reach goes through the SECURITY DEFINER helper parent_student_ids() so each
+--      policy is one line and the student_guardian sub-select is not itself RLS-recursed. Created FIRST
+--      so the deny catalog below can recognise (and skip) the readable set by its parent_scope policy.
 --   1. parent_deny  — restrictive USING (pu IS NULL) on EVERY tenant table EXCEPT the readable set:
 --      a parent session (pu set) → FALSE → ZERO rows. Deny-by-default (mock_results,
 --      benchmark_data_points, university_targets, cohort aggregates, any other student, everything).
---   2. parent_scope — restrictive USING (pu IS NULL OR <child reaches this row>) on the small
---      readable set, OVERRIDING parent_deny there. Child reach goes through the SECURITY DEFINER
---      helper parent_student_ids() so each policy is one line and the student_guardian sub-select is
---      not itself RLS-recursed.
+--      CATALOG-DRIVEN, not a hand-kept list: it is applied to every FORCE-RLS + school_id table that
+--      lacks a parent_scope policy, so a new tenant table is auto-denied with no edit here (the fix for
+--      Dex's BLOCK — the old 77-name array silently let student_health_record escape the boundary).
 -- FOR ALL (USING doubles as WITH CHECK): parent_deny tables are read+write locked; there is no parent
 -- write path anywhere (Kofi R4), so the scope tables' WITH CHECK is left = USING (no app writes ever
 -- run inside withParentScope). ref_school (keyed on id, handled at the top of this file) is left
@@ -251,103 +255,12 @@ AS $$
     AND user_id IS NOT NULL
 $$;
 
--- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set ----
-DO $$
-DECLARE
-  tbl text;
-BEGIN
-  FOREACH tbl IN ARRAY ARRAY[
-    'ref_school_product',
-    'role_assignment',
-    'staff_profile',
-    'staff_compensation',
-    'ref_academic_period_config',
-    'academic_period',
-    'school_holiday',
-    'audit_log',
-    'household',
-    'admission_application',
-    'admission_document',
-    'fee_category',
-    'fee_structure',
-    'fee_structure_item',
-    'discount',
-    'discount_tier',
-    'invoice_discount_application',
-    'invoice',
-    'invoice_line_item',
-    'payment',
-    'payment_allocation',
-    'receipt',
-    'payment_audit_log',
-    'class',
-    'timetable_slot',
-    'attendance_record',
-    'attendance_correction',
-    'attendance_settings',
-    'subject',
-    'gradebook_config',
-    'gradebook_score',
-    'gradebook_column',
-    'gradebook_column_score',
-    'grade_scale',
-    'report_card',
-    'house',
-    'boarding_dormitory',
-    'boarding_bunk',
-    'bunk_allocation',
-    'daily_schedule_template',
-    'boarding_settings',
-    'boarding_calendar_event',
-    'boarding_exeat',
-    'exeat_notification',
-    'inspections',
-    'prep_attendance',
-    'boarding_arrival',
-    'boarding_approved_visitor',
-    'boarding_visit',
-    'boarding_visit_notification',
-    'boarding_infractions',
-    'bond_artefacts',
-    'deboardinization_records',
-    'ref_assessment_weights',
-    'senior_assessment',
-    'senior_assessment_score',
-    'senior_score_ledger',
-    'senior_score_ledger_version',
-    'senior_ledger_path',
-    'senior_subject_teacher',
-    'wassce_cohort',
-    'wassce_programmes',
-    'wassce_subjects',
-    'wassce_candidate_subject',
-    'mock_exams',
-    'mock_results',
-    'benchmark_data_points',
-    'university_targets',
-    'announcement',
-    'sms_template',
-    'notification_log',
-    'inbox_routing_rule',
-    'whatsapp_template',
-    'invite',
-    'book_category',
-    'book_entry',
-    'fixed_asset'
-  ]
-  LOOP
-    EXECUTE format('DROP POLICY IF EXISTS parent_deny ON %I;', tbl);
-    EXECUTE format('DROP POLICY IF EXISTS parent_scope ON %I;', tbl);
-    EXECUTE format(
-      'CREATE POLICY parent_deny ON %I AS RESTRICTIVE FOR ALL TO public '
-      'USING (NULLIF(current_setting(''app.current_parent_user'', true), '''') IS NULL);',
-      tbl
-    );
-  END LOOP;
-END
-$$;
+-- ---- layer 2 FIRST, then layer 1: parent_scope is created BEFORE the parent_deny catalog loop so
+-- that the loop can SKIP the readable set by testing "does this table already have a parent_scope
+-- policy?". (Semantically parent_deny is still "layer 1" — deny-by-default — but it must run AFTER the
+-- 9 scope policies exist so the catalog can exclude them.) ----
 
--- ---- layer 2: parent_scope on the parent-readable set (overrides parent_deny) ----
+-- ---- layer 2: parent_scope on the parent-readable set (overrides the parent_deny catalog below) ----
 -- students — only the parent's own children.
 DROP POLICY IF EXISTS parent_deny ON students;
 DROP POLICY IF EXISTS parent_scope ON students;
@@ -495,3 +408,44 @@ CREATE POLICY parent_scope ON inbox_message AS RESTRICTIVE FOR ALL TO public
         )
     )
   );
+
+-- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
+-- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
+-- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).
+-- It is now DISCOVERED, not listed: every table that is FORCE-RLS AND has a `school_id` column AND does
+-- NOT already carry a parent_scope policy gets parent_deny. The discovery is byte-identical to the tenant
+-- probe in scripts/rls-test.ts (pg_class.relforcerowsecurity + a school_id attribute), so a FUTURE tenant
+-- table is auto-denied with ZERO code change here. Because the 9 parent_scope policies are created ABOVE,
+-- the NOT EXISTS(parent_scope) filter excludes exactly the readable set — reproducing the 77-deny/9-scope
+-- end state today, plus any newly-added tenant table (student_health_record included).
+DO $$
+DECLARE
+  tbl text;
+BEGIN
+  FOR tbl IN
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+    WHERE c.relkind = 'r'
+      AND c.relforcerowsecurity
+      AND EXISTS (
+        SELECT 1 FROM information_schema.columns col
+        WHERE col.table_schema = 'public'
+          AND col.table_name = c.relname
+          AND col.column_name = 'school_id'
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_policy p
+        WHERE p.polrelid = c.oid AND p.polname = 'parent_scope'
+      )
+    ORDER BY c.relname
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS parent_deny ON %I;', tbl);
+    EXECUTE format(
+      'CREATE POLICY parent_deny ON %I AS RESTRICTIVE FOR ALL TO public '
+      'USING (NULLIF(current_setting(''app.current_parent_user'', true), '''') IS NULL);',
+      tbl
+    );
+  END LOOP;
+END
+$$;

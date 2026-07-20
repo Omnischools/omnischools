@@ -17,7 +17,11 @@
 --     CASCADE (intra-tenant; nullable because staff/teacher invites carry no student — the
 --     PARENT-requires-student rule is app-enforced, AC C1).
 --   • parent_student_ids() SECURITY DEFINER helper + the RESTRICTIVE parent_deny / parent_scope policy
---     family across every tenant table.
+--     family across every tenant table. parent_deny is CATALOG-DRIVEN (INCR-19a re-gate): it is applied
+--     to every FORCE-RLS + school_id table lacking a parent_scope policy, so a future tenant table is
+--     auto-covered with no edit — keep this block byte-identical to db/sql/policies.sql.
+--   • student_health_record (migration 0036) tenant_isolation is re-asserted here (Part 1b) so the health
+--     PII table is FORCE-RLS before the catalog parent_deny loop, and so dev matches prod (Sarah BLOCK).
 -- NO new enums. NO new tables. NO GLOBAL-table changes (ref_user / benchmark_reference / universities /
 -- university_programmes are left exactly as-is — a parent session must not read tenant PII there, and
 -- they hold none; adding parent policies to global tables is explicitly NOT done).
@@ -47,6 +51,29 @@ DO $$ BEGIN
   ALTER TABLE "invite" ADD CONSTRAINT "invite_school_id_student_id_students_school_id_id_fk"
     FOREIGN KEY ("school_id","student_id") REFERENCES "public"."students"("school_id","id") ON DELETE cascade;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- ==================================================================================================
+-- Part 1b — student_health_record tenant isolation (closes the dev↔prod drift; Sarah BLOCK, INCR-19a).
+-- ==================================================================================================
+-- The health table (migration 0036: blood group, allergies, conditions, medications, emergency
+-- contacts) is a tenant table but shipped WITHOUT the tenant_isolation policy on dev. prod-paste-0036
+-- DID grant it on prod — this re-asserts it idempotently so dev and prod match, AND (crucially) so the
+-- table is FORCE-RLS BEFORE the catalog parent_deny loop below runs (the loop only denies FORCE-RLS
+-- tables). Byte-identical to the tenant_isolation policy every other tenant table carries.
+-- ⚠ prod-paste-0036 is what gave this table tenant isolation on PROD — confirm it was run there. If it
+-- was somehow never run, THIS idempotent block establishes the tenant isolation on prod as well.
+ALTER TABLE "student_health_record" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "student_health_record" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "student_health_record";
+CREATE POLICY tenant_isolation ON "student_health_record" FOR ALL TO public
+  USING (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR school_id = NULLIF(current_setting('app.current_school', true), '')::uuid
+  )
+  WITH CHECK (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR school_id = NULLIF(current_setting('app.current_school', true), '')::uuid
+  );
 
 -- ==================================================================================================
 -- Part 2 — the per-user parent-portal RLS boundary (keep byte-identical to db/sql/policies.sql).
@@ -89,103 +116,12 @@ AS $$
     AND user_id IS NOT NULL
 $$;
 
--- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set ----
-DO $$
-DECLARE
-  tbl text;
-BEGIN
-  FOREACH tbl IN ARRAY ARRAY[
-    'ref_school_product',
-    'role_assignment',
-    'staff_profile',
-    'staff_compensation',
-    'ref_academic_period_config',
-    'academic_period',
-    'school_holiday',
-    'audit_log',
-    'household',
-    'admission_application',
-    'admission_document',
-    'fee_category',
-    'fee_structure',
-    'fee_structure_item',
-    'discount',
-    'discount_tier',
-    'invoice_discount_application',
-    'invoice',
-    'invoice_line_item',
-    'payment',
-    'payment_allocation',
-    'receipt',
-    'payment_audit_log',
-    'class',
-    'timetable_slot',
-    'attendance_record',
-    'attendance_correction',
-    'attendance_settings',
-    'subject',
-    'gradebook_config',
-    'gradebook_score',
-    'gradebook_column',
-    'gradebook_column_score',
-    'grade_scale',
-    'report_card',
-    'house',
-    'boarding_dormitory',
-    'boarding_bunk',
-    'bunk_allocation',
-    'daily_schedule_template',
-    'boarding_settings',
-    'boarding_calendar_event',
-    'boarding_exeat',
-    'exeat_notification',
-    'inspections',
-    'prep_attendance',
-    'boarding_arrival',
-    'boarding_approved_visitor',
-    'boarding_visit',
-    'boarding_visit_notification',
-    'boarding_infractions',
-    'bond_artefacts',
-    'deboardinization_records',
-    'ref_assessment_weights',
-    'senior_assessment',
-    'senior_assessment_score',
-    'senior_score_ledger',
-    'senior_score_ledger_version',
-    'senior_ledger_path',
-    'senior_subject_teacher',
-    'wassce_cohort',
-    'wassce_programmes',
-    'wassce_subjects',
-    'wassce_candidate_subject',
-    'mock_exams',
-    'mock_results',
-    'benchmark_data_points',
-    'university_targets',
-    'announcement',
-    'sms_template',
-    'notification_log',
-    'inbox_routing_rule',
-    'whatsapp_template',
-    'invite',
-    'book_category',
-    'book_entry',
-    'fixed_asset'
-  ]
-  LOOP
-    EXECUTE format('DROP POLICY IF EXISTS parent_deny ON %I;', tbl);
-    EXECUTE format('DROP POLICY IF EXISTS parent_scope ON %I;', tbl);
-    EXECUTE format(
-      'CREATE POLICY parent_deny ON %I AS RESTRICTIVE FOR ALL TO public '
-      'USING (NULLIF(current_setting(''app.current_parent_user'', true), '''') IS NULL);',
-      tbl
-    );
-  END LOOP;
-END
-$$;
+-- ---- layer 2 FIRST, then layer 1: parent_scope is created BEFORE the parent_deny catalog loop so
+-- that the loop can SKIP the readable set by testing "does this table already have a parent_scope
+-- policy?". (Semantically parent_deny is still "layer 1" — deny-by-default — but it must run AFTER the
+-- 9 scope policies exist so the catalog can exclude them.) ----
 
--- ---- layer 2: parent_scope on the parent-readable set (overrides parent_deny) ----
+-- ---- layer 2: parent_scope on the parent-readable set (overrides the parent_deny catalog below) ----
 -- students — only the parent's own children.
 DROP POLICY IF EXISTS parent_deny ON students;
 DROP POLICY IF EXISTS parent_scope ON students;
@@ -333,3 +269,44 @@ CREATE POLICY parent_scope ON inbox_message AS RESTRICTIVE FOR ALL TO public
         )
     )
   );
+
+-- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
+-- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
+-- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).
+-- It is now DISCOVERED, not listed: every table that is FORCE-RLS AND has a `school_id` column AND does
+-- NOT already carry a parent_scope policy gets parent_deny. The discovery is byte-identical to the tenant
+-- probe in scripts/rls-test.ts (pg_class.relforcerowsecurity + a school_id attribute), so a FUTURE tenant
+-- table is auto-denied with ZERO code change here. Because the 9 parent_scope policies are created ABOVE,
+-- the NOT EXISTS(parent_scope) filter excludes exactly the readable set — reproducing the 77-deny/9-scope
+-- end state today, plus any newly-added tenant table (student_health_record included).
+DO $$
+DECLARE
+  tbl text;
+BEGIN
+  FOR tbl IN
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+    WHERE c.relkind = 'r'
+      AND c.relforcerowsecurity
+      AND EXISTS (
+        SELECT 1 FROM information_schema.columns col
+        WHERE col.table_schema = 'public'
+          AND col.table_name = c.relname
+          AND col.column_name = 'school_id'
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_policy p
+        WHERE p.polrelid = c.oid AND p.polname = 'parent_scope'
+      )
+    ORDER BY c.relname
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS parent_deny ON %I;', tbl);
+    EXECUTE format(
+      'CREATE POLICY parent_deny ON %I AS RESTRICTIVE FOR ALL TO public '
+      'USING (NULLIF(current_setting(''app.current_parent_user'', true), '''') IS NULL);',
+      tbl
+    );
+  END LOOP;
+END
+$$;

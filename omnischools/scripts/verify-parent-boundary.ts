@@ -5,6 +5,7 @@ import {
   schools,
   students,
   studentGuardians,
+  studentHealthRecords,
   users,
   wassceCohort,
   wassceProgrammes,
@@ -226,6 +227,23 @@ async function main() {
         referenceYear: 2025,
       });
 
+      // student_health_record (Sarah BLOCK): 2 rows in school A — health PII the parent must NEVER read.
+      // Before the fix (no RLS at all) a parent scoped to school A read BOTH (count = 2); parent_deny
+      // now zeroes them, while a staff session (school GUC only) still reads its own school's rows.
+      await tx.insert(studentHealthRecords).values({
+        schoolId: schoolA,
+        studentId: childA,
+        bloodGroup: "O+",
+        allergies: "Peanuts",
+        conditions: "Asthma",
+      });
+      await tx.insert(studentHealthRecords).values({
+        schoolId: schoolA,
+        studentId: childB,
+        bloodGroup: "AB-",
+        conditions: "None",
+      });
+
       console.log("\n── AC M1/M2 — multi-school signal (identity metadata, no PII) ──");
       const schoolIds = await linkedSchoolIdsTx(tx, parentUser);
       ok(schoolIds.length === 2 && schoolIds.includes(schoolA) && schoolIds.includes(schoolB), "M2: parentUser holds live guardian links at exactly 2 schools");
@@ -252,10 +270,19 @@ async function main() {
       // ── Parent-scoped reads (drop to the non-superuser role so the RESTRICTIVE policies apply) ──
       await tx.execute(APP_ROLE);
       await tx.execute(setSchool(schoolA));
-      await tx.execute(setParent(parentUser));
 
       const nStudents = async () => (await tx.select({ id: students.id }).from(students)).length;
       const nGuardians = async () => (await tx.select({ id: studentGuardians.id }).from(studentGuardians)).length;
+      const nHealth = async () =>
+        (await tx.select({ id: studentHealthRecords.id }).from(studentHealthRecords)).length;
+
+      // student_health_record (Sarah BLOCK) — a STAFF session (school GUC only, no parent GUC) reads its
+      // own school's health rows via the permissive tenant_isolation; the parent restriction is a no-op.
+      console.log("\n── student_health_record (Sarah BLOCK) — staff reads own school, parent denied ──");
+      ok((await nHealth()) === 2, "health: staff session (school A, no parent GUC) sees its 2 school-A health rows (permissive tenant_isolation works)");
+
+      await tx.execute(setParent(parentUser));
+      ok((await nHealth()) === 0, "health: parent scoped to school A reads 0 health rows (parent_deny; was 2 before the fix)");
 
       console.log("\n── parent = Ama @ school A · positive controls + denials ──");
       const kids = await loadParentChildrenTx(tx, schoolA, parentUser);
@@ -295,6 +322,47 @@ async function main() {
       await tx.execute(setParent(otherUser));
       ok((await nStudents()) === 0, "L1: otherUser (phone matches guardian rows, user_id IS NULL) sees 0 students");
       ok((await loadParentChildrenTx(tx, schoolA, otherUser)).length === 0, "L1: loader returns no children for the unlinked same-phone user");
+
+      // ── DRIFT-GUARD — a forgotten tenant table CANNOT silently escape the parent boundary ──────────
+      // otherUser is a childless parent (guardian by PHONE only, user_id IS NULL → parent_student_ids = ∅),
+      // still scoped to school A. We enumerate the SAME catalog the parent_deny loop + rls-test use
+      // (FORCE-RLS + a school_id column), subtract the 9 known parent-readable tables, and assert this
+      // session reads 0 rows on EVERY other tenant table. This is the loop that would have caught
+      // student_health_record: a table that ships without parent_deny returns > 0 here and turns RED.
+      console.log("\n── DRIFT-GUARD — every FORCE-RLS + school_id table (minus the 9 readable) → 0 for a childless parent ──");
+      const PARENT_READABLE = new Set([
+        "students",
+        "student_guardian",
+        "wassce_candidates",
+        "wassce_paper_sittings",
+        "wassce_papers",
+        "waec_special_consideration",
+        "readiness_statements",
+        "conversation",
+        "inbox_message",
+      ]);
+      const discovered = (await tx.execute(sql`
+        select c.relname as t
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+        where c.relkind = 'r'
+          and c.relforcerowsecurity
+          and exists (
+            select 1 from information_schema.columns col
+            where col.table_schema = 'public'
+              and col.table_name = c.relname
+              and col.column_name = 'school_id'
+          )
+        order by c.relname`)) as unknown as { t: string }[];
+      const denyTables = discovered.map((r) => r.t).filter((t) => !PARENT_READABLE.has(t));
+      ok(denyTables.includes("student_health_record"), "drift-guard: student_health_record is FORCE-RLS + school_id and in the deny set");
+      ok(denyTables.length >= 78, `drift-guard: discovered ${denyTables.length} deny tables to probe (≥ 78: the 77 legacy + student_health_record)`);
+      const leaks: string[] = [];
+      for (const t of denyTables) {
+        const res = (await tx.execute(sql.raw(`select count(*)::int as n from "${t}"`))) as unknown as { n: number }[];
+        if (Number(res[0].n) !== 0) leaks.push(`${t}=${res[0].n}`);
+      }
+      ok(leaks.length === 0, `drift-guard: childless parent reads 0 rows on EVERY deny table (leaks: ${leaks.join(", ") || "none"})`);
 
       console.log("\n── AC L4 — deleting the guardian link revokes access in the same statement ──");
       await tx.execute(RESET_ROLE);
