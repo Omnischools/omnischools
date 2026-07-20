@@ -18,7 +18,7 @@ import type { AppRole } from "./index";
  * Instead `AppUser.roles` is now, by construction, ONLY the roles held at the active school — so every
  * existing check becomes correct with zero changes, and so does every check written later.
  *
- * ponytail: "active school" is the earliest still-current assignment. That is deterministic and
+ * ponytail: "active school" is the earliest-CREATED still-current assignment. That is deterministic and
  * sensible (your first/home school), but it is NOT a user choice — a genuine multi-school user cannot
  * switch. A school switcher is a real feature (session-pinned selection); this function is where it
  * would plug in. Deliberately not built here: the fix is a security correction, not a feature.

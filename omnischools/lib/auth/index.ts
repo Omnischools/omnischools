@@ -35,7 +35,21 @@ export interface AppUser {
   phone: string;
   email?: string;
   name?: string;
+  /** The ACTIVE school — the earliest still-current role assignment. `roles` are scoped to it. */
   schoolId?: string;
+  /**
+   * INVARIANT — ONLY the roles held at `schoolId`. **Never a union across schools.**
+   *
+   * Every `hasAnyRole`/`assertAnyRole`/`requireSchoolRole` check in the app (~129 sites) trusts this,
+   * so the whole authz model rests on it. It used to be the union of every assignment at every school,
+   * which meant a TEACHER at school A who was ADMIN at school B passed ADMIN-gated checks *at A* — a
+   * privilege escalation within the active school.
+   *
+   * There are exactly TWO constructors of an `AppUser`: `DEV_USER` below and `getCurrentUser` in this
+   * file. **If you add a third** — impersonation, a service account, `getUserById` — it MUST scope
+   * roles the same way, or it silently reopens the escalation for every one of those 129 checks.
+   * Build it on `scopeRolesToActiveSchool` (`./roles`), which is where the rule and its tests live.
+   */
   roles: AppRole[];
 }
 
@@ -198,8 +212,16 @@ export async function getCurrentUser(): Promise<AppUser | null> {
           or(isNull(roleAssignments.endDate), gte(roleAssignments.endDate, today)),
         ),
       )
-      // DETERMINISTIC: the earliest still-current assignment picks the active school. Previously
-      // unordered, so `ra[0]` — and therefore the whole identity — could vary between requests.
+      // The earliest-CREATED still-current assignment picks the active school (`created_at`, not
+      // `start_date` — the latter is date-granular and would tie en masse on the batch-insert paths in
+      // seed/onboarding). Previously unordered, so `ra[0]` — and therefore the whole identity — could
+      // vary between requests.
+      //
+      // This is not a strict total order on ROWS: `created_at` defaults to transaction-start time, so
+      // a batch insert ties. It IS deterministic in the OUTPUT, which is what matters — a tie on all
+      // three keys means the same school and the same role code (`ref_role.code` is globally unique),
+      // so the rows differ only by `scope_ref` and are interchangeable here: same `schoolId`, and the
+      // Set below collapses the duplicate code.
       .orderBy(roleAssignments.createdAt, roleAssignments.schoolId, roles.code);
 
     // Roles are scoped to the active school. See ./roles for why this is fixed HERE and not at the
@@ -252,7 +274,10 @@ function sessionIdFromJwt(jwt: string): string | null {
   }
 }
 
-/** Throw if the current user lacks the required role. */
+/**
+ * Throw if the current user lacks the required role.
+ * Reads `user.roles`, which is scoped to the ACTIVE school only — see the invariant on `AppUser.roles`.
+ */
 export async function requireRole(role: AppRole): Promise<AppUser> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
