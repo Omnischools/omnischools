@@ -35,7 +35,21 @@ export interface AppUser {
   phone: string;
   email?: string;
   name?: string;
+  /** The ACTIVE school — the earliest still-current role assignment. `roles` are scoped to it. */
   schoolId?: string;
+  /**
+   * INVARIANT — ONLY the roles held at `schoolId`. **Never a union across schools.**
+   *
+   * Every `hasAnyRole`/`assertAnyRole`/`requireSchoolRole` check in the app (~129 sites) trusts this,
+   * so the whole authz model rests on it. It used to be the union of every assignment at every school,
+   * which meant a TEACHER at school A who was ADMIN at school B passed ADMIN-gated checks *at A* — a
+   * privilege escalation within the active school.
+   *
+   * There are exactly TWO constructors of an `AppUser`: `DEV_USER` below and `getCurrentUser` in this
+   * file. **If you add a third** — impersonation, a service account, `getUserById` — it MUST scope
+   * roles the same way, or it silently reopens the escalation for every one of those 129 checks.
+   * Build it on `scopeRolesToActiveSchool` (`./roles`), which is where the rule and its tests live.
+   */
   roles: AppRole[];
 }
 
@@ -177,23 +191,56 @@ export async function getCurrentUser(): Promise<AppUser | null> {
   // Privileged identity lookup (runs before tenant context) — bypass RLS.
   const { withoutTenantScope } = await import("@/lib/db/rls");
   const { users, roleAssignments, roles } = await import("@/db/schema");
-  const { eq } = await import("drizzle-orm");
+  const { and, eq, gte, isNull, lte, or } = await import("drizzle-orm");
+  const { scopeRolesToActiveSchool } = await import("./roles");
 
   return withoutTenantScope(async (tx) => {
     const [u] = await tx.select().from(users).where(eq(users.phone, phone));
     if (!u) return null;
+    const today = new Date().toISOString().slice(0, 10); // role_assignment start/end are DATE columns
+
     const ra = await tx
-      .select({ code: roles.code, schoolId: roleAssignments.schoolId })
+      .select({
+        code: roles.code,
+        schoolId: roleAssignments.schoolId,
+        // Selected so `scopeRolesToActiveSchool` can RE-APPLY the time window in tested code — the
+        // WHERE below is only a pre-filter, and a typo in it would be invisible to the suite.
+        startDate: roleAssignments.startDate,
+        endDate: roleAssignments.endDate,
+      })
       .from(roleAssignments)
       .innerJoin(roles, eq(roleAssignments.roleId, roles.id))
-      .where(eq(roleAssignments.userId, u.id));
+      .where(
+        and(
+          eq(roleAssignments.userId, u.id),
+          // Only a CURRENTLY-ACTIVE assignment confers a role. Previously unfiltered, so a member of
+          // staff whose assignment had ended kept every permission it granted.
+          lte(roleAssignments.startDate, today),
+          or(isNull(roleAssignments.endDate), gte(roleAssignments.endDate, today)),
+        ),
+      )
+      // The earliest-CREATED still-current assignment picks the active school (`created_at`, not
+      // `start_date` — the latter is date-granular and would tie en masse on the batch-insert paths in
+      // seed/onboarding). Previously unordered, so `ra[0]` — and therefore the whole identity — could
+      // vary between requests.
+      //
+      // This is not a strict total order on ROWS: `created_at` defaults to transaction-start time, so
+      // a batch insert ties. It IS deterministic in the OUTPUT, which is what matters — a tie on all
+      // three keys means the same school and the same role code (`ref_role.code` is globally unique),
+      // so the rows differ only by `scope_ref` and are interchangeable here: same `schoolId`, and the
+      // Set below collapses the duplicate code.
+      .orderBy(roleAssignments.createdAt, roleAssignments.schoolId, roles.code);
+
+    // Roles are scoped to the active school. See ./roles for why this is fixed HERE and not at the
+    // ~129 call sites: every existing and future role check inherits the correction for free.
+    const scoped = scopeRolesToActiveSchool(ra, today);
     return {
       id: u.id,
       phone,
       email: u.email ?? undefined,
       name: u.fullName ?? undefined,
-      schoolId: ra[0]?.schoolId,
-      roles: ra.map((r) => r.code) as AppRole[],
+      schoolId: scoped.schoolId,
+      roles: scoped.roles,
     } satisfies AppUser;
   });
 }
@@ -234,7 +281,10 @@ function sessionIdFromJwt(jwt: string): string | null {
   }
 }
 
-/** Throw if the current user lacks the required role. */
+/**
+ * Throw if the current user lacks the required role.
+ * Reads `user.roles`, which is scoped to the ACTIVE school only — see the invariant on `AppUser.roles`.
+ */
 export async function requireRole(role: AppRole): Promise<AppUser> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");

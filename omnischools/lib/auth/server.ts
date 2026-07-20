@@ -29,8 +29,13 @@ export interface ActiveSchool {
  * Runs under the RLS-bypass role — identity/school resolution happens before a
  * tenant context exists, so it cannot itself be tenant-scoped.
  */
-export async function getActiveSchool(): Promise<ActiveSchool | null> {
-  const user = await getCurrentUser();
+export async function getActiveSchool(forUser?: AppUser): Promise<ActiveSchool | null> {
+  // Callers that have ALREADY resolved the user pass it in. `requireSchool` does, so the school it
+  // returns is derived from the very same identity as the roles it returns — otherwise this re-ran
+  // `getCurrentUser()` in a second, independent transaction and could observe a different active
+  // school than the one `user.roles` was scoped to (the assignment set can change between the two
+  // reads). Passing the user closes that window and drops a redundant round-trip.
+  const user = forUser ?? (await getCurrentUser());
   if (!user) return null;
 
   const cols = {
@@ -61,13 +66,19 @@ export async function getActiveSchool(): Promise<ActiveSchool | null> {
         .limit(1);
       return first[0] ?? null;
     }
+    // Resolve the school `getCurrentUser` ALREADY picked, rather than re-deriving it. This used to be
+    // an independent unordered `LIMIT 1` over role_assignment, so for a user with assignments at more
+    // than one school it could return a DIFFERENT school than the one `user.roles` was taken from —
+    // i.e. the active school and the roles in force could disagree. Reading `user.schoolId` makes that
+    // divergence structurally impossible, and it is already time-filtered and deterministically
+    // ordered there. No active assignment ⇒ no school ⇒ the caller redirects to /start.
+    if (!user.schoolId) return null;
     const assigned = await tx
       .select(cols)
-      .from(roleAssignments)
-      .innerJoin(schools, eq(roleAssignments.schoolId, schools.id))
+      .from(schools)
       .leftJoin(districts, eq(schools.districtId, districts.id))
       .leftJoin(regions, eq(schools.regionId, regions.id))
-      .where(eq(roleAssignments.userId, user.id))
+      .where(eq(schools.id, user.schoolId))
       .limit(1);
     return assigned[0] ?? null;
   });
@@ -87,7 +98,7 @@ export async function requireUser(): Promise<AppUser> {
 /** For app pages: ensure a user AND a resolvable school, else redirect. */
 export async function requireSchool(): Promise<{ user: AppUser; school: ActiveSchool }> {
   const user = await requireUser();
-  const school = await getActiveSchool();
+  const school = await getActiveSchool(user);
   if (!school) redirect("/start");
   // Finance-only staff (Accountant/Bursar) are confined to the billing sections.
   // Runs on every app page (and its server actions) via this shared guard; the path
