@@ -128,6 +128,8 @@ export type HeatmapRowView = {
   subjectId: string;
   label: string;
   type: "CORE" | "ELECTIVE" | "OPTIONAL";
+  /** Per-programme copies merged into this row; >1 means the deep link opens only one of them. */
+  copies: number;
   registered: number;
   graded: number;
   counts: { grade: WassceGrade; count: number }[];
@@ -346,7 +348,7 @@ export async function loadCohortReadiness(
         parsePrerequisiteRules(t.prerequisiteSubjectsJson),
         grades,
         registered,
-      ) as PrerequisiteCheck,
+      ),
     }));
 
     const name = shortName(c.firstName, c.lastName);
@@ -569,7 +571,18 @@ export async function loadCohortReadiness(
       return {
         subjectId,
         label: subjectRows[0].name,
-        type: subjectRows.some((r) => r.type === "CORE") ? ("CORE" as const) : subjectRows[0].type,
+        // Explicit precedence CORE > ELECTIVE > OPTIONAL. Falling back to `subjectRows[0].type` made the
+        // badge NON-DETERMINISTIC for a subject that is ELECTIVE under one programme and OPTIONAL under
+        // another (Biology): the driving query has no ORDER BY, so the badge flickered between loads.
+        // No figure depends on this — `projectAggregate` pools ELECTIVE and OPTIONAL identically.
+        type: subjectRows.some((r) => r.type === "CORE")
+          ? ("CORE" as const)
+          : subjectRows.some((r) => r.type === "ELECTIVE")
+            ? ("ELECTIVE" as const)
+            : ("OPTIONAL" as const),
+        // How many per-programme copies this row merges. >1 means the deep link can only open ONE of
+        // them, so the view must say so rather than let a "240 registered" row land on a 60-row page.
+        copies: byId.size,
         registered: subjectRows.length,
         graded: grades.length,
         counts: WASSCE_GRADES.map((g) => ({ grade: g, count: dist[g] })),

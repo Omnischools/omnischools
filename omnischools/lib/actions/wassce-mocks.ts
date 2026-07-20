@@ -157,35 +157,56 @@ export async function saveMockResult(input: unknown): Promise<SaveMockResultResu
 
         const rawStr = rawValue == null ? null : rawValue.toFixed(2);
         const maxStr = maxValue == null ? null : maxValue.toFixed(2);
-        await tx
-          .insert(mockResults)
-          .values({
-            schoolId: school.id,
-            mockId: d.mockId,
-            candidateId: d.candidateId,
-            subjectId: d.subjectId,
-            grade: d.grade,
-            rawScore: rawStr,
-            maxScore: maxStr,
-            markedByUserId: actor.id ?? undefined,
-            markedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [
-              mockResults.schoolId,
-              mockResults.mockId,
-              mockResults.candidateId,
-              mockResults.subjectId,
-            ],
-            // Moderation columns are DELIBERATELY untouched (R3 — moderation is an INCR-18 flow).
-            set: {
-              grade: d.grade,
-              rawScore: rawStr,
-              maxScore: maxStr,
-              markedByUserId: actor.id ?? undefined,
-              markedAt: new Date(),
-            },
-          });
+        const values = {
+          schoolId: school.id,
+          mockId: d.mockId,
+          candidateId: d.candidateId,
+          subjectId: d.subjectId,
+          grade: d.grade,
+          rawScore: rawStr,
+          maxScore: maxStr,
+          markedByUserId: actor.id ?? undefined,
+          markedAt: new Date(),
+        };
+        const conflictTarget = [
+          mockResults.schoolId,
+          mockResults.mockId,
+          mockResults.candidateId,
+          mockResults.subjectId,
+        ];
+
+        if (!isAssigned && isOversight) {
+          // The `before` check above is a READ, so under READ COMMITTED a teacher mark committing
+          // between it and this write would turn an oversight CREATE into a silent overwrite of that
+          // teacher's grade — losing exactly the trail R2 exists to guarantee. Do NOT upsert on this
+          // path: insert-or-nothing, and treat "nothing" as the same rejection the read produced.
+          const inserted = await tx
+            .insert(mockResults)
+            .values(values)
+            .onConflictDoNothing({ target: conflictTarget })
+            .returning({ id: mockResults.id });
+          if (inserted.length === 0) {
+            return {
+              ok: false,
+              error: "This subject already has a teacher mark — use Moderate to change it.",
+            };
+          }
+        } else {
+          await tx
+            .insert(mockResults)
+            .values(values)
+            .onConflictDoUpdate({
+              target: conflictTarget,
+              // Moderation columns are DELIBERATELY untouched (R3 — moderation is an INCR-18 flow).
+              set: {
+                grade: d.grade,
+                rawScore: rawStr,
+                maxScore: maxStr,
+                markedByUserId: actor.id ?? undefined,
+                markedAt: new Date(),
+              },
+            });
+        }
 
         await recordAudit(tx, {
           schoolId: school.id,
@@ -324,14 +345,17 @@ export async function moderateMockResult(input: unknown): Promise<ModerationResu
           subjectId: d.subjectId,
           teacherGrade: target.row.grade,
           moderatedGrade: target.row.moderatedGrade,
-          moderationReason: target.row.moderationReason,
+          // The PRIOR reason is deliberately not copied here — it already lives on the prior
+          // moderation's own `audit_log.reason`, and free text may carry student detail. The grade
+          // transition is the trail; the sequence of audit rows reconstructs the justifications.
         },
         after: {
           mockId: d.mockId,
           subjectId: d.subjectId,
           teacherGrade: target.row.grade, // unchanged — recorded so the trail proves it
           moderatedGrade: d.moderatedGrade,
-          moderationReason: d.reason,
+          // NOTE: the free-text reason is stored ONCE, on `audit_log.reason` below. An HoA may type
+          // student detail into it, so it does not also get copied into this JSON payload.
         },
         reason: d.reason,
       });
@@ -390,7 +414,9 @@ export async function clearMockModeration(input: unknown): Promise<ModerationRes
           subjectId: d.subjectId,
           teacherGrade: target.row.grade,
           moderatedGrade: target.row.moderatedGrade,
-          moderationReason: target.row.moderationReason,
+          // The PRIOR reason is deliberately not copied here — it already lives on the prior
+          // moderation's own `audit_log.reason`, and free text may carry student detail. The grade
+          // transition is the trail; the sequence of audit rows reconstructs the justifications.
         },
         after: { mockId: d.mockId, subjectId: d.subjectId, teacherGrade: target.row.grade, moderatedGrade: null },
         reason: d.reason,

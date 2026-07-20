@@ -730,6 +730,8 @@ function Row({
     label: string;
     graded: number;
     registered: number;
+    /** Per-programme copies merged into this row; >1 means the deep link opens only one of them. */
+    copies: number;
     counts: { grade: string; count: number }[];
     tag: "CONCERN" | "WATCH" | null;
   };
@@ -744,6 +746,10 @@ function Row({
         <span className="font-body text-[9px] font-normal text-navy-3">
           {row.graded} of {row.registered} marked
           {row.tag ? ` · ${row.tag.toLowerCase()}` : ""}
+          {/* This row merges the subject's per-programme copies, but the mark-entry grid is scoped to
+              ONE copy — so a "240 registered" row would otherwise land on a ~60-row page with no
+              explanation. Say what the drill-down opens instead of letting the numbers disagree. */}
+          {row.copies > 1 ? ` · opens 1 of ${row.copies} programme views` : ""}
         </span>
       </Link>
       {row.counts.map((c) => (
