@@ -91,6 +91,19 @@ export function hasAnyRole(
   return roles.some((r) => allowed.includes(r));
 }
 
+/** Roles that are NOT staff — a session holding only these never manages the school (mirrors staff-roles). */
+const NON_STAFF_ROLES = ["STUDENT", "PARENT"];
+
+/**
+ * True when the user holds at least one staff (non-STUDENT/PARENT) role. The invite/manage gate: a
+ * PARENT- or STUDENT-only session — even one hand-crafting the request — cannot create invites (AC A1).
+ * A staffer who is ALSO a parent still manages, so this is "holds any staff role", not "holds no
+ * non-staff role".
+ */
+export function isStaff(roles: readonly string[]): boolean {
+  return roles.some((r) => r != null && r !== "" && !NON_STAFF_ROLES.includes(r));
+}
+
 /** Section prefixes a finance-only user may reach. Order-independent. */
 export const FINANCE_SECTIONS = [
   "/billing",

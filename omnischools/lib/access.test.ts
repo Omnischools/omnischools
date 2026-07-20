@@ -2,10 +2,12 @@ import { describe, it, expect } from "vitest";
 import {
   hasAnyRole,
   isFinanceOnly,
+  isStaff,
   canAccessHouse,
   BOARDING_ROLES,
   SENIOR_LEDGER_ROLES,
   SENIOR_MANAGEMENT_ROLES,
+  WASSCE_SETUP_ROLES,
 } from "./access";
 
 describe("hasAnyRole", () => {
@@ -40,6 +42,37 @@ describe("Senior role groups — the security boundary", () => {
   it("a finance-only user is unaffected by the senior groups (separate concern)", () => {
     expect(isFinanceOnly(["BURSAR"])).toBe(true);
     expect(hasAnyRole(["BURSAR"], SENIOR_LEDGER_ROLES)).toBe(false);
+  });
+});
+
+describe("PARENT is denied every INCR-15→18 gate group (AC D6/D7)", () => {
+  // assertAnyRole(group) throws iff !hasAnyRole(user.roles, group). Proving a PARENT-only session fails
+  // hasAnyRole for EVERY senior gate group therefore proves assertAnyRole rejects PARENT at each of them
+  // — the query-layer boundary that stops a hand-crafted PARENT request reaching any WASSCE surface.
+  const GROUPS: Record<string, readonly string[]> = {
+    SENIOR_LEDGER_ROLES,
+    SENIOR_MANAGEMENT_ROLES,
+    WASSCE_SETUP_ROLES,
+    BOARDING_ROLES,
+  };
+  for (const [name, group] of Object.entries(GROUPS)) {
+    it(`PARENT reaches no ${name} gate`, () => {
+      expect(hasAnyRole(["PARENT"], group)).toBe(false);
+    });
+  }
+});
+
+describe("isStaff — the invite/manage gate (AC C1 staff-gating / A1)", () => {
+  it("is false for a PARENT-only, STUDENT-only, or empty session", () => {
+    expect(isStaff(["PARENT"])).toBe(false);
+    expect(isStaff(["STUDENT"])).toBe(false);
+    expect(isStaff(["PARENT", "STUDENT"])).toBe(false);
+    expect(isStaff([])).toBe(false);
+  });
+  it("is true when any staff role is held (incl. a staffer who is also a parent)", () => {
+    expect(isStaff(["ADMIN"])).toBe(true);
+    expect(isStaff(["TEACHER"])).toBe(true);
+    expect(isStaff(["PARENT", "TEACHER"])).toBe(true);
   });
 });
 

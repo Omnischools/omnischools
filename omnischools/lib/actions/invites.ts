@@ -9,6 +9,9 @@ import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { safeRevalidate } from "@/lib/revalidate";
 import { resolveRole, roleLabel } from "@/lib/staff-roles";
+import { isStaff } from "@/lib/access";
+import { isParentRole, parentInviteError } from "@/lib/parent/claim";
+import { resolveParentInviteTargetTx, stampGuardianUserId } from "@/lib/parent/parent-data";
 import { invites, users, roles, roleAssignments } from "@/db/schema";
 
 type Result = { ok: boolean; error?: string };
@@ -18,9 +21,14 @@ const INVITE_TTL_DAYS = 14;
 // ----------------------------------------------------------------- create
 const CreateInviteSchema = z.object({
   role: z.string().min(2, "Choose or enter a role").max(60),
-  fullName: z.string().min(2, "Enter a name").max(120),
-  phone: z.string().min(7, "A phone number is required"),
+  // Optional so a PARENT invite (which derives name + phone from the guardian row) needn't supply them;
+  // the staff branch re-validates their presence below.
+  fullName: z.string().max(120).optional(),
+  phone: z.string().optional(),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
+  // INCR-19a PARENT invite (AC C1): the child + the exact student_guardian row to invite. Ignored for staff.
+  studentId: z.string().uuid().optional(),
+  guardianId: z.string().uuid().optional(),
   assignments: z
     .array(
       z.object({
@@ -33,14 +41,46 @@ const CreateInviteSchema = z.object({
 });
 
 export async function createInvite(input: unknown): Promise<Result & { token?: string }> {
-  const { school } = await requireSchool();
+  const { user, school } = await requireSchool();
+  // Staff-gated: a non-staff role (STUDENT / PARENT) must not create invites (AC A1).
+  if (!isStaff(user.roles)) {
+    return { ok: false, error: "Only staff can send invites." };
+  }
   const parsed = CreateInviteSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const d = parsed.data;
-  const phone = normalizeGhanaPhone(d.phone);
-  const role = resolveRole(d.role);
+
+  // Resolve the recipient. For a PARENT invite the name + phone come from the STORED guardian row, never
+  // from caller free-text (AC C2 — the claim/OTP destination cannot be a supplied number); for staff they
+  // come from the request as before.
+  let role: { code: string; label: string };
+  let phone: string;
+  let fullName: string;
+  let studentId: string | null = null;
+  let assignments = d.assignments ?? null;
+
+  if (isParentRole(d.role)) {
+    role = { code: "PARENT", label: "Parent" };
+    const c1 = parentInviteError(role.code, d.studentId, d.guardianId);
+    if (c1) return { ok: false, error: c1 };
+    const target = await withSchool(school.id, (tx) =>
+      resolveParentInviteTargetTx(tx, school.id, d.studentId!, d.guardianId!),
+    );
+    if (!target) return { ok: false, error: "That guardian is not on this student's record." };
+    phone = target.phone; // AC C2 — authoritative by construction (the stored guardian number)
+    fullName = target.fullName;
+    studentId = target.studentId;
+    assignments = null; // a parent invite carries no class grants
+  } else {
+    role = resolveRole(d.role);
+    if (!d.fullName || d.fullName.trim().length < 2) return { ok: false, error: "Enter a name" };
+    if (!d.phone || d.phone.length < 7) return { ok: false, error: "A phone number is required" };
+    phone = normalizeGhanaPhone(d.phone);
+    fullName = d.fullName.trim();
+  }
+
   const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
   const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86400_000);
   const actor = await resolveActor(school.id);
@@ -51,10 +91,11 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
         schoolId: school.id,
         token,
         role: role.code,
-        fullName: d.fullName.trim(),
+        fullName,
         email: d.email || null,
         phone,
-        assignments: d.assignments ?? null,
+        studentId,
+        assignments,
         expiresAt,
         invitedByUserId: actor.id ?? null,
       });
@@ -64,7 +105,7 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
         actorRole: actor.role,
         actionType: "created",
         entityType: "invite",
-        after: { role: role.label, name: d.fullName },
+        after: { role: role.label, name: fullName },
         reason: "Invite sent",
       });
     });
@@ -72,9 +113,12 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
     const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
     const link = `${base}/accept/${token}`;
     const sender = school.shortName ?? "Omnischools";
+    // SMS console-degrades with no Hubtel creds (AC C7) — sendSms reads no HUBTEL_* here.
     await sendSms(
       phone,
-      `${sender}: You've been added as ${role.label}. Set up your account: ${link}`,
+      role.code === "PARENT"
+        ? `${sender}: Follow your child's WASSCE readiness on Omnischools. Set up your parent access: ${link}`
+        : `${sender}: You've been added as ${role.label}. Set up your account: ${link}`,
     );
     if (d.email) {
       await sendEmail({
@@ -83,7 +127,7 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
         html: `<p>You've been added as <b>${role.label}</b> at ${school.name}.</p><p><a href="${link}">Accept the invite & set your password</a>.</p>`,
       });
     }
-    safeRevalidate("/staff");
+    safeRevalidate(role.code === "PARENT" && studentId ? `/students/${studentId}` : "/staff");
     return { ok: true, token };
   } catch {
     return { ok: false, error: "Could not create the invite." };
@@ -178,6 +222,18 @@ export async function acceptInvite(input: unknown): Promise<Result> {
         await tx
           .insert(roleAssignments)
           .values({ userId: u.id, schoolId: inv.schoolId, roleId: roleRow.id });
+      }
+
+      // AC C4 — a PARENT claim stamps the LIVE entitlement link on the ONE guardian row named by
+      // (schoolId, studentId, phone), never other rows sharing the phone. Runs only after the account
+      // (verification) has succeeded above, so a failed/absent verification never stamps (AC C3).
+      if (inv.role === "PARENT" && inv.studentId) {
+        await stampGuardianUserId(tx, {
+          schoolId: inv.schoolId,
+          studentId: inv.studentId,
+          phone: inv.phone!,
+          userId: u.id,
+        });
       }
 
       await tx
