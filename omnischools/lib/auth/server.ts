@@ -61,13 +61,19 @@ export async function getActiveSchool(): Promise<ActiveSchool | null> {
         .limit(1);
       return first[0] ?? null;
     }
+    // Resolve the school `getCurrentUser` ALREADY picked, rather than re-deriving it. This used to be
+    // an independent unordered `LIMIT 1` over role_assignment, so for a user with assignments at more
+    // than one school it could return a DIFFERENT school than the one `user.roles` was taken from —
+    // i.e. the active school and the roles in force could disagree. Reading `user.schoolId` makes that
+    // divergence structurally impossible, and it is already time-filtered and deterministically
+    // ordered there. No active assignment ⇒ no school ⇒ the caller redirects to /start.
+    if (!user.schoolId) return null;
     const assigned = await tx
       .select(cols)
-      .from(roleAssignments)
-      .innerJoin(schools, eq(roleAssignments.schoolId, schools.id))
+      .from(schools)
       .leftJoin(districts, eq(schools.districtId, districts.id))
       .leftJoin(regions, eq(schools.regionId, regions.id))
-      .where(eq(roleAssignments.userId, user.id))
+      .where(eq(schools.id, user.schoolId))
       .limit(1);
     return assigned[0] ?? null;
   });

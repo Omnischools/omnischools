@@ -177,23 +177,41 @@ export async function getCurrentUser(): Promise<AppUser | null> {
   // Privileged identity lookup (runs before tenant context) — bypass RLS.
   const { withoutTenantScope } = await import("@/lib/db/rls");
   const { users, roleAssignments, roles } = await import("@/db/schema");
-  const { eq } = await import("drizzle-orm");
+  const { and, eq, gte, isNull, lte, or } = await import("drizzle-orm");
+  const { scopeRolesToActiveSchool } = await import("./roles");
 
   return withoutTenantScope(async (tx) => {
     const [u] = await tx.select().from(users).where(eq(users.phone, phone));
     if (!u) return null;
+    const today = new Date().toISOString().slice(0, 10); // role_assignment start/end are DATE columns
+
     const ra = await tx
       .select({ code: roles.code, schoolId: roleAssignments.schoolId })
       .from(roleAssignments)
       .innerJoin(roles, eq(roleAssignments.roleId, roles.id))
-      .where(eq(roleAssignments.userId, u.id));
+      .where(
+        and(
+          eq(roleAssignments.userId, u.id),
+          // Only a CURRENTLY-ACTIVE assignment confers a role. Previously unfiltered, so a member of
+          // staff whose assignment had ended kept every permission it granted.
+          lte(roleAssignments.startDate, today),
+          or(isNull(roleAssignments.endDate), gte(roleAssignments.endDate, today)),
+        ),
+      )
+      // DETERMINISTIC: the earliest still-current assignment picks the active school. Previously
+      // unordered, so `ra[0]` — and therefore the whole identity — could vary between requests.
+      .orderBy(roleAssignments.createdAt, roleAssignments.schoolId, roles.code);
+
+    // Roles are scoped to the active school. See ./roles for why this is fixed HERE and not at the
+    // ~129 call sites: every existing and future role check inherits the correction for free.
+    const scoped = scopeRolesToActiveSchool(ra);
     return {
       id: u.id,
       phone,
       email: u.email ?? undefined,
       name: u.fullName ?? undefined,
-      schoolId: ra[0]?.schoolId,
-      roles: ra.map((r) => r.code) as AppRole[],
+      schoolId: scoped.schoolId,
+      roles: scoped.roles,
     } satisfies AppUser;
   });
 }
