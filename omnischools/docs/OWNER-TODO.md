@@ -4,7 +4,7 @@ Everything here is assigned to **you**, not to the build loop. It is work that n
 your data, your judgement, or your eyes on a real browser. Items already queued for me to build in a
 later increment are deliberately **not** listed.
 
-Last updated: 2026-07-20 (after INCR-17b + the 23505 retrofit).
+Last updated: 2026-07-21 (after INCR-19a — parent identity + per-user RLS boundary).
 
 ---
 
@@ -15,8 +15,13 @@ Last updated: 2026-07-20 (after INCR-17b + the 23505 retrofit).
 `db/sql/prod-paste-*.sql`. A single missed file means those tables have **no tenant isolation on prod** —
 one school reads another school's children's data. This is the highest-severity item on the list.
 
-There are **27** paste files (`prod-paste-0029-*` … `prod-paste-0054-*`). You've been running them per
+There are **28** paste files (`prod-paste-0029-*` … `prod-paste-0055-*`). You've been running them per
 increment, but nothing has verified the full set end-to-end.
+
+> **This is not hypothetical.** During INCR-19a the security gate found `student_health_record` (blood
+> group, allergies, medications) had been missing from the dev policy file since migration 0036 — RLS
+> **off on dev**. Prod turned out safe (you confirmed `prod-paste-0036` was run), but that was luck of
+> discipline, not a guarantee. The query below is exactly what surfaces this class of gap. Run it.
 
 **How to check (run on prod, expect ZERO rows):**
 ```sql
@@ -55,9 +60,22 @@ Also worth an eyeball while you're there: the roster avatar tint on the WASSCE r
 been silently missing since INCR-16 (a Tailwind scanning gap fixed in INCR-17b) and has never been seen
 rendered.
 
+**And (INCR-19a):** on a student profile → guardian list, click **"Invite to parent portal"**. No browser
+tool here could drive it end-to-end; the writes it performs (the invite, and the guardian→user stamp on
+accept) are proven by the DB deny-suite, but the button-to-action path itself was never clicked.
+
 ---
 
-### 3. Run the PWA phase-2 offline self-verify (Score Ledger Item 9)
+### 3. Patch the 3 high-severity dependency vulnerabilities
+GitHub Dependabot flags **3 high** vulnerabilities on `main` (`github.com/Omnischools/omnischools/security/dependabot`).
+None were introduced by the senior-tier work — they're in the existing dependency tree — but they should be
+triaged and patched before go-live. Run `pnpm audit`, review each, and bump the affected packages (or apply
+Dependabot's suggested PRs). Flagging here because it's a standing security item, not something the build loop
+resolves on its own.
+
+---
+
+### 4. Run the PWA phase-2 offline self-verify (Score Ledger Item 9)
 Cannot be automated in a node test runner — it needs a real device/browser with DevTools. Checklist:
 1. Go offline → enter a full class's scores → **close and reopen the app while still offline** → scores
    present and **gold** (held), none showing as saved.
@@ -68,7 +86,7 @@ Cannot be automated in a node test runner — it needs a real device/browser wit
 
 ---
 
-### 4. Supply the real data that is currently placeholder
+### 5. Supply the real data that is currently placeholder
 These render to parents/teachers as if authoritative. All are seeded snapshots or constants right now.
 
 | Item | Current state | What's needed |
@@ -80,7 +98,7 @@ These render to parents/teachers as if authoritative. All are seeded snapshots o
 
 ---
 
-### 5. Decide on Hubtel SMS — nothing sends until you provision it
+### 6. Decide on Hubtel SMS — nothing sends until you provision it
 Every SMS chain is built and wired but **degrades to console**: boarding late-return/overdue reminders,
 exeat notifications, visiting-day notices, and the WASSCE parent-acknowledgement OTP. No real message has
 ever been sent and no credentials exist.
@@ -92,7 +110,7 @@ so a slow SMS gateway can't hold a transaction open.
 
 ---
 
-### 6. Provide the real brand mark
+### 7. Provide the real brand mark
 The Omnischools-branded paper ledger book (Score Ledger Item 6) ships with a placeholder mark. It prints
 and goes home with students, so it needs the real asset before anything is printed at scale.
 
@@ -100,40 +118,40 @@ and goes home with students, so it needs the real asset before anything is print
 
 ## SHOULD DO — decisions I need from you (none block the current build)
 
-### 7. Boarding: enable the 3× fee penalty → invoice write?
+### 8. Boarding: enable the 3× fee penalty → invoice write?
 Deliberately **stubbed** at your instruction ("build all of INCR-13 except the invoice write"). The
 deboardinization ladder computes the penalty but **writes no invoice**. Decide whether it should post to
 billing for real, and I'll wire it.
 
-### 8. Confirm the university cut-off source
+### 9. Confirm the university cut-off source
 I defaulted to a **seeded published snapshot** as global reference (updatable per admission cycle, like the
 benchmark figures) because it ships without an external dependency and stays portable. The alternatives
 were school-entered, or a licensed/maintained dataset feed. Say the word if you'd rather switch.
 
-### 9. Admission-accurate aggregate — refine or leave?
+### 10. Admission-accurate aggregate — refine or leave?
 The projection uses the **pure best-3-cores** rule (matches the spec and the surface's own visualizer).
 Real Ghanaian *university admission* fixes **English + Core Maths as mandatory** cores. These differ only
 when English or Core Maths is a candidate's *worst* core — not the case in any demo data. The concern is
 already encoded as a **prerequisite** (every programme requires credits in both), so the practical risk is
 small. Decide if you want the stricter variant for cut-off matching.
 
-### 10. Boarding visiting day: public tokenised parent RSVP link?
+### 11. Boarding visiting day: public tokenised parent RSVP link?
 Deferred earlier. Today visiting-day RSVPs are **staff-entered**. A public tokenised link would let parents
 RSVP themselves — a different security surface (public endpoint, token lifetime) that needs your call.
 
-### 11. Marketing copy honesty
+### 12. Marketing copy honesty
 `components/marketing/faq.tsx` still says **"offline-first"**. That claim is on the forbidden list for the
 shipped PWA (single-device, sync-on-reconnect — *not* offline-first, *not* multi-device). It predates this
 work and wasn't touched. Tell me the wording you want and I'll change it.
 
-### 12. Sync the design mockups in `Surfaces/`
+### 13. Sync the design mockups in `Surfaces/`
 Those files are yours and untracked, and two have drifted from what shipped:
 - `schoolup-shs-score-ledger-pwa.html` — the Phase-2 roadmap card still reads "later · trigger = real
   demand"; it **ships now**. The section meta and honesty caption need the same graduation.
 - `schoolup-wassce-subject-teacher.html` — a **"Mark Mock 3 papers"** button contradicts the ratified
   two-mock model ("we stop at two"); recommend relabelling to Mock 2.
 
-### 13. Consider CI for the migration chain
+### 14. Consider CI for the migration chain
 There is **no CI that replays migrations from empty**. Ordering bugs are therefore invisible until a prod
 deploy or a fresh onboarding — this has already bitten once (migration 0033 emitted foreign keys before the
 unique constraints they referenced, and drizzle swallowed the error). I verify each new migration against a
