@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, inArray, isNotNull, isNull, notInArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, notInArray, sql } from "drizzle-orm";
 import type { Tx } from "@/lib/db";
 import {
   schools,
@@ -401,17 +401,37 @@ export function buildTargetSnapshot(
   }));
 }
 
+/** One REGISTERED (candidate × subject) row for the predictor mock; `grade` null = not yet marked. */
+export type CohortPredictorRow = {
+  candidateId: string;
+  subjectId: string;
+  name: string;
+  type: WassceSubjectType;
+  grade: WassceGrade | null;
+  moderatedGrade: WassceGrade | null;
+};
+
+export type CohortProjections = {
+  predictorMockId: string | null;
+  /** Every registration, graded or not — the INCR-18 heatmap rows + prerequisite registration lists. */
+  rows: CohortPredictorRow[];
+  /** Per-candidate best-3 result, INCLUDING the not-computable ones (INCR-18 clause 1). */
+  projections: Map<string, ProjectionResult>;
+};
+
 /**
- * The roster cleanup (build-plan line 2181): the DERIVED best-3 aggregate per candidate for a cohort's
- * predictor mock — the single source of truth the setup roster's Mock-2-agg column now reads (instead of
- * the seeded static). Candidates without ≥3 graded cores+electives project as not-computable → the
- * caller falls back to the seeded literal (all we have for them). One batched query.
+ * The cohort's DERIVED best-3 projections in ONE batched pass (build-plan line 2181 · INCR-18 R6/R7).
+ * The query drives FROM `wassce_candidate_subject` (registration is the spine — Kofi's defence-in-depth
+ * inner join) and LEFT JOINs the predictor's `mock_results`, so a registered-but-unmarked subject is
+ * present with a null grade: `projectAggregate` ignores it, and the heatmap/prerequisite readers can
+ * tell "registered, ungraded" (PENDING) from "not registered" (UNMET). Widened for INCR-18 to return
+ * the whole `ProjectionResult` — the not-computable candidates are exactly who the HoA must see.
  */
-export async function computeCohortAggregates(
+export async function computeCohortProjections(
   tx: Tx,
   schoolId: string,
   cohortId: string,
-): Promise<Map<string, number>> {
+): Promise<CohortProjections> {
   const [predictor] = await tx
     .select({ id: mockExams.id })
     .from(mockExams)
@@ -422,51 +442,83 @@ export async function computeCohortAggregates(
         eq(mockExams.isPredictor, true),
       ),
     );
-  if (!predictor) return new Map();
 
-  const rows = await tx
+  const resultJoin = predictor
+    ? and(
+        eq(mockResults.schoolId, wassceCandidateSubject.schoolId),
+        eq(mockResults.mockId, predictor.id),
+        eq(mockResults.candidateId, wassceCandidateSubject.candidateId),
+        eq(mockResults.subjectId, wassceCandidateSubject.subjectId),
+      )
+    : sql`false`; // no predictor mock → every registration comes back ungraded, never a fake grade
+
+  const raw = await tx
     .select({
-      candidateId: mockResults.candidateId,
+      candidateId: wassceCandidateSubject.candidateId,
+      subjectId: wassceCandidateSubject.subjectId,
       name: wassceSubjects.name,
       type: wassceSubjects.subjectType,
       grade: mockResults.grade,
       moderatedGrade: mockResults.moderatedGrade,
     })
-    .from(mockResults)
+    .from(wassceCandidateSubject)
     .innerJoin(
-      wassceCandidateSubject,
+      wassceCandidates,
       and(
-        eq(wassceCandidateSubject.schoolId, mockResults.schoolId),
-        eq(wassceCandidateSubject.candidateId, mockResults.candidateId),
-        eq(wassceCandidateSubject.subjectId, mockResults.subjectId),
+        eq(wassceCandidates.schoolId, wassceCandidateSubject.schoolId),
+        eq(wassceCandidates.id, wassceCandidateSubject.candidateId),
       ),
     )
     .innerJoin(
       wassceSubjects,
       and(
-        eq(wassceSubjects.schoolId, mockResults.schoolId),
-        eq(wassceSubjects.id, mockResults.subjectId),
+        eq(wassceSubjects.schoolId, wassceCandidateSubject.schoolId),
+        eq(wassceSubjects.id, wassceCandidateSubject.subjectId),
       ),
     )
-    .where(and(eq(mockResults.schoolId, schoolId), eq(mockResults.mockId, predictor.id)));
+    .leftJoin(mockResults, resultJoin)
+    .where(
+      and(
+        eq(wassceCandidateSubject.schoolId, schoolId),
+        eq(wassceCandidates.cohortId, cohortId),
+      ),
+    );
+
+  const rows: CohortPredictorRow[] = raw.map((r) => ({
+    candidateId: r.candidateId,
+    subjectId: r.subjectId,
+    name: r.name,
+    type: r.type as WassceSubjectType,
+    grade: (r.grade ?? null) as WassceGrade | null,
+    moderatedGrade: (r.moderatedGrade ?? null) as WassceGrade | null,
+  }));
 
   const byCandidate = new Map<string, ProjectionSubjectInput[]>();
   for (const r of rows) {
     const list = byCandidate.get(r.candidateId) ?? [];
-    list.push({
-      name: r.name,
-      type: r.type as WassceSubjectType,
-      grade: r.grade as WassceGrade,
-      moderatedGrade: (r.moderatedGrade ?? null) as WassceGrade | null,
-    });
+    list.push({ name: r.name, type: r.type, grade: r.grade, moderatedGrade: r.moderatedGrade });
     byCandidate.set(r.candidateId, list);
   }
 
+  const projections = new Map<string, ProjectionResult>();
+  for (const [candidateId, input] of byCandidate) projections.set(candidateId, projectAggregate(input));
+
+  return { predictorMockId: predictor?.id ?? null, rows, projections };
+}
+
+/**
+ * The numeric view of the above — the setup roster's Mock-2-agg column (INCR-17 cleanup). Candidates
+ * without ≥3 graded cores+electives are absent from the map → the caller falls back to the seeded
+ * literal (the only signal we have for them).
+ */
+export async function computeCohortAggregates(
+  tx: Tx,
+  schoolId: string,
+  cohortId: string,
+): Promise<Map<string, number>> {
+  const { projections } = await computeCohortProjections(tx, schoolId, cohortId);
   const out = new Map<string, number>();
-  for (const [candidateId, input] of byCandidate) {
-    const res = projectAggregate(input);
-    if (res.computable) out.set(candidateId, res.aggregate);
-  }
+  for (const [candidateId, res] of projections) if (res.computable) out.set(candidateId, res.aggregate);
   return out;
 }
 
