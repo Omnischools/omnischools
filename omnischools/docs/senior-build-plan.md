@@ -2300,3 +2300,5 @@ The board planned INCR-19 as *"none new; parent-scoped RLS policy (prod-paste); 
 
 ### Status
 **Migration 0055 spec + full AC (L1-L6 linkage · C1-C7 claiming · D1-D10 crafted-request denials · R1-R4 read scope · A1-A2 ack-absence · M1-M2 multi-school) are in Kofi's ruling.** Lucy map: `docs/senior/wassce-parent-surface-map.md`. **Blocked on the owner's claiming-flow call** (invite vs self-serve) before Wells is dispatched.
+
+**OWNER DECISION (2026-07-20): claiming flow = school-issued INVITE.** Wells dispatched for 19a (migration 0055 + per-user RLS). Self-serve declined.
