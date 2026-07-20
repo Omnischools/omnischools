@@ -206,10 +206,27 @@ export const studentGuardians = pgTable(
     phone: text("phone").notNull(), // E.164
     email: text("email"),
     isPrimary: boolean("is_primary").notNull().default(true),
+    // INCR-19a (parent portal): the ref_user this guardian authenticates as, once they claim a
+    // school-issued per-child invite. Nullable — NULL for every SMS-only contact that has not (or
+    // never will) claim a portal login; new-nullable stays NULL for all Basic/existing rows. SINGLE
+    // -column SET NULL FK → the GLOBAL ref_user (the composite-tenant-FK rule exempts SET-NULL links
+    // and links to global tables). This link IS the parent's entitlement: the RLS parent scope reads
+    // it, and deleting the guardian row (or the user) revokes portal access in the SAME statement —
+    // entitlement derives from THIS live link, never the role_assignment (Kofi R6: no revocation
+    // path exists on role_assignment).
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     byStudent: index("guardian_student_idx").on(t.studentId),
+    // Supports parent_student_ids(school, user) (the RLS SECURITY DEFINER lookup) + the "which
+    // children does this login reach" read: WHERE user_id = <pu> AND school_id = <school>. INCR-19a.
+    byUser: index("guardian_user_idx").on(t.schoolId, t.userId),
+    // One portal login per (child × guardian): a given ref_user links at most once to a given
+    // student. Partial — the many NULL-user_id SMS-only contacts are exempt. INCR-19a.
+    uniqUserPerChild: uniqueIndex("uniq_guardian_user_per_child")
+      .on(t.schoolId, t.studentId, t.userId)
+      .where(sql`${t.userId} IS NOT NULL`),
     // Composite school-scoped FK — student must belong to the same tenant.
     studentFk: foreignKey({
       columns: [t.schoolId, t.studentId],

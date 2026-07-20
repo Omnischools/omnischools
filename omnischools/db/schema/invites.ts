@@ -1,7 +1,16 @@
-import { pgTable, uuid, text, jsonb, timestamp, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  jsonb,
+  timestamp,
+  index,
+  foreignKey,
+} from "drizzle-orm/pg-core";
 import { inviteStatusEnum } from "./_enums";
 import { schools } from "./tenancy";
 import { users } from "./identity";
+import { students } from "./students";
 
 /**
  * A pending invitation for someone to join a school in a role (teacher, accountant,
@@ -21,6 +30,11 @@ export const invites = pgTable(
     fullName: text("full_name").notNull(),
     email: text("email"),
     phone: text("phone"), // E.164 — mandatory for staff (enforced in the action)
+    // INCR-19a (parent portal): the child a PARENT invite claims. Nullable — staff/teacher invites
+    // carry no student (new-nullable stays NULL for all existing rows); the PARENT-requires-student
+    // rule is app-enforced, not a NOT NULL, so one column serves every invite kind (AC C1). A real
+    // typed column, NOT the untyped `assignments` jsonb (which is teacher class/subject grants).
+    studentId: uuid("student_id"),
     assignments: jsonb("assignments"), // e.g. [{ classId, subjectId?, formMaster? }]
     status: inviteStatusEnum("status").notNull().default("PENDING"),
     invitedByUserId: uuid("invited_by_user_id").references(() => users.id, {
@@ -35,5 +49,12 @@ export const invites = pgTable(
   },
   (t) => ({
     bySchool: index("invite_school_status_idx").on(t.schoolId, t.status),
+    // Composite intra-tenant FK — a PARENT invite can only reference a child in the SAME tenant (a
+    // cross-tenant child invite is structurally impossible). CASCADE drops the pending invite if the
+    // student is removed. NULL student_id (staff/teacher invites) skips the FK (MATCH SIMPLE). INCR-19a.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
   }),
 );

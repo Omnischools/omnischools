@@ -21,6 +21,7 @@ import {
   auditLog,
 } from "@/db/schema";
 import { num } from "@/lib/fees-helpers";
+import { ParentInviteButton } from "@/components/students/parent-invite-button";
 
 export const dynamic = "force-dynamic";
 
@@ -560,11 +561,18 @@ export default async function StudentDetailPage(props: { params: Promise<{ id: s
                   </div>
                   <div className="font-mono text-xs text-navy-3">{g.phone}</div>
                 </div>
-                {g.isPrimary && (
-                  <span className="rounded-pill bg-gold-bg px-2 py-0.5 text-xs font-medium text-navy">
-                    Primary
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  {g.isPrimary && (
+                    <span className="rounded-pill bg-gold-bg px-2 py-0.5 text-xs font-medium text-navy">
+                      Primary
+                    </span>
+                  )}
+                  <ParentInviteButton
+                    studentId={student.id}
+                    guardianId={g.id}
+                    linked={g.userId != null}
+                  />
+                </div>
               </div>
             ))}
           </div>
