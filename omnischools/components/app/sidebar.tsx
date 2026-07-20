@@ -20,6 +20,7 @@ import {
   Gauge,
   BedDouble,
   Award,
+  Target,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,13 @@ const SENIOR_ITEMS = [
     href: "/senior/wassce/setup",
     label: "WASSCE",
     Icon: Award,
+    roles: WASSCE_SETUP_ROLES,
+  },
+  {
+    // Whole-cohort HoA view — same leadership gate as setup; a TEACHER never sees the link OR the page.
+    href: "/senior/wassce/cohort",
+    label: "Cohort readiness",
+    Icon: Target,
     roles: WASSCE_SETUP_ROLES,
   },
 ];

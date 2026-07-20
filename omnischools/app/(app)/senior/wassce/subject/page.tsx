@@ -261,6 +261,7 @@ export default async function WassceSubjectTeacherPage(props: {
           columns={data.columns}
           subjectId={data.subject.id}
           canWrite={data.canWriteSubject}
+          canModerate={isOversight}
           predictorColumnId={data.predictorColumnId}
         />
       </section>

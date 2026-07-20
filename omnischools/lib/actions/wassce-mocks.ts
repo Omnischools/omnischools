@@ -6,22 +6,30 @@ import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor, assertAnyRole } from "@/lib/auth/server";
 import { SENIOR_LEDGER_ROLES, WASSCE_SETUP_ROLES, hasAnyRole } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
-import { mockExams, mockResults, wassceCohort, wassceCandidates, wassceSubjects } from "@/db/schema";
+import {
+  mockExams,
+  mockResults,
+  wassceCohort,
+  wassceCandidates,
+  wassceCandidateSubject,
+  wassceSubjects,
+} from "@/db/schema";
 import { resolveAuthorizedWassceSubjectIds } from "@/lib/wassce/subject-authz";
-import { isWassceGrade } from "@/lib/wassce/mock-grades";
+import { isWassceGrade, type WassceGrade } from "@/lib/wassce/mock-grades";
 
 /**
- * WASSCE mock write actions (SHS module 4.3 / INCR-16) — the first WASSCE write surface. Two flows:
+ * WASSCE mock write actions (SHS module 4.3 / INCR-16 + INCR-18) — three flows:
  *   • saveMockResult — TEACHER mark-entry, gated by the R5 `senior_subject_teacher` correspondence
  *     AND `mock_exams.marking_complete_at IS NULL`. It is deliberately NOT gated by the registration
  *     freeze (`wassce_cohort.setup_frozen_at`) — mock marking ≠ roster freeze (R3b key ruling).
+ *   • moderateMockResult / clearMockModeration — the INCR-18 HoA moderation write (Decision 10).
  *   • scheduleMock / updateMock — ADMIN mock-config (WASSCE_SETUP_ROLES). Edit blocked once marked.
- * The moderation write is DEFERRED to INCR-18 (columns exist; this file never writes moderated_grade).
  * Every mutation is tenant-scoped (withSchool) + audit-logged. No projection / aggregate is computed.
  */
 
 const SUBJECT_PATH = "/senior/wassce/subject";
 const MOCKS_PATH = "/senior/wassce/mocks";
+const COHORT_PATH = "/senior/wassce/cohort";
 
 // ---------------------------------------------------------------- mark-entry (teacher)
 const SaveMockResultSchema = z.object({
@@ -92,7 +100,8 @@ export async function saveMockResult(input: unknown): Promise<SaveMockResultResu
         //    hold an oversight role (HoA/admin who oversee). A plain teacher outside their assignment
         //    is rejected (AC4 — Physics-by-a-Chemistry-teacher, or no-assignment → 403).
         const authorized = await resolveAuthorizedWassceSubjectIds(tx, school.id, actor.id);
-        if (!authorized.has(d.subjectId) && !isOversight) {
+        const isAssigned = authorized.has(d.subjectId);
+        if (!isAssigned && !isOversight) {
           return {
             ok: false,
             error: "You can only enter marks for a subject you are assigned to teach.",
@@ -115,6 +124,12 @@ export async function saveMockResult(input: unknown): Promise<SaveMockResultResu
           .where(and(eq(wassceSubjects.schoolId, school.id), eq(wassceSubjects.id, d.subjectId)));
         if (!subj) return { ok: false, error: "Unknown subject." };
 
+        // 5) INCR-18 R3 CARRY-IN (Quinn): the candidate must be REGISTERED for this subject. The grid
+        //    only lists registered candidates, so this is unreachable through the UI — but a crafted
+        //    POST could otherwise store an off-roster grade that the cohort heatmap would then count.
+        const registered = await assertRegistered(tx, school.id, d.candidateId, d.subjectId);
+        if (!registered) return { ok: false, error: NOT_REGISTERED };
+
         // Existing row → before-state for the audit trail (corrections are new events, never silent).
         const [before] = await tx
           .select({ grade: mockResults.grade, rawScore: mockResults.rawScore })
@@ -127,6 +142,18 @@ export async function saveMockResult(input: unknown): Promise<SaveMockResultResu
               eq(mockResults.subjectId, d.subjectId),
             ),
           );
+
+        // 6) INCR-18 R2 CARRY-IN (Sarah): oversight edits route through MODERATION, never through the
+        //    teacher's `grade`. Evaluation order matters — an actor who is BOTH assigned and oversight
+        //    writes as the teacher (assignment wins). An oversight-only actor may CREATE a missing mark
+        //    (the surface's own case: French has no L1 teacher) but may never overwrite an existing one,
+        //    which is what leaves a trail. A teacher grade is thus immutable to everyone but its teacher.
+        if (!isAssigned && isOversight && before) {
+          return {
+            ok: false,
+            error: "This subject already has a teacher mark — use Moderate to change it.",
+          };
+        }
 
         const rawStr = rawValue == null ? null : rawValue.toFixed(2);
         const maxStr = maxValue == null ? null : maxValue.toFixed(2);
@@ -179,6 +206,283 @@ export async function saveMockResult(input: unknown): Promise<SaveMockResultResu
   } catch {
     return { ok: false, error: "Could not save the mark. Please try again." };
   }
+}
+
+// ---------------------------------------------------------------- moderation (HoA · INCR-18 R1)
+
+const NOT_REGISTERED = "That candidate is not registered for this subject.";
+
+/** True when a `wassce_candidate_subject` row exists for the triple (the R3 carry-in, both writes). */
+async function assertRegistered(
+  tx: Parameters<Parameters<typeof withSchool>[1]>[0],
+  schoolId: string,
+  candidateId: string,
+  subjectId: string,
+): Promise<boolean> {
+  const [row] = await tx
+    .select({ id: wassceCandidateSubject.id })
+    .from(wassceCandidateSubject)
+    .where(
+      and(
+        eq(wassceCandidateSubject.schoolId, schoolId),
+        eq(wassceCandidateSubject.candidateId, candidateId),
+        eq(wassceCandidateSubject.subjectId, subjectId),
+      ),
+    );
+  return row != null;
+}
+
+/**
+ * A moderation reason is MANDATORY at the app layer even though the column is nullable — the trail is
+ * an audit record, and a moderation with no rationale is precisely the hole Sarah's carry-forward names.
+ */
+const reasonField = z
+  .string()
+  .trim()
+  .min(5, "Give a reason of at least 5 characters — the moderation trail is an audit record.")
+  .max(500, "Keep the reason under 500 characters.");
+
+const ModerateSchema = z.object({
+  mockId: z.string().uuid(),
+  candidateId: z.string().uuid(),
+  subjectId: z.string().uuid(),
+  moderatedGrade: z.string().refine(isWassceGrade, "Grade must be one of A1–F9."),
+  reason: reasonField,
+});
+
+const ClearModerationSchema = z.object({
+  mockId: z.string().uuid(),
+  candidateId: z.string().uuid(),
+  subjectId: z.string().uuid(),
+  reason: reasonField,
+});
+
+export type ModerationResult = { ok: true } | { ok: false; error: string };
+
+/** The four columns a moderation touches — NEVER `grade`, `marked_*`, `raw_score` or `max_score`. */
+type ModerationColumns = {
+  moderatedGrade: WassceGrade | null;
+  moderatorUserId: string | null;
+  moderatedAt: Date | null;
+  moderationReason: string | null;
+};
+
+/**
+ * Moderate a mock result (SHS module 4.3 / INCR-18 · Decision 10 · Kofi R1).
+ *
+ * Role = `WASSCE_SETUP_ROLES` (ADMIN / HEADMASTER / VICE_HEADMASTER_ACADEMIC). That set can ALREADY
+ * overwrite `grade` today, so routing them into moderation strictly REDUCES privilege while adding a
+ * trail. TEACHER / FORM_MASTER may NEVER moderate — **including their own subject**: Decision 10 exists
+ * to check self-marking from OUTSIDE, so an assignment is not a licence here.
+ *
+ * It writes EXACTLY four columns. The teacher's `grade`, `marked_by_user_id`, `marked_at`, `raw_score`
+ * and `max_score` are byte-unchanged, which is what makes the original-vs-moderated cell honest. The
+ * same-row CHECK `mock_results_moderation_trail` makes a half-populated moderation unrepresentable.
+ *
+ * It is deliberately NOT gated by `mock_exams.marking_complete_at` — moderation is precisely the write
+ * that SURVIVES marking closing (Decision 10 cross-checks the distribution, which is only meaningful
+ * once marking is done). Teacher `saveMockResult` stays locked. It is not gated by `setup_frozen_at`.
+ */
+export async function moderateMockResult(input: unknown): Promise<ModerationResult> {
+  const { school } = await requireSchool();
+  await assertAnyRole(WASSCE_SETUP_ROLES);
+  const parsed = ModerateSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid moderation." };
+  }
+  const d = parsed.data;
+  const actor = await resolveActor(school.id);
+
+  try {
+    const outcome = await withSchool(school.id, async (tx): Promise<ModerationResult> => {
+      const target = await loadModerationTarget(tx, school.id, d);
+      if (!target.ok) return target;
+      if (target.row.grade === d.moderatedGrade) {
+        return {
+          ok: false,
+          error:
+            "The moderated grade must differ from the teacher's grade. To undo a moderation, use Clear moderation.",
+        };
+      }
+
+      const after: ModerationColumns = {
+        moderatedGrade: d.moderatedGrade,
+        moderatorUserId: actor.id ?? null,
+        moderatedAt: new Date(),
+        moderationReason: d.reason,
+      };
+      await writeModeration(tx, school.id, d, after);
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "mock_result_moderation",
+        entityId: d.candidateId,
+        before: {
+          mockId: d.mockId,
+          subjectId: d.subjectId,
+          teacherGrade: target.row.grade,
+          moderatedGrade: target.row.moderatedGrade,
+          moderationReason: target.row.moderationReason,
+        },
+        after: {
+          mockId: d.mockId,
+          subjectId: d.subjectId,
+          teacherGrade: target.row.grade, // unchanged — recorded so the trail proves it
+          moderatedGrade: d.moderatedGrade,
+          moderationReason: d.reason,
+        },
+        reason: d.reason,
+      });
+      return { ok: true };
+    });
+    if (outcome.ok) {
+      safeRevalidate(SUBJECT_PATH);
+      safeRevalidate(COHORT_PATH);
+    }
+    return outcome;
+  } catch {
+    return { ok: false, error: "Could not save the moderation. Please try again." };
+  }
+}
+
+/**
+ * Reverse a moderation — NULLs all four columns together so the row is never half-populated (the CHECK
+ * would reject that anyway). The history lives in the append-only `audit_log`, never in a partial row,
+ * so a clear ALSO requires its own reason. Clearing an un-moderated row is rejected, and a clear is NOT
+ * restricted to the original moderator (an HoA on leave must not block a correction).
+ */
+export async function clearMockModeration(input: unknown): Promise<ModerationResult> {
+  const { school } = await requireSchool();
+  await assertAnyRole(WASSCE_SETUP_ROLES);
+  const parsed = ClearModerationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request." };
+  }
+  const d = parsed.data;
+  const actor = await resolveActor(school.id);
+
+  try {
+    const outcome = await withSchool(school.id, async (tx): Promise<ModerationResult> => {
+      const target = await loadModerationTarget(tx, school.id, d);
+      if (!target.ok) return target;
+      if (target.row.moderatedGrade == null) {
+        return { ok: false, error: "That result is not moderated — there is nothing to clear." };
+      }
+
+      const after: ModerationColumns = {
+        moderatedGrade: null,
+        moderatorUserId: null,
+        moderatedAt: null,
+        moderationReason: null,
+      };
+      await writeModeration(tx, school.id, d, after);
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "mock_result_moderation",
+        entityId: d.candidateId,
+        before: {
+          mockId: d.mockId,
+          subjectId: d.subjectId,
+          teacherGrade: target.row.grade,
+          moderatedGrade: target.row.moderatedGrade,
+          moderationReason: target.row.moderationReason,
+        },
+        after: { mockId: d.mockId, subjectId: d.subjectId, teacherGrade: target.row.grade, moderatedGrade: null },
+        reason: d.reason,
+      });
+      return { ok: true };
+    });
+    if (outcome.ok) {
+      safeRevalidate(SUBJECT_PATH);
+      safeRevalidate(COHORT_PATH);
+    }
+    return outcome;
+  } catch {
+    return { ok: false, error: "Could not clear the moderation. Please try again." };
+  }
+}
+
+type ModerationTargetKey = { mockId: string; candidateId: string; subjectId: string };
+
+/**
+ * The shared pre-flight for BOTH moderation writes: the mock, candidate, subject and REGISTRATION all
+ * resolve inside this school (a cross-tenant id is a plain not-found, never a leak), and the teacher's
+ * result row must already exist — there is nothing to moderate otherwise.
+ */
+async function loadModerationTarget(
+  tx: Parameters<Parameters<typeof withSchool>[1]>[0],
+  schoolId: string,
+  d: ModerationTargetKey,
+): Promise<
+  | { ok: true; row: { grade: string; moderatedGrade: string | null; moderationReason: string | null } }
+  | { ok: false; error: string }
+> {
+  const [mock] = await tx
+    .select({ id: mockExams.id, cohortId: mockExams.cohortId })
+    .from(mockExams)
+    .where(and(eq(mockExams.schoolId, schoolId), eq(mockExams.id, d.mockId)));
+  if (!mock) return { ok: false, error: "That mock does not exist." };
+
+  const [cand] = await tx
+    .select({ cohortId: wassceCandidates.cohortId })
+    .from(wassceCandidates)
+    .where(and(eq(wassceCandidates.schoolId, schoolId), eq(wassceCandidates.id, d.candidateId)));
+  if (!cand || cand.cohortId !== mock.cohortId) {
+    return { ok: false, error: "That candidate is not in this mock's cohort." };
+  }
+
+  const [subj] = await tx
+    .select({ id: wassceSubjects.id })
+    .from(wassceSubjects)
+    .where(and(eq(wassceSubjects.schoolId, schoolId), eq(wassceSubjects.id, d.subjectId)));
+  if (!subj) return { ok: false, error: "Unknown subject." };
+
+  if (!(await assertRegistered(tx, schoolId, d.candidateId, d.subjectId))) {
+    return { ok: false, error: NOT_REGISTERED };
+  }
+
+  const [row] = await tx
+    .select({
+      grade: mockResults.grade,
+      moderatedGrade: mockResults.moderatedGrade,
+      moderationReason: mockResults.moderationReason,
+    })
+    .from(mockResults)
+    .where(
+      and(
+        eq(mockResults.schoolId, schoolId),
+        eq(mockResults.mockId, d.mockId),
+        eq(mockResults.candidateId, d.candidateId),
+        eq(mockResults.subjectId, d.subjectId),
+      ),
+    );
+  if (!row) return { ok: false, error: "There is no teacher mark to moderate for this subject." };
+  return { ok: true, row };
+}
+
+/** The ONLY statement in the codebase that writes the moderation columns — exactly four, no others. */
+async function writeModeration(
+  tx: Parameters<Parameters<typeof withSchool>[1]>[0],
+  schoolId: string,
+  d: ModerationTargetKey,
+  set: ModerationColumns,
+): Promise<void> {
+  await tx
+    .update(mockResults)
+    .set(set)
+    .where(
+      and(
+        eq(mockResults.schoolId, schoolId),
+        eq(mockResults.mockId, d.mockId),
+        eq(mockResults.candidateId, d.candidateId),
+        eq(mockResults.subjectId, d.subjectId),
+      ),
+    );
 }
 
 // ---------------------------------------------------------------- mock config (admin)
