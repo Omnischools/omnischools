@@ -200,7 +200,14 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     const today = new Date().toISOString().slice(0, 10); // role_assignment start/end are DATE columns
 
     const ra = await tx
-      .select({ code: roles.code, schoolId: roleAssignments.schoolId })
+      .select({
+        code: roles.code,
+        schoolId: roleAssignments.schoolId,
+        // Selected so `scopeRolesToActiveSchool` can RE-APPLY the time window in tested code — the
+        // WHERE below is only a pre-filter, and a typo in it would be invisible to the suite.
+        startDate: roleAssignments.startDate,
+        endDate: roleAssignments.endDate,
+      })
       .from(roleAssignments)
       .innerJoin(roles, eq(roleAssignments.roleId, roles.id))
       .where(
@@ -226,7 +233,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
 
     // Roles are scoped to the active school. See ./roles for why this is fixed HERE and not at the
     // ~129 call sites: every existing and future role check inherits the correction for free.
-    const scoped = scopeRolesToActiveSchool(ra);
+    const scoped = scopeRolesToActiveSchool(ra, today);
     return {
       id: u.id,
       phone,

@@ -24,11 +24,39 @@ import type { AppRole } from "./index";
  * would plug in. Deliberately not built here: the fix is a security correction, not a feature.
  */
 
-/** One currently-active role assignment, already time-filtered and ordered by the caller. */
+/** One role assignment row, ordered by the caller. Dates are `YYYY-MM-DD` (DATE columns). */
 export type RoleAssignmentRow = {
   code: string;
   schoolId: string;
+  startDate?: string | null;
+  endDate?: string | null;
 };
+
+/**
+ * Is this assignment in force on `today`? BOTH endpoints are INCLUSIVE — an assignment whose
+ * `end_date` is today is still live through that whole day (end_date is the last day of service),
+ * and one starting today is live immediately.
+ *
+ * This exists as a tested predicate because the equivalent SQL is invisible to the test suite:
+ * `gte(endDate, today)` mistyped as `gt` would lock out every member of staff whose assignment ends
+ * today and leave the entire suite green. The query keeps its matching WHERE clause as a cheap
+ * pre-filter, but THIS is the authority — `scopeRolesToActiveSchool` re-applies it, so the rule is
+ * enforced by code that tests can reach.
+ *
+ * `today` is supplied by the caller (UTC). Ghana is UTC+0 year-round with no DST, so UTC-today and
+ * Accra-today are always the same calendar date. A deployment whose Postgres session TimeZone is east
+ * of UTC could write a `start_date` of tomorrow-in-UTC and briefly lock out a new starter — a
+ * deployment note, not a code path.
+ */
+export function isCurrentlyActive(
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+  today: string,
+): boolean {
+  if (startDate && startDate > today) return false; // not started yet
+  if (endDate && endDate < today) return false; // ended before today
+  return true;
+}
 
 export type ScopedRoles = {
   /** The active school, or undefined when the user holds no currently-active assignment. */
@@ -45,12 +73,19 @@ export type ScopedRoles = {
  * Duplicate role codes at the active school are collapsed, so a user assigned the same role twice
  * (e.g. once per class scope) does not carry it twice.
  */
-export function scopeRolesToActiveSchool(assignments: readonly RoleAssignmentRow[]): ScopedRoles {
-  const activeSchoolId = assignments[0]?.schoolId;
+export function scopeRolesToActiveSchool(
+  assignments: readonly RoleAssignmentRow[],
+  today: string = new Date().toISOString().slice(0, 10),
+): ScopedRoles {
+  // Re-apply the time window here rather than trusting the caller's SQL — see `isCurrentlyActive`.
+  // A row carrying no dates is treated as active, so callers that pre-filter lose nothing.
+  const live = assignments.filter((a) => isCurrentlyActive(a.startDate, a.endDate, today));
+
+  const activeSchoolId = live[0]?.schoolId;
   if (!activeSchoolId) return { roles: [] };
 
   const codes = new Set<string>();
-  for (const a of assignments) {
+  for (const a of live) {
     if (a.schoolId === activeSchoolId) codes.add(a.code);
   }
   return { schoolId: activeSchoolId, roles: [...codes] as AppRole[] };
