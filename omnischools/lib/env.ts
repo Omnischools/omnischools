@@ -38,10 +38,17 @@ const schema = z.object({
   // Background-job shared secret (generic HTTP cron — portability)
   CRON_SECRET: z.string().optional(),
 
-  // Dev-only auth shim toggle (real Supabase Auth OTP wired at deploy)
+  // Dev-only auth shim toggle (real Supabase Auth OTP wired at deploy).
+  // Defaults to "false" — FAIL CLOSED. This is the auth kill-switch: when it is on, `authIsLive()` is
+  // false, every request resolves to the hardcoded DEV_USER with roles ["ADMIN"], and `getActiveSchool`
+  // hands back a real school. It previously defaulted to "true", so a single ABSENT or misspelled env
+  // var on prod would have silently granted unauthenticated ADMIN access to a real school's pupil data
+  // — even with Supabase fully configured. Every documented path sets this explicitly (.env.example
+  // "true", DEPLOY.md "false"), so the default only governs the case where someone forgot; that case
+  // must deny, not admit.
   AUTH_DEV_BYPASS: z
     .enum(["true", "false"])
-    .default("true")
+    .default("false")
     .transform((v) => v === "true"),
 });
 
