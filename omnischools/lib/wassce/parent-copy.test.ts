@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { cwd } from "node:process";
 import type { FrozenTargetUniversity } from "./university-match";
+import { heroBandText } from "@/lib/pdf/readiness-band";
 import {
   AGGREGATE_FAQ,
   EVERGREEN_FAQ,
@@ -109,6 +113,40 @@ describe("AC-COPY-3 — no forbidden staff jargon reaches a parent", () => {
     for (const s of allRenderedCopy()) {
       expect(findForbiddenJargon(s), s).toHaveLength(0);
     }
+  });
+
+  // Quinn MINOR-1: the copy-constant sweep above misses jargon typed DIRECTLY into the parent page/
+  // layout JSX (tab labels, section headings, "View signed PDF", …). Scan the (parent) route source's
+  // visible text nodes too, so a future edit that hard-codes a forbidden term in the page is caught —
+  // not only ones routed through this module.
+  it("no forbidden jargon in the parent route's own JSX text", () => {
+    const files = [
+      "app/(parent)/wassce/page.tsx",
+      "app/(parent)/layout.tsx",
+    ].map((p) => resolve(cwd(), p));
+    for (const file of files) {
+      const src = readFileSync(file, "utf8");
+      // JSX text children only (`>visible text<`) — where parent-visible prose lives; ignores
+      // className/href/expression code, which is not shown to a parent.
+      for (const m of src.matchAll(/>\s*([A-Za-z][^<>{}]*?)\s*</g)) {
+        const text = m[1].trim();
+        if (text.length < 3) continue;
+        expect(findForbiddenJargon(text), `${file}: "${text}"`).toHaveLength(0);
+      }
+    }
+  });
+});
+
+describe("AC-COPY-4 — the readiness PDF strips the cohort band for a parent (register parity, R6)", () => {
+  it("staff PDF keeps the band; parent PDF shows only the plain gloss", () => {
+    const band = "Top tier · 6–12";
+    expect(heroBandText(band, "staff")).toBe("Top tier · 6–12 · lower is better (6 best · 54 worst)");
+    const parent = heroBandText(band, "parent");
+    expect(parent).toBe("lower is better (6 best · 54 worst)");
+    // The exact cohort-tier vocabulary R6 hides on-screen must not survive into the parent's PDF either.
+    expect(findForbiddenJargon(parent)).toHaveLength(0);
+    expect(parent).not.toMatch(/Top tier/i);
+    expect(parent).not.toMatch(/\d\s*–\s*\d/);
   });
 });
 

@@ -471,6 +471,8 @@ export const FORBIDDEN_JARGON: RegExp[] = [
   /\bof\s+240\b/i,
   /\bcredit[-\s]pass\b/i,
   /\bat[-\s]?risk\b/i,
+  /\brank\b/i, // R2 exclusion — cohort position
+  /\bdropped[-\s]subject\b/i, // R2 exclusion — best-3 mechanics
   /\braw\s+score\b/i,
   /\breg[_\s]?flag\b/i,
   /ON_MEDICAL/i,

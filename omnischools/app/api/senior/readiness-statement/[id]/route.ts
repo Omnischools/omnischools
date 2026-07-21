@@ -49,7 +49,9 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
   );
   if (!data) return new Response("Readiness statement not found", { status: 404 });
 
-  const pdf = await renderReadinessStatementPdf(data);
+  // A PARENT's PDF must strip the cohort-tier band vocabulary, same as the on-screen portal (R6). Staff
+  // keep it — it's their working document. `isStaffReader` was resolved above.
+  const pdf = await renderReadinessStatementPdf(data, isStaffReader ? "staff" : "parent");
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
