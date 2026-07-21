@@ -59,6 +59,27 @@ export const BOARDING_ROLES = [
   "HOUSEMASTER",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * Sickbay (SHS module 4.4 / INCR-21) — TWO gates on one surface, and the split is load-bearing
+ * (Kofi R18/R19). The MATRON READS the module (it is her staff list, her bed inventory and her
+ * working hours) but CANNOT WRITE the §1/§2 configuration: not the mode, not the beds, not the
+ * schedule. Grounding: the surface's sidebar footer is the Headmaster on §1/§2/§4/§5 and switches to
+ * the Matron on §3 alone — two write scopes on one page; INCR-21 builds only the Headmaster one.
+ * §3 (standing orders / drug stock) flips to [ADMIN, MATRON] at INCR-24.
+ *
+ * HOUSEMASTER is deliberately NOT a member: a Housemaster's reach into a student's health data is
+ * grant-scoped at INCR-23, never role-scoped. STUDENT / PARENT / TEACHER never reach either gate.
+ */
+export const SICKBAY_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "MATRON",
+] as const satisfies readonly KnownAppRole[];
+export const SICKBAY_CONFIG_WRITE_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",
