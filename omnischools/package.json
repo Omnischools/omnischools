@@ -85,7 +85,10 @@
       "@next/eslint-plugin-next>glob": "10.5.0",
       "@esbuild-kit/core-utils>esbuild": "0.25.12",
       "tsx>esbuild": "0.28.1",
-      "vite>esbuild": "0.28.1"
+      "vite>esbuild": "0.28.1",
+      "brace-expansion@<1.1.16": "^1.1.16",
+      "brace-expansion@>=3.0.0 <5.0.7": ">=5.0.7",
+      "js-yaml@>=4.0.0 <4.3.0": ">=4.3.0"
     }
   }
 }
