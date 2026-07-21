@@ -14,8 +14,11 @@
  * clinician pointer targets the GLOBAL ref_user, so the DB cannot check it belongs to this school —
  * `holdsMatronRole()` is the ONLY tenancy guard on it (Sarah's INCR-21 advisory 2). Do not weaken it.
  *
- * The attendance-MEDICAL hook is 22b and is deliberately absent here (R46/R54). This file issues NO
- * attendance write and NO DELETE anywhere (R37).
+ * The attendance-MEDICAL hook (22b · R46) fires from exactly two places in this file — the ADMIT
+ * disposition and the REFER disposition, NEVER a DISCHARGE — and always AFTER the clinical
+ * transaction has committed (R54). `markSickbayMedical` cannot throw; it returns a named skip. This
+ * file therefore still writes no attendance row itself, holds no attendance column name, and issues
+ * NO DELETE anywhere (R37).
  */
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -37,10 +40,31 @@ import {
 import { getSickbayConfig, holdsMatronRole } from "@/lib/sickbay/config";
 import { dispositionGuard, isolationGuard, voidGuard } from "@/lib/sickbay/visits";
 import { VITAL_BOUNDS, isEmptyReading } from "@/lib/sickbay/vitals";
+import { markSickbayMedical } from "@/lib/attendance/mark";
 
 type Result = { ok: boolean; error?: string; id?: string };
 const TODAY_PATH = "/senior/sickbay/today";
 const visitPath = (id: string) => `/senior/sickbay/visits/${id}`;
+
+/**
+ * R46 — the attendance-M hook, fired ONLY for ADMIT and REFER, and only after the clinical write has
+ * committed (R54: best-effort, outside the transaction; the visit is the medico-legal record).
+ * DISCHARGE is deliberately absent: a 20-minute headache is not an attendance event, and the mark
+ * would become a row every class teacher can read about a student who never missed a lesson.
+ *
+ * The result is not surfaced through the action's return value — the §04 disposition card DERIVES its
+ * one honest attendance line from the stored row on the next render (R65), so a skip is visible on
+ * the page rather than in a toast that disappears.
+ */
+async function fireAttendanceHook(
+  schoolId: string,
+  actor: { id: string | null; role: string },
+  visit: { id: string; studentId: string },
+  at: Date,
+): Promise<void> {
+  await markSickbayMedical({ schoolId, studentId: visit.studentId, visitId: visit.id, at, actor });
+  safeRevalidate("/attendance");
+}
 
 /**
  * The shared clinical-write gate. A HEADMASTER or ADMIN reaching any of these directly — form POST,
@@ -417,7 +441,7 @@ export async function disposeVisit(input: unknown): Promise<Result> {
   const d = parsed.data;
 
   try {
-    await withSchool(auth.schoolId, async (tx) => {
+    const closed = await withSchool(auth.schoolId, async (tx) => {
       const v = await loadVisit(tx, auth.schoolId, d.visitId);
       if (!v) throw new NamedError("That visit no longer exists.");
       const attendingIsMatron = v.attendingUserId
@@ -438,7 +462,14 @@ export async function disposeVisit(input: unknown): Promise<Result> {
         after: { disposition: d.disposition, dispositionAt: now, note: d.dispositionNote || null },
         reason: `Sickbay visit ${d.disposition === "REFER" ? "referred" : "discharged"}`,
       });
+      return { id: v.id, studentId: v.studentId, at: now };
     });
+    // R46 — REFER marks the day, DISCHARGE does not. A student at Asankrangwa Govt. Hospital is
+    // definitively not in class and definitively not unauthorised-absent; a walk-in sent back to
+    // class missed nothing.
+    if (d.disposition === "REFER") {
+      await fireAttendanceHook(auth.schoolId, auth.actor, closed, closed.at);
+    }
     safeRevalidate(visitPath(d.visitId));
     return { ok: true, id: d.visitId };
   } catch (err) {
@@ -480,7 +511,7 @@ export async function admitPatient(input: unknown): Promise<Result> {
   const config = await getSickbayConfig(auth.schoolId);
 
   try {
-    const id = await withSchool(auth.schoolId, async (tx) => {
+    const admitted = await withSchool(auth.schoolId, async (tx) => {
       const v = await loadVisit(tx, auth.schoolId, d.visitId);
       if (!v) throw new NamedError("That visit no longer exists.");
       const attendingIsMatron = v.attendingUserId
@@ -532,11 +563,14 @@ export async function admitPatient(input: unknown): Promise<Result> {
         after: { visitId: v.id, bedId: bed.id, isIsolation: bed.isIsolation, admittedAt: now },
         reason: "Sickbay admission opened",
       });
-      return v.id;
+      return { id: v.id, studentId: v.studentId, at: now };
     });
+    // R46/R54 — the mark is written AFTER the clinical commit and cannot roll it back. R48's PULL arm
+    // then carries days 2, 3 and 4 of this admission with no scheduler anywhere.
+    await fireAttendanceHook(auth.schoolId, auth.actor, admitted, admitted.at);
     safeRevalidate(visitPath(d.visitId));
     safeRevalidate(TODAY_PATH);
-    return { ok: true, id };
+    return { ok: true, id: admitted.id };
   } catch (err) {
     if (err instanceof NamedError) return { ok: false, error: err.message };
     if (isUniqueViolation(err)) {

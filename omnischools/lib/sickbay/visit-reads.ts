@@ -10,6 +10,7 @@ import "server-only";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import {
+  attendanceRecords,
   classes,
   houses,
   sickbayAdmission,
@@ -22,6 +23,9 @@ import {
   students,
   users,
 } from "@/db/schema";
+import { closedTermLabel } from "@/lib/attendance/mark";
+import { civilDate } from "@/lib/attendance/mark-rules";
+import type { AttendanceStatus } from "@/lib/attendance-status";
 import { formLabel, initials } from "./defaults";
 
 /** One open admission's bed — what R56 (mode guard) and R59 (capacity reconcile) both read. */
@@ -154,6 +158,23 @@ export interface VisitRecordAdmission {
   dischargeNote: string | null;
 }
 
+/**
+ * R65 — the facts the §04 attendance line is derived from, present ONLY for an ADMIT or a REFER
+ * (R46: a walk-in discharge is not an attendance event, so the card says nothing about attendance).
+ * Nothing is stored to produce this: the row is read back on every render, so a mark that was later
+ * corrected, or never written, cannot be misreported by a stale flag.
+ */
+export interface VisitAttendanceFacts {
+  /** The civil day the disposition was recorded — what the line names (never a period). */
+  date: string;
+  /** The stored status for that day, or null when no row exists. */
+  status: AttendanceStatus | null;
+  /** R53 — the student has no class, so `attendance_record.class_id NOT NULL` cannot be satisfied. */
+  noClass: boolean;
+  /** R52 — the term covering that day is closed, so the mark was skipped and the visit committed. */
+  closedTerm: string | null;
+}
+
 export interface VisitRecord {
   id: string;
   student: {
@@ -187,6 +208,7 @@ export interface VisitRecord {
   vitals: VisitRecordVital[];
   admission: VisitRecordAdmission | null;
   consults: VisitRecordConsultRow[];
+  attendance: VisitAttendanceFacts | null;
 }
 
 const REL_LABEL: Record<string, string> = {
@@ -224,6 +246,8 @@ export async function getVisitRecord(
         studentCode: students.studentCode,
         dateOfBirth: students.dateOfBirth,
         programme: students.programme,
+        classId: students.classId, // R53 — null ⇒ the attendance mark is skipped, honestly
+
         className: classes.name,
         classLevel: classes.level,
         houseName: houses.name,
@@ -305,6 +329,31 @@ export async function getVisitRecord(
       )
       .orderBy(asc(sickbayDoctorConsult.occurredAt));
 
+    // R65 — the attendance line's facts, DERIVED, and only for a disposition that writes a mark
+    // (R46: ADMIT and REFER, never DISCHARGE). Reading the row back on every render is what keeps the
+    // card honest when the mark was skipped (R52/R53) or later corrected away (R51/H14).
+    let attendance: VisitAttendanceFacts | null = null;
+    if ((v.disposition === "ADMIT" || v.disposition === "REFER") && v.dispositionAt) {
+      const date = civilDate(v.dispositionAt);
+      const [rec] = await tx
+        .select({ status: attendanceRecords.status })
+        .from(attendanceRecords)
+        .where(
+          and(
+            eq(attendanceRecords.schoolId, schoolId),
+            eq(attendanceRecords.studentId, v.studentId),
+            eq(attendanceRecords.date, date),
+          ),
+        )
+        .limit(1);
+      attendance = {
+        date,
+        status: rec?.status ?? null,
+        noClass: student.classId === null,
+        closedTerm: rec ? null : await closedTermLabel(tx, schoolId, date),
+      };
+    }
+
     // Actor names for the visit row itself (recorded_by / attending), plus the attending's N&MC
     // number from staff_profile — a PUBLIC statutory-register credential, not medical PII (R22).
     const actorIds = [...new Set([v.recordedByUserId, v.attendingUserId].filter((x): x is string => !!x))];
@@ -376,6 +425,7 @@ export async function getVisitRecord(
           }
         : null,
       consults: consultRows.map((c) => ({ ...c, recordedByName: shortName(c.recordedByName) })),
+      attendance,
     };
   });
 }

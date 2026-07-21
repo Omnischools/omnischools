@@ -56,6 +56,34 @@ export const DISPOSITION_FIELD_LABELS = [
 export const CLUSTER_NOTE_TAIL = "No silent overnight stays.";
 
 /**
+ * R65 — the ONE honest attendance line in the §04 disposition card (INCR-22b), and the only place the
+ * R52/R53 skip warning renders. AUTHORED copy (Lucy Q12), derived on every render from the stored
+ * attendance row rather than from a flag written at admit time, so it cannot drift from the truth.
+ *
+ * It names a **DAY**, never periods: `uniq_attendance_student_day` means per-period attendance does
+ * not exist (R30), and the surface's `5 periods · all classes` is a claim the schema cannot back. It
+ * carries no clinical content — it is read beside a patient's name.
+ */
+export function attendanceLine(a: {
+  /** `Wed 14 May` — the civil day the disposition was recorded. */
+  dayLabel: string;
+  /** The stored status' label (`Medical`, `Absent`, …), or null when there is no row for that day. */
+  markedLabel: string | null;
+  /** Why no row exists, in the caller's words (`Y. Aidoo has no class assigned`). */
+  skipReason: string | null;
+}): string {
+  if (a.markedLabel === "Medical") {
+    return `Attendance · ${a.dayLabel} is marked Medical for the whole day. Class teachers see M, not A — no medical detail leaves this module.`;
+  }
+  if (a.markedLabel) {
+    return `Attendance · ${a.dayLabel} reads ${a.markedLabel} — changed since the sickbay marked it.`;
+  }
+  return `Attendance · ${a.dayLabel} was not marked${
+    a.skipReason ? ` — ${a.skipReason}` : ""
+  }. The visit record is unaffected.`;
+}
+
+/**
  * 🔒 OMITTED AT INCR-22a — asserted absent from the shipped source (AC O1–O3). Each carries the
  * increment that earns it back. Nothing here is placeholdered: no `0/0`, no `—`, no greyed row, no
  * disabled control standing in for a capability the school does not have.

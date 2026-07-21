@@ -60,6 +60,24 @@ const DEV_USER: AppUser = {
   roles: ["ADMIN"],
 };
 
+/**
+ * The dev-bypass session. `AUTH_DEV_ROLES=MATRON,HEADMASTER` pins it to those roles instead of
+ * ADMIN — the clinical module (SHS 4.4) is MATRON-gated, so without this NO ONE can reach the
+ * sickbay UI or any clinical mutation in a local dev run.
+ *
+ * 🔒 It CANNOT widen roles in production: it is read only when `env.AUTH_DEV_BYPASS` is true, and
+ * that switch defaults to "false" and fails closed (a missing or misspelled env var denies). When
+ * AUTH_DEV_ROLES is unset the result is byte-identical to DEV_USER. Real sessions never reach here.
+ */
+function devUser(): AppUser {
+  if (!env.AUTH_DEV_BYPASS) return DEV_USER;
+  const roles = (env.AUTH_DEV_ROLES ?? "")
+    .split(",")
+    .map((r) => r.trim().toUpperCase())
+    .filter(Boolean);
+  return roles.length > 0 ? { ...DEV_USER, roles } : DEV_USER;
+}
+
 /** True when real Supabase Auth should be used. */
 export function authIsLive(): boolean {
   return !env.AUTH_DEV_BYPASS && !!env.NEXT_PUBLIC_SUPABASE_URL;
@@ -180,7 +198,7 @@ export async function signOut(): Promise<void> {
 
 /** Resolve the current authenticated user, or null. */
 export async function getCurrentUser(): Promise<AppUser | null> {
-  if (!authIsLive()) return DEV_USER;
+  if (!authIsLive()) return devUser();
 
   const {
     data: { user },

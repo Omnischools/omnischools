@@ -9,6 +9,8 @@ import {
 } from "@/lib/access";
 import { getSickbayConfig } from "@/lib/sickbay/config";
 import { getVisitRecord, openAdmissionBeds } from "@/lib/sickbay/visit-reads";
+import { attendanceLine } from "@/lib/sickbay/visit-copy";
+import { ATTENDANCE_STATUS_META } from "@/lib/attendance-status";
 import { formatElapsed } from "@/lib/sickbay/visits";
 import { ClinicalRestricted } from "@/components/sickbay/clinical-restricted";
 import { VisitRecordConsole, type VisitView } from "@/components/sickbay/visit-record-console";
@@ -24,6 +26,13 @@ const LONG = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   year: "numeric",
   timeZone: "UTC", // Accra is UTC+0 all year
+});
+/** `Wed 14 May` — the DAY the attendance line names (R65: a day, never periods). */
+const DAY = new Intl.DateTimeFormat("en-GB", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
 });
 const hhmm = (d: Date) =>
   `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
@@ -81,6 +90,21 @@ export default async function VisitRecordPage({
     ? Math.floor((now.getTime() - dob.getTime()) / (365.25 * 24 * 3600_000))
     : null;
 
+  // R65 — ONE honest attendance line, composed server-side from the row that is actually stored, and
+  // the place the R52/R53 skip warning renders. Absent entirely for a walk-in DISCHARGE (R46).
+  const att = record.attendance;
+  const attendanceNote = att
+    ? attendanceLine({
+        dayLabel: DAY.format(new Date(`${att.date}T00:00:00Z`)),
+        markedLabel: att.status ? ATTENDANCE_STATUS_META[att.status].label : null,
+        skipReason: att.noClass
+          ? `${record.student.name} has no class assigned`
+          : att.closedTerm
+            ? `${att.closedTerm} is closed`
+            : null,
+      })
+    : null;
+
   const visit: VisitView = {
     id: record.id,
     student: {
@@ -133,6 +157,7 @@ export default async function VisitRecordPage({
       adm && !adm.dischargedAt
         ? formatElapsed(now.getTime() - adm.admittedAt.getTime())
         : null,
+    attendanceNote,
   };
 
   return (

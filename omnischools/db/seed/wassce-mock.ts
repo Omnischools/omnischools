@@ -236,6 +236,17 @@ async function main() {
     .values({ schoolId, examYear: 2027, setupFrozenAt: null }) // NULL freeze → in-flight (forces the active-cohort selector)
     .returning();
 
+  // R53 (INCR-22b) — same defect, same fix, this file's own SHS-2024-* marker rows: an ACTIVE student
+  // with no class cannot receive an attendance row at all (`attendance_record.class_id` is NOT NULL).
+  await db
+    .insert(classes)
+    .values({ schoolId, name: "Form 2 Science", level: "Form 2", programme: "GENERAL_SCIENCE" })
+    .onConflictDoNothing({ target: [classes.schoolId, classes.name] });
+  const [f2sci] = await db
+    .select()
+    .from(classes)
+    .where(and(eq(classes.schoolId, schoolId), eq(classes.name, "Form 2 Science")));
+
   const F2_N = 6;
   const f2Students = await db
     .insert(students)
@@ -251,6 +262,8 @@ async function main() {
           status: "ACTIVE" as const,
           programme: "GENERAL_SCIENCE" as const,
           enrolledOn: "2024-09-10",
+          classId: f2sci.id,
+          currentClassLabel: f2sci.name,
         };
       }),
     )

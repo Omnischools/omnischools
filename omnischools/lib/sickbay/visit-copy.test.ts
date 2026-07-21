@@ -12,6 +12,7 @@ import {
   OMITTED_AT_22A,
   STATUS_TILE_LABELS,
   VITALS_COLUMNS,
+  attendanceLine,
 } from "./visit-copy";
 import { vitalTrend } from "./vitals";
 
@@ -190,6 +191,52 @@ describe("O1–O3 · the omitted elements appear NOWHERE in the shipped source",
 });
 
 // ============================================================================
+// R65 / R30 — the ONE §04 attendance line
+// ============================================================================
+
+describe("R65 · the §04 attendance line names a DAY, and is honest when nothing was marked", () => {
+  const day = "Wed 14 May";
+
+  it("the marked case says Medical, and says what a class teacher will see", () => {
+    const line = attendanceLine({ dayLabel: day, markedLabel: "Medical", skipReason: null });
+    expect(line).toBe(
+      "Attendance · Wed 14 May is marked Medical for the whole day. Class teachers see M, not A — no medical detail leaves this module.",
+    );
+  });
+
+  it("R53 · the classless skip NAMES the reason — never silent, never a blocked visit", () => {
+    expect(
+      attendanceLine({ dayLabel: day, markedLabel: null, skipReason: "Y. Aidoo has no class assigned" }),
+    ).toBe(
+      "Attendance · Wed 14 May was not marked — Y. Aidoo has no class assigned. The visit record is unaffected.",
+    );
+  });
+
+  it("R52 · the closed-term skip says so, and says the clinical record stands", () => {
+    expect(attendanceLine({ dayLabel: day, markedLabel: null, skipReason: "Term 2 is closed" })).toContain(
+      "was not marked — Term 2 is closed",
+    );
+  });
+
+  it("H14 · a corrected day reads the corrected status, not the sickbay's claim", () => {
+    expect(attendanceLine({ dayLabel: day, markedLabel: "Present", skipReason: null })).toBe(
+      "Attendance · Wed 14 May reads Present — changed since the sickbay marked it.",
+    );
+  });
+
+  it("R30 · it NEVER claims periods, and it carries no clinical content", () => {
+    const all = [
+      attendanceLine({ dayLabel: day, markedLabel: "Medical", skipReason: null }),
+      attendanceLine({ dayLabel: day, markedLabel: null, skipReason: "Term 2 is closed" }),
+      attendanceLine({ dayLabel: day, markedLabel: "Absent", skipReason: null }),
+    ].join(" ");
+    for (const forbidden of ["period", "5 periods", "all classes", "auto-applied to roll-call", "diagnos"]) {
+      expect(all.toLowerCase().includes(forbidden.toLowerCase()), forbidden).toBe(false);
+    }
+  });
+});
+
+// ============================================================================
 // W4 / R43 — the no-diagnosis ceiling, grep-testable
 // ============================================================================
 
@@ -223,19 +270,59 @@ describe("R43 · `diagnos` appears in NO column, enum, type, zod key, label or r
 // R37 — nothing in 22a hard-deletes, and no attendance write leaks in (22b)
 // ============================================================================
 
-describe("R37 / 22b boundary · what the write path must NOT contain", () => {
-  it("no code path in 22a issues a DELETE", () => {
+describe("R37 / the attendance seam · what the write path must NOT contain", () => {
+  it("no code path in the clinical write path issues a DELETE", () => {
     for (const { path, code } of SHIPPED) {
       expect(/\.delete\(/.test(code), `${path} issues a DELETE`).toBe(false);
     }
   });
 
-  it("22a writes NO attendance — the M hook is slice 22b", () => {
-    for (const { path, code: src } of SHIPPED) {
+  it("R49 · the clinical action writes NO attendance row itself — it calls the ONE shared writer", () => {
+    const clinical = SHIPPED.filter((f) => f.path === "lib/actions/sickbay-visit.ts");
+    for (const { path, code: src } of clinical) {
+      // No table, no status literal, no register action reachable from here: the whole attendance
+      // rulebook (guard, coercion, closed term, skips, audit) lives in lib/attendance/mark.ts.
       expect(src.includes("attendanceRecord"), path).toBe(false);
       expect(src.includes("saveAttendance"), path).toBe(false);
       expect(src.includes("MEDICAL"), path).toBe(false);
+      expect(src.includes("markSickbayMedical"), path).toBe(true);
     }
+  });
+
+  it("R46 · the hook fires on ADMIT and REFER, and NEVER on DISCHARGE", () => {
+    const src = SHIPPED.find((f) => f.path === "lib/actions/sickbay-visit.ts")!.code;
+    // The single call site inside disposeVisit is guarded by a REFER test; admitPatient's is
+    // unconditional. A DISCHARGE therefore cannot reach the hook on any path.
+    expect(/disposition === "REFER"\s*\)\s*\{\s*await fireAttendanceHook/.test(src)).toBe(true);
+    expect(src.includes('disposition === "DISCHARGE"')).toBe(false);
+    expect((src.match(/fireAttendanceHook\(/g) ?? []).length).toBe(3); // 1 definition + 2 call sites
+  });
+
+  it("🔴 H16 · the shared writer is server-only and is NOT a `use server` module", () => {
+    // Every export of a "use server" module is a remotely callable endpoint. A POST-able
+    // markSickbayMedical would let anyone forge a clinical assertion about any student.
+    for (const p of ["lib/attendance/mark.ts", "lib/attendance/mark-rules.ts", "lib/sickbay/medical-hold.ts"]) {
+      // Comment-stripped: the files EXPLAIN the rule in prose, and a grep that failed on prose would
+      // forbid the very sentence that states it. A directive is code.
+      const { code } = read(p);
+      expect(code.includes('"use server"'), p).toBe(false);
+      expect(code.includes("'use server'"), p).toBe(false);
+    }
+    expect(read("lib/attendance/mark.ts").src.startsWith('import "server-only"')).toBe(true);
+    expect(read("lib/sickbay/medical-hold.ts").src.startsWith('import "server-only"')).toBe(true);
+  });
+
+  it("R54 · the attendance write is OUTSIDE the clinical transaction and cannot roll it back", () => {
+    const src = read("lib/actions/sickbay-visit.ts").code;
+    // Both call sites take the value the `withSchool(...)` RESOLVED to, so they are structurally
+    // unable to run inside it — the binding does not exist until the transaction has committed.
+    expect(src.includes("const admitted = await withSchool")).toBe(true);
+    expect(src.includes("fireAttendanceHook(auth.schoolId, auth.actor, admitted, admitted.at)")).toBe(true);
+    expect(src.includes("const closed = await withSchool")).toBe(true);
+    expect(src.includes("fireAttendanceHook(auth.schoolId, auth.actor, closed, closed.at)")).toBe(true);
+    // …and the writer itself never throws at its caller: every failure path returns a named skip.
+    const mark = read("lib/attendance/mark.ts").code;
+    expect(/catch \{[\s\S]*?return \{ marked: false, skipped: "FAILED"/.test(mark)).toBe(true);
   });
 
   it("R60 the consult authorises nothing — no approval, signature or co-sign field", () => {

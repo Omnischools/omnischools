@@ -50,6 +50,14 @@ const schema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+
+  // Dev-only ROLE override for the shim session, e.g. "MATRON" or "MATRON,HEADMASTER".
+  // Read ONLY when AUTH_DEV_BYPASS is true (see lib/auth/index.ts `devUser`), so it is inert on any
+  // deployment with the kill-switch off — which is every deployment, since the switch itself defaults
+  // to false and fails closed. Unset ⇒ exactly today's behaviour: roles ["ADMIN"].
+  // It exists because the clinical module is MATRON-gated and the shim otherwise pins every dev
+  // session to ADMIN, making the sickbay UI and every clinical mutation unreachable in dev.
+  AUTH_DEV_ROLES: z.string().optional(),
 });
 
 export const env = schema.parse(process.env);

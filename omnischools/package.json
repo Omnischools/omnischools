@@ -37,16 +37,17 @@
     "db:verify-onboarding": "tsx scripts/verify-onboarding.ts",
     "db:verify-admissions": "tsx scripts/verify-admissions.ts",
     "db:verify-payments": "tsx scripts/verify-payments.ts",
-    "db:verify-attendance": "tsx scripts/verify-attendance.ts",
-    "db:verify-gradebook": "tsx scripts/verify-gradebook.ts",
-    "db:verify-comms": "tsx scripts/verify-comms.ts",
-    "db:verify-score-ledger": "tsx scripts/verify-score-ledger.ts",
+    "db:verify-attendance": "tsx --tsconfig scripts/tsconfig.json scripts/verify-attendance.ts",
+    "db:verify-gradebook": "tsx --tsconfig scripts/tsconfig.json scripts/verify-gradebook.ts",
+    "db:verify-comms": "tsx --tsconfig scripts/tsconfig.json scripts/verify-comms.ts",
+    "db:verify-score-ledger": "tsx --tsconfig scripts/tsconfig.json scripts/verify-score-ledger.ts",
     "db:verify-wassce-mock": "tsx scripts/verify-wassce-mock.ts",
     "db:verify-wassce-university": "tsx --tsconfig scripts/tsconfig.json scripts/verify-wassce-university.ts",
     "db:verify-parent-boundary": "tsx --tsconfig scripts/tsconfig.json scripts/verify-parent-boundary.ts",
     "db:verify-stpshs-sheet": "tsx --tsconfig scripts/tsconfig.json scripts/verify-stpshs-sheet.ts",
     "db:setup": "drizzle-kit migrate && tsx scripts/apply-policies.ts && tsx db/seed/asankrangwa.ts",
-    "db:verify-sickbay-visit": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-visit.ts"
+    "db:verify-sickbay-visit": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-visit.ts",
+    "db:verify-sickbay-attendance": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-attendance.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",

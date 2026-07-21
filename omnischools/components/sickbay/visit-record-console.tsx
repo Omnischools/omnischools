@@ -117,6 +117,8 @@ export interface VisitView {
   consults: ConsultRow[];
   admission: AdmissionView | null;
   timeOnWard: string | null; // request-time "05h 31m", admitted & not discharged
+  /** R65 — the ONE §04 attendance line, composed server-side. Null for a walk-in discharge (R46). */
+  attendanceNote: string | null;
 }
 
 const hhmm = (iso: string) => {
@@ -560,6 +562,13 @@ export function VisitRecordConsole({
                 )}
                 {adm.overnightPlan && <DispField lbl={DISPOSITION_FIELD_LABELS[2]} val={adm.overnightPlan} />}
                 {adm.dischargedAt && <DispField lbl="Discharged from ward" val={hhmm(adm.dischargedAt)} />}
+              </div>
+            )}
+            {/* R65 — ONE attendance line, naming a DAY and never periods, and the place the R52/R53
+                skip warning renders. Derived server-side from the stored row, so it cannot drift. */}
+            {visit.attendanceNote && (
+              <div className="mt-[14px] border-t border-gold-soft pt-[12px] text-[12px] leading-[1.55] text-navy-2">
+                {visit.attendanceNote}
               </div>
             )}
           </div>
