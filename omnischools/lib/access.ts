@@ -80,6 +80,30 @@ export const SICKBAY_CONFIG_WRITE_ROLES = [
   "HEADMASTER",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * Sickbay CLINICAL gates (SHS module 4.4 / INCR-22a) — the visit record's first real clinical data,
+ * and a SEPARATE, tighter pair from the module gate above. Owner decision D2 + Kofi R39/R40 + Lucy
+ * Q2 (rated build-blocking):
+ *
+ *   • WRITE = MATRON ONLY. The Headmaster READS but must never author a clinical impression; the
+ *     ADMIN (proprietor/IT) is not a clinician. Every clinical actor on both surfaces is the Matron.
+ *   • READ  = HEADMASTER + MATRON. ⚠️ NOT the same as SICKBAY_ROLES — that set contains ADMIN, and
+ *     reusing it as the clinical read gate would hand the proprietor/IT account EVERY student's
+ *     impression, vitals and complaint for a whole increment. ADMIN keeps module access (setup) and
+ *     gets NO clinical detail; a per-student, expiring grant arrives at INCR-23, which EXTENDS this
+ *     gate (`role ∈ READ || hasGrant(actor, student)`) rather than replacing it.
+ *
+ * HOUSEMASTER is a member of NEITHER: an HM's reach into health data is grant-scoped at INCR-23,
+ * never role-scoped. STUDENT / PARENT / TEACHER never reach either.
+ */
+export const SICKBAY_CLINICAL_READ_ROLES = [
+  "HEADMASTER",
+  "MATRON",
+] as const satisfies readonly KnownAppRole[];
+export const SICKBAY_CLINICAL_WRITE_ROLES = [
+  "MATRON",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",

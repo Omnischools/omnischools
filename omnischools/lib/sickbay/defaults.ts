@@ -610,7 +610,9 @@ export function initials(name: string): string {
 
 const PROGRAMME_ABBR: Record<string, string> = {
   GENERAL_ARTS: "GA",
-  GENERAL_SCIENCE: "GS",
+  // All three sickbay surfaces render `SCI` (`F1 SCI`), including the already-merged INCR-21 setup
+  // surface — the shipped `GS` was the drift (Lucy §5.8 / INCR-22 shipped-copy fix).
+  GENERAL_SCIENCE: "SCI",
   BUSINESS: "BUS",
   AGRICULTURE: "AGRIC",
   VISUAL_ARTS: "VA",
