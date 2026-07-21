@@ -24,7 +24,16 @@ increment, but nothing has verified the full set end-to-end.
 > **off on dev**. Prod turned out safe (you confirmed `prod-paste-0036` was run), but that was luck of
 > discipline, not a guarantee. The query below is exactly what surfaces this class of gap. Run it.
 
-**How to check (run on prod, expect ZERO rows):**
+**▶ Use the script: `db/sql/verify-prod-rls.sql`** (read-only, `SELECT` only, safe on prod). Open the
+Supabase SQL editor on the **prod** project and run its **Query 1** (problem report — *zero rows = pass*),
+then **Query 2** (confidence summary — proves the check actually saw your data; a zero-row pass means
+nothing if it scanned zero tables). The script checks three things, two of which the inline query below
+does *not*: that `tenant_isolation` is PERMISSIVE, that every forced tenant table carries a **RESTRICTIVE**
+`parent_scope`/`parent_deny` (a PERMISSIVE one would OR with `tenant_isolation` and expose the whole
+school to a claimed parent), and that the 3 global reference tables are bare-ENABLE. Validated against dev:
+0 problems, 87 tenant tables, 9 parent-readable + 78 denied, 3 global.
+
+**Quick inline version (the headline leak check only — run on prod, expect ZERO rows):**
 ```sql
 -- Any tenant table (has school_id) that is missing FORCE RLS or its policy:
 SELECT c.relname,
@@ -73,12 +82,22 @@ statement PDF, and that the acknowledgement line reads "recorded by the school �
 
 ---
 
-### 3. Patch the 3 high-severity dependency vulnerabilities
+### 3. Patch the 3 high-severity dependency vulnerabilities — ✅ FIXED, awaiting merge
+**Resolved in `6ff15c3`.** All three were transitive **dev-only** advisories under `eslint` /
+`eslint-config-next` (`brace-expansion` ×2 DoS, `js-yaml` quadratic CPU) — none shipped in the production
+bundle, so the practical exposure was a DoS against your own linter. Fixed with pnpm `overrides` pinning
+`brace-expansion` to 1.1.16 / 5.0.7 and `js-yaml` ≥4.3.0. `pnpm audit` is now clean; lint, 485 tests, and
+the production build all pass. **The GitHub badge will not clear until this merges to `main`** (Dependabot
+rescans the lockfile there). Root cause is `eslint: "^8"`; the permanent fix is ESLint 9, but that is a
+flat-config migration and not worth it for three dev-only advisories.
+
+<details><summary>Original item</summary>
 GitHub Dependabot flags **3 high** vulnerabilities on `main` (`github.com/Omnischools/omnischools/security/dependabot`).
 None were introduced by the senior-tier work — they're in the existing dependency tree — but they should be
 triaged and patched before go-live. Run `pnpm audit`, review each, and bump the affected packages (or apply
 Dependabot's suggested PRs). Flagging here because it's a standing security item, not something the build loop
 resolves on its own.
+</details>
 
 ---
 
