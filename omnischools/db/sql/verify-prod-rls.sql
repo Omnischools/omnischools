@@ -12,6 +12,20 @@
 --   a checklist, and it is exactly the check that caught `student_health_record` sitting with RLS
 --   off since migration 0036 (found on dev during INCR-19a).
 --
+-- VERIFIED 2026-07-21 (post-INCR-20): prod PASSED — Query 1 returned zero rows.
+--   Prod counts: 88 tenant tables / 88 forced / 88 tenant_isolation / 9 parent-readable + 79 denied / 3 global.
+--   Dev counts:  87 / 87 / 87 / 9 + 78 / 3.
+--
+--   The one-table difference is `student_subject_enrolment` — present on PROD ONLY, 0 rows, 24 kB,
+--   correctly ENABLE+FORCE with tenant_isolation + parent_deny. It appears NOWHERE in this repo: not in
+--   db/schema, not in any migration, not in db/sql, not in application code, and not in any commit on any
+--   branch (`git log -S --all` is empty). Since tenant_isolation is applied from a hardcoded array (below)
+--   and 0055's catalog loop only adds parent_deny to already-FORCE-RLS tables, BOTH the table and its RLS
+--   were applied to prod outside this repository. It is inert and isolated — but it is evidence that
+--   something once wrote directly to production. If prod's tenant_tables exceeds dev's again, re-run the
+--   diff (list dev's tenant tables, then `... AND c.relname NOT IN (<that list>)` on prod) before assuming
+--   a new leak. Drop it only after confirming no dependent objects; it is safe to leave.
+--
 -- HOW TO USE
 --   Open the Supabase SQL editor on the PROD project. Run QUERY 1. Then run QUERY 2.
 --   (Run them one at a time — the editor shows only the last result set.)

@@ -21,6 +21,7 @@ import {
   BedDouble,
   Award,
   Target,
+  HeartPulse,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ import {
   SENIOR_MANAGEMENT_ROLES,
   BOARDING_ROLES,
   WASSCE_SETUP_ROLES,
+  SICKBAY_ROLES,
 } from "@/lib/access";
 
 const NAV: { href: string; label: string; Icon: LucideIcon }[] = [
@@ -89,6 +91,15 @@ const SENIOR_ITEMS = [
     label: "Cohort readiness",
     Icon: Target,
     roles: WASSCE_SETUP_ROLES,
+  },
+  {
+    // Sickbay setup (INCR-21). The app nav is flat and role-gated, so no sub-nav and no `NEW`
+    // badge — omit-not-fake applies to navigation too. `Today` / `Chronic register` / `Referrals`
+    // arrive with INCR-22 / 23 / 25.
+    href: "/senior/sickbay/setup",
+    label: "Sickbay",
+    Icon: HeartPulse,
+    roles: SICKBAY_ROLES,
   },
 ];
 
