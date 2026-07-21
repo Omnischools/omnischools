@@ -4,8 +4,8 @@ Everything here is assigned to **you**, not to the build loop. It is work that n
 your data, your judgement, or your eyes on a real browser. Items already queued for me to build in a
 later increment are deliberately **not** listed.
 
-Last updated: 2026-07-21 (after INCR-20 — Module 4.3 WASSCE readiness complete, PR #170 merged).
-Note: INCR-19b and INCR-20 added **no** new `prod-paste-*.sql` — the paste count in item 1 still stands at 28.
+Last updated: 2026-07-21 (after INCR-21 — Module 4.4 Sickbay opened, PR #172 pending).
+⚠️ **INCR-21 adds a NEW paste: `prod-paste-0056-sickbay-spine.sql`** — the count in item 1 is now **29**. (INCR-19b and INCR-20 added none.)
 
 ---
 
@@ -16,8 +16,14 @@ Note: INCR-19b and INCR-20 added **no** new `prod-paste-*.sql` — the paste cou
 `db/sql/prod-paste-*.sql`. A single missed file means those tables have **no tenant isolation on prod** —
 one school reads another school's children's data. This is the highest-severity item on the list.
 
-There are **28** paste files (`prod-paste-0029-*` … `prod-paste-0055-*`). You've been running them per
+There are **29** paste files (`prod-paste-0029-*` … `prod-paste-0056-*`). You've been running them per
 increment, but nothing has verified the full set end-to-end.
+
+> **`prod-paste-0056-sickbay-spine.sql` is outstanding** (ships with PR #172). Without it, migration 0056
+> creates the three sickbay tables on prod with **no RLS whatsoever** — every school's clinical mode, bed
+> inventory, matron and assistant-matron identities and full duty schedule readable *and writable* from any
+> other school's session, and readable by a claimed parent. It is also the spine every clinical table in
+> 0057+ composite-FKs onto, so leaving it unpasted puts a tenancy hole under the whole Sickbay module.
 
 > **This is not hypothetical.** During INCR-19a the security gate found `student_health_record` (blood
 > group, allergies, medications) had been missing from the dev policy file since migration 0036 — RLS
