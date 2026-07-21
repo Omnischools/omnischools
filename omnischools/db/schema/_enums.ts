@@ -487,3 +487,28 @@ export const targetRankEnum = pgEnum("target_rank", [
   "SECOND_CHOICE",
   "THIRD_CHOICE",
 ]);
+
+// Sickbay F0 spine (SHS module 4.4) — INCR-21 (Kofi rulings 2026-07-21). Migration 0056.
+// TWO enums only. Deliberately NOT enums: `capabilities` is DERIVED from the mode by a pure
+// lib function (never stored — R24); `staffing` on a slot is FREE TEXT, not a role/FK (R13).
+
+// What clinical capability the school declares (R3/R4). The mode is an AFFORDANCE filter, never a
+// data filter — one schema serves all three, no row is deleted/hidden/migrated on switch, and B→C→B
+// returns identical rows (R6). FULL and FIRST_AID are capability-IDENTICAL (they differ in editorial
+// copy only — never gate logic on A-vs-B). REFERRAL_ONLY disables beds/admissions/rounds/visiting
+// doctor and keeps visits, chronic register, referrals, notifications, prefects. DEFAULT is
+// REFERRAL_ONLY: a missing config row coalesces to it (R25) — ~49% of public SHS have no sickbay, so
+// it is both the safe and the statistically likely default; defaulting to FULL would assert clinical
+// capacity a school never declared.
+export const sickbayModeEnum = pgEnum("sickbay_mode", ["FULL", "FIRST_AID", "REFERRAL_ONLY"]);
+// What kind of thing a schedule slot is (R15) — so INCR-24 finds medication rounds by KIND rather
+// than string-matching labels. MEDICATION_ROUND = the 06:30/12:30/21:00 drug rounds (the anchor is
+// always one of these); CLINIC = open consulting hours; DOCTOR_VISIT = the visiting doctor's session
+// (an external clinician, NOT a system user — R21); ON_CALL = overnight/holiday cover (the 22:00→06:00
+// window that wraps midnight).
+export const sickbaySlotKindEnum = pgEnum("sickbay_slot_kind", [
+  "MEDICATION_ROUND",
+  "CLINIC",
+  "DOCTOR_VISIT",
+  "ON_CALL",
+]);

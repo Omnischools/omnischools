@@ -43,6 +43,15 @@ export const staffProfiles = pgTable(
     undergraduate: text("undergraduate"),
     ntcLicenceNumber: text("ntc_licence_number"),
     ntcLicenceExpiry: date("ntc_licence_expiry"),
+    /**
+     * Nursing & Midwifery Council of Ghana licence — the matron's clinical credential (sickbay
+     * INCR-21 / 0056). Deliberately a SECOND pair beside the NTC one rather than a generalised
+     * `licence_body` triple (Kofi R22): a teacher-turned-matron holds BOTH licences, and one
+     * generalised triple cannot hold two. An N&MC number is a PUBLIC statutory-register
+     * credential, not medical PII — it is the only new "clinical" datum in 0056.
+     */
+    nmcLicenceNumber: text("nmc_licence_number"),
+    nmcLicenceExpiry: date("nmc_licence_expiry"),
     specialisations: text("specialisations"), // comma-separated tags
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

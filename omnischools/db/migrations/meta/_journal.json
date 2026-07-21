@@ -393,6 +393,13 @@
       "when": 1784584540580,
       "tag": "0055_milky_baron_strucker",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1784625303202,
+      "tag": "0056_natural_big_bertha",
+      "breakpoints": true
     }
   ]
 }
