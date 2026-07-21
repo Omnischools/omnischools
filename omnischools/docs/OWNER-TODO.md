@@ -4,8 +4,8 @@ Everything here is assigned to **you**, not to the build loop. It is work that n
 your data, your judgement, or your eyes on a real browser. Items already queued for me to build in a
 later increment are deliberately **not** listed.
 
-Last updated: 2026-07-21 (after INCR-21 — Module 4.4 Sickbay opened, PR #172 pending).
-⚠️ **INCR-21 adds a NEW paste: `prod-paste-0056-sickbay-spine.sql`** — the count in item 1 is now **29**. (INCR-19b and INCR-20 added none.)
+Last updated: 2026-07-21 (after INCR-22a — the sickbay VISIT schema, migration 0057).
+⚠️ **INCR-21 adds a NEW paste: `prod-paste-0056-sickbay-spine.sql`; INCR-22a adds `prod-paste-0057-sickbay-visit.sql`** — the count in item 1 is now **30**. (INCR-19b and INCR-20 added none.) Paste **0056 before 0057** — 0057's admission table composite-FKs onto a UNIQUE that 0056 creates.
 
 ---
 
@@ -16,7 +16,7 @@ Last updated: 2026-07-21 (after INCR-21 — Module 4.4 Sickbay opened, PR #172 p
 `db/sql/prod-paste-*.sql`. A single missed file means those tables have **no tenant isolation on prod** —
 one school reads another school's children's data. This is the highest-severity item on the list.
 
-There are **29** paste files (`prod-paste-0029-*` … `prod-paste-0056-*`). You've been running them per
+There are **30** paste files (`prod-paste-0029-*` … `prod-paste-0057-*`). You've been running them per
 increment, but nothing has verified the full set end-to-end.
 
 > **`prod-paste-0056-sickbay-spine.sql` is outstanding** (ships with PR #172). Without it, migration 0056
@@ -24,6 +24,16 @@ increment, but nothing has verified the full set end-to-end.
 > inventory, matron and assistant-matron identities and full duty schedule readable *and writable* from any
 > other school's session, and readable by a claimed parent. It is also the spine every clinical table in
 > 0057+ composite-FKs onto, so leaving it unpasted puts a tenancy hole under the whole Sickbay module.
+
+> **`prod-paste-0057-sickbay-visit.sql` is outstanding too — run it AFTER 0056.** 0056 leaked *config*;
+> **0057 is where Sickbay starts holding real clinical data about named children.** Without this paste
+> the four new tables land on prod with no RLS at all, exposing — cross-school and to a claimed parent —
+> each student's presenting complaint, the matron's working impression and red-flag screen, every
+> temperature/BP/SpO₂/pain reading with its timestamp, the disposition, which bed a named girl slept in
+> and for how long, whether she was in isolation, and what an external doctor said about her by phone.
+> That is disclosure of a minor's health information to a stranger, not a data-quality bug. After
+> pasting, `verify-prod-rls.sql` Query 2's `tenant_tables` should rise by **4** with `parent_denied`
+> also up 4 (dev went 90 → 94 / 81 → 85 when the same file was piped through psql).
 
 > **This is not hypothetical.** During INCR-19a the security gate found `student_health_record` (blood
 > group, allergies, medications) had been missing from the dev policy file since migration 0036 — RLS
