@@ -137,6 +137,22 @@ export async function requireSchoolRole(
 }
 
 /**
+ * Page guard for the PARENT portal (SHS module 4.3 / INCR-19b) — its OWN route group, never the staff
+ * `app/(app)` shell (Kofi R5). Admits a user holding PARENT at the ACTIVE school (roles are already
+ * active-school-scoped since #167, so `.includes("PARENT")` means "PARENT here, now"); a non-parent
+ * (staff-only) session is sent to the staff dashboard, and a parent whose active school can't resolve to
+ * a school row lands on /start — never a leak. The child(ren) are resolved from the SESSION downstream
+ * (resolveParentContext / loadParentPortal under withParentScope), never a URL parameter (Lucy L.2).
+ */
+export async function requireParent(): Promise<{ user: AppUser; school: ActiveSchool }> {
+  const user = await requireUser();
+  if (!user.roles.includes("PARENT")) redirect("/dashboard");
+  const school = await getActiveSchool(user);
+  if (!school) redirect("/start");
+  return { user, school };
+}
+
+/**
  * Action guard: throw unless the current user holds one of the allowed roles. Call at the
  * top of a mutating server action so STUDENT/PARENT (and other unlisted roles) cannot POST it.
  */
