@@ -191,9 +191,14 @@ export async function saveBedCapacity(input: unknown): Promise<Result> {
 
 // ---- 3) Clinical staff — two pointers + the doctor's text (R20/R21 · AC D2/D3/D4) ----
 
+// The two matron pointers are `.nullable()`, NOT `.nullish()` — absence is REJECTED at the trust
+// boundary rather than silently clearing a live pointer (Dex D1). Only the doctor fields carry the
+// absent-means-unchanged semantic below, because only they are hidden by a capability gate. Keeping
+// all four `.nullish()` made the schema misdocument intent: a caller sending just a doctor field
+// would have wiped both matrons, and the first partial editor added in INCR-22+ would have hit it.
 const StaffSchema = z.object({
-  matronUserId: z.string().uuid().nullish(),
-  assistantMatronUserId: z.string().uuid().nullish(),
+  matronUserId: z.string().uuid().nullable(),
+  assistantMatronUserId: z.string().uuid().nullable(),
   visitingDoctorName: z.string().trim().max(96).nullish(),
   visitingDoctorAffiliation: z.string().trim().max(96).nullish(),
 });
@@ -230,7 +235,7 @@ export async function saveClinicalStaff(input: unknown): Promise<Result> {
   // ABSENT ≠ CLEARED. A REFERRAL_ONLY school has no visiting-doctor capability, so its editor never
   // renders those two fields and never sends them — writing null there would delete a doctor the
   // school still has on a switch back (R6 · AC A6). An empty string IS a clear and still writes null.
-  const after = {
+  const patch = {
     matronUserId,
     assistantMatronUserId,
     ...(d.visitingDoctorName !== undefined && {
@@ -240,9 +245,20 @@ export async function saveClinicalStaff(input: unknown): Promise<Result> {
       visitingDoctorAffiliation: d.visitingDoctorAffiliation || null,
     }),
   };
+  // The DB write stays a PATCH, but the audit trail must stay a SNAPSHOT (Dex D2 · AC E4). `before`
+  // always lists all four fields; if `after` listed only the ones sent, a reader could not tell
+  // "doctor unchanged" from "doctor cleared" — and the natural reading of a missing key is the
+  // wrong one. Fold the untouched fields back in for the audit only.
+  // Only the doctor fields can be absent from `patch`; the two matron pointers are always present
+  // (StaffSchema requires them), so they come through the spread.
+  const effectiveAfter = {
+    visitingDoctorName: before.visitingDoctorName,
+    visitingDoctorAffiliation: before.visitingDoctorAffiliation,
+    ...patch,
+  };
   try {
     await withSchool(auth.schoolId, async (tx) => {
-      await upsertSettings(tx, auth.schoolId, after);
+      await upsertSettings(tx, auth.schoolId, patch);
       await recordAudit(tx, {
         schoolId: auth.schoolId,
         actorUserId: auth.actor.id ?? undefined,
@@ -256,7 +272,7 @@ export async function saveClinicalStaff(input: unknown): Promise<Result> {
           visitingDoctorName: before.visitingDoctorName,
           visitingDoctorAffiliation: before.visitingDoctorAffiliation,
         },
-        after,
+        after: effectiveAfter,
         reason: "Sickbay clinical staff updated",
       });
     });
