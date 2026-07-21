@@ -17,6 +17,7 @@ import {
   users,
 } from "@/db/schema";
 import {
+  attendanceRatePct,
   buildLedgerGridView,
   buildScheduleView,
   type CandidateDeepDiveView,
@@ -262,7 +263,6 @@ export async function loadCandidateDeepDive(
         present: sql<number>`count(*) filter (where ${attendanceRecords.status} = 'PRESENT')::int`,
         late: sql<number>`count(*) filter (where ${attendanceRecords.status} = 'LATE')::int`,
         absent: sql<number>`count(*) filter (where ${attendanceRecords.status} = 'ABSENT')::int`,
-        marked: sql<number>`count(*)::int`,
       })
       .from(attendanceRecords)
       .where(
@@ -273,8 +273,9 @@ export async function loadCandidateDeepDive(
           sql`${attendanceRecords.date} <= ${term.endsOn}::date`,
         ),
       );
-    if (att && att.marked > 0) {
-      const pct = Math.round(((att.present + att.late) / att.marked) * 1000) / 10;
+    // EXCUSED/MEDICAL are excused from the rate (Medical ≠ Absent) — see attendanceRatePct.
+    const pct = att ? attendanceRatePct(att.present, att.late, att.absent) : null;
+    if (att && pct != null) {
       attendance = {
         value: `${pct}%`,
         meta: `${att.absent} absence${att.absent === 1 ? "" : "s"} this term.`,

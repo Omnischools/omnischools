@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  attendanceRatePct,
   buildLedgerGridView,
   buildScheduleView,
   deriveScheduleStatus,
@@ -163,5 +164,20 @@ describe("helpers", () => {
     expect(fmtDuration(45)).toBe("45m");
     expect(fmtDuration(180)).toBe("3h 00m");
     expect(fmtDuration(null)).toBeNull();
+  });
+});
+
+describe("attendanceRatePct — EXCUSED/MEDICAL never lower the rate (5-status intent, AC11)", () => {
+  it("rates present+late over culpable days only (late counts as attended)", () => {
+    expect(attendanceRatePct(90, 0, 10)).toBe(90); // 90 / (90+0+10)
+    expect(attendanceRatePct(80, 10, 10)).toBe(90); // (80+10) / 100
+  });
+  it("a hospitalised candidate is NOT penalised — no 'X% · 0 absences' contradiction", () => {
+    // 90 present, 0 ABSENT (10 MEDICAL days aren't in present/late/absent at all) → 100%, and the
+    // sibling meta reads "0 absences". The old (present+late)/marked gave the contradictory 90%.
+    expect(attendanceRatePct(90, 0, 0)).toBe(100);
+  });
+  it("no culpable day → null (empty state; no div-by-zero, no hollow 100% from an excused-only term)", () => {
+    expect(attendanceRatePct(0, 0, 0)).toBeNull();
   });
 });

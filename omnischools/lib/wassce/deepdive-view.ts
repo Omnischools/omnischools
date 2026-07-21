@@ -182,6 +182,20 @@ export function fmtDuration(min: number | null): string | null {
   return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
 }
 
+/**
+ * Culpable-attendance rate for the §7 context strip. EXCUSED and MEDICAL are excused days — a
+ * hospitalised WASSCE candidate must never be penalised (Medical ≠ Absent), so they are excluded
+ * from BOTH numerator and denominator: rate = (present + late) / (present + late + absent). Returns
+ * null when there is no culpable day to rate — no div-by-zero, and an excused-only term does not
+ * report a hollow 100%. Keeps the rate consistent with the sibling absence count, which likewise
+ * excludes Medical (else a hospitalised candidate renders the contradictory "90% · 0 absences").
+ */
+export function attendanceRatePct(present: number, late: number, absent: number): number | null {
+  const denom = present + late + absent;
+  if (denom <= 0) return null;
+  return Math.round(((present + late) / denom) * 1000) / 10;
+}
+
 const paperTypeLabel = (t: string): string => (t ? t.charAt(0) + t.slice(1).toLowerCase() : "—");
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
