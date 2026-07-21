@@ -25,6 +25,7 @@ import {
   resolveParentInviteTargetTx,
   stampGuardianUserId,
 } from "@/lib/parent/parent-data";
+import { loadParentPortalTx } from "@/lib/parent/parent-portal-data";
 
 /**
  * INCR-19a parent-boundary verification (AC D1-D10 · L1-L6 · C1-C7 · M1-M2). The vitest suite is
@@ -317,6 +318,26 @@ async function main() {
       ok(!("regFlag" in (kids[0].candidate as object)) && !payload.includes("SECRET_CANDIDATE_NOTE"), "D9: reg_flag / candidate free-text note are NOT in the parent payload");
       const rawFlag = await tx.select({ f: wassceCandidates.regFlag }).from(wassceCandidates).where(eq(wassceCandidates.id, candA));
       ok(rawFlag[0]?.f === "FEE", "D9: (proof) reg_flag='FEE' exists on the reachable row — the loader omits the column");
+
+      // ── INCR-19b — the read-only portal loader reads WITHIN the boundary (proves the surface did not
+      //    widen it): only the child's rows, §2 driven from sittings, and NO reg_flag/notes/filed_by/band
+      //    in its output shape. Runs under the SAME parent scope set above (schoolA, parentUser). ────────
+      console.log("\n── INCR-19b — the portal loader stays inside the 19a boundary ──");
+      const portal = await loadParentPortalTx(tx, schoolA, parentUser);
+      const pkid = portal.children[0];
+      ok(portal.children.length === 1 && pkid?.studentId === childA, "19b: portal returns EXACTLY {childA}");
+      const pc = pkid?.candidate;
+      ok(!!pc && pc.indexNumber === "PBT-0001", "19b: the child's own candidate loads");
+      ok(!!pc && pc.papers.length === 1, "19b: §2 papers are driven from the child's sittings (1 row) — never cohort-wide");
+      ok(!!pc && pc.specialConsiderations.length === 1 && pc.specialConsiderations[0].status === "FILED", "19b: §3 shows only the FILED SC (DRAFT hidden)");
+      ok(!!pc && !!pc.statement && pc.statement.projectedAggregate === 12, "19b: §5 is the CURRENT statement (aggregate 12; superseded excluded)");
+      ok(!!pc && pc.smsThread.length === 0, "19b: §4 notification_log is parent-denied → empty thread (omit-not-fake)");
+      const pPayload = JSON.stringify(portal);
+      ok(!pPayload.includes("SECRET_STAFF_NOTE") && !pPayload.includes("SECRET_CANDIDATE_NOTE"), "19b: no staff SC note / candidate free-text in the portal payload");
+      ok(!/reg_?flag/i.test(pPayload) && !pPayload.includes("FEE"), "19b: no reg_flag anywhere in the portal payload (D9)");
+      ok(!/"band"|projectedBand/i.test(pPayload) && !pPayload.includes("Current projection") && !pPayload.includes('"current"'), "19b: no cohort band / projectedBand in the portal payload (R6 strip)");
+      const scKeys = pc ? Object.keys(pc.specialConsiderations[0]) : [];
+      ok(!scKeys.includes("notes") && !scKeys.includes("filedByUserId"), "19b: SC payload has NO notes / filed_by_user_id keys (D8)");
 
       console.log("\n── AC L1 — phone equality confers NOTHING ──");
       await tx.execute(setParent(otherUser));

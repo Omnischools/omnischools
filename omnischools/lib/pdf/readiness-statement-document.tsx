@@ -1,6 +1,9 @@
 import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { SERIF, SANS, MONO } from "./fonts";
+import { heroBandText, type ReadinessAudience } from "./readiness-band";
+
+export type { ReadinessAudience } from "./readiness-band";
 
 /**
  * Printable WASSCE readiness statement PDF (SHS module 4.3 / INCR-17). Re-rendered ON DEMAND from the
@@ -240,7 +243,13 @@ function PoolBlock({ title, subjects }: { title: string; subjects: ReadinessSubj
   );
 }
 
-export function ReadinessStatementDocument({ data }: { data: ReadinessStatementData }) {
+export function ReadinessStatementDocument({
+  data,
+  audience = "staff",
+}: {
+  data: ReadinessStatementData;
+  audience?: ReadinessAudience;
+}) {
   const cores = data.subjects.filter((x) => x.typeLabel === "Core");
   const electives = data.subjects.filter((x) => x.typeLabel !== "Core");
   const aggText = data.projectedAggregate != null ? String(data.projectedAggregate) : "—";
@@ -293,7 +302,7 @@ export function ReadinessStatementDocument({ data }: { data: ReadinessStatementD
             <View>
               <Text style={s.heroLbl}>PROJECTED AGGREGATE</Text>
               <Text style={s.heroAgg}>{aggText}</Text>
-              <Text style={s.heroBand}>{data.projectedBand} · lower is better (6 best · 54 worst)</Text>
+              <Text style={s.heroBand}>{heroBandText(data.projectedBand, audience)}</Text>
             </View>
             <Text style={s.heroMeta}>
               Projected from the {`Mock 2`} predictor sitting. Not a WAEC result — WASSCE scores release
