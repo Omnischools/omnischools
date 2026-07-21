@@ -18,6 +18,13 @@ import {
   AGGREGATE_MAX,
 } from "@/lib/wassce/university-match";
 import type { SubjectTrajectoryView, UniversityMatchTileView } from "@/lib/wassce/readiness-view";
+import { loadCandidateDeepDive } from "@/lib/wassce/deepdive-data";
+import {
+  WassceLedgerGrid,
+  WassceScheduleTable,
+  WassceContextStrip,
+  WassceStpshsStrip,
+} from "@/components/senior/wassce-deepdive-panels";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +56,12 @@ export default async function WassceCandidateReadinessPage(props: {
       </div>
     );
   }
+
+  // INCR-20 CAPSTONE — the four NEW additive deep-dive panels (ledger grid, schedule, context, STPSHS
+  // strip). Server-only loader, tenant-scoped; returns pre-formatted primitives to the client panels.
+  const deep = await withSchool(school.id, (tx) =>
+    loadCandidateDeepDive(tx, school.id, decodeURIComponent(index), new Date()),
+  );
 
   const p = data.projection;
   const m = data.universityMatch;
@@ -159,6 +172,12 @@ export default async function WassceCandidateReadinessPage(props: {
         false signal into university-target conversations. The aggregate band reads as projected.
       </p>
 
+      {/* ================= §1 STPSHS reference strip (INCR-20 NEW-4 — REDUCED, not the matrix) ================= */}
+      {deep ? <WassceStpshsStrip stpshs={deep.stpshs} /> : null}
+
+      {/* ================= §2 WASSCE paper schedule (INCR-20 NEW-2) ================= */}
+      {deep ? <WassceScheduleTable schedule={deep.schedule} /> : null}
+
       {/* ================= §5 aggregate-construction visualizer — CROWN JEWEL ================= */}
       <section id="aggregate" className="space-y-3">
         <h2 className="font-display text-2xl font-medium text-navy">
@@ -178,6 +197,9 @@ export default async function WassceCandidateReadinessPage(props: {
           ))}
         </div>
       </section>
+
+      {/* ================= §4 full ledger-trajectory grid (INCR-20 NEW-1) — mounts ABOVE the shipped callout ================= */}
+      {deep ? <WassceLedgerGrid grids={deep.ledgerGrids} defaultSubjectId={deep.defaultSubjectId} /> : null}
 
       {/* ================= §4 projection callout (contextual narration) ================= */}
       <section id="ledger-trajectory">
@@ -284,6 +306,16 @@ export default async function WassceCandidateReadinessPage(props: {
           </>
         )}
       </section>
+
+      {/* ================= §7 context strip — attendance + fees only (INCR-20 NEW-3) ================= */}
+      {deep ? (
+        <section className="space-y-3">
+          <h2 className="font-display text-2xl font-medium text-navy">
+            Candidate <em className="italic text-gold">context</em>
+          </h2>
+          <WassceContextStrip termLabel={deep.termLabel} attendance={deep.attendance} fees={deep.fees} />
+        </section>
+      ) : null}
 
       {/* ================= §7 readiness statement + SC xmod + write panel ================= */}
       <section id="context" className="space-y-4">
