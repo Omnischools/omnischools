@@ -4,7 +4,8 @@ Everything here is assigned to **you**, not to the build loop. It is work that n
 your data, your judgement, or your eyes on a real browser. Items already queued for me to build in a
 later increment are deliberately **not** listed.
 
-Last updated: 2026-07-21 (after INCR-19a — parent identity + per-user RLS boundary).
+Last updated: 2026-07-21 (after INCR-20 — Module 4.3 WASSCE readiness complete, PR #170 merged).
+Note: INCR-19b and INCR-20 added **no** new `prod-paste-*.sql` — the paste count in item 1 still stands at 28.
 
 ---
 
@@ -63,6 +64,12 @@ rendered.
 **And (INCR-19a):** on a student profile → guardian list, click **"Invite to parent portal"**. No browser
 tool here could drive it end-to-end; the writes it performs (the invite, and the guardian→user stamp on
 accept) are proven by the DB deny-suite, but the button-to-action path itself was never clicked.
+
+**And (INCR-19b):** log in as a **real claimed parent** and eyeball the portal at `/wassce`. No tool here
+could drive an authenticated-parent browser session (dev-bypass is ADMIN; no persistent seeded claimed
+parent), so the data path is proven only by the rolled-back-fixture boundary script + copy tests. Confirm
+while you're there that the parent sees **no** cohort-tier band vocabulary on screen *or* in the downloaded
+statement PDF, and that the acknowledgement line reads "recorded by the school · confirmed by phone".
 
 ---
 
