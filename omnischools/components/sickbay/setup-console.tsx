@@ -34,11 +34,13 @@ import {
   BED_TILE_COPY,
   MODE_C_CAPACITY_PANEL,
   SICKBAY_MODE_CARDS,
+  canSaveMode,
   formatDayType,
   formatTimeWindow,
   initials,
   splitBold,
   type SickbayBedCounts,
+  type SickbayCapabilities,
   type SickbayMode,
   type SickbaySlot,
 } from "@/lib/sickbay/defaults";
@@ -59,9 +61,23 @@ export interface PrefectRow {
   houseName: string;
 }
 
+/**
+ * The staff editor's values. The two doctor keys are OPTIONAL and are ABSENT (not null) in a mode
+ * with no visiting-doctor capability — absent means "not sent, leave the stored value alone", which
+ * is what keeps a B→C→B round trip lossless (AC A6).
+ */
+export interface StaffFormValues {
+  matronUserId: string | null;
+  assistantMatronUserId: string | null;
+  visitingDoctorName?: string | null;
+  visitingDoctorAffiliation?: string | null;
+}
+
 export function SickbaySetupConsole({
   canWrite,
   mode,
+  configured,
+  capabilities,
   bedCounts,
   slots,
   staff,
@@ -71,25 +87,26 @@ export function SickbaySetupConsole({
 }: {
   canWrite: boolean;
   mode: SickbayMode;
+  /** false when the school has never declared a mode — it must render as having selected NOTHING. */
+  configured: boolean;
+  capabilities: SickbayCapabilities;
   bedCounts: SickbayBedCounts;
   slots: SickbaySlot[];
   staff: StaffRow[];
   prefects: PrefectRow[];
   matronCandidates: { id: string; name: string }[];
-  staffForm: {
-    matronUserId: string | null;
-    assistantMatronUserId: string | null;
-    visitingDoctorName: string | null;
-    visitingDoctorAffiliation: string | null;
-  };
+  staffForm: StaffFormValues;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [draftMode, setDraftMode] = useState<SickbayMode>(mode);
+  // null until the school has declared a mode: an UNCONFIGURED school coalesces to REFERRAL_ONLY for
+  // reading, but it has not *chosen* Mode C, so nothing is pre-selected and the save stays available.
+  const [draftMode, setDraftMode] = useState<SickbayMode | null>(configured ? mode : null);
 
-  const referralOnly = mode === "REFERRAL_ONLY";
-  const modeDirty = draftMode !== mode;
+  // Affordances follow the DERIVED capability (R4), never a mode string compared inline.
+  const clinical = capabilities.beds;
+  const canSave = canSaveMode(draftMode, mode, configured);
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, onDone?: () => void) {
     setError(null);
@@ -122,9 +139,9 @@ export function SickbaySetupConsole({
             <div className="mt-1 max-w-[720px] text-[13px] text-navy-3">
               <Bold
                 text={
-                  referralOnly
-                    ? "How your sickbay is run · **mode**, **staff** · all editable here"
-                    : "How your sickbay is run · **mode**, **staff**, **capacity** · all editable here"
+                  clinical
+                    ? "How your sickbay is run · **mode**, **staff**, **capacity** · all editable here"
+                    : "How your sickbay is run · **mode**, **staff** · all editable here"
                 }
               />
             </div>
@@ -132,11 +149,11 @@ export function SickbaySetupConsole({
           {canWrite && (
             <button
               type="button"
-              disabled={!modeDirty || pending}
-              onClick={() => run(() => setSickbayMode({ mode: draftMode }))}
+              disabled={!canSave || pending}
+              onClick={() => draftMode && run(() => setSickbayMode({ mode: draftMode }))}
               className="rounded-md border border-gold bg-gold px-3.5 py-[9px] text-xs font-bold text-navy disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Save changes
+              Save mode
             </button>
           )}
         </div>
@@ -154,6 +171,18 @@ export function SickbaySetupConsole({
           <em className="font-normal italic text-gold">Sickbay mode</em> · what kind of medical
           operation is this?
         </h3>
+        {/* An unconfigured school is NOT a Mode-C school. It reads as referral-only because that is
+            the safe default, but it has declared nothing — so no card is selected and the state says
+            so in words. Declaring Mode C is a real answer and has to be savable. */}
+        {!configured && (
+          <p className="-mt-1.5 mb-3.5 text-[12px] text-navy-3">
+            <b className="font-semibold text-navy-2">No mode declared yet.</b> Until one is saved this
+            school counts as unconfigured
+            {canWrite
+              ? " — pick the mode that matches what this school actually runs and save it. Mode C is an answer, not a blank."
+              : " — an Administrator or the Headmaster declares it."}
+          </p>
+        )}
         <div
           role="radiogroup"
           aria-label="Sickbay mode"
@@ -211,37 +240,39 @@ export function SickbaySetupConsole({
 
         {/* ═══ Staff + prefects · Mode C promotes the prefects ABOVE clinical staff ═══ */}
         <div
-          className={`mb-6 grid gap-[18px] ${referralOnly ? "grid-cols-1" : "grid-cols-1 xl:grid-cols-2"}`}
+          className={`mb-6 grid gap-[18px] ${clinical ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}
         >
-          {referralOnly ? (
+          {clinical ? (
             <>
-              <PrefectCard prefects={prefects} />
               <ClinicalStaffCard
                 staff={staff}
                 canWrite={canWrite}
                 pending={pending}
+                showVisitingDoctor={capabilities.visitingDoctor}
                 matronCandidates={matronCandidates}
                 staffForm={staffForm}
                 onSave={(v, done) => run(() => saveClinicalStaff(v), done)}
               />
+              <PrefectCard prefects={prefects} />
             </>
           ) : (
             <>
+              <PrefectCard prefects={prefects} />
               <ClinicalStaffCard
                 staff={staff}
                 canWrite={canWrite}
                 pending={pending}
+                showVisitingDoctor={capabilities.visitingDoctor}
                 matronCandidates={matronCandidates}
                 staffForm={staffForm}
                 onSave={(v, done) => run(() => saveClinicalStaff(v), done)}
               />
-              <PrefectCard prefects={prefects} />
             </>
           )}
         </div>
 
         {/* ═══ §2 · Capacity & hours — ABSENT from the DOM in Mode C (AC A7) ═══ */}
-        {referralOnly ? (
+        {!clinical ? (
           <section className="rounded-[14px] border border-border bg-surface px-7 py-6">
             <h2 className="font-display text-[16px] font-semibold text-navy">
               {MODE_C_CAPACITY_PANEL.heading}
@@ -273,6 +304,7 @@ function ClinicalStaffCard({
   staff,
   canWrite,
   pending,
+  showVisitingDoctor,
   matronCandidates,
   staffForm,
   onSave,
@@ -280,14 +312,11 @@ function ClinicalStaffCard({
   staff: StaffRow[];
   canWrite: boolean;
   pending: boolean;
+  /** R4 — a mode without the visiting-doctor capability neither renders nor SENDS those two fields. */
+  showVisitingDoctor: boolean;
   matronCandidates: { id: string; name: string }[];
-  staffForm: {
-    matronUserId: string | null;
-    assistantMatronUserId: string | null;
-    visitingDoctorName: string | null;
-    visitingDoctorAffiliation: string | null;
-  };
-  onSave: (v: typeof staffForm, done: () => void) => void;
+  staffForm: StaffFormValues;
+  onSave: (v: StaffFormValues, done: () => void) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(staffForm);
@@ -381,26 +410,32 @@ function ClinicalStaffCard({
               No staff member holds the Matron role in this school yet — assign it under Staff first.
             </p>
           )}
-          {/* R21 — the visiting doctor is NOT a system user: name + affiliation text, no invite. */}
-          <Field label="Visiting doctor · name">
-            <input
-              className={FIELD}
-              value={form.visitingDoctorName ?? ""}
-              placeholder="Dr K. Mensah"
-              onChange={(e) => setForm({ ...form, visitingDoctorName: e.target.value })}
-            />
-          </Field>
-          <Field label="Visiting doctor · affiliation">
-            <input
-              className={FIELD}
-              value={form.visitingDoctorAffiliation ?? ""}
-              placeholder="Asankrangwa Govt. Hospital"
-              onChange={(e) => setForm({ ...form, visitingDoctorAffiliation: e.target.value })}
-            />
-          </Field>
-          <p className="mb-2.5 text-[10px] italic text-navy-3">
-            The visiting doctor has no login — he is a directory entry, not a school account.
-          </p>
+          {/* R21 — the visiting doctor is NOT a system user: name + affiliation text, no invite.
+              Absent entirely without the capability: a referral-only school has no weekly doctor to
+              edit, and the stored name survives untouched because it is never sent back as null. */}
+          {showVisitingDoctor && (
+            <>
+              <Field label="Visiting doctor · name">
+                <input
+                  className={FIELD}
+                  value={form.visitingDoctorName ?? ""}
+                  placeholder="Dr K. Mensah"
+                  onChange={(e) => setForm({ ...form, visitingDoctorName: e.target.value })}
+                />
+              </Field>
+              <Field label="Visiting doctor · affiliation">
+                <input
+                  className={FIELD}
+                  value={form.visitingDoctorAffiliation ?? ""}
+                  placeholder="Asankrangwa Govt. Hospital"
+                  onChange={(e) => setForm({ ...form, visitingDoctorAffiliation: e.target.value })}
+                />
+              </Field>
+              <p className="mb-2.5 text-[10px] italic text-navy-3">
+                The visiting doctor has no login — he is a directory entry, not a school account.
+              </p>
+            </>
+          )}
           <div className="flex gap-2">
             <button
               type="button"

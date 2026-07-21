@@ -23,8 +23,19 @@ const url =
 
 const FOREIGN_ID = "00000000-0000-0000-0000-0000000000ff";
 
-// Regression guards: exact seeded counts for the originally-covered tables.
-const SEEDED_COUNTS: Record<string, number> = {
+/**
+ * Liveness floor for the scoped direction: when the GUC names your school you must SEE your rows,
+ * so the policy is not a blanket deny.
+ *
+ * These are MINIMUMS, deliberately not exact counts. An exact count here asserts SEED SHAPE, not
+ * isolation — and every legitimate seed that adds a row (INCR-21's two MATRON assignments, a new
+ * academic period) turns this script permanently red, at which point a real isolation regression
+ * hides among the standing failures. Isolation itself is proven by the two directions below, which
+ * stay EXACT: a foreign school id and an unset GUC must both return ZERO. A widened policy
+ * (`USING (true)`, a dropped tenant_isolation, a table shipped without FORCE) shows up there —
+ * verified by breaking one on purpose and watching this script go red.
+ */
+const MIN_OWN_ROWS: Record<string, number> = {
   academic_period: 2,
   ref_school_product: 1,
   role_assignment: 6,
@@ -76,7 +87,7 @@ async function main() {
       for (const t of TABLES) {
         const [{ n }] = await tx`select count(*)::int as n from ${tx(t)}`;
         ownTotal += n;
-        if (t in SEEDED_COUNTS) assert(`${t} (own)`, n, SEEDED_COUNTS[t]);
+        if (t in MIN_OWN_ROWS) assertAtLeast(`${t} (own)`, n, MIN_OWN_ROWS[t]);
       }
       // ref_school is keyed on `id` (not school_id) — its own row must be visible.
       const [{ n }] = await tx`select count(*)::int as n from ref_school`;

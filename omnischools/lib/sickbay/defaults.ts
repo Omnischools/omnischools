@@ -37,18 +37,19 @@ export type SickbayStaffPost = "SENIOR_MATRON" | "ASSISTANT_MATRON" | "VISITING_
  * is deleted, hidden or migrated when the mode changes — only the rendering changes.
  */
 export interface SickbayCapabilities {
-  beds: boolean;
-  isolationBeds: boolean;
-  admissions: boolean;
-  scheduleSlots: boolean;
-  medicationRounds: boolean;
-  visitingDoctor: boolean;
-  standingOrders: boolean;
-  drugStock: boolean;
-  referrals: boolean;
-  chronicRegister: boolean;
-  parentNotifications: boolean;
-  healthPrefects: boolean;
+  // `readonly` throughout: "derived, never hand-set" (R4) is compile-enforced, not discipline.
+  readonly beds: boolean;
+  readonly isolationBeds: boolean;
+  readonly admissions: boolean;
+  readonly scheduleSlots: boolean;
+  readonly medicationRounds: boolean;
+  readonly visitingDoctor: boolean;
+  readonly standingOrders: boolean;
+  readonly drugStock: boolean;
+  readonly referrals: boolean;
+  readonly chronicRegister: boolean;
+  readonly parentNotifications: boolean;
+  readonly healthPrefects: boolean;
 }
 
 /** One bed. `bedNumber` is the identity and is STABLE FOR LIFE (R8) — retiring 4 never renumbers 5. */
@@ -86,17 +87,17 @@ export interface SickbaySlot {
 
 /** The whole per-school config, coalesced. A missing settings row still returns this shape (R25). */
 export interface SickbayConfig {
-  schoolId: string;
-  mode: SickbayMode;
+  readonly schoolId: string;
+  readonly mode: SickbayMode;
   /** false when the school has never declared a mode — NOT the same as "declared REFERRAL_ONLY". */
-  configured: boolean;
-  capabilities: SickbayCapabilities;
-  matronUserId: string | null;
-  assistantMatronUserId: string | null;
-  visitingDoctorName: string | null;
-  visitingDoctorAffiliation: string | null;
-  beds: SickbayBed[];
-  bedCounts: SickbayBedCounts;
+  readonly configured: boolean;
+  readonly capabilities: SickbayCapabilities;
+  readonly matronUserId: string | null;
+  readonly assistantMatronUserId: string | null;
+  readonly visitingDoctorName: string | null;
+  readonly visitingDoctorAffiliation: string | null;
+  readonly beds: SickbayBed[];
+  readonly bedCounts: SickbayBedCounts;
 }
 
 /** A frozen regulatory anchor card (R26) — identical static editorial for every school. */
@@ -254,6 +255,23 @@ export function coalesceSickbayConfig(
   };
 }
 
+/**
+ * The mode picker's save rule. An UNCONFIGURED school MUST be able to save the mode it already
+ * coalesces to: a school with no settings row reads REFERRAL_ONLY, so a "dirty only" save button is
+ * permanently disabled for the ~49% of SHS that genuinely ARE Mode C — `configured` would then never
+ * become true and every increment gating on "has this school set up its sickbay" reads false forever.
+ *
+ * `draft === null` is "the school has declared nothing and the user has not picked yet" — an
+ * unconfigured school renders NO selected card, because it has selected nothing (R25).
+ */
+export function canSaveMode(
+  draft: SickbayMode | null,
+  stored: SickbayMode,
+  configured: boolean,
+): boolean {
+  return draft !== null && (!configured || draft !== stored);
+}
+
 // ============================================================================
 // Slot ordering + anchor rules (R16 · AC C4/C5)
 // ============================================================================
@@ -263,29 +281,38 @@ export function sortSlots(slots: readonly SickbaySlot[]): SickbaySlot[] {
   return [...slots].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 
-/** The medication-round subset, ANCHOR FIRST, then chronological (R24 · getRoundSchedule). */
+/**
+ * The medication-round subset, ANCHOR FIRST, then chronological (R24 · getRoundSchedule).
+ * ACTIVE rounds only: INCR-24 fires exactly this list, and a round the headmaster switched off must
+ * not fire. Filtered here rather than at INCR-24 — changing a frozen getter's semantics later is a
+ * cross-increment break.
+ */
 export function roundSchedule(slots: readonly SickbaySlot[]): SickbaySlot[] {
   return slots
-    .filter((s) => s.kind === "MEDICATION_ROUND")
+    .filter((s) => s.kind === "MEDICATION_ROUND" && s.active)
     .sort((a, b) => Number(b.isAnchor) - Number(a.isAnchor) || a.startsAt.localeCompare(b.startsAt));
 }
 
 /**
- * The anchor's TIME is editable (05:45 is still anchored) but it must start no later than every
- * other medication round (R16 · AC C5) — otherwise "morning round" sorts after the evening one and
- * INCR-24's ordering is nonsense. Returns a named error, or null when the move is legal.
+ * R16 is a property of the SLOT SET, not of one row: the anchor must start no later than every other
+ * ACTIVE medication round — otherwise "morning round" sorts after the evening one and INCR-24's
+ * ordering is nonsense. The anchor's TIME stays editable (05:45 is still anchored).
+ *
+ * Take the slot set AS IT WOULD BE AFTER the change and validate that. Three edits can break the
+ * invariant and only one of them touches the anchor row: moving the anchor later, moving a
+ * NON-anchor round earlier, and switching a round that already sits earlier back ON. Validating the
+ * edited row alone closes one of the three.
+ *
+ * Returns a named error, or null when the resulting set is legal.
  */
-export function validateAnchorStart(
-  slots: readonly SickbaySlot[],
-  anchorId: string,
-  newStartsAt: string,
-): string | null {
-  const later = slots.filter(
-    (s) => s.id !== anchorId && s.kind === "MEDICATION_ROUND" && s.active && s.startsAt < newStartsAt,
-  );
-  if (later.length === 0) return null;
-  const names = later.map((s) => `${s.label} (${s.startsAt})`).join(", ");
-  return `The anchor round must start no later than every other medication round. ${names} already starts before ${newStartsAt}.`;
+export function validateRoundOrdering(slots: readonly SickbaySlot[]): string | null {
+  const rounds = slots.filter((s) => s.kind === "MEDICATION_ROUND" && s.active);
+  const anchor = rounds.find((s) => s.isAnchor);
+  if (!anchor) return null; // no anchor (Mode C, or the anchor is off) → nothing to order against
+  const earlier = rounds.filter((s) => s.id !== anchor.id && s.startsAt < anchor.startsAt);
+  if (earlier.length === 0) return null;
+  const names = earlier.map((s) => `${s.label} (${s.startsAt})`).join(", ");
+  return `The anchor round must start no later than every other medication round. ${names} starts before the anchor at ${anchor.startsAt}.`;
 }
 
 // ============================================================================
@@ -307,13 +334,15 @@ export interface BedReconcilePlan {
  * If the target is unreachable without deactivating an occupied bed the WHOLE save is rejected with
  * a named error and NOTHING is applied (R11 · AC B5) — no partial application.
  *
- * `occupiedBedIds` is empty at INCR-21 (no admission table exists yet); INCR-22 passes the open
- * admissions' bed ids and the reject path lights up with no change here.
+ * `occupiedBedIds` is REQUIRED and has no default on purpose: it is the whole R11 invariant, and an
+ * optional argument on the one function holding it means INCR-22 can forget it and the guard
+ * silently no-ops. Callers pass `[]` at INCR-21 (no admission table exists yet); INCR-22 passes the
+ * open admissions' bed ids and the reject path lights up with no change here.
  */
 export function planBedReconcile(
   beds: readonly SickbayBed[],
   target: { general: number; isolation: number },
-  occupiedBedIds: readonly string[] = [],
+  occupiedBedIds: readonly string[],
 ): BedReconcilePlan | { error: string } {
   const occupied = new Set(occupiedBedIds);
   const plan: BedReconcilePlan = { insert: [], deactivate: [] };

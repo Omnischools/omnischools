@@ -33,11 +33,12 @@ export default async function SickbaySetupPage() {
   const canWrite = hasAnyRole(roles, SICKBAY_CONFIG_WRITE_ROLES);
 
   const config = await getSickbayConfig(school.id);
+  const caps = config.capabilities;
   const [slots, prefects, matronCandidates, staff] = await Promise.all([
     getScheduleSlots(school.id),
     getHealthPrefects(school.id),
     canWrite ? getMatronCandidates(school.id) : Promise.resolve([]),
-    getClinicalStaff(school.id, config),
+    getClinicalStaff(config),
   ]);
 
   // The doctor's working pattern is DERIVED from his DOCTOR_VISIT slot (days + window) — the same
@@ -65,19 +66,26 @@ export default async function SickbaySetupPage() {
 
   return (
     <div className="mx-auto max-w-page pb-16">
+      {/* The client payload is GATED ON THE DERIVED CAPABILITY, not just the render: a Mode-C school
+          cannot render a slot table or a visiting doctor, so its flight payload carries neither.
+          The rows themselves are untouched in the database and return intact on a switch back. */}
       <SickbaySetupConsole
         canWrite={canWrite}
         mode={config.mode}
+        configured={config.configured}
+        capabilities={caps}
         bedCounts={config.bedCounts}
-        slots={slots}
+        slots={caps.scheduleSlots ? slots : []}
         staff={staffRows}
         prefects={prefects}
         matronCandidates={matronCandidates}
         staffForm={{
           matronUserId: config.matronUserId,
           assistantMatronUserId: config.assistantMatronUserId,
-          visitingDoctorName: config.visitingDoctorName,
-          visitingDoctorAffiliation: config.visitingDoctorAffiliation,
+          ...(caps.visitingDoctor && {
+            visitingDoctorName: config.visitingDoctorName,
+            visitingDoctorAffiliation: config.visitingDoctorAffiliation,
+          }),
         }}
       />
 

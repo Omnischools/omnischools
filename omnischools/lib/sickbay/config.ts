@@ -146,14 +146,13 @@ export async function getScheduleSlots(schoolId: string): Promise<SickbaySlot[]>
       .from(sickbayScheduleSlot)
       .where(eq(sickbayScheduleSlot.schoolId, schoolId)),
   );
-  return sortSlots(
-    rows.map((r) => ({ ...r, daysOfWeek: (r.daysOfWeek as number[] | null) ?? [] })),
-  );
+  return sortSlots(rows);
 }
 
 /**
- * getRoundSchedule → INCR-24 fires exactly these. The MEDICATION_ROUND subset, ANCHOR FIRST, then
- * chronological (R24) — so "morning round" can never sort after the evening one.
+ * getRoundSchedule → INCR-24 fires exactly these. The ACTIVE MEDICATION_ROUND subset, ANCHOR FIRST,
+ * then chronological (R24) — so "morning round" can never sort after the evening one, and a round
+ * the headmaster switched off never fires.
  */
 export async function getRoundSchedule(schoolId: string): Promise<SickbaySlot[]> {
   return roundSchedule(await getScheduleSlots(schoolId));
@@ -163,11 +162,12 @@ export async function getRoundSchedule(schoolId: string): Promise<SickbaySlot[]>
  * The clinical-staff card. Senior vs Assistant Matron is the SAME MATRON role distinguished only by
  * WHICH pointer holds them (R20) — no seniority column, no sickbay_staff table, no new role. The
  * visiting doctor is text only: no ref_user, no role_assignment, no invite, no login (R21 · AC D4).
+ *
+ * Takes the config ALONE — it already carries `schoolId`, and a separate id argument could be
+ * mismatched with it, rendering school A's doctor under school B with nothing to catch it.
  */
-export async function getClinicalStaff(
-  schoolId: string,
-  config: SickbayConfig,
-): Promise<SickbayStaffMember[]> {
+export async function getClinicalStaff(config: SickbayConfig): Promise<SickbayStaffMember[]> {
+  const schoolId = config.schoolId;
   const posts: { post: SickbayStaffPost; userId: string }[] = [];
   if (config.matronUserId) posts.push({ post: "SENIOR_MATRON", userId: config.matronUserId });
   if (config.assistantMatronUserId) {

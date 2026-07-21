@@ -3,6 +3,7 @@ import {
   CANONICAL_SICKBAY_SLOTS,
   SICKBAY_MODE_CARDS,
   SICKBAY_POLICY_ANCHORS,
+  canSaveMode,
   coalesceSickbayConfig,
   countBeds,
   formatDayType,
@@ -15,7 +16,7 @@ import {
   sortSlots,
   splitBold,
   staffDesignation,
-  validateAnchorStart,
+  validateRoundOrdering,
   type SickbayBed,
   type SickbaySlot,
 } from "./defaults";
@@ -34,6 +35,11 @@ const beds: SickbayBed[] = [
   { id: "bed-7", bedNumber: 7, isIsolation: true, active: true },
   { id: "bed-8", bedNumber: 8, isIsolation: true, active: true },
 ];
+/** The anchor row id in the fixture (06:30 morning medication round). */
+const ANCHOR = "slot-1";
+/** The slot set AS IT WOULD BE after one edit — what the ordering rule is asked to judge. */
+const patch = (id: string, fields: Partial<SickbaySlot>): SickbaySlot[] =>
+  slots.map((s) => (s.id === id ? { ...s, ...fields } : s));
 
 describe("A1–A3 · capabilities are DERIVED from mode, never stored", () => {
   it("A2 · FULL and FIRST_AID are capability-IDENTICAL", () => {
@@ -112,6 +118,22 @@ describe("A5 · a missing settings row coalesces, never throws, never fabricates
     expect(Object.values(cfg).every((v) => v !== undefined)).toBe(true);
   });
 
+  // R25's whole point: "coalesced to REFERRAL_ONLY" ≠ "declared REFERRAL_ONLY". A save rule keyed on
+  // dirtiness alone locks the ~49% of schools that really ARE Mode C out of ever declaring it —
+  // `configured` would stay false forever and every increment gating on it reads the majority wrong.
+  it("A5 · an UNCONFIGURED school can save the mode it already coalesces to", () => {
+    expect(canSaveMode("REFERRAL_ONLY", "REFERRAL_ONLY", false)).toBe(true);
+    expect(canSaveMode("FULL", "REFERRAL_ONLY", false)).toBe(true);
+    // …and nothing is pre-selected for it, so it never renders as having chosen Mode C.
+    expect(canSaveMode(null, "REFERRAL_ONLY", false)).toBe(false);
+  });
+
+  it("A5 · a CONFIGURED school saves only a real change", () => {
+    expect(canSaveMode("REFERRAL_ONLY", "REFERRAL_ONLY", true)).toBe(false);
+    expect(canSaveMode("FIRST_AID", "REFERRAL_ONLY", true)).toBe(true);
+    expect(canSaveMode(null, "FULL", true)).toBe(false);
+  });
+
   it("a row with mode but no configured_at is declared-but-unconfigured, not null", () => {
     const cfg = coalesceSickbayConfig("s", {
       mode: "FULL",
@@ -139,15 +161,37 @@ describe("B1 · bed counts derive from the ACTIVE rows — there is no stored sc
 describe("B4/B5 · capacity is a TARGET RECONCILE, never a delete", () => {
   it("B4 · retiring bed 4 then adding one yields bed 9, never a reused 4", () => {
     const retired = beds.map((b) => (b.bedNumber === 4 ? { ...b, active: false } : b));
-    const plan = planBedReconcile(retired, { general: 6, isolation: 2 });
+    const plan = planBedReconcile(retired, { general: 6, isolation: 2 }, []);
     expect("error" in plan).toBe(false);
     if ("error" in plan) return;
     expect(plan.insert).toEqual([{ bedNumber: 9, isIsolation: false }]);
     expect(plan.deactivate).toEqual([]);
   });
 
+  // The MIDDLE-bed fixture above cannot tell "max over all beds" from "max over ACTIVE beds" — both
+  // yield 9. Retiring the GLOBAL MAX is the discriminating case: counting only active beds would
+  // hand back 8 and collide with the retired row's own number (uniq_sickbay_bed_number).
+  it("B4 · retiring the HIGHEST bed still yields 9 — the number is never reused", () => {
+    const retired = beds.map((b) => (b.bedNumber === 8 ? { ...b, active: false } : b));
+    const plan = planBedReconcile(retired, { general: 6, isolation: 2 }, []);
+    expect("error" in plan).toBe(false);
+    if ("error" in plan) return;
+    expect(plan.insert).toEqual([{ bedNumber: 9, isIsolation: true }]);
+  });
+
+  it("B4 · retiring the top TWO yields 9 then 10, never 7 and 8 again", () => {
+    const retired = beds.map((b) => (b.bedNumber >= 7 ? { ...b, active: false } : b));
+    const plan = planBedReconcile(retired, { general: 6, isolation: 2 }, []);
+    expect("error" in plan).toBe(false);
+    if ("error" in plan) return;
+    expect(plan.insert).toEqual([
+      { bedNumber: 9, isIsolation: true },
+      { bedNumber: 10, isIsolation: true },
+    ]);
+  });
+
   it("an increase inserts max+1 upward, per pool, pools never merging", () => {
-    const plan = planBedReconcile(beds, { general: 8, isolation: 3 });
+    const plan = planBedReconcile(beds, { general: 8, isolation: 3 }, []);
     expect("error" in plan).toBe(false);
     if ("error" in plan) return;
     expect(plan.insert).toEqual([
@@ -158,7 +202,7 @@ describe("B4/B5 · capacity is a TARGET RECONCILE, never a delete", () => {
   });
 
   it("a decrease deactivates the HIGHEST-numbered unoccupied beds — never a hard delete", () => {
-    const plan = planBedReconcile(beds, { general: 4, isolation: 2 });
+    const plan = planBedReconcile(beds, { general: 4, isolation: 2 }, []);
     expect("error" in plan).toBe(false);
     if ("error" in plan) return;
     expect(plan.deactivate).toEqual(["bed-5", "bed-6"]);
@@ -191,7 +235,7 @@ describe("B4/B5 · capacity is a TARGET RECONCILE, never a delete", () => {
   });
 
   it("zero is a legal target — known-empty, not unknown", () => {
-    const plan = planBedReconcile(beds, { general: 0, isolation: 0 });
+    const plan = planBedReconcile(beds, { general: 0, isolation: 0 }, []);
     expect("error" in plan).toBe(false);
     if ("error" in plan) return;
     expect(plan.deactivate).toHaveLength(8);
@@ -273,13 +317,56 @@ describe("C1–C5 · the canonical slot set and the anchor rules", () => {
     expect(anchors[0].kind).toBe("MEDICATION_ROUND");
   });
 
+  it("R24 · a round switched OFF is not in the round schedule — INCR-24 must not fire it", () => {
+    const noonOff = patch("slot-4", { active: false });
+    expect(roundSchedule(noonOff).map((r) => r.startsAt)).toEqual(["06:30", "21:00"]);
+    // …and it is still in the stored set: deactivation is a render/fire gate, never a delete.
+    expect(noonOff.filter((s) => s.kind === "MEDICATION_ROUND")).toHaveLength(3);
+  });
+
   it("C4/C5 · the anchor's time is editable, but never later than another round", () => {
-    const anchor = slots.find((s) => s.isAnchor)!;
-    expect(validateAnchorStart(slots, anchor.id, "05:45")).toBeNull();
-    expect(validateAnchorStart(slots, anchor.id, "12:30")).toBeNull(); // equal is allowed
-    const err = validateAnchorStart(slots, anchor.id, "13:00");
+    expect(validateRoundOrdering(patch(ANCHOR, { startsAt: "05:45" }))).toBeNull();
+    expect(validateRoundOrdering(patch(ANCHOR, { startsAt: "12:30" }))).toBeNull(); // equal is allowed
+    const err = validateRoundOrdering(patch(ANCHOR, { startsAt: "13:00" }));
     expect(err).toContain("no later than every other medication round");
     expect(err).toContain("Noon medication round (12:30)");
+  });
+
+  // R16 is a property of the SET. These two paths reach the same broken state without touching the
+  // anchor row, so a guard that only fires when the EDITED slot is the anchor lets both through.
+  it("C5 · a NON-anchor round cannot be moved earlier than the anchor", () => {
+    const err = validateRoundOrdering(patch("slot-4", { startsAt: "05:00" }));
+    expect(err).toContain("no later than every other medication round");
+    expect(err).toContain("Noon medication round (05:00)");
+    expect(err).toContain("the anchor at 06:30");
+    // A non-anchor round moved to a LATER time is fine, and so is a non-round moved anywhere.
+    expect(validateRoundOrdering(patch("slot-4", { startsAt: "13:30" }))).toBeNull();
+    expect(validateRoundOrdering(patch("slot-3", { startsAt: "05:00" }))).toBeNull(); // CLINIC
+  });
+
+  it("C5 · a round parked OFF earlier than the anchor cannot simply be switched back on", () => {
+    // The headmaster's route around the guard: park the 06:45 round off, move the anchor to 07:00
+    // (legal — the off round is ignored), then flip the round back on.
+    const early: SickbaySlot = {
+      ...slots[3],
+      id: "slot-early",
+      label: "Early medication round",
+      startsAt: "06:45",
+      endsAt: "07:15",
+      active: false,
+    };
+    const parked = [...patch(ANCHOR, { startsAt: "07:00" }), early];
+    expect(validateRoundOrdering(parked)).toBeNull(); // an inactive round does not constrain
+
+    const switchedOn = parked.map((s) => (s.id === "slot-early" ? { ...s, active: true } : s));
+    const err = validateRoundOrdering(switchedOn);
+    expect(err).toContain("Early medication round (06:45)");
+    expect(err).toContain("the anchor at 07:00");
+  });
+
+  it("no active anchor (Mode C, or every round off) is not an error", () => {
+    expect(validateRoundOrdering([])).toBeNull();
+    expect(validateRoundOrdering(patch(ANCHOR, { active: false }))).toBeNull();
   });
 
   it("staffing is free text and descriptions are stored (the handoff document)", () => {

@@ -17,7 +17,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { withSchool } from "@/lib/db/rls";
+import { withSchool, isUniqueViolation } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -28,7 +28,7 @@ import { getSickbayConfig, getScheduleSlots, holdsMatronRole } from "@/lib/sickb
 import {
   CANONICAL_SICKBAY_SLOTS,
   planBedReconcile,
-  validateAnchorStart,
+  validateRoundOrdering,
 } from "@/lib/sickbay/defaults";
 
 type Result = { ok: boolean; error?: string };
@@ -46,7 +46,13 @@ async function authorizeWrite(): Promise<
   const { school } = await requireSchool();
   const user = await getCurrentUser();
   if (!user || !hasAnyRole(user.roles, SICKBAY_CONFIG_WRITE_ROLES)) {
-    return { ok: false, error: "Your role can read the sickbay configuration but not change it." };
+    // Accurate for BOTH refused cases: the MATRON, who reads this surface, and a role with no read
+    // access at all (a HOUSEMASTER hand-crafting the POST) — "you can read but not change it" would
+    // be a false statement to the second.
+    return {
+      ok: false,
+      error: "Only an Administrator or the Headmaster can change the sickbay configuration.",
+    };
   }
   const actor = await resolveActor(school.id);
   return { ok: true, schoolId: school.id, actor };
@@ -140,6 +146,8 @@ export async function saveBedCapacity(input: unknown): Promise<Result> {
   if (!parsed.success) return { ok: false, error: "Bed counts must be whole numbers from 0 to 200." };
 
   const config = await getSickbayConfig(auth.schoolId);
+  // `[]` — no admission table exists at INCR-21. The argument is required (never defaulted) so
+  // INCR-22 cannot forget to pass the open admissions' bed ids.
   const plan = planBedReconcile(config.beds, parsed.data, []);
   if ("error" in plan) return { ok: false, error: plan.error };
   if (plan.insert.length === 0 && plan.deactivate.length === 0) return { ok: true };
@@ -171,7 +179,12 @@ export async function saveBedCapacity(input: unknown): Promise<Result> {
     });
     safeRevalidate(SETUP_PATH);
     return { ok: true };
-  } catch {
+  } catch (err) {
+    // uniq_sickbay_bed_number — two capacity saves raced and both planned the same next number.
+    // The plan is recomputed from fresh rows on reload, so a retry is the right advice.
+    if (isUniqueViolation(err)) {
+      return { ok: false, error: "Someone else changed the bed capacity just now. Reload and try again." };
+    }
     return { ok: false, error: "Could not save the bed capacity." };
   }
 }
@@ -214,11 +227,18 @@ export async function saveClinicalStaff(input: unknown): Promise<Result> {
   }
 
   const before = await getSickbayConfig(auth.schoolId);
+  // ABSENT ≠ CLEARED. A REFERRAL_ONLY school has no visiting-doctor capability, so its editor never
+  // renders those two fields and never sends them — writing null there would delete a doctor the
+  // school still has on a switch back (R6 · AC A6). An empty string IS a clear and still writes null.
   const after = {
     matronUserId,
     assistantMatronUserId,
-    visitingDoctorName: d.visitingDoctorName || null,
-    visitingDoctorAffiliation: d.visitingDoctorAffiliation || null,
+    ...(d.visitingDoctorName !== undefined && {
+      visitingDoctorName: d.visitingDoctorName || null,
+    }),
+    ...(d.visitingDoctorAffiliation !== undefined && {
+      visitingDoctorAffiliation: d.visitingDoctorAffiliation || null,
+    }),
   };
   try {
     await withSchool(auth.schoolId, async (tx) => {
@@ -287,10 +307,13 @@ export async function updateScheduleSlot(input: unknown): Promise<Result> {
   const slots = await getScheduleSlots(auth.schoolId);
   const before = slots.find((s) => s.id === d.id);
   if (!before) return { ok: false, error: "That schedule slot no longer exists." };
-  if (before.isAnchor) {
-    const err = validateAnchorStart(slots, d.id, d.startsAt);
-    if (err) return { ok: false, error: err };
-  }
+  // R16 is a property of the SET: validate the set AS IT WOULD BE after this edit, not the one row.
+  // Moving a NON-anchor round to 05:00 while the anchor sits at 06:30 breaks it just as surely as
+  // moving the anchor. Only the fields the invariant reads need to be projected forward.
+  const orderingError = validateRoundOrdering(
+    slots.map((s) => (s.id === d.id ? { ...s, label: d.label, startsAt: d.startsAt } : s)),
+  );
+  if (orderingError) return { ok: false, error: orderingError };
 
   try {
     await withSchool(auth.schoolId, async (tx) => {
@@ -348,6 +371,13 @@ export async function toggleScheduleSlot(input: unknown): Promise<Result> {
       error: "The anchor round cannot be switched off — everything else flexes around it.",
     };
   }
+  // Switching a round back ON can break R16 too: park a 06:45 round off, move the anchor to 07:00,
+  // switch the round back on. The ordering rule ignores inactive rounds, so this path has to
+  // re-validate the whole set with the toggle applied.
+  const orderingError = validateRoundOrdering(
+    slots.map((s) => (s.id === id ? { ...s, active } : s)),
+  );
+  if (orderingError) return { ok: false, error: orderingError };
 
   try {
     await withSchool(auth.schoolId, async (tx) => {

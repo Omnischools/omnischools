@@ -156,7 +156,9 @@ export const sickbayScheduleSlot = pgTable(
     startsAt: text("starts_at").notNull(), // "HH:MM"
     endsAt: text("ends_at").notNull(), // "HH:MM" — MAY be < starts_at (22:00→06:00 wraps midnight)
     staffing: text("staffing"), // free text, deliberately NOT an FK
-    daysOfWeek: jsonb("days_of_week").notNull(), // ISO 1..7 int array, e.g. [1,2,3,4,5]
+    // ISO 1..7 int array, e.g. [1,2,3,4,5]. `$type` is TYPING ONLY — no DDL, no migration — and it
+    // deletes the reader's one `as number[]` assertion.
+    daysOfWeek: jsonb("days_of_week").$type<number[]>().notNull(),
     runsOnHolidays: boolean("runs_on_holidays").notNull().default(false),
     isAnchor: boolean("is_anchor").notNull().default(false),
     active: boolean("active").notNull().default(true),
