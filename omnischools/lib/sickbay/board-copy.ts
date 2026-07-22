@@ -46,7 +46,9 @@ export const BOARD_ROW_KEYS = {
     "isIsolation",
     "latestVital",
     "studentCode",
-    "studentName",
+    // `studentFullName`, not `studentName` — the ward type carries the ONE full name on the board
+    // and the distinct field name is what makes the disclosure tier compile-checked (Sarah ADV-2).
+    "studentFullName",
     "visitId",
   ],
   latestVital: [

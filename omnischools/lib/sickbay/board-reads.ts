@@ -87,17 +87,22 @@ export interface SickbayLatestVital {
  * selected, not returned, not rendered. The `.ab-line` prints location and time, and the record is
  * one click away.
  *
- * ⚠️ THE ONE FULL NAME ON THE BOARD. `studentName` here is `Adwoa Mensa`, NOT `A. Mensa`, because
- * the surface's `.ab-name` prints it in full beside its own `<em>` surname. Every OTHER board type
- * carries the abbreviated form (see `initials()`), so a new surface derived from THIS type must
- * abbreviate deliberately — the tile-1 meta does, at its call site.
+ * ⚠️ THE ONE FULL NAME ON THE BOARD — and the field is named `studentFullName` for that reason.
+ * Every OTHER board type carries `studentName` ALREADY ABBREVIATED (`A. Mensa`, see `initials()`),
+ * so the two are not interchangeable and the compiler now says so. The rename is the pin: the
+ * abbreviation is a DISCLOSURE TIER (A2/R73 — one admitted patient may be named, more than one may
+ * not), and `BOARD_ROW_KEYS` cannot tell an abbreviated `studentName` from a full one because the
+ * field name was identical across all four types. Deleting `initials(` from the queue or §03
+ * projection would have shipped full names to a bench-side screen with every gate still green
+ * (Sarah ADV-2, INCR-22c). A surface derived from THIS type must abbreviate deliberately — the
+ * tile-1 meta does, at its call site.
  */
 export interface SickbayWardPatient {
   admissionId: string;
   visitId: string;
   bedNumber: number;
   isIsolation: boolean;
-  studentName: string;
+  studentFullName: string;
   formLabel: string;
   houseName: string | null;
   studentCode: string;
@@ -336,7 +341,8 @@ export async function getSickbayBoard(
         visitId: w.visitId,
         bedNumber: w.bedNumber,
         isIsolation: w.isIsolation,
-        studentName: `${w.firstName} ${w.lastName}`,
+        // NOT `initials()` — the one deliberate full name (see the type's doc block).
+        studentFullName: `${w.firstName} ${w.lastName}`,
         formLabel: formLabel(w.classLevel, w.className, w.programme),
         houseName: w.houseName,
         studentCode: w.studentCode,

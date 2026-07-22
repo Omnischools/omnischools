@@ -188,7 +188,7 @@ export default async function SickbayTodayPage() {
             // through the SAME `initials()` every other board name already went through.
             meta={admittedTileMeta(
               board.ward.map((w) => ({
-                shortName: initials(w.studentName),
+                shortName: initials(w.studentFullName),
                 bedNumber: w.bedNumber,
               })),
             )}
@@ -508,9 +508,11 @@ function Tile({
  * patient-safety instrument, and removing it would push the matron to open full records MORE often.
  */
 function AdmittedBlock({ p, now }: { p: SickbayWardPatient; now: Date }) {
-  const parts = p.studentName.trim().split(/\s+/);
+  // `studentFullName` — the deliberate exception, printed in full because the surface's `.ab-name`
+  // splits it into `{first} <em>{last}</em>`. Every other name on this board arrives abbreviated.
+  const parts = p.studentFullName.trim().split(/\s+/);
   const last = parts.length > 1 ? parts[parts.length - 1] : "";
-  const first = parts.length > 1 ? parts.slice(0, -1).join(" ") : p.studentName;
+  const first = parts.length > 1 ? parts.slice(0, -1).join(" ") : p.studentFullName;
   const v = p.latestVital;
   const overdue =
     p.expectedDischargeAt !== null && p.expectedDischargeAt.getTime() < now.getTime();

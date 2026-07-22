@@ -486,9 +486,19 @@ describe("R37 / the attendance seam · what the write path must NOT contain", ()
     }
     // The board's reader carries its own gate, so its CALLERS legitimately do not name the constant
     // — which is only safe while the reader itself does, as its first statement.
+    //
+    // ⚠️ Assert on the GATE EXPRESSION, never on the constant's NAME. The name's first occurrence is
+    // the IMPORT (~line 47), and the first `withSchool(` is ~line 204, so `indexOf(name) < indexOf(
+    // "withSchool(")` is satisfied by import ordering alone — it would still pass with the gate
+    // deleted outright (Sarah ADV-3, INCR-22c). This is the always-run half of the R81 evidence; the
+    // behavioural half is the G2 round-trip/statement counter in `scripts/verify-sickbay-board.ts`,
+    // which is DB-backed and — this repo having no CI — runs only when someone runs it.
     const board = read("lib/sickbay/board-reads.ts").code;
-    expect(board.includes("SICKBAY_CLINICAL_READ_ROLES")).toBe(true);
-    expect(board.indexOf("SICKBAY_CLINICAL_READ_ROLES")).toBeLessThan(board.indexOf("withSchool("));
+    const gate = board.search(
+      /hasAnyRole\(\s*roles\s*,\s*SICKBAY_CLINICAL_READ_ROLES\s*\)\s*\)\s*return\s+null/,
+    );
+    expect(gate, "board-reads.ts must carry the clinical gate verbatim").toBeGreaterThan(-1);
+    expect(gate).toBeLessThan(board.indexOf("withSchool("));
   });
 
   it("R60 the consult authorises nothing — no approval, signature or co-sign field", () => {
