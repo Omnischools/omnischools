@@ -5,8 +5,9 @@ import { SignOutButton } from "@/components/app/sign-out-button";
 import { PwaSession } from "@/components/pwa-session";
 
 /**
- * The staff-only guard is NOT here — it is inside `requireSchool()`, which this layout and all 82
- * pages under it already call.
+ * The staff-only guard is NOT here — it is inside `requireSchool()`, which this layout and every one
+ * of the 82 pages under it reaches: 61 call it directly, 20 through `requireSchoolRole` (which
+ * delegates to it), and `settings/academic/promotion` through `previewPromotion()`.
  *
  * The distinction is narrow and worth stating precisely, because getting it wrong sends you down a
  * very expensive road. A redirect thrown from a **LAYOUT** does not stop the page: layouts and pages
