@@ -15,6 +15,25 @@ import type { KnownAppRole } from "@/lib/auth";
 export const FINANCE_ROLES = ["ACCOUNTANT", "BURSAR"];
 
 /**
+ * 🔴 Who may administer STAFF — create, edit, delete, set pay, and above all ASSIGN ROLES.
+ *
+ * This is the school's authorization root. `role_assignment` is the table every other guard in the
+ * product reads (`requireSchool`→`isStaff`, `requireSchoolRole`, `isFinanceOnly`, and the sickbay
+ * clinical boundary's `chronic_clinical_role`), so an actor who can write it can grant themselves
+ * anything downstream. Before this group existed, every action in `lib/actions/staff.ts` was gated
+ * by `requireSchool()` alone — which since PR #176 means "authenticated + is staff" — and `ADMIN` is
+ * on the same assignable list that /staff renders for every row, so ANY staff member could open
+ * /staff, find their own row and become Administrator in three clicks.
+ *
+ * Deliberately narrow. Widening it is a decision about who may mint administrators, not a
+ * convenience tweak; `VICE_HEADMASTER_ACADEMIC` is the obvious candidate if a school asks.
+ */
+export const STAFF_ADMIN_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
+/**
  * Senior (SHS) tier role groups. The score ledger is a teaching surface (teachers + form
  * masters + academic leadership); the Vice Headmaster progress view is management-only
  * (Admin, Headmaster, Vice Headmaster Academic). STUDENT / PARENT never reach either.
