@@ -603,6 +603,15 @@ export const sickbayChronicEntry = pgTable(
       .references(() => schools.id, { onDelete: "cascade" }),
     studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
     condition: chronicConditionEnum("condition").notNull(),
+    // R129 — THE POLICY BIT. Not a diagnosis, not a copy of `condition`: the one fact the grant
+    // table's RLS predicate needs ("is this entry outside a HEADMASTER's default read?"), materialised
+    // on the entry so the GRANT policy gates on it WITHOUT reading the entry table — reading the entry
+    // from the grant policy is the cycle (entry → grant → entry), not a style choice. GENERATED ALWAYS
+    // STORED, never app-written: structurally incapable of disagreeing with `condition` (R10), and the
+    // string `MENTAL_HEALTH` lives ONLY here — a grant row carries a boolean about a policy (R43/R122).
+    hmRestricted: boolean("hm_restricted")
+      .notNull()
+      .generatedAlwaysAs(sql`"condition" = 'MENTAL_HEALTH'`),
     // The words on the pill ("Sickle cell disease · HbSS"); the ENUM above drives only the colour.
     // Free text because HbSS/HbSC, "peanut + shellfish" and "type 1" are facts no 7-value vocabulary
     // can hold, and widening the vocabulary is how a register becomes an EMR (R94).
@@ -652,6 +661,16 @@ export const sickbayChronicEntry = pgTable(
     // migration. Carried INLINE in CREATE TABLE so it exists before every ADD FOREIGN KEY (the 0033
     // ordering hazard; 0057 did the same for sickbay_visit_tenant_uk).
     tenantUk: unique("sickbay_chronic_entry_tenant_uk").on(t.schoolId, t.id),
+    // R129 — the FK TARGET that pins every grant row to the entry's live classification: the grant's
+    // entry FK is (school_id, entry_id, hm_restricted) ON UPDATE CASCADE, so re-classifying an entry
+    // PROPAGATES onto its grants instead of leaving a stale `false` (which fails OPEN — the dangerous
+    // direction, and R94 concedes re-classification happens). UNIQUE (not uniqueIndex): a constraint
+    // is emitted INLINE in CREATE TABLE, ahead of every ADD FOREIGN KEY (the 0033 ordering hazard).
+    hmUk: unique("sickbay_chronic_entry_hm_uk").on(
+      t.schoolId,
+      t.id,
+      t.hmRestricted,
+    ),
     // R96 — the one product-policy invariant that lives in the DB. Single-row CHECK, no trigger.
     mentalHealthIsReferralManaged: check(
       "chronic_mental_health_referral_managed",
@@ -790,7 +809,13 @@ export const sickbayChronicGrant = pgTable(
     schoolId: uuid("school_id")
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
-    entryId: uuid("entry_id").notNull(), // composite (school_id, entry_id) FK below
+    entryId: uuid("entry_id").notNull(), // composite (school_id, entry_id, hm_restricted) FK below
+    // R129 — the pinned copy of the entry's policy bit, here ONLY so the grant policy can decide
+    // "may a HEADMASTER see this grant row?" without reading the entry table (that read is the cycle).
+    // The composite FK below makes a wrong value an FK VIOLATION AT INSERT and a re-classification a
+    // CASCADE; a grantee cannot flip it to false either (no matching parent key). A boolean about a
+    // POLICY, never the condition — `MENTAL_HEALTH` must not appear on a grant row (R43/R122).
+    hmRestricted: boolean("hm_restricted").notNull(),
     // NOT NULL: a grant with no grantee is not a grant. Single-column FK to the GLOBAL ref_user
     // (the houses.hm_user_id idiom); CASCADE rather than SET NULL precisely because it is NOT NULL —
     // a deleted user's grants must not survive as unreadable stubs.
@@ -833,10 +858,23 @@ export const sickbayChronicGrant = pgTable(
     byGrantee: index("sickbay_chronic_grant_grantee_idx").on(t.schoolId, t.granteeUserId),
     // Composite intra-tenant FKs. The plan CASCADEs. The House CASCADEs — a deleted House cannot
     // leave an HM-tied grant behind, and R107's liveness rule would be unevaluable without it.
+    //
+    // R129 — THREE columns, and ON UPDATE CASCADE is the load-bearing half. It still makes a
+    // cross-tenant/non-existent entry impossible ((school_id, id) is itself unique) AND pins
+    // `hm_restricted` to the entry's live value. Named explicitly because drizzle's default name for a
+    // 3-column composite FK exceeds Postgres's 63-char identifier limit; this keeps the prod paste and
+    // `drizzle-kit migrate` byte-identical with no truncation to reason about.
     entryFk: foreignKey({
-      columns: [t.schoolId, t.entryId],
-      foreignColumns: [sickbayChronicEntry.schoolId, sickbayChronicEntry.id],
-    }).onDelete("cascade"),
+      name: "sickbay_chronic_grant_entry_hm_fk",
+      columns: [t.schoolId, t.entryId, t.hmRestricted],
+      foreignColumns: [
+        sickbayChronicEntry.schoolId,
+        sickbayChronicEntry.id,
+        sickbayChronicEntry.hmRestricted,
+      ],
+    })
+      .onDelete("cascade")
+      .onUpdate("cascade"),
     houseFk: foreignKey({
       columns: [t.schoolId, t.houseId],
       foreignColumns: [houses.schoolId, houses.id],

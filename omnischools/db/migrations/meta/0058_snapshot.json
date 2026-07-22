@@ -1,5 +1,5 @@
 {
-  "id": "379c5730-d744-48b2-bdd8-99993c8dcea8",
+  "id": "814b5dd8-14ba-45eb-a6cb-2c38efc6a904",
   "prevId": "ac393f92-3cd3-4433-b3ce-94b898e9094f",
   "version": "7",
   "dialect": "postgresql",
@@ -13161,6 +13161,16 @@
           "primaryKey": false,
           "notNull": true
         },
+        "hm_restricted": {
+          "name": "hm_restricted",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "generated": {
+            "as": "\"condition\" = 'MENTAL_HEALTH'",
+            "type": "stored"
+          }
+        },
         "condition_label": {
           "name": "condition_label",
           "type": "text",
@@ -13411,6 +13421,15 @@
             "school_id",
             "id"
           ]
+        },
+        "sickbay_chronic_entry_hm_uk": {
+          "name": "sickbay_chronic_entry_hm_uk",
+          "nullsNotDistinct": false,
+          "columns": [
+            "school_id",
+            "id",
+            "hm_restricted"
+          ]
         }
       },
       "policies": {},
@@ -13442,6 +13461,12 @@
         "entry_id": {
           "name": "entry_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hm_restricted": {
+          "name": "hm_restricted",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true
         },
@@ -13611,20 +13636,22 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
-        "sickbay_chronic_grant_school_id_entry_id_sickbay_chronic_entry_school_id_id_fk": {
-          "name": "sickbay_chronic_grant_school_id_entry_id_sickbay_chronic_entry_school_id_id_fk",
+        "sickbay_chronic_grant_entry_hm_fk": {
+          "name": "sickbay_chronic_grant_entry_hm_fk",
           "tableFrom": "sickbay_chronic_grant",
           "tableTo": "sickbay_chronic_entry",
           "columnsFrom": [
             "school_id",
-            "entry_id"
+            "entry_id",
+            "hm_restricted"
           ],
           "columnsTo": [
             "school_id",
-            "id"
+            "id",
+            "hm_restricted"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "cascade"
         },
         "sickbay_chronic_grant_school_id_house_id_house_school_id_id_fk": {
           "name": "sickbay_chronic_grant_school_id_house_id_house_school_id_id_fk",

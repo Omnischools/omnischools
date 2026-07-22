@@ -6,6 +6,7 @@ CREATE TABLE "sickbay_chronic_entry" (
 	"school_id" uuid NOT NULL,
 	"student_id" uuid NOT NULL,
 	"condition" "chronic_condition" NOT NULL,
+	"hm_restricted" boolean GENERATED ALWAYS AS ("condition" = 'MENTAL_HEALTH') STORED NOT NULL,
 	"condition_label" text,
 	"condition_detail" text,
 	"status" "chronic_status" DEFAULT 'STABLE' NOT NULL,
@@ -30,6 +31,7 @@ CREATE TABLE "sickbay_chronic_entry" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "sickbay_chronic_entry_tenant_uk" UNIQUE("school_id","id"),
+	CONSTRAINT "sickbay_chronic_entry_hm_uk" UNIQUE("school_id","id","hm_restricted"),
 	CONSTRAINT "chronic_mental_health_referral_managed" CHECK ("sickbay_chronic_entry"."condition" <> 'MENTAL_HEALTH' OR ("sickbay_chronic_entry"."on_site_treatable" = false AND "sickbay_chronic_entry"."referral_managed" = true))
 );
 --> statement-breakpoint
@@ -37,6 +39,7 @@ CREATE TABLE "sickbay_chronic_grant" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"school_id" uuid NOT NULL,
 	"entry_id" uuid NOT NULL,
+	"hm_restricted" boolean NOT NULL,
 	"grantee_user_id" uuid NOT NULL,
 	"scope" "sickbay_grant_scope" NOT NULL,
 	"scope_label" text,
@@ -85,7 +88,7 @@ ALTER TABLE "sickbay_chronic_grant" ADD CONSTRAINT "sickbay_chronic_grant_school
 ALTER TABLE "sickbay_chronic_grant" ADD CONSTRAINT "sickbay_chronic_grant_grantee_user_id_ref_user_id_fk" FOREIGN KEY ("grantee_user_id") REFERENCES "public"."ref_user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sickbay_chronic_grant" ADD CONSTRAINT "sickbay_chronic_grant_granted_by_user_id_ref_user_id_fk" FOREIGN KEY ("granted_by_user_id") REFERENCES "public"."ref_user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sickbay_chronic_grant" ADD CONSTRAINT "sickbay_chronic_grant_revoked_by_user_id_ref_user_id_fk" FOREIGN KEY ("revoked_by_user_id") REFERENCES "public"."ref_user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "sickbay_chronic_grant" ADD CONSTRAINT "sickbay_chronic_grant_school_id_entry_id_sickbay_chronic_entry_school_id_id_fk" FOREIGN KEY ("school_id","entry_id") REFERENCES "public"."sickbay_chronic_entry"("school_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "sickbay_chronic_grant" ADD CONSTRAINT "sickbay_chronic_grant_entry_hm_fk" FOREIGN KEY ("school_id","entry_id","hm_restricted") REFERENCES "public"."sickbay_chronic_entry"("school_id","id","hm_restricted") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "sickbay_chronic_grant" ADD CONSTRAINT "sickbay_chronic_grant_school_id_house_id_house_school_id_id_fk" FOREIGN KEY ("school_id","house_id") REFERENCES "public"."house"("school_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sickbay_chronic_med" ADD CONSTRAINT "sickbay_chronic_med_school_id_ref_school_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."ref_school"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sickbay_chronic_med" ADD CONSTRAINT "sickbay_chronic_med_school_id_entry_id_sickbay_chronic_entry_school_id_id_fk" FOREIGN KEY ("school_id","entry_id") REFERENCES "public"."sickbay_chronic_entry"("school_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

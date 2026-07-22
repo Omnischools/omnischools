@@ -16,10 +16,15 @@
 -- boundary (R117). A missed paste here does not leak a bed count; it hands a school's entire
 -- adolescent mental-health register to whoever logs in next.
 --
--- ⚠ SECOND, EASILY-MISSED HALF: the `parent_deny` loop at the bottom is NOT decoration. It is the
--- catalog-driven loop from policies.sql, re-run so the four NEW tables are picked up. Skip it and
--- every chronic care plan is readable by a claimed parent session on prod until someone runs
--- `db:policies` — which never runs against prod at all.
+-- ⚠ SECOND, EASILY-MISSED HALF: the `parent_deny` loop at the bottom. Run it — but here is what is
+-- ACTUALLY true if you skip it (Sarah corrected the earlier overstatement, which was demonstrably
+-- wrong). Skipping it does NOT make these four tables parent-readable: staff_grant_scope is
+-- DENY-BY-DEFAULT (`su IS NOT NULL AND …`), and a parent session sets app.current_parent_user but
+-- never app.current_staff_user, so that restrictive policy already returns ZERO rows to a parent. The
+-- real costs of skipping it are (1) check B of verify-prod-rls.sql goes RED — which is the GOOD
+-- outcome, it flags the omission — and (2) the defence-in-depth layer is gone (these tables would
+-- then lean on the staff boundary's polarity alone). Run it anyway: it is what keeps a FUTURE sickbay
+-- table auto-denied, and a wrong warning is the kind that gets ignored the third time.
 --
 -- Verify afterwards with db/sql/verify-prod-rls.sql — Query 1 must return ZERO ROWS and Query 2's
 -- tenant_tables must have risen by exactly 4 (with parent_denied up 4). Then, additionally, confirm
@@ -27,12 +32,19 @@
 --   select c.relname, p.polname, p.polcmd, p.polpermissive
 --   from pg_policy p join pg_class c on c.oid = p.polrelid
 --   where c.relname like 'sickbay_chronic%' order by 1, 2;
--- Expect 15 rows: all four tables with tenant_isolation (permissive) + parent_deny + staff_grant_scope
--- (both restrictive), and staff_grant_delete on entry/med/grant.
+-- Expect 17 rows: all four tables with tenant_isolation (permissive) + parent_deny + staff_grant_scope
+-- (both restrictive); staff_grant_delete on entry/med/grant AND on _read (bypass-only); plus
+-- staff_grant_freeze (UPDATE, bypass-only) on _read — so the read audit is insert-only even for a
+-- matron (Sarah MEDIUM-1). Per table: entry 4, med 4, grant 4, read 5.
 --
 -- SCOPE: NEW-TABLE-ONLY — no ALTERs, no backfills, no data changes, no seed, no GLOBAL-table changes.
 -- It adds NO medication-administration (MAR), referral, notification or NHIS table (INCR-24/25/26 own
 -- those). Four tables, three enums, nothing else.
+--
+-- ⚠ ONE CROSS-CUTTING FIX RIDES WITH THIS DEPLOY (Sarah MEDIUM-2): the existing `parent_student_ids`
+-- helper (shipped in prod-paste-0055) has the same `search_path` escalation the three helpers below
+-- had. Re-run its corrected CREATE OR REPLACE from db/sql/prod-paste-0055-parent-linkage.sql at this
+-- deploy — it is a one-line, idempotent change and does not touch any table.
 --
 -- 🔴 DDL ORDER — THE 0033 HAZARD, INSIDE ONE MIGRATION (as 0057). `sickbay_chronic_entry_tenant_uk`
 -- UNIQUE(school_id, id) is the composite-FK target of THREE tables created in this SAME file
@@ -116,6 +128,10 @@ CREATE TABLE IF NOT EXISTS "sickbay_chronic_entry" (
   "school_id" uuid NOT NULL,
   "student_id" uuid NOT NULL,
   "condition" "chronic_condition" NOT NULL,
+  -- R129 — the POLICY BIT the grant table gates on WITHOUT reading this table (that read is the cycle
+  -- entry → grant → entry). GENERATED ... STORED so nothing can set it: structurally incapable of
+  -- disagreeing with `condition` (R10). The string 'MENTAL_HEALTH' lives ONLY here, never on a grant.
+  "hm_restricted" boolean GENERATED ALWAYS AS ("condition" = 'MENTAL_HEALTH') STORED NOT NULL,
   "condition_label" text,
   "condition_detail" text,
   "status" "chronic_status" DEFAULT 'STABLE' NOT NULL,
@@ -140,6 +156,11 @@ CREATE TABLE IF NOT EXISTS "sickbay_chronic_entry" (
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
   CONSTRAINT "sickbay_chronic_entry_tenant_uk" UNIQUE("school_id","id"),
+  -- R129 — the FK TARGET (school_id, id, hm_restricted) for sickbay_chronic_grant's entry FK, INLINE
+  -- so it precedes every ADD FOREIGN KEY (the 0033 hazard). ON UPDATE CASCADE on that FK propagates a
+  -- re-classification onto every grant row instead of leaving a stale `false` — a plain insert-time
+  -- boolean would fail OPEN there, the dangerous direction.
+  CONSTRAINT "sickbay_chronic_entry_hm_uk" UNIQUE("school_id","id","hm_restricted"),
   CONSTRAINT "chronic_mental_health_referral_managed" CHECK ("sickbay_chronic_entry"."condition" <> 'MENTAL_HEALTH' OR ("sickbay_chronic_entry"."on_site_treatable" = false AND "sickbay_chronic_entry"."referral_managed" = true))
 );
 
@@ -148,6 +169,10 @@ CREATE TABLE IF NOT EXISTS "sickbay_chronic_grant" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "school_id" uuid NOT NULL,
   "entry_id" uuid NOT NULL,
+  -- R129 — the pinned copy of the entry's policy bit; the composite FK below makes a wrong value an
+  -- FK violation at INSERT (and a re-classification a CASCADE), so the grant policy reads it off THIS
+  -- row and never touches the entry table. A boolean about a POLICY, never the condition.
+  "hm_restricted" boolean NOT NULL,
   "grantee_user_id" uuid NOT NULL,
   "scope" "sickbay_grant_scope" NOT NULL,
   "scope_label" text,
@@ -228,10 +253,13 @@ DO $$ BEGIN
   ALTER TABLE "sickbay_chronic_grant" ADD CONSTRAINT "sickbay_chronic_grant_revoked_by_user_id_ref_user_id_fk"
     FOREIGN KEY ("revoked_by_user_id") REFERENCES "public"."ref_user"("id") ON DELETE set null;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
--- ⚠ consumes sickbay_chronic_entry_tenant_uk (created INLINE above).
+-- ⚠ consumes sickbay_chronic_entry_hm_uk (created INLINE above). R129 — THREE columns, ON UPDATE
+-- CASCADE. It does everything the two-column form did (a cross-tenant/non-existent entry stays
+-- impossible, since (school_id, id) is itself unique) AND pins hm_restricted to the entry's live
+-- classification. Named explicitly because drizzle's default 3-column name would exceed 63 chars.
 DO $$ BEGIN
-  ALTER TABLE "sickbay_chronic_grant" ADD CONSTRAINT "sickbay_chronic_grant_school_id_entry_id_sickbay_chronic_entry_school_id_id_fk"
-    FOREIGN KEY ("school_id","entry_id") REFERENCES "public"."sickbay_chronic_entry"("school_id","id") ON DELETE cascade;
+  ALTER TABLE "sickbay_chronic_grant" ADD CONSTRAINT "sickbay_chronic_grant_entry_hm_fk"
+    FOREIGN KEY ("school_id","entry_id","hm_restricted") REFERENCES "public"."sickbay_chronic_entry"("school_id","id","hm_restricted") ON DELETE cascade ON UPDATE cascade;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- R107's house tie — composite, so an HM-tied grant can never name a foreign school's House.
 DO $$ BEGIN
@@ -343,11 +371,12 @@ $$;
 -- reads A" is an infinite recursion at runtime. The graph below is acyclic and must stay so:
 --   entry → chronic_entry_readable → grant → role_assignment;  med/read → chronic_entry_ids → entry;
 --   grant → role_assignment ONLY.
--- That last line is why the grant table's rule is "a default clinical reader, OR your own grant row"
--- rather than "an entry you may read". Recorded consequence: a HEADMASTER can see that a grant EXISTS
--- against a MENTAL_HEALTH entry he cannot read (the grant row carries no student, name or condition).
--- R116's "no signal a sixth exists" is enforced structurally on the REGISTER, and on §04 by the
--- reader's INNER JOIN to the entry.
+-- 🔴 R129 — the grant table honours R116 WITHOUT reading the entry: the entry publishes one bit
+-- (`hm_restricted` GENERATED from `condition`), every grant row is FK-pinned to it (ON UPDATE
+-- CASCADE), and the grant policy's HEADMASTER arm reads that bit off its OWN row. A HEADMASTER gets
+-- ZERO grant rows against a MENTAL_HEALTH entry — no entry_id to count, no `reason`/`directive_note`.
+-- A plain insert-time boolean would fail OPEN on re-classification; the FK makes a wrong stamp an FK
+-- violation at INSERT instead (R10). The bit is named for the policy fact, never the condition.
 -- ============================================================================================
 
 -- ---- helper 1: which DEFAULT clinical tier does this staff user hold? ----
@@ -360,7 +389,7 @@ CREATE OR REPLACE FUNCTION chronic_clinical_role(school uuid, su uuid)
   LANGUAGE sql
   STABLE
   SECURITY DEFINER
-  SET search_path = public
+  SET search_path = public, pg_temp
 AS $$
   SELECT CASE
            WHEN bool_or(r.code = 'MATRON')     THEN 'MATRON'
@@ -391,7 +420,7 @@ CREATE OR REPLACE FUNCTION chronic_entry_readable(
   LANGUAGE sql
   STABLE
   SECURITY DEFINER
-  SET search_path = public
+  SET search_path = public, pg_temp
 AS $$
   SELECT su IS NOT NULL AND (
     chronic_clinical_role(school, su) = 'MATRON'
@@ -432,13 +461,29 @@ CREATE OR REPLACE FUNCTION chronic_entry_ids(school uuid, su uuid)
   LANGUAGE sql
   STABLE
   SECURITY DEFINER
-  SET search_path = public
+  SET search_path = public, pg_temp
 AS $$
   SELECT e.id
   FROM sickbay_chronic_entry e
   WHERE e.school_id = school
     AND chronic_entry_readable(school, su, e.id, e.student_id, e.condition)
 $$;
+
+-- ---- helper EXECUTE: the app role only (Sarah L3) ----
+-- On Supabase every public function is a PostgREST RPC and EXECUTE defaults to PUBLIC. These three
+-- return nothing without the GUCs, so this is hardening not a hole — but a SECURITY DEFINER function
+-- over the chronic register should not be callable by anon. `omnischools_app` may not exist on prod
+-- under that name; adjust the grantee to the role your app connects as (the table owner) if so.
+REVOKE EXECUTE ON FUNCTION chronic_clinical_role(uuid, uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION chronic_entry_readable(uuid, uuid, uuid, uuid, chronic_condition) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION chronic_entry_ids(uuid, uuid) FROM PUBLIC;
+DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_app') THEN
+    GRANT EXECUTE ON FUNCTION chronic_clinical_role(uuid, uuid) TO omnischools_app;
+    GRANT EXECUTE ON FUNCTION chronic_entry_readable(uuid, uuid, uuid, uuid, chronic_condition) TO omnischools_app;
+    GRANT EXECUTE ON FUNCTION chronic_entry_ids(uuid, uuid) TO omnischools_app;
+  END IF;
+END $$;
 
 -- ---- the four staff_grant_scope policies ----
 -- Each carries the `app.bypass_rls` arm FIRST and byte-identical to tenant_isolation's, so seeds, ETL
@@ -451,6 +496,10 @@ $$;
 -- WITH CHECK is evaluated on the NEW row BEFORE it exists, so any "you may read this entry" rule is
 -- FALSE for every INSERT and no matron could ever create a care plan. The actor-shaped write rule
 -- also stops a FULL_PLAN grantee from EDITING the plan he was shown.
+-- 🔴 `= 'MATRON'`, NOT `IS NOT NULL` (Sarah HIGH-1). `IS NOT NULL` is MATRON *or HEADMASTER*; R39
+-- makes clinical write MATRON-only. USING is the READ predicate and an INSERT never touches it, so
+-- under `IS NOT NULL` a HEADMASTER inserted a grant naming himself and then read a MENTAL_HEALTH entry
+-- with its protocol and drug. Four places: the three WITH CHECKs and the staff_grant_delete loop.
 DROP POLICY IF EXISTS staff_grant_scope ON sickbay_chronic_entry;
 CREATE POLICY staff_grant_scope ON sickbay_chronic_entry AS RESTRICTIVE FOR ALL TO public
   USING (
@@ -469,7 +518,7 @@ CREATE POLICY staff_grant_scope ON sickbay_chronic_entry AS RESTRICTIVE FOR ALL 
       NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
       AND chronic_clinical_role(
             NULLIF(current_setting('app.current_school', true), '')::uuid,
-            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) IS NOT NULL
+            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) = 'MATRON'
     )
   );
 
@@ -495,7 +544,7 @@ CREATE POLICY staff_grant_scope ON sickbay_chronic_med AS RESTRICTIVE FOR ALL TO
       NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
       AND chronic_clinical_role(
             NULLIF(current_setting('app.current_school', true), '')::uuid,
-            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) IS NOT NULL
+            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) = 'MATRON'
       AND entry_id IN (
         SELECT chronic_entry_ids(
           NULLIF(current_setting('app.current_school', true), '')::uuid,
@@ -510,6 +559,10 @@ CREATE POLICY staff_grant_scope ON sickbay_chronic_med AS RESTRICTIVE FOR ALL TO
 -- so a blanket clinical-only rule here would make every grant self-defeating (R113's trap). WITH
 -- CHECK excludes him from writing, which is what makes X10/X11 hold at the DB layer: he can neither
 -- self-issue a grant nor extend his own expiry.
+-- 🔴 R129 — the HEADMASTER arm is `AND NOT hm_restricted`, read off THIS ROW: no entry read, no
+-- cycle, and ZERO grant rows against a MENTAL_HEALTH entry (no entry_id to count, no reason/note).
+-- The grantee arm survives (helper 2 reads this table to evaluate entitlement); he still sees only
+-- his own rows (R122). The WITH CHECK is `= 'MATRON'` (Sarah HIGH-1 / R111 — grant/revoke MATRON-only).
 DROP POLICY IF EXISTS staff_grant_scope ON sickbay_chronic_grant;
 CREATE POLICY staff_grant_scope ON sickbay_chronic_grant AS RESTRICTIVE FOR ALL TO public
   USING (
@@ -519,7 +572,13 @@ CREATE POLICY staff_grant_scope ON sickbay_chronic_grant AS RESTRICTIVE FOR ALL 
       AND (
         chronic_clinical_role(
           NULLIF(current_setting('app.current_school', true), '')::uuid,
-          NULLIF(current_setting('app.current_staff_user', true), '')::uuid) IS NOT NULL
+          NULLIF(current_setting('app.current_staff_user', true), '')::uuid) = 'MATRON'
+        OR (
+          chronic_clinical_role(
+            NULLIF(current_setting('app.current_school', true), '')::uuid,
+            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) = 'HEADMASTER'
+          AND NOT hm_restricted
+        )
         OR grantee_user_id = NULLIF(current_setting('app.current_staff_user', true), '')::uuid
       )
     )
@@ -530,7 +589,7 @@ CREATE POLICY staff_grant_scope ON sickbay_chronic_grant AS RESTRICTIVE FOR ALL 
       NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
       AND chronic_clinical_role(
             NULLIF(current_setting('app.current_school', true), '')::uuid,
-            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) IS NOT NULL
+            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) = 'MATRON'
     )
   );
 
@@ -541,6 +600,10 @@ CREATE POLICY staff_grant_scope ON sickbay_chronic_grant AS RESTRICTIVE FOR ALL 
 -- append-only against a grantee: he can add his own row and can neither read, alter nor delete one.
 -- ⚠ The reader's insert must therefore NOT use RETURNING (RETURNING needs SELECT). ON CONFLICT DO
 -- NOTHING does not.
+-- 🔴 `AND actor_user_id = <the staff GUC>` in WITH CHECK (Sarah MEDIUM-1). Without it a grantee
+-- inserted an audit row ATTRIBUTED TO THE HEADMASTER (actor_user_id FKs the GLOBAL ref_user, so the
+-- forged actor need not even be in this school) — into a log he cannot read back. A trail anyone can
+-- write in anyone's name is worse than none. See the two bypass-only policies just after this one.
 DROP POLICY IF EXISTS staff_grant_scope ON sickbay_chronic_read;
 CREATE POLICY staff_grant_scope ON sickbay_chronic_read AS RESTRICTIVE FOR ALL TO public
   USING (
@@ -561,6 +624,7 @@ CREATE POLICY staff_grant_scope ON sickbay_chronic_read AS RESTRICTIVE FOR ALL T
     current_setting('app.bypass_rls', true) = 'on'
     OR (
       NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
+      AND actor_user_id = NULLIF(current_setting('app.current_staff_user', true), '')::uuid
       AND entry_id IN (
         SELECT chronic_entry_ids(
           NULLIF(current_setting('app.current_school', true), '')::uuid,
@@ -569,12 +633,25 @@ CREATE POLICY staff_grant_scope ON sickbay_chronic_read AS RESTRICTIVE FOR ALL T
     )
   );
 
+-- ---- the read audit is APPEND-ONLY AGAINST EVERYONE, including the matron (Sarah MEDIUM-1) ----
+-- staff_grant_scope's USING governs SELECT *and* UPDATE *and* DELETE, so a clinical reader could
+-- UPDATE or DELETE trail rows — a matron could delete the audit of her own opens, the single thing
+-- §04 exists to prevent. These two make the table insert-only outside bypass (RESTRICTIVE, so they
+-- AND with everything; bypass is the only escape — retention purges, ETL).
+DROP POLICY IF EXISTS staff_grant_delete ON sickbay_chronic_read;
+CREATE POLICY staff_grant_delete ON sickbay_chronic_read AS RESTRICTIVE FOR DELETE TO public
+  USING (current_setting('app.bypass_rls', true) = 'on');
+DROP POLICY IF EXISTS staff_grant_freeze ON sickbay_chronic_read;
+CREATE POLICY staff_grant_freeze ON sickbay_chronic_read AS RESTRICTIVE FOR UPDATE TO public
+  USING (current_setting('app.bypass_rls', true) = 'on');
+
 -- ---- staff_grant_delete: DELETE is the one command a WITH CHECK cannot reach ----
 -- A grantee's USING clause legitimately matches the rows he may READ, and DELETE is authorised by
 -- USING alone — so without this, a FULL_PLAN grantee could delete the care plan he was shown, and a
 -- grantee could delete his own grant row and erase the evidence that he ever had access (R110 makes
--- that trail append-only). Three tables, one identical rule: destructive commands require a default
--- clinical reader. (sickbay_chronic_read needs none — its USING is already clinical-reader-only.)
+-- that trail append-only). Three tables, one identical rule: destructive commands require a MATRON —
+-- `= 'MATRON'`, not `IS NOT NULL` (Sarah HIGH-1, the fourth place; R39/R111 keep the Head out of
+-- clinical writes and grant/revoke). sickbay_chronic_read is handled separately above (bypass only).
 DO $$
 DECLARE
   tbl text;
@@ -592,7 +669,7 @@ BEGIN
       '  OR (NULLIF(current_setting(''app.current_staff_user'', true), '''') IS NOT NULL '
       '      AND chronic_clinical_role('
       '            NULLIF(current_setting(''app.current_school'', true), '''')::uuid,'
-      '            NULLIF(current_setting(''app.current_staff_user'', true), '''')::uuid) IS NOT NULL));',
+      '            NULLIF(current_setting(''app.current_staff_user'', true), '''')::uuid) = ''MATRON''));',
       tbl
     );
   END LOOP;
@@ -600,14 +677,17 @@ END
 $$;
 
 -- ---- parent_deny — the CATALOG-DRIVEN loop, verbatim from db/sql/policies.sql / prod-paste-0057 ----
--- 🔴 THIS IS NOT OPTIONAL AND IT IS NOT COSMETIC. Owner decision D8 keeps a parent out of sickbay
--- entirely in module 4.4, and the four tables above are the most sensitive rows in the product. The
--- loop is NOT a hand-list: it applies parent_deny to every FORCE-RLS + school_id table that lacks a
--- parent_scope policy — which, after the block above, is exactly the four new tables plus the ones
--- already covered (it re-creates their identical policy, hence idempotent). It is re-run here rather
--- than hand-listing the four because that is what keeps a FUTURE sickbay table auto-denied. Skip it
--- and every chronic care plan on prod is readable by a claimed parent session until someone runs
--- `db:policies` — which never runs against prod at all.
+-- 🔴 RUN THIS. Owner decision D8 keeps a parent out of sickbay entirely in module 4.4, and the four
+-- tables above are the most sensitive rows in the product. The loop is NOT a hand-list: it applies
+-- parent_deny to every FORCE-RLS + school_id table that lacks a parent_scope policy — which, after
+-- the block above, is exactly the four new tables plus the ones already covered (it re-creates their
+-- identical policy, hence idempotent). It is re-run here rather than hand-listing the four because
+-- that is what keeps a FUTURE sickbay table auto-denied.
+-- ⚠ ACCURACY (Sarah): on THESE four tables, skipping it does NOT leave them parent-readable —
+-- staff_grant_scope's deny-by-default already returns zero rows to a parent session (no staff GUC).
+-- Skipping it turns check B of verify-prod-rls.sql RED (the intended signal) and removes the
+-- defence-in-depth layer; it does not open a parent leak on the chronic tables specifically. Run it:
+-- the durability guarantee (auto-deny for the next sickbay table) is the reason, not a live leak here.
 DO $$
 DECLARE
   tbl text;
