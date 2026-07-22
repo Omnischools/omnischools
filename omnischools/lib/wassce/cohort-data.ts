@@ -49,6 +49,10 @@ import {
   type PrerequisiteCheck,
 } from "@/lib/wassce/university-match";
 import { PROGRAMME_ORDER, PROGRAMME_TRACKS, type WassceProgrammeKey } from "@/lib/wassce/constants";
+// The ONE civil-day + clock-window derivation, shared with the setup surface's §1.2 banner: two
+// banners disagreeing about which exam day it is would be the R90 defect in a second costume. The
+// old local-time `isoDay` resolved to the wrong civil day on any box that is not on Accra time.
+import { civilDay, paperWindow } from "@/lib/wassce/exam-window";
 import type { ProjectionResult } from "@/lib/wassce/projection";
 
 /**
@@ -81,10 +85,6 @@ const fmtStamp = (d: Date) =>
 const shortName = (first: string, last: string) => `${(first[0] ?? "").toUpperCase()}. ${last}`;
 const pct1 = (n: number, d: number) => (d === 0 ? 0 : Math.round((n / d) * 1000) / 10);
 
-/** Local (not UTC) YYYY-MM-DD — `wassce_papers.scheduled_date` is a bare date column. */
-function isoDay(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 /* ------------------------------------------------------------------------------------ view models */
 
@@ -437,7 +437,7 @@ export async function loadCohortReadiness(
     .where(and(eq(wasscePapers.schoolId, schoolId), eq(wasscePapers.cohortId, cohort.id)))
     .orderBy(asc(wasscePapers.scheduledDate), asc(wasscePapers.scheduledTime));
 
-  const today = isoDay(new Date());
+  const today = civilDay(new Date());
   const dated = papers.filter((p) => p.scheduledDate != null);
   const papersToday = dated.filter((p) => p.scheduledDate === today);
   const nextPaper = dated.find((p) => (p.scheduledDate as string) > today) ?? null;
@@ -469,14 +469,6 @@ export async function loadCohortReadiness(
         ) + 1
       : null;
 
-  const endClock = (start: string | null, mins: number | null) => {
-    if (!start) return null;
-    const [h, m] = start.split(":").map(Number);
-    if (!Number.isFinite(h) || !Number.isFinite(m) || mins == null) return start;
-    const total = h * 60 + m + mins;
-    return `${start}–${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-  };
-
   // The banner states the DAY and the SCHEDULED CLOCK — both derivable. It never claims who is in the
   // centre, that a paper is "underway", or that there are "no other anomalies" (R4a).
   const banner: BannerView | null =
@@ -485,7 +477,7 @@ export async function loadCohortReadiness(
           title: `WASSCE ${cohort.examYear} · Day ${dayIndex}`,
           papers: papersToday.map((p) => ({
             name: p.name,
-            window: endClock(p.scheduledTime, p.durationMinutes) ?? "time not scheduled",
+            window: paperWindow(p.scheduledTime, p.durationMinutes),
           })),
           exemptedNote:
             exemptedToday > 0

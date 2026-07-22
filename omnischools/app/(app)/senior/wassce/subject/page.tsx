@@ -482,6 +482,9 @@ const TOPIC_HEATMAP: {
   { topic: "Industrial chemistry · contemporary", meta: "2 questions · 4% of paper", cells: [{ n: 7, h: "h4" }, { n: 12, h: "h4" }, { n: 8, h: "h3" }, { n: 1, h: "h0" }, { n: 0, h: "h0" }], avg: { g: "B3", h: "h3" } },
 ];
 
+// Frame 04 renders SEEDED/STATIC (AC16) — there is no intervention table to derive from. The dates
+// keep their day + month and DROP the weekday: the surface wrote `Sat 24 May`, and 24 May 2026 is a
+// SUNDAY. A weekday nothing computed is a claim the page cannot stand behind (R90).
 const INTERVENTION_TIERS = [
   {
     eyebrow: "Tier 1 · urgent intervention",
@@ -492,7 +495,7 @@ const INTERVENTION_TIERS = [
       "8 hrs after-school tutoring (Mon + Wed, weeks 1–4)",
       "Pair-tutor with a top-3 student for inorganic — Saturday mornings",
       "Daily 20-min question set on the weakest topic (equilibria + electrochem)",
-      "Weekly parent SMS update · pre-paper boost session Fri 5 Jun",
+      "Weekly parent SMS update · pre-paper boost session 5 Jun",
     ],
   },
   {
@@ -504,7 +507,7 @@ const INTERVENTION_TIERS = [
       "Whole-class focus on equilibria + electrochem (2 lessons each)",
       "WAEC past-paper practice · weekly · marked by Mr Asiedu",
       "Topic-specific resource pack per weak topic",
-      "Mid-cycle check-in · Sat 24 May",
+      "Mid-cycle check-in · 24 May",
     ],
   },
   {
@@ -516,7 +519,7 @@ const INTERVENTION_TIERS = [
       "Self-directed past-paper drills · weekly check-in only",
       "Peer-tutor assignments (top 3 paired with Tier 1 students)",
       "Stretch material on industrial chem + contemporary issues",
-      "Pre-paper boost session optional · Fri 5 Jun",
+      "Pre-paper boost session optional · 5 Jun",
     ],
   },
 ];

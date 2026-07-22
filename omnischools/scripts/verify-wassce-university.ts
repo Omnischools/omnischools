@@ -102,7 +102,7 @@ async function main() {
     );
 
     // ---------------------------------------------------- 2) setup §3 derives its own figures
-    const setup = await loadWassceSetup(tx, schoolId);
+    const setup = await loadWassceSetup(tx, schoolId, new Date());
     assert(setup.targets.cutOffRows.length === 16, `§3 cut-off table lists 16 programmes (got ${setup.targets.cutOffRows.length})`);
     assert(
       setup.targets.cutOffRows.every((r) => r.cutOffLabel.includes("(")),
