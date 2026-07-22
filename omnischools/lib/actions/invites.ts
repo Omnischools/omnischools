@@ -9,7 +9,7 @@ import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { safeRevalidate } from "@/lib/revalidate";
 import { resolveRole, roleLabel } from "@/lib/staff-roles";
-import { isStaff } from "@/lib/access";
+import { isStaff, hasAnyRole, STAFF_ADMIN_ROLES } from "@/lib/access";
 import { isParentRole, parentInviteError } from "@/lib/parent/claim";
 import { resolveParentInviteTargetTx, stampGuardianUserId } from "@/lib/parent/parent-data";
 import { invites, users, roles, roleAssignments } from "@/db/schema";
@@ -79,6 +79,29 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
     if (!d.phone || d.phone.length < 7) return { ok: false, error: "A phone number is required" };
     phone = normalizeGhanaPhone(d.phone);
     fullName = d.fullName.trim();
+  }
+
+  // 🔴 A STAFF INVITE IS THE SAME CAPABILITY AS `addStaff` — create a user and grant them a role at
+  // this school — so it takes the SAME gate. This is the second door onto the escalation, and it
+  // needs no interception: `createInvite` returns the token to its caller by design, and
+  // `acceptInvite` requires no session. Quinn reproduced it end-to-end on a production build — a
+  // TEACHER invited a privileged role **to their own phone number**, accepted it, and
+  // `onConflictDoNothing` on `users.phone` stapled the role onto their existing account.
+  //
+  // My first fix blocked only ADMIN/HEADMASTER, justified by "a Form Master inviting a teacher is
+  // legitimate". Dex checked: **that surface does not exist.** Both staff callers of this action are
+  // on `/staff` (now admin-only), and the only other caller is the parent invite. So the carve-out
+  // defended a workflow with no UI while leaving MATRON (clinical write), VICE_HEADMASTER_ACADEMIC
+  // (the WASSCE freeze co-signer), DEAN_OF_BOARDING and the finance roles mintable by any teacher —
+  // the identical two-call exploit, one role over.
+  //
+  // PARENT invites stay staff-wide: teachers issue them from /students, and a parent invite grants
+  // no staff privilege (its phone/name come from the stored guardian row, never caller free-text).
+  const canInvite = isParentRole(d.role)
+    ? isStaff(user.roles)
+    : hasAnyRole(user.roles, STAFF_ADMIN_ROLES);
+  if (!canInvite) {
+    return { ok: false, error: "Only an administrator can invite staff." };
   }
 
   const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);

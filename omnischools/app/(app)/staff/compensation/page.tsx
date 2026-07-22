@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { and, asc, eq, notInArray, sql } from "drizzle-orm";
-import { requireSchool } from "@/lib/auth/server";
+import { requireSchoolRole } from "@/lib/auth/server";
+import { STAFF_ADMIN_ROLES } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
 import {
   users,
@@ -59,8 +60,13 @@ type CompRow = {
   effectiveFrom: string | null;
 };
 
+/**
+ * Every colleague's salary, SSNIT and PAYE. This was gated by `requireSchool()` alone — i.e. any
+ * staff member — so a teacher could read the whole school's payroll. The write side
+ * (`saveStaffCompensation`) had the same gap and is now closed at the action.
+ */
 export default async function StaffCompensationPage() {
-  const { school } = await requireSchool();
+  const { school } = await requireSchoolRole(STAFF_ADMIN_ROLES);
   const today = new Date().toISOString().slice(0, 10);
 
   const { rows, compRows, profileRows, tenureRows, activeStudents } = await withSchool(

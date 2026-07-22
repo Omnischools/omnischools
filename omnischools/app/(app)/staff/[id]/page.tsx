@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, count, eq, notInArray } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
+import { hasAnyRole, STAFF_ADMIN_ROLES } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
 import {
   users,
@@ -81,8 +82,14 @@ const initialsOf = (full: string) => {
 
 export default async function StaffDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const { school } = await requireSchool();
+  const { school, user } = await requireSchool();
   const today = new Date().toISOString().slice(0, 10);
+  // A staff DIRECTORY is legitimately staff-wide — names, roles, classes. PAY IS NOT. The list view
+  // at /staff/compensation was gated and this detail view was not, so the same salary, SSNIT and PAYE
+  // stayed one click away on any colleague's row (Dex, PR #177). Gated here rather than on the whole
+  // page so the directory keeps working: the query is NEVER ISSUED for a non-administrator, so there
+  // is no row to leak into the payload whatever the JSX does.
+  const canAdmin = hasAnyRole(user.roles, STAFF_ADMIN_ROLES);
 
   const data = await withSchool(school.id, async (tx) => {
     // The user must hold ≥1 non-student/parent role at this school to be staff here.
@@ -136,16 +143,18 @@ export default async function StaffDetailPage(props: { params: Promise<{ id: str
           ),
         )
         .limit(1),
-      tx
-        .select()
-        .from(staffCompensation)
-        .where(
-          and(
-            eq(staffCompensation.schoolId, school.id),
-            eq(staffCompensation.userId, staffUser.id),
-          ),
-        )
-        .limit(1),
+      canAdmin
+        ? tx
+            .select()
+            .from(staffCompensation)
+            .where(
+              and(
+                eq(staffCompensation.schoolId, school.id),
+                eq(staffCompensation.userId, staffUser.id),
+              ),
+            )
+            .limit(1)
+        : [],
       tx
         .select({ id: classes.id, name: classes.name, level: classes.level })
         .from(classes)
@@ -389,75 +398,79 @@ export default async function StaffDetailPage(props: { params: Promise<{ id: str
         )}
       </Section>
 
+      {/* 🔴 Pay is NOT directory data. `canAdmin` also stops the query above from being issued,
+          so a non-administrator has no compensation row to render in the first place. */}
       {/* ── 05 · Compensation ──────────────────────────────────── */}
-      <Section
-        num="05"
-        title="Compensation"
-        right={
-          <StaffCompensationEdit
-            userId={staffUser.id}
-            hasRecord={!!compensation}
-            variant="secondary"
-            initial={
-              compensation
-                ? {
-                    salaryStatus: compensation.salaryStatus,
-                    monthlyAmount: compMonthly ? String(compMonthly) : "",
-                    payMethod: compensation.payMethod,
-                    payCadence: compensation.payCadence,
-                    ssnitDeduction: compSsnit ? String(compSsnit) : "",
-                    payeDeduction: compPaye ? String(compPaye) : "",
-                    effectiveFrom: compensation.effectiveFrom ?? "",
-                    notes: compensation.notes ?? "",
-                  }
-                : EMPTY_COMPENSATION
-            }
-          />
-        }
-      >
-        {!compensation ? (
-          <Muted>No compensation set — use Set compensation.</Muted>
-        ) : (
-          <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
-            <Field
-              label="Salary status"
-              value={COMP_STATUS_LABEL[compensation.salaryStatus] ?? compensation.salaryStatus}
-            />
-            <Field label="Monthly amount" value={ghs(compMonthly)} mono />
-            <Field
-              label="Pay method"
-              value={`${COMP_METHOD_LABEL[compensation.payMethod] ?? compensation.payMethod} · ${
-                compensation.payCadence === "TERMLY" ? "Termly" : "Monthly"
-              }`}
-            />
-            <Field
-              label="SSNIT"
-              value={compSsnit > 0 ? ghs(compSsnit) : "—"}
-              mono={compSsnit > 0}
-            />
-            <Field
-              label="PAYE"
-              value={compPaye > 0 ? ghs(compPaye) : "—"}
-              mono={compPaye > 0}
-            />
-            <Field label="Net" value={ghs(compNet)} mono />
-            <Field
-              label="Effective from"
-              value={compensation.effectiveFrom ? fmtDob(compensation.effectiveFrom) : null}
-            />
-            <Field
-              label="Tenure"
-              value={
-                firstStart
-                  ? `${yearsSince(firstStart, today)} ${
-                      yearsSince(firstStart, today) === 1 ? "year" : "years"
-                    }`
-                  : null
+      {canAdmin && (
+        <Section
+          num="05"
+          title="Compensation"
+          right={
+            <StaffCompensationEdit
+              userId={staffUser.id}
+              hasRecord={!!compensation}
+              variant="secondary"
+              initial={
+                compensation
+                  ? {
+                      salaryStatus: compensation.salaryStatus,
+                      monthlyAmount: compMonthly ? String(compMonthly) : "",
+                      payMethod: compensation.payMethod,
+                      payCadence: compensation.payCadence,
+                      ssnitDeduction: compSsnit ? String(compSsnit) : "",
+                      payeDeduction: compPaye ? String(compPaye) : "",
+                      effectiveFrom: compensation.effectiveFrom ?? "",
+                      notes: compensation.notes ?? "",
+                    }
+                  : EMPTY_COMPENSATION
               }
             />
-          </dl>
-        )}
-      </Section>
+          }
+        >
+          {!compensation ? (
+            <Muted>No compensation set — use Set compensation.</Muted>
+          ) : (
+            <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+              <Field
+                label="Salary status"
+                value={COMP_STATUS_LABEL[compensation.salaryStatus] ?? compensation.salaryStatus}
+              />
+              <Field label="Monthly amount" value={ghs(compMonthly)} mono />
+              <Field
+                label="Pay method"
+                value={`${COMP_METHOD_LABEL[compensation.payMethod] ?? compensation.payMethod} · ${
+                  compensation.payCadence === "TERMLY" ? "Termly" : "Monthly"
+                }`}
+              />
+              <Field
+                label="SSNIT"
+                value={compSsnit > 0 ? ghs(compSsnit) : "—"}
+                mono={compSsnit > 0}
+              />
+              <Field
+                label="PAYE"
+                value={compPaye > 0 ? ghs(compPaye) : "—"}
+                mono={compPaye > 0}
+              />
+              <Field label="Net" value={ghs(compNet)} mono />
+              <Field
+                label="Effective from"
+                value={compensation.effectiveFrom ? fmtDob(compensation.effectiveFrom) : null}
+              />
+              <Field
+                label="Tenure"
+                value={
+                  firstStart
+                    ? `${yearsSince(firstStart, today)} ${
+                        yearsSince(firstStart, today) === 1 ? "year" : "years"
+                      }`
+                    : null
+                }
+              />
+            </dl>
+          )}
+        </Section>
+      )}
     </div>
   );
 }

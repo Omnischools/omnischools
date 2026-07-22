@@ -3,7 +3,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
-import { requireSchool, resolveActor } from "@/lib/auth/server";
+import { requireSchool, resolveActor, assertAnyRole } from "@/lib/auth/server";
+import { STAFF_ADMIN_ROLES } from "@/lib/access";
 import { normalizeGhanaPhone } from "@/lib/auth";
 import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
@@ -147,6 +148,7 @@ const AddStaffSchema = z.object({
 
 export async function addStaff(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = AddStaffSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -206,6 +208,7 @@ export async function importStaff(
   input: unknown,
 ): Promise<Result & { created?: number; invited?: number }> {
   const { school } = await requireSchool();
+  await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = ImportStaffSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid import" };
@@ -316,6 +319,7 @@ const SaveStaffProfileSchema = z.object({
 
 export async function saveStaffProfile(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = SaveStaffProfileSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -353,6 +357,7 @@ const UpdateStaffSchema = z.object({
 
 export async function updateStaff(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = UpdateStaffSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -463,6 +468,7 @@ const DeleteStaffSchema = z.object({ userId: z.string().uuid() });
 
 export async function deleteStaff(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = DeleteStaffSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   const actor = await resolveActor(school.id);
@@ -497,6 +503,7 @@ export async function deleteStaffBulk(
   input: unknown,
 ): Promise<Result & { deleted?: number }> {
   const { school } = await requireSchool();
+  await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = DeleteStaffBulkSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Select at least one staff member" };
   const ids = Array.from(new Set(parsed.data.userIds));
@@ -532,6 +539,7 @@ const AssignSchema = z.object({
 
 export async function assignStaffRole(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = AssignSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   const role = resolveRole(parsed.data.role);
@@ -564,6 +572,7 @@ const RemoveSchema = z.object({ assignmentId: z.string().uuid() });
 
 export async function removeStaffRole(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = RemoveSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   const actor = await resolveActor(school.id);
@@ -638,6 +647,7 @@ const SaveCompensationSchema = z.object({
 /** Upsert the current compensation record for a staff member at this school. */
 export async function saveStaffCompensation(input: unknown): Promise<Result> {
   const { school } = await requireSchool();
+  await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = SaveCompensationSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
