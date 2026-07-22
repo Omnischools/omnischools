@@ -43,7 +43,11 @@ function stripMarkup(input: string): string {
     prev = s;
     s = s.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "").replace(/<[^>]*>/g, "");
   }
-  return s;
+  // A dangling `<script` with no closing `>` is a FIXPOINT of both regexes above — the wholesale
+  // pattern needs a closing tag and `<[^>]*>` needs a `>` — so the literal text survives. It is
+  // neither markup nor copy, so drop the stray `<`. Safe by ordering: this runs BEFORE entity
+  // decoding, so a legitimate `&lt;` in the surface still becomes `<` afterwards, untouched.
+  return s.replace(/</g, "");
 }
 
 const clean = (s: string) =>
