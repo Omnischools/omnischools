@@ -206,18 +206,22 @@ export async function markSickbayMedical(args: {
   }
 
   try {
-    return await withSchool(args.schoolId, async (tx) => {
+    // The skip is RETURNED from the transaction and audited after it resolves — never audited from
+    // inside it. Two reasons, and both matter:
+    //   • R54 — an audit insert failing inside `tx` would abort the transaction and the named reason
+    //     would surface as the generic `FAILED`, losing "this student has no class".
+    //   • opening `auditSkip`'s own `withSchool` while `tx` still holds a pool connection is the
+    //     classic pool-exhaustion deadlock shape (postgres.js defaults to max 10). Nothing is
+    //     written in either skip branch, so there is no transaction to preserve and nothing to gain
+    //     from nesting.
+    const out = await withSchool(args.schoolId, async (tx) => {
       const [student] = await tx
         .select({ classId: students.classId })
         .from(students)
         .where(and(eq(students.schoolId, args.schoolId), eq(students.id, args.studentId)))
         .limit(1);
       if (!student?.classId) {
-        // R54 — audited on its OWN connection, not `tx`. Nothing is written in this branch, and if
-        // the audit insert failed inside `tx` it would abort the transaction and the named reason
-        // would come back out as the generic `FAILED`, losing "this student has no class".
-        await auditSkip(args, date, "NO_CLASS");
-        return { marked: false, skipped: "NO_CLASS" as const, date };
+        return { marked: false, skipped: "NO_CLASS" as const, date, skipDetail: undefined };
       }
 
       const res = await writeMarks(tx, {
@@ -236,11 +240,10 @@ export async function markSickbayMedical(args: {
         ],
       });
       if (res.closedTerm) {
-        // Same as NO_CLASS above: `writeMarks` short-circuits before it writes anything, so this
-        // branch has no transaction to preserve — and keeping the audit out of `tx` keeps the
-        // NAMED reason (R52) even when the audit write itself is what fails.
-        await auditSkip(args, date, "CLOSED_TERM", res.closedTerm);
-        return { marked: false, skipped: "CLOSED_TERM" as const, date };
+        // Same as NO_CLASS: `writeMarks` short-circuits before it writes anything, so this branch
+        // has no transaction to preserve. `skipDetail` carries the term label so R52 keeps its
+        // NAMED reason even when the audit write itself is what fails.
+        return { marked: false, skipped: "CLOSED_TERM" as const, date, skipDetail: res.closedTerm };
       }
 
       await recordAudit(tx, {
@@ -254,8 +257,12 @@ export async function markSickbayMedical(args: {
         reason: "Sickbay marked the day Medical",
       });
       // `held` here means the row was ALREADY MEDICAL/SICKBAY — the mark stands either way (R51).
-      return { marked: true, skipped: null, date };
+      return { marked: true, skipped: null, date, skipDetail: undefined };
     });
+
+    const { skipDetail, ...result } = out;
+    if (result.skipped) await auditSkip(args, date, result.skipped, skipDetail);
+    return result;
   } catch {
     // R54 — an attendance failure is never a clinical rollback and never an exception to the caller.
     await auditSkip(args, date, "FAILED");
