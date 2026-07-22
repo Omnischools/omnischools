@@ -32,16 +32,22 @@ function textOf(cls: string): string[] {
 }
 const clean = (s: string) =>
   s
+    // `<script>`/`<style>` go WHOLESALE — element and content together. Stripping only the tags
+    // would splice CSS and JS text into the stream these assertions compare against.
+    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "")
     .replace(/<[^>]*>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&gt;/g, ">")
+    // `&amp;` is decoded LAST, and the order is load-bearing: decoding it first turns `&amp;gt;`
+    // into `&gt;` into `>` — a double-unescape that silently rewrites the very copy this helper
+    // exists to compare character-for-character.
     .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();
 
 /** The surface as one normalised text stream — for the `.includes` (exact-character) assertions. */
-const SURFACE_TEXT = clean(SURFACE.replace(/<style[\s\S]*?<\/style>/g, ""));
+const SURFACE_TEXT = clean(SURFACE);
 
 /**
  * COMMENTS ARE NOT CODE. The R43 ceiling is about a column, enum, type, zod key, UI label or route —
