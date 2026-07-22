@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
+// Shared with `visit-copy.test.ts` and `scripts/verify-sickbay-board.ts` — one implementation.
+import { stripMarkup } from "@/scripts/_strip-markup";
 import {
   ADMITTED_TAG,
   BEDS_CARD_EM,
@@ -51,15 +53,6 @@ const SURFACE = readFileSync(
   "utf8",
 );
 
-/** Strip markup to a FIXPOINT — see the reasoning in visit-copy.test.ts (same helper, same why). */
-function stripMarkup(input: string): string {
-  let s = input;
-  for (let prev = ""; prev !== s; ) {
-    prev = s;
-    s = s.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "").replace(/<[^>]*>/g, "");
-  }
-  return s.replace(/</g, "");
-}
 const clean = (s: string) =>
   stripMarkup(s)
     // `&amp;` decodes LAST — decoding it first turns `&amp;gt;` into `>`, silently rewriting the

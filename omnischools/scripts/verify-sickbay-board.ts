@@ -2,6 +2,7 @@ import "./_dev-matron"; // MUST be first — pins the dev shim to MATRON before 
 import "@/db/_loadenv";
 import { and, eq, inArray, isNull, like } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { stripScriptStyleBlocks } from "./_strip-markup";
 import { withSchool } from "@/lib/db/rls";
 import { beginVisit, createVisit } from "@/lib/actions/sickbay-visit";
 import { getSickbayConfig } from "@/lib/sickbay/config";
@@ -529,7 +530,10 @@ async function servedHtmlChecks(fx: {
    * check runs over the WHOLE document, chunking included — that is the strong direction and the
    * one that matters.
    */
-  const markup = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, "");
+  // Rendered markup = the document MINUS the RSC flight payload, which lives inside `<script>`.
+  // Shared implementation: the local one here was case-SENSITIVE, so an upper-case `<SCRIPT>` would
+  // have left payload text inside what we then count as markup (CodeQL js/bad-tag-filter, #11).
+  const markup = stripScriptStyleBlocks;
 
   check(
     `HTTP the board renders 200 for ${SERVED_ROLE}`,

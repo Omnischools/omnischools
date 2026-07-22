@@ -2,6 +2,10 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
+// ONE implementation, shared with `board-copy.test.ts` and `scripts/verify-sickbay-board.ts`.
+// Three copies had drifted and the weakest let an upper-case `<SCRIPT>` through; the CodeQL
+// rationale and the four bugs closed on merit now live in that file.
+import { stripMarkup } from "@/scripts/_strip-markup";
 import {
   ASSESSMENT_ROW_LABELS,
   CLUSTER_NOTE_TAIL,
@@ -30,44 +34,6 @@ function textOf(cls: string): string[] {
   }
   return out;
 }
-/**
- * Strip markup to a FIXPOINT, not in one pass. Removing a tag can splice a new one together out of
- * its neighbours (`<scr<b></b>ipt>` → `<script>`), so a single `.replace` is not idempotent. Looping
- * until the string stops changing is the correct removal and is what makes it order-independent.
- * `<script>`/`<style>` go wholesale — element AND content — because their CSS/JS text is not visible
- * copy and splicing it into the stream would corrupt the comparisons below.
- *
- * ─────────────────────────────────────────────────────────────────────────────────────────────
- * CodeQL `js/incomplete-multi-character-sanitization` fires on the first `.replace` below and is
- * DISMISSED as a false positive (alert #8, PR #174). Do not "fix" it again, and do not reopen the
- * chase — three sibling alerts were already closed ON MERIT and those fixes are what you see here:
- *   • `js/double-escaping` was a REAL bug — `&amp;` decoded BEFORE `&lt;`/`&gt;`, so `&amp;gt;`
- *     became `&gt;` became `>`. In a helper whose whole job is character-exact comparison that
- *     silently rewrites the strings under test. `&amp;` now decodes LAST (see `clean`).
- *   • single-pass stripping was genuinely incomplete → the fixpoint loop below.
- *   • a dangling `<script` with no closing `>` was a fixpoint of BOTH regexes and survived → the
- *     stray `<` is now dropped.
- * It still fires because the query reasons LOCALLY about that one `.replace` and cannot observe the
- * enclosing loop or the post-loop removal. Satisfying it needs an HTML-parser dependency to serve
- * one test helper — declined, on the same grounds Quinn declined a DOM stack for this module.
- * The rule's premise does not hold here regardless: this is a vitest file (not in the production
- * bundle), its input is a repo-authored mockup read via `readFileSync`, and its output is compared
- * with `===` and never rendered. There is no sink.
- * ─────────────────────────────────────────────────────────────────────────────────────────────
- */
-function stripMarkup(input: string): string {
-  let s = input;
-  for (let prev = ""; prev !== s; ) {
-    prev = s;
-    s = s.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "").replace(/<[^>]*>/g, "");
-  }
-  // A dangling `<script` with no closing `>` is a FIXPOINT of both regexes above — the wholesale
-  // pattern needs a closing tag and `<[^>]*>` needs a `>` — so the literal text survives. It is
-  // neither markup nor copy, so drop the stray `<`. Safe by ordering: this runs BEFORE entity
-  // decoding, so a legitimate `&lt;` in the surface still becomes `<` afterwards, untouched.
-  return s.replace(/</g, "");
-}
-
 const clean = (s: string) =>
   stripMarkup(s)
     // `&amp;` is decoded LAST, and the order is load-bearing: decoding it first turns `&amp;gt;`
