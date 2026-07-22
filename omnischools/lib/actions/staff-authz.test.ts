@@ -33,30 +33,74 @@ const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\/|(?<!:)\/\/.*$/g
 const read = (p: string) => stripComments(readFileSync(resolve(cwd(), p), "utf8"));
 
 const GUARD = /\bassertAnyRole\s*\(\s*STAFF_ADMIN_ROLES\s*\)/;
-const TENANT_READ = /\bwithSchool\s*\(/;
+/**
+ * Deliberately WIDER than `withSchool(` — Quinn shipped a `grantRoleBackdoor` using
+ * `withoutTenantScope` that typechecked, built, passed all 675 tests, and handed a TEACHER `ADMIN`
+ * on a production build. `withoutTenantScope` is not a strawman: it is the idiom `invites.ts` and
+ * `onboarding.ts` already use for the very `role_assignment` writes that ARE the escalation.
+ */
+const TENANT_READ = /\b(withSchool|withoutTenantScope|withParentScope|withStaffScope|db)\s*[.(]/;
+/** Every export of a `"use server"` module is remotely callable — arrow consts included. */
+const EXPORTED_FN = /^export (?:async function (\w+)|const (\w+)\s*=\s*async)/gm;
+const EXPECTED = [
+  "addStaff",
+  "importStaff",
+  "saveStaffProfile",
+  "updateStaff",
+  "deleteStaff",
+  "deleteStaffBulk",
+  "assignStaffRole",
+  "removeStaffRole",
+  "saveStaffCompensation",
+];
 
 describe("every staff mutator is gated to STAFF_ADMIN_ROLES", () => {
   const src = () => read(ACTIONS);
+  const exportsOf = (s: string) =>
+    [...s.matchAll(EXPORTED_FN)].map((m) => ({ name: m[1] ?? m[2], i: m.index! }));
 
-  it("finds the mutators it claims to check (the sweep is not vacuous)", () => {
-    const names = [...src().matchAll(/^export async function (\w+)/gm)].map((m) => m[1]);
-    // 9 today. If a refactor moves or renames them this must fail loudly, not pass over an empty set.
-    expect(names).toContain("assignStaffRole");
-    expect(names.length).toBeGreaterThanOrEqual(9);
+  it("the mutator list is EXACT — a tenth action is a change to this file, not a silent addition", () => {
+    // `toContain` + `>= 9` licensed exactly what it should have caught: Quinn added a 10th export
+    // and every assertion stayed green. An allow-list makes a new action fail until someone rules
+    // on whether it may be called by a non-administrator.
+    expect(exportsOf(src()).map((e) => e.name).sort()).toEqual([...EXPECTED].sort());
   });
 
-  it("no mutator opens a tenant transaction before asserting the role", () => {
+  it("no mutator touches the database before asserting the role", () => {
     const s = src();
-    const marks = [...s.matchAll(/^export async function (\w+)/gm)];
+    const marks = exportsOf(s);
     const offenders: string[] = [];
     marks.forEach((m, i) => {
-      const body = s.slice(m.index!, i + 1 < marks.length ? marks[i + 1].index! : s.length);
+      const body = s.slice(m.i, i + 1 < marks.length ? marks[i + 1].i : s.length);
       const guard = body.search(GUARD);
-      const tenantRead = body.search(TENANT_READ);
-      if (tenantRead === -1) return; // nothing to guard
-      if (guard === -1 || guard > tenantRead) offenders.push(m[1]);
+      const read = body.search(TENANT_READ);
+      // NO "nothing to guard" SKIP. An exported server action whose data access this sweep cannot
+      // recognise is an OFFENDER, not a pass — the old `if (read === -1) return` was the hatch
+      // Quinn's backdoor walked through. Unrecognised shape ⇒ someone must look at it.
+      if (guard === -1 || read === -1 || guard > read) offenders.push(m.name);
     });
     expect(offenders, "these mutate staff data without first asserting the role").toEqual([]);
+  });
+
+  it("the guard is a real call, not a locally-rebound no-op", () => {
+    // `const assertAnyRole = async () => {}` above the mutators satisfies a name-shaped check.
+    const s = src();
+    expect(s, "assertAnyRole must come from the auth seam").toMatch(
+      /import\s*\{[^}]*\bassertAnyRole\b[^}]*\}\s*from\s*"@\/lib\/auth\/server"/,
+    );
+    expect(s, "assertAnyRole must not be shadowed by a local binding").not.toMatch(
+      /(?:const|let|var|function)\s+assertAnyRole\b/,
+    );
+  });
+
+  it("the guard is unconditional — a gate behind an `if` or a flag is not a gate", () => {
+    const s = src();
+    for (const m of [...s.matchAll(new RegExp(GUARD, "g"))]) {
+      const line = s.slice(s.lastIndexOf("\n", m.index!) + 1, m.index! + m[0].length);
+      expect(line.trim(), "the role assertion must not be conditional").toMatch(
+        /^await assertAnyRole\(STAFF_ADMIN_ROLES\)/,
+      );
+    }
   });
 
   it("assertAnyRole REFUSES — the condition is not enough, it must throw", () => {
@@ -68,6 +112,42 @@ describe("every staff mutator is gated to STAFF_ADMIN_ROLES", () => {
     expect(decl, "assertAnyRole must THROW when the check fails").toMatch(
       /if\s*\([\s\S]*?\)\s*\{[\s\S]*?\bthrow\b/,
     );
+  });
+});
+
+describe("the other two doors onto role_assignment", () => {
+  /**
+   * Quinn reverted the compensation page to its exact pre-fix form and all 675 tests stayed green —
+   * `app-shell-guard.test.ts` included, because `requireSchool` IS a guard and #176's sweep is
+   * satisfied by the vulnerable version. Half the shipped fix had no regression coverage at all.
+   */
+  it("the payroll page requires STAFF_ADMIN_ROLES, before it reads", () => {
+    const s = read("app/(app)/staff/compensation/page.tsx");
+    const guard = s.search(/requireSchoolRole\(\s*STAFF_ADMIN_ROLES\s*\)/);
+    expect(guard, "salaries, SSNIT and PAYE must not be readable by any staff member").toBeGreaterThan(-1);
+    const readAt = s.search(TENANT_READ);
+    if (readAt !== -1) expect(guard).toBeLessThan(readAt);
+  });
+
+  /**
+   * The second door, reproduced live by Quinn: `createInvite` accepted an arbitrary role string,
+   * RETURNED the token to its caller, and `acceptInvite` needs no session — so a TEACHER invited
+   * `ADMIN` to their own phone, accepted it, and `onConflictDoNothing` on `users.phone` stapled the
+   * role onto their existing account. Closing `staff.ts` alone left the escalation fully open.
+   */
+  it("createInvite refuses to mint a role the actor does not hold", () => {
+    const s = read("lib/actions/invites.ts");
+    const fn = s.slice(s.indexOf("export async function createInvite"));
+    const body = fn.slice(0, fn.indexOf("\nexport "));
+    const check = body.search(
+      /hasAnyRole\(\s*\[\s*role\.code\s*\]\s*,\s*STAFF_ADMIN_ROLES\s*\)\s*&&\s*!\s*hasAnyRole\(\s*user\.roles\s*,\s*STAFF_ADMIN_ROLES\s*\)/,
+    );
+    expect(check, "an invite creates a real role_assignment — minting admin needs admin").toBeGreaterThan(-1);
+    // Consequence, not just condition (the PR #176 lesson): the check must REFUSE.
+    expect(body.slice(check, check + 220)).toMatch(/return\s*\{\s*ok:\s*false/);
+    // …and it must refuse BEFORE the invite row is written.
+    const write = body.search(/tx\.insert\(invites\)/);
+    if (write !== -1) expect(check).toBeLessThan(write);
   });
 });
 

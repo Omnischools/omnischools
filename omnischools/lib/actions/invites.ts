@@ -9,7 +9,7 @@ import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { safeRevalidate } from "@/lib/revalidate";
 import { resolveRole, roleLabel } from "@/lib/staff-roles";
-import { isStaff } from "@/lib/access";
+import { isStaff, hasAnyRole, STAFF_ADMIN_ROLES } from "@/lib/access";
 import { isParentRole, parentInviteError } from "@/lib/parent/claim";
 import { resolveParentInviteTargetTx, stampGuardianUserId } from "@/lib/parent/parent-data";
 import { invites, users, roles, roleAssignments } from "@/db/schema";
@@ -79,6 +79,20 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
     if (!d.phone || d.phone.length < 7) return { ok: false, error: "A phone number is required" };
     phone = normalizeGhanaPhone(d.phone);
     fullName = d.fullName.trim();
+  }
+
+  // 🔴 NO MINTING PRIVILEGE YOU DO NOT HOLD. An invite creates a real `role_assignment`, so this is
+  // the SECOND door onto the escalation `assertAnyRole(STAFF_ADMIN_ROLES)` closes in `staff.ts` —
+  // and it needs no interception to walk through: `createInvite` returns the token to its caller and
+  // `acceptInvite` requires no session. Reproduced end-to-end on a production build by Quinn: a
+  // TEACHER invited "ADMIN" **to their own phone number**, accepted it, and `onConflictDoNothing` on
+  // `users.phone` stapled ADMIN onto their existing account — two calls, no SMS, no crafted session.
+  //
+  // Scoped to the role being MINTED rather than gating the whole action, because a Form Master
+  // inviting a teacher is a legitimate workflow and inviting an administrator is not. The `isStaff`
+  // check above stays: it answers "may you invite at all", this answers "may you invite THIS".
+  if (hasAnyRole([role.code], STAFF_ADMIN_ROLES) && !hasAnyRole(user.roles, STAFF_ADMIN_ROLES)) {
+    return { ok: false, error: "Only an administrator can invite an administrator." };
   }
 
   const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);

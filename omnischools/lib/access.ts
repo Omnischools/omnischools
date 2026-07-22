@@ -26,7 +26,7 @@ export const FINANCE_ROLES = ["ACCOUNTANT", "BURSAR"];
  * /staff, find their own row and become Administrator in three clicks.
  *
  * Deliberately narrow. Widening it is a decision about who may mint administrators, not a
- * convenience tweak; `VICE_HEADMASTER_ADMIN` is the obvious candidate if a school asks.
+ * convenience tweak; `VICE_HEADMASTER_ACADEMIC` is the obvious candidate if a school asks.
  */
 export const STAFF_ADMIN_ROLES = [
   "ADMIN",
