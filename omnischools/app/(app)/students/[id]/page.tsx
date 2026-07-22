@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
+import { isStaff } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
 import {
   students,
@@ -58,7 +59,7 @@ const pctToneOf = (p: number) => (p >= 90 ? "text-green" : p >= 70 ? "text-gold"
 
 export default async function StudentDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const { school } = await requireSchool();
+  const { school, user } = await requireSchool();
   const today = new Date().toISOString().slice(0, 10);
 
   const data = await withSchool(school.id, async (tx) => {
@@ -234,10 +235,27 @@ export default async function StudentDetailPage(props: { params: Promise<{ id: s
           .orderBy(asc(subjects.name))
       : [];
 
-    const [health] = await tx
-      .select()
-      .from(studentHealthRecords)
-      .where(eq(studentHealthRecords.studentId, student.id));
+    // NOT fetched for a non-staff reader. DEFENCE IN DEPTH, not the load-bearing control — say so
+    // plainly, because the honest scope of this line matters to whoever reads it next.
+    //
+    // `requireSchool()` is the actual fix: it is awaited above, before this transaction opens, so a
+    // non-staff session never reaches here. Sarah proved that on PR #176 via the natural experiment
+    // sitting next door — `students/[id]/edit` fetches this same health record, has NO guard like
+    // this one, and still serves zero bytes of it to a parent.
+    //
+    // This stays anyway, for the narrow reason that this is the most sensitive read on the page: it
+    // makes the disclosure impossible even if someone later hoists a fetch above the guard, or adds
+    // a render path that does not await it. It is NOT a pattern to copy onto the other 81 pages —
+    // the guard-ordering invariant test is what protects those.
+    //
+    // ⚠️ Still over-broad and tracked separately: every staff role reads these fields, and a read is
+    // not audited.
+    const [health] = isStaff(user.roles)
+      ? await tx
+          .select()
+          .from(studentHealthRecords)
+          .where(eq(studentHealthRecords.studentId, student.id))
+      : [];
 
     return { student, term, guardians, attRecs, invs, pays, latestCard, notes, activity, scores, health };
   });
