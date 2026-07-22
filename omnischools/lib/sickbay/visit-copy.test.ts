@@ -36,6 +36,24 @@ function textOf(cls: string): string[] {
  * until the string stops changing is the correct removal and is what makes it order-independent.
  * `<script>`/`<style>` go wholesale — element AND content — because their CSS/JS text is not visible
  * copy and splicing it into the stream would corrupt the comparisons below.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────────
+ * CodeQL `js/incomplete-multi-character-sanitization` fires on the first `.replace` below and is
+ * DISMISSED as a false positive (alert #8, PR #174). Do not "fix" it again, and do not reopen the
+ * chase — three sibling alerts were already closed ON MERIT and those fixes are what you see here:
+ *   • `js/double-escaping` was a REAL bug — `&amp;` decoded BEFORE `&lt;`/`&gt;`, so `&amp;gt;`
+ *     became `&gt;` became `>`. In a helper whose whole job is character-exact comparison that
+ *     silently rewrites the strings under test. `&amp;` now decodes LAST (see `clean`).
+ *   • single-pass stripping was genuinely incomplete → the fixpoint loop below.
+ *   • a dangling `<script` with no closing `>` was a fixpoint of BOTH regexes and survived → the
+ *     stray `<` is now dropped.
+ * It still fires because the query reasons LOCALLY about that one `.replace` and cannot observe the
+ * enclosing loop or the post-loop removal. Satisfying it needs an HTML-parser dependency to serve
+ * one test helper — declined, on the same grounds Quinn declined a DOM stack for this module.
+ * The rule's premise does not hold here regardless: this is a vitest file (not in the production
+ * bundle), its input is a repo-authored mockup read via `readFileSync`, and its output is compared
+ * with `===` and never rendered. There is no sink.
+ * ─────────────────────────────────────────────────────────────────────────────────────────────
  */
 function stripMarkup(input: string): string {
   let s = input;
