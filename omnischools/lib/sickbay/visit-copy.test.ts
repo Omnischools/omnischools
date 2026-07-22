@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
@@ -99,6 +99,19 @@ const sourceFiles = (() => {
     return (cache = out);
   };
 })();
+
+/**
+ * Warm the whole-repo walk ONCE, with its own budget.
+ *
+ * It reads and comment-strips ~490 source files. That is legitimate one-time work for a sweep whose
+ * whole value is being repo-wide, but charging it to whichever `it()` happens to call it first means
+ * it competes with vitest's 5s per-test default — which it clears when this file runs alone and
+ * misses under full-suite parallel load. That made the writer-set guard flaky 1-in-3, and a flaky
+ * guard is worse than no guard: it teaches you to re-run until green. The cost belongs in a hook.
+ */
+beforeAll(() => {
+  sourceFiles();
+}, 120_000);
 
 /** Everything INCR-22a ships — and every one of them can put a string in front of a user. */
 const SHIPPED_22A = [
