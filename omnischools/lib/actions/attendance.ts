@@ -1,12 +1,13 @@
 "use server";
-import { and, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor, assertWriteAccess } from "@/lib/auth/server";
 import { sendSms } from "@/lib/sms";
 import { safeRevalidate } from "@/lib/revalidate";
-import { ATTENDANCE_REASON_CODES } from "@/lib/attendance-reasons";
+import { ATTENDANCE_REASON_CODES, SICKBAY_REASON_CODE } from "@/lib/attendance-reasons";
+import { closedTermLabel, writeMarks } from "@/lib/attendance/mark";
 import {
   classes,
   students,
@@ -14,7 +15,6 @@ import {
   attendanceRecords,
   attendanceCorrections,
   attendanceSettings,
-  academicPeriod,
 } from "@/db/schema";
 
 const STATUSES = ["PRESENT", "ABSENT", "LATE", "EXCUSED", "MEDICAL"] as const;
@@ -109,7 +109,14 @@ const SaveSchema = z.object({
 });
 
 export type SaveAttendanceResult =
-  | { ok: true; marked: number; absent: number; alertsSent: number }
+  | {
+      ok: true;
+      marked: number;
+      absent: number;
+      alertsSent: number;
+      /** Students the sickbay has marked Medical: their rows were NOT changed by this save (D4). */
+      heldMedical: number;
+    }
   | { ok: false; error: string };
 
 export async function saveAttendance(input: unknown): Promise<SaveAttendanceResult> {
@@ -121,32 +128,19 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
   const d = parsed.data;
   const actor = await resolveActor(school.id);
 
-  // A closed term is finalised — attendance for dates inside it is read-only.
-  const closedTerm = await withSchool(school.id, (tx) =>
-    tx
-      .select({ label: academicPeriod.periodLabel })
-      .from(academicPeriod)
-      .where(
-        and(
-          eq(academicPeriod.schoolId, school.id),
-          lte(academicPeriod.startsOn, d.date),
-          gte(academicPeriod.endsOn, d.date),
-          isNotNull(academicPeriod.closedAt),
-        ),
-      )
-      .limit(1),
-  );
-  if (closedTerm.length > 0) {
-    return {
-      ok: false,
-      error: `${closedTerm[0].label} is closed — its attendance is final. Reopen the term in Settings → Academic to edit.`,
-    };
-  }
-
   try {
     const out = await withSchool(school.id, async (tx) => {
+      // A closed term is finalised — attendance for dates inside it is read-only. Checked HERE, ahead
+      // of the edit-window lock, because a closed term's registers are always older than the window
+      // and "the term is closed" is the accurate advice (the shipped precedence). `writeMarks` checks
+      // it again for every caller — the writer never trusts one.
+      const closedTerm = await closedTermLabel(tx, school.id, d.date);
+      if (closedTerm) return { closedTerm };
+
       // Edit-window lock — a register marked longer ago than the window can only
-      // be changed through the correction flow, not re-saved directly.
+      // be changed through the correction flow, not re-saved directly. It STAYS here rather than
+      // moving into the shared writer: it is a teacher-register concept, and a matron admitting at
+      // 14:00 into a register marked 30 hours ago must not be blocked by it (R49c).
       const existing = await tx
         .select({ markedAt: attendanceRecords.markedAt })
         .from(attendanceRecords)
@@ -175,41 +169,26 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
         }
       }
 
-      for (const e of d.entries) {
-        // Reason/note only make sense for non-present marks; clear them otherwise.
-        const reasonCode = e.status === "PRESENT" ? null : (e.reasonCode ?? null);
-        const note = e.status === "PRESENT" ? null : (e.note?.trim() || null);
-        await tx
-          .insert(attendanceRecords)
-          .values({
-            schoolId: school.id,
-            studentId: e.studentId,
-            classId: d.classId,
-            date: d.date,
-            status: e.status,
-            reasonCode,
-            note,
-            markedByUserId: actor.id ?? undefined,
-            markedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [
-              attendanceRecords.schoolId,
-              attendanceRecords.studentId,
-              attendanceRecords.date,
-            ],
-            set: {
-              status: e.status,
-              reasonCode,
-              note,
-              markedByUserId: actor.id ?? undefined,
-              markedAt: new Date(),
-            },
-          });
-      }
-      const absent = d.entries
-        .filter((e) => e.status === "ABSENT")
-        .map((e) => e.studentId);
+      // 🔴 THE ONE SHARED WRITER (owner D4 · R49). It carries the DB downgrade guard, the R48
+      // insert-only coercion, and the closed-term check — so the sickbay's push and this save obey
+      // exactly the same rules, and neither can clobber the other's mark.
+      const res = await writeMarks(tx, {
+        schoolId: school.id,
+        date: d.date,
+        actorUserId: actor.id,
+        entries: d.entries.map((e) => ({
+          studentId: e.studentId,
+          classId: d.classId,
+          status: e.status,
+          reasonCode: e.reasonCode ?? null,
+          note: e.note?.trim() || null,
+        })),
+      });
+
+      // 🔴 R49b — the absent list (→ the parent SMS → the audit) comes from the EFFECTIVE statuses
+      // the DB stored, NEVER from `d.entries`. A student the sickbay holds is not in it, so her
+      // mother does not get "…was marked absent" while she is on bed 3 in the school's own sickbay.
+      const absent = res.marked.filter((m) => m.status === "ABSENT").map((m) => m.studentId);
       await recordAudit(tx, {
         schoolId: school.id,
         actorUserId: actor.id ?? undefined,
@@ -217,12 +196,23 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
         actionType: "marked",
         entityType: "attendance",
         entityId: d.classId,
-        after: { date: d.date, marked: d.entries.length, absent: absent.length },
+        after: {
+          date: d.date,
+          marked: res.marked.length,
+          absent: absent.length,
+          heldMedical: res.held.length,
+        },
         reason: "Attendance taken",
       });
-      return { locked: false as const, absent };
+      return { locked: false as const, absent, marked: res.marked.length, held: res.held.length };
     });
 
+    if ("closedTerm" in out) {
+      return {
+        ok: false,
+        error: `${out.closedTerm} is closed — its attendance is final. Reopen the term in Settings → Academic to edit.`,
+      };
+    }
     if (out.locked) {
       return {
         ok: false,
@@ -272,9 +262,10 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
     safeRevalidate(`/attendance/${d.classId}`);
     return {
       ok: true,
-      marked: d.entries.length,
+      marked: out.marked,
       absent: absentStudentIds.length,
       alertsSent,
+      heldMedical: out.held,
     };
   } catch {
     return { ok: false, error: "Could not save attendance. Please try again." };
@@ -351,6 +342,13 @@ export async function decideCorrection(
           .update(attendanceRecords)
           .set({
             status: c.requestedStatus,
+            // R51 — the co-signed correction is the ONLY legal way out of a sickbay MEDICAL mark, and
+            // it is the one that always wins (coercion is INSERT-only, so it is never re-applied).
+            // Moving the status AWAY from MEDICAL must drop the sickbay reason with it, or the row
+            // reads incoherently: `ABSENT` + `In sickbay`. A teacher's own reason is left alone.
+            ...(c.requestedStatus !== "MEDICAL" && {
+              reasonCode: sql`CASE WHEN ${attendanceRecords.reasonCode} = ${SICKBAY_REASON_CODE} THEN NULL ELSE ${attendanceRecords.reasonCode} END`,
+            }),
             markedByUserId: actor.id ?? undefined,
             markedAt: new Date(),
           })

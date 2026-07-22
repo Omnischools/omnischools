@@ -182,7 +182,12 @@ export function TakeRegister({
     setSaving(false);
     if (res.ok) {
       setResult(
-        `Saved ${res.marked} · ${res.absent} absent · ${res.alertsSent} alert(s) sent`,
+        `Saved ${res.marked} · ${res.absent} absent · ${res.alertsSent} alert(s) sent` +
+          // A silently-ignored save is worse than a refused one: say so when the sickbay's Medical
+          // mark held a row back. Correcting it is the co-signed correction flow, not a re-save.
+          (res.heldMedical > 0
+            ? ` · ${res.heldMedical} marked Medical by the sickbay, not changed`
+            : ""),
       );
       router.refresh();
     } else {

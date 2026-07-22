@@ -1,10 +1,11 @@
 import "../_loadenv";
-import { and, eq, like } from "drizzle-orm";
+import { and, eq, inArray, like } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   schools,
   users,
   students,
+  classes,
   auditLog,
   wassceCohort,
   wassceProgrammes,
@@ -219,6 +220,41 @@ async function main() {
   }
   const allSpecs = [...NAMED, ...generated];
 
+  // --- 4b) one F3 class per programme, create-if-missing (the wassce-mock.ts:133 idiom) ---------
+  // 🔴 R53 (INCR-22b). These 240 candidates shipped with NO class, and `attendance_record.class_id`
+  // is NOT NULL — so not one of them could receive an attendance row, the sickbay's MEDICAL mark
+  // included, and Y. Aidoo could not demo the headline cross-module integration at all. The
+  // constraint is right and stays; the SEED was the defect. Scoped to this file's own SHS-2023-*
+  // marker rows: no delete is broadened, no other seed's classes are touched, `academic_period` is
+  // not touched. "Form 3 Science" is the same row wassce-mock.ts create-if-misses.
+  const F3_CLASS_NAME: Record<WassceProgrammeKey, string> = {
+    GENERAL_SCIENCE: "Form 3 Science",
+    BUSINESS: "Form 3 Business",
+    GENERAL_ARTS: "Form 3 Arts",
+    HOME_ECONOMICS: "Form 3 Home Economics",
+  };
+  await db
+    .insert(classes)
+    .values(
+      PROGRAMME_META.map((p) => ({
+        schoolId,
+        name: F3_CLASS_NAME[p.key],
+        level: "Form 3",
+        programme: p.key,
+      })),
+    )
+    .onConflictDoNothing({ target: [classes.schoolId, classes.name] });
+  const f3Classes = await db
+    .select({ id: classes.id, name: classes.name })
+    .from(classes)
+    .where(
+      and(
+        eq(classes.schoolId, schoolId),
+        inArray(classes.name, Object.values(F3_CLASS_NAME)),
+      ),
+    );
+  const classIdByName = new Map(f3Classes.map((c) => [c.name, c.id]));
+
   // synthetic F3 students (marker SHS-2023-*) backing every candidate
   const studentRows = await db
     .insert(students)
@@ -232,6 +268,8 @@ async function main() {
         status: "ACTIVE" as const,
         programme: c.programmeKey,
         enrolledOn: "2023-09-11",
+        classId: classIdByName.get(F3_CLASS_NAME[c.programmeKey])!,
+        currentClassLabel: F3_CLASS_NAME[c.programmeKey],
       })),
     )
     .returning();

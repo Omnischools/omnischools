@@ -25,11 +25,13 @@ import { hasAnyRole, SICKBAY_CONFIG_WRITE_ROLES } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
 import { sickbayBed, sickbayScheduleSlot, sickbaySettings } from "@/db/schema";
 import { getSickbayConfig, getScheduleSlots, holdsMatronRole } from "@/lib/sickbay/config";
+import { openAdmissionBeds } from "@/lib/sickbay/visit-reads";
 import {
   CANONICAL_SICKBAY_SLOTS,
   planBedReconcile,
   validateRoundOrdering,
 } from "@/lib/sickbay/defaults";
+import { referralOnlyGuard } from "@/lib/sickbay/visits";
 
 type Result = { ok: boolean; error?: string };
 const SETUP_PATH = "/senior/sickbay/setup";
@@ -95,6 +97,17 @@ export async function setSickbayMode(input: unknown): Promise<Result> {
 
   const before = await getSickbayConfig(auth.schoolId);
   const existingSlots = await getScheduleSlots(auth.schoolId);
+
+  // R56 — the R6 forward guard INCR-21 recorded but could not test until an admission table existed.
+  // A switch to REFERRAL_ONLY asserts the school has no on-site beds; reject it while a patient is
+  // still in one, in the R11 error grammar (name the count, name the beds, save nothing). Open
+  // VISITS do not block — Mode C keeps the visit record and they need no bed.
+  if (mode === "REFERRAL_ONLY" && before.mode !== "REFERRAL_ONLY") {
+    const occupied = await openAdmissionBeds(auth.schoolId);
+    const guard = referralOnlyGuard(occupied.map((o) => o.bedNumber));
+    if (guard) return { ok: false, error: guard };
+  }
+
   try {
     await withSchool(auth.schoolId, async (tx) => {
       await upsertSettings(tx, auth.schoolId, { mode, configuredAt: new Date() });
@@ -146,9 +159,11 @@ export async function saveBedCapacity(input: unknown): Promise<Result> {
   if (!parsed.success) return { ok: false, error: "Bed counts must be whole numbers from 0 to 200." };
 
   const config = await getSickbayConfig(auth.schoolId);
-  // `[]` — no admission table exists at INCR-21. The argument is required (never defaulted) so
-  // INCR-22 cannot forget to pass the open admissions' bed ids.
-  const plan = planBedReconcile(config.beds, parsed.data, []);
+  // R59 — `occupiedBedIds` stops being `[]`. The open admissions' bed ids are passed so the R11
+  // reject branch (unit-test-only since 0056) finally fires against real occupancy: a capacity
+  // decrease that would deactivate a bed with a patient in it rejects the WHOLE save, named error.
+  const occupied = await openAdmissionBeds(auth.schoolId);
+  const plan = planBedReconcile(config.beds, parsed.data, occupied.map((o) => o.bedId));
   if ("error" in plan) return { ok: false, error: plan.error };
   if (plan.insert.length === 0 && plan.deactivate.length === 0) return { ok: true };
 

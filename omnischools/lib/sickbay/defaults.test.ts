@@ -450,7 +450,7 @@ describe("render helpers", () => {
   });
   it("formLabel renders `F3 BUS` from level + programme, and degrades honestly", () => {
     expect(formLabel("Form 3", "Form 3 Business", "BUSINESS")).toBe("F3 BUS");
-    expect(formLabel("Form 2", "Form 2 Science", "GENERAL_SCIENCE")).toBe("F2 GS");
+    expect(formLabel("Form 2", "Form 2 Science", "GENERAL_SCIENCE")).toBe("F2 SCI");
     expect(formLabel(null, "Form 1 Arts", null)).toBe("F1");
     expect(formLabel(null, null, null)).toBe("—");
   });

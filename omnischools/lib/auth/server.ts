@@ -165,22 +165,26 @@ export async function assertAnyRole(allowed: readonly AppRole[]): Promise<void> 
 
 /**
  * Resolve a real `ref_user` id to attribute audit rows to (FK-safe).
- * Prod: the signed-in user. Dev shim: the school's ADMIN user (a seeded real row).
+ * Prod: the signed-in user. Dev shim: a seeded real row holding the shim session's own first role —
+ * ADMIN unless AUTH_DEV_ROLES overrode it, in which case the audit actor (and any downstream
+ * role check on that id, e.g. `holdsMatronRole` on an attending clinician) matches the session the
+ * developer is actually running as. Unset ⇒ identical to the shipped behaviour.
  */
 export async function resolveActor(
   schoolId: string,
 ): Promise<{ id: string | null; role: string }> {
   const user = await getCurrentUser();
   if (!user) return { id: null, role: "APPLICANT" };
-  if (!env.AUTH_DEV_BYPASS) return { id: user.id, role: user.roles[0] ?? "ADMIN" };
+  const role = user.roles[0] ?? "ADMIN";
+  if (!env.AUTH_DEV_BYPASS) return { id: user.id, role };
   return withoutTenantScope(async (tx) => {
     const rows = await tx
       .select({ id: users.id })
       .from(roleAssignments)
       .innerJoin(roles, eq(roleAssignments.roleId, roles.id))
       .innerJoin(users, eq(roleAssignments.userId, users.id))
-      .where(and(eq(roleAssignments.schoolId, schoolId), eq(roles.code, "ADMIN")))
+      .where(and(eq(roleAssignments.schoolId, schoolId), eq(roles.code, role)))
       .limit(1);
-    return { id: rows[0]?.id ?? null, role: "ADMIN" };
+    return { id: rows[0]?.id ?? null, role };
   });
 }

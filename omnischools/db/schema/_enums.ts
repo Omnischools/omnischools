@@ -512,3 +512,29 @@ export const sickbaySlotKindEnum = pgEnum("sickbay_slot_kind", [
   "DOCTOR_VISIT",
   "ON_CALL",
 ]);
+
+// Sickbay VISIT (SHS module 4.4) — INCR-22a (Kofi rulings R32–R67). Migration 0057.
+// TWO enums only. Deliberately NOT enums (R43/R62): `working_impression`, `red_flags_screened`,
+// `hydration_status`, `plan`, `escalation_triggers` and `discharge_criteria` are ALL FREE TEXT —
+// the only structured clinical vocabulary anywhere in 4.4 is chronic_condition_enum (INCR-23). There
+// is no triage/urgency enum either: R62 omits the surfaces' `Routine` pill outright, because a
+// single-valued enum nobody sets is wrong the first time it matters and a hardcoded pill is an
+// UNASSESSED clinical-urgency assertion. And there is deliberately NO visit_status enum — R32: the
+// state is DERIVED from the timestamps by a pure visitState(), since a stored enum can disagree with
+// its own timestamps (the R10 stored-count failure again).
+
+// How a visit ENDED (R32/R36). NULL disposition ⇒ the visit is still OPEN — the column doubles as
+// the open/closed flag (and as the partial-unique predicate for "one open visit per student", R58).
+// IMMUTABLE once set at INCR-22: an ADMIT that later needs a hospital is a referral EVENT at INCR-25,
+// never a mutation of this value — over-writing it would destroy the record of what was decided when.
+// R46: ADMIT and REFER fire the attendance-M hook (22b); DISCHARGE never does — a 20-minute headache
+// is not an attendance event.
+export const sickbayDispositionEnum = pgEnum("sickbay_disposition", [
+  "DISCHARGE",
+  "ADMIT",
+  "REFER",
+]);
+// How the visiting/on-call doctor was consulted (R60). The consult is HEARSAY WITH ATTRIBUTION
+// recorded by the matron — the doctor is NOT a system user (R21 again), so there is no ref_user here
+// and this can never be a co-sign or an authorisation gate; PHONE vs IN_PERSON is provenance only.
+export const sickbayConsultModeEnum = pgEnum("sickbay_consult_mode", ["PHONE", "IN_PERSON"]);

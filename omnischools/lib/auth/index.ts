@@ -15,19 +15,21 @@ import { env } from "@/lib/env";
  * hold custom roles — `(string & {})` keeps autocomplete for the known set while allowing
  * any custom code through.
  */
-export type KnownAppRole =
-  | "ADMIN"
-  | "HEADMASTER"
-  | "VICE_HEADMASTER_ACADEMIC"
-  | "TEACHER"
-  | "FORM_MASTER"
-  | "HOUSEMASTER"
-  | "STUDENT"
-  | "PARENT"
-  | "BURSAR"
-  | "ACCOUNTANT"
-  | "DEAN_OF_BOARDING"
-  | "MATRON";
+export const KNOWN_APP_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "VICE_HEADMASTER_ACADEMIC",
+  "TEACHER",
+  "FORM_MASTER",
+  "HOUSEMASTER",
+  "STUDENT",
+  "PARENT",
+  "BURSAR",
+  "ACCOUNTANT",
+  "DEAN_OF_BOARDING",
+  "MATRON",
+] as const;
+export type KnownAppRole = (typeof KNOWN_APP_ROLES)[number];
 export type AppRole = KnownAppRole | (string & {});
 
 export interface AppUser {
@@ -59,6 +61,32 @@ const DEV_USER: AppUser = {
   name: "Dev Admin",
   roles: ["ADMIN"],
 };
+
+/**
+ * The dev-bypass session. `AUTH_DEV_ROLES=MATRON,HEADMASTER` pins it to those roles instead of
+ * ADMIN — the clinical module (SHS 4.4) is MATRON-gated, so without this NO ONE can reach the
+ * sickbay UI or any clinical mutation in a local dev run.
+ *
+ * 🔒 It CANNOT widen roles in production: it is read only when `env.AUTH_DEV_BYPASS` is true, and
+ * that switch defaults to "false" and fails closed (a missing or misspelled env var denies). When
+ * AUTH_DEV_ROLES is unset the result is byte-identical to DEV_USER. Real sessions never reach here.
+ */
+function devUser(): AppUser {
+  if (!env.AUTH_DEV_BYPASS) return DEV_USER;
+  const roles = (env.AUTH_DEV_ROLES ?? "")
+    .split(",")
+    .map((r) => r.trim().toUpperCase())
+    .filter(Boolean);
+  // A typo here is otherwise invisible: the session is issued, every role gate denies it, and
+  // nothing anywhere says why. Fail loudly instead — this is a dev-only switch.
+  const unknown = roles.filter((r) => !(KNOWN_APP_ROLES as readonly string[]).includes(r));
+  if (unknown.length > 0) {
+    throw new Error(
+      `AUTH_DEV_ROLES: unknown role code(s) ${unknown.join(", ")}. Known codes: ${KNOWN_APP_ROLES.join(", ")}.`,
+    );
+  }
+  return roles.length > 0 ? { ...DEV_USER, roles } : DEV_USER;
+}
 
 /** True when real Supabase Auth should be used. */
 export function authIsLive(): boolean {
@@ -180,7 +208,7 @@ export async function signOut(): Promise<void> {
 
 /** Resolve the current authenticated user, or null. */
 export async function getCurrentUser(): Promise<AppUser | null> {
-  if (!authIsLive()) return DEV_USER;
+  if (!authIsLive()) return devUser();
 
   const {
     data: { user },
