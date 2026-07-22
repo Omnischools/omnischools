@@ -328,6 +328,10 @@ export async function assessVisit(input: unknown): Promise<Result> {
       });
     });
     safeRevalidate(visitPath(d.visitId));
+    // NO `TODAY_PATH` — the ONE named exception to the rule above, and it is a consequence of R87:
+    // every column this action writes (impression, red flags, hydration, plan, triggers) was taken
+    // OFF the board, so an assessment changes nothing the board renders. If a future increment puts
+    // any of them back, this line comes back with it.
     return { ok: true, id: d.visitId };
   } catch (err) {
     if (err instanceof NamedError) return { ok: false, error: err.message };
@@ -435,6 +439,10 @@ export async function addVitals(input: unknown): Promise<Result> {
       return row.id;
     });
     safeRevalidate(visitPath(d.visitId));
+    // …and the board: the admitted block's `.ab-vitals` grid renders the LATEST reading, so a new
+    // one changes board-visible state (INCR-22c). "Some writes revalidate the board" is not a rule
+    // anyone can check — every write that moves a pixel on it revalidates it.
+    safeRevalidate(TODAY_PATH);
     return { ok: true, id };
   } catch (err) {
     if (err instanceof NamedError) return { ok: false, error: err.message };
@@ -503,6 +511,10 @@ export async function disposeVisit(input: unknown): Promise<Result> {
       await fireAttendanceHook(auth.schoolId, auth.actor, closed, closed.at);
     }
     safeRevalidate(visitPath(d.visitId));
+    // …and the board: §03's pill flips `Open` → `Discharged HH:MM` / `Referred` and tile 3's
+    // breakdown moves a term. Same rule as `beginVisit` — a write that changes the board revalidates
+    // the board, without exception, so the rule is checkable.
+    safeRevalidate(TODAY_PATH);
     return { ok: true, id: d.visitId };
   } catch (err) {
     if (err instanceof NamedError) return { ok: false, error: err.message };

@@ -46,6 +46,7 @@ import {
 } from "@/db/schema";
 import { hasAnyRole, SICKBAY_CLINICAL_READ_ROLES } from "@/lib/access";
 import { getSickbayConfig, type SickbayMode } from "./config";
+import { initials } from "./board-copy";
 import { formLabel } from "./defaults";
 import { civilDate, isQueued, type SickbayDisposition } from "./visits";
 
@@ -55,7 +56,11 @@ import { civilDate, isQueued, type SickbayDisposition } from "./visits";
 // ./board-copy, because a TS interface erases at runtime and the returned object does not.
 // ============================================================================
 
-/** The live queue. `complaint` is the ONE named adjacency exception (A6 — triage necessity). */
+/**
+ * The live queue. `complaint` is the ONE named adjacency exception (A6 — triage necessity).
+ * `studentName` is ALREADY ABBREVIATED (`A. Mensa`) — see `initials()`: the tier is applied here,
+ * in the reader, so no consumer has to know to apply it.
+ */
 export interface SickbayQueueRow {
   visitId: string;
   studentName: string;
@@ -81,6 +86,11 @@ export interface SickbayLatestVital {
  * One open admission. 🔴 R87 — NO `workingImpression`, NO `hydrationStatus`, NO `plan`: not
  * selected, not returned, not rendered. The `.ab-line` prints location and time, and the record is
  * one click away.
+ *
+ * ⚠️ THE ONE FULL NAME ON THE BOARD. `studentName` here is `Adwoa Mensa`, NOT `A. Mensa`, because
+ * the surface's `.ab-name` prints it in full beside its own `<em>` surname. Every OTHER board type
+ * carries the abbreviated form (see `initials()`), so a new surface derived from THIS type must
+ * abbreviate deliberately — the tile-1 meta does, at its call site.
  */
 export interface SickbayWardPatient {
   admissionId: string;
@@ -99,7 +109,10 @@ export interface SickbayWardPatient {
   firstPainScore: number | null;
 }
 
-/** A bed. `bedNumber` is the identity (R8); there is deliberately no bed id on the board at all. */
+/**
+ * A bed. `bedNumber` is the identity (R8); there is deliberately no bed id on the board at all.
+ * `occupant.studentName` is ABBREVIATED, as the surface's own `.bed-name` prints it.
+ */
 export interface SickbayBedTile {
   bedNumber: number;
   isIsolation: boolean;
@@ -111,7 +124,10 @@ export interface SickbayBedTile {
   } | null;
 }
 
-/** §03. No field to put a complaint in, so the A12 leak cannot return without a type error (R76). */
+/**
+ * §03. No field to put a complaint in, so the A12 leak cannot return without a type error (R76).
+ * `studentName` is ABBREVIATED, as the surface's own `.vs-name` prints it.
+ */
 export interface SickbayRecentVisitRow {
   visitId: string;
   presentedAt: Date;
@@ -151,16 +167,6 @@ export interface SickbayBoard {
   recent: SickbayRecentVisitRow[];
 }
 
-/** `A. Bediako` — the render form; the FK is what is stored. */
-const shortName = (full: string | null): string | null => {
-  if (!full) return null;
-  const parts = full.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return null;
-  return parts.length > 1
-    ? `${parts[0].charAt(0)}. ${parts[parts.length - 1]}`
-    : parts[0];
-};
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -191,6 +197,10 @@ export async function getSickbayBoard(
     // a civil-date window is empty at 06:00, which is precisely when the incoming matron needs last
     // night's 19:40 referral (R75). It feeds the queue, §03 and both counters — one predicate.
     // R78: voided visits are excluded here, so they are excluded from every consumer at once.
+    // §03 and the counters rest on THIS predicate alone; the queue has a live second check
+    // (`isQueued` reads the SELECTED `voidedAt`). Delete this `isNull()` and the R78 assertion in
+    // scripts/verify-sickbay-board.ts goes red on §03 and the counters while the queue stays green
+    // — which is the backstop being real rather than decorative.
     withSchool(schoolId, async (tx) =>
       tx
         .select({
@@ -199,6 +209,10 @@ export async function getSickbayBoard(
           startedAt: sickbayVisit.startedAt,
           disposition: sickbayVisit.disposition,
           dispositionAt: sickbayVisit.dispositionAt,
+          // 🔴 R78 — SELECTED, never assumed. The queue's `isQueued()` is a live SECOND check on the
+          // real column: pass it a hardcoded `voidedAt: null` to satisfy the type and the SQL
+          // `isNull()` below becomes the only void check on the whole board, un-backstopped.
+          voidedAt: sickbayVisit.voidedAt,
           complaint: sickbayVisit.presentingComplaint,
           firstName: students.firstName,
           lastName: students.lastName,
@@ -327,7 +341,7 @@ export async function getSickbayBoard(
         houseName: w.houseName,
         studentCode: w.studentCode,
         admittedAt: w.admittedAt,
-        admittedByName: shortName(w.admittedByName),
+        admittedByName: initials(w.admittedByName),
         expectedDischargeAt: w.expectedDischargeAt,
         latestVital: last
           ? {
@@ -355,7 +369,7 @@ export async function getSickbayBoard(
     const w = wardRows.find((r) => r.bedNumber === bedNumber);
     return w
       ? {
-          studentName: `${w.firstName} ${w.lastName}`,
+          studentName: initials(`${w.firstName} ${w.lastName}`),
           formLabel: formLabel(w.classLevel, w.className, w.programme),
           houseName: w.houseName,
           admittedAt: w.admittedAt,
@@ -375,11 +389,11 @@ export async function getSickbayBoard(
   // R33 — the shipped queue predicate: not voided, not started, no disposition, presented TODAY.
   // Ordered by `presented_at` ascending, longest wait first.
   const queue: SickbayQueueRow[] = visitRows
-    .filter((v) => isQueued({ ...v, voidedAt: null }, now))
+    .filter((v) => isQueued(v, now))
     .sort((a, b) => a.presentedAt.getTime() - b.presentedAt.getTime())
     .map((v) => ({
       visitId: v.visitId,
-      studentName: `${v.firstName.charAt(0)}. ${v.lastName}`,
+      studentName: initials(`${v.firstName} ${v.lastName}`),
       formLabel: formLabel(v.classLevel, v.className, v.programme),
       houseName: v.houseName,
       studentCode: v.studentCode,
@@ -394,7 +408,7 @@ export async function getSickbayBoard(
     .map((v) => ({
       visitId: v.visitId,
       presentedAt: v.presentedAt,
-      studentName: `${v.firstName.charAt(0)}. ${v.lastName}`,
+      studentName: initials(`${v.firstName} ${v.lastName}`),
       formLabel: formLabel(v.classLevel, v.className, v.programme),
       houseName: v.houseName,
       disposition: v.disposition,

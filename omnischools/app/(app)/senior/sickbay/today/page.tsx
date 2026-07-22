@@ -38,6 +38,7 @@ import {
   dayLabel,
   dispositionPill,
   hhmm,
+  initials,
   queueWaitMeta,
   recentLede,
   stampLabel,
@@ -182,9 +183,12 @@ export default async function SickbayTodayPage() {
                 ? ` / ${counts.bedsTotal} bed${counts.bedsTotal === 1 ? "" : "s"}`
                 : null
             }
+            // The ONE place the board abbreviates at render: `ward` is the one type that carries the
+            // FULL name (the `.ab-name` block below prints it), so tile 1 applies the tier itself —
+            // through the SAME `initials()` every other board name already went through.
             meta={admittedTileMeta(
               board.ward.map((w) => ({
-                shortName: initial(w.studentName),
+                shortName: initials(w.studentName),
                 bedNumber: w.bedNumber,
               })),
             )}
@@ -260,7 +264,13 @@ export default async function SickbayTodayPage() {
                     without it. On screen only — this is the independent reason `Print day sheet` is
                     omitted. */}
                 <div className="text-[12px] text-navy-2">{q.complaint}</div>
-                <div>{canWrite && <BeginVisitButton visitId={q.visitId} />}</div>
+                {/* The surface's `.queue-row .q-action { text-align:right }`. The 80px track is the
+                    surface's own and stays FIXED: this cell also renders the action's error `<p>`,
+                    and an `auto` track would size to that longest message and squeeze the name
+                    column on every row. */}
+                <div className="text-right">
+                  {canWrite && <BeginVisitButton visitId={q.visitId} />}
+                </div>
               </div>
             ))
           )}
@@ -312,7 +322,7 @@ export default async function SickbayTodayPage() {
                     {b.occupant ? (
                       <>
                         <div className="font-display text-[14px] font-semibold tracking-[-0.005em] text-navy">
-                          {initial(b.occupant.studentName)}
+                          {b.occupant.studentName}
                         </div>
                         <div className="text-[10px] text-navy-3">
                           <Bold
@@ -412,14 +422,6 @@ const PILL = {
   refer: "bg-terra-bg text-terra",
   open: "border border-border bg-bg text-navy-3",
 } as const;
-
-/** `Adwoa Mensa` → `A. Mensa`. Identity, tier 1 — the same abbreviation the whole module uses. */
-function initial(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  return parts.length > 1
-    ? `${parts[0].charAt(0)}. ${parts[parts.length - 1]}`
-    : fullName;
-}
 
 /** `**bold**` → `<b>`, through the shipped splitter. No copy is authored inside a component. */
 function Bold({ text }: { text: string }) {

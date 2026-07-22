@@ -117,6 +117,29 @@ export const stampLabel = (at: Date, now: Date): string =>
 // ============================================================================
 
 /**
+ * `Adwoa Mensa` → `A. Mensa`. 🔴 IN THIS MODULE THE ABBREVIATION IS A DISCLOSURE TIER, not a render
+ * preference (R73's one-name rule · Lucy A2), so there is ONE implementation and the reader applies
+ * it — every board type that carries a `studentName` carries it ALREADY ABBREVIATED, and the type
+ * therefore states the tier.
+ *
+ * The single named exception is `SickbayWardPatient.studentName`, which stays FULL: the surface's
+ * own `.ab-name` prints `Adwoa <em>Mensa</em> · admitted bed 3` (the block is one patient, named,
+ * and the most detailed disclosure on the page). The tile-1 meta abbreviates it at the call site
+ * through this same function.
+ *
+ * A one-word name is returned unchanged — `M.` alone identifies nobody and is not a shorter form,
+ * it is a broken one. A blank/whitespace name is `null` (a dangling actor pointer drops its clause).
+ */
+export function initials(full: string): string;
+export function initials(full: string | null): string | null;
+export function initials(full: string | null): string | null {
+  const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return null;
+  if (parts.length === 1) return parts[0];
+  return `${parts[0].charAt(0)}. ${parts[parts.length - 1]}`;
+}
+
+/**
  * The lede, TRIMMED (Z3: the referral and cluster clauses advertise affordances that do not exist
  * until INCR-25/27). A zero clause is DROPPED, never rendered as `0`; all three zero renders the
  * authored quiet-day sentence. `admitted: null` is Mode C, where the clause is not "0" — it is not

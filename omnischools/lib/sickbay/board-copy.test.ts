@@ -34,6 +34,7 @@ import {
   dayLabel,
   dispositionPill,
   hhmm,
+  initials,
   openVisitCollisionError,
   queueWaitMeta,
   recentLede,
@@ -196,6 +197,30 @@ describe("O · shipped board copy is character-exact against the today surface",
 
     expect(formatWait(7 * 60_000)).toBe("7 min wait");
     expect(SURFACE_TEXT.includes("7 min wait")).toBe(true);
+  });
+
+  it("A2/R73 · ONE abbreviation, and it is a disclosure tier — not a render preference", () => {
+    expect(initials("Adwoa Mensa")).toBe("A. Mensa");
+    expect(SURFACE_TEXT.includes("A. Mensa")).toBe(true);
+    expect(initials("Kofi Asare Mensah")).toBe("K. Mensah");
+    // A one-word name is NOT abbreviated: `M.` alone identifies nobody, so it is not a shorter form.
+    expect(initials("Mensa")).toBe("Mensa");
+    // A dangling actor pointer drops its clause rather than printing an empty one.
+    expect(initials(null)).toBeNull();
+    expect(initials("   ")).toBeNull();
+
+    // …and there is exactly ONE implementation. Four had drifted apart on null and single-word
+    // names, and because the abbreviation IS the tier, the drift was invisible at the type level.
+    for (const { path, code } of SHIPPED_22C) {
+      expect(
+        /charAt\(0\)\s*\}\s*\./.test(code),
+        `${path} re-implements the abbreviation inline`,
+      ).toBe(false);
+      expect(
+        /\b(const|function)\s+(initial|initials|shortName)\s*[=(]/.test(code),
+        `${path} declares a second abbreviation helper`,
+      ).toBe(false);
+    }
   });
 
   it("the disposition pills are the surface's `.d-pill`s", () => {
@@ -404,14 +429,41 @@ describe("B6/R87 · the board reader cannot leak a clinical assertion", () => {
     ).toBe(false);
   });
 
-  it("R81 · the role gate is the FIRST statement of the reader, before any query", () => {
+  /**
+   * ⚠️ THIS IS A TEXTUAL GUARD, AND THE LIVE ONE IS `🔴 G2 an ADMIN reader issues NO SQL AT ALL` in
+   * `scripts/verify-sickbay-board.ts` — it counts real round trips and is what actually enforces
+   * R81. An earlier version of this test compared the gate against `withSchool` ONLY, so moving the
+   * gate below `await getSickbayConfig(schoolId)` — a HELPER that queries — left it green while the
+   * live counter went 0 → 2. So the assertion is against the FIRST `await` of any kind: every query
+   * this reader can issue, direct or through a helper, is behind one.
+   */
+  it("R81 · the role gate precedes the reader's FIRST await, not just its first `withSchool`", () => {
     const body = READER.code.slice(
       READER.code.indexOf("export async function getSickbayBoard"),
     );
     const gate = body.indexOf("SICKBAY_CLINICAL_READ_ROLES");
-    const firstQuery = body.indexOf("withSchool");
     expect(gate).toBeGreaterThan(-1);
-    expect(gate).toBeLessThan(firstQuery);
+    // The generic guard: nothing is awaited before the gate, so no helper can smuggle a query past.
+    const firstAwait = body.search(/\bawait\b/);
+    expect(firstAwait).toBeGreaterThan(-1);
+    expect(gate, "a query is awaited BEFORE the clinical gate").toBeLessThan(firstAwait);
+    // …and named, so a failure says WHICH entry point moved above it.
+    for (const entry of ["withSchool", "getSickbayConfig"]) {
+      const at = body.indexOf(entry);
+      expect(at, `${entry} is not called by the reader any more`).toBeGreaterThan(-1);
+      expect(gate, `${entry} is called before the clinical gate`).toBeLessThan(at);
+    }
+  });
+
+  it("🔴 R78 · the queue's void backstop is LIVE — `voidedAt` is SELECTED, never hardcoded", () => {
+    // Dex A1: `isQueued({ ...v, voidedAt: null }, now)` type-checks, reads fine, and silences the
+    // one in-memory check that would survive the SQL `isNull()` being deleted. The column is
+    // selected and the row is passed whole.
+    expect(READER.code.includes("voidedAt: sickbayVisit.voidedAt")).toBe(true);
+    expect(/voidedAt:\s*null/.test(READER.code), "voidedAt is fabricated").toBe(false);
+    expect(READER.code.includes("isQueued(v, now)")).toBe(true);
+    // …and the SQL predicate the counters and §03 rest on is still there.
+    expect(READER.code.includes("isNull(sickbayVisit.voidedAt)")).toBe(true);
   });
 
   it("the reader is `server-only` and is NOT a `use server` module", () => {

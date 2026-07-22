@@ -52,20 +52,47 @@ const TOKEN_IMPRESSION = "ZZTOKENIMP";
 const BASE = process.env.BOARD_BASE_URL ?? "http://localhost:3000";
 const SERVED_ROLE = process.env.SERVED_ROLE ?? "";
 
-/** Count DB round trips through the ONE seam every tenant read goes through (lib/db/rls.ts). */
+/**
+ * Count DB work through the ONE seam every tenant read goes through (lib/db/rls.ts).
+ *
+ * TWO numbers, because the first one alone has a blind spot (Dex A3): `trips` counts TRANSACTIONS,
+ * so a per-row `tx.select` added INSIDE one of the reader's existing `withSchool` callbacks — which
+ * is exactly the shape INCR-23's per-student chronic lookup will want ("just add it to the ward
+ * query's callback") — is a textbook N+1 that leaves the trip count at 5. `statements` therefore
+ * counts the QUERY BUILDERS issued on the transaction handle itself: `tx.select/insert/update/
+ * delete`. (`tx.execute`, which `withSchool` uses for its own `set_config`, is deliberately not
+ * counted — it is the seam's overhead, not the reader's work.)
+ */
 async function countRoundTrips<T>(
   fn: () => Promise<T>,
-): Promise<{ result: T; trips: number }> {
+): Promise<{ result: T; trips: number; statements: number }> {
   const real = db.transaction.bind(db);
   let trips = 0;
+  let statements = 0;
+  const COUNTED = new Set(["select", "insert", "update", "delete"]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (db as any).transaction = (...args: unknown[]) => {
+  const counting = (tx: any) =>
+    new Proxy(tx, {
+      get(target, prop, receiver) {
+        const v = Reflect.get(target, prop, receiver);
+        if (typeof v !== "function") return v;
+        if (typeof prop === "string" && COUNTED.has(prop)) {
+          return (...a: unknown[]) => {
+            statements++;
+            return v.apply(target, a);
+          };
+        }
+        return v.bind(target);
+      },
+    });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (db as any).transaction = (cb: any, ...rest: unknown[]) => {
     trips++;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (real as any)(...args);
+    return (real as any)((tx: any) => cb(counting(tx)), ...rest);
   };
   try {
-    return { result: await fn(), trips };
+    return { result: await fn(), trips, statements };
   } finally {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (db as any).transaction = real;
@@ -200,8 +227,8 @@ async function main() {
   );
   check(
     "🔴 G2 an ADMIN reader issues NO SQL AT ALL",
-    admin.trips === 0,
-    `${admin.trips} round trips`,
+    admin.trips === 0 && admin.statements === 0,
+    `${admin.trips} round trips, ${admin.statements} statements`,
   );
   const hm = await countRoundTrips(() => getSickbayBoard(school.id, ["HEADMASTER"], now));
   check(
@@ -237,6 +264,13 @@ async function main() {
     "🔴 B1 the round-trip count is FLAT as the queue grows to 30+",
     big.trips === small.trips && big.result!.queue.length >= 31,
     `${small.trips} → ${big.trips} trips, ${big.result!.queue.length} queued`,
+  );
+  // The arm that closes Dex A3's blind spot: a per-row query added inside an EXISTING withSchool
+  // callback keeps `trips` at 5 and moves THIS number by one per row.
+  check(
+    "🔴 B1 the STATEMENT count is flat too — no N+1 hiding inside an existing callback",
+    big.statements === small.statements,
+    `${small.statements} → ${big.statements} statements for ${big.result!.queue.length} rows`,
   );
   check(
     "B2 the reader never calls getVisitRecord (no N×9 per-row fetch)",
@@ -339,10 +373,22 @@ async function main() {
       .where(and(eq(sickbayVisit.schoolId, school.id), eq(sickbayVisit.id, extra[0].id)));
   });
   const afterVoid = (await getSickbayBoard(school.id, ["MATRON"], now))!;
+  /**
+   * 🔴 R78 IS ASSERTED IN TWO ARMS ON PURPOSE, and the split is the mutation test (Dex A1).
+   * §03 and the counters have NO void check of their own — they rest entirely on the reader's SQL
+   * `isNull(sickbayVisit.voidedAt)`. The queue has a SECOND, in-memory one: `isQueued()` reads the
+   * `voidedAt` the select now actually fetches. So deleting that `isNull()` turns arm 2 RED and
+   * leaves arm 1 GREEN — which is how you tell a live backstop from a decorative one. (Before this
+   * rework the reader passed `{ ...v, voidedAt: null }`, and BOTH arms went red together: the
+   * literal had silenced the only check that could have distinguished them.)
+   */
   check(
-    "🔴 R78 a voided visit leaves the queue, §03 AND every counter",
-    !afterVoid.queue.some((r) => r.visitId === extra[0].id) &&
-      !afterVoid.recent.some((r) => r.visitId === extra[0].id) &&
+    "🔴 R78 arm 1 — a voided visit leaves the QUEUE (the in-memory isQueued backstop)",
+    !afterVoid.queue.some((r) => r.visitId === extra[0].id),
+  );
+  check(
+    "🔴 R78 arm 2 — …and §03 and every counter (the SQL isNull, unbacked)",
+    !afterVoid.recent.some((r) => r.visitId === extra[0].id) &&
       afterVoid.counts.today.total === t.total - 1,
   );
 
