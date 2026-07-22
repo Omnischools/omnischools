@@ -21,7 +21,11 @@ export const dynamic = "force-dynamic";
  * owns the statement (ownership proven under withParentScope before any render); STUDENT/TEACHER denied.
  */
 export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
-  const { school } = await requireSchool();
+  // The ONE deliberate non-staff caller: a PARENT may fetch their own child's statement (INCR-19b),
+  // with ownership proven under `withParentScope` below before anything renders. `requireSchool` is
+  // staff-only by default, so this opt-in is what keeps that shipped parent feature working — and it
+  // is greppable precisely so a second one cannot appear without being noticed.
+  const { school } = await requireSchool({ allowNonStaff: true });
 
   const user = await getCurrentUser();
   if (!user) return new Response("Forbidden", { status: 403 });
