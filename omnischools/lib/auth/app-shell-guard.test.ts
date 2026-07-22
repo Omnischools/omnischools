@@ -3,6 +3,14 @@ import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
 import { isStaff } from "@/lib/access";
+import {
+  TENANT_READ,
+  GUARD,
+  filesUnder,
+  guardBefore,
+  readCode,
+  stripComments,
+} from "@/lib/test-utils/source-shape";
 
 /**
  * `requireSchool()` is staff-only — a regression guard for a LIVE PII leak.
@@ -31,13 +39,7 @@ import { isStaff } from "@/lib/access";
  */
 const SERVER = "lib/auth/server.ts";
 
-/**
- * Strip comments so every assertion below matches CODE. `(?<!:)` keeps `https://…` inside a string
- * from swallowing the rest of its line — that would silently erase a real `withSchool(` and turn the
- * sweep's "no tenant read here" skip into exactly the false pass this exists to stop.
- */
-const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\/|(?<!:)\/\/.*$/gm, "");
-const src = () => stripComments(readFileSync(resolve(cwd(), SERVER), "utf8"));
+const src = () => readCode(SERVER);
 // Condition THROUGH consequence: a gate that tests the right thing and then does nothing is not a gate.
 const GATE =
   /if\s*\(\s*!opts\?\.allowNonStaff\s*&&\s*!\s*isStaff\s*\(\s*user\.roles\s*\)\s*\)\s*\{\s*redirect\s*\(/;
@@ -114,36 +116,20 @@ describe("requireSchool is staff-only by default", () => {
  * *nothing enforced* the property making them safe. Page 83, or one fetch hoisted above a guard,
  * silently reopens the hole that let a claimed parent read a child's medications.
  *
- * So: every page and API route that opens a tenant read must await a `require*` guard FIRST. A file
- * that performs no tenant read has nothing to guard and passes trivially — that also covers the
- * pages which delegate to a lib function that guards internally.
+ * So: every page and API route that opens a tenant read must await a `require*` guard FIRST.
  *
- * KNOWN BLIND SPOT, measured rather than assumed (Dex, PR #176): of 91 swept targets, 63 contain a
- * tenant read and are genuinely checked; 28 contain none and pass trivially. Of those 28, 26 carry a
- * guard anyway, one is `app/api/cron/health/route.ts` (no session, no tenant read — correctly
- * invisible), and one is the promotion page, which delegates to `previewPromotion()` and is guarded
- * inside it. So nothing is currently hiding there — but a page reading through a `-data.ts` helper
- * under `lib` that takes a `schoolId` and opens its own transaction WOULD be invisible to this sweep.
+ * 🔴 THE "NOTHING TO GUARD" SKIP IS GONE (PR #180). It used to say: a file with no recognised tenant
+ * read passes trivially. Dex measured the cost of that on PR #176 — 28 of 91 targets passed without
+ * being checked at all — and Quinn then PROVED it exploitable on the sibling guard by shipping a
+ * `grantRoleBackdoor` that used `withoutTenantScope`: it typechecked, built, passed the whole suite,
+ * and handed a TEACHER `ADMIN` on a production build. A file whose data access the sweep cannot
+ * RECOGNISE is exactly the case a backdoor falls into, so it can no longer be the case that passes
+ * silently.
  *
- * This is deliberately cheap and blunt. It passes today; its whole value is failing the day someone
- * adds a route that reads before it checks.
+ * The rule now: reach the database ⇒ guard first. Appear not to reach it ⇒ STILL carry a guard, or be
+ * named in `NO_DB_ACCESS` by a human who looked. Of the 28, 26 already carried a guard and pass
+ * unchanged; the two that did not are named below with their reasons.
  */
-const TENANT_READ = /\b(withSchool|withParentScope|withoutTenantScope|withStaffScope)\s*\(/;
-const GUARD = /\b(requireSchool|requireSchoolRole|requireParent|requireUser)\s*\(/;
-
-function filesUnder(dir: string, match: RegExp): string[] {
-  const out: string[] = [];
-  const walk = (d: string) => {
-    for (const e of readdirSync(resolve(cwd(), d), { withFileTypes: true })) {
-      const p = `${d}/${e.name}`;
-      if (e.isDirectory()) walk(p);
-      else if (match.test(e.name)) out.push(p);
-    }
-  };
-  walk(dir);
-  return out;
-}
-
 describe("every tenant read is preceded by an auth guard", () => {
   const targets = [
     ...filesUnder("app/(app)", /^page\.tsx$/),
@@ -163,17 +149,37 @@ describe("every tenant read is preceded by an auth guard", () => {
    */
   const SECRET_AUTHED = ["app/api/inbox/inbound/route.ts"];
 
-  it("no page or route opens a tenant transaction before awaiting a guard", () => {
+  /**
+   * The two targets that reach no database AND hold no session guard. Named, not skipped — each has
+   * to be justifiable out loud, and a third appearing is a diff line someone must defend.
+   *  · the promotion page delegates to `previewPromotion()`, which calls `requireSchool()` itself
+   *    (`lib/actions/promotion.ts`) — guarded, just not in the file.
+   *  · the cron health check has no session and no tenant data by design.
+   */
+  const NO_DB_ACCESS = [
+    "app/(app)/settings/academic/promotion/page.tsx",
+    "app/api/cron/health/route.ts",
+  ];
+
+  it("no page or route touches the database before awaiting a guard", () => {
     const offenders: string[] = [];
     for (const p of targets) {
-      if (SECRET_AUTHED.includes(p)) continue;
-      const src = stripComments(readFileSync(resolve(cwd(), p), "utf8"));
-      const read = src.search(TENANT_READ);
-      if (read === -1) continue; // no tenant read here — nothing to guard
-      const guard = src.search(GUARD);
-      if (guard === -1 || guard > read) offenders.push(p);
+      if (SECRET_AUTHED.includes(p) || NO_DB_ACCESS.includes(p)) continue;
+      const v = guardBefore(readCode(p));
+      if (!v.ok) offenders.push(`${p} (${v.why})`);
     }
     expect(offenders, "these read tenant data before (or without) an auth guard").toEqual([]);
+  });
+
+  it("the NO_DB_ACCESS exemptions are still earned — none of them has grown a database read", () => {
+    // An exemption that silently starts querying is the failure this list would otherwise cause.
+    for (const p of NO_DB_ACCESS) {
+      expect(targets, `${p} is exempted but no longer swept`).toContain(p);
+      expect(
+        readCode(p),
+        `${p} now reaches the database — it must guard, or leave this list`,
+      ).not.toMatch(TENANT_READ);
+    }
   });
 
   it("every secret-authed exemption actually checks its secret, REFUSES, and does both before reading", () => {
@@ -185,7 +191,7 @@ describe("every tenant read is preceded by an auth guard", () => {
     // penalises the safer implementation gets worked around instead of updated. What must hold is
     // only: the condition consults the secret, and the block REFUSES.
     for (const p of SECRET_AUTHED) {
-      const src = stripComments(readFileSync(resolve(cwd(), p), "utf8"));
+      const src = readCode(p);
       const m = /if\s*\([\s\S]{0,200}?env\.\w*SECRET\w*[\s\S]{0,200}?\)\s*\{/.exec(src);
       expect(m, `${p}: expected a shared-secret check consulting env.*SECRET*`).not.toBeNull();
       const check = m!.index;
@@ -195,7 +201,8 @@ describe("every tenant read is preceded by an auth guard", () => {
         `${p}: the secret check must FAIL CLOSED — refuse with 401/403`,
       ).toMatch(/\b40[13]\b/);
       const read = src.search(TENANT_READ);
-      if (read !== -1) expect(check, `${p}: secret check must precede the tenant read`).toBeLessThan(read);
+      expect(read, `${p}: this route is exempted because it READS under a shared secret`).toBeGreaterThan(-1);
+      expect(check, `${p}: secret check must precede the tenant read`).toBeLessThan(read);
     }
   });
 });
