@@ -30,12 +30,24 @@ function textOf(cls: string): string[] {
   }
   return out;
 }
+/**
+ * Strip markup to a FIXPOINT, not in one pass. Removing a tag can splice a new one together out of
+ * its neighbours (`<scr<b></b>ipt>` → `<script>`), so a single `.replace` is not idempotent. Looping
+ * until the string stops changing is the correct removal and is what makes it order-independent.
+ * `<script>`/`<style>` go wholesale — element AND content — because their CSS/JS text is not visible
+ * copy and splicing it into the stream would corrupt the comparisons below.
+ */
+function stripMarkup(input: string): string {
+  let s = input;
+  for (let prev = ""; prev !== s; ) {
+    prev = s;
+    s = s.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "").replace(/<[^>]*>/g, "");
+  }
+  return s;
+}
+
 const clean = (s: string) =>
-  s
-    // `<script>`/`<style>` go WHOLESALE — element and content together. Stripping only the tags
-    // would splice CSS and JS text into the stream these assertions compare against.
-    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "")
-    .replace(/<[^>]*>/g, "")
+  stripMarkup(s)
     // `&amp;` is decoded LAST, and the order is load-bearing: decoding it first turns `&amp;gt;`
     // into `&gt;` into `>` — a double-unescape that silently rewrites the very copy this helper
     // exists to compare character-for-character.
