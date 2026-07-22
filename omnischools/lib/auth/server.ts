@@ -10,6 +10,7 @@ import {
   pathAllowedForFinance,
   FINANCE_HOME,
   hasAnyRole,
+  isStaff,
 } from "@/lib/access";
 
 export interface ActiveSchool {
@@ -96,10 +97,54 @@ export async function requireUser(): Promise<AppUser> {
 }
 
 /** For app pages: ensure a user AND a resolvable school, else redirect. */
-export async function requireSchool(): Promise<{ user: AppUser; school: ActiveSchool }> {
+/**
+ * 🔴 STAFF-ONLY BY DEFAULT. This closes a live PII leak, and the placement is the whole point.
+ *
+ * WHAT WAS WRONG. This function authenticated and resolved an active school but performed NO role
+ * check, and 62 of the 82 pages under `app/(app)` are gated by nothing else. Accepting a PARENT
+ * invite creates a real `role_assignment` (`lib/actions/invites.ts`), so a claimed parent held an
+ * active school, passed this gate, and could open `students/[id]` — blood group, allergies,
+ * conditions, medications, emergency contact — plus admissions, attendance and billing.
+ * Demonstrated end-to-end against a production build with a PARENT session: HTTP 200 carrying the
+ * data.
+ *
+ * WHY THE 19a PARENT BOUNDARY DID NOT CATCH IT — and why it was not at fault. It binds through
+ * `withParentScope`, which sets `app.current_parent_user`. Staff pages read under `withSchool`, so
+ * that GUC is unset and `parent_deny`'s permit-by-default clause (`pu IS NULL OR …`) lets the row
+ * through. Proven against the live DB as the non-superuser role: school-GUC-only read the health
+ * record, parent-GUC-set read zero. The boundary is sound; a parent standing on a staff route never
+ * met it. (This is exactly the polarity hazard Kofi flagged when specifying the chronic-register
+ * boundary as deny-by-default.)
+ *
+ * WHY HERE AND NOT IN THE LAYOUT. A redirect thrown from a layout does not stop the page rendering —
+ * layouts and pages render in parallel. A production build served a 307 whose body still carried the
+ * health data. Every page calls this function in its OWN render, before its own queries, so this is
+ * the seam where a refusal actually prevents the read.
+ *
+ * WHY `isStaff` RATHER THAN AN ALLOW-LIST. `isStaff` is false only for the two roles KNOWN to be
+ * non-staff and true for everything else, so an unfamiliar or newly-added staff role is admitted
+ * rather than locked out. For a guard covering 104 call sites that polarity is the safe one: the
+ * failure mode is "a new role still works", never "the bursar cannot log in on Monday". A staff
+ * member who is also a parent — common — holds a staff role and passes, correctly; roles are
+ * active-school-scoped since #167, so this means "staff HERE, now".
+ *
+ * `allowNonStaff` is the ONE deliberate exception: `app/api/senior/readiness-statement/[id]` serves
+ * a parent their own child's PDF (INCR-19b), proving ownership under `withParentScope` before it
+ * renders. It is opt-IN and greppable precisely so a second one cannot appear by accident.
+ * `requireParent()` does not route through here, so the parent portal is unaffected.
+ */
+export async function requireSchool(
+  opts?: { allowNonStaff?: boolean },
+): Promise<{ user: AppUser; school: ActiveSchool }> {
   const user = await requireUser();
   const school = await getActiveSchool(user);
   if (!school) redirect("/start");
+  if (!opts?.allowNonStaff && !isStaff(user.roles)) {
+    // A parent has somewhere to be; a student-only session has no portal yet, and `/start` is the
+    // honest landing rather than a staff page they cannot use. Neither target is inside `app/(app)`,
+    // which would loop.
+    redirect(user.roles.includes("PARENT") ? "/wassce" : "/start");
+  }
   // Finance-only staff (Accountant/Bursar) are confined to the billing sections.
   // Runs on every app page (and its server actions) via this shared guard; the path
   // comes from the middleware-stamped `x-pathname` header.

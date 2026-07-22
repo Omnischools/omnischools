@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
+import { isStaff } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
 import {
   students,
@@ -58,7 +59,7 @@ const pctToneOf = (p: number) => (p >= 90 ? "text-green" : p >= 70 ? "text-gold"
 
 export default async function StudentDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const { school } = await requireSchool();
+  const { school, user } = await requireSchool();
   const today = new Date().toISOString().slice(0, 10);
 
   const data = await withSchool(school.id, async (tx) => {
@@ -234,10 +235,18 @@ export default async function StudentDetailPage(props: { params: Promise<{ id: s
           .orderBy(asc(subjects.name))
       : [];
 
-    const [health] = await tx
-      .select()
-      .from(studentHealthRecords)
-      .where(eq(studentHealthRecords.studentId, student.id));
+    // 🔴 NOT FETCHED for a non-staff reader — deliberately a DATA decision, not a control-flow one.
+    // `requireSchool()` already refuses non-staff, but a redirect thrown from a Server Component
+    // does NOT stop the render: a production build served a 307 to /wassce whose body still carried
+    // this student's allergies, conditions and medications, live-rendered (proven by changing the
+    // value and seeing the NEW one appear in the redirect body). Navigation was blocked; disclosure
+    // was not. A row that is never selected cannot be streamed, whatever the control flow does.
+    const [health] = isStaff(user.roles)
+      ? await tx
+          .select()
+          .from(studentHealthRecords)
+          .where(eq(studentHealthRecords.studentId, student.id))
+      : [];
 
     return { student, term, guardians, attRecs, invs, pays, latestCard, notes, activity, scores, health };
   });

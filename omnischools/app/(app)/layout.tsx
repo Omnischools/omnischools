@@ -4,6 +4,15 @@ import { AppSidebar } from "@/components/app/sidebar";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { PwaSession } from "@/components/pwa-session";
 
+/**
+ * The staff-only guard is NOT here — it is inside `requireSchool()`, which this layout and all 82
+ * pages under it already call. That placement is deliberate and was arrived at the hard way: a
+ * redirect thrown from a LAYOUT does not stop the page rendering. Layouts and pages render in
+ * parallel, so the page's own queries still run and its payload is still streamed; a production
+ * build served a 307 to `/wassce` whose body nonetheless carried the student's allergies,
+ * conditions and medications. The navigation was blocked and the bytes were not.
+ * Guarding inside `requireSchool` puts the check in each page's OWN render, before its own reads.
+ */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { school, user } = await requireSchool();
   const sessionId = await getSessionId();
