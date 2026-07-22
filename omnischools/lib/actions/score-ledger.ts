@@ -414,15 +414,17 @@ export async function saveAssessmentScores(input: unknown): Promise<SaveMarksRes
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid scores." };
   }
   const d = parsed.data;
-  // Reject out-of-range marks up front with a clear message, so a bad entry can never
-  // reach the DB as a numeric(5,2) overflow that surfaces as the generic catch (Quinn MAJOR).
+  // Validate + parse EVERY mark up front through the SAME parseCategoryCell the other two
+  // capture paths use, so all three agree on one 0–MAX_PERCENT bound (compute.ts). A bad cell
+  // REJECTS the whole batch here, before the transaction opens — it is never silently dropped
+  // while its neighbours commit and the teacher is told "Saved N marks" (partial-write bug).
+  const parsedMarks: { assessmentId: string; studentId: string; value: number | null }[] = [];
   for (const s of d.scores) {
-    const t = s.raw.trim();
-    if (t === "") continue;
-    const num = Number(t);
-    if (Number.isFinite(num) && (num < 0 || num > 999.99)) {
-      return { ok: false, error: "Each mark must be between 0 and 999.99." };
+    const value = parseCategoryCell(s.raw);
+    if (value === "invalid") {
+      return { ok: false, error: "Each mark must be a number between 0 and 999.99." };
     }
+    parsedMarks.push({ assessmentId: s.assessmentId, studentId: s.studentId, value });
   }
   const closed = await closedPeriodError(school.id, d.periodId);
   if (closed) return { ok: false, error: closed };
@@ -445,31 +447,28 @@ export async function saveAssessmentScores(input: unknown): Promise<SaveMarksRes
       const validIds = new Set(valid.map((v) => v.id));
 
       let n = 0;
-      for (const s of d.scores) {
-        if (!validIds.has(s.assessmentId)) continue;
-        const trimmed = s.raw.trim();
-        if (trimmed === "") {
+      for (const { assessmentId, studentId, value: num } of parsedMarks) {
+        if (!validIds.has(assessmentId)) continue;
+        if (num == null) {
           await tx
             .delete(seniorAssessmentScores)
             .where(
               and(
                 eq(seniorAssessmentScores.schoolId, school.id),
-                eq(seniorAssessmentScores.assessmentId, s.assessmentId),
-                eq(seniorAssessmentScores.studentId, s.studentId),
+                eq(seniorAssessmentScores.assessmentId, assessmentId),
+                eq(seniorAssessmentScores.studentId, studentId),
               ),
             );
           n++;
           continue;
         }
-        const num = Number(trimmed);
-        // Non-negative and finite; over-max (bonus) is allowed — the UI soft-warns (Kofi Q3).
-        if (!Number.isFinite(num) || num < 0) continue;
+        // Over-max (bonus) is allowed — the UI soft-warns (Kofi Q3).
         await tx
           .insert(seniorAssessmentScores)
           .values({
             schoolId: school.id,
-            assessmentId: s.assessmentId,
-            studentId: s.studentId,
+            assessmentId,
+            studentId,
             rawMark: num.toFixed(2),
             updatedByUserId: actor.id ?? undefined,
             updatedAt: new Date(),

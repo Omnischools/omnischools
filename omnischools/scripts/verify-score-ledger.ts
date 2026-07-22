@@ -86,9 +86,19 @@ async function main() {
   });
   check("direct entry refused before path is DIRECT_ENTRY", !guard.ok);
 
-  // setLedgerPath rejects Path B (not built).
-  const scanReject = await setLedgerPath({ ...ctx, path: "SCAN_EXTRACT" });
-  check("setLedgerPath rejects SCAN_EXTRACT (Path B)", !scanReject.ok);
+  // Path B SHIPPED in INCR-2 (commitScanLedger + /senior/score-ledger/scan), so setLedgerPath
+  // must ACCEPT SCAN_EXTRACT — the scan page, the extract route and the commit action all gate
+  // on the context being on that path. What stays load-bearing is the cross-path guard: while a
+  // context is on Path B, Path C direct entry must still be refused.
+  const setB = await setLedgerPath({ ...ctx, path: "SCAN_EXTRACT" });
+  check("setLedgerPath → SCAN_EXTRACT ok (Path B shipped)", setB.ok, setB.ok ? "" : setB.error);
+  const directOnB = await saveDirectLedgerScores({
+    ...ctx,
+    scores: [
+      { studentId: s1.studentId, asgn: "80", midSem: "70", endSem: "60", project: "90", portfolio: "85" },
+    ],
+  });
+  check("direct entry refused while the context is on Path B", !directOnB.ok);
 
   // Switch to Path C.
   const setC = await setLedgerPath({ ...ctx, path: "DIRECT_ENTRY" });
@@ -125,11 +135,14 @@ async function main() {
   );
 
   // ATOMICITY (the MAJOR): a batch with one out-of-range cell must commit NOTHING.
+  // NB the bound is 0–MAX_PERCENT (999.99), not 0–100: INCR-2 deliberately widened all three
+  // capture paths to allow bonus marks (Kofi Owner-Option-A), so 150 is a LEGAL score. The
+  // fixture must therefore breach the real ceiling to exercise the rejection.
   const bad = await saveDirectLedgerScores({
     ...ctx,
     scores: [
       { studentId: s1.studentId, asgn: "10", midSem: "10", endSem: "10", project: "10", portfolio: "10" },
-      { studentId: s2.studentId, asgn: "150", midSem: "", endSem: "", project: "", portfolio: "" },
+      { studentId: s2.studentId, asgn: "1500", midSem: "", endSem: "", project: "", portfolio: "" },
     ],
   });
   const r1After = await ledgerRow(s1.studentId, subjectId, periodId);
@@ -139,6 +152,48 @@ async function main() {
     Number(r1After?.weightedTotal) === 72.75,
     `${r1After?.weightedTotal}`,
   );
+
+  // Same batch-level rejection for a NON-NUMERIC cell — Number("abc") is NaN, which the old
+  // `Number.isFinite(num) && …` pre-pass let slip through to be silently dropped mid-loop.
+  const junk = await saveDirectLedgerScores({
+    ...ctx,
+    scores: [
+      { studentId: s1.studentId, asgn: "20", midSem: "20", endSem: "20", project: "20", portfolio: "20" },
+      { studentId: s2.studentId, asgn: "abc", midSem: "", endSem: "", project: "", portfolio: "" },
+    ],
+  });
+  const r1Junk = await ledgerRow(s1.studentId, subjectId, periodId);
+  check("non-numeric batch rejected", !junk.ok);
+  check(
+    "atomicity: non-numeric batch committed nothing (s1 still 72.75)",
+    Number(r1Junk?.weightedTotal) === 72.75,
+    `${r1Junk?.weightedTotal}`,
+  );
+
+  // A bonus mark (>100, ≤999.99) is LEGAL on Path C and must commit — the other half of the
+  // Owner-Option-A ruling, pinned so the bound can't silently narrow back to 100.
+  const bonus = await saveDirectLedgerScores({
+    ...ctx,
+    scores: [
+      { studentId: s2.studentId, asgn: "110", midSem: "", endSem: "", project: "", portfolio: "" },
+    ],
+  });
+  const r2Bonus = await ledgerRow(s2.studentId, subjectId, periodId);
+  check(
+    "bonus category score (110) commits",
+    bonus.ok && Number(r2Bonus?.asgnScore) === 110,
+    `${r2Bonus?.asgnScore}`,
+  );
+
+  // Restore s1 to the 72.75 baseline the Path A assertions below assume nothing about, and
+  // s2 to its partial state — keeps this block side-effect-free for the rest of the run.
+  await saveDirectLedgerScores({
+    ...ctx,
+    scores: [
+      { studentId: s1.studentId, asgn: "80", midSem: "70", endSem: "60", project: "90", portfolio: "85" },
+      { studentId: s2.studentId, asgn: "80", midSem: "", endSem: "", project: "", portfolio: "" },
+    ],
+  });
 
   // Roster filter: a studentId outside the class is ignored, not written, not counted.
   const stranger = await createStudent({ firstName: "Not", lastName: "Inclass", sex: "MALE" });
@@ -208,6 +263,39 @@ async function main() {
     "Path A complete → 72.75, COMPLETE",
     Number(rA2?.weightedTotal) === 72.75 && rA2?.status === "COMPLETE",
     `${rA2?.weightedTotal}/${rA2?.status}`,
+  );
+
+  // Path A batch atomicity (the real partial-write defect). A non-numeric cell used to slip the
+  // pre-pass (Number("abc") is NaN, so the `Number.isFinite(num) && …` guard never fired) and was
+  // then silently `continue`d mid-loop — its neighbours committed and the teacher saw
+  // "Saved N marks". The batch must now be refused whole, with the sibling mark unwritten.
+  const badA = await saveAssessmentScores({
+    ...ctx,
+    scores: [
+      { assessmentId: a.id, studentId: s3.studentId, raw: "55" },
+      { assessmentId: mid.id, studentId: s3.studentId, raw: "abc" },
+    ],
+  });
+  const rA3 = await ledgerRow(s3.studentId, subjectId, periodId);
+  check("Path A non-numeric batch rejected", !badA.ok);
+  check(
+    "Path A atomicity: sibling mark in the rejected batch NOT written (asgn still 80)",
+    Number(rA3?.asgnScore) === 80,
+    `${rA3?.asgnScore}`,
+  );
+  const overA = await saveAssessmentScores({
+    ...ctx,
+    scores: [
+      { assessmentId: a.id, studentId: s3.studentId, raw: "55" },
+      { assessmentId: mid.id, studentId: s3.studentId, raw: "1500" },
+    ],
+  });
+  const rA4 = await ledgerRow(s3.studentId, subjectId, periodId);
+  check("Path A out-of-range batch rejected", !overA.ok);
+  check(
+    "Path A atomicity: sibling mark in the out-of-range batch NOT written (asgn still 80)",
+    Number(rA4?.asgnScore) === 80,
+    `${rA4?.asgnScore}`,
   );
 
   // ---------- Item 3: VHM progress (enumerate from assignments) ----------
