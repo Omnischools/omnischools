@@ -79,6 +79,81 @@ describe("requireSchool is staff-only by default", () => {
   });
 });
 
+/**
+ * 🔴 THE GUARD-ORDERING INVARIANT — the thing that actually keeps the other 81 pages safe.
+ *
+ * Sarah's ruling on PR #176: the residual risk was never "61 pages leak" — they do not, because a
+ * redirect awaited in a page's OWN render stops that page before its own fetch. The risk is that
+ * *nothing enforced* the property making them safe. Page 83, or one fetch hoisted above a guard,
+ * silently reopens the hole that let a claimed parent read a child's medications.
+ *
+ * So: every page and API route that opens a tenant read must await a `require*` guard FIRST. A file
+ * that performs no tenant read has nothing to guard and passes trivially — that also covers the
+ * pages which delegate to a lib function that guards internally.
+ *
+ * This is deliberately cheap and blunt. It passes today; its whole value is failing the day someone
+ * adds a route that reads before it checks.
+ */
+const TENANT_READ = /\b(withSchool|withParentScope|withoutTenantScope|withStaffScope)\s*\(/;
+const GUARD = /\b(requireSchool|requireSchoolRole|requireParent|requireUser)\s*\(/;
+
+function filesUnder(dir: string, match: RegExp): string[] {
+  const out: string[] = [];
+  const walk = (d: string) => {
+    for (const e of readdirSync(resolve(cwd(), d), { withFileTypes: true })) {
+      const p = `${d}/${e.name}`;
+      if (e.isDirectory()) walk(p);
+      else if (match.test(e.name)) out.push(p);
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+describe("every tenant read is preceded by an auth guard", () => {
+  const targets = [
+    ...filesUnder("app/(app)", /^page\.tsx$/),
+    ...filesUnder("app/api", /^route\.ts$/),
+  ];
+
+  it("finds the routes it claims to check (the sweep is not vacuous)", () => {
+    // If a refactor moves these, this test must fail loudly rather than pass over an empty set.
+    expect(targets.length).toBeGreaterThan(60);
+  });
+
+  /**
+   * Machine-to-machine routes have no user session by design. They are exempt from the `require*`
+   * rule and subject to a stricter one instead (below): the shared-secret check must be the FIRST
+   * thing the handler does. The list is explicit so adding one is a deliberate act, not a drift.
+   */
+  const SECRET_AUTHED = ["app/api/inbox/inbound/route.ts"];
+
+  it("no page or route opens a tenant transaction before awaiting a guard", () => {
+    const offenders: string[] = [];
+    for (const p of targets) {
+      if (SECRET_AUTHED.includes(p)) continue;
+      const src = readFileSync(resolve(cwd(), p), "utf8");
+      const read = src.search(TENANT_READ);
+      if (read === -1) continue; // no tenant read here — nothing to guard
+      const guard = src.search(GUARD);
+      if (guard === -1 || guard > read) offenders.push(p);
+    }
+    expect(offenders, "these read tenant data before (or without) an auth guard").toEqual([]);
+  });
+
+  it("every secret-authed exemption actually checks its secret, before reading", () => {
+    // The exemption must be earned. This is what stops the list becoming a way to opt out of the
+    // invariant: an entry that stops verifying its secret fails here rather than passing silently.
+    for (const p of SECRET_AUTHED) {
+      const src = readFileSync(resolve(cwd(), p), "utf8");
+      const check = src.search(/if\s*\(\s*!env\.\w*SECRET\w*\s*\|\|\s*\w+\s*!==\s*env\.\w*SECRET\w*\s*\)/);
+      expect(check, `${p}: expected a fail-closed shared-secret check`).toBeGreaterThan(-1);
+      const read = src.search(TENANT_READ);
+      if (read !== -1) expect(check, `${p}: secret check must precede the tenant read`).toBeLessThan(read);
+    }
+  });
+});
+
 describe("isStaff has the polarity a shell guard needs", () => {
   // Fail-OPEN for unknown roles, fail-CLOSED for the two known non-staff ones. Across 104 call sites
   // that is the safe direction: a newly-added staff role still works, rather than the bursar being

@@ -6,12 +6,18 @@ import { PwaSession } from "@/components/pwa-session";
 
 /**
  * The staff-only guard is NOT here — it is inside `requireSchool()`, which this layout and all 82
- * pages under it already call. That placement is deliberate and was arrived at the hard way: a
- * redirect thrown from a LAYOUT does not stop the page rendering. Layouts and pages render in
- * parallel, so the page's own queries still run and its payload is still streamed; a production
- * build served a 307 to `/wassce` whose body nonetheless carried the student's allergies,
- * conditions and medications. The navigation was blocked and the bytes were not.
- * Guarding inside `requireSchool` puts the check in each page's OWN render, before its own reads.
+ * pages under it already call.
+ *
+ * The distinction is narrow and worth stating precisely, because getting it wrong sends you down a
+ * very expensive road. A redirect thrown from a **LAYOUT** does not stop the page: layouts and pages
+ * render in parallel, so the page's own queries still run and its payload is still streamed. A
+ * redirect thrown from the **page's own render, awaited before its own fetch**, does stop it — that
+ * is ordinary sequential control flow. So the guard belongs in the function every page awaits first,
+ * not in the shell around them.
+ *
+ * (Verified by Sarah on PR #176: with the guard in `requireSchool`, all 63 static routes here return
+ * a bare error shell to a non-staff session, including `students/[id]/edit`, which fetches the same
+ * health record and carries no data-layer guard of its own.)
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { school, user } = await requireSchool();

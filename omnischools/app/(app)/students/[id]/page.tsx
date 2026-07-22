@@ -235,12 +235,21 @@ export default async function StudentDetailPage(props: { params: Promise<{ id: s
           .orderBy(asc(subjects.name))
       : [];
 
-    // 🔴 NOT FETCHED for a non-staff reader — deliberately a DATA decision, not a control-flow one.
-    // `requireSchool()` already refuses non-staff, but a redirect thrown from a Server Component
-    // does NOT stop the render: a production build served a 307 to /wassce whose body still carried
-    // this student's allergies, conditions and medications, live-rendered (proven by changing the
-    // value and seeing the NEW one appear in the redirect body). Navigation was blocked; disclosure
-    // was not. A row that is never selected cannot be streamed, whatever the control flow does.
+    // NOT fetched for a non-staff reader. DEFENCE IN DEPTH, not the load-bearing control — say so
+    // plainly, because the honest scope of this line matters to whoever reads it next.
+    //
+    // `requireSchool()` is the actual fix: it is awaited above, before this transaction opens, so a
+    // non-staff session never reaches here. Sarah proved that on PR #176 via the natural experiment
+    // sitting next door — `students/[id]/edit` fetches this same health record, has NO guard like
+    // this one, and still serves zero bytes of it to a parent.
+    //
+    // This stays anyway, for the narrow reason that this is the most sensitive read on the page: it
+    // makes the disclosure impossible even if someone later hoists a fetch above the guard, or adds
+    // a render path that does not await it. It is NOT a pattern to copy onto the other 81 pages —
+    // the guard-ordering invariant test is what protects those.
+    //
+    // ⚠️ Still over-broad and tracked separately: every staff role reads these fields, and a read is
+    // not audited.
     const [health] = isStaff(user.roles)
       ? await tx
           .select()
