@@ -15,19 +15,21 @@ import { env } from "@/lib/env";
  * hold custom roles — `(string & {})` keeps autocomplete for the known set while allowing
  * any custom code through.
  */
-export type KnownAppRole =
-  | "ADMIN"
-  | "HEADMASTER"
-  | "VICE_HEADMASTER_ACADEMIC"
-  | "TEACHER"
-  | "FORM_MASTER"
-  | "HOUSEMASTER"
-  | "STUDENT"
-  | "PARENT"
-  | "BURSAR"
-  | "ACCOUNTANT"
-  | "DEAN_OF_BOARDING"
-  | "MATRON";
+export const KNOWN_APP_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "VICE_HEADMASTER_ACADEMIC",
+  "TEACHER",
+  "FORM_MASTER",
+  "HOUSEMASTER",
+  "STUDENT",
+  "PARENT",
+  "BURSAR",
+  "ACCOUNTANT",
+  "DEAN_OF_BOARDING",
+  "MATRON",
+] as const;
+export type KnownAppRole = (typeof KNOWN_APP_ROLES)[number];
 export type AppRole = KnownAppRole | (string & {});
 
 export interface AppUser {
@@ -75,6 +77,14 @@ function devUser(): AppUser {
     .split(",")
     .map((r) => r.trim().toUpperCase())
     .filter(Boolean);
+  // A typo here is otherwise invisible: the session is issued, every role gate denies it, and
+  // nothing anywhere says why. Fail loudly instead — this is a dev-only switch.
+  const unknown = roles.filter((r) => !(KNOWN_APP_ROLES as readonly string[]).includes(r));
+  if (unknown.length > 0) {
+    throw new Error(
+      `AUTH_DEV_ROLES: unknown role code(s) ${unknown.join(", ")}. Known codes: ${KNOWN_APP_ROLES.join(", ")}.`,
+    );
+  }
   return roles.length > 0 ? { ...DEV_USER, roles } : DEV_USER;
 }
 

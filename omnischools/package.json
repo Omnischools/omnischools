@@ -47,7 +47,8 @@
     "db:verify-stpshs-sheet": "tsx --tsconfig scripts/tsconfig.json scripts/verify-stpshs-sheet.ts",
     "db:setup": "drizzle-kit migrate && tsx scripts/apply-policies.ts && tsx db/seed/asankrangwa.ts",
     "db:verify-sickbay-visit": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-visit.ts",
-    "db:verify-sickbay-attendance": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-attendance.ts"
+    "db:verify-sickbay-attendance": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-attendance.ts",
+    "db:verify-sickbay-attendance-rollover": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-attendance-rollover.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",

@@ -421,7 +421,11 @@ export async function addVitals(input: unknown): Promise<Result> {
 const DisposeSchema = z.object({
   visitId: z.string().uuid(),
   disposition: z.enum(["DISCHARGE", "REFER"]),
-  dispositionNote: z.string().trim().max(2000).nullish(),
+  // NO free-text note here. `sickbay_visit` has no column for one, and a field that is parsed,
+  // audited and then unstorable is exactly the "appears to record, does not record" control the
+  // omit-not-fake rule forbids — on the increment whose premise is that the visit IS the
+  // medico-legal record. R34 already REQUIRES `working_impression` before a REFER, so the clinical
+  // reasoning has a real home. Adding the column is INCR-25's call (it owns the referral event).
 });
 
 /**
@@ -459,7 +463,7 @@ export async function disposeVisit(input: unknown): Promise<Result> {
         entityType: "sickbay_visit",
         entityId: v.id,
         before: { disposition: null },
-        after: { disposition: d.disposition, dispositionAt: now, note: d.dispositionNote || null },
+        after: { disposition: d.disposition, dispositionAt: now },
         reason: `Sickbay visit ${d.disposition === "REFER" ? "referred" : "discharged"}`,
       });
       return { id: v.id, studentId: v.studentId, at: now };

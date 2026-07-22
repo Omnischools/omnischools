@@ -154,7 +154,9 @@ export interface VisitRecordAdmission {
   dischargeCriteria: string | null;
   overnightPlan: string | null;
   dischargedAt: Date | null;
-  dischargedByName: string | null;
+  // No `dischargedByName`: the surface never draws it, so the join is not worth an aliased second
+  // pass over ref_user. `sickbay_admission.discharged_by_user_id` IS written — read it when a
+  // surface asks for it, rather than shipping a field that is hardcoded null and therefore lies.
   dischargeNote: string | null;
 }
 
@@ -420,7 +422,6 @@ export async function getVisitRecord(
             dischargeCriteria: adm.dischargeCriteria,
             overnightPlan: adm.overnightPlan,
             dischargedAt: adm.dischargedAt,
-            dischargedByName: null,
             dischargeNote: adm.dischargeNote,
           }
         : null,

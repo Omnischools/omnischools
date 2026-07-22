@@ -52,8 +52,38 @@ function check(label: string, cond: boolean, detail = "") {
 
 const MARKER = "VERIFY-22B";
 const CODE_PREFIX = "V22B-";
-const today = civilDate(new Date());
-const yesterday = civilDate(new Date(Date.now() - 24 * 3600_000));
+
+/**
+ * 🔴 ONE civil date for the whole run.
+ *
+ * The script pins `today` once; the server actions it drives compute their own
+ * `civilDate(new Date())` at call time, as they must. A run that CROSSES UTC MIDNIGHT therefore
+ * admits the patient against one civil day and asserts the register save against the next — the
+ * hold legitimately does not apply, the student legitimately IS absent for that save, the absence
+ * SMS legitimately fires, and H1/H5/H6/H9 go red on a correct build. That is a harness artefact
+ * with the exact shape of the R49b harm, so it must be impossible rather than explained.
+ *
+ * Two guards: never START a run the civil day cannot contain, and assert at the end that the day
+ * did not turn anyway. `scripts/verify-sickbay-attendance-rollover.ts` reproduces the failure on
+ * demand (it forces the crossing) and is the regression proof for both.
+ */
+const RUN_BUDGET_MS = 60_000; // the run takes ~8s; the margin is for a slow DB, not for precision
+let today = "";
+let yesterday = "";
+
+async function pinCivilDate(): Promise<void> {
+  const now = new Date();
+  const msLeft =
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1) - now.getTime();
+  if (msLeft < RUN_BUDGET_MS) {
+    console.log(
+      `⏸  ${Math.ceil(msLeft / 1000)}s left in the UTC civil day — waiting for the rollover so the run cannot straddle it.`,
+    );
+    await new Promise((r) => setTimeout(r, msLeft + 1_000));
+  }
+  today = civilDate(new Date());
+  yesterday = civilDate(new Date(Date.now() - 24 * 3600_000));
+}
 
 /** Capture every `[sms:console]` line emitted while `fn` runs — the H6 "no SMS" proof. */
 async function captureSms<T>(fn: () => Promise<T>): Promise<{ out: T; sms: string[] }> {
@@ -111,6 +141,7 @@ async function openAndAssess(studentId: string, complaint: string) {
 }
 
 async function main() {
+  await pinCivilDate();
   const [school] = await db
     .select({ id: schools.id })
     .from(schools)
@@ -506,6 +537,15 @@ async function main() {
     JSON.stringify(recordA?.attendance),
   );
 
+  // Every assertion above was made against the ONE pinned civil date. If the day turned anyway, the
+  // run compared two different days and NOTHING above it can be trusted — say so rather than let a
+  // harness artefact read as an R49b regression.
+  check(
+    "the run did not cross the UTC civil-date rollover (every assertion used ONE `today`)",
+    civilDate(new Date()) === today,
+    `pinned ${today} · now ${civilDate(new Date())}`,
+  );
+
   // ── cleanup — MARKER-SCOPED ONLY ──────────────────────────────────────────────────────────────
   if (tempPeriodId) await db.delete(academicPeriod).where(eq(academicPeriod.periodId, tempPeriodId));
   const mine = await db
@@ -530,7 +570,11 @@ async function main() {
     await tx
       .delete(students)
       .where(and(eq(students.schoolId, school.id), like(students.studentCode, `${CODE_PREFIX}%`)));
-    await tx.delete(classes).where(and(eq(classes.schoolId, school.id), eq(classes.id, classId)));
+    // By MARKER, not by this run's id: a run that died before cleanup would otherwise orphan its
+    // class for ever (the student delete above is already prefix-scoped for the same reason).
+    await tx
+      .delete(classes)
+      .where(and(eq(classes.schoolId, school.id), like(classes.name, `${MARKER}%`)));
     const auditIds = [...createdVisits, ...createdAdmissions, classId];
     await tx
       .delete(auditLog)

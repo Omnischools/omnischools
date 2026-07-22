@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
 import {
@@ -49,16 +49,41 @@ const SURFACE_TEXT = clean(SURFACE.replace(/<style[\s\S]*?<\/style>/g, ""));
  * would forbid the very sentence that states the rule. Every identifier/label assertion below runs
  * against comment-stripped source; the copy assertions run against the RENDERABLE files only.
  */
-const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+const stripComments = (s: string, sql = false) =>
+  (sql ? s.replace(/--.*$/gm, "") : s)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    // TRAILING `//` too, not just a whole-line one: `diagnosisCode: text("…"), // …` on one line
+    // would otherwise walk straight through the R43 ceiling. `[^:]` spares `https://`.
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const read = (p: string) => {
   const raw = readFileSync(resolve(cwd(), p), "utf8");
-  return { path: p, src: raw, code: stripComments(raw) };
+  return { path: p, src: raw, code: stripComments(raw, p.endsWith(".sql")) };
 };
 
-/** Everything INCR-22a ships. */
-const SHIPPED = [
+/**
+ * Every app source file, comment-stripped — for the sweeps that must hold across the WHOLE repo
+ * rather than across a list somebody has to remember to extend.
+ */
+const sourceFiles = (() => {
+  let cache: { path: string; code: string }[] | null = null;
+  return () => {
+    if (cache) return cache;
+    const out: { path: string; code: string }[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(resolve(cwd(), dir), { withFileTypes: true })) {
+        const p = `${dir}/${e.name}`;
+        if (e.isDirectory()) walk(p);
+        else if (/\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name)) out.push(read(p));
+      }
+    };
+    for (const root of ["app", "components", "db", "features", "hooks", "lib", "scripts"]) walk(root);
+    return (cache = out);
+  };
+})();
+
+/** Everything INCR-22a ships — and every one of them can put a string in front of a user. */
+const SHIPPED_22A = [
   "lib/sickbay/visits.ts",
   "lib/sickbay/vitals.ts",
   "lib/sickbay/visit-copy.ts",
@@ -72,11 +97,28 @@ const SHIPPED = [
 ].map(read);
 
 /**
+ * INCR-22b's write path and the DDL both increments stand on. They render nothing, so they take no
+ * part in the copy sweeps — but the R43/R60 CEILINGS are about columns, enums and identifiers, and
+ * a `diagnosis_code` column is exactly the breach that would land HERE and nowhere else. The
+ * prod-paste SQL is included because it is hand-maintained: it is the file that can drift.
+ */
+const SHIPPED_22B = [
+  "lib/attendance/mark.ts",
+  "lib/attendance/mark-rules.ts",
+  "lib/sickbay/medical-hold.ts",
+  "db/schema/sickbay.ts",
+  "db/migrations/0057_legal_epoch.sql",
+  "db/sql/prod-paste-0057-sickbay-visit.sql",
+].map(read);
+
+const SHIPPED = [...SHIPPED_22A, ...SHIPPED_22B];
+
+/**
  * The files that can put a string in front of a user. `visit-copy.ts` is deliberately EXCLUDED from
  * the omitted-copy sweep: it is the register that NAMES the omissions, so the very strings the sweep
  * hunts for live there on purpose — and it is asserted separately that the register is honest.
  */
-const RENDERABLE = SHIPPED.filter((f) => !f.path.endsWith("visit-copy.ts"));
+const RENDERABLE = SHIPPED_22A.filter((f) => !f.path.endsWith("visit-copy.ts"));
 
 // ============================================================================
 // O4 — `===` character-exact copy comparison against the surface HTML
@@ -155,7 +197,16 @@ describe("O1–O3 · the omitted elements appear NOWHERE in the shipped source",
   it("the omit register is HONEST — every entry names copy the visit-record surface really draws", () => {
     // Guards the register against becoming a straw man. Four entries belong to the `today` surface
     // (22c) or to the setup surface and are listed here because 22a must not smuggle them in early.
-    const elsewhere = new Set(["No chronic flag", "Print day sheet", "refresh 15s", "Routine"]);
+    // `Referral note` is the fifth exception and the opposite of a straw man: it is in NO surface —
+    // 22a invented it, shipped a textarea for it, and had nowhere to store what a matron typed. It
+    // stays in the register so the sweep keeps it out until a column earns it (INCR-25).
+    const elsewhere = new Set([
+      "No chronic flag",
+      "Print day sheet",
+      "refresh 15s",
+      "Routine",
+      "Referral note",
+    ]);
     for (const { text } of OMITTED_AT_22A) {
       if (elsewhere.has(text)) continue;
       expect(SURFACE_TEXT.includes(text), `"${text}" is not in the visit-record surface`).toBe(true);
@@ -323,6 +374,43 @@ describe("R37 / the attendance seam · what the write path must NOT contain", ()
     // …and the writer itself never throws at its caller: every failure path returns a named skip.
     const mark = read("lib/attendance/mark.ts").code;
     expect(/catch \{[\s\S]*?return \{ marked: false, skipped: "FAILED"/.test(mark)).toBe(true);
+  });
+
+  it("🔴 ONLY the shared writer and `decideCorrection` write attendance_record", () => {
+    // The R49a downgrade guard is a `setWhere` on ONE upsert. It is complete today and undefended
+    // tomorrow: a second writer added in 23–28 would bypass it silently and put `ABSENT + In
+    // sickbay` back on a real register. So the writer set itself is the assertion.
+    const writers = sourceFiles().filter(({ code }) =>
+      /\.(insert|update|delete)\(attendanceRecords\)/.test(code),
+    );
+    expect(writers.map((f) => f.path).sort()).toEqual([
+      "lib/actions/attendance.ts",
+      "lib/attendance/mark.ts",
+    ]);
+    // …and the one in the actions file is the CO-SIGNED correction, the only legal way out of a
+    // MEDICAL/SICKBAY mark. It is an UPDATE (never an insert), and it is inside `decideCorrection`.
+    const actions = read("lib/actions/attendance.ts").code;
+    expect(actions.includes(".insert(attendanceRecords)")).toBe(false);
+    expect((actions.match(/\.update\(attendanceRecords\)/g) ?? []).length).toBe(1);
+    expect(actions.indexOf(".update(attendanceRecords)")).toBeGreaterThan(
+      actions.indexOf("export async function decideCorrection"),
+    );
+    // Nor by the back door: no raw SQL anywhere writes the table by name.
+    for (const { path, code } of sourceFiles()) {
+      expect(/(insert\s+into|update)\s+"?attendance_record/i.test(code), path).toBe(false);
+    }
+  });
+
+  it("🔴 lib/sickbay/medical-hold.ts imports NOTHING from lib/attendance — the edge is one-way", () => {
+    // `mark.ts` → `medical-hold.ts` is the deliberate direction (owner D4). The REVERSE edge already
+    // exists too — `visit-reads.ts` imports `closedTermLabel`/`civilDate` from `lib/attendance/` —
+    // so there is no cycle ONLY because medical-hold is a leaf. INCR-25 extends this exact function
+    // with the open-referral arm; the day it reaches back into `lib/attendance/*` the cycle closes
+    // and the bundler serves one of the two modules half-initialised.
+    const { code } = read("lib/sickbay/medical-hold.ts");
+    for (const m of code.matchAll(/from\s+["']([^"']+)["']/g)) {
+      expect(/(^|\/)attendance(\/|$)/.test(m[1]), `medical-hold.ts imports ${m[1]}`).toBe(false);
+    }
   });
 
   it("R60 the consult authorises nothing — no approval, signature or co-sign field", () => {

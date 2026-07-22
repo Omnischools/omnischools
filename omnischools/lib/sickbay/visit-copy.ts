@@ -103,4 +103,8 @@ export const OMITTED_AT_22A: readonly { text: string; why: string }[] = [
   { text: "refresh 15s", why: "polls nothing" },
   { text: "Routine", why: "R62 — a hardcoded pill is an unassessed clinical-urgency assertion" },
   { text: "auto-applied to roll-call", why: "prep_attendance is not written at 22" },
+  {
+    text: "Referral note",
+    why: "no column stores it — sickbay_visit has none, and a box whose text survives only in audit_log.after_state is a control that appears to record and does not. R34 already requires working_impression for a REFER; the referral EVENT (and any note on it) is INCR-25",
+  },
 ];

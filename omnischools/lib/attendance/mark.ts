@@ -213,7 +213,10 @@ export async function markSickbayMedical(args: {
         .where(and(eq(students.schoolId, args.schoolId), eq(students.id, args.studentId)))
         .limit(1);
       if (!student?.classId) {
-        await auditSkipTx(tx, args, date, "NO_CLASS");
+        // R54 — audited on its OWN connection, not `tx`. Nothing is written in this branch, and if
+        // the audit insert failed inside `tx` it would abort the transaction and the named reason
+        // would come back out as the generic `FAILED`, losing "this student has no class".
+        await auditSkip(args, date, "NO_CLASS");
         return { marked: false, skipped: "NO_CLASS" as const, date };
       }
 
@@ -233,7 +236,10 @@ export async function markSickbayMedical(args: {
         ],
       });
       if (res.closedTerm) {
-        await auditSkipTx(tx, args, date, "CLOSED_TERM", res.closedTerm);
+        // Same as NO_CLASS above: `writeMarks` short-circuits before it writes anything, so this
+        // branch has no transaction to preserve — and keeping the audit out of `tx` keeps the
+        // NAMED reason (R52) even when the audit write itself is what fails.
+        await auditSkip(args, date, "CLOSED_TERM", res.closedTerm);
         return { marked: false, skipped: "CLOSED_TERM" as const, date };
       }
 
@@ -281,9 +287,10 @@ async function auditSkip(
   args: { schoolId: string; studentId: string; visitId: string; actor: { id: string | null; role: string } },
   date: string,
   reason: MarkSkipReason,
+  detail?: string,
 ): Promise<void> {
   try {
-    await withSchool(args.schoolId, (tx) => auditSkipTx(tx, args, date, reason));
+    await withSchool(args.schoolId, (tx) => auditSkipTx(tx, args, date, reason, detail));
   } catch {
     // The DB is the thing that just failed; there is nowhere honest left to write. Never throw.
   }

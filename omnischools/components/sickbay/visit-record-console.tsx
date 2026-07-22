@@ -149,7 +149,8 @@ export function VisitRecordConsole({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<null | "vitals" | "assess" | "consult" | "admit" | "refer">(null);
+  // No "refer" panel: REFER is a one-click disposition like DISCHARGE (there is nothing to collect).
+  const [open, setOpen] = useState<null | "vitals" | "assess" | "consult" | "admit">(null);
 
   const isClosedOrVoid = visit.disposition !== null || visit.voided;
   const canAct = canWrite && !isClosedOrVoid;
@@ -605,8 +606,12 @@ export function VisitRecordConsole({
             >
               Discharge (walk-in)
             </button>
+            {/* R34 already REQUIRES `working_impression` before a REFER, so the clinical reasoning
+                for the referral is already on the record. A second free-text box here would be a
+                control that appears to record and does not — there is no column behind it. */}
             <button
-              onClick={() => setOpen(open === "refer" ? null : "refer")}
+              onClick={() => run(() => disposeVisit({ visitId: visit.id, disposition: "REFER" }))}
+              disabled={pending}
               className="rounded-[5px] border border-terra bg-terra-bg px-[14px] py-[8px] text-[12px] font-semibold text-terra"
             >
               Refer
@@ -622,9 +627,6 @@ export function VisitRecordConsole({
               </button>
             )}
           </div>
-        )}
-        {open === "refer" && dispositionOpen && (
-          <ReferForm pending={pending} onSubmit={(note) => run(() => disposeVisit({ visitId: visit.id, disposition: "REFER", dispositionNote: note }))} />
         )}
         {open === "admit" && dispositionOpen && capabilities.admissions && (
           <AdmitForm
@@ -937,19 +939,6 @@ function ConsultForm({ pending, onSubmit }: { pending: boolean; onSubmit: (d: Re
         className={primaryBtn}
       >
         {pending ? "Logging…" : "Log consult"}
-      </button>
-    </div>
-  );
-}
-
-function ReferForm({ pending, onSubmit }: { pending: boolean; onSubmit: (note: string | null) => void }) {
-  const [note, setNote] = useState("");
-  return (
-    <div className="mt-3 rounded-[10px] border border-border bg-surface p-4">
-      <label className={labelCls}>Referral note (optional)</label>
-      <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className={textareaCls} />
-      <button type="button" disabled={pending} onClick={() => onSubmit(note.trim() || null)} className={`mt-3 ${primaryBtn}`}>
-        {pending ? "Referring…" : "Refer"}
       </button>
     </div>
   );
