@@ -164,12 +164,21 @@ describe("the other two doors onto role_assignment", () => {
       const s = stripComments(readFileSync(p, "utf8"));
       const query = s.search(/\.from\(\s*staffCompensation\s*\)/);
       if (query === -1) continue; // this page never queries pay — nothing to gate
-      // `await` is required: `requireSchoolRole(...)` unawaited throws inside a floating promise and
-      // the page renders anyway (Dex). No type-aware lint rule catches that here.
-      const proof = s.search(
-        /await requireSchoolRole\(\s*STAFF_ADMIN_ROLES\s*\)|hasAnyRole\(\s*user\.roles\s*,\s*STAFF_ADMIN_ROLES\s*\)/,
-      );
-      if (proof === -1 || proof > query) offenders.push(p.slice(p.indexOf("app/")));
+      // Shape A — the whole page is gated. `await` is required: `requireSchoolRole(...)` unawaited
+      // throws inside a floating promise and the page renders anyway (Dex), and no type-aware lint
+      // rule catches that here.
+      const paged = s.search(/await requireSchoolRole\(\s*STAFF_ADMIN_ROLES\s*\)/);
+      if (paged !== -1 && paged < query) continue;
+
+      // Shape B — the query itself is conditional. Pin the guard's USE AT THE QUERY, not merely its
+      // declaration somewhere in the file. Replacing `canAdmin ? tx.select()…` with `true ? …` left
+      // `const canAdmin = hasAnyRole(...)` sitting untouched above and satisfied the old check — the
+      // same "assert the expression, never the name" trap this file was written to stop, one level up.
+      const decl = /const (\w+)\s*=\s*hasAnyRole\(\s*user\.roles\s*,\s*STAFF_ADMIN_ROLES\s*\)/.exec(s);
+      const nearQuery = s.slice(Math.max(0, query - 200), query);
+      if (!decl || !new RegExp(`\\b${decl[1]}\\b`).test(nearQuery)) {
+        offenders.push(p.slice(p.indexOf("app/")));
+      }
     }
     expect(offenders, "salaries, SSNIT and PAYE must not be readable by any staff member").toEqual([]);
   });
@@ -193,9 +202,15 @@ describe("the other two doors onto role_assignment", () => {
     expect(check, "an invite creates a real role_assignment — minting staff needs admin").toBeGreaterThan(-1);
     // Consequence, not just condition (the PR #176 lesson): the check must REFUSE.
     expect(body.slice(check, check + 260)).toMatch(/if\s*\(\s*!canInvite\s*\)\s*\{[\s\S]{0,120}?return\s*\{\s*ok:\s*false/);
-    // Unconditional — base indent, nested inside nothing. The staff.ts sweep learned this; this
-    // describe had not inherited it, so a dead outer `if` disabled the check with the text intact.
-    expect(body.slice(body.lastIndexOf("\n", check) + 1, check + 20)).toMatch(/^ {2}const canInvite/);
+    // Unconditional — pin the REFUSAL's indent, not the const's. A dead outer `if (…) if (!canInvite)`
+    // leaves the const at base indent and the pinned text intact while disabling the check entirely;
+    // pinning `if (!canInvite)` to exactly two spaces makes the dangling wrapper visible.
+    const refusal = body.search(/if\s*\(\s*!canInvite\s*\)/);
+    expect(refusal, "createInvite must refuse when canInvite is false").toBeGreaterThan(-1);
+    expect(
+      body.slice(body.lastIndexOf("\n", refusal) + 1, refusal + 18),
+      "the refusal must sit at the function's base indent, nested inside nothing",
+    ).toMatch(/^ {2}if \(!canInvite\)/);
     // …and it must refuse BEFORE the invite row is written. No `if (write !== -1)` escape hatch:
     // this file forbids skip-hatches and then contained two of them.
     const write = body.search(/tx\.insert\(invites\)/);
