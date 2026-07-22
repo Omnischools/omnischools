@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
 import { hasAnyRole, STAFF_ADMIN_ROLES } from "@/lib/access";
@@ -40,8 +40,14 @@ const GUARD = /\bassertAnyRole\s*\(\s*STAFF_ADMIN_ROLES\s*\)/;
  * `onboarding.ts` already use for the very `role_assignment` writes that ARE the escalation.
  */
 const TENANT_READ = /\b(withSchool|withoutTenantScope|withParentScope|withStaffScope|db)\s*[.(]/;
-/** Every export of a `"use server"` module is remotely callable — arrow consts included. */
-const EXPORTED_FN = /^export (?:async function (\w+)|const (\w+)\s*=\s*async)/gm;
+/**
+ * Every export of a `"use server"` module is remotely callable — arrow consts and DEFAULT exports
+ * included. Dex shipped an `export default async function grantAdminBackdoor` that matched neither
+ * earlier branch, so it was invisible to both the exact-list check and the body sweep: a fully
+ * ungated, self-service ADMIN grant with all 11 tests green.
+ */
+const EXPORTED_FN =
+  /^export (?:default\s+async function (\w+)|async function (\w+)|const (\w+)\s*=\s*async)/gm;
 const EXPECTED = [
   "addStaff",
   "importStaff",
@@ -57,7 +63,13 @@ const EXPECTED = [
 describe("every staff mutator is gated to STAFF_ADMIN_ROLES", () => {
   const src = () => read(ACTIONS);
   const exportsOf = (s: string) =>
-    [...s.matchAll(EXPORTED_FN)].map((m) => ({ name: m[1] ?? m[2], i: m.index! }));
+    [...s.matchAll(EXPORTED_FN)].map((m) => ({ name: m[1] ?? m[2] ?? m[3], i: m.index! }));
+
+  it("exposes no re-exports — a barrel would smuggle in actions this sweep never reads", () => {
+    expect(src(), "`export {` / `export *` put a callable action outside this file").not.toMatch(
+      /^export\s*(?:\{|\*)/m,
+    );
+  });
 
   it("the mutator list is EXACT — a tenth action is a change to this file, not a silent addition", () => {
     // `toContain` + `>= 9` licensed exactly what it should have caught: Quinn added a 10th export
@@ -93,13 +105,20 @@ describe("every staff mutator is gated to STAFF_ADMIN_ROLES", () => {
     );
   });
 
-  it("the guard is unconditional — a gate behind an `if` or a flag is not a gate", () => {
+  it("the guard is unconditional — a gate behind an `if`, a flag or a block is not a gate", () => {
+    // INDENTATION, not the matched line. My first version sliced back to the start of the guard's own
+    // line, so `if (process.env.NODE_ENV !== "test") {\n    await assertAnyRole(...)\n }` read as
+    // unconditional (Dex). A statement at the function body's base indent — exactly two spaces — is
+    // nested inside nothing, which kills every wrapping variant at once instead of one at a time.
     const s = src();
-    for (const m of [...s.matchAll(new RegExp(GUARD, "g"))]) {
-      const line = s.slice(s.lastIndexOf("\n", m.index!) + 1, m.index! + m[0].length);
-      expect(line.trim(), "the role assertion must not be conditional").toMatch(
-        /^await assertAnyRole\(STAFF_ADMIN_ROLES\)/,
-      );
+    const all = [...s.matchAll(new RegExp(GUARD, "g"))];
+    expect(all.length, "the guard must appear once per mutator").toBe(EXPECTED.length);
+    for (const m of all) {
+      const from = s.lastIndexOf("\n", m.index!) + 1;
+      expect(
+        s.slice(from, m.index! + m[0].length),
+        "the role assertion must sit at the function's base indent, nested inside nothing",
+      ).toMatch(/^ {2}await assertAnyRole\(STAFF_ADMIN_ROLES\)/);
     }
   });
 
@@ -121,12 +140,38 @@ describe("the other two doors onto role_assignment", () => {
    * `app-shell-guard.test.ts` included, because `requireSchool` IS a guard and #176's sweep is
    * satisfied by the vulnerable version. Half the shipped fix had no regression coverage at all.
    */
-  it("the payroll page requires STAFF_ADMIN_ROLES, before it reads", () => {
-    const s = read("app/(app)/staff/compensation/page.tsx");
-    const guard = s.search(/requireSchoolRole\(\s*STAFF_ADMIN_ROLES\s*\)/);
-    expect(guard, "salaries, SSNIT and PAYE must not be readable by any staff member").toBeGreaterThan(-1);
-    const readAt = s.search(TENANT_READ);
-    if (readAt !== -1) expect(guard).toBeLessThan(readAt);
+  /**
+   * SWEEP every /staff surface that touches the table — not one hardcoded path. The first version
+   * pinned `/staff/compensation` alone, and `/staff/[id]` served the SAME salary, SSNIT and PAYE one
+   * click away on any colleague's row, falsifying this very test's message (Dex). Two legal shapes:
+   * gate the whole page, or never issue the query.
+   */
+  it("no /staff surface reads staffCompensation without proving STAFF_ADMIN_ROLES first", () => {
+    const dir = resolve(cwd(), "app/(app)/staff");
+    const pages: string[] = [];
+    const walk = (d: string) => {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        const p = `${d}/${e.name}`;
+        if (e.isDirectory()) walk(p);
+        else if (e.name.endsWith(".tsx")) pages.push(p);
+      }
+    };
+    walk(dir);
+    expect(pages.length, "the /staff sweep found no pages").toBeGreaterThan(3);
+
+    const offenders: string[] = [];
+    for (const p of pages) {
+      const s = stripComments(readFileSync(p, "utf8"));
+      const query = s.search(/\.from\(\s*staffCompensation\s*\)/);
+      if (query === -1) continue; // this page never queries pay — nothing to gate
+      // `await` is required: `requireSchoolRole(...)` unawaited throws inside a floating promise and
+      // the page renders anyway (Dex). No type-aware lint rule catches that here.
+      const proof = s.search(
+        /await requireSchoolRole\(\s*STAFF_ADMIN_ROLES\s*\)|hasAnyRole\(\s*user\.roles\s*,\s*STAFF_ADMIN_ROLES\s*\)/,
+      );
+      if (proof === -1 || proof > query) offenders.push(p.slice(p.indexOf("app/")));
+    }
+    expect(offenders, "salaries, SSNIT and PAYE must not be readable by any staff member").toEqual([]);
   });
 
   /**
@@ -135,19 +180,27 @@ describe("the other two doors onto role_assignment", () => {
    * `ADMIN` to their own phone, accepted it, and `onConflictDoNothing` on `users.phone` stapled the
    * role onto their existing account. Closing `staff.ts` alone left the escalation fully open.
    */
-  it("createInvite refuses to mint a role the actor does not hold", () => {
+  it("a STAFF invite takes the same gate as addStaff; only PARENT invites stay staff-wide", () => {
     const s = read("lib/actions/invites.ts");
     const fn = s.slice(s.indexOf("export async function createInvite"));
     const body = fn.slice(0, fn.indexOf("\nexport "));
+    // Scoping this to ADMIN/HEADMASTER left MATRON (clinical write), VICE_HEADMASTER_ACADEMIC (the
+    // WASSCE freeze co-signer), DEAN_OF_BOARDING and the finance roles mintable by any teacher — the
+    // identical two-call exploit, one role over. The branch closes all of them with one rule.
     const check = body.search(
-      /hasAnyRole\(\s*\[\s*role\.code\s*\]\s*,\s*STAFF_ADMIN_ROLES\s*\)\s*&&\s*!\s*hasAnyRole\(\s*user\.roles\s*,\s*STAFF_ADMIN_ROLES\s*\)/,
+      /const canInvite = isParentRole\(d\.role\)\s*\?\s*isStaff\(user\.roles\)\s*:\s*hasAnyRole\(\s*user\.roles\s*,\s*STAFF_ADMIN_ROLES\s*\)/,
     );
-    expect(check, "an invite creates a real role_assignment — minting admin needs admin").toBeGreaterThan(-1);
+    expect(check, "an invite creates a real role_assignment — minting staff needs admin").toBeGreaterThan(-1);
     // Consequence, not just condition (the PR #176 lesson): the check must REFUSE.
-    expect(body.slice(check, check + 220)).toMatch(/return\s*\{\s*ok:\s*false/);
-    // …and it must refuse BEFORE the invite row is written.
+    expect(body.slice(check, check + 260)).toMatch(/if\s*\(\s*!canInvite\s*\)\s*\{[\s\S]{0,120}?return\s*\{\s*ok:\s*false/);
+    // Unconditional — base indent, nested inside nothing. The staff.ts sweep learned this; this
+    // describe had not inherited it, so a dead outer `if` disabled the check with the text intact.
+    expect(body.slice(body.lastIndexOf("\n", check) + 1, check + 20)).toMatch(/^ {2}const canInvite/);
+    // …and it must refuse BEFORE the invite row is written. No `if (write !== -1)` escape hatch:
+    // this file forbids skip-hatches and then contained two of them.
     const write = body.search(/tx\.insert\(invites\)/);
-    if (write !== -1) expect(check).toBeLessThan(write);
+    expect(write, "createInvite must still write the invite row").toBeGreaterThan(-1);
+    expect(check).toBeLessThan(write);
   });
 });
 

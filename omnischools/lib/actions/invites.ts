@@ -81,18 +81,27 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
     fullName = d.fullName.trim();
   }
 
-  // 🔴 NO MINTING PRIVILEGE YOU DO NOT HOLD. An invite creates a real `role_assignment`, so this is
-  // the SECOND door onto the escalation `assertAnyRole(STAFF_ADMIN_ROLES)` closes in `staff.ts` —
-  // and it needs no interception to walk through: `createInvite` returns the token to its caller and
-  // `acceptInvite` requires no session. Reproduced end-to-end on a production build by Quinn: a
-  // TEACHER invited "ADMIN" **to their own phone number**, accepted it, and `onConflictDoNothing` on
-  // `users.phone` stapled ADMIN onto their existing account — two calls, no SMS, no crafted session.
+  // 🔴 A STAFF INVITE IS THE SAME CAPABILITY AS `addStaff` — create a user and grant them a role at
+  // this school — so it takes the SAME gate. This is the second door onto the escalation, and it
+  // needs no interception: `createInvite` returns the token to its caller by design, and
+  // `acceptInvite` requires no session. Quinn reproduced it end-to-end on a production build — a
+  // TEACHER invited a privileged role **to their own phone number**, accepted it, and
+  // `onConflictDoNothing` on `users.phone` stapled the role onto their existing account.
   //
-  // Scoped to the role being MINTED rather than gating the whole action, because a Form Master
-  // inviting a teacher is a legitimate workflow and inviting an administrator is not. The `isStaff`
-  // check above stays: it answers "may you invite at all", this answers "may you invite THIS".
-  if (hasAnyRole([role.code], STAFF_ADMIN_ROLES) && !hasAnyRole(user.roles, STAFF_ADMIN_ROLES)) {
-    return { ok: false, error: "Only an administrator can invite an administrator." };
+  // My first fix blocked only ADMIN/HEADMASTER, justified by "a Form Master inviting a teacher is
+  // legitimate". Dex checked: **that surface does not exist.** Both staff callers of this action are
+  // on `/staff` (now admin-only), and the only other caller is the parent invite. So the carve-out
+  // defended a workflow with no UI while leaving MATRON (clinical write), VICE_HEADMASTER_ACADEMIC
+  // (the WASSCE freeze co-signer), DEAN_OF_BOARDING and the finance roles mintable by any teacher —
+  // the identical two-call exploit, one role over.
+  //
+  // PARENT invites stay staff-wide: teachers issue them from /students, and a parent invite grants
+  // no staff privilege (its phone/name come from the stored guardian row, never caller free-text).
+  const canInvite = isParentRole(d.role)
+    ? isStaff(user.roles)
+    : hasAnyRole(user.roles, STAFF_ADMIN_ROLES);
+  if (!canInvite) {
+    return { ok: false, error: "Only an administrator can invite staff." };
   }
 
   const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
