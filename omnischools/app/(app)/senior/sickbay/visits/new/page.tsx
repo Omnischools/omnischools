@@ -31,9 +31,15 @@ export default async function NewVisitPage({
 
   return (
     <div className="mx-auto max-w-page px-6 pb-16 pt-6 md:px-9">
+      {/* R84 crumb convention: `Sickbay` is the module root (setup), `Today` is the board this form
+          returns the student to — the visit it opens is QUEUED, and the queue is on the board. */}
       <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-navy-3">
         <a href="/senior/sickbay/setup" className="text-gold no-underline">
           Sickbay
+        </a>{" "}
+        ·{" "}
+        <a href="/senior/sickbay/today" className="text-gold no-underline">
+          Today
         </a>{" "}
         · New visit
       </div>

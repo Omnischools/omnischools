@@ -20,7 +20,7 @@
  * file therefore still writes no attendance row itself, holds no attendance column name, and issues
  * NO DELETE anywhere (R37).
  */
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool, isUniqueViolation } from "@/lib/db/rls";
 import type { Tx } from "@/lib/db";
@@ -39,6 +39,7 @@ import {
 } from "@/db/schema";
 import { getSickbayConfig, holdsMatronRole } from "@/lib/sickbay/config";
 import { dispositionGuard, isolationGuard, voidGuard } from "@/lib/sickbay/visits";
+import { openVisitCollisionError } from "@/lib/sickbay/board-copy";
 import { VITAL_BOUNDS, isEmptyReading } from "@/lib/sickbay/vitals";
 import { markSickbayMedical } from "@/lib/attendance/mark";
 
@@ -177,7 +178,31 @@ export async function createVisit(input: unknown): Promise<Result> {
   } catch (err) {
     if (err instanceof NamedError) return { ok: false, error: err.message };
     if (isUniqueViolation(err)) {
-      return { ok: false, error: "This student already has an open sickbay visit." };
+      // R75b — `uniq_sickbay_open_visit_student` fired. Until 22c there was no board, so
+      // "this student already has an open visit" left the matron with nowhere to go looking; now
+      // there is somewhere, so the error NAMES THE DAY and the id comes back beside it for the form
+      // to link. ONE extra select, only on the collision path.
+      const open = await withSchool(auth.schoolId, async (tx) =>
+        tx
+          .select({ id: sickbayVisit.id, presentedAt: sickbayVisit.presentedAt })
+          .from(sickbayVisit)
+          .where(
+            and(
+              eq(sickbayVisit.schoolId, auth.schoolId),
+              eq(sickbayVisit.studentId, d.studentId),
+              isNull(sickbayVisit.disposition),
+              isNull(sickbayVisit.voidedAt),
+            ),
+          )
+          .limit(1),
+      );
+      return open[0]
+        ? {
+            ok: false,
+            error: openVisitCollisionError(open[0].presentedAt, new Date()),
+            id: open[0].id,
+          }
+        : { ok: false, error: "This student already has an open sickbay visit." };
     }
     return { ok: false, error: "Could not open the visit." };
   }
@@ -221,6 +246,9 @@ export async function beginVisit(input: unknown): Promise<Result> {
       });
     });
     safeRevalidate(visitPath(parsed.data.visitId));
+    // …and the board, because this is what removes the student from its queue (INCR-22c): the
+    // client router cache would otherwise show her still waiting when the matron navigates back.
+    safeRevalidate(TODAY_PATH);
     return { ok: true, id: parsed.data.visitId };
   } catch (err) {
     if (err instanceof NamedError) return { ok: false, error: err.message };

@@ -93,10 +93,14 @@ const SENIOR_ITEMS = [
     roles: WASSCE_SETUP_ROLES,
   },
   {
-    // Sickbay setup (INCR-21). The app nav is flat and role-gated, so no sub-nav and no `NEW`
-    // badge — omit-not-fake applies to navigation too. `Today` / `Chronic register` / `Referrals`
-    // arrive with INCR-22 / 23 / 25.
-    href: "/senior/sickbay/setup",
+    // Sickbay (INCR-21 setup → INCR-22c board). The app nav is flat and role-gated, so no sub-nav
+    // and no `NEW` badge — omit-not-fake applies to navigation too. `Chronic register` /
+    // `Referrals` arrive with INCR-23 / 25.
+    //
+    // The row lands on the BOARD, not on setup: the module's primary actor is the MATRON and she is
+    // read-only on setup (R18). Row count unchanged. Setup stays one click away from the board's
+    // `Setup` link (and from every crumb root).
+    href: "/senior/sickbay/today",
     label: "Sickbay",
     Icon: HeartPulse,
     roles: SICKBAY_ROLES,

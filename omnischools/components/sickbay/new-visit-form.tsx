@@ -17,9 +17,11 @@ export function NewVisitForm({ students, query }: { students: StudentPick[]; que
   const [complaint, setComplaint] = useState("");
   const [intake, setIntake] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [errorVisitId, setErrorVisitId] = useState<string | null>(null);
 
   function submit() {
     setError(null);
+    setErrorVisitId(null);
     if (!studentId) return setError("Pick the student first.");
     if (!complaint.trim()) return setError("Record the presenting complaint.");
     startTransition(async () => {
@@ -28,7 +30,11 @@ export function NewVisitForm({ students, query }: { students: StudentPick[]; que
         presentingComplaint: complaint.trim(),
         intakeReportedBy: intake.trim() || null,
       });
-      if (!res.ok || !res.id) return setError(res.error ?? "Could not open the visit.");
+      if (!res.ok || !res.id) {
+        // On the R75b collision the action returns the BLOCKING visit's id beside the error.
+        if (!res.ok && res.id) setErrorVisitId(res.id);
+        return setError(res.error ?? "Could not open the visit.");
+      }
       router.push(`/senior/sickbay/visits/${res.id}`);
     });
   }
@@ -99,7 +105,21 @@ export function NewVisitForm({ students, query }: { students: StudentPick[]; que
         className="mb-4 w-full rounded-md border border-border-2 bg-bg px-3 py-2 text-[13px] text-navy-2 outline-none focus:border-gold"
       />
 
-      {error && <p className="mb-3 text-[12px] font-semibold text-terra">{error}</p>}
+      {error && (
+        <p className="mb-3 text-[12px] font-semibold text-terra">
+          {error}
+          {/* R75b — the open-visit collision returns the id of the visit that blocked this one, so
+              the matron has somewhere to go rather than a dead end. */}
+          {errorVisitId && (
+            <a
+              href={`/senior/sickbay/visits/${errorVisitId}`}
+              className="ml-2 font-semibold text-gold no-underline"
+            >
+              Open that visit →
+            </a>
+          )}
+        </p>
+      )}
 
       <button
         type="button"

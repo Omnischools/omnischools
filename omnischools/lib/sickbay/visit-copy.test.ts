@@ -466,6 +466,31 @@ describe("R37 / the attendance seam · what the write path must NOT contain", ()
     }
   });
 
+  it("🔴 G5 · every file importing a CLINICAL READER also names the clinical read gate", () => {
+    // R81 moved the gate INTO `getSickbayBoard` (it returns null for a non-clinical reader before
+    // issuing a query); `getVisitRecord` keeps its CALL-SITE gate at 22c, because its `null` already
+    // means "not of this school" → notFound(), and overloading it with "forbidden" would turn
+    // ADMIN's honest panel into a 404 and delete the E6 escape. Two mechanisms, one invariant — so
+    // the invariant is pinned repo-wide rather than left to whoever adds the third call site.
+    const callers = sourceFiles().filter(
+      ({ path, code }) =>
+        !path.startsWith("scripts/") &&
+        path !== "lib/sickbay/visit-reads.ts" &&
+        /\bgetVisitRecord\b/.test(code),
+    );
+    expect(callers.length).toBeGreaterThan(0);
+    for (const { path, code } of callers) {
+      expect(code.includes("SICKBAY_CLINICAL_READ_ROLES"), `${path} reads clinical data ungated`).toBe(
+        true,
+      );
+    }
+    // The board's reader carries its own gate, so its CALLERS legitimately do not name the constant
+    // — which is only safe while the reader itself does, as its first statement.
+    const board = read("lib/sickbay/board-reads.ts").code;
+    expect(board.includes("SICKBAY_CLINICAL_READ_ROLES")).toBe(true);
+    expect(board.indexOf("SICKBAY_CLINICAL_READ_ROLES")).toBeLessThan(board.indexOf("withSchool("));
+  });
+
   it("R60 the consult authorises nothing — no approval, signature or co-sign field", () => {
     for (const { path, code: src } of SHIPPED) {
       for (const token of ["approvedBy", "approved_by", "signature", "coSign", "countersign"]) {
