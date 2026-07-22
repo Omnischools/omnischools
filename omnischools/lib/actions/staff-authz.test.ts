@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
 import { hasAnyRole, STAFF_ADMIN_ROLES } from "@/lib/access";
+import { stripComments, readCode, TENANT_READ } from "@/lib/test-utils/source-shape";
 import { STAFF_ROLES } from "@/lib/staff-roles";
 
 /**
@@ -29,17 +30,9 @@ import { STAFF_ROLES } from "@/lib/staff-roles";
  */
 const ACTIONS = "lib/actions/staff.ts";
 const SERVER = "lib/auth/server.ts";
-const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\/|(?<!:)\/\/.*$/gm, "");
-const read = (p: string) => stripComments(readFileSync(resolve(cwd(), p), "utf8"));
+const read = readCode;
 
 const GUARD = /\bassertAnyRole\s*\(\s*STAFF_ADMIN_ROLES\s*\)/;
-/**
- * Deliberately WIDER than `withSchool(` — Quinn shipped a `grantRoleBackdoor` using
- * `withoutTenantScope` that typechecked, built, passed all 675 tests, and handed a TEACHER `ADMIN`
- * on a production build. `withoutTenantScope` is not a strawman: it is the idiom `invites.ts` and
- * `onboarding.ts` already use for the very `role_assignment` writes that ARE the escalation.
- */
-const TENANT_READ = /\b(withSchool|withoutTenantScope|withParentScope|withStaffScope|db)\s*[.(]/;
 /**
  * Every export of a `"use server"` module is remotely callable — arrow consts and DEFAULT exports
  * included. Dex shipped an `export default async function grantAdminBackdoor` that matched neither
