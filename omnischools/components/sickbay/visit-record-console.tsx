@@ -200,6 +200,11 @@ export function VisitRecordConsole({
           <a href="/senior/sickbay/setup" className="text-gold no-underline">
             Sickbay
           </a>{" "}
+          ·{" "}
+          {/* The board is where this record was opened from — INCR-22c closes the loop. */}
+          <a href="/senior/sickbay/today" className="text-gold no-underline">
+            Today
+          </a>{" "}
           · Visit {visit.id.slice(0, 8)}
         </div>
         <div className="flex flex-wrap items-start justify-between gap-4">

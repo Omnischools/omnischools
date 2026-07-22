@@ -2,6 +2,10 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
+// ONE implementation, shared with `board-copy.test.ts` and `scripts/verify-sickbay-board.ts`.
+// Three copies had drifted and the weakest let an upper-case `<SCRIPT>` through; the CodeQL
+// rationale and the four bugs closed on merit now live in that file.
+import { stripMarkup } from "@/scripts/_strip-markup";
 import {
   ASSESSMENT_ROW_LABELS,
   CLUSTER_NOTE_TAIL,
@@ -30,44 +34,6 @@ function textOf(cls: string): string[] {
   }
   return out;
 }
-/**
- * Strip markup to a FIXPOINT, not in one pass. Removing a tag can splice a new one together out of
- * its neighbours (`<scr<b></b>ipt>` → `<script>`), so a single `.replace` is not idempotent. Looping
- * until the string stops changing is the correct removal and is what makes it order-independent.
- * `<script>`/`<style>` go wholesale — element AND content — because their CSS/JS text is not visible
- * copy and splicing it into the stream would corrupt the comparisons below.
- *
- * ─────────────────────────────────────────────────────────────────────────────────────────────
- * CodeQL `js/incomplete-multi-character-sanitization` fires on the first `.replace` below and is
- * DISMISSED as a false positive (alert #8, PR #174). Do not "fix" it again, and do not reopen the
- * chase — three sibling alerts were already closed ON MERIT and those fixes are what you see here:
- *   • `js/double-escaping` was a REAL bug — `&amp;` decoded BEFORE `&lt;`/`&gt;`, so `&amp;gt;`
- *     became `&gt;` became `>`. In a helper whose whole job is character-exact comparison that
- *     silently rewrites the strings under test. `&amp;` now decodes LAST (see `clean`).
- *   • single-pass stripping was genuinely incomplete → the fixpoint loop below.
- *   • a dangling `<script` with no closing `>` was a fixpoint of BOTH regexes and survived → the
- *     stray `<` is now dropped.
- * It still fires because the query reasons LOCALLY about that one `.replace` and cannot observe the
- * enclosing loop or the post-loop removal. Satisfying it needs an HTML-parser dependency to serve
- * one test helper — declined, on the same grounds Quinn declined a DOM stack for this module.
- * The rule's premise does not hold here regardless: this is a vitest file (not in the production
- * bundle), its input is a repo-authored mockup read via `readFileSync`, and its output is compared
- * with `===` and never rendered. There is no sink.
- * ─────────────────────────────────────────────────────────────────────────────────────────────
- */
-function stripMarkup(input: string): string {
-  let s = input;
-  for (let prev = ""; prev !== s; ) {
-    prev = s;
-    s = s.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "").replace(/<[^>]*>/g, "");
-  }
-  // A dangling `<script` with no closing `>` is a FIXPOINT of both regexes above — the wholesale
-  // pattern needs a closing tag and `<[^>]*>` needs a `>` — so the literal text survives. It is
-  // neither markup nor copy, so drop the stray `<`. Safe by ordering: this runs BEFORE entity
-  // decoding, so a legitimate `&lt;` in the surface still becomes `<` afterwards, untouched.
-  return s.replace(/</g, "");
-}
-
 const clean = (s: string) =>
   stripMarkup(s)
     // `&amp;` is decoded LAST, and the order is load-bearing: decoding it first turns `&amp;gt;`
@@ -464,6 +430,41 @@ describe("R37 / the attendance seam · what the write path must NOT contain", ()
     for (const m of code.matchAll(/from\s+["']([^"']+)["']/g)) {
       expect(/(^|\/)attendance(\/|$)/.test(m[1]), `medical-hold.ts imports ${m[1]}`).toBe(false);
     }
+  });
+
+  it("🔴 G5 · every file importing a CLINICAL READER also names the clinical read gate", () => {
+    // R81 moved the gate INTO `getSickbayBoard` (it returns null for a non-clinical reader before
+    // issuing a query); `getVisitRecord` keeps its CALL-SITE gate at 22c, because its `null` already
+    // means "not of this school" → notFound(), and overloading it with "forbidden" would turn
+    // ADMIN's honest panel into a 404 and delete the E6 escape. Two mechanisms, one invariant — so
+    // the invariant is pinned repo-wide rather than left to whoever adds the third call site.
+    const callers = sourceFiles().filter(
+      ({ path, code }) =>
+        !path.startsWith("scripts/") &&
+        path !== "lib/sickbay/visit-reads.ts" &&
+        /\bgetVisitRecord\b/.test(code),
+    );
+    expect(callers.length).toBeGreaterThan(0);
+    for (const { path, code } of callers) {
+      expect(code.includes("SICKBAY_CLINICAL_READ_ROLES"), `${path} reads clinical data ungated`).toBe(
+        true,
+      );
+    }
+    // The board's reader carries its own gate, so its CALLERS legitimately do not name the constant
+    // — which is only safe while the reader itself does, as its first statement.
+    //
+    // ⚠️ Assert on the GATE EXPRESSION, never on the constant's NAME. The name's first occurrence is
+    // the IMPORT (~line 47), and the first `withSchool(` is ~line 204, so `indexOf(name) < indexOf(
+    // "withSchool(")` is satisfied by import ordering alone — it would still pass with the gate
+    // deleted outright (Sarah ADV-3, INCR-22c). This is the always-run half of the R81 evidence; the
+    // behavioural half is the G2 round-trip/statement counter in `scripts/verify-sickbay-board.ts`,
+    // which is DB-backed and — this repo having no CI — runs only when someone runs it.
+    const board = read("lib/sickbay/board-reads.ts").code;
+    const gate = board.search(
+      /hasAnyRole\(\s*roles\s*,\s*SICKBAY_CLINICAL_READ_ROLES\s*\)\s*\)\s*return\s+null/,
+    );
+    expect(gate, "board-reads.ts must carry the clinical gate verbatim").toBeGreaterThan(-1);
+    expect(gate).toBeLessThan(board.indexOf("withSchool("));
   });
 
   it("R60 the consult authorises nothing — no approval, signature or co-sign field", () => {

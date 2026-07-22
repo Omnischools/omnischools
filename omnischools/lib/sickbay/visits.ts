@@ -128,6 +128,15 @@ export function waitMs(
   return Math.max(0, (visit.startedAt ?? now).getTime() - visit.presentedAt.getTime());
 }
 
+/**
+ * `7 min wait` — the queue's `.wait` line (INCR-22c). Under a minute reads `just now` (AUTHORED):
+ * `0 min wait` is a measured claim about a student who has been standing there for ten seconds.
+ */
+export function formatWait(ms: number): string {
+  const mins = Math.floor(Math.max(0, ms) / 60_000);
+  return mins < 1 ? "just now" : `${mins} min wait`;
+}
+
 /** `05h 31m` — zero-padded hours, the status strip's `Time on ward` format (Lucy V1.3 tile 2). */
 export function formatElapsed(ms: number): string {
   const mins = Math.max(0, Math.floor(ms / 60_000));
