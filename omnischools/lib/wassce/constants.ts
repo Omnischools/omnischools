@@ -183,7 +183,7 @@ export const GES_POLICY_ANCHORS: { heading: string; body: string }[] = [
   },
   {
     heading: "Calendar alignment",
-    body: "Per the GES SHS 2025/26 academic calendar, F3 Semester 2 runs 3 May → 21 Jun 2026 for single-track schools (a shortened Semester 2 since F3 ends earlier than F1–F2 to make way for WASSCE). F3 students complete WASSCE during Semester 2; F1–F2 students continue Semester 2 through 21 Aug 2026 per the same calendar. School-leaver ceremony scheduled for Fri 26 Jun (week after WASSCE ends).",
+    body: "Per the GES SHS 2025/26 academic calendar, F3 Semester 2 runs 3 May → 21 Jun 2026 for single-track schools (a shortened Semester 2 since F3 ends earlier than F1–F2 to make way for WASSCE). F3 students complete WASSCE during Semester 2; F1–F2 students continue Semester 2 through 21 Aug 2026 per the same calendar. School-leaver ceremony scheduled for 26 Jun (week after WASSCE ends).",
   },
   {
     heading: "Discipline pause",

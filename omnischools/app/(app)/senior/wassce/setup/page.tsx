@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { redirect } from "next/navigation";
 import { requireSchoolRole } from "@/lib/auth/server";
 import { WASSCE_SETUP_ROLES } from "@/lib/access";
@@ -15,6 +16,7 @@ import {
   waecPolicyAnchors,
 } from "@/lib/wassce/constants";
 import { MATCH_EXPLAINER_STEPS } from "@/lib/wassce/university-match";
+import type { ExamWindowView } from "@/lib/wassce/exam-window";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +34,9 @@ export default async function WassceSetupPage() {
   const { school } = await requireSchoolRole(WASSCE_SETUP_ROLES);
   if (school.schoolType === "BASIC") redirect("/gradebook");
 
-  const data = await withSchool(school.id, (tx) => loadWassceSetup(tx, school.id));
+  // The instant is pinned ONCE and threaded (R68) — every "today" on this page is this one value.
+  const now = new Date();
+  const data = await withSchool(school.id, (tx) => loadWassceSetup(tx, school.id, now));
 
   if (!data.cohort) {
     return (
@@ -44,7 +48,7 @@ export default async function WassceSetupPage() {
     );
   }
 
-  const { counts, cohort, targets: t } = data;
+  const { counts, cohort, targets: t, examWindow: ew } = data;
   const examYear = cohort.examYear;
 
   return (
@@ -60,9 +64,9 @@ export default async function WassceSetupPage() {
               <b className="text-navy-2">
                 {counts.candidates} F3 candidates across {counts.programmes} programmes.
               </b>{" "}
-              Main writing started Tue 13 May with Oral English; Day 2 papers (English Language 1 + 2)
-              running now. Setup is frozen for this cohort — changes apply to the F2 batch tracking
-              toward WASSCE {examYear + 1}.
+              {ew ? <>{ledeSchedule(ew)} </> : null}
+              Setup is frozen for this cohort — changes apply to the F2 batch tracking toward WASSCE{" "}
+              {examYear + 1}.
             </>
           }
           actions={[
@@ -72,33 +76,43 @@ export default async function WassceSetupPage() {
           ]}
         />
 
-        {/* §1.2 Live-exam banner — STATIC schedule copy (no live clock; Lucy flag). */}
-        <div
-          className="mb-5 grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-xl px-5 py-4 text-bg"
-          style={{ background: "linear-gradient(135deg, var(--navy), var(--navy-2))" }}
-        >
-          <span className="flex h-[52px] w-[52px] items-center justify-center rounded-lg bg-gold font-display text-lg font-semibold text-navy">
-            W
-          </span>
-          <div>
-            <div className="font-display text-xl font-medium">
-              WASSCE {examYear} is <em className="italic text-gold">live</em> · Day 2 of main writing
+        {/* §1.2 Live-exam banner — every date DERIVES from wassce_papers + the request instant (R90).
+            The surface drew `Tue 13 May` / `Today (Wed 14 May)`: both weekdays are wrong for their own
+            dates, and a drawn "today" is stale the next morning. Omitted entirely with no dated paper. */}
+        {ew && (
+          <div
+            className="mb-5 grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-xl px-5 py-4 text-bg"
+            style={{ background: "linear-gradient(135deg, var(--navy), var(--navy-2))" }}
+          >
+            <span className="flex h-[52px] w-[52px] items-center justify-center rounded-lg bg-gold font-display text-lg font-semibold text-navy">
+              W
+            </span>
+            <div>
+              <div className="font-display text-xl font-medium">
+                WASSCE {examYear} is <em className="italic text-gold">{bannerState(ew)}</em>
+                {ew.dayIndex != null
+                  ? ` · Day ${ew.dayIndex} of the exam window`
+                  : ` · ${ew.startLabel} → ${ew.endLabel}`}
+              </div>
+              <div className="mt-1 text-[12px] text-gold-soft">
+                {beforeWindow(ew) ? "Starts" : "Started"}{" "}
+                <b className="text-bg">
+                  {ew.startLabel} · {ew.startPapers}
+                </b>
+                . {todaySentence(ew)} Ghana returns to the international May–June calendar after 5
+                years of Ghana-only WASSCE following the 2020 COVID disruption.
+              </div>
             </div>
-            <div className="mt-1 text-[12px] text-gold-soft">
-              Started <b className="text-bg">Tue 13 May · Oral English</b>. Today (Wed 14 May){" "}
-              <b className="text-bg">English Language 2 (Essay) 09:30–12:00</b> +{" "}
-              <b className="text-bg">English Language 1 (Objective) 14:00–15:00</b>. Ghana returns to
-              the international May–June calendar after 5 years of Ghana-only WASSCE following the
-              2020 COVID disruption.
+            <div className="text-right">
+              <InertButton label="Open live tracker" kind="nav" gold />
+              <div className="mt-1 font-mono text-[11px] text-gold-soft">
+                {ew.dayIndex != null
+                  ? `Day ${ew.dayIndex} of ${ew.windowDays} · ends ${ew.endLabel}`
+                  : `${ew.windowDays} days · ${ew.startLabel} → ${ew.endLabel}`}
+              </div>
             </div>
           </div>
-          <div className="text-right">
-            <InertButton label="Open live tracker" kind="nav" gold />
-            <div className="mt-1 font-mono text-[11px] text-gold-soft">
-              Day 2 of 30 · ends Fri 19 Jun
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* §1.3 Stat strip — counts derive; mock tile is static (INCR-16). */}
         <div className="mb-5 grid gap-3.5 md:grid-cols-4">
@@ -448,7 +462,10 @@ export default async function WassceSetupPage() {
           ]}
         />
 
-        {/* §4.2 Medical-exemption banner — static from Y. Aidoo's candidate flag (Sickbay deferred). */}
+        {/* §4.2 Medical-exemption banner — static from Y. Aidoo's candidate flag (Sickbay deferred).
+            The surface's `since 06:45 today` / `filed at 11:00` clocks are DROPPED, not replicated:
+            nothing on this page reads `waec_special_consideration.filed_at`, so a stamp here would be a
+            drawn time that is wrong from the day after it was written (R90). */}
         <div
           className="mb-5 grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-xl border border-warn px-5 py-4"
           style={{ background: "linear-gradient(135deg, var(--warn-bg), var(--surface))" }}
@@ -463,10 +480,10 @@ export default async function WassceSetupPage() {
             </div>
             <div className="mt-1 text-[12px] text-navy-2">
               <b className="text-navy">Y. Aidoo (F3 Slessor SCI · index 0184-0817)</b> is inpatient at
-              Asankrangwa Government Hospital since 06:45 today with severe malaria.{" "}
-              <b className="text-navy">WAEC Form SC-12 filed at 11:00</b>; awaiting acknowledgment.
-              Medical certificate from Dr K. Mensah pending hospital discharge. Sickbay module →
-              Referral log integration carries the case across modules.
+              Asankrangwa Government Hospital with severe malaria.{" "}
+              <b className="text-navy">WAEC Form SC-12 filed</b>; awaiting acknowledgment. Medical
+              certificate from Dr K. Mensah pending hospital discharge. Sickbay module → Referral log
+              integration carries the case across modules.
             </div>
           </div>
           <InertButton label="Open case" kind="nav" />
@@ -616,6 +633,72 @@ export default async function WassceSetupPage() {
         · GES Free-SHS registration {formatGhs(WAEC_FEE_PER_CANDIDATE)} per candidate.
       </p>
     </div>
+  );
+}
+
+/* --------------------- §1.2 derived schedule copy (no drawn dates) --------------------- */
+
+/** Today is before the first paper — the whole banner has to speak in the future tense. */
+function beforeWindow(ew: ExamWindowView): boolean {
+  return ew.dayIndex == null && ew.nextPaper != null;
+}
+
+/** The one gold em in the banner headline — the window's state, never the mockup's fixed "live". */
+function bannerState(ew: ExamWindowView): string {
+  if (ew.todayPapers.length) return "live";
+  if (ew.dayIndex != null) return "under way";
+  return beforeWindow(ew) ? "still to come" : "complete";
+}
+
+/** The §1 lede's schedule clause. Every date is the timetable's; nothing here is authored. */
+function ledeSchedule(ew: ExamWindowView): string {
+  if (beforeWindow(ew)) return `Writing starts ${ew.startLabel} with ${ew.startPapers}.`;
+  if (ew.dayIndex == null) return `Writing ran ${ew.startLabel} → ${ew.endLabel}.`;
+  const head = `Writing started ${ew.startLabel} with ${ew.startPapers};`;
+  if (ew.todayPapers.length) {
+    return `${head} ${ew.todayPapers.map((p) => p.name).join(" + ")} today.`;
+  }
+  return ew.nextPaper
+    ? `${head} next is ${ew.nextPaper.name} on ${ew.nextPaper.label}.`
+    : `${head} writing ends ${ew.endLabel}.`;
+}
+
+/**
+ * The banner sub-line's middle clause. `Today (…)` carries the REQUEST's civil date, and a day with
+ * no paper says so rather than repeating yesterday's — the two halves of the shipped defect.
+ */
+function todaySentence(ew: ExamWindowView) {
+  if (ew.todayPapers.length) {
+    return (
+      <>
+        Today ({ew.todayLabel}){" "}
+        {ew.todayPapers.map((p, i) => (
+          <Fragment key={p.name}>
+            {i > 0 ? " + " : ""}
+            <b className="text-bg">
+              {p.name} {p.window}
+            </b>
+          </Fragment>
+        ))}
+        .
+      </>
+    );
+  }
+  if (ew.nextPaper) {
+    return (
+      <>
+        No paper today ({ew.todayLabel}) — next is{" "}
+        <b className="text-bg">
+          {ew.nextPaper.name} · {ew.nextPaper.label}
+        </b>{" "}
+        ({ew.nextPaper.inDays === 1 ? "tomorrow" : `in ${ew.nextPaper.inDays} days`}).
+      </>
+    );
+  }
+  return (
+    <>
+      Writing ended <b className="text-bg">{ew.endLabel}</b>.
+    </>
   );
 }
 

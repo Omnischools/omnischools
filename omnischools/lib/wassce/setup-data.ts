@@ -4,12 +4,14 @@ import {
   wassceProgrammes,
   wassceSubjects,
   wassceCandidates,
+  wasscePapers,
   students,
   universities,
   universityProgrammes,
   universityTargets,
 } from "@/db/schema";
 import { getActiveCohort } from "@/lib/wassce/active-cohort";
+import { examWindowView, type ExamWindowView } from "@/lib/wassce/exam-window";
 import { computeCohortAggregates } from "@/lib/wassce/readiness-data";
 import {
   cutOffLabel,
@@ -139,6 +141,8 @@ export type WassceSetupData = {
   matrix: WassceMatrixCard[];
   roster: WassceRosterRow[];
   targets: WassceTargetsView; // §3 university-target config (INCR-17b)
+  /** §1.2 live-exam banner — DERIVED from wassce_papers + the request instant; null with no dated paper. */
+  examWindow: ExamWindowView | null;
 };
 
 const EMPTY_TARGETS: WassceTargetsView = {
@@ -285,8 +289,18 @@ async function loadTargetsView(
   };
 }
 
-/** Load the frozen WASSCE cohort's setup surface, tenant-scoped. Call inside `withSchool(...)`. */
-export async function loadWassceSetup(tx: Tx, schoolId: string): Promise<WassceSetupData> {
+/**
+ * Load the frozen WASSCE cohort's setup surface, tenant-scoped. Call inside `withSchool(...)`.
+ *
+ * `now` is PASSED IN, never read here (the R68 idiom): the §1.2 banner's "today" is the request's
+ * civil date, so the page pins the instant once and threads it, and the whole derivation is testable
+ * against a fixed clock.
+ */
+export async function loadWassceSetup(
+  tx: Tx,
+  schoolId: string,
+  now: Date,
+): Promise<WassceSetupData> {
   // The ACTIVE cohort = the frozen cohort with the greatest exam year (getActiveCohort). Fixes Dex
   // MINOR-1: the old `asc(examYear)` first-row was right only by accident with one cohort and picks
   // the WRONG cohort once INCR-16 seeds the unfrozen F2-2027. With F3-2026 frozen it resolves to F3-2026.
@@ -312,6 +326,7 @@ export async function loadWassceSetup(tx: Tx, schoolId: string): Promise<WassceS
       matrix: [],
       roster: [],
       targets: EMPTY_TARGETS,
+      examWindow: null,
     };
   }
 
@@ -447,6 +462,18 @@ export async function loadWassceSetup(tx: Tx, schoolId: string): Promise<WassceS
     (k) => programmes.find((p) => (p.programme as WassceProgrammeKey) === k)!.name,
   );
 
+  // §1.2 — the WAEC timetable this cohort is actually sitting. The banner's start date, "today", the
+  // day number and the end date all come off THESE rows (R90: derive, never redraw the mockup's copy).
+  const paperRows = await tx
+    .select({
+      name: wasscePapers.name,
+      scheduledDate: wasscePapers.scheduledDate,
+      scheduledTime: wasscePapers.scheduledTime,
+      durationMinutes: wasscePapers.durationMinutes,
+    })
+    .from(wasscePapers)
+    .where(and(eq(wasscePapers.schoolId, schoolId), eq(wasscePapers.cohortId, cohort.id)));
+
   return {
     cohort: { examYear: cohort.examYear, frozen: cohort.setupFrozenAt != null },
     centreCode: candRows[0]?.centreCode ?? "—",
@@ -465,6 +492,7 @@ export async function loadWassceSetup(tx: Tx, schoolId: string): Promise<WassceS
     programmeNames,
     matrix,
     roster,
+    examWindow: examWindowView(paperRows, now),
     targets: await loadTargetsView(
       tx,
       schoolId,
