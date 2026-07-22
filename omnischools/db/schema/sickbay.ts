@@ -2,6 +2,7 @@ import {
   pgTable,
   uuid,
   text,
+  date,
   smallint,
   numeric,
   boolean,
@@ -11,16 +12,20 @@ import {
   unique,
   uniqueIndex,
   foreignKey,
+  check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { schools } from "./tenancy";
 import { users } from "./identity";
-import { students } from "./students";
+import { students, houses } from "./students";
 import {
   sickbayModeEnum,
   sickbaySlotKindEnum,
   sickbayDispositionEnum,
   sickbayConsultModeEnum,
+  chronicConditionEnum,
+  chronicStatusEnum,
+  sickbayGrantScopeEnum,
 } from "./_enums";
 
 /**
@@ -502,6 +507,395 @@ export const sickbayDoctorConsult = pgTable(
     visitFk: foreignKey({
       columns: [t.schoolId, t.visitId],
       foreignColumns: [sickbayVisit.schoolId, sickbayVisit.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * Sickbay CHRONIC REGISTER (SHS module 4.4 / INCR-23a, migration 0058) — the module's LONGITUDINAL
+ * record and the product's THIRD RLS BOUNDARY. 0056 held config, 0057 holds the acute episode; these
+ * four tables hold the standing care plan for a named child, plus the machinery that decides WHO may
+ * read it.
+ *
+ * FOUR tenant tables, THREE enums, ZERO altered columns. All four get ENABLE + FORCE RLS +
+ * tenant_isolation + the catalog-driven parent_deny (owner decision D8) exactly as 0056/0057 — AND,
+ * uniquely in this repo, a THIRD restrictive family `staff_grant_scope` keyed on a new
+ * `app.current_staff_user` GUC (db/sql/policies.sql; db/sql/prod-paste-0058-sickbay-chronic.sql by
+ * hand on prod). The seam is `withStaffScope(schoolId, userId, fn)` in lib/db/rls.ts, wrapping READS
+ * AND WRITES.
+ *
+ * 🔴 THE POLARITY IS INVERTED FROM THE PARENT FAMILY, DELIBERATELY (R112). Every 19a policy reads
+ * `pu IS NULL OR <rule>` — permit-by-default — which is safe there because those tables' default
+ * audience IS all staff. The chronic tables have NO default audience, so `staff_grant_scope` reads
+ * `su IS NOT NULL AND <rule>` — DENY-by-default. A forgotten seam therefore yields an EMPTY PAGE
+ * instead of the whole register. This is not theoretical: PR #176 was a live PII leak in which a
+ * claimed parent read children's health records precisely because a permit-by-default clause met an
+ * unset GUC. Do not "fix" the asymmetry.
+ *
+ * ⚠ DDL ORDERING (the 0033 hazard INSIDE one migration, as 0057). `sickbay_chronic_entry_tenant_uk`
+ * is the composite-FK target of THREE tables created in this SAME migration; it is carried INLINE in
+ * CREATE TABLE so it exists before every ALTER TABLE ... ADD FOREIGN KEY that follows.
+ *
+ * Deliberate omissions (continuing the R64/E2 amendment series — Lucy mapped seven tables, Kofi
+ * ruled four, and every collapse is recorded):
+ *   • NO protocol-STEP table (R97) — `emergency_protocol` is ONE text column in the matron's own
+ *     words. The terracotta frame survives; the five numbered cards become her paragraphs. Do NOT
+ *     write a prose parser to reconstruct the numbering.
+ *   • NO version table and NO superseded rows (R103) — `version` is a COUNTER and the history is the
+ *     shipped audit_log. ⚠ That makes audit_log a clinical record store (owner decision D5.1).
+ *   • NO trigger/bullet table — triggers and the "sickbay monitoring" watch-list are the same
+ *     artefact under two names, and both are `triggers` free text (R98).
+ *   • NO external-VISIT log table and no `Open VLC case` link (R127) — VLC is unbuilt; the DMHU
+ *     facts survive as the four external-care columns below, and `VLC Case 2024-VLC-0047` is a
+ *     matron-typed string inside `external_pastoral_home`, never a join to a module that does not
+ *     exist.
+ *   • NO `nhis_card_number` (R127/D3) — the card in the referral log is the MOTHER's; storing it
+ *     here would pre-commit the wrong shape. INCR-25 rules it.
+ *   • NO `daily_med_schedule_json` (BUILD_STACK's shape) — a blob cannot carry the (school_id,
+ *     slot_id) composite FK and cannot be queried by round. The `vitals_json` mistake again.
+ *   • NO stored grant label, NO stored audit sentence, NO `dorm_side_artefact_pdf_file_id` (no file
+ *     store exists; the dorm card is DERIVED), NO `next_review_at` (cadence is policy, not config).
+ *
+ * NO TRIGGERS (portability). Everything that spans rows lives in lib/sickbay/: `on_site_treatable =
+ * false ⇒ zero med rows` (R102), the R100 `resetScheduleSlots` reconcile (a hard DELETE of slot ids
+ * would now HARD-FAIL against `sickbay_chronic_med.slot_id`'s RESTRICT — which is exactly why R100
+ * moves forward from INCR-24 to 23a), grant/revoke being MATRON-only (R111), and the read-audit
+ * insert (R121). The one rule that IS in the DB is R96's single-row CHECK — product policy, not
+ * per-school judgement, and a single-row CHECK is not the cross-table trigger J3 forbids.
+ * ==========================================================================*/
+
+/**
+ * ONE ROW PER (student × condition) — the care plan itself (R91).
+ *
+ * NOT columns on the shipped `student_health_record`, whose `student_id` carries a GLOBAL `.unique()`
+ * (students.ts:250): sickle cell AND asthma is literally inexpressible there. That table stays the
+ * 1:1 bio baseline — prefill from it, never link to it (a plan reading its condition text live from
+ * the health record would be silently rewritten by a clerk editing the student profile), not
+ * migrated, not dual-written.
+ *
+ * R98 — THE ENTRY CARRIES TWO TIERS OF COLUMN, AND THAT IS THE HEADLINE. The dorm-side card is a
+ * SEPARATELY AUTHORED artefact, not a redaction of the care plan: the surface proves it, because
+ * protocol step 4 says *priapism (boys)* and *O₂ sat <95%* while the dorm card says *severe pain ·
+ * fever · breathlessness · chest pain*. Different strings for different readers. So `triggers`,
+ * `red_flags` and `first_action` are the HM-tier columns and `condition_detail`, `emergency_protocol`
+ * and the med rows are the clinical tier. This DELETES the entire class of redaction bug: there is
+ * nothing to redact, so a scope is a fixed, pinnable KEY-SET (R70's runtime key-set pin generalises
+ * straight onto it) instead of a substring judgement made at render time.
+ *
+ * R96 — `on_site_treatable` and `referral_managed` are INDEPENDENT NOT NULL booleans (a school can
+ * both treat on site and share care with a hospital), with ONE combination fixed by DB CHECK:
+ * `MENTAL_HEALTH ⇒ (false, true)`. A real Ghanaian SHS sickbay does not provide mental-health
+ * treatment; the matron is not a psychiatrist, and pretending otherwise creates harm. That is
+ * product policy, identical for every school, so it is a CHECK rather than a per-school judgement.
+ *
+ * R116 — `condition = 'MENTAL_HEALTH'` is a SECURITY DISCRIMINATOR, not just a category: it is
+ * carved out of the HEADMASTER's default read inside the RLS predicate itself, so his SQL cannot
+ * return the row whatever a reader does. Ground: he is the school's disciplinary authority, and a
+ * psychiatric history in his default read is the exact adjacency that makes an adolescent not
+ * disclose — a register nobody discloses to is worse than no register.
+ */
+export const sickbayChronicEntry = pgTable(
+  "sickbay_chronic_entry",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
+    condition: chronicConditionEnum("condition").notNull(),
+    // The words on the pill ("Sickle cell disease · HbSS"); the ENUM above drives only the colour.
+    // Free text because HbSS/HbSC, "peanut + shellfish" and "type 1" are facts no 7-value vocabulary
+    // can hold, and widening the vocabulary is how a register becomes an EMR (R94).
+    conditionLabel: text("condition_label"),
+    conditionDetail: text("condition_detail"),
+    status: chronicStatusEnum("status").notNull().default("STABLE"),
+    // R96 — independent booleans; the MENTAL_HEALTH combination is CHECK-enforced below.
+    onSiteTreatable: boolean("on_site_treatable").notNull().default(true),
+    referralManaged: boolean("referral_managed").notNull().default(false),
+    // ---- clinical tier (a FULL_PLAN reader; never the dorm card, never a list) ----
+    baselineStatus: text("baseline_status"),
+    careGoals: text("care_goals"),
+    emergencyProtocol: text("emergency_protocol"), // R97 — ONE column, the matron's paragraphs
+    // R104 — discharge criteria as ONE free-text column that PREFILLS the shipped visit field.
+    // R63 closed with a smaller answer: the surfaces' structured 4-row checklist and "3 of 4 met"
+    // counter stay OMITTED (a criterion instance needs per-condition templates; this is the
+    // template, and it is prose).
+    dischargeCriteria: text("discharge_criteria"),
+    // ---- HM tier (R98) — separately authored, structurally incapable of carrying the clinical tier
+    triggers: text("triggers"),
+    redFlags: text("red_flags"),
+    firstAction: text("first_action"),
+    // ---- external care (R127) — the DMHU/pastoral facts, as TEXT, with no link and no join. The
+    // VLC case id, if the matron types one, lives inside external_pastoral_home as her own string.
+    externalClinicalHome: text("external_clinical_home"),
+    externalPastoralHome: text("external_pastoral_home"),
+    externalCareCadence: text("external_care_cadence"),
+    // The ONE non-text external-care column: the next appointment is a stored DATE nobody computes
+    // (nothing generates a monthly series). In free text it would be unsortable and unrenderable.
+    externalNextVisitAt: timestamp("external_next_visit_at", { withTimezone: true }),
+    // ---- review + version (R103) — `v4` is a NUMBER, the history is audit_log, there is no
+    // superseded row and no version table. `co_reviewer_note` is free text because the second name
+    // on the surface's head meta (a VLC counsellor) may not be a system user at all — the R21/R38
+    // recorded-external-actor precedent. Do NOT add a second FK to a user who may not exist.
+    version: smallint("version").notNull().default(1),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    coReviewerNote: text("co_reviewer_note"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for sickbay_chronic_med, _grant AND _read — THREE tables in THIS SAME
+    // migration. Carried INLINE in CREATE TABLE so it exists before every ADD FOREIGN KEY (the 0033
+    // ordering hazard; 0057 did the same for sickbay_visit_tenant_uk).
+    tenantUk: unique("sickbay_chronic_entry_tenant_uk").on(t.schoolId, t.id),
+    // R96 — the one product-policy invariant that lives in the DB. Single-row CHECK, no trigger.
+    mentalHealthIsReferralManaged: check(
+      "chronic_mental_health_referral_managed",
+      sql`${t.condition} <> 'MENTAL_HEALTH' OR (${t.onSiteTreatable} = false AND ${t.referralManaged} = true)`,
+    ),
+    // ONE LIVE PLAN PER (student × condition) — partial unique, the R58 idiom, because an app check
+    // loses the concurrent double-create race and two live SCD plans for one girl means two
+    // contradictory emergency protocols. Retired plans (active=false) are exempt, so a condition can
+    // be re-opened. ⚠ `OTHER` is EXEMPT: it is R94's escape hatch for everything outside the seven
+    // values, so capping a student at one OTHER row would cap the register itself (coeliac AND
+    // hypertension is a legitimate pair).
+    oneLivePerCondition: uniqueIndex("uniq_sickbay_chronic_entry_condition")
+      .on(t.schoolId, t.studentId, t.condition)
+      .where(sql`${t.active} AND ${t.condition} <> 'OTHER'`),
+    // The register list is "this school's entries" and the R123 queue marker + R124 visit-record
+    // chips are "this student's entries" — one index leading with school_id serves both.
+    byStudent: index("sickbay_chronic_entry_student_idx").on(t.schoolId, t.studentId),
+    // Composite intra-tenant FK — a cross-tenant student reference is structurally impossible.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * One row per (entry × drug × slot), or per PRN drug (R99). The med GRID on the surface is a PIVOT
+ * of these rows over `getRoundSchedule()`'s columns — presentation, never storage (R101; the
+ * surface's `13:00 Lunch` column is demo drift and loses to the shipped 06:30/12:30/21:00 rounds).
+ *
+ * REJECTED: a `slot_doses jsonb` map on one row per drug (INCR-24's "who is due at 06:30" becomes a
+ * full scan of every plan in the school — R64(7) again), and a third `_dose` child table (a row per
+ * (drug × slot) IS the dose row; the extra level buys a join and an orphan state).
+ *
+ * 🔴 `slot_id` is a composite (school_id, slot_id) FK with ON DELETE **RESTRICT**, not SET NULL.
+ * SET NULL looks kinder and is the dangerous option: it silently orphans a dose from its round, i.e.
+ * a student quietly stops being dosed and no error is ever raised. RESTRICT converts that into a
+ * loud failure — which is precisely why R100 pulls the `resetScheduleSlots` obligation FORWARD from
+ * INCR-24 to 23a: that action hard-DELETEs every slot row and re-creates it with new ids, so after
+ * this migration "Reset to defaults" would hard-fail against any school with a medication schedule.
+ * It must become a reconcile/update-in-place BEFORE this ships.
+ */
+export const sickbayChronicMed = pgTable(
+  "sickbay_chronic_med",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id").notNull(), // composite (school_id, entry_id) FK below
+    drugName: text("drug_name").notNull(),
+    // "500mg OD", "2 puffs", "8 units" — TEXT, deliberately not a numeric quantity + unit pair:
+    // this is a PRESCRIPTION SCHEDULE, not an administration record (that is INCR-24's MAR, and
+    // owner decision D5.2 puts the controlled-substance register there too).
+    doseLabel: text("dose_label").notNull(),
+    // Exactly one of "as needed" / "at this round" — CHECK-enforced below.
+    isPrn: boolean("is_prn").notNull().default(false),
+    slotId: uuid("slot_id"), // composite (school_id, slot_id) FK below — RESTRICT
+    // PRN criteria ("for pain ≥ 4/10, max 4 doses in 24h"), kitchen instructions, monitoring notes.
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Authored NOW though nothing references it yet — the 0056 `sickbay_bed_tenant_uk` / 0057
+    // `sickbay_admission_tenant_uk` precedent (AC B6): INCR-24's MAR row will point at the
+    // prescription it administered, and adding the UNIQUE in the same migration as that FK is
+    // exactly the 0033 ordering hazard. INLINE.
+    tenantUk: unique("sickbay_chronic_med_tenant_uk").on(t.schoolId, t.id),
+    // R99's XOR: `is_prn` TRUE ⇔ no slot. A PRN row with a round, or a scheduled row with no round,
+    // are both nonsense the grid cannot render.
+    prnXorSlot: check("chronic_med_prn_xor_slot", sql`${t.isPrn} = (${t.slotId} IS NULL)`),
+    // One row per (entry × drug × round) — the grid cell is single-valued, and a duplicate is a
+    // double dose in a pivot nobody would notice. PRN rows have slot_id NULL, which Postgres treats
+    // as distinct, so a drug may carry several PRN lines (different criteria) — correct: nothing
+    // FIRES a PRN row. This index also serves "this plan's medications".
+    uniqDose: unique("uniq_sickbay_chronic_med_dose").on(
+      t.schoolId,
+      t.entryId,
+      t.drugName,
+      t.slotId,
+    ),
+    // INCR-24's round query ("who is due at 06:30") and the RESTRICT check on every slot delete both
+    // read by slot. Postgres does not index a FK automatically, and an unindexed RESTRICT target
+    // means a seq scan of every prescription in the school on every schedule edit.
+    bySlot: index("sickbay_chronic_med_slot_idx").on(t.schoolId, t.slotId),
+    // Composite intra-tenant FKs. The plan CASCADEs; the ROUND restricts (see the header note).
+    entryFk: foreignKey({
+      columns: [t.schoolId, t.entryId],
+      foreignColumns: [sickbayChronicEntry.schoolId, sickbayChronicEntry.id],
+    }).onDelete("cascade"),
+    slotFk: foreignKey({
+      columns: [t.schoolId, t.slotId],
+      foreignColumns: [sickbayScheduleSlot.schoolId, sickbayScheduleSlot.id],
+    }).onDelete("restrict"),
+  }),
+);
+
+/**
+ * A per-ENTRY access grant (R105) — the row the third RLS boundary reads.
+ *
+ * PER ENTRY, NOT PER STUDENT. A grant on "Adwoa's plan" that silently widened to a future
+ * MENTAL_HEALTH entry for the same girl is exactly what R116 exists to prevent.
+ *
+ * R106 — the grantee is a `ref_user` and it is NOT NULL. A STUDENT or a PARENT may NEVER hold one:
+ * R38 already ruled that one student's identity must never appear as an ACTOR inside another
+ * student's clinical record, so the surface's `Senior prefect` grant row is REFUSED (owner E19). A
+ * non-user gets the PRINTED dorm card, which is the doctrine already. `isStaff()` is reused at the
+ * app layer; the DB cannot check role membership on a global ref_user pointer (Sarah's standing
+ * advisory — every clinical actor pointer needs the explicit app-layer check).
+ *
+ * R107 — grants AUTO-EXPIRE but never AUTO-GRANT. The note panel's "grants auto-transfer to the new
+ * HM" LOSES: six students' medical records landing on a man the day he changes job, with no matron
+ * decision and no audit event, is the boundary this increment exists to build. The "auto-expired"
+ * half WINS, and costs ONE nullable column: a house-tied grant is live iff
+ * `houses.hm_user_id = grantee AND student.house_id = grant.house_id`. One column, no new mechanism,
+ * and the grant dies the moment either fact changes — evaluated in SQL, in the transaction, per
+ * request (R114), never a session claim.
+ *
+ * R110 — APPEND-ONLY: revoke never deletes, and a scope CHANGE is revoke + re-grant, never an
+ * UPDATE of `scope`. R111 — issuing and revoking is MATRON-only (not HEADMASTER, not ADMIN): R39's
+ * split repeats, the Head reads but never authors.
+ *
+ * ⚠ There is deliberately NO "one live grant" unique index. `live` depends on `now()`, which is not
+ * immutable and cannot appear in an index predicate; the obvious fallback `WHERE revoked_at IS NULL`
+ * is WORSE THAN NOTHING, because an EXPIRED grant is not a revoked one, so a lawful re-grant in
+ * August would be rejected by a unique violation against July's dead row. Duplicate live grants are
+ * semantically idempotent (both were issued by a matron), and the reader must resolve a SET of live
+ * grants anyway — an expired FULL_PLAN beside a live DIRECTIVE has to collapse to DIRECTIVE whatever
+ * any constraint says. See OQ1 #6 in the PR.
+ */
+export const sickbayChronicGrant = pgTable(
+  "sickbay_chronic_grant",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id").notNull(), // composite (school_id, entry_id) FK below
+    // NOT NULL: a grant with no grantee is not a grant. Single-column FK to the GLOBAL ref_user
+    // (the houses.hm_user_id idiom); CASCADE rather than SET NULL precisely because it is NOT NULL —
+    // a deleted user's grants must not survive as unreadable stubs.
+    granteeUserId: uuid("grantee_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: sickbayGrantScopeEnum("scope").notNull(),
+    // THREE matron-authored strings, deliberately NOT collapsed into one (R109): the scope's own
+    // words on the row ("dorm-side card"), WHY it was issued, and — for DIRECTIVE — the single
+    // sentence that IS the grantee's entire view of this student.
+    scopeLabel: text("scope_label"),
+    reason: text("reason"),
+    directiveNote: text("directive_note"),
+    // R107 — nullable house tie. Set ⇒ the grant is live only while the grantee is that House's HM
+    // AND the student is still in that House. NULL ⇒ an ordinary named grant.
+    houseId: uuid("house_id"), // composite (school_id, house_id) FK below
+    grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+    grantedByUserId: uuid("granted_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // NULL ⇒ no expiry (the surface's italic-green `No expiry`). Evaluated against the DB's now() in
+    // the same statement that reads the row (R114) — never cached, never in middleware.
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedByUserId: uuid("revoked_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => ({
+    // R109 — a DIRECTIVE grant with no directive_note would show its holder a blank page where the
+    // one sentence he is entitled to should be. The narrowest tier must be non-empty by construction.
+    directiveNeedsNote: check(
+      "chronic_grant_directive_needs_note",
+      sql`${t.scope} <> 'DIRECTIVE' OR ${t.directiveNote} IS NOT NULL`,
+    ),
+    // §04's grant list for one plan.
+    byEntry: index("sickbay_chronic_grant_entry_idx").on(t.schoolId, t.entryId),
+    // THE HOT PATH: the RLS predicate's grant arm ("does su hold a live grant on this entry"), read
+    // on every single query against every chronic table.
+    byGrantee: index("sickbay_chronic_grant_grantee_idx").on(t.schoolId, t.granteeUserId),
+    // Composite intra-tenant FKs. The plan CASCADEs. The House CASCADEs — a deleted House cannot
+    // leave an HM-tied grant behind, and R107's liveness rule would be unevaluable without it.
+    entryFk: foreignKey({
+      columns: [t.schoolId, t.entryId],
+      foreignColumns: [sickbayChronicEntry.schoolId, sickbayChronicEntry.id],
+    }).onDelete("cascade"),
+    houseFk: foreignKey({
+      columns: [t.schoolId, t.houseId],
+      foreignColumns: [houses.schoolId, houses.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * THE READ AUDIT (R121) — one row per (actor × entry × civil day), and nothing else.
+ *
+ * Fires on the care-plan DETAIL route and on the dorm-card print. NEVER on the list, the R123 queue
+ * marker, a counter, a tile or a revalidation. The MATRON's own opens ARE audited.
+ *
+ * Its own table, not `actionType='viewed'` on the shipped `audit_log`: dedupe on that table becomes
+ * SELECT-then-INSERT needing a five-column index on a hot shared path (Risk 3's "an audit table
+ * outgrowing the data"), and — decisively — a separate table can be aged out on its own retention
+ * schedule (owner D5.1: 7 years post-exit, the SETTING is real, the purge machinery is not built at
+ * 23 and the UI must not claim it). The UNIQUE below IS the dedupe: ONE insert with ON CONFLICT DO
+ * NOTHING, no read-before-write, no race (AC A3). ⚠ Do NOT add `.returning()` to that insert — a
+ * grantee has INSERT but no SELECT on this table (R122), and RETURNING needs SELECT.
+ *
+ * 🔴 R122 — the row stores IDs AND A SCOPE, never a condition string. The surface's
+ * `viewed Esi Antwi · diabetic protocol` is a leak by proxy on the very screen meant for oversight.
+ * And §04 is CLINICAL-READER-ONLY: a grantee must never learn who ELSE knows.
+ *
+ * APPEND-ONLY: no updated_at, no void, no delete. LEAF → no tenant UK.
+ */
+export const sickbayChronicRead = pgTable(
+  "sickbay_chronic_read",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id").notNull(), // composite (school_id, entry_id) FK below
+    actorUserId: uuid("actor_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // The Africa/Accra CIVIL date from the shipped civilDate() — a DATE, not a timestamp, because it
+    // is the dedupe key and a timestamp cannot be one. (Ghana is UTC+0 year-round, so this is the
+    // same calendar day as UTC; the helper is used anyway so the rule is stated, not assumed.)
+    readOn: date("read_on").notNull(),
+    // WHAT the actor was entitled to see when they opened it. NULL ⇒ read under the DEFAULT clinical
+    // role (MATRON/HEADMASTER), i.e. no grant was involved. Never a condition, never a label.
+    scope: sickbayGrantScopeEnum("scope"),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // R121's dedupe key AND the §04 trail's read path (it leads with school_id, entry_id).
+    uniqPerDay: unique("uniq_sickbay_chronic_read_day").on(
+      t.schoolId,
+      t.entryId,
+      t.actorUserId,
+      t.readOn,
+    ),
+    // Composite intra-tenant FK → sickbay_chronic_entry_tenant_uk. CASCADE with the plan.
+    entryFk: foreignKey({
+      columns: [t.schoolId, t.entryId],
+      foreignColumns: [sickbayChronicEntry.schoolId, sickbayChronicEntry.id],
     }).onDelete("cascade"),
   }),
 );
