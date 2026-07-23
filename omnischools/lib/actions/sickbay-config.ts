@@ -29,6 +29,7 @@ import { openAdmissionBeds } from "@/lib/sickbay/visit-reads";
 import {
   CANONICAL_SICKBAY_SLOTS,
   planBedReconcile,
+  planScheduleReset,
   validateRoundOrdering,
 } from "@/lib/sickbay/defaults";
 import { referralOnlyGuard } from "@/lib/sickbay/visits";
@@ -436,22 +437,50 @@ export async function toggleScheduleSlot(input: unknown): Promise<Result> {
 }
 
 /**
- * `Reset to defaults` — DESTRUCTIVE, so the client confirms first. Replaces the school's slots with
- * the canonical 7 of R13. The delete is scoped to this school's sickbay_schedule_slot rows only
- * (marker-scoped by school; nothing else writes this table).
+ * `Reset to defaults` — DESTRUCTIVE, so the client confirms first. Restores the school's slots to the
+ * canonical 7 of R13.
+ *
+ * 🔴 R100 — a RECONCILE, never the old hard DELETE. After 0058 `sickbay_chronic_med.slot_id` is a
+ * composite FK with ON DELETE RESTRICT, so deleting a round a chronic dose is pinned to hard-FAILS
+ * (and, without RESTRICT, would silently stop dosing a student). `planScheduleReset` re-points each
+ * existing row to its canonical template IN PLACE, so every round id — and every dose hanging off it
+ * — is STABLE across a reset (AC E6). A canonical-shaped school reconciles to 7 UPDATEs, no delete.
  */
 export async function resetScheduleSlots(): Promise<Result> {
   const auth = await authorizeWrite();
   if (!auth.ok) return auth;
   const before = await getScheduleSlots(auth.schoolId);
+  const plan = planScheduleReset(before);
   try {
     await withSchool(auth.schoolId, async (tx) => {
-      await tx
-        .delete(sickbayScheduleSlot)
-        .where(eq(sickbayScheduleSlot.schoolId, auth.schoolId));
-      await tx
-        .insert(sickbayScheduleSlot)
-        .values(CANONICAL_SICKBAY_SLOTS.map((s) => ({ schoolId: auth.schoolId, ...s })));
+      for (const { id, slot } of plan.update) {
+        await tx
+          .update(sickbayScheduleSlot)
+          .set({
+            kind: slot.kind,
+            label: slot.label,
+            description: slot.description,
+            startsAt: slot.startsAt,
+            endsAt: slot.endsAt,
+            staffing: slot.staffing,
+            daysOfWeek: slot.daysOfWeek,
+            runsOnHolidays: slot.runsOnHolidays,
+            isAnchor: slot.isAnchor,
+            active: slot.active,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(sickbayScheduleSlot.schoolId, auth.schoolId), eq(sickbayScheduleSlot.id, id)));
+      }
+      if (plan.insert.length > 0) {
+        await tx
+          .insert(sickbayScheduleSlot)
+          .values(plan.insert.map((s) => ({ schoolId: auth.schoolId, ...s })));
+      }
+      for (const id of plan.deleteIds) {
+        await tx
+          .delete(sickbayScheduleSlot)
+          .where(and(eq(sickbayScheduleSlot.schoolId, auth.schoolId), eq(sickbayScheduleSlot.id, id)));
+      }
       await recordAudit(tx, {
         schoolId: auth.schoolId,
         actorUserId: auth.actor.id ?? undefined,

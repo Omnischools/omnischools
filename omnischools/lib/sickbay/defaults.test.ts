@@ -11,6 +11,7 @@ import {
   formLabel,
   initials,
   planBedReconcile,
+  planScheduleReset,
   roundSchedule,
   sickbayCapabilities,
   sortSlots,
@@ -463,5 +464,55 @@ describe("avatar glyphs", () => {
     expect(initials("Dr K. Mensah")).toBe("KM");
     expect(initials("Madonna")).toBe("M");
     expect(initials("  ")).toBe("—");
+  });
+});
+
+describe("R100 · Reset to defaults RECONCILES — slot ids are STABLE (AC E6)", () => {
+  it("a canonical-shaped school → 7 UPDATEs, no insert, no delete, EVERY id kept", () => {
+    // `slots` is the canonical 7 with ids slot-1…slot-7; a matron may have edited the times/labels.
+    const edited = slots.map((s) =>
+      s.isAnchor ? { ...s, startsAt: "05:45", label: "Early round" } : s,
+    );
+    const plan = planScheduleReset(edited);
+    expect(plan.update.length).toBe(CANONICAL_SICKBAY_SLOTS.length);
+    expect(plan.insert).toEqual([]);
+    expect(plan.deleteIds).toEqual([]);
+    // The ids that survive the reset are EXACTLY the ids that went in — nothing is re-created.
+    const before = edited.map((s) => s.id).sort();
+    const after = plan.update.map((u) => u.id).sort();
+    expect(after).toEqual(before);
+    // A dose pinned to the anchor's id keeps pointing at a MEDICATION_ROUND (never the doctor slot).
+    const anchorId = edited.find((s) => s.isAnchor)!.id;
+    const rehomed = plan.update.find((u) => u.id === anchorId)!;
+    expect(rehomed.slot.kind).toBe("MEDICATION_ROUND");
+    expect(rehomed.slot.isAnchor).toBe(true);
+  });
+
+  it("within-kind pairing: every existing MEDICATION_ROUND id is UPDATEd, never deleted-then-recreated", () => {
+    const plan = planScheduleReset(slots);
+    const medExistingIds = slots.filter((s) => s.kind === "MEDICATION_ROUND").map((s) => s.id);
+    const medUpdatedIds = plan.update
+      .filter((u) => u.slot.kind === "MEDICATION_ROUND")
+      .map((u) => u.id);
+    expect(medUpdatedIds.sort()).toEqual(medExistingIds.sort());
+    expect(plan.deleteIds).toEqual([]);
+  });
+
+  it("an EMPTY school inserts the canonical 7 and updates/deletes nothing", () => {
+    const plan = planScheduleReset([]);
+    expect(plan.insert.length).toBe(CANONICAL_SICKBAY_SLOTS.length);
+    expect(plan.update).toEqual([]);
+    expect(plan.deleteIds).toEqual([]);
+  });
+
+  it("a surplus row of a kind is deleted; a missing kind is inserted", () => {
+    // Drop the on-call row, add a spurious extra clinic (3 clinics vs canonical 2).
+    const drifted: SickbaySlot[] = [
+      ...slots.filter((s) => s.kind !== "ON_CALL"),
+      { ...slots[1], id: "extra-clinic" },
+    ];
+    const plan = planScheduleReset(drifted);
+    expect(plan.insert.some((s) => s.kind === "ON_CALL")).toBe(true); // the missing kind
+    expect(plan.deleteIds).toContain("extra-clinic"); // the surplus clinic
   });
 });
