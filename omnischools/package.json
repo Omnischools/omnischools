@@ -27,6 +27,7 @@
     "db:seed-visiting": "tsx db/seed/boarding-visiting.ts",
     "db:seed-discipline": "tsx db/seed/boarding-discipline.ts",
     "db:seed-sickbay": "tsx db/seed/sickbay.ts",
+    "db:seed-sickbay-chronic": "tsx db/seed/sickbay-chronic.ts",
     "db:seed-wassce": "tsx db/seed/wassce.ts",
     "db:seed-wassce-mock": "tsx db/seed/wassce-mock.ts",
     "db:seed-wassce-readiness": "tsx db/seed/wassce-readiness.ts",
