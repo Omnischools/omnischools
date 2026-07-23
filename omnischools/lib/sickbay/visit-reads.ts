@@ -180,6 +180,7 @@ export interface VisitAttendanceFacts {
 export interface VisitRecord {
   id: string;
   student: {
+    studentId: string;
     name: string;
     firstName: string;
     lastName: string;
@@ -376,6 +377,9 @@ export async function getVisitRecord(
     return {
       id: v.id,
       student: {
+        // R124 — the register detail route is keyed on studentId; the visit record's `View care plan`
+        // link and its chronic chip both need it.
+        studentId: v.studentId,
         name: fullName,
         firstName: student.firstName,
         lastName: student.lastName,

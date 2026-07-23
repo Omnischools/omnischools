@@ -460,8 +460,9 @@ describe("R37 / the attendance seam · what the write path must NOT contain", ()
     // behavioural half is the G2 round-trip/statement counter in `scripts/verify-sickbay-board.ts`,
     // which is DB-backed and — this repo having no CI — runs only when someone runs it.
     const board = read("lib/sickbay/board-reads.ts").code;
+    // R119 — the reader now takes `actor: {userId, roles}`, so the gate reads `actor.roles`.
     const gate = board.search(
-      /hasAnyRole\(\s*roles\s*,\s*SICKBAY_CLINICAL_READ_ROLES\s*\)\s*\)\s*return\s+null/,
+      /hasAnyRole\(\s*actor\.roles\s*,\s*SICKBAY_CLINICAL_READ_ROLES\s*\)\s*\)\s*return\s+null/,
     );
     expect(gate, "board-reads.ts must carry the clinical gate verbatim").toBeGreaterThan(-1);
     expect(gate).toBeLessThan(board.indexOf("withSchool("));

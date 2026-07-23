@@ -53,6 +53,14 @@ const TOKEN_IMPRESSION = "ZZTOKENIMP";
 const BASE = process.env.BOARD_BASE_URL ?? "http://localhost:3000";
 const SERVED_ROLE = process.env.SERVED_ROLE ?? "";
 
+// INCR-23 changed the reader's signature to `{userId, roles}` (R119). These 22c probes carry NO staff
+// identity, so `userId: null` — which makes the new `hasCarePlan` marker query a NO-OP (studentsWithCarePlan
+// returns an empty set without issuing a query), keeping the O(1) round-trip counts (B1/G2) unchanged.
+const BOARD_ACTOR = (role: string): { userId: string | null; roles: readonly string[] } => ({
+  userId: null,
+  roles: [role],
+});
+
 /**
  * Count DB work through the ONE seam every tenant read goes through (lib/db/rls.ts).
  *
@@ -221,7 +229,7 @@ async function main() {
   });
 
   // ── G1/G2 · the ADMIN reader: null, and NOT ONE query issued ─────────────────────────────────
-  const admin = await countRoundTrips(() => getSickbayBoard(school.id, ["ADMIN"], now));
+  const admin = await countRoundTrips(() => getSickbayBoard(school.id, BOARD_ACTOR("ADMIN"), now));
   check(
     "G1 an ADMIN gets null from the board reader (→ ClinicalRestricted, not a 404)",
     admin.result === null,
@@ -231,7 +239,7 @@ async function main() {
     admin.trips === 0 && admin.statements === 0,
     `${admin.trips} round trips, ${admin.statements} statements`,
   );
-  const hm = await countRoundTrips(() => getSickbayBoard(school.id, ["HEADMASTER"], now));
+  const hm = await countRoundTrips(() => getSickbayBoard(school.id, BOARD_ACTOR("HEADMASTER"), now));
   check(
     "G1 the gate is not vacuous — a HEADMASTER DOES get a board",
     hm.result !== null,
@@ -239,11 +247,11 @@ async function main() {
   );
   check(
     "G3 an unknown/empty role set gets null too",
-    (await getSickbayBoard(school.id, [], now)) === null,
+    (await getSickbayBoard(school.id, { userId: null, roles: [] }, now)) === null,
   );
 
   // ── B1 · O(1) round trips, flat as the queue grows ───────────────────────────────────────────
-  const small = await countRoundTrips(() => getSickbayBoard(school.id, ["MATRON"], now));
+  const small = await countRoundTrips(() => getSickbayBoard(school.id, BOARD_ACTOR("MATRON"), now));
   check("B1 the whole board costs ≤ 6 round trips", small.trips <= 6, `${small.trips}`);
   const board = small.result!;
 
@@ -260,7 +268,7 @@ async function main() {
       )
       .returning({ id: sickbayVisit.id }),
   );
-  const big = await countRoundTrips(() => getSickbayBoard(school.id, ["MATRON"], now));
+  const big = await countRoundTrips(() => getSickbayBoard(school.id, BOARD_ACTOR("MATRON"), now));
   check(
     "🔴 B1 the round-trip count is FLAT as the queue grows to 30+",
     big.trips === small.trips && big.result!.queue.length >= 31,
@@ -373,7 +381,7 @@ async function main() {
       .set({ voidedAt: new Date(), voidReason: MARKER })
       .where(and(eq(sickbayVisit.schoolId, school.id), eq(sickbayVisit.id, extra[0].id)));
   });
-  const afterVoid = (await getSickbayBoard(school.id, ["MATRON"], now))!;
+  const afterVoid = (await getSickbayBoard(school.id, BOARD_ACTOR("MATRON"), now))!;
   /**
    * 🔴 R78 IS ASSERTED IN TWO ARMS ON PURPOSE, and the split is the mutation test (Dex A1).
    * §03 and the counters have NO void check of their own — they rest entirely on the reader's SQL
@@ -400,7 +408,7 @@ async function main() {
     begun.ok,
     begun.error ?? "",
   );
-  const afterBegin = (await getSickbayBoard(school.id, ["MATRON"], now))!;
+  const afterBegin = (await getSickbayBoard(school.id, BOARD_ACTOR("MATRON"), now))!;
   check(
     "🔴 Q the begun visit LEAVES the queue (the wait clock stopped, R33)",
     !afterBegin.queue.some((r) => r.visitId === queuedId),
@@ -487,7 +495,7 @@ async function main() {
     `cleanup removed only this script's ${mine.length} marker rows`,
     left.length === 0,
   );
-  const boardAfter = (await getSickbayBoard(school.id, ["MATRON"], new Date()))!;
+  const boardAfter = (await getSickbayBoard(school.id, BOARD_ACTOR("MATRON"), new Date()))!;
   check(
     "the dev DB is back in seed state (no fixture left on the board)",
     !boardAfter.ward.some((r) => r.admissionId === admissionId),

@@ -92,7 +92,8 @@ export const OMITTED_AT_22A: readonly { text: string; why: string }[] = [
   { text: "Sickle cell · HbSS", why: "chronic register → INCR-23; and it is adjacency leak A1/A3" },
   { text: "Sickle cell pain crisis protocol", why: "SCD banner → INCR-23 (leaks by name AND by drug, A4)" },
   { text: "hydroxyurea", why: "A4 — the drug re-identifies the condition even without naming it" },
-  { text: "View care plan", why: "no target until INCR-23" },
+  // `View care plan` was omitted at 22a "no target until INCR-23"; that target now exists, so R124
+  // REINSTATES the link on the visit-record header — it is no longer an omission.
   { text: "No chronic flag", why: "a false NEGATIVE — asserts safety about a register that does not exist yet" },
   { text: "NHIS · active", why: "no field; owner D3's shape is ruled at INCR-25" },
   { text: "bed S-12-B", why: "B1 — boarding_bunk has no upper/lower axis; never conflate it with a sickbay bed" },

@@ -46,6 +46,7 @@ import {
 } from "@/db/schema";
 import { hasAnyRole, SICKBAY_CLINICAL_READ_ROLES } from "@/lib/access";
 import { getSickbayConfig, type SickbayMode } from "./config";
+import { studentsWithCarePlan } from "./chronic-reads";
 import { initials } from "./board-copy";
 import { formLabel } from "./defaults";
 import { civilDate, isQueued, type SickbayDisposition } from "./visits";
@@ -69,6 +70,14 @@ export interface SickbayQueueRow {
   studentCode: string;
   presentedAt: Date;
   complaint: string;
+  /**
+   * R123 — the neutral `Care plan on file` marker: `true` iff THIS actor may read ≥1 active chronic
+   * entry for this student. Positive-only, never its negation, never the condition or a drug. `false`
+   * renders nothing at all (R61's false negative — asserting *safety* about a register the reader may
+   * not fully see — is retired). Computed through the chronic RLS boundary, so a Headmaster gets
+   * `false` for a mental-health-only student.
+   */
+  hasCarePlan: boolean;
 }
 
 /** The latest reading only — the glance-check instrument (A14), never the timeline. */
@@ -182,11 +191,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 export async function getSickbayBoard(
   schoolId: string,
-  roles: readonly string[],
+  actor: { userId: string | null; roles: readonly string[] },
   now: Date,
 ): Promise<SickbayBoard | null> {
   // R81/R88 — FIRST STATEMENT. ADMIN keeps module access and reaches the route; it gets no query.
-  if (!hasAnyRole(roles, SICKBAY_CLINICAL_READ_ROLES)) return null;
+  // R119 — the actor is `{userId, roles}` (never an ambiguous `id`): 23's `hasCarePlan` marker needs
+  // the reader's identity, and `roles` alone cannot express "may this actor read this student's plan".
+  if (!hasAnyRole(actor.roles, SICKBAY_CLINICAL_READ_ROLES)) return null;
 
   const since = new Date(now.getTime() - DAY_MS);
 
@@ -219,6 +230,7 @@ export async function getSickbayBoard(
           // `isNull()` below becomes the only void check on the whole board, un-backstopped.
           voidedAt: sickbayVisit.voidedAt,
           complaint: sickbayVisit.presentingComplaint,
+          studentId: students.id, // R123 — internal only, for the care-plan marker; NOT on the row
           firstName: students.firstName,
           lastName: students.lastName,
           studentCode: students.studentCode,
@@ -394,18 +406,29 @@ export async function getSickbayBoard(
 
   // R33 — the shipped queue predicate: not voided, not started, no disposition, presented TODAY.
   // Ordered by `presented_at` ascending, longest wait first.
-  const queue: SickbayQueueRow[] = visitRows
+  const queuedVisits = visitRows
     .filter((v) => isQueued(v, now))
-    .sort((a, b) => a.presentedAt.getTime() - b.presentedAt.getTime())
-    .map((v) => ({
-      visitId: v.visitId,
-      studentName: initials(`${v.firstName} ${v.lastName}`),
-      formLabel: formLabel(v.classLevel, v.className, v.programme),
-      houseName: v.houseName,
-      studentCode: v.studentCode,
-      presentedAt: v.presentedAt,
-      complaint: v.complaint,
-    }));
+    .sort((a, b) => a.presentedAt.getTime() - b.presentedAt.getTime());
+
+  // R123 — ONE bounded query through the chronic RLS boundary marks the students in the queue who
+  // have a care plan THIS actor may read. O(1) as the queue grows (flat, R68), and it fails closed:
+  // a null identity or a non-clinical reader gets an empty set, so the marker never over-claims.
+  const carePlanStudents = await studentsWithCarePlan(
+    schoolId,
+    actor.userId,
+    queuedVisits.map((v) => v.studentId),
+  );
+
+  const queue: SickbayQueueRow[] = queuedVisits.map((v) => ({
+    visitId: v.visitId,
+    studentName: initials(`${v.firstName} ${v.lastName}`),
+    formLabel: formLabel(v.classLevel, v.className, v.programme),
+    houseName: v.houseName,
+    studentCode: v.studentCode,
+    presentedAt: v.presentedAt,
+    complaint: v.complaint,
+    hasCarePlan: carePlanStudents.has(v.studentId),
+  }));
 
   // §03 — every non-voided visit in the window, most recent first. Open visits are INCLUDED (R77):
   // an IN_PROGRESS visit is in neither the queue nor the ward, so it would otherwise be invisible.

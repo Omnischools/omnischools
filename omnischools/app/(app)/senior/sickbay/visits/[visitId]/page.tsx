@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { requireSchoolRole } from "@/lib/auth/server";
+import { requireSchoolRole, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
 import {
   hasAnyRole,
@@ -9,6 +9,8 @@ import {
 } from "@/lib/access";
 import { getSickbayConfig } from "@/lib/sickbay/config";
 import { getVisitRecord, openAdmissionBeds } from "@/lib/sickbay/visit-reads";
+import { getStudentChronicChips } from "@/lib/sickbay/chronic-reads";
+import { CONDITION_PILL } from "@/lib/sickbay/chronic-copy";
 import { attendanceLine } from "@/lib/sickbay/visit-copy";
 import { ATTENDANCE_STATUS_META } from "@/lib/attendance-status";
 import { formatElapsed } from "@/lib/sickbay/visits";
@@ -72,6 +74,18 @@ export default async function VisitRecordPage({
   const config = await getSickbayConfig(school.id);
   const canWrite = hasAnyRole(roles, SICKBAY_CLINICAL_WRITE_ROLES);
 
+  // R124 — the readable condition chip(s) + a working `View care plan →`. Chips are the reader-visible
+  // set through the chronic RLS boundary (a Headmaster gets no mental-health chip); the SCD protocol
+  // banner stays OMITTED (A4 — it leaks by drug name too). Pre-formatted to a class string + label so
+  // the client console takes SCALARS, never a reader row (R120).
+  const { id: actorUserId } = await resolveActor(school.id);
+  const chips = await getStudentChronicChips(
+    school.id,
+    record.student.studentId,
+    { userId: actorUserId, roles },
+    new Date(),
+  );
+
   // Free beds for the admit picker — active rows minus every bed with an open admission (R59's
   // occupancy read, reused). In Mode C `capabilities.admissions` is false, so the picker is never
   // rendered and this list is never even sent (R55: no bed reference in a Mode-C DOM).
@@ -107,6 +121,10 @@ export default async function VisitRecordPage({
 
   const visit: VisitView = {
     id: record.id,
+    chronic: {
+      studentId: record.student.studentId,
+      chips: chips.map((c) => ({ label: c.label, pillClass: CONDITION_PILL[c.condition] })),
+    },
     student: {
       name: record.student.name,
       firstName: record.student.firstName,
