@@ -30,6 +30,13 @@
   --wa-bg: #e7f8ee;
   --paper: #fbfaf6;
   --paper-line: #c9c2b0;
+  /* chronic-register condition pills (INCR-23a) — the two condition families with no brand token.
+     Named, never inlined as a raw hex in a className (surface map §2.2). Solid pills, so no
+     slash-opacity trap. */
+  --condition-epilepsy: #7b4a8a;
+  --condition-epilepsy-bg: #f0e9f2;
+  --condition-diabetes: #3e7b6b;
+  --condition-diabetes-bg: #e4efeb;
 
   /* ---- semantic roles (shadcn/ui) ---- */
   --background: var(--bg);
