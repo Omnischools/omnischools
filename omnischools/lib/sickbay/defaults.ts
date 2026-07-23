@@ -483,6 +483,61 @@ export const CANONICAL_SICKBAY_SLOTS: readonly CanonicalSlot[] = [
 ];
 
 // ============================================================================
+// Schedule RESET reconcile — R100, promoted from INCR-24 to a 23a HARD BLOCKER
+// ============================================================================
+
+/**
+ * `Reset to defaults` was a hard DELETE of every slot row followed by a re-insert of the canonical 7
+ * — which changed every slot id. After migration 0058 `sickbay_chronic_med.slot_id` carries a
+ * composite FK with ON DELETE **RESTRICT**, so that DELETE now HARD-FAILS for any school with a
+ * chronic medication scheduled at a round (R99/R100). The reset must instead RECONCILE the existing
+ * rows to the canonical set IN PLACE, so a round's id — and therefore every dose pinned to it —
+ * survives (AC E6: the ids compare equal before and after).
+ *
+ * The pairing is WITHIN KIND, in canonical array order: a canonical MEDICATION_ROUND template only
+ * ever adopts an existing MEDICATION_ROUND row, so a dose pinned to "the morning round" keeps
+ * pointing at a round, never at the doctor-visit slot a positional (kind-blind) match could have
+ * handed it. A canonical-shaped school (the only shape the setup UI can produce — it seeds or resets
+ * the 7, and has no "add slot" action) therefore reconciles to 7 UPDATEs, zero insert, zero delete,
+ * every id stable.
+ *
+ * ponytail: a surplus existing row of a kind (more than the canonical count) is DELETEd — which the
+ * RESTRICT FK would reject if a dose referenced it. That surplus cannot arise through the shipped
+ * setup surface (no create-slot action); if a future increment adds one, deactivate-not-delete is the
+ * upgrade path, the sickbay_bed R8 idiom.
+ */
+export interface ScheduleResetPlan {
+  /** Existing rows re-pointed to a canonical template — the id is KEPT (R100/AC E6). */
+  update: { id: string; slot: CanonicalSlot }[];
+  /** Canonical templates with no existing row of their kind to adopt. */
+  insert: CanonicalSlot[];
+  /** Existing rows no canonical template claimed — deleted (see the ponytail note). */
+  deleteIds: string[];
+}
+
+export function planScheduleReset(existing: readonly SickbaySlot[]): ScheduleResetPlan {
+  const plan: ScheduleResetPlan = { update: [], insert: [], deleteIds: [] };
+  // Pool the existing rows by kind, preserving order, so pairing is deterministic.
+  const byKind = new Map<SickbaySlotKind, SickbaySlot[]>();
+  for (const s of existing) {
+    const pool = byKind.get(s.kind) ?? [];
+    pool.push(s);
+    byKind.set(s.kind, pool);
+  }
+  for (const template of CANONICAL_SICKBAY_SLOTS) {
+    const pool = byKind.get(template.kind);
+    const adopt = pool?.shift();
+    if (adopt) plan.update.push({ id: adopt.id, slot: template });
+    else plan.insert.push(template);
+  }
+  // Anything left in any pool was not claimed by a template → delete.
+  for (const pool of byKind.values()) {
+    for (const leftover of pool) plan.deleteIds.push(leftover.id);
+  }
+  return plan;
+}
+
+// ============================================================================
 // Static editorial (R26/R28) — verbatim surface copy, never computed, never stored
 // ============================================================================
 

@@ -37,6 +37,16 @@ const config: Config = {
         terra: { DEFAULT: "var(--terra)", bg: "var(--terra-bg)", deep: "var(--terra-deep)" },
         warn: { DEFAULT: "var(--warn)", bg: "var(--warn-bg)" },
 
+        // chronic-register condition pills (INCR-23a) — the two families with no brand token.
+        "condition-epilepsy": {
+          DEFAULT: "var(--condition-epilepsy)",
+          bg: "var(--condition-epilepsy-bg)",
+        },
+        "condition-diabetes": {
+          DEFAULT: "var(--condition-diabetes)",
+          bg: "var(--condition-diabetes-bg)",
+        },
+
         // brand surfaces (used directly: bg-bg, text-bg, bg-surface)
         bg: "var(--bg)",
         surface: "var(--surface)",

@@ -12,6 +12,11 @@
 --   a checklist, and it is exactly the check that caught `student_health_record` sitting with RLS
 --   off since migration 0036 (found on dev during INCR-19a).
 --
+--   Query 1 has FOUR checks (A tenant isolation · B parent boundary · C global reference · D the
+--   chronic grant boundary, added at INCR-23a). Check D exists because tenant isolation ALONE passing
+--   is NOT enough for the sickbay_chronic_% tables: their route is open to all staff, so a missing or
+--   permissive staff_grant_scope leaks the whole register while A/B stay green.
+--
 -- VERIFIED 2026-07-21 (post-INCR-20): prod PASSED — Query 1 returned zero rows.
 --   Prod counts: 88 tenant tables / 88 forced / 88 tenant_isolation / 9 parent-readable + 79 denied / 3 global.
 --   Dev counts:  87 / 87 / 87 / 9 + 78 / 3.
@@ -70,6 +75,20 @@ glob AS (
    WHERE n.nspname = 'public'
      AND c.relkind = 'r'
      AND c.relname IN ('benchmark_reference', 'universities', 'university_programmes')
+),
+chron AS (
+  -- The THIRD RLS boundary (INCR-23a): every `sickbay_chronic_%` table. Tenant isolation alone does
+  -- NOT protect these — the register's route is open to ALL staff (R117), so `staff_grant_scope` is
+  -- the ONLY clinical boundary. If the DDL and both loops paste but the grant block fails or is
+  -- skipped, checks A/B still PASS while every staff member reads the whole register. This is the
+  -- durable version of X14 and the only thing that catches a FIFTH chronic table (INCR-24–28)
+  -- escaping on prod by copy-paste.
+  SELECT c.oid, c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public'
+     AND c.relkind = 'r'
+     AND c.relname LIKE 'sickbay_chronic_%'
 )
 
 -- A · TENANT ISOLATION — the headline leak check.
@@ -131,6 +150,32 @@ SELECT 'C · global reference'::text,
        )::text
   FROM glob g
  WHERE NOT g.rls_on OR g.rls_forced OR g.npol > 0
+
+UNION ALL
+
+-- D · THE THIRD BOUNDARY (INCR-23a) — the per-staff grant scope on the chronic register.
+--     Every sickbay_chronic_% table must carry a RESTRICTIVE staff_grant_scope, and entry/med/grant
+--     must additionally carry staff_grant_delete (a grantee's read USING would otherwise authorise a
+--     DELETE of the very rows he was shown). A PERMISSIVE staff_grant_scope is as bad as a missing
+--     one — it would OR with tenant_isolation and hand every staff session the whole register.
+SELECT 'D · chronic grant boundary'::text,
+       ch.relname::text,
+       concat_ws(' · ',
+         CASE WHEN NOT EXISTS (SELECT 1 FROM p WHERE p.polrelid = ch.oid AND p.polname = 'staff_grant_scope')
+              THEN 'no staff_grant_scope — every staff member reads this table' END,
+         CASE WHEN EXISTS (SELECT 1 FROM p WHERE p.polrelid = ch.oid AND p.polname = 'staff_grant_scope'
+                             AND p.polpermissive)
+              THEN 'staff_grant_scope is PERMISSIVE — must be RESTRICTIVE, or it ORs with tenant_isolation and leaks the register' END,
+         CASE WHEN ch.relname IN ('sickbay_chronic_entry','sickbay_chronic_med','sickbay_chronic_grant')
+                  AND NOT EXISTS (SELECT 1 FROM p WHERE p.polrelid = ch.oid AND p.polname = 'staff_grant_delete')
+              THEN 'no staff_grant_delete — a grantee can DELETE the rows his read USING matches' END
+       )::text
+  FROM chron ch
+ WHERE NOT EXISTS (SELECT 1 FROM p WHERE p.polrelid = ch.oid AND p.polname = 'staff_grant_scope')
+    OR EXISTS     (SELECT 1 FROM p WHERE p.polrelid = ch.oid AND p.polname = 'staff_grant_scope'
+                     AND p.polpermissive)
+    OR ( ch.relname IN ('sickbay_chronic_entry','sickbay_chronic_med','sickbay_chronic_grant')
+         AND NOT EXISTS (SELECT 1 FROM p WHERE p.polrelid = ch.oid AND p.polname = 'staff_grant_delete') )
 
  ORDER BY 1, 2;
 

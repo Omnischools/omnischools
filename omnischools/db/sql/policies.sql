@@ -137,6 +137,10 @@ BEGIN
     'sickbay_vital_reading',
     'sickbay_admission',
     'sickbay_doctor_consult',
+    'sickbay_chronic_entry',
+    'sickbay_chronic_med',
+    'sickbay_chronic_grant',
+    'sickbay_chronic_read',
     'announcement',
     'sms_template',
     'notification_log',
@@ -246,14 +250,22 @@ $$;
 -- read student_guardian in a single line without RLS-recursing that sub-select. Its WHERE clause
 -- (user_id = pu AND school_id = school) makes the result correct whether or not RLS applies inside it,
 -- so it is robust across the dev superuser DB and the Supabase non-superuser owner. STABLE (reads a
--- table), explicit search_path (no mutable-search_path advisor finding). NOT a business-logic trigger
--- — it is a pure lookup used only by RLS predicates.
+-- table), explicit search_path. NOT a business-logic trigger — it is a pure lookup used only by RLS
+-- predicates.
+--
+-- 🔴 `search_path = public, pg_temp` AND NOT `= public` (Sarah MEDIUM-2, verified end-to-end on the
+-- chronic helpers and true here identically). When `pg_temp` is not named EXPLICITLY, Postgres
+-- searches the session's temp schema FIRST for relations — so any session that can run arbitrary SQL
+-- does `create temp table student_guardian (...)`, inserts whatever rows it likes, and this SECURITY
+-- DEFINER function resolves the fake table and hands the caller a set of student ids it chose. Naming
+-- pg_temp LAST pins the resolution order to public. The precondition is SQL injection, i.e. this is
+-- defence in depth — but RLS is precisely the layer that has to survive an injection.
 CREATE OR REPLACE FUNCTION parent_student_ids(school uuid, pu uuid)
   RETURNS SETOF uuid
   LANGUAGE sql
   STABLE
   SECURITY DEFINER
-  SET search_path = public
+  SET search_path = public, pg_temp
 AS $$
   SELECT student_id
   FROM student_guardian
@@ -451,6 +463,402 @@ BEGIN
     EXECUTE format(
       'CREATE POLICY parent_deny ON %I AS RESTRICTIVE FOR ALL TO public '
       'USING (NULLIF(current_setting(''app.current_parent_user'', true), '''') IS NULL);',
+      tbl
+    );
+  END LOOP;
+END
+$$;
+
+-- ============================================================================================
+-- CHRONIC-REGISTER per-staff read boundary (INCR-23a / Module 4.4) — THE THIRD RLS BOUNDARY.
+-- Kept in sync with db/sql/prod-paste-0058-sickbay-chronic.sql — this block is dev; that file is the
+-- hand-paste on PROD (⚠ RLS is NOT auto-applied on prod; without the paste these four tables have no
+-- boundary at all and every school's chronic care plans are readable from every other school's
+-- session).
+--
+-- MECHANISM. lib/db/rls.ts → withStaffScope(schoolId, userId) sets TWO GUCs: `app.current_school`
+-- (as withSchool) AND `app.current_staff_user`. It wraps READS **AND WRITES** — unlike the parent
+-- seam, which is read-only by contract.
+--
+-- 🔴 THE POLARITY IS THE INVERSE OF THE PARENT FAMILY, AND THAT IS THE POINT (Kofi R112).
+--   parent family:  USING (pu IS NULL OR  <rule>)   -- PERMIT by default
+--   this family:    USING (su IS NOT NULL AND <rule>) -- DENY by default
+-- Permit-by-default is correct for the parent boundary because those tables' default audience IS all
+-- staff, so an unset GUC must be a no-op. The chronic tables have NO default audience: nobody reads
+-- them except a MATRON, a HEADMASTER (minus MENTAL_HEALTH) or a named grantee. Once the register's
+-- route is widened to every staff member (R117), `su IS NULL ⇒ permit` would mean one forgotten seam
+-- hands a HOUSEMASTER the whole register; under deny-by-default the same bug yields an empty page.
+-- ⚠ PR #176 is the PROOF this is the right call, not a style preference: a claimed parent read
+-- children's medications because `parent_deny`'s permit-by-default clause met an unset GUC on a
+-- staff-shaped page. Do not "fix" the asymmetry; it is load-bearing in the opposite direction.
+--
+-- WHY RESTRICTIVE (identical reasoning to the parent block): tenant_isolation is PERMISSIVE and
+-- Postgres OR's permissive policies, so a permissive staff policy would OR with it and hand every
+-- staff session the whole register. RESTRICTIVE policies are AND'ed — they can only TIGHTEN.
+--
+-- ⚠ NO POLICY CYCLES. RLS applies to tables referenced inside a policy expression, INCLUDING inside
+-- a SECURITY DEFINER function (FORCE RLS binds the owner too), so a policy on A that reads B while
+-- B's policy reads A is an infinite recursion at runtime, not a clever design. The dependency graph
+-- here is deliberately acyclic and must stay that way:
+--     sickbay_chronic_entry  → chronic_entry_readable → sickbay_chronic_grant → role_assignment
+--     sickbay_chronic_med    → chronic_entry_ids → sickbay_chronic_entry → (as above)
+--     sickbay_chronic_read   → chronic_entry_ids → (as above)
+--     sickbay_chronic_grant  → role_assignment ONLY (it must never read the entry table)
+--
+-- 🔴 R129 — HOW THE GRANT TABLE HONOURS R116 WITHOUT READING THE ENTRY. The grant policy cannot ask
+-- "is this entry MENTAL_HEALTH?" — that read closes the cycle above. So the entry publishes the ONE
+-- BIT the policy needs, and every grant row is PINNED to it by the FK:
+--     sickbay_chronic_entry.hm_restricted  boolean GENERATED ALWAYS AS (condition = 'MENTAL_HEALTH')
+--                                          STORED, + UNIQUE (school_id, id, hm_restricted)
+--     sickbay_chronic_grant.hm_restricted  boolean NOT NULL, FK (school_id, entry_id, hm_restricted)
+--                                          → that UNIQUE, ON UPDATE CASCADE
+-- The grant policy then reads `hm_restricted` off its OWN row — no entry read, no cycle — and a
+-- HEADMASTER gets ZERO grant rows against an entry his default read excludes.
+-- ⚠ WHY A PLAIN INSERT-TIME BOOLEAN IS NOT ENOUGH, and this is the whole point: it FAILS OPEN on
+-- re-classification. A grant stamped `false` against an entry later corrected to MENTAL_HEALTH would
+-- stay Headmaster-visible forever. Under the FK the DB propagates the flip (ON UPDATE CASCADE) and a
+-- dishonest stamp is an FK VIOLATION AT INSERT rather than a silent leak — a stored value that cannot
+-- disagree with its source, which is what R10 requires. It is named for the POLICY FACT, never the
+-- diagnosis, so the string `MENTAL_HEALTH` never lands on a grant row.
+-- The earlier claim that the residue was harmless ("no student, no condition, no name") was WRONG on
+-- the facts of this table: `scope_label`, `reason` and `directive_note` are matron-authored free text
+-- (the last one CHECK-forced non-null for DIRECTIVE grants), and `entry_id` alone let a barred
+-- HEADMASTER COUNT the entries he cannot see — the literal negation of R116/E18.
+--
+-- WHY THE FUNCTIONS TAKE THE GUC, NOT `school_id` FROM THE ROW (Wells, OQ1 #3). The parent family
+-- passes the row's `school_id` into parent_student_ids(), which makes the sub-select CORRELATED:
+-- Postgres must re-evaluate it once per candidate row. Here the school is read from the GUC instead,
+-- so `entry_id IN (SELECT chronic_entry_ids(<const>, <const>))` is UNCORRELATED and is evaluated
+-- ONCE per query as an InitPlan. It is exactly equivalent: tenant_isolation already forces
+-- school_id = the GUC on every row that can survive, and under bypass the first OR arm short-circuits
+-- the whole policy. Verified with EXPLAIN, not assumed.
+
+-- ---- SECURITY DEFINER helper 1: which DEFAULT clinical tier does this staff user hold? ----
+-- 'MATRON' (all entries) | 'HEADMASTER' (all except MENTAL_HEALTH — R116) | NULL (neither).
+-- SECURITY DEFINER because it joins the GLOBAL ref_role, which carries bare ENABLE RLS and NO policy:
+-- a non-owner role reads ZERO rows from it, so an inline join in a policy would silently evaluate to
+-- "no role" for the very session it is meant to authorise. The date window is byte-equivalent to
+-- lib/auth/roles.ts isCurrentlyActive() — BOTH endpoints inclusive; a `>` instead of `>=` would lock
+-- out every matron on her last day of service.
+--
+-- 🔴 `search_path = public, pg_temp`, NEVER `= public` (Sarah MEDIUM-2, verified: it was a working
+-- privilege escalation). Postgres searches the session's TEMP schema first for RELATIONS unless
+-- pg_temp is named explicitly, so a TEACHER who can run one statement does
+-- `create temp table role_assignment(...); create temp table ref_role(...)`, inserts a fake MATRON
+-- row, and this function returns 'MATRON' for him — the whole register, both drug names. Naming
+-- pg_temp LAST pins resolution to public. Same fix on all three helpers and on parent_student_ids().
+CREATE OR REPLACE FUNCTION chronic_clinical_role(school uuid, su uuid)
+  RETURNS text
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+  SELECT CASE
+           WHEN bool_or(r.code = 'MATRON')     THEN 'MATRON'
+           WHEN bool_or(r.code = 'HEADMASTER') THEN 'HEADMASTER'
+         END
+  FROM role_assignment ra
+  JOIN ref_role r ON r.id = ra.role_id
+  WHERE ra.user_id = su
+    AND ra.school_id = school
+    AND ra.start_date <= current_date
+    AND (ra.end_date IS NULL OR ra.end_date >= current_date)
+$$;
+
+-- ---- SECURITY DEFINER helper 2: THE PREDICATE. May `su` read THIS entry? ----
+-- Written ONCE and used at every enforcement point (R113: "one predicate, two enforcement points,
+-- zero divergence"). It takes the entry's id, student and condition as ARGUMENTS rather than reading
+-- the entry table, because the policy that calls it IS the entry table's policy — reading the table
+-- from inside its own policy is the recursion described above.
+--   (a) MATRON      → every entry in the school.
+--   (b) HEADMASTER  → every entry EXCEPT MENTAL_HEALTH (R116, structural: his SQL cannot return the
+--                     row whatever the reader does).
+--   (c) a live GRANT on THIS entry (R105 — per entry, never per student). Live means: not revoked,
+--       not expired against the DB's own now() IN THIS TRANSACTION (R114 — never a session claim,
+--       never middleware), and — when the grant is house-tied (R107) — the grantee is still that
+--       House's HM and the student is still in that House. That last clause is the whole of
+--       "auto-expire yes, auto-grant no": one nullable column, no new mechanism, and the grant dies
+--       the moment either fact changes.
+CREATE OR REPLACE FUNCTION chronic_entry_readable(
+    school uuid, su uuid, entry uuid, student uuid, cond chronic_condition)
+  RETURNS boolean
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+  SELECT su IS NOT NULL AND (
+    chronic_clinical_role(school, su) = 'MATRON'
+    OR (chronic_clinical_role(school, su) = 'HEADMASTER' AND cond <> 'MENTAL_HEALTH')
+    OR EXISTS (
+      SELECT 1
+      FROM sickbay_chronic_grant g
+      WHERE g.school_id = school
+        AND g.entry_id = entry
+        AND g.grantee_user_id = su
+        AND g.revoked_at IS NULL
+        AND (g.expires_at IS NULL OR g.expires_at > now())
+        AND (
+          g.house_id IS NULL
+          OR EXISTS (
+            SELECT 1
+            FROM house h
+            JOIN students s ON s.school_id = h.school_id AND s.id = student
+            WHERE h.school_id = school
+              AND h.id = g.house_id
+              AND h.hm_user_id = su
+              AND s.house_id = g.house_id
+          )
+        )
+    )
+  )
+$$;
+
+-- ---- SECURITY DEFINER helper 3: the readable entry ids, as a set ----
+-- A thin projection of helper 2 over the entry table — the child tables (med / grant metadata / read
+-- audit) carry no `condition` of their own, so they reach the discriminator through the entry. THIS
+-- is the function the reader calls (R113): the row filter in lib/ MUST be this same predicate pushed
+-- into SQL as an `EXISTS`/`IN` inside the same withStaffScope transaction. Never over-fetch and
+-- filter in TS (the row is materialised before it is authorised); never a per-row hasGrant (R68's
+-- N+1). ⚠ A naive `EXISTS (SELECT 1 FROM sickbay_chronic_grant …)` written directly in the reader
+-- does NOT work and fails CLOSED in the most confusing way: RLS applies to the reader's own
+-- subquery, so use this function.
+CREATE OR REPLACE FUNCTION chronic_entry_ids(school uuid, su uuid)
+  RETURNS SETOF uuid
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+  SELECT e.id
+  FROM sickbay_chronic_entry e
+  WHERE e.school_id = school
+    AND chronic_entry_readable(school, su, e.id, e.student_id, e.condition)
+$$;
+
+-- ---- helper EXECUTE: the app role only (Sarah L3) ----
+-- On Supabase every function in `public` is exposed as a PostgREST RPC and EXECUTE defaults to PUBLIC.
+-- These three return nothing useful without the GUCs, so this is hardening rather than a hole — but a
+-- SECURITY DEFINER function that reads the chronic register has no business being callable by anon.
+-- ⚠ Quinn: do NOT build an AC on a direct helper call; on DEV the owner is a superuser, so the
+-- function BODY bypasses RLS entirely and `chronic_entry_ids()` is a cross-tenant oracle with no GUCs
+-- set at all. That closes on prod (non-superuser owner), which is why probes must be run under
+-- prod-shaped ownership before they mean anything (Sarah L1).
+DO $$
+DECLARE
+  fn text;
+BEGIN
+  FOREACH fn IN ARRAY ARRAY[
+    'chronic_clinical_role(uuid, uuid)',
+    'chronic_entry_readable(uuid, uuid, uuid, uuid, chronic_condition)',
+    'chronic_entry_ids(uuid, uuid)'
+  ]
+  LOOP
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC;', fn);
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_app') THEN
+      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO omnischools_app;', fn);
+    END IF;
+  END LOOP;
+END
+$$;
+
+-- ---- the four staff_grant_scope policies ----
+-- Each carries the `app.bypass_rls` arm FIRST and byte-identical to tenant_isolation's, so seeds,
+-- ETL and withoutTenantScope behave exactly as they do on every other table (and so the recursion
+-- into the helper functions is short-circuited on escalated paths).
+
+-- 1) the care plan itself. USING = the predicate. WITH CHECK is DELIBERATELY DIFFERENT and must be:
+-- a WITH CHECK is evaluated on the NEW row BEFORE it exists, so any rule of the form "you may read
+-- this entry" is FALSE for every INSERT and no matron could ever create a care plan. The write rule
+-- is therefore actor-shaped, which also stops a FULL_PLAN grantee (a sports master) from EDITING the
+-- plan he was shown.
+--
+-- 🔴 `= 'MATRON'`, NOT `IS NOT NULL` (Sarah HIGH-1 / Kofi, independently). `IS NOT NULL` means MATRON
+-- *or HEADMASTER*, but R39 says clinical write is MATRON-only and R111 says grant/revoke is
+-- MATRON-only. USING is the READ predicate and an INSERT never touches it — so under `IS NOT NULL` a
+-- HEADMASTER barred from a MENTAL_HEALTH entry inserted one grant naming himself and then read the
+-- entry, its protocol and its drug. Four places carry this token: the three WITH CHECKs and the
+-- staff_grant_delete loop. Nothing legitimate breaks — the helper already prefers 'MATRON' when a
+-- user holds both roles, and seeds/ETL run under bypass.
+DROP POLICY IF EXISTS staff_grant_scope ON sickbay_chronic_entry;
+CREATE POLICY staff_grant_scope ON sickbay_chronic_entry AS RESTRICTIVE FOR ALL TO public
+  USING (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR (
+      NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
+      AND chronic_entry_readable(
+            NULLIF(current_setting('app.current_school', true), '')::uuid,
+            NULLIF(current_setting('app.current_staff_user', true), '')::uuid,
+            id, student_id, condition)
+    )
+  )
+  WITH CHECK (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR (
+      NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
+      AND chronic_clinical_role(
+            NULLIF(current_setting('app.current_school', true), '')::uuid,
+            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) = 'MATRON'
+    )
+  );
+
+-- 2) the medication schedule — drug names, the single most re-identifying string in the module
+-- (hydroxyurea ⇒ sickle cell). Reachable exactly when its entry is; writable only by a clinical
+-- reader, so a grantee cannot inject or edit a dose.
+DROP POLICY IF EXISTS staff_grant_scope ON sickbay_chronic_med;
+CREATE POLICY staff_grant_scope ON sickbay_chronic_med AS RESTRICTIVE FOR ALL TO public
+  USING (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR (
+      NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
+      AND entry_id IN (
+        SELECT chronic_entry_ids(
+          NULLIF(current_setting('app.current_school', true), '')::uuid,
+          NULLIF(current_setting('app.current_staff_user', true), '')::uuid)
+      )
+    )
+  )
+  WITH CHECK (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR (
+      NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
+      AND chronic_clinical_role(
+            NULLIF(current_setting('app.current_school', true), '')::uuid,
+            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) = 'MATRON'
+      AND entry_id IN (
+        SELECT chronic_entry_ids(
+          NULLIF(current_setting('app.current_school', true), '')::uuid,
+          NULLIF(current_setting('app.current_staff_user', true), '')::uuid)
+      )
+    )
+  );
+
+-- 3) the grants themselves (R122 — §04 is clinical-reader-only: a grantee must never learn who ELSE
+-- knows). A grantee sees his OWN grant row and nothing else — the student_guardian/parent_scope
+-- idiom, and it is REQUIRED, not a courtesy: helper 2 reads this table to evaluate his entitlement,
+-- so a blanket clinical-only rule here would make every grant self-defeating (R113's trap).
+-- WITH CHECK excludes him from writing, which is what makes X10/X11 hold at the DB layer: he cannot
+-- self-issue a grant and he cannot extend his own expiry.
+--
+-- 🔴 R129 — the HEADMASTER arm is `AND NOT hm_restricted`, read off THIS ROW. That is the whole of
+-- the fix: the policy honours R116 on the grant table with NO read of the entry table, so the graph
+-- stays acyclic, and `hm_restricted` cannot lie because the FK pins it (see the header). A HEADMASTER
+-- now gets ZERO rows here for a MENTAL_HEALTH entry — no entry_id to enumerate, no `reason`, no
+-- `directive_note`, and no count of the entries he cannot see.
+-- The grantee arm survives untouched and MUST: chronic_entry_readable() reads this table to evaluate
+-- his entitlement, so a clinical-only rule would make every grant self-defeating. He still sees ONLY
+-- his own rows (R122 — he never learns who else knows), whatever hm_restricted says: a matron
+-- granting him the entry is her explicit decision, and R116 carves out the DEFAULT read, not a grant.
+DROP POLICY IF EXISTS staff_grant_scope ON sickbay_chronic_grant;
+CREATE POLICY staff_grant_scope ON sickbay_chronic_grant AS RESTRICTIVE FOR ALL TO public
+  USING (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR (
+      NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
+      AND (
+        chronic_clinical_role(
+          NULLIF(current_setting('app.current_school', true), '')::uuid,
+          NULLIF(current_setting('app.current_staff_user', true), '')::uuid) = 'MATRON'
+        OR (
+          chronic_clinical_role(
+            NULLIF(current_setting('app.current_school', true), '')::uuid,
+            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) = 'HEADMASTER'
+          AND NOT hm_restricted
+        )
+        OR grantee_user_id = NULLIF(current_setting('app.current_staff_user', true), '')::uuid
+      )
+    )
+  )
+  WITH CHECK (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR (
+      NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
+      AND chronic_clinical_role(
+            NULLIF(current_setting('app.current_school', true), '')::uuid,
+            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) = 'MATRON'
+    )
+  );
+
+-- 4) the read audit (R121/R122). ASYMMETRIC ON PURPOSE: every reader must be able to WRITE his own
+-- open (the matron's own opens are audited too), but only a clinical reader may READ the trail — a
+-- grantee learning who else opened the plan is the leak R122 names. Because USING governs SELECT,
+-- UPDATE and DELETE while WITH CHECK governs INSERT, this single policy also makes the trail
+-- append-only against a grantee: he can add his own row and can neither read, alter nor delete one.
+--
+-- 🔴 `AND actor_user_id = <the staff GUC>` in WITH CHECK (Sarah MEDIUM-1, verified exploit). Without
+-- it the WITH CHECK never says WHOSE row this is, so a grantee inserted an audit row ATTRIBUTED TO
+-- THE HEADMASTER — into a log he cannot read back. `actor_user_id` FKs the GLOBAL ref_user, so the
+-- forged actor need not even belong to this school. An oversight trail anyone can write in anyone
+-- else's name is worse than no trail: it is evidence that reads as authentic.
+DROP POLICY IF EXISTS staff_grant_scope ON sickbay_chronic_read;
+CREATE POLICY staff_grant_scope ON sickbay_chronic_read AS RESTRICTIVE FOR ALL TO public
+  USING (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR (
+      NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
+      AND chronic_clinical_role(
+            NULLIF(current_setting('app.current_school', true), '')::uuid,
+            NULLIF(current_setting('app.current_staff_user', true), '')::uuid) IS NOT NULL
+      AND entry_id IN (
+        SELECT chronic_entry_ids(
+          NULLIF(current_setting('app.current_school', true), '')::uuid,
+          NULLIF(current_setting('app.current_staff_user', true), '')::uuid)
+      )
+    )
+  )
+  WITH CHECK (
+    current_setting('app.bypass_rls', true) = 'on'
+    OR (
+      NULLIF(current_setting('app.current_staff_user', true), '') IS NOT NULL
+      AND actor_user_id = NULLIF(current_setting('app.current_staff_user', true), '')::uuid
+      AND entry_id IN (
+        SELECT chronic_entry_ids(
+          NULLIF(current_setting('app.current_school', true), '')::uuid,
+          NULLIF(current_setting('app.current_staff_user', true), '')::uuid)
+      )
+    )
+  );
+
+-- ---- the read audit is APPEND-ONLY AGAINST EVERYONE, including the matron (Sarah MEDIUM-1) ----
+-- staff_grant_scope's USING governs SELECT *and* UPDATE *and* DELETE, so a clinical reader could
+-- UPDATE or DELETE trail rows — i.e. a matron could delete the audit of her own opens, which is the
+-- single thing §04 exists to prevent. These two make the table insert-only outside bypass. They are
+-- RESTRICTIVE, so they AND with everything else; bypass is the only escape (retention purges, ETL),
+-- and Sarah L4 stands: a chronic table inside withoutTenantScope is an automatic review trigger.
+DROP POLICY IF EXISTS staff_grant_delete ON sickbay_chronic_read;
+CREATE POLICY staff_grant_delete ON sickbay_chronic_read AS RESTRICTIVE FOR DELETE TO public
+  USING (current_setting('app.bypass_rls', true) = 'on');
+DROP POLICY IF EXISTS staff_grant_freeze ON sickbay_chronic_read;
+CREATE POLICY staff_grant_freeze ON sickbay_chronic_read AS RESTRICTIVE FOR UPDATE TO public
+  USING (current_setting('app.bypass_rls', true) = 'on');
+
+-- ---- staff_grant_delete: DELETE is the one command a WITH CHECK cannot reach ----
+-- A grantee's USING clause legitimately matches the rows he may READ, and DELETE is authorised by
+-- USING alone — so without this, a FULL_PLAN grantee could delete the care plan he was shown, and a
+-- grantee could delete his own grant row and erase the evidence that he ever had access (R110 makes
+-- that trail append-only). Three tables, one identical rule: destructive commands require a MATRON —
+-- `= 'MATRON'`, not `IS NOT NULL`, because R39/R111 keep the Headmaster out of clinical writes and
+-- out of grant/revoke, and a DELETE is the most destructive write there is (Sarah HIGH-1, the fourth
+-- of its four places). sickbay_chronic_read is handled separately above: bypass only, no exceptions.
+DO $$
+DECLARE
+  tbl text;
+BEGIN
+  FOREACH tbl IN ARRAY ARRAY[
+    'sickbay_chronic_entry',
+    'sickbay_chronic_med',
+    'sickbay_chronic_grant'
+  ]
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS staff_grant_delete ON %I;', tbl);
+    EXECUTE format(
+      'CREATE POLICY staff_grant_delete ON %I AS RESTRICTIVE FOR DELETE TO public '
+      'USING (current_setting(''app.bypass_rls'', true) = ''on'' '
+      '  OR (NULLIF(current_setting(''app.current_staff_user'', true), '''') IS NOT NULL '
+      '      AND chronic_clinical_role('
+      '            NULLIF(current_setting(''app.current_school'', true), '''')::uuid,'
+      '            NULLIF(current_setting(''app.current_staff_user'', true), '''')::uuid) = ''MATRON''));',
       tbl
     );
   END LOOP;

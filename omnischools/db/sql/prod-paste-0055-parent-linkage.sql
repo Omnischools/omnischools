@@ -102,12 +102,17 @@ CREATE POLICY tenant_isolation ON "student_health_record" FOR ALL TO public
 -- The ONE sanctioned SECURITY DEFINER exception (portability): it lets every parent_scope policy read
 -- student_guardian in one line without RLS-recursing that sub-select. Its WHERE clause makes the
 -- result correct whether or not RLS applies inside it. NOT a business-logic trigger.
+-- 🔴 `search_path = public, pg_temp`, NOT `= public` (Sarah MEDIUM-2, found via INCR-23a's helpers,
+-- identical flaw here). Postgres searches the session TEMP schema first for RELATIONS unless pg_temp
+-- is named, so a session that can run one statement does `create temp table student_guardian(...)`
+-- and this DEFINER function returns whatever child ids it chose. Re-run this CREATE OR REPLACE on
+-- prod to close it (it is idempotent; the body is otherwise byte-identical to what shipped in 0055).
 CREATE OR REPLACE FUNCTION parent_student_ids(school uuid, pu uuid)
   RETURNS SETOF uuid
   LANGUAGE sql
   STABLE
   SECURITY DEFINER
-  SET search_path = public
+  SET search_path = public, pg_temp
 AS $$
   SELECT student_id
   FROM student_guardian

@@ -55,6 +55,49 @@ export async function withParentScope<T>(
 }
 
 /**
+ * Run a unit of work scoped to ONE STAFF USER inside one tenant (INCR-23a, the chronic-register
+ * boundary — Module 4.4 / owner decision D2). This is the THIRD RLS boundary in the product.
+ *
+ * Sets TWO GUCs for the transaction, bypass OFF:
+ *   • `app.current_school`      — the tenant, exactly as `withSchool` (tenant_isolation still applies);
+ *   • `app.current_staff_user`  — the authenticated ref_user id of the member of staff.
+ *
+ * 🔴 THE POLARITY IS THE INVERSE OF `withParentScope`, DELIBERATELY (Kofi R112). Every `parent_scope`
+ * policy is guarded `pu IS NULL OR <rule>` — PERMIT by default — which is safe there because those
+ * tables' default audience IS all staff, so an unset GUC has to be a no-op. The `staff_grant_scope`
+ * family is guarded `su IS NOT NULL AND <rule>` — DENY by default — because the four
+ * `sickbay_chronic_*` tables have NO default audience: only a MATRON, a HEADMASTER (minus
+ * MENTAL_HEALTH, R116) or a named grantee may read a care plan. The register's route is deliberately
+ * wider than `SICKBAY_ROLES` (R117), so `su IS NULL ⇒ permit` would mean one forgotten seam hands a
+ * HOUSEMASTER the whole register; under deny-by-default the same bug yields an empty page.
+ * ⚠ PR #176 is the demonstrated version of that hazard, not a hypothetical one: a claimed parent read
+ * children's blood groups, allergies, conditions and medications precisely because a permit-by-default
+ * clause met an unset GUC on a staff-shaped page.
+ *
+ * READS **AND WRITES** (unlike `withParentScope`, which is read-only by contract): a matron's care-plan
+ * and grant writes run inside this seam too. The write half of each policy is a WITH CHECK requiring a
+ * DEFAULT CLINICAL ROLE rather than "an entry you may read" — a WITH CHECK is evaluated on a row that
+ * does not exist yet, so an entry-reachability rule would make it impossible to create the first care
+ * plan, and the actor-shaped rule additionally stops a FULL_PLAN grantee from EDITING the plan he was
+ * shown or self-issuing a wider grant.
+ *
+ * The GUC is set only here, in trusted server code, never from request input, so it cannot be forged.
+ * Expiry and revocation are evaluated in SQL against the DB's own `now()` inside this transaction
+ * (R114) — never a session claim, never middleware, never a cached `hasGrant`.
+ */
+export async function withStaffScope<T>(
+  schoolId: string,
+  userId: string,
+  fn: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.current_school', ${schoolId}, true)`);
+    await tx.execute(sql`select set_config('app.current_staff_user', ${userId}, true)`);
+    return fn(tx);
+  });
+}
+
+/**
  * Postgres error classification lives in the PURE `./pg-error` module (no driver import, so it is
  * unit-tested in `lib/db/pg-error.test.ts`). Re-exported here because every caller already imports the
  * db seam from `@/lib/db/rls` — see that module for WHY reading `.code`/`.message` off the thrown

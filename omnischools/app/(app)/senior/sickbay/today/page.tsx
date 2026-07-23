@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireSchoolRole } from "@/lib/auth/server";
+import { requireSchoolRole, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
+import { CARE_PLAN_MARKER } from "@/lib/sickbay/chronic-copy";
 import { hasAnyRole, SICKBAY_CLINICAL_WRITE_ROLES, SICKBAY_ROLES } from "@/lib/access";
 import { getSickbayBoard, type SickbayWardPatient } from "@/lib/sickbay/board-reads";
 import {
@@ -85,11 +86,14 @@ export default async function SickbayTodayPage() {
 
   const current = await getCurrentUser();
   const roles = current?.roles ?? user.roles;
+  // R119 — the actor identity (resolved so the AUTH_DEV_BYPASS preview matches a real role_assignment)
+  // drives 23's `hasCarePlan` marker through the chronic RLS boundary.
+  const { id: userId } = await resolveActor(school.id);
 
   // R68 — the clock is read ONCE, here, and threaded. Nothing below (and nothing in the reader)
   // calls `new Date()`, so every derived duration on the page belongs to the same instant.
   const now = new Date();
-  const board = await getSickbayBoard(school.id, roles, now);
+  const board = await getSickbayBoard(school.id, { userId, roles }, now);
   if (!board) return <ClinicalRestricted label="Today" />;
 
   const canWrite = hasAnyRole(roles, SICKBAY_CLINICAL_WRITE_ROLES);
@@ -151,6 +155,13 @@ export default async function SickbayTodayPage() {
               New visit
             </Link>
           )}
+          {/* §1.3 — the register is reached from the board head, one flat nav row (R84). */}
+          <Link
+            href="/senior/sickbay/chronic-register"
+            className="rounded-[5px] border border-border-2 bg-surface px-[14px] py-[8px] text-[12px] font-semibold text-navy no-underline"
+          >
+            Chronic register
+          </Link>
           <Link
             href="/senior/sickbay/setup"
             className="rounded-[5px] border border-border-2 bg-surface px-[14px] py-[8px] text-[12px] font-semibold text-navy no-underline"
@@ -258,6 +269,13 @@ export default async function SickbayTodayPage() {
                       text={studentMeta(q.formLabel, q.houseName, q.studentCode, true)}
                     />
                   </div>
+                  {/* R123 — the neutral marker, rendered ONLY when the actor may read a plan for this
+                      student; nothing at all otherwise (never its negation, never the condition). */}
+                  {q.hasCarePlan && (
+                    <span className="mt-[3px] inline-block rounded-full bg-gold-bg px-[7px] py-px text-[9px] font-bold uppercase tracking-[0.06em] text-gold">
+                      {CARE_PLAN_MARKER}
+                    </span>
+                  )}
                 </div>
                 {/* A6 — the ONE named adjacency exception, rendered verbatim and UN-TRUNCATED: a
                     truncated complaint is a MISREAD complaint, and triage ordering is impossible

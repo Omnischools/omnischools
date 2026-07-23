@@ -538,3 +538,49 @@ export const sickbayDispositionEnum = pgEnum("sickbay_disposition", [
 // recorded by the matron — the doctor is NOT a system user (R21 again), so there is no ref_user here
 // and this can never be a co-sign or an authorisation gate; PHONE vs IN_PERSON is provenance only.
 export const sickbayConsultModeEnum = pgEnum("sickbay_consult_mode", ["PHONE", "IN_PERSON"]);
+
+// Sickbay CHRONIC REGISTER (SHS module 4.4) — INCR-23a (Kofi rulings R91–R127). Migration 0058.
+// THREE enums (Kofi's R93 said "2 enums + 4 tables"; OQ1 #1 delegated the grant-scope shape to
+// Wells and the answer is an enum — see sickbayGrantScopeEnum below, and BUILD_STACK L350 which
+// declares `grant_scope_enum` in the first place, so 3 is the BUILD_STACK-faithful count).
+// Deliberately NOT enums: `condition_label` ("Sickle cell disease · HbSS"), `condition_detail`,
+// `triggers`, `red_flags`, `first_action`, `emergency_protocol` and every external-care field are
+// FREE TEXT — R94's no-EMR ceiling is enforced by `OTHER` + free text, never by widening a
+// vocabulary, and R43's `diagnos` ban extends to every identifier this migration ships.
+
+// The 7-value chronic vocabulary, BUILD_STACK L346 VERBATIM (R94). This is the ONLY structured
+// clinical vocabulary in the whole of module 4.4 — everything else a matron writes is prose.
+// ⚠ `MENTAL_HEALTH` is not just a category, it is a SECURITY DISCRIMINATOR: R116 carves it out of
+// the HEADMASTER's default read INSIDE the RLS predicate, so his SQL cannot return the row whatever
+// the reader does. The carve-out is therefore only as good as the matron's classification, which is
+// why the entry form must state the consequence at the point of choice (R94).
+export const chronicConditionEnum = pgEnum("chronic_condition", [
+  "SICKLE_CELL",
+  "ASTHMA",
+  "EPILEPSY",
+  "ALLERGY",
+  "MENTAL_HEALTH",
+  "DIABETES",
+  "OTHER",
+]);
+// How the condition is running RIGHT NOW (R95) — THREE values. `REFERRAL_MANAGED` is deliberately
+// NOT one of them: as an enum value it would force a referral-managed student who is IN CRISIS to
+// choose, and crisis wins, silently erasing "we do not treat this on-site" at the one moment it
+// matters. Referral-management is the independent `referral_managed` boolean and renders as a
+// SECOND-AXIS overlay pill, never a partition term (so the surface's drawn counts lose to derived
+// ones: All 6 · crisis 1 · monitor 2 · stable 3).
+export const chronicStatusEnum = pgEnum("chronic_status", ["STABLE", "MONITOR", "ACTIVE_CRISIS"]);
+// What a per-entry access grant lets its holder read (R108) — THREE values. The surface's nine
+// labels are NOT nine scopes: `Removed` is `revoked_at IS NOT NULL`, and six of the others return
+// the SAME projection and differ only in the matron's own words (`scope_label`).
+// BUILD_STACK amendment #11: `REFERRAL_ONLY` → `DIRECTIVE`, because the BUILD_STACK name collides
+// with BOTH `sickbay_mode.REFERRAL_ONLY` and the entry's `referral_managed` flag.
+// R109: `DIRECTIVE` reads exactly ONE field and it lives on the GRANT row (`directive_note`,
+// CHECK-enforced) — the grantee sees the student's name and that one sentence and NOTHING from the
+// entry at all: not the condition, not the pill, not the colour. The narrowest tier is therefore
+// structurally incapable of leaking rather than carefully redacted.
+export const sickbayGrantScopeEnum = pgEnum("sickbay_grant_scope", [
+  "FULL_PLAN",
+  "PARTIAL",
+  "DIRECTIVE",
+]);

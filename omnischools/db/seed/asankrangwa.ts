@@ -369,7 +369,7 @@ async function main() {
     marks?: [number, number, number, number, number];
   };
   const scienceRoster: SeedStudent[] = [
-    { code: "ASK-24-0142", first: "Abena", last: "Mensah", sex: "FEMALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "BOARDER", house: "Aggrey", marks: [16, 15, 30, 72, 40] },
+    { code: "ASK-24-0142", first: "Adwoa", last: "Mensa", sex: "FEMALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "BOARDER", house: "Aggrey", marks: [16, 15, 30, 72, 40] }, // canonical cross-surface chronic-register case (INCR-23a · R127)
     { code: "ASK-24-0143", first: "Akwasi", last: "Boateng", sex: "MALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "DAY", house: "Guggisberg", marks: [13, 14, 28, 55, 42] },
     { code: "ASK-24-0144", first: "Ama", last: "Asante", sex: "FEMALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "BOARDER", house: "Fraser", marks: [18, 19, 36, 89, 46] },
     { code: "ASK-24-0145", first: "Daniel", last: "Owusu", sex: "MALE", classId: form2Science.id, programme: "GENERAL_SCIENCE", residency: "DAY", house: "Slessor", marks: [11, 12, 22, 51, 30] },

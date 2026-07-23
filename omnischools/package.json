@@ -27,6 +27,7 @@
     "db:seed-visiting": "tsx db/seed/boarding-visiting.ts",
     "db:seed-discipline": "tsx db/seed/boarding-discipline.ts",
     "db:seed-sickbay": "tsx db/seed/sickbay.ts",
+    "db:seed-sickbay-chronic": "tsx db/seed/sickbay-chronic.ts",
     "db:seed-wassce": "tsx db/seed/wassce.ts",
     "db:seed-wassce-mock": "tsx db/seed/wassce-mock.ts",
     "db:seed-wassce-readiness": "tsx db/seed/wassce-readiness.ts",
@@ -49,7 +50,8 @@
     "db:verify-sickbay-visit": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-visit.ts",
     "db:verify-sickbay-attendance": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-attendance.ts",
     "db:verify-sickbay-attendance-rollover": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-attendance-rollover.ts",
-    "db:verify-sickbay-board": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-board.ts"
+    "db:verify-sickbay-board": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-board.ts",
+    "db:verify-sickbay-grant-boundary": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-grant-boundary.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",

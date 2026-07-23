@@ -9,11 +9,14 @@
  * clock). The pure, DB-free libs (vitals.ts / visits.ts) ARE imported here — they carry the severity
  * ladder and trend arithmetic, so the client renders exactly what the tests assert.
  *
- * 🔒 The 11 adjacency leaks bind here: NO chronic flag, NO SCD banner, NO NHIS flag, NO `bed S-12-B`
- * dorm-bunk fragment. Diagnosis stays inside the module; this surface prints an impression to a
- * clinical reader only, and the page trims the whole payload for anyone else (Z2).
+ * 🔒 The adjacency leaks bind here: NO SCD protocol banner (A4 — it leaks by name AND by drug), NO
+ * NHIS flag, NO `bed S-12-B` dorm-bunk fragment. Diagnosis stays inside the module; this surface
+ * prints an impression to a clinical reader only, and the page trims the whole payload for anyone
+ * else (Z2). R124 REINSTATES the chronic condition CHIP here (A3's reinstatement trigger was "INCR-23
+ * — visit record only, never the board") — the reader-visible family only, plus a `View care plan →`.
  */
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   addConsult,
@@ -83,6 +86,13 @@ export interface BedOption {
 }
 export interface VisitView {
   id: string;
+  /**
+   * R124 — the readable chronic condition chip(s) + the `View care plan →` target. SCALARS only
+   * (a pre-formatted pill class + label, and the studentId for the link) — never a reader row, so the
+   * flight payload carries the condition FAMILY the reader is entitled to and nothing more (R120). An
+   * empty `chips` array renders nothing (a Headmaster on a mental-health-only student, or no plan).
+   */
+  chronic: { studentId: string; chips: { label: string; pillClass: string }[] };
   student: {
     name: string;
     firstName: string;
@@ -290,10 +300,26 @@ export function VisitRecordConsole({
             </div>
           </div>
           <div className="relative flex flex-col items-end gap-2">
-            {/* NO chronic-flag, NO nhis-flag (A1–A4/Y1/Y9). Only the non-clinical id-flag. */}
+            {/* R124 — the readable condition chip(s); NO SCD protocol banner (A4). NO nhis-flag. */}
+            {visit.chronic.chips.map((c) => (
+              <span
+                key={c.label}
+                className={`inline-block rounded-full px-[9px] py-[3px] text-[10px] font-bold uppercase tracking-[0.04em] ${c.pillClass}`}
+              >
+                {c.label}
+              </span>
+            ))}
             <div className="font-mono text-[10px] font-medium text-gold-soft">
               {visit.student.studentCode}
             </div>
+            {visit.chronic.chips.length > 0 && (
+              <Link
+                href={`/senior/sickbay/chronic-register/${visit.chronic.studentId}`}
+                className="text-[11px] font-semibold text-gold no-underline hover:underline"
+              >
+                View care plan →
+              </Link>
+            )}
           </div>
         </div>
 

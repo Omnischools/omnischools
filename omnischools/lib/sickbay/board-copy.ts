@@ -27,6 +27,10 @@ export const BOARD_ROW_KEYS = {
   queue: [
     "complaint",
     "formLabel",
+    // R123 — ONE boolean the queue gains at INCR-23: `Care plan on file`, computed over the entries
+    // THIS actor may read (a Headmaster gets none for a mental-health-only student), positive-only,
+    // structurally incapable of naming a condition. The other three row types gain NOTHING.
+    "hasCarePlan",
     "houseName",
     "presentedAt",
     "studentCode",
