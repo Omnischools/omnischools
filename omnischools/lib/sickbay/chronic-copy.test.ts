@@ -47,23 +47,29 @@ const read = (p: string) => stripComments(readFileSync(resolve(cwd(), p), "utf8"
 // ============================================================================
 
 describe("R43/R94 · `diagnos` appears in no identifier this increment ships", () => {
+  // The ACTUAL shipped 23a files (Quinn M1: the old list named two files that never shipped —
+  // `chronic-register-list.tsx`, `chronic-plan.tsx` — and a `try/catch { continue }` skipped them
+  // silently, so the sweep never once inspected the write UI, the action, or the error mapper. That
+  // is the skip-hatch pattern: a file the sweep cannot find is a FAILURE, not a pass.) The seed is
+  // deliberately absent — its matron-authored `conditionDetail` prose ("diagnosed in early
+  // childhood") is DATA the owner chose to store (D1), not an identifier R43/R94 bans.
   const SHIPPED = [
     "lib/sickbay/chronic-copy.ts",
     "lib/sickbay/chronic-reads.ts",
+    "lib/sickbay/chronic-write-errors.ts",
+    "lib/actions/sickbay-chronic.ts",
+    "components/sickbay/chronic-plan-forms.tsx",
     "app/(app)/senior/sickbay/chronic-register/page.tsx",
+    "app/(app)/senior/sickbay/chronic-register/new/page.tsx",
     "app/(app)/senior/sickbay/chronic-register/[studentId]/page.tsx",
-    "components/sickbay/chronic-register-list.tsx",
-    "components/sickbay/chronic-plan.tsx",
+    "app/(app)/senior/sickbay/chronic-register/[studentId]/edit/[entryId]/page.tsx",
   ];
-  it("no shipped 23a source carries the string `diagnos`", () => {
+  it("no shipped 23a source carries the string `diagnos` (in code, not comments)", () => {
     for (const p of SHIPPED) {
-      let src: string;
-      try {
-        src = read(p);
-      } catch {
-        continue; // a file this slice did not ship — not a failure
-      }
-      expect(src.toLowerCase().includes("diagnos"), `${p} contains "diagnos"`).toBe(false);
+      // read() throws if the file is gone — a moved/renamed file must FAIL here, never skip. That is
+      // the whole lesson of the old list: a sweep that silently covers nothing reads as "clean".
+      const src = read(p);
+      expect(src.toLowerCase().includes("diagnos"), `${p} contains "diagnos" in code`).toBe(false);
     }
   });
 });
