@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
+import { hasAnyRole, SICKBAY_CLINICAL_WRITE_ROLES } from "@/lib/access";
 import { getChronicPlan } from "@/lib/sickbay/chronic-reads";
 import type { ChronicPlanEntryView, ChronicPlanView, RoundColumn } from "@/lib/sickbay/chronic-copy";
 import {
@@ -51,6 +52,7 @@ export default async function ChronicPlanPage({
 
   const current = await getCurrentUser();
   const roles = current?.roles ?? user.roles;
+  const canWrite = hasAnyRole(roles, SICKBAY_CLINICAL_WRITE_ROLES);
   const { id: userId } = await resolveActor(school.id);
 
   const now = new Date();
@@ -116,9 +118,9 @@ export default async function ChronicPlanPage({
 
       {plan.entries.map((entry) =>
         entry.hmRestricted ? (
-          <PastoralEntry key={entry.entryId} entry={entry} plan={plan} />
+          <PastoralEntry key={entry.entryId} entry={entry} plan={plan} canWrite={canWrite} />
         ) : (
-          <CarePlanEntry key={entry.entryId} entry={entry} plan={plan} />
+          <CarePlanEntry key={entry.entryId} entry={entry} plan={plan} canWrite={canWrite} />
         ),
       )}
     </div>
@@ -129,7 +131,15 @@ export default async function ChronicPlanPage({
 // §02 — a physical care plan
 // ============================================================================
 
-function CarePlanEntry({ entry, plan }: { entry: ChronicPlanEntryView; plan: ChronicPlanView }) {
+function CarePlanEntry({
+  entry,
+  plan,
+  canWrite,
+}: {
+  entry: ChronicPlanEntryView;
+  plan: ChronicPlanView;
+  canWrite: boolean;
+}) {
   const s = statusPill(entry.status);
   return (
     <section className="mb-8">
@@ -148,6 +158,7 @@ function CarePlanEntry({ entry, plan }: { entry: ChronicPlanEntryView; plan: Chr
         <span className="text-[11px] text-navy-3">
           {planVersionMeta(entry.version, entry.reviewedAt, entry.reviewedByName)}
         </span>
+        <EditPlanLink plan={plan} entry={entry} canWrite={canWrite} />
       </div>
 
       {/* plan details */}
@@ -335,8 +346,15 @@ function DormCard({ entry, plan }: { entry: ChronicPlanEntryView; plan: ChronicP
 // §03 — a mental-health plan, told honestly (NO dorm card, NO med grid)
 // ============================================================================
 
-function PastoralEntry({ entry, plan }: { entry: ChronicPlanEntryView; plan: ChronicPlanView }) {
-  void plan;
+function PastoralEntry({
+  entry,
+  plan,
+  canWrite,
+}: {
+  entry: ChronicPlanEntryView;
+  plan: ChronicPlanView;
+  canWrite: boolean;
+}) {
   const nextVisit = entry.externalNextVisitAt
     ? new Intl.DateTimeFormat("en-GB", {
         weekday: "short",
@@ -360,6 +378,7 @@ function PastoralEntry({ entry, plan }: { entry: ChronicPlanEntryView; plan: Chr
           {planVersionMeta(entry.version, entry.reviewedAt, entry.reviewedByName)}
           {entry.coReviewerNote ? ` + ${entry.coReviewerNote}` : ""}
         </span>
+        <EditPlanLink plan={plan} entry={entry} canWrite={canWrite} />
       </div>
 
       {/* pastoral block — frozen editorial + the plan's own external-care narrative */}
@@ -406,6 +425,27 @@ function PastoralEntry({ entry, plan }: { entry: ChronicPlanEntryView; plan: Chr
 // ============================================================================
 // shared bits
 // ============================================================================
+
+/** `Edit plan` — MATRON only (an affordance filter, never a data filter, R72). Per-entry (R91). */
+function EditPlanLink({
+  plan,
+  entry,
+  canWrite,
+}: {
+  plan: ChronicPlanView;
+  entry: ChronicPlanEntryView;
+  canWrite: boolean;
+}) {
+  if (!canWrite) return null;
+  return (
+    <Link
+      href={`/senior/sickbay/chronic-register/${plan.studentId}/edit/${entry.entryId}`}
+      className="ml-auto rounded-[6px] border border-border-2 bg-surface px-[12px] py-[6px] text-[11px] font-semibold text-navy no-underline hover:border-gold"
+    >
+      Edit plan
+    </Link>
+  );
+}
 
 /** One `.plan-row` — ABSENT entirely when there is no value (a row with an empty value is broken). */
 function PlanRow({ label, value, last }: { label: string; value: string | null; last?: boolean }) {

@@ -2,12 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
+import { hasAnyRole, SICKBAY_CLINICAL_WRITE_ROLES } from "@/lib/access";
 import { getChronicRegister } from "@/lib/sickbay/chronic-reads";
 import { splitBold } from "@/lib/sickbay/defaults";
 import {
   ADMITTED_NOW,
   CONDITION_PILL,
   EMPTY_REGISTER,
+  EMPTY_REGISTER_CTA,
   FILTER_LABELS,
   H1_LIST_EM,
   H1_LIST_LEAD,
@@ -51,6 +53,7 @@ export default async function ChronicRegisterPage() {
 
   const current = await getCurrentUser();
   const roles = current?.roles ?? user.roles;
+  const canWrite = hasAnyRole(roles, SICKBAY_CLINICAL_WRITE_ROLES);
   const { id: userId } = await resolveActor(school.id);
 
   const now = new Date();
@@ -82,14 +85,25 @@ export default async function ChronicRegisterPage() {
         </a>{" "}
         · Chronic register
       </div>
-      <div className="mb-6">
-        <h1 className="font-display text-[28px] font-medium leading-[1.1] tracking-[-0.018em] text-navy">
-          {H1_LIST_LEAD}
-          <em className="font-normal italic text-gold">{H1_LIST_EM}</em>
-        </h1>
-        <p className="mt-1 max-w-[720px] text-[13px] text-navy-3">
-          <Bold text={lede} />
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-[28px] font-medium leading-[1.1] tracking-[-0.018em] text-navy">
+            {H1_LIST_LEAD}
+            <em className="font-normal italic text-gold">{H1_LIST_EM}</em>
+          </h1>
+          <p className="mt-1 max-w-[720px] text-[13px] text-navy-3">
+            <Bold text={lede} />
+          </p>
+        </div>
+        {/* `+ Add student` — MATRON only (an affordance filter, never a data filter, R72). */}
+        {canWrite && (
+          <Link
+            href="/senior/sickbay/chronic-register/new"
+            className="shrink-0 rounded-[6px] border border-navy bg-navy px-[14px] py-[9px] text-[12px] font-bold text-bg no-underline"
+          >
+            + Add student
+          </Link>
+        )}
       </div>
 
       {/* ═══ privacy banner (§3.2 — the re-authored non-disclosure copy, load-bearing) ═══ */}
@@ -111,6 +125,17 @@ export default async function ChronicRegisterPage() {
       {rows.length === 0 ? (
         <p className="rounded-xl border border-border bg-surface p-[18px_20px] text-[12px] italic text-navy-3">
           {EMPTY_REGISTER}
+          {canWrite && (
+            <>
+              {" "}
+              <Link
+                href="/senior/sickbay/chronic-register/new"
+                className="font-semibold not-italic text-gold no-underline"
+              >
+                {EMPTY_REGISTER_CTA}
+              </Link>
+            </>
+          )}
         </p>
       ) : (
         <>
