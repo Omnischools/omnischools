@@ -26,6 +26,9 @@ import {
   chronicConditionEnum,
   chronicStatusEnum,
   sickbayGrantScopeEnum,
+  sickbayMedSourceEnum,
+  sickbayMedStatusEnum,
+  sickbayStockMovementTypeEnum,
 } from "./_enums";
 
 /**
@@ -445,6 +448,16 @@ export const sickbayAdmission = pgTable(
     oneOpenPerStudent: uniqueIndex("uniq_sickbay_open_admission_student")
       .on(t.schoolId, t.studentId)
       .where(sql`${t.dischargedAt} IS NULL`),
+    // INCR-24 obligation (e) / R167e — the index for medicalHoldStudentIds()'s rewrite. The shipped
+    // medical-hold query filters by student over an admitted_at window on EVERY register save at every
+    // Senior school; its `::date` casts were non-sargable, so Claude Code rewrites them to half-open
+    // timestamp ranges (the app-layer half of e). This index is the DDL half and belongs in this
+    // migration: (school_id, student_id, admitted_at) makes that half-open range scan an index range.
+    byStudentAdmitted: index("sickbay_admission_student_admitted_idx").on(
+      t.schoolId,
+      t.studentId,
+      t.admittedAt,
+    ),
     // Composite intra-tenant FKs. The visit CASCADEs; the student CASCADEs; the BED restricts.
     visitFk: foreignKey({
       columns: [t.schoolId, t.visitId],
@@ -503,6 +516,14 @@ export const sickbayDoctorConsult = pgTable(
   (t) => ({
     // A visit's consults in time order — the only read this table has.
     byVisit: index("sickbay_doctor_consult_visit_idx").on(t.schoolId, t.visitId, t.occurredAt),
+    // INCR-24 (R143) — this leaf becomes a composite-FK TARGET: sickbay_med_admin.consult_id is
+    // (school_id, consult_id) RESTRICT for a DOCTOR_ORDERED administration (provenance, never a gate —
+    // R60). Adding the UNIQUE in the SAME migration as the FK that needs it is the 0056/0057 "author the
+    // UK before the FK" move (and the 0033 ordering hazard, guarded because the ALTER ADD UNIQUE is
+    // emitted ahead of the ADD FOREIGN KEY that consumes it). This ADD-UNIQUE on an existing table stays
+    // append-only-safe: it constrains nothing new (id is already the PK, so (school_id, id) is trivially
+    // unique) and rejects no existing row.
+    tenantUk: unique("sickbay_doctor_consult_tenant_uk").on(t.schoolId, t.id),
     // Composite intra-tenant FK → sickbay_visit_tenant_uk. CASCADE with the visit.
     visitFk: foreignKey({
       columns: [t.schoolId, t.visitId],
@@ -935,5 +956,308 @@ export const sickbayChronicRead = pgTable(
       columns: [t.schoolId, t.entryId],
       foreignColumns: [sickbayChronicEntry.schoolId, sickbayChronicEntry.id],
     }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * Sickbay MEDICATION LAYER (SHS module 4.4 / INCR-24, migration 0060) — the ACTUAL (the MAR) versus
+ * the chronic-med PLAN, plus the controlled-substance register, standing orders and per-drug stock.
+ * 0058 held the standing care PLAN; these tables hold what was actually given, to whom, by whom,
+ * witnessed by whom, and the running controlled balance derived from it.
+ *
+ * FOUR tenant tables, THREE enums, ONE ADD-UNIQUE on the 0057 sickbay_doctor_consult leaf (above),
+ * ZERO altered columns. All four get ENABLE + FORCE RLS + tenant_isolation + the catalog-driven
+ * parent_deny (owner decision D8) exactly as every tenant table (db:policies on dev;
+ * db/sql/prod-paste-0060-sickbay-medication.sql by hand on prod). ⚠ STANDARD tenant tables — NO
+ * `staff_grant_scope` family (R166): the MAR is the ACUTE/round clinical graph, gated like the VISIT
+ * by the app-layer clinical pair (SICKBAY_CLINICAL_* roles, R164), not the chronic register's
+ * per-entry grant boundary. A housemaster with a chronic FULL_PLAN grant sees the PLAN, never the
+ * admin log (owner O2 — no grantee MAR access at 24).
+ *
+ * ⚠ DDL ORDERING (the 0033 hazard INSIDE one migration, as 0057/0058). `sickbay_med_admin_tenant_uk`
+ * is the target of the MAR's own SELF-FK (`corrects_admin_id`, the append-only amendment chain), so it
+ * is carried INLINE in CREATE TABLE, and `sickbay_standing_order_tenant_uk` / `sickbay_stock_item_tenant_uk`
+ * / `sickbay_doctor_consult_tenant_uk` are all authored ahead of the FKs that consume them.
+ *
+ * NO TRIGGERS (portability). Every rule that spans rows or reads another table lives in lib/sickbay/:
+ * `assertSchoolClinician(schoolId, userId, {requireNmc})` on every clinical actor pointer (R155/R158 —
+ * the DB cannot check role/NMC on a GLOBAL ref_user pointer; staff_profile.nmc_licence_number is the
+ * tenant join), the "controlled WASTAGE requires a witness" rule (R152 — it depends on
+ * sickbay_stock_item.is_controlled, a cross-table fact), the derived due-list / overdue reads (R148/R149
+ * — no scheduler, nothing auto-writes OMITTED), the derived controlled balance (R152 — no stored
+ * balance), and the append-only amendment posture (a correction is a NEW row, never an UPDATE). The
+ * four rules that ARE in the DB are single-row CHECKs on sickbay_med_admin (R143/R144/R154/R157) — none
+ * is the cross-table trigger J3 forbids.
+ * ==========================================================================*/
+
+/**
+ * A STANDING ORDER (R159) — a pre-authored "for complaint X give treatment Y" the matron may
+ * administer under her OWN authority. `ordered_by_doctor_name` is COPIED TEXT, never a ref_user (R21 —
+ * the ordering doctor is not a system user) and never a gate (R160 — provenance, not permission): a MAR
+ * row cites it via `source = STANDING_ORDER`, and the matron administers on her own licence. Editable
+ * by [ADMIN, MATRON] (the matron GAINS §3 write), so it carries `updated_at` — unlike the append-only
+ * MAR. `tenant_uk (school_id, id)` is INLINE: it is the MAR's `standing_order_id` composite-FK target.
+ */
+export const sickbayStandingOrder = pgTable(
+  "sickbay_standing_order",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    complaint: text("complaint").notNull(), // "headache", "menstrual cramps"
+    treatment: text("treatment").notNull(), // "paracetamol 1g PO, max 4g/24h"
+    escalation: text("escalation"), // when to stop and refer — free text
+    // Copied onto the row — the doctor who authorised the order, not a system user (R21). Provenance
+    // only (R160): the matron administers under her own authority.
+    orderedByDoctorName: text("ordered_by_doctor_name"),
+    active: boolean("active").notNull().default(true),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for sickbay_med_admin.standing_order_id (school_id, id). INLINE (0033). Its
+    // school_id prefix also serves the "all standing orders for this school" read, so no separate index.
+    tenantUk: unique("sickbay_standing_order_tenant_uk").on(t.schoolId, t.id),
+  }),
+);
+
+/**
+ * PER-DRUG, SCHOOL-LEVEL stock (R161) — never per-student (R162, Risk 4: a drug beside a student on the
+ * shared stock/register screen is a re-identification; the surface's "Hydroxyurea — for Adwoa Mensa" is
+ * REFUSED). So there is NO `student_id` / student text on this table by construction. `qty_on_hand` is a
+ * stored, MANUALLY-maintained reorder aid — a deliberate corner, NOT an audit record: non-controlled
+ * stock is not auto-decremented from the MAR (ponytail: upgrade to a movement ledger only if
+ * non-controlled audit is ever required). Only the CONTROLLED balance is derived, over
+ * sickbay_controlled_movement (R152). `is_controlled` is the boolean the school flags per item (R151 —
+ * no seeded national narcotics schedule, owner O3). `tenant_uk` is INLINE: the movement's
+ * `stock_item_id` composite-FK target.
+ */
+export const sickbayStockItem = pgTable(
+  "sickbay_stock_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    drugName: text("drug_name").notNull(),
+    formLabel: text("form_label"), // "500mg tablet", "100mcg inhaler"
+    unit: text("unit"), // "tablets", "puffs", "vials"
+    // Stored manually-maintained reorder aid (R161) — NOT an audit record. Default 0 so it always has a
+    // value to compare against reorder_point.
+    qtyOnHand: numeric("qty_on_hand").notNull().default("0"),
+    reorderPoint: numeric("reorder_point"),
+    lastRestockedAt: timestamp("last_restocked_at", { withTimezone: true }),
+    isControlled: boolean("is_controlled").notNull().default(false),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for sickbay_controlled_movement.stock_item_id (school_id, id). INLINE (0033).
+    // Its school_id prefix also serves the "all stock for this school" read, so no separate index.
+    tenantUk: unique("sickbay_stock_item_tenant_uk").on(t.schoolId, t.id),
+  }),
+);
+
+/**
+ * THE MAR — the append-only Medication Administration Record (R141/R142). ONE ROW PER ADMINISTRATION
+ * EVENT (given, refused, held or omitted). A "due dose" is DERIVED (schedule × civil day × round), never
+ * stored (R148/R101/R32 derived-state doctrine); this table records only what actually happened.
+ *
+ * 🔴 APPEND-ONLY IS STRUCTURAL (R142/R146): there is NO `updated_at`, no `voided_at`, no delete policy —
+ * the DB offers no mutation path, and its ABSENCE is the constraint. A correction is a NEW row that sets
+ * `corrects_admin_id` (the composite self-FK) + `amendment_note`; the original stays byte-unchanged and
+ * the reader renders a footnoted amendment. A MAR that can be edited is a falsifiable clinical record.
+ *
+ * R144 — the SNAPSHOTS (`drug_name` / `dose_label` / `route` / `is_controlled` / `dispensed_qty`) are
+ * COPIED at administration, never read live from the plan (the sickbay_doctor_consult.clinician_name
+ * doctrine): de-listing a drug next term must not retroactively make a past un-witnessed controlled dose
+ * look compliant, so `is_controlled` is PINNED here.
+ *
+ * R143 — `source` is PROVENANCE, never permission. The matching composite RESTRICT pointer
+ * (chronic_med_id / standing_order_id / consult_id) is nullable and CHECK-tied to `source`; a
+ * DOCTOR_ORDERED row is attribution only (the visiting doctor is not a system user, R21). The CHECK is
+ * the PERMISSIVE form — a pointer may only accompany its own source, but the matching pointer is NOT
+ * forced non-null, because a CHRONIC "patient's own surrendered bottle" dose (R163) has no chronic_med
+ * prescription row to point at.
+ *
+ * The witness rules are BOTH DB and app: DB CHECKs enforce "a controlled GIVEN dose reaches the table
+ * only with a witness or a recorded override" (R154), "controlled GIVEN needs a dispensed_qty" (R144),
+ * and "no self-witness" (R157). The witness IDENTITY (a real in-school ref_user with an N&MC licence) is
+ * app-layer only (R155/R158 — the DB cannot check role/NMC on a GLOBAL ref_user pointer); a student Sick
+ * Bay Prefect can NEVER be witness-of-record (that is a free-text `notes` line, R155).
+ *
+ * FK shapes: `student_id` composite CASCADE (always present); `visit_id` nullable composite CASCADE
+ * (NULL for a routine round dose); `slot_id` nullable composite **RESTRICT** (the round attributed to;
+ * NULL for PRN/ad-hoc — mirrors sickbay_chronic_med.slotFk: a referenced round must not vanish); the
+ * three source pointers nullable composite **RESTRICT** (a dispensed/cited row must not vanish);
+ * `corrects_admin_id` nullable composite SELF-FK **RESTRICT**. The actor pointers (`administered_by`,
+ * `witness`) are single-column SET NULL → the GLOBAL ref_user (the houses.hm_user_id idiom). `tenant_uk`
+ * is INLINE — the self-FK target, and the 0033 hazard.
+ */
+export const sickbayMedAdmin = pgTable(
+  "sickbay_med_admin",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below — always present
+    visitId: uuid("visit_id"), // nullable composite FK below — NULL for a routine round dose
+    slotId: uuid("slot_id"), // nullable composite FK below — RESTRICT; NULL for PRN/ad-hoc
+    // ---- provenance (R143) — source + its matching RESTRICT pointer, CHECK-tied ----
+    source: sickbayMedSourceEnum("source").notNull(),
+    chronicMedId: uuid("chronic_med_id"), // composite FK below — RESTRICT (CHRONIC)
+    standingOrderId: uuid("standing_order_id"), // composite FK below — RESTRICT (STANDING_ORDER)
+    consultId: uuid("consult_id"), // composite FK below — RESTRICT (DOCTOR_ORDERED)
+    // ---- snapshots (R144) — copied at administration, never read live from the plan ----
+    drugName: text("drug_name").notNull(),
+    doseLabel: text("dose_label").notNull(),
+    route: text("route"), // "oral", "IV", "inhaled" — free text
+    isControlled: boolean("is_controlled").notNull().default(false), // PINNED at administration (R144)
+    dispensedQty: numeric("dispensed_qty"), // the controlled deduction (R153); CHECK-required for controlled GIVEN
+    // ---- the event ----
+    status: sickbayMedStatusEnum("status").notNull(),
+    administeredAt: timestamp("administered_at", { withTimezone: true }).notNull(),
+    // Actor pointers — single-column SET NULL → GLOBAL ref_user. The clinician tenancy/role/NMC guard is
+    // app-layer (assertSchoolClinician) on every one of these — the DB cannot check it on a global FK.
+    administeredByUserId: uuid("administered_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    witnessUserId: uuid("witness_user_id").references(() => users.id, { onDelete: "set null" }),
+    witnessOverrideReason: text("witness_override_reason"), // R156 — documented, single-signature override
+    notes: text("notes"),
+    // ---- append-only amendment (R146) — a correction is a NEW row citing the original ----
+    correctsAdminId: uuid("corrects_admin_id"), // composite SELF-FK below — RESTRICT
+    amendmentNote: text("amendment_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // NO updated_at, NO voided_at, NO soft-delete — append-only (R142/R146). Absence IS the constraint.
+  },
+  (t) => ({
+    // Composite-FK target for the SELF-FK (corrects_admin_id) — INLINE so it exists before the ADD
+    // FOREIGN KEY that references it (the 0033 hazard, sharpest here because the target is this table).
+    tenantUk: unique("sickbay_med_admin_tenant_uk").on(t.schoolId, t.id),
+    // R144 — a controlled dose must carry the quantity dispensed (it is the controlled-balance deduction).
+    controlledNeedsQty: check(
+      "med_admin_controlled_needs_qty",
+      sql`${t.isControlled} = false OR ${t.dispensedQty} IS NOT NULL`,
+    ),
+    // R154 — a controlled GIVEN administration reaches the table ONLY with a witness OR a recorded
+    // override, never silently. (Non-GIVEN controlled and all non-controlled doses are exempt.)
+    controlledGivenNeedsWitness: check(
+      "med_admin_controlled_given_witness",
+      sql`NOT (${t.isControlled} AND ${t.status} = 'GIVEN') OR ${t.witnessUserId} IS NOT NULL OR ${t.witnessOverrideReason} IS NOT NULL`,
+    ),
+    // R157 — self-witness is forbidden: a witness is a SECOND clinician.
+    witnessNotSelf: check(
+      "med_admin_witness_not_self",
+      sql`${t.witnessUserId} IS NULL OR ${t.witnessUserId} <> ${t.administeredByUserId}`,
+    ),
+    // R143 (OQ1 TIGHTENED) — each source is PAIRED with its pointer, DB-backstopped not app-only
+    // (append-only safety-critical record): STANDING_ORDER requires standing_order_id (which protocol)
+    // and DOCTOR_ORDERED requires consult_id (the surface hyperlink), each forbidding the other two;
+    // AD_HOC forbids all three. CHRONIC is the ONE NAMED exception (R163): chronic_med_id is OPTIONAL,
+    // so a "patient's own surrendered bottle" dose with no prescription row is legal — but it still
+    // forbids standing_order_id and consult_id.
+    sourcePointerMatch: check(
+      "med_admin_source_pointer_match",
+      sql`(${t.source} = 'CHRONIC' AND ${t.standingOrderId} IS NULL AND ${t.consultId} IS NULL)
+       OR (${t.source} = 'STANDING_ORDER' AND ${t.standingOrderId} IS NOT NULL AND ${t.chronicMedId} IS NULL AND ${t.consultId} IS NULL)
+       OR (${t.source} = 'DOCTOR_ORDERED' AND ${t.consultId} IS NOT NULL AND ${t.chronicMedId} IS NULL AND ${t.standingOrderId} IS NULL)
+       OR (${t.source} = 'AD_HOC' AND ${t.chronicMedId} IS NULL AND ${t.standingOrderId} IS NULL AND ${t.consultId} IS NULL)`,
+    ),
+    // R142 — the three reads: a student's MAR in time order (the record), a round's doses in time order
+    // (the "done" check for the derived due-list), and a visit's doses (the visit-record §3 chip).
+    byStudent: index("sickbay_med_admin_student_idx").on(t.schoolId, t.studentId, t.administeredAt),
+    bySlot: index("sickbay_med_admin_slot_idx").on(t.schoolId, t.slotId, t.administeredAt),
+    byVisit: index("sickbay_med_admin_visit_idx").on(t.schoolId, t.visitId),
+    // Composite intra-tenant FKs. student/visit CASCADE; slot + the three source pointers + the self-FK
+    // all RESTRICT (a dispensed/cited/amended row must not vanish).
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    visitFk: foreignKey({
+      columns: [t.schoolId, t.visitId],
+      foreignColumns: [sickbayVisit.schoolId, sickbayVisit.id],
+    }).onDelete("cascade"),
+    slotFk: foreignKey({
+      columns: [t.schoolId, t.slotId],
+      foreignColumns: [sickbayScheduleSlot.schoolId, sickbayScheduleSlot.id],
+    }).onDelete("restrict"),
+    chronicMedFk: foreignKey({
+      columns: [t.schoolId, t.chronicMedId],
+      foreignColumns: [sickbayChronicMed.schoolId, sickbayChronicMed.id],
+    }).onDelete("restrict"),
+    standingOrderFk: foreignKey({
+      columns: [t.schoolId, t.standingOrderId],
+      foreignColumns: [sickbayStandingOrder.schoolId, sickbayStandingOrder.id],
+    }).onDelete("restrict"),
+    consultFk: foreignKey({
+      columns: [t.schoolId, t.consultId],
+      foreignColumns: [sickbayDoctorConsult.schoolId, sickbayDoctorConsult.id],
+    }).onDelete("restrict"),
+    // The append-only amendment chain. RESTRICT: a corrected row must not be deletable out from under
+    // its correction. Named explicitly — drizzle's default self-FK name exceeds 63 chars.
+    correctsFk: foreignKey({
+      name: "sickbay_med_admin_corrects_fk",
+      columns: [t.schoolId, t.correctsAdminId],
+      foreignColumns: [t.schoolId, t.id],
+    }).onDelete("restrict"),
+  }),
+);
+
+/**
+ * THE CONTROLLED-STOCK MOVEMENT LEDGER (R152) — append-only, the register's balance is DERIVED over it,
+ * never stored (R10): balance = Σ RECEIPT − Σ(controlled GIVEN MAR dispensed_qty) − Σ WASTAGE
+ * ± Σ ADJUSTMENT. ADMINISTRATIONS ARE NOT A MOVEMENT ROW — they are read from the MAR (one source of
+ * truth); only receipts, wastage and adjustments land here.
+ *
+ * `movement_type` is the enum; `witness_user_id` is nullable because the "controlled WASTAGE requires a
+ * witness" rule (R152 — the diversion point) depends on sickbay_stock_item.is_controlled, a CROSS-TABLE
+ * fact a single-row CHECK cannot reach, so it is app-layer (assertSchoolClinician) not a DB constraint.
+ * "Brief" (D5.2) EXCLUDES batch/lot lifecycle, expiry alerting, multi-store, procurement, cyclic count
+ * and cabinet-key logs — `batch_ref` is a free-text note, not a lot-tracking table.
+ *
+ * LEAF, APPEND-ONLY: nothing references a movement, so NO tenant UK; no `updated_at`, no void, no delete
+ * (FORCE RLS, the sickbay_vital_reading / sickbay_doctor_consult posture). `stock_item_id` is a composite
+ * **RESTRICT** — a stock item with movement history must not be deletable.
+ */
+export const sickbayControlledMovement = pgTable(
+  "sickbay_controlled_movement",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    stockItemId: uuid("stock_item_id").notNull(), // composite (school_id, stock_item_id) FK below — RESTRICT
+    movementType: sickbayStockMovementTypeEnum("movement_type").notNull(),
+    quantity: numeric("quantity").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    // Nullable — a controlled WASTAGE requires a witness (R152), enforced app-layer because it depends on
+    // the stock item's is_controlled (a cross-table fact no single-row CHECK can reach).
+    witnessUserId: uuid("witness_user_id").references(() => users.id, { onDelete: "set null" }),
+    batchRef: text("batch_ref"), // free-text note, NOT a lot-tracking table (D5.2 "brief")
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // NO updated_at — append-only (R152). A correction is a second row (an ADJUSTMENT).
+  },
+  (t) => ({
+    // The balance derivation (R152) reads a stock item's movements in time order; this index serves it
+    // AND the RESTRICT check on every stock-item delete (an unindexed RESTRICT target is a seq scan).
+    byItem: index("sickbay_controlled_movement_item_idx").on(
+      t.schoolId,
+      t.stockItemId,
+      t.occurredAt,
+    ),
+    // Composite intra-tenant FK → sickbay_stock_item_tenant_uk. RESTRICT — a stocked item with movement
+    // history must not vanish.
+    stockItemFk: foreignKey({
+      columns: [t.schoolId, t.stockItemId],
+      foreignColumns: [sickbayStockItem.schoolId, sickbayStockItem.id],
+    }).onDelete("restrict"),
   }),
 );

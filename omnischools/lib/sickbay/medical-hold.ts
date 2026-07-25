@@ -14,12 +14,25 @@ import { sickbayAdmission, sickbayVisit } from "@/db/schema";
  *          admission are marked at the instant the class teacher takes the register.
  *
  * TWO ARMS, ONE QUERY:
- *   • an ADMISSION covering the date — `admitted_at::date ≤ date AND (discharged_at IS NULL OR
- *     discharged_at::date ≥ date)`. The open case is the multi-day stay; the discharged case still
- *     holds the days the student actually spent on the ward.
+ *   • an ADMISSION covering the date — `admitted_at < date+1day AND (discharged_at IS NULL OR
+ *     discharged_at ≥ date)`. The open case is the multi-day stay; the discharged case still holds the
+ *     days the student actually spent on the ward.
  *   • an OPEN VISIT presented on the date (`disposition IS NULL AND voided_at IS NULL`). This is the
  *     07:30 clinic visit still open when the 08:00 register is taken — she is in the sickbay right
  *     now, and nobody has decided anything yet.
+ *
+ * 🔴 R167(e) — HALF-OPEN TIMESTAMP RANGES, NOT `column::date`. This runs on EVERY register save at
+ * every Senior school, forever. The old form cast the COLUMN (`admitted_at::date <= date`), which is
+ * NON-SARGABLE — Postgres cannot use an index on a value it has to recompute per row, so it seq-scanned
+ * every admission in the school. The cast now sits on the DATE PARAMETER only (`${date}::date`, and
+ * `+ interval '1 day'`) and every column is compared BARE, so the scan rides the indexes 0060 ships:
+ * `sickbay_admission_student_admitted_idx (school_id, student_id, admitted_at)` and
+ * `sickbay_visit_presented_idx (school_id, presented_at)`.
+ *
+ * The result is UNCHANGED (Ghana is UTC+0 year-round, so a timestamptz's civil date IS its UTC date,
+ * and `date::date` is that day's 00:00): `admitted_at::date <= date  ⟺  admitted_at < date+1day`;
+ * `discharged_at::date >= date  ⟺  discharged_at >= date` (both midnight-of-`date`); and
+ * `presented_at::date = date  ⟺  presented_at >= date AND presented_at < date+1day`.
  *
  * INCR-25 extends this same function with the open-referral arm; no caller changes.
  *
@@ -45,8 +58,8 @@ export async function medicalHoldStudentIds(
       and(
         eq(sickbayAdmission.schoolId, schoolId),
         inArray(sickbayAdmission.studentId, ids),
-        sql`${sickbayAdmission.admittedAt}::date <= ${date}::date`,
-        sql`(${sickbayAdmission.dischargedAt} IS NULL OR ${sickbayAdmission.dischargedAt}::date >= ${date}::date)`,
+        sql`${sickbayAdmission.admittedAt} < ${date}::date + interval '1 day'`,
+        sql`(${sickbayAdmission.dischargedAt} IS NULL OR ${sickbayAdmission.dischargedAt} >= ${date}::date)`,
       ),
     );
 
@@ -59,7 +72,8 @@ export async function medicalHoldStudentIds(
         inArray(sickbayVisit.studentId, ids),
         isNull(sickbayVisit.disposition),
         isNull(sickbayVisit.voidedAt),
-        sql`${sickbayVisit.presentedAt}::date = ${date}::date`,
+        sql`${sickbayVisit.presentedAt} >= ${date}::date`,
+        sql`${sickbayVisit.presentedAt} < ${date}::date + interval '1 day'`,
       ),
     );
 

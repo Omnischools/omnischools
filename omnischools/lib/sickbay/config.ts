@@ -11,6 +11,7 @@
 import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
+import { assertSchoolClinician } from "./clinician";
 import {
   boardingBunk,
   boardingDormitory,
@@ -292,10 +293,14 @@ export async function getMatronCandidates(schoolId: string): Promise<MatronCandi
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** True when `userId` holds MATRON in this school. The write-path guard behind the picker. */
+/**
+ * True when `userId` holds MATRON in this school. The write-path guard behind the picker. Delegates to
+ * the shared `assertSchoolClinician` seam (R158) — `holdsMatronRole(s, u)` is exactly
+ * `assertSchoolClinician(s, u)` with no NMC requirement — so the "holds MATRON in this school" check
+ * lives in ONE place for the settings pointers (here) and every medication-layer clinical pointer (24a/24b).
+ */
 export async function holdsMatronRole(schoolId: string, userId: string): Promise<boolean> {
-  const candidates = await getMatronCandidates(schoolId);
-  return candidates.some((c) => c.id === userId);
+  return assertSchoolClinician(schoolId, userId);
 }
 
 /** Narrowing helper for action input — keeps the enum in one place. */

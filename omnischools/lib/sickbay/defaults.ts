@@ -315,6 +315,25 @@ export function validateRoundOrdering(slots: readonly SickbaySlot[]): string | n
   return `The anchor round must start no later than every other medication round. ${names} starts before the anchor at ${anchor.startsAt}.`;
 }
 
+/**
+ * R167(c) — the single-anchor guard for any slot-CREATE path. EXACTLY ONE anchored MEDICATION_ROUND
+ * exists per school (the partial unique `uniq_sickbay_anchor_slot` is the DB backstop), and a create
+ * that would add a SECOND anchor must be refused with a FRIENDLY error before the raw unique violation
+ * surfaces. No user-facing add-slot action exists at 24a — §2 only edits/toggles/resets the canonical
+ * set (which carries exactly one anchor) — so this is wired defensively at the seed insert and is the
+ * guard the first real slot-create action reuses. Pure, so `sickbay-config`'s writers stay portable.
+ */
+export function refuseSecondAnchor(
+  existing: readonly { isAnchor: boolean }[],
+  incoming: readonly { isAnchor: boolean }[],
+): string | null {
+  const anchors =
+    existing.filter((s) => s.isAnchor).length + incoming.filter((s) => s.isAnchor).length;
+  return anchors > 1
+    ? "This school already has an anchor round — only one medication round can be the anchor."
+    : null;
+}
+
 // ============================================================================
 // Bed capacity reconcile — target, never delete (R11 · AC B4/B5)
 // ============================================================================

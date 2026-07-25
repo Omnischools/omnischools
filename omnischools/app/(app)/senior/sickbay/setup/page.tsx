@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import { requireSchoolRole } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
-import { hasAnyRole, SICKBAY_CONFIG_WRITE_ROLES, SICKBAY_ROLES } from "@/lib/access";
+import {
+  hasAnyRole,
+  SICKBAY_CONFIG_WRITE_ROLES,
+  SICKBAY_ROLES,
+  SICKBAY_STOCK_WRITE_ROLES,
+} from "@/lib/access";
 import {
   getClinicalStaff,
   getHealthPrefects,
@@ -9,8 +14,14 @@ import {
   getScheduleSlots,
   getSickbayConfig,
 } from "@/lib/sickbay/config";
+import {
+  getControlledRegister,
+  getStandingOrders,
+  getStockRegister,
+} from "@/lib/sickbay/stock-reads";
 import { SICKBAY_POLICY_ANCHORS, formatDayType, splitBold } from "@/lib/sickbay/defaults";
 import { SickbaySetupConsole, type StaffRow } from "@/components/sickbay/setup-console";
+import { StockConsole } from "@/components/sickbay/stock-console";
 
 export const dynamic = "force-dynamic";
 
@@ -31,15 +42,25 @@ export default async function SickbaySetupPage() {
   const current = await getCurrentUser();
   const roles = current?.roles ?? user.roles;
   const canWrite = hasAnyRole(roles, SICKBAY_CONFIG_WRITE_ROLES);
+  // §3 flips the write gate: the MATRON GAINS write, the HEADMASTER LOSES it (R165). READ of §3 stays
+  // the page's SICKBAY_ROLES gate (ADMIN / HEADMASTER / MATRON) — §3 is config, not the clinical graph,
+  // which is exactly why R162 forbids a student name on it.
+  const canWriteStock = hasAnyRole(roles, SICKBAY_STOCK_WRITE_ROLES);
 
   const config = await getSickbayConfig(school.id);
   const caps = config.capabilities;
-  const [slots, prefects, matronCandidates, staff] = await Promise.all([
-    getScheduleSlots(school.id),
-    getHealthPrefects(school.id),
-    canWrite ? getMatronCandidates(school.id) : Promise.resolve([]),
-    getClinicalStaff(config),
-  ]);
+  const [slots, prefects, matronCandidates, staff, standingOrders, stock, controlled] =
+    await Promise.all([
+      getScheduleSlots(school.id),
+      getHealthPrefects(school.id),
+      // MATRON candidates back §1/§2's pointer picker (canWrite) AND §3's controlled-wastage witness
+      // dropdown (canWriteStock) — a MATRON has the latter but not the former.
+      canWrite || canWriteStock ? getMatronCandidates(school.id) : Promise.resolve([]),
+      getClinicalStaff(config),
+      getStandingOrders(school.id),
+      getStockRegister(school.id),
+      getControlledRegister(school.id),
+    ]);
 
   // The doctor's working pattern is DERIVED from his DOCTOR_VISIT slot (days + window) — the same
   // fact the hours table prints, never a second stored copy.
@@ -87,6 +108,16 @@ export default async function SickbaySetupPage() {
             visitingDoctorAffiliation: config.visitingDoctorAffiliation,
           }),
         }}
+      />
+
+      {/* ═══ §3 · Standing orders / stock / controlled register (INCR-24a) ═══ */}
+      <StockConsole
+        canWrite={canWriteStock}
+        standingOrders={standingOrders}
+        stock={stock.items}
+        reorderCount={stock.reorderCount}
+        controlled={controlled}
+        clinicians={matronCandidates}
       />
 
       {/* ═══ §5 · Policy anchors — pure editorial, zero schema, zero controls, every mode ═══ */}
