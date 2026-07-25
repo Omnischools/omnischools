@@ -51,7 +51,14 @@ export async function getStandingOrders(schoolId: string): Promise<StandingOrder
       .where(eq(sickbayStandingOrder.schoolId, schoolId));
     return rows
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .map(({ createdAt: _createdAt, ...v }) => v);
+      .map((r) => ({
+        id: r.id,
+        complaint: r.complaint,
+        treatment: r.treatment,
+        escalation: r.escalation,
+        orderedByDoctorName: r.orderedByDoctorName,
+        active: r.active,
+      }));
   });
 }
 
