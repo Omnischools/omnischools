@@ -35,9 +35,11 @@ import {
   sickbayAdmission,
   sickbayDoctorConsult,
   sickbayBed,
+  sickbaySettings,
   students,
 } from "@/db/schema";
-import { getSickbayConfig, holdsMatronRole } from "@/lib/sickbay/config";
+import { holdsMatronRole } from "@/lib/sickbay/config";
+import { sickbayCapabilities } from "@/lib/sickbay/defaults";
 import { dispositionGuard, isolationGuard, voidGuard } from "@/lib/sickbay/visits";
 import { openVisitCollisionError } from "@/lib/sickbay/board-copy";
 import { VITAL_BOUNDS, isEmptyReading } from "@/lib/sickbay/vitals";
@@ -552,7 +554,6 @@ export async function admitPatient(input: unknown): Promise<Result> {
     return { ok: false, error: "Give the bed and an overnight plan to admit." };
   }
   const d = parsed.data;
-  const config = await getSickbayConfig(auth.schoolId);
 
   try {
     const admitted = await withSchool(auth.schoolId, async (tx) => {
@@ -561,18 +562,30 @@ export async function admitPatient(input: unknown): Promise<Result> {
       const attendingIsMatron = v.attendingUserId
         ? await holdsMatronRole(auth.schoolId, v.attendingUserId)
         : false;
-      const guardErr = dispositionGuard(v, "ADMIT", {
-        attendingIsMatron,
-        admissionsAllowed: config.capabilities.admissions,
-      });
+      // R167(d) — read the admissions capability INSIDE the tx. It was read from `getSickbayConfig`
+      // OUTSIDE the transaction, the same TOCTOU shape as R167(b): a mode flipped to REFERRAL_ONLY
+      // between that read and the insert would let an admit land on a school that has just declared it
+      // has no beds. The mode is a one-row read here (capabilities DERIVE from it via the frozen pure
+      // function), never a second stored copy.
+      const [settings] = await tx
+        .select({ mode: sickbaySettings.mode })
+        .from(sickbaySettings)
+        .where(eq(sickbaySettings.schoolId, auth.schoolId))
+        .limit(1);
+      const admissionsAllowed = sickbayCapabilities(settings?.mode ?? "REFERRAL_ONLY").admissions;
+      const guardErr = dispositionGuard(v, "ADMIT", { attendingIsMatron, admissionsAllowed });
       if (guardErr) throw new NamedError(guardErr);
 
-      // The bed is re-resolved server-side (never a client-supplied number): active, this school's,
-      // and in the pool the admission claims (R57).
+      // R167(d) — the bed is re-resolved server-side (never a client-supplied number: active, this
+      // school's, in the pool the admission claims — R57) AND `FOR UPDATE`: two matron tablets racing
+      // to claim the same free isolation bed serialise on the row lock, so the loser re-reads the taken
+      // state instead of both passing the free-bed check; the `uniq_sickbay_open_admission_bed` partial
+      // unique is the DB backstop behind it.
       const [bed] = await tx
         .select({ id: sickbayBed.id, isIsolation: sickbayBed.isIsolation, active: sickbayBed.active })
         .from(sickbayBed)
         .where(and(eq(sickbayBed.schoolId, auth.schoolId), eq(sickbayBed.id, d.bedId)))
+        .for("update")
         .limit(1);
       if (!bed || !bed.active) throw new NamedError("That bed is not available.");
       const isoErr = isolationGuard(bed.isIsolation, d.isIsolation);

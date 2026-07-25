@@ -18,6 +18,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool, isUniqueViolation } from "@/lib/db/rls";
+import type { Tx } from "@/lib/db";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -30,7 +31,10 @@ import {
   CANONICAL_SICKBAY_SLOTS,
   planBedReconcile,
   planScheduleReset,
+  refuseSecondAnchor,
+  sortSlots,
   validateRoundOrdering,
+  type SickbaySlot,
 } from "@/lib/sickbay/defaults";
 import { referralOnlyGuard } from "@/lib/sickbay/visits";
 
@@ -59,6 +63,36 @@ async function authorizeWrite(): Promise<
   }
   const actor = await resolveActor(school.id);
   return { ok: true, schoolId: school.id, actor };
+}
+
+/**
+ * R167(b) — read the school's slot set INSIDE the write tx, `FOR UPDATE`. `validateRoundOrdering` is a
+ * property of the SET, so validating a set read OUTSIDE the tx (`getScheduleSlots` at the top of the
+ * action) loses the concurrent-edit race: two admins each read the pre-change state, each validate a
+ * set that is legal in isolation, and both commit — landing a combined set that violates R16. The
+ * `FOR UPDATE` lock serialises the two edits (the second blocks until the first commits), so the second
+ * re-validates against the WINNER's state and its violating write is refused in-tx. Locking the whole
+ * school's slots (not just the rounds) is the cheap, correct grain — a school has a handful of slots.
+ */
+async function lockSlotsForUpdate(tx: Tx, schoolId: string): Promise<SickbaySlot[]> {
+  const rows = await tx
+    .select({
+      id: sickbayScheduleSlot.id,
+      kind: sickbayScheduleSlot.kind,
+      label: sickbayScheduleSlot.label,
+      description: sickbayScheduleSlot.description,
+      startsAt: sickbayScheduleSlot.startsAt,
+      endsAt: sickbayScheduleSlot.endsAt,
+      staffing: sickbayScheduleSlot.staffing,
+      daysOfWeek: sickbayScheduleSlot.daysOfWeek,
+      runsOnHolidays: sickbayScheduleSlot.runsOnHolidays,
+      isAnchor: sickbayScheduleSlot.isAnchor,
+      active: sickbayScheduleSlot.active,
+    })
+    .from(sickbayScheduleSlot)
+    .where(eq(sickbayScheduleSlot.schoolId, schoolId))
+    .for("update");
+  return sortSlots(rows);
 }
 
 /** Upsert the singleton settings row (the boarding_settings idiom — school_id is the conflict target). */
@@ -98,6 +132,14 @@ export async function setSickbayMode(input: unknown): Promise<Result> {
 
   const before = await getSickbayConfig(auth.schoolId);
   const existingSlots = await getScheduleSlots(auth.schoolId);
+  const willSeed = mode !== "REFERRAL_ONLY" && existingSlots.length === 0;
+  // R167(c) — the slot-creation site. The canonical seed carries exactly one anchor and only runs on a
+  // school with no slots, so this cannot fire today; it is the guard wired at the point of creation, so
+  // the first real add-slot action inherits a friendly refusal instead of the raw unique violation.
+  if (willSeed) {
+    const anchorErr = refuseSecondAnchor(existingSlots, CANONICAL_SICKBAY_SLOTS);
+    if (anchorErr) return { ok: false, error: anchorErr };
+  }
 
   // R56 — the R6 forward guard INCR-21 recorded but could not test until an admission table existed.
   // A switch to REFERRAL_ONLY asserts the school has no on-site beds; reject it while a patient is
@@ -113,7 +155,7 @@ export async function setSickbayMode(input: unknown): Promise<Result> {
     await withSchool(auth.schoolId, async (tx) => {
       await upsertSettings(tx, auth.schoolId, { mode, configuredAt: new Date() });
       // First A/B selection on a school that has never had a schedule → seed the canonical day.
-      if (mode !== "REFERRAL_ONLY" && existingSlots.length === 0) {
+      if (willSeed) {
         await tx
           .insert(sickbayScheduleSlot)
           .values(CANONICAL_SICKBAY_SLOTS.map((s) => ({ schoolId: auth.schoolId, ...s })));
@@ -126,7 +168,7 @@ export async function setSickbayMode(input: unknown): Promise<Result> {
         entityType: "sickbay_settings",
         entityId: auth.schoolId,
         before: { mode: before.mode, configured: before.configured },
-        after: { mode, seededSlots: mode !== "REFERRAL_ONLY" && existingSlots.length === 0 },
+        after: { mode, seededSlots: willSeed },
         reason: `Sickbay mode set to ${mode}`,
       });
     });
@@ -336,19 +378,21 @@ export async function updateScheduleSlot(input: unknown): Promise<Result> {
     return { ok: false, error: "Pick at least one day this slot runs." };
   }
 
-  const slots = await getScheduleSlots(auth.schoolId);
-  const before = slots.find((s) => s.id === d.id);
-  if (!before) return { ok: false, error: "That schedule slot no longer exists." };
-  // R16 is a property of the SET: validate the set AS IT WOULD BE after this edit, not the one row.
-  // Moving a NON-anchor round to 05:00 while the anchor sits at 06:30 breaks it just as surely as
-  // moving the anchor. Only the fields the invariant reads need to be projected forward.
-  const orderingError = validateRoundOrdering(
-    slots.map((s) => (s.id === d.id ? { ...s, label: d.label, startsAt: d.startsAt } : s)),
-  );
-  if (orderingError) return { ok: false, error: orderingError };
-
   try {
-    await withSchool(auth.schoolId, async (tx) => {
+    // R167(b) — read the slot set + validate the resulting order INSIDE the tx, on FOR-UPDATE-locked
+    // rows, so a concurrent editor cannot commit a set that races past a stale validation.
+    const res = await withSchool(auth.schoolId, async (tx): Promise<Result> => {
+      const slots = await lockSlotsForUpdate(tx, auth.schoolId);
+      const before = slots.find((s) => s.id === d.id);
+      if (!before) return { ok: false, error: "That schedule slot no longer exists." };
+      // R16 is a property of the SET: validate the set AS IT WOULD BE after this edit, not the one row.
+      // Moving a NON-anchor round to 05:00 while the anchor sits at 06:30 breaks it just as surely as
+      // moving the anchor. Only the fields the invariant reads need to be projected forward.
+      const orderingError = validateRoundOrdering(
+        slots.map((s) => (s.id === d.id ? { ...s, label: d.label, startsAt: d.startsAt } : s)),
+      );
+      if (orderingError) return { ok: false, error: orderingError };
+
       await tx
         .update(sickbayScheduleSlot)
         .set({
@@ -375,7 +419,9 @@ export async function updateScheduleSlot(input: unknown): Promise<Result> {
         after: d,
         reason: `Schedule slot updated · ${d.label}`,
       });
+      return { ok: true };
     });
+    if (!res.ok) return res;
     safeRevalidate(SETUP_PATH);
     return { ok: true };
   } catch {
@@ -394,25 +440,25 @@ export async function toggleScheduleSlot(input: unknown): Promise<Result> {
   if (!parsed.success) return { ok: false, error: "Invalid slot." };
   const { id, active } = parsed.data;
 
-  const slots = await getScheduleSlots(auth.schoolId);
-  const before = slots.find((s) => s.id === id);
-  if (!before) return { ok: false, error: "That schedule slot no longer exists." };
-  if (before.isAnchor && !active) {
-    return {
-      ok: false,
-      error: "The anchor round cannot be switched off — everything else flexes around it.",
-    };
-  }
-  // Switching a round back ON can break R16 too: park a 06:45 round off, move the anchor to 07:00,
-  // switch the round back on. The ordering rule ignores inactive rounds, so this path has to
-  // re-validate the whole set with the toggle applied.
-  const orderingError = validateRoundOrdering(
-    slots.map((s) => (s.id === id ? { ...s, active } : s)),
-  );
-  if (orderingError) return { ok: false, error: orderingError };
-
   try {
-    await withSchool(auth.schoolId, async (tx) => {
+    // R167(b) — the same in-tx, FOR-UPDATE read + re-validate. Switching a round back ON can break R16
+    // too (park a 06:45 round off, move the anchor to 07:00, switch the round back on), so this path
+    // re-validates the whole set with the toggle applied — against the locked, current rows.
+    const res = await withSchool(auth.schoolId, async (tx): Promise<Result> => {
+      const slots = await lockSlotsForUpdate(tx, auth.schoolId);
+      const before = slots.find((s) => s.id === id);
+      if (!before) return { ok: false, error: "That schedule slot no longer exists." };
+      if (before.isAnchor && !active) {
+        return {
+          ok: false,
+          error: "The anchor round cannot be switched off — everything else flexes around it.",
+        };
+      }
+      const orderingError = validateRoundOrdering(
+        slots.map((s) => (s.id === id ? { ...s, active } : s)),
+      );
+      if (orderingError) return { ok: false, error: orderingError };
+
       await tx
         .update(sickbayScheduleSlot)
         .set({ active, updatedAt: new Date() })
@@ -428,7 +474,9 @@ export async function toggleScheduleSlot(input: unknown): Promise<Result> {
         after: { active },
         reason: `Schedule slot ${active ? "activated" : "deactivated"} · ${before.label}`,
       });
+      return { ok: true };
     });
+    if (!res.ok) return res;
     safeRevalidate(SETUP_PATH);
     return { ok: true };
   } catch {

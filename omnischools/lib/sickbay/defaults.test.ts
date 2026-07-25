@@ -12,6 +12,7 @@ import {
   initials,
   planBedReconcile,
   planScheduleReset,
+  refuseSecondAnchor,
   roundSchedule,
   sickbayCapabilities,
   sortSlots,
@@ -514,5 +515,24 @@ describe("R100 · Reset to defaults RECONCILES — slot ids are STABLE (AC E6)",
     const plan = planScheduleReset(drifted);
     expect(plan.insert.some((s) => s.kind === "ON_CALL")).toBe(true); // the missing kind
     expect(plan.deleteIds).toContain("extra-clinic"); // the surplus clinic
+  });
+});
+
+describe("R167(c) · refuseSecondAnchor — one anchor per school, before the DB unique fires", () => {
+  it("a school with no anchor may take the canonical seed (exactly one anchor)", () => {
+    expect(refuseSecondAnchor([], CANONICAL_SICKBAY_SLOTS)).toBeNull();
+  });
+
+  it("🔴 a school that already has an anchor REFUSES an incoming anchor — friendly, not a raw pg error", () => {
+    const err = refuseSecondAnchor([{ isAnchor: true }], [{ isAnchor: true }]);
+    expect(err).toMatch(/only one medication round can be the anchor/);
+  });
+
+  it("adding a NON-anchor round to a school that already has its anchor is fine", () => {
+    expect(refuseSecondAnchor([{ isAnchor: true }], [{ isAnchor: false }])).toBeNull();
+  });
+
+  it("two anchors in a single incoming batch (with none existing) is still refused", () => {
+    expect(refuseSecondAnchor([], [{ isAnchor: true }, { isAnchor: true }])).not.toBeNull();
   });
 });
