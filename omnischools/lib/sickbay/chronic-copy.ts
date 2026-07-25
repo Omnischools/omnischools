@@ -106,7 +106,16 @@ export interface ChronicPlanEntryView {
   meds: ChronicMedView[];
 }
 
-/** The whole detail page for one student — patient header once, then a section per readable entry. */
+/**
+ * The whole detail page for one student — patient header once, then a section per readable entry, EACH
+ * projected to its own winning scope (R132.2 · mixed grants render each entry at its own projection
+ * inside one wrapper).
+ *
+ * 🔴 R132.2 — the wrapper is SCOPE-AWARE. `guardian`/`matronName`/`matronPhone` are non-null only when
+ * the student's MAX readable scope ≥ PARTIAL (a dorm-card, not a degraded floor); `roundColumns`/
+ * `anchorDescription` only when a FULL_PLAN projection is present. A DIRECTIVE-only / floor-only reader
+ * gets a minimal wrapper (identity only — no condition signal). Identity fields carry no condition.
+ */
 export interface ChronicPlanView {
   studentId: string;
   studentName: string;
@@ -124,7 +133,7 @@ export interface ChronicPlanView {
   roundColumns: RoundColumn[];
   /** The anchor slot's stored description — the round-timing note (R13). Null in Mode C. */
   anchorDescription: string | null;
-  entries: ChronicPlanEntryView[];
+  entries: ChronicEntryProjection[];
 }
 
 /** A condition chip for the visit-record header (R124) — condition family only, the readable set. */
@@ -132,6 +141,69 @@ export interface ChronicChip {
   condition: ChronicCondition;
   label: string;
 }
+
+// ============================================================================
+// INCR-23b — the three frozen per-scope PROJECTIONS (R132). MEDIUM-3 governs: RLS is row-level and
+// CANNOT mask columns, so the DB hands a grantee the WHOLE entry row — the reader's per-scope
+// projection is the ONLY control between a DIRECTIVE-scoped sports master and a child's psychiatric
+// label. Each scope is a DISTINCT view type with a DISTINCT, runtime-pinned key-set
+// (CHRONIC_ROW_KEYS.{entry,partial,directive}); a leaked clinical column fails the pin (S6) RED
+// instead of shipping.
+// ============================================================================
+
+/** The shipped grant-scope enum (db/schema/_enums.ts::sickbayGrantScopeEnum). Widest → narrowest. */
+export type ChronicScope = "FULL_PLAN" | "PARTIAL" | "DIRECTIVE";
+
+/**
+ * PARTIAL = EXACTLY the dorm card (§5.6), nothing else. The clinical columns are ABSENT FROM THE
+ * OBJECT (S2) — conditionDetail, baselineStatus, careGoals, emergencyProtocol, dischargeCriteria, all
+ * four external*, reviewedByName, coReviewerNote, version, status, onSiteTreatable, referralManaged,
+ * hmRestricted — not empty, not in the object at all. The meds array is DISCARDED (R120) and replaced
+ * by the derived `dormMedNote` string. Condition label + pill IN — the card names the condition on
+ * purpose (that is why the HM walks her to sickbay), bounded by R132.1 (VOID on a mental-health entry,
+ * degraded to the name-only floor).
+ */
+export interface ChronicDormCardView {
+  condition: ChronicCondition;
+  conditionLabel: string | null;
+  /** Derived: `"{anchor.startsAt} round at sickbay (must attend)"` | null. NEVER a drug name (R120). */
+  dormMedNote: string | null;
+  entryId: string;
+  firstAction: string | null;
+  redFlags: string | null;
+  triggers: string | null;
+}
+
+/**
+ * DIRECTIVE = one matron-authored sentence and NOTHING entry-derived (R109). No condition value,
+ * label, pill, colour or status — structurally incapable of leaking. `directiveNote` is read off the
+ * GRANT row, never a clinical column. The wrapper adds `studentId/studentName` only (R132.2).
+ */
+export interface ChronicDirectiveView {
+  directiveNote: string;
+  entryId: string;
+  scope: "DIRECTIVE";
+}
+
+/**
+ * R132.1 — the name-only FLOOR a live PARTIAL grant degrades to on an `hm_restricted` entry (the
+ * ASTHMA→MENTAL_HEALTH reclassification: the grant survives the FK CASCADE, the dorm-card payload must
+ * NOT). No condition, no label, no pill, no dorm card. A degradation, NOT a fourth scope.
+ */
+export interface ChronicFloorView {
+  entryId: string;
+  floorNote: string;
+}
+
+/**
+ * One entry, projected to the reader's winning scope (R133 — exactly ONE projection per reader×entry).
+ * The `kind` discriminant sits OUTSIDE the pinned object so it never widens a frozen key-set.
+ */
+export type ChronicEntryProjection =
+  | { kind: "FULL_PLAN"; entry: ChronicPlanEntryView }
+  | { kind: "PARTIAL"; card: ChronicDormCardView }
+  | { kind: "DIRECTIVE"; directive: ChronicDirectiveView }
+  | { kind: "FLOOR"; floor: ChronicFloorView };
 
 /** The runtime KEY-SET PINS (R70 generalised · MEDIUM-3). Asserted against `Object.keys(row).sort()`. */
 export const CHRONIC_ROW_KEYS = {
@@ -178,7 +250,116 @@ export const CHRONIC_ROW_KEYS = {
     "triggers",
     "version",
   ],
+  // PARTIAL (R132) — the dorm card, sorted. Clinical columns are ABSENT, not empty; no `meds` (the
+  // derived `dormMedNote` string stands in). Adding any clinical key here is a disclosure the S6 pin
+  // must go RED on.
+  partial: [
+    "condition",
+    "conditionLabel",
+    "dormMedNote",
+    "entryId",
+    "firstAction",
+    "redFlags",
+    "triggers",
+  ],
+  // DIRECTIVE (R132) — one grant-row sentence + its entry id + scope, sorted. NOTHING entry-derived,
+  // no condition/label/pill/colour anywhere.
+  directive: ["directiveNote", "entryId", "scope"],
 } as const;
+
+// ============================================================================
+// INCR-23b — the per-scope projection machinery (R132/R133). PURE and DB-free, so the reader delegates
+// every derivation here and the security-critical resolution is unit-tested without the driver.
+// ============================================================================
+
+/** R132.1 — the name-only floor a PARTIAL grant degrades to on an `hm_restricted` entry. */
+export const FLOOR_NOTE = "This student has a care plan on file. Contact the Matron.";
+
+/**
+ * 🔴 THE S6 RUNTIME PIN — the tripwire MEDIUM-3 rests on. A TS interface erases at runtime; this does
+ * not, so it asserts a projected object's OWN KEYS equal the scope's FROZEN allow-list. Adding a
+ * clinical column to a PARTIAL projection fails HERE (RED) instead of shipping a psychiatric label to a
+ * sports master. An ALLOW-list, not a deny-list: it catches a key nobody thought to ban (S6).
+ */
+export function pinRowKeys(row: object, expectedSorted: readonly string[]): void {
+  const actual = Object.keys(row).sort();
+  const same =
+    actual.length === expectedSorted.length && actual.every((k, i) => k === expectedSorted[i]);
+  if (!same) {
+    throw new Error(
+      `chronic projection key-set mismatch — got [${actual.join(", ")}], expected [${expectedSorted.join(", ")}]`,
+    );
+  }
+}
+
+const SCOPE_RANK: Record<ChronicScope, number> = { FULL_PLAN: 3, PARTIAL: 2, DIRECTIVE: 1 };
+
+/**
+ * R133 — WIDEST-WINS. A default clinical reader (MATRON any entry; HEADMASTER any non-MH entry —
+ * MENTAL_HEALTH is already excluded from his readable set at the DB) outranks EVERY grant → FULL_PLAN.
+ * Otherwise the widest LIVE grant scope on this entry wins (FULL_PLAN > PARTIAL > DIRECTIVE) and the
+ * winner's key-set is projected WHOLE, never a union (a merged key-set is a fourth unpinned scope and
+ * defeats S6). `null` ⇒ no access at all.
+ */
+export function resolveWinningScope(
+  liveGrantScopes: readonly ChronicScope[],
+  isDefaultClinicalReader: boolean,
+): ChronicScope | null {
+  if (isDefaultClinicalReader) return "FULL_PLAN";
+  let winner: ChronicScope | null = null;
+  for (const s of liveGrantScopes) {
+    if (winner === null || SCOPE_RANK[s] > SCOPE_RANK[winner]) winner = s;
+  }
+  return winner;
+}
+
+/**
+ * The dorm card's `Daily med` row (§5.6) — DERIVED, never a drug name (R120): the HM needs the
+ * ATTENDANCE fact, not the prescription. `"{anchor.startsAt} round at sickbay (must attend)"` when the
+ * plan has ≥1 round-scheduled medication, else null (the row is omitted).
+ */
+export function dormMedNote(
+  anchorStartsAt: string | null,
+  hasRoundScheduledMed: boolean,
+): string | null {
+  if (!hasRoundScheduledMed || !anchorStartsAt) return null;
+  return `${anchorStartsAt} round at sickbay (must attend)`;
+}
+
+/** Build the PARTIAL projection AND pin it (S6). The reader passes ONLY the seven dorm-card fields. */
+export function buildDormCardView(f: {
+  entryId: string;
+  condition: ChronicCondition;
+  conditionLabel: string | null;
+  triggers: string | null;
+  redFlags: string | null;
+  firstAction: string | null;
+  dormMedNote: string | null;
+}): ChronicDormCardView {
+  const view: ChronicDormCardView = {
+    condition: f.condition,
+    conditionLabel: f.conditionLabel,
+    dormMedNote: f.dormMedNote,
+    entryId: f.entryId,
+    firstAction: f.firstAction,
+    redFlags: f.redFlags,
+    triggers: f.triggers,
+  };
+  pinRowKeys(view, CHRONIC_ROW_KEYS.partial);
+  return view;
+}
+
+/** Build the DIRECTIVE projection AND pin it (S6). `directiveNote` is the GRANT row's, never the entry's. */
+export function buildDirectiveView(entryId: string, directiveNote: string): ChronicDirectiveView {
+  const view: ChronicDirectiveView = { directiveNote, entryId, scope: "DIRECTIVE" };
+  pinRowKeys(view, CHRONIC_ROW_KEYS.directive);
+  return view;
+}
+
+/** The name-only floor (R132.1) — the degraded PARTIAL-on-mental-health payload. */
+export function buildFloorView(entryId: string): ChronicFloorView {
+  return { entryId, floorNote: FLOOR_NOTE };
+}
 
 // ============================================================================
 // Condition pill — the ENUM drives the COLOUR, the stored label drives the WORDS (§3.4).
@@ -474,3 +655,119 @@ export const PASTORAL_BODY =
 /** R124 — the neutral marker the visit record / today queue may render for a reader-visible plan. */
 export const CARE_PLAN_MARKER = "Care plan on file";
 export const VIEW_CARE_PLAN = "View care plan →";
+
+// ============================================================================
+// INCR-23b · §04 — access grants & the audit trail (R134). Scope pills/labels + the PURE audit
+// formatter, plus the AUTHORED grant/revoke copy (R135/E19/E20). Solid tokens only (no slash-opacity).
+// ============================================================================
+
+export const H1_GRANTS_LEAD = "Who can see ";
+export const H1_GRANTS_EM = "what.";
+
+/**
+ * §04 lede (R134) — RE-AUTHORED. `2 default-access roles (Matron, Headmaster)`, NOT the surface's
+ * fabricated `4 default-access staff (… Deputy Welfare, School Nurse)`. Counts over the reader's
+ * visible set (a HEADMASTER never counts a MENTAL_HEALTH entry's grants).
+ */
+export function grantsLede(grantCount: number, studentCount: number): string {
+  const g = grantCount === 1 ? "grant" : "grants";
+  const s = studentCount === 1 ? "student" : "students";
+  return (
+    `**${grantCount} active ${g}** across **${studentCount} ${s}** · ` +
+    `**2 default-access roles** (Matron, Headmaster) · other staff are granted explicitly · every read logged`
+  );
+}
+
+export const SCOPE_LABEL: Record<ChronicScope, string> = {
+  FULL_PLAN: "Full plan",
+  PARTIAL: "Partial (dorm card)",
+  DIRECTIVE: "Directive",
+};
+
+/** DIRECTIVE is neutral — its own label must not read as a mental-health tell (M7). */
+export const SCOPE_PILL: Record<ChronicScope, string> = {
+  FULL_PLAN: "bg-gold text-navy border-gold",
+  PARTIAL: "bg-warn-bg text-warn border-warn",
+  DIRECTIVE: "bg-bg text-navy-3 border-border-2",
+};
+
+/** A revoked grant stays in the table (append-only, R110) with a neutral pill + a disabled action. */
+export const REVOKED_PILL = "bg-bg text-navy-3 border-border";
+export const REVOKED_LABEL = "Revoked";
+export const NO_EXPIRY = "No expiry";
+export const EMPTY_GRANTS = "No access grants issued yet.";
+export const EMPTY_AUDIT = "No reads or grants recorded yet.";
+
+export type ChronicAuditKind =
+  | "opened"
+  | "viewed"
+  | "granted"
+  | "revoked"
+  | "exported"
+  | "updated"
+  | "created";
+
+/** One audit-trail event — a `sickbay_chronic_read` row OR an `audit_log` row, NORMALISED for render. */
+export interface ChronicAuditEvent {
+  kind: ChronicAuditKind;
+  at: Date;
+  actorName: string;
+  studentName: string;
+  granteeName: string | null;
+  scope: ChronicScope | null;
+}
+
+/**
+ * 🔴 R122/C14 — the accountability instrument must not leak the thing it protects. This formatter is
+ * PURE and takes (actor · verb · student · scope) and NEVER a condition — a condition string is
+ * structurally unreachable. The sentence is DERIVED here, NEVER stored (no `audit_sentence` column
+ * exists). `**bold**` markup renders via the page's `<Bold>` splitter.
+ */
+export function formatChronicAuditEvent(e: ChronicAuditEvent): string {
+  const student = `**${e.studentName}**`;
+  const grantee = e.granteeName ? `**${e.granteeName}**` : "a member of staff";
+  switch (e.kind) {
+    case "opened":
+    case "created":
+      return `${e.actorName} opened ${student} care plan`;
+    case "viewed":
+      return `${e.actorName} viewed ${student} · ${e.scope ? SCOPE_LABEL[e.scope] : "care plan"}`;
+    case "granted":
+      return `${e.actorName} granted ${grantee} ${e.scope ? SCOPE_LABEL[e.scope] : "access"} to ${student}`;
+    case "revoked":
+      return `${e.actorName} revoked ${grantee}'s access to ${student}`;
+    case "exported":
+      return `${e.actorName} printed dorm-side card · ${student}`;
+    case "updated":
+      return `${e.actorName} updated ${student} care plan`;
+  }
+}
+
+/** The audit-trail tag pill per event kind (§7.5) — solid tokens, never a condition. */
+export const AUDIT_TAG: Record<ChronicAuditKind, { label: string; cls: string }> = {
+  opened: { label: "View", cls: "bg-bg text-navy-3 border-border-2" },
+  viewed: { label: "View", cls: "bg-bg text-navy-3 border-border-2" },
+  updated: { label: "Update", cls: "bg-gold-bg text-gold border-gold-soft" },
+  created: { label: "Update", cls: "bg-gold-bg text-gold border-gold-soft" },
+  granted: { label: "Grant", cls: "bg-green-bg text-green border-green" },
+  revoked: { label: "Revoke", cls: "bg-terra-bg text-terra border-terra" },
+  exported: { label: "Export", cls: "bg-bg text-navy-3 border-border-2" },
+};
+
+/** §04 grant/revoke — AUTHORED refusals + confirmations (R135/E19/E20). */
+export const GRANT_NOT_STAFF_REFUSAL =
+  "Access can only be granted to a member of staff at this school. A student, a parent or an outside " +
+  "contact receives the printed dorm-side card instead.";
+export const GRANT_PARTIAL_ON_MH_REFUSAL =
+  "A mental-health plan has no dorm-side card. Grant full-plan access to a clinician or a directive " +
+  "note — never a partial (dorm-card) grant.";
+export const GRANT_DIRECTIVE_NEEDS_NOTE =
+  "A directive grant must carry the one sentence the grantee is entitled to see.";
+export const GRANT_MH_CONSEQUENCE =
+  "This is a mental-health plan. Only the Matron sees it by default; anyone you grant will read it in " +
+  "full. Grant deliberately.";
+export const GRANT_ONLY_MATRON = "Only the Matron can grant or revoke access to a care plan.";
+
+export function grantRevokeConfirm(name: string, studentName: string): string {
+  return `Revoke ${name}'s access to ${studentName}'s care plan? The grant stays in the audit trail.`;
+}
