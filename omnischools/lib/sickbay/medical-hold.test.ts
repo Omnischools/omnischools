@@ -88,3 +88,55 @@ describe("R167(e) · the half-open ranges return the SAME rows as the ::date cas
     }
   });
 });
+
+// R193 — the INCR-25b open-referral arm. Same half-open shape as the admission arm; voided excluded.
+describe("🔴 R193 · the open-referral arm of medicalHoldStudentIds", () => {
+  const src = () => readCode(SRC);
+
+  it("unions a third arm and reads sickbay_referral", () => {
+    const s = src();
+    expect(s).toMatch(/union\(admitted, inClinic, referred\)/);
+    expect(s).toContain("sickbayReferral");
+  });
+
+  it("the referral arm is the SAME sargable half-open shape (bare columns, cast on the param)", () => {
+    const s = src();
+    expect(s, "departed_at compared BARE").not.toMatch(/departedAt\}::date/);
+    expect(s, "returned_at compared BARE").not.toMatch(/returnedAt\}::date/);
+    expect(s).toMatch(/departedAt\}\s*<\s*\$\{date\}::date \+ interval '1 day'/);
+    expect(s).toMatch(/returnedAt\} IS NULL OR .*returnedAt\} >= \$\{date\}::date/);
+  });
+
+  it("voided referrals are excluded from the hold", () => {
+    expect(src()).toMatch(/isNull\(sickbayReferral\.voidedAt\)/);
+  });
+
+  it("🔴 the one-way edge holds — medical-hold imports NOTHING from lib/attendance", () => {
+    // Re-pinned here beside the extension it protects (visit-copy.test.ts owns the canonical guard):
+    // the day this reaches back into lib/attendance the import cycle closes.
+    for (const m of src().matchAll(/from\s+["']([^"']+)["']/g)) {
+      expect(/(^|\/)attendance(\/|$)/.test(m[1]), `imports ${m[1]}`).toBe(false);
+    }
+  });
+});
+
+// R192 — the boarding in-House arm reads referrals only and subtracts referred-out at asOf.
+describe("🔴 R192 · referredOutStudentIds — off-campus at asOf, referral table only", () => {
+  const src = () => readCode(SRC);
+
+  it("reads sickbay_referral and NOT sickbay_admission in this function", () => {
+    const s = src();
+    const fn = s.slice(s.indexOf("export async function referredOutStudentIds"));
+    expect(fn).toContain("sickbayReferral");
+    // R192 asymmetry: the boarding headcount subtracts ONLY referred-out, never an on-site admission.
+    expect(fn).not.toContain("sickbayAdmission");
+  });
+
+  it("excludes voided and already-returned referrals at asOf", () => {
+    const s = src();
+    const fn = s.slice(s.indexOf("export async function referredOutStudentIds"));
+    expect(fn).toMatch(/isNull\(sickbayReferral\.voidedAt\)/);
+    expect(fn).toMatch(/departedAt\} <= \$\{asOf\}/);
+    expect(fn).toMatch(/returnedAt\} IS NULL OR .*returnedAt\} > \$\{asOf\}/);
+  });
+});

@@ -47,6 +47,7 @@ import {
   visitBreakdown,
 } from "@/lib/sickbay/board-copy";
 import { splitBold } from "@/lib/sickbay/defaults";
+import { getActiveReferrals } from "@/lib/sickbay/referral-reads";
 import { formatElapsed, formatWait, waitMs } from "@/lib/sickbay/visits";
 import { painLevel, vitalSeverity } from "@/lib/sickbay/vitals";
 import { ClinicalRestricted } from "@/components/sickbay/clinical-restricted";
@@ -95,6 +96,12 @@ export default async function SickbayTodayPage() {
   const now = new Date();
   const board = await getSickbayBoard(school.id, { userId, roles }, now);
   if (!board) return <ClinicalRestricted label="Today" />;
+
+  // §T4 — active referrals out. INCR-25b reinstates the live-strip tile the visit map omitted at 22c,
+  // and reads the SAME `sickbay_referral` rows as §R1 (the today surface's D. Sarpong cast is demo
+  // drift and loses). We are already inside the clinical gate (board !== null), so this is safe.
+  const referrals = await getActiveReferrals(school.id, now);
+  const referralAlert = referrals.rows.some((r) => r.status === "INPATIENT");
 
   const canWrite = hasAnyRole(roles, SICKBAY_CLINICAL_WRITE_ROLES);
   const { counts } = board;
@@ -186,9 +193,10 @@ export default async function SickbayTodayPage() {
         </div>
       )}
 
-      {/* ═══ live strip — 3 tiles (A/B), 2 in Mode C where `Admitted now` is absent from the DOM ═══ */}
+      {/* ═══ live strip — INCR-25b reinstates the `Active referrals` tile (§T4), so 4 tiles (A/B) or
+          3 in Mode C where `Admitted now` is absent from the DOM ═══ */}
       <div
-        className={`mb-6 grid gap-[14px] ${board.beds ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+        className={`mb-6 grid gap-[14px] ${board.beds ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}
       >
         {board.beds && (
           <Tile
@@ -226,6 +234,15 @@ export default async function SickbayTodayPage() {
           subNum={null}
           meta={todayMeta}
           active={false}
+        />
+        {/* §T4 — active referrals out. First-class in Mode C (few blocks render there); the tile links
+            through the block below to the full referral log. */}
+        <Tile
+          label="Active referrals"
+          value={String(referrals.stats.activeCount)}
+          subNum={null}
+          meta={referralAlert ? `${referrals.stats.activeCount} out · inpatient` : referrals.stats.activeCount > 0 ? "out right now" : null}
+          active={referrals.stats.activeCount > 0}
         />
       </div>
 
@@ -377,6 +394,64 @@ export default async function SickbayTodayPage() {
           </div>
         )}
       </div>
+
+      {/* ═══ §T4 · Active referrals out — reads the same rows as the referral log (§R1) ═══ */}
+      <section className="mt-8 overflow-hidden rounded-[14px] border border-border bg-surface">
+        <div className="flex items-baseline justify-between gap-[14px] border-b border-border bg-[linear-gradient(180deg,var(--bg)_0%,var(--surface)_100%)] p-[16px_22px]">
+          <h3 className="font-display text-[18px] font-semibold tracking-[-0.01em] text-navy">
+            Active referrals <em className="font-normal italic text-gold">out</em>
+          </h3>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/senior/sickbay/referrals"
+              className="rounded-[5px] border border-border-2 bg-surface px-[12px] py-[6px] text-[11px] font-semibold text-navy no-underline"
+            >
+              Open full referral log
+            </Link>
+            {canWrite && (
+              <Link
+                href="/senior/sickbay/referrals/new"
+                className="rounded-[5px] border border-navy bg-navy px-[12px] py-[6px] text-[11px] font-bold text-bg no-underline"
+              >
+                Log new referral
+              </Link>
+            )}
+          </div>
+        </div>
+        {referrals.rows.length === 0 ? (
+          <p className="p-[18px_22px] text-[12px] italic text-navy-3">No students out right now.</p>
+        ) : (
+          referrals.rows.map((r) => (
+            <a
+              key={r.id}
+              href={`/senior/sickbay/referrals/${r.id}`}
+              className="grid grid-cols-[1fr_auto] items-center gap-[14px] border-b border-border p-[12px_22px] no-underline last:border-b-0 hover:bg-bg"
+            >
+              <div>
+                <div className="text-[13px] font-semibold text-navy">{r.shortName}</div>
+                <div className="text-[11px] text-navy-3">
+                  {r.houseName ? `${r.houseName} House · ` : ""}
+                  {r.hospitalName}
+                </div>
+              </div>
+              <div className="text-right">
+                <span
+                  className={`inline-block rounded-full px-[9px] py-[3px] text-[9px] font-bold uppercase tracking-[0.06em] ${
+                    r.status === "INPATIENT"
+                      ? "bg-terra-bg text-terra"
+                      : r.status === "RETURNING"
+                        ? "bg-warn-bg text-warn"
+                        : "bg-bg text-navy-3"
+                  }`}
+                >
+                  {r.status.toLowerCase()}
+                </span>
+                <div className="mt-0.5 font-mono text-[10px] text-navy-3">{r.dayLabel}</div>
+              </div>
+            </a>
+          ))
+        )}
+      </section>
 
       {/* ═══ §03 · Recent visits · 24h — a SECTION of this route, not a second one ═══ */}
       <section className="mt-8 overflow-hidden rounded-[14px] border border-border bg-surface">

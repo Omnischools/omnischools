@@ -370,15 +370,13 @@ export const asOf = (now: Date): string => `as of ${hhmm(now)} GMT`;
  * gate decides who logs in, not who is standing behind the matron at a bench-side screen.
  */
 export const OMITTED_AT_22C: readonly { text: string; why: string }[] = [
-  { text: "Active referrals", why: "no referral artefact → INCR-25 (Z1)" },
+  // NOTE (INCR-25b): `Active referrals` / `active referral` were omitted at 22c "→ INCR-25". INCR-25b
+  // now BUILDS the today §04 active-referrals block + the live-strip tile, so those two entries are
+  // retired from the omit register (exactly the lifecycle their `why` predicted). Cluster/URTI stay.
   { text: "Cluster watch", why: "no surveillance table → INCR-27 (Z2)" },
   {
     text: "URTI",
     why: "a condition name on the landing page; the tile itself is INCR-27",
-  },
-  {
-    text: "active referral",
-    why: "the lede clause advertises an absent affordance (Z3)",
   },
   {
     text: "Housemaster awareness",
