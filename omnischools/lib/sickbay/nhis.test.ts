@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
-import { formatNhisHolderLine, nhisCardStatus, NHIS_EXPIRING_DAYS } from "./nhis";
+import { formatNhisHolderLine, maskNhisCard, nhisCardStatus, NHIS_EXPIRING_DAYS } from "./nhis";
 
 // A fixed clock so the boundary maths is deterministic. `asOf` is 2026-05-14 (the demo referral date).
 const ASOF = new Date("2026-05-14T09:30:00Z");
@@ -11,6 +11,20 @@ const plusDays = (n: number): string => {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
+
+// 🔴 Sarah/INCR-25a — the audit feed is ADMIN-readable; the raw NHIS number must never reach it. This
+// reds if the mask ever returns the full number (a refactor that logs the card verbatim).
+describe("maskNhisCard · the audit trail carries a last-4 fingerprint, never the full number", () => {
+  it("keeps only the last 4 characters, and never the full number", () => {
+    expect(maskNhisCard("NHIS-9842-1276-5503")).toBe("…5503");
+    expect(maskNhisCard("8005-4287-6611-09")).toBe("…1-09");
+    expect(maskNhisCard(null)).toBe(null);
+  });
+  it("fully masks a number too short to hide 4 (never a real NHIS number)", () => {
+    expect(maskNhisCard("77")).toBe("…");
+    expect(maskNhisCard("1234")).toBe("…"); // exactly 4 → reveal nothing
+  });
+});
 
 // 🔴 R183 — status is DERIVED from valid_to, never stored. This pins the two money/eligibility-adjacent
 // boundaries: the 30-day "Expiring" edge and the expiry edge. Move either and the test reds.

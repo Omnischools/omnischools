@@ -23,6 +23,7 @@ import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasAnyRole, SICKBAY_CLINICAL_WRITE_ROLES } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
+import { maskNhisCard } from "@/lib/sickbay/nhis";
 import { students, studentGuardians, studentNhisCard } from "@/db/schema";
 
 type Result = { ok: boolean; error?: string; id?: string };
@@ -139,10 +140,12 @@ export async function saveNhisCard(input: unknown): Promise<Result> {
         actionType: before ? "updated" : "created",
         entityType: "student_nhis_card",
         entityId: cardId,
+        // 🔴 card_number is MASKED in the audit snapshot (last 4) — the audit feed is ADMIN-readable
+        // and would otherwise side-channel the full NHIS number past the clinical /nhis gate (Sarah).
         before: before
-          ? { cardNumber: before.cardNumber, holderKind: before.holderKind, validTo: before.validTo }
+          ? { cardNumber: maskNhisCard(before.cardNumber), holderKind: before.holderKind, validTo: before.validTo }
           : undefined,
-        after: { cardNumber: d.cardNumber, holderKind: d.holderKind, validTo: d.validTo || null },
+        after: { cardNumber: maskNhisCard(d.cardNumber), holderKind: d.holderKind, validTo: d.validTo || null },
         reason: `NHIS card ${before ? "updated" : "recorded"}`,
       });
       return { ok: true, id: cardId };

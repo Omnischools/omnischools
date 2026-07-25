@@ -63,6 +63,18 @@ export function formatNhisHolderLine(
   return `${card.cardNumber} · ${holder}`;
 }
 
+/**
+ * 🔴 Audit masking (Sarah, INCR-25a) — the raw `card_number` must NOT reach the audit activity feed.
+ * `/settings/audit` is readable by every staff role, ADMIN included, and renders a field-level
+ * before→after diff — a side-channel around the clinical `/nhis` gate that denies ADMIN the card. The
+ * audit still records THAT the card changed and which one (last 4), never the full NHIS number. A
+ * number too short to keep 4 hidden (never a real NHIS number) is fully masked rather than revealed.
+ */
+export function maskNhisCard(cardNumber: string | null): string | null {
+  if (!cardNumber) return null;
+  return cardNumber.length <= 4 ? "…" : `…${cardNumber.slice(-4)}`;
+}
+
 /** The one client-safe card view — pre-shaped strings/scalars + the derived status, never a DB row. */
 export interface NhisCardView {
   id: string;
