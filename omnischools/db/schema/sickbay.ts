@@ -1118,6 +1118,11 @@ export const sickbayMedAdmin = pgTable(
     route: text("route"), // "oral", "IV", "inhaled" — free text
     isControlled: boolean("is_controlled").notNull().default(false), // PINNED at administration (R144)
     dispensedQty: numeric("dispensed_qty"), // the controlled deduction (R153); CHECK-required for controlled GIVEN
+    // R168 — WHICH stock item this dose drew from. Nullable: a CHRONIC "patient's own surrendered
+    // bottle" dose (R163) draws no school stock. A controlled dose MUST name it (the CHECK below, the
+    // twin of med_admin_controlled_needs_qty). Composite (school_id, stock_item_id) FK below — RESTRICT.
+    // getControlledRegister's MAR arm now sums by this id, not the mutable drug_name (24b app work).
+    stockItemId: uuid("stock_item_id"), // composite (school_id, stock_item_id) FK below — RESTRICT
     // ---- the event ----
     status: sickbayMedStatusEnum("status").notNull(),
     administeredAt: timestamp("administered_at", { withTimezone: true }).notNull(),
@@ -1143,6 +1148,15 @@ export const sickbayMedAdmin = pgTable(
     controlledNeedsQty: check(
       "med_admin_controlled_needs_qty",
       sql`${t.isControlled} = false OR ${t.dispensedQty} IS NOT NULL`,
+    ),
+    // R168 — the TWIN of controlledNeedsQty on the SAME is_controlled key: a controlled dose must name
+    // the stock item it drew from, so getControlledRegister sums by stock_item_id (not the mutable
+    // drug_name). Like its twin it bites on ALL controlled rows, not just GIVEN — a controlled
+    // REFUSED/HELD/OMITTED carries dispensed_qty=0 + a stock_item_id, and the balance sums only GIVEN so
+    // the 0 never moves it. Nullable stock_item_id is legal only when NOT controlled (R163 patient-own).
+    controlledNeedsStockItem: check(
+      "med_admin_controlled_needs_stock_item",
+      sql`NOT ${t.isControlled} OR ${t.stockItemId} IS NOT NULL`,
     ),
     // R154 — a controlled GIVEN administration reaches the table ONLY with a witness OR a recorded
     // override, never silently. (Non-GIVEN controlled and all non-controlled doses are exempt.)
@@ -1198,6 +1212,13 @@ export const sickbayMedAdmin = pgTable(
     consultFk: foreignKey({
       columns: [t.schoolId, t.consultId],
       foreignColumns: [sickbayDoctorConsult.schoolId, sickbayDoctorConsult.id],
+    }).onDelete("restrict"),
+    // R168 — composite intra-tenant FK → sickbay_stock_item_tenant_uk, RESTRICT (mirrors the movement
+    // ledger's stockItemFk and the MAR's other source pointers): a stocked item with administration
+    // history must not vanish, and a cross-tenant stock reference is structurally impossible.
+    stockItemFk: foreignKey({
+      columns: [t.schoolId, t.stockItemId],
+      foreignColumns: [sickbayStockItem.schoolId, sickbayStockItem.id],
     }).onDelete("restrict"),
     // The append-only amendment chain. RESTRICT: a corrected row must not be deletable out from under
     // its correction. Named explicitly — drizzle's default self-FK name exceeds 63 chars.
