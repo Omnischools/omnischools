@@ -623,3 +623,42 @@ export const sickbayStockMovementTypeEnum = pgEnum("sickbay_stock_movement_type"
   "WASTAGE",
   "ADJUSTMENT",
 ]);
+
+// Sickbay REFERRALS (SHS module 4.4) — INCR-25 (Kofi rulings R181–R204). Migration 0062.
+// FIVE enums. Deliberately NOT enums (R190): `reason_referred_out`, `pre_referral_care`, `handoff_labs`,
+// `last_meal`, `menses_note`, `travel_note`, `transport_mode`, `hospital_ward`, `hospital_bed`,
+// `attending_clinician_name`, every referral-update field and every cost-line field are FREE TEXT.
+// R43's `diagnos` ban holds unbroken — the "Diagnosis" line renders the visit's `working_impression`
+// (D1 verbatim), and no diagnosis column/enum/type/label ships in this migration (grep-testable).
+
+// The referral's clinical-LOCATION lifecycle (R188) — WHERE the referred-out student physically is.
+// Cost status is INDEPENDENT and DERIVED (never one of these). Legal transitions are app-enforced in
+// lib/sickbay/ (no trigger); "day N" and "outpatient · same-day" are DERIVED, never stored; a void is
+// a retract while `status <> RETURNED AND voided_at IS NULL` (R188) — never a status value.
+export const sickbayReferralStatusEnum = pgEnum("sickbay_referral_status", [
+  "REFERRED",
+  "INPATIENT",
+  "RETURNING",
+  "RETURNED",
+]);
+// Who the NHIS card names as beneficiary (R183/D3). The card can be the MOTHER's, so the holder is TEXT
+// (`holder_name`) plus this kind — the source of truth — never an identity pointer; `student_guardian_id`
+// is a nullable best-effort SET NULL link only. STUDENT = the student's own card; GUARDIAN = a household
+// card. A holder_name that differs from the student is NORMAL under GUARDIAN, not an error.
+export const nhisHolderKindEnum = pgEnum("nhis_holder_kind", ["STUDENT", "GUARDIAN"]);
+// sickbay_notification (authored 0062, WRITTEN at INCR-26 — R196/R197; INCR-25 inserts ZERO rows). The
+// three discriminators of the tier-1/2/3 parent → HM → headmaster/district chain. Deliberately NOT
+// enums: `trigger_label`, `body` and `private_note` are FREE TEXT.
+export const sickbayNotifyChannelEnum = pgEnum("sickbay_notify_channel", [
+  "SMS",
+  "CALL",
+  "IN_APP",
+  "SYSTEM",
+]);
+export const sickbayNotifyDirectionEnum = pgEnum("sickbay_notify_direction", ["OUTBOUND", "INBOUND"]);
+export const sickbayNotifyRecipientEnum = pgEnum("sickbay_notify_recipient", [
+  "PARENT",
+  "HOUSEMASTER",
+  "HEADMASTER",
+  "DISTRICT_HEALTH",
+]);
