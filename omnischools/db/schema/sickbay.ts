@@ -17,7 +17,9 @@ import {
 import { sql } from "drizzle-orm";
 import { schools } from "./tenancy";
 import { users } from "./identity";
-import { students, houses } from "./students";
+import { students, houses, studentGuardians } from "./students";
+import { invoiceLineItems } from "./fees";
+import { notificationLog } from "./comms";
 import {
   sickbayModeEnum,
   sickbaySlotKindEnum,
@@ -29,6 +31,11 @@ import {
   sickbayMedSourceEnum,
   sickbayMedStatusEnum,
   sickbayStockMovementTypeEnum,
+  sickbayReferralStatusEnum,
+  nhisHolderKindEnum,
+  sickbayNotifyChannelEnum,
+  sickbayNotifyDirectionEnum,
+  sickbayNotifyRecipientEnum,
 } from "./_enums";
 
 /**
@@ -1279,6 +1286,388 @@ export const sickbayControlledMovement = pgTable(
     stockItemFk: foreignKey({
       columns: [t.schoolId, t.stockItemId],
       foreignColumns: [sickbayStockItem.schoolId, sickbayStockItem.id],
+    }).onDelete("restrict"),
+  }),
+);
+
+/* ============================================================================
+ * Sickbay REFERRALS (SHS module 4.4 / INCR-25, migration 0062) — LANE B: the referred-out record. When
+ * a sickbay sends a student to a hospital, THIS is the row that carries the frozen ER handoff, the
+ * external ward updates, the NHIS coverage snapshot, the return, and the diagnosis-free cost lines the
+ * Bursar reconciles. It branches off the INCR-22 visit trunk (a referral is a REFER-disposition visit
+ * EVENT), never off the chronic register.
+ *
+ * SIX tenant tables, FIVE enums, ZERO altered columns. All six get ENABLE + FORCE RLS +
+ * tenant_isolation + the catalog-driven parent_deny (owner decision D8) — and ⚠ NO staff_grant_scope
+ * (R194): the referral is the ACUTE clinical graph, gated app-layer like the visit/MAR by
+ * SICKBAY_CLINICAL_READ_ROLES, NOT via the chronic register's per-entry grant boundary (db:policies on
+ * dev; db/sql/prod-paste-0062-sickbay-referral.sql by hand on prod).
+ *
+ * ⚠ DDL ORDERING (the 0033 hazard INSIDE one migration, as 0057/0058/0060). THREE composite-FK targets
+ * are carried INLINE in CREATE TABLE so each exists before every ALTER TABLE … ADD FOREIGN KEY that
+ * consumes it: `sickbay_hospital_tenant_uk` (referral.hospital_id), `sickbay_referral_tenant_uk`
+ * (referral_update / cost_line / notification.referral_id) and — the SHARPEST — `sickbay_notification_tenant_uk`,
+ * the target of the notification's OWN self-FK (retry_of_id). drizzle-kit runs the batch in ONE
+ * transaction and SWALLOWS a UK-after-FK error into a silent rollback, so the generated 0062 SQL was
+ * read by eye and replayed from EMPTY into a throwaway database, verified by CATALOG inspection
+ * (pg_constraint / pg_policy) rather than exit code.
+ *
+ * NHIS (D3 / R182–R184): FOUR shapes, THREE homes, ZERO school-wide roll-up (the `1,108/1,200 · 92.3%`
+ * card-health tile is the forbidden STPSHS matrix — never built). Card IDENTITY lives on
+ * student_nhis_card (below); per-line COVERAGE on sickbay_referral_cost_line; `accepts_nhis` on
+ * sickbay_hospital; and the referral SNAPSHOTS `nhis_card_number` + `nhis_valid` at creation so a later
+ * renewal cannot retro-cover a past ER visit.
+ *
+ * NO TRIGGERS (portability). Every cross-row rule lives in lib/sickbay/: the legal status transitions,
+ * the write-once ER handoff, void-only-while-not-returned, the HM co-sign role check
+ * (hm_authorised_by IS HEADMASTER-in-school), the medical-hold UNION (open admissions ∪ open referrals,
+ * R193) and `referredOutStudentIds()` (R192, the boarding in-House arm). The one rule in the DB is
+ * sickbay_notification's single-row `tier BETWEEN 1 AND 3` CHECK — product policy, not a cross-table
+ * trigger.
+ *
+ * 🔴 R190 — `diagnos` appears NOWHERE: no column, enum, type, index or constraint name. And
+ * sickbay_referral_cost_line carries NO clinical column of any kind (structural Risk-4: the Bursar who
+ * reads a cost line must not be able to re-identify a condition through it).
+ * ==========================================================================*/
+
+/**
+ * A hospital a sickbay refers serious cases to (R186) — the setup §4 config, mode-independent (a
+ * REFERRAL_ONLY school configures these too, R198). `accepts_nhis` and `distance_km` are config facts,
+ * no PII. The visiting/attending doctor stays TEXT on the referral (R21 — an external clinician is not
+ * a system user), never an FK here. `tags` is a jsonb string array ("24h", "surgery", "maternity") —
+ * `$type` is TYPING ONLY (no DDL), the sickbay_schedule_slot.days_of_week idiom. Retirement is
+ * `active = false`, never a DELETE (a hospital with referral history is RESTRICT-protected below).
+ */
+export const sickbayHospital = pgTable(
+  "sickbay_hospital",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    distanceKm: numeric("distance_km"),
+    services: text("services"),
+    notes: text("notes"),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    acceptsNhis: boolean("accepts_nhis").notNull().default(false),
+    tags: jsonb("tags").$type<string[]>(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for sickbay_referral.hospital_id (school_id, id) — INLINE in CREATE TABLE so
+    // it exists before the referral's ADD FOREIGN KEY (the 0033 ordering hazard). Its school_id prefix
+    // also serves the "all hospitals for this school" setup read, so no separate index.
+    tenantUk: unique("sickbay_hospital_tenant_uk").on(t.schoolId, t.id),
+  }),
+);
+
+/**
+ * ONE NHIS card per student (R183) — the beneficiary singleton. The card's HOLDER may be the student OR
+ * a guardian (the mother's household card is common), so the holder is TEXT (`holder_name`) plus
+ * `holder_kind`, which are the source of truth; `student_guardian_id` is a nullable BEST-EFFORT SET NULL
+ * link only, never the authority. `card_number` is stored VERBATIM — NHIS formats vary across card
+ * generations, so there is deliberately NO regex/CHECK (R183). There is NO `status` column: Active /
+ * Expiring≤30d / Expired is DERIVED from `valid_to` + now() in lib/, because a stored status can
+ * disagree with its own dates (the R10 stored-count failure again).
+ *
+ * LEAF → FORCE RLS, no tenant UK: nothing references a card row. The referral SNAPSHOTS the number as
+ * TEXT (R184), it does not FK to this table — so a renewal here can never retro-rewrite a past handoff.
+ */
+export const studentNhisCard = pgTable(
+  "student_nhis_card",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
+    // VERBATIM (R183) — formats vary, no regex/CHECK. NOT NULL: the number is the whole reason the row
+    // exists; a student with no NHIS simply has no row (that is what the singleton means).
+    cardNumber: text("card_number").notNull(),
+    holderName: text("holder_name"),
+    holderKind: nhisHolderKindEnum("holder_kind").notNull().default("STUDENT"),
+    validFrom: date("valid_from"),
+    validTo: date("valid_to"),
+    // Nullable single-column SET NULL best-effort link to the guardian whose card this is (the
+    // houses.hm_user_id idiom — a SET NULL link stays single-column). `holder_name` is authoritative.
+    studentGuardianId: uuid("student_guardian_id").references(() => studentGuardians.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // R183 — ONE card per student (the beneficiary singleton) and the upsert conflict target.
+    uniqStudent: unique("uniq_student_nhis_card").on(t.schoolId, t.studentId),
+    // Composite intra-tenant FK → students tenant UK. CASCADE with the student.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * A REFERRAL OUT (R187–R191) — the module's off-campus record. It hangs off a REFER-disposition VISIT
+ * (`visit_id` NOT NULL composite CASCADE): a referral is a visit disposition/escalation event, so
+ * presenting complaint, vitals and `working_impression` are LIVE-READ from the append-only visit and
+ * never re-stored here — the surface's "Diagnosis" line renders the visit's `working_impression` (R190,
+ * D1 verbatim). There is NO generated `referral_ref` (R187/R64.4): a pure `formatReferralRef(row)`
+ * produces the `R-YYYY-MM-DD-####` crumb from facts already on the row, routing is by server-resolved id.
+ *
+ * The FROZEN write-once ER handoff (`reason_referred_out` … `travel_note`) is the referral-time snapshot
+ * the receiving doctor reads — write-once enforced in lib/ (no trigger), because a later vitals/chronic
+ * edit must not rewrite history. `reason_referred_out` is the one REQUIRED handoff field; `menses_note`
+ * is 🔴 Class-4 reproductive PII (F5), nullable and clinical-read gated at the app layer.
+ *
+ * FK shapes: `student_id`/`visit_id` composite CASCADE; `hospital_id` composite **RESTRICT** (a hospital
+ * with referral history against it must not vanish — the sickbay_admission.bedFk precedent); the three
+ * actor pointers single-column SET NULL → the GLOBAL ref_user (the DB cannot check that
+ * `hm_authorised_by` is a HEADMASTER in this school — that is the R191 app check). NHIS is a copied
+ * `nhis_card_number` + `nhis_valid` SNAPSHOT (R184), never a live read of student_nhis_card.
+ */
+export const sickbayReferral = pgTable(
+  "sickbay_referral",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
+    visitId: uuid("visit_id").notNull(), // composite (school_id, visit_id) FK below — R187
+    hospitalId: uuid("hospital_id").notNull(), // composite (school_id, hospital_id) FK below — RESTRICT
+    // Actor pointers — single-column SET NULL → the GLOBAL ref_user (the houses.hm_user_id idiom).
+    accompaniedByUserId: uuid("accompanied_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // R191 — the HM co-sign is a REAL field; the app checks the holder is a HEADMASTER in this school
+    // (the DB cannot check role on a global ref_user pointer — the standing sickbay advisory).
+    hmAuthorisedByUserId: uuid("hm_authorised_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    recordedByUserId: uuid("recorded_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // R188 — the clinical-LOCATION lifecycle. Legal transitions app-enforced (no trigger); "day N" and
+    // "outpatient · same-day" are DERIVED; void = retract while status <> RETURNED (a void column, not
+    // a status value). Cost status is INDEPENDENT and DERIVED, never mirrored here.
+    status: sickbayReferralStatusEnum("status").notNull().default("REFERRED"),
+    transportMode: text("transport_mode"),
+    hospitalWard: text("hospital_ward"),
+    hospitalBed: text("hospital_bed"),
+    attendingClinicianName: text("attending_clinician_name"), // copied text — an external clinician (R21)
+    hmAuthorisedAt: timestamp("hm_authorised_at", { withTimezone: true }),
+    departedAt: timestamp("departed_at", { withTimezone: true }),
+    expectedReturnAt: timestamp("expected_return_at", { withTimezone: true }), // nullable
+    // NULL ⇒ still out; set ⇒ RETURNED. The hold drops the NEXT civil day (R193), computed in lib/.
+    returnedAt: timestamp("returned_at", { withTimezone: true }), // nullable
+    returnNote: text("return_note"),
+    // ---- void (R188) — retract while status <> RETURNED. No hard delete anywhere in 4.4. ----
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedByUserId: uuid("voided_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    voidReason: text("void_reason"),
+    // ---- NHIS snapshot (R184) — FROZEN at creation, copied text/bool, never a live card read. ----
+    nhisCardNumber: text("nhis_card_number"),
+    nhisValid: boolean("nhis_valid"),
+    // ---- FROZEN write-once ER handoff (R187) — the verbatim referral-time snapshot; write-once in lib/.
+    reasonReferredOut: text("reason_referred_out").notNull(), // the one REQUIRED handoff field
+    preReferralCare: text("pre_referral_care"),
+    handoffLabs: text("handoff_labs"),
+    lastMeal: text("last_meal"),
+    mensesNote: text("menses_note"), // 🔴 Class-4 reproductive PII (F5) — nullable, app-gated
+    travelNote: text("travel_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for sickbay_referral_update / _cost_line / sickbay_notification.referral_id
+    // (school_id, id) — INLINE so it exists before every ADD FOREIGN KEY that follows (the 0033 hazard).
+    tenantUk: unique("sickbay_referral_tenant_uk").on(t.schoolId, t.id),
+    // R188 — the active-referral list ("students out right now") filters by status within a school.
+    byStatus: index("sickbay_referral_status_idx").on(t.schoolId, t.status),
+    // The day-counter / "since 06:45" reads and referredOutStudentIds()'s window scan by departed_at.
+    byDeparted: index("sickbay_referral_departed_idx").on(t.schoolId, t.departedAt),
+    // Composite intra-tenant FKs. student/visit CASCADE; the hospital RESTRICTs.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    visitFk: foreignKey({
+      columns: [t.schoolId, t.visitId],
+      foreignColumns: [sickbayVisit.schoolId, sickbayVisit.id],
+    }).onDelete("cascade"),
+    hospitalFk: foreignKey({
+      columns: [t.schoolId, t.hospitalId],
+      foreignColumns: [sickbayHospital.schoolId, sickbayHospital.id],
+    }).onDelete("restrict"),
+  }),
+);
+
+/**
+ * An APPEND-ONLY external clinical update on a referral (R189) — the hospital's ward-round / nurse note,
+ * HEARSAY WITH ATTRIBUTION: the author is an external clinician who is NOT a system user (R21), so
+ * `clinician_name` + `clinician_affiliation` are TEXT and `recorded_by_user_id` is the matron who
+ * transcribed it. The schema says append-only: there is NO `updated_at`, no void and no delete — a
+ * correction is a SECOND row. Its absence IS the constraint (the sickbay_doctor_consult /
+ * sickbay_vital_reading posture). LEAF → FORCE RLS, no tenant UK.
+ *
+ * ⚠ The referral ROW is status-updatable (it carries `updated_at`); the UPDATE stream about it is this
+ * append-only log. Two different postures on purpose — do not add `updated_at` here.
+ */
+export const sickbayReferralUpdate = pgTable(
+  "sickbay_referral_update",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    referralId: uuid("referral_id").notNull(), // composite (school_id, referral_id) FK below
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    clinicianName: text("clinician_name"), // external actor — TEXT, never a ref_user (R21)
+    clinicianAffiliation: text("clinician_affiliation"),
+    body: text("body"),
+    recordedByUserId: uuid("recorded_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // NO updated_at — append-only (R189). Its absence is the constraint.
+  },
+  (t) => ({
+    // R189 — a referral's updates in time order (the only read this table has).
+    byReferral: index("sickbay_referral_update_referral_idx").on(
+      t.schoolId,
+      t.referralId,
+      t.occurredAt,
+    ),
+    // Composite intra-tenant FK → sickbay_referral tenant UK. CASCADE with the referral.
+    referralFk: foreignKey({
+      columns: [t.schoolId, t.referralId],
+      foreignColumns: [sickbayReferral.schoolId, sickbayReferral.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * A per-item cost line on a referral (R185) — the NHIS reconciliation the Bursar reads. Each line is
+ * either NHIS-covered or paid out of pocket: `nhis_covered` is a NOT NULL boolean and
+ * `out_of_pocket_amount` a plain numeric. `billing_line_item_id` is a nullable single-column SET NULL FK
+ * to invoice_line_item that STAYS NULL throughout module 4.4 (D6 — no invoice write in 4.4, STOP-AND-ASK):
+ * the link exists only so INCR-27 can wire the handoff later. Status-updatable, so it carries
+ * `updated_at`; LEAF → FORCE RLS, no tenant UK.
+ *
+ * 🔴 There is NO condition / impression / diagnosis column of ANY kind (R185, structural Risk-4): the
+ * Bursar reads these lines, and re-identifying a clinical condition through a cost line must be
+ * impossible BY CONSTRUCTION, not by a render-time redaction.
+ */
+export const sickbayReferralCostLine = pgTable(
+  "sickbay_referral_cost_line",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    referralId: uuid("referral_id").notNull(), // composite (school_id, referral_id) FK below
+    itemLabel: text("item_label"),
+    provider: text("provider"),
+    nhisCovered: boolean("nhis_covered").notNull(), // R185 — a line is covered or not, never unknown
+    outOfPocketAmount: numeric("out_of_pocket_amount"),
+    // 🔴 Nullable single-column SET NULL → invoice_line_item; STAYS NULL in 4.4 (D6). No invoice write
+    // in this module; the column is authored now so INCR-27's billing handoff needs no migration.
+    billingLineItemId: uuid("billing_line_item_id").references(() => invoiceLineItems.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    // NO clinical column (R185) — the structural Risk-4 guarantee.
+  },
+  (t) => ({
+    // R185 — a referral's cost lines, read together for the reconciliation. Leads with school_id.
+    byReferral: index("sickbay_referral_cost_line_referral_idx").on(t.schoolId, t.referralId),
+    // Composite intra-tenant FK → sickbay_referral tenant UK. CASCADE with the referral.
+    referralFk: foreignKey({
+      columns: [t.schoolId, t.referralId],
+      foreignColumns: [sickbayReferral.schoolId, sickbayReferral.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * The three-tier parent/HM/headmaster/district notification (R196) — AUTHORED NOW, WRITTEN AT INCR-26
+ * (the INCR-16→18 / 0060-authored-0026-built precedent). INCR-25 inserts ZERO rows (R197): no
+ * write-chain ships here, and `private_note` stays unpopulated.
+ *
+ * `notification_log_id` REUSES the shipped SMS-delivery table (R196 — do not re-model), a single-column
+ * SET NULL best-effort link. `retry_of_id` is the retry chain: a nullable composite SELF-FK, RESTRICT —
+ * a retried notification must not vanish out from under its retry. That self-FK is the SHARPEST 0033
+ * hazard in this migration (its target, `sickbay_notification_tenant_uk`, is this very table's INLINE
+ * tenant UK), and its constraint name is set explicitly because drizzle's default self-FK name exceeds
+ * Postgres's 63-char limit (the sickbay_med_admin_corrects_fk precedent).
+ *
+ * 🔴 `private_note` (F4) is a matron note that NEVER reaches the parent, sitting adjacent to the
+ * parent-facing `body` — Sarah's INCR-26 boundary gate. `tier` is `smallint` with a single-row
+ * `BETWEEN 1 AND 3` CHECK (product policy, no trigger).
+ */
+export const sickbayNotification = pgTable(
+  "sickbay_notification",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below — NOT NULL
+    visitId: uuid("visit_id"), // nullable composite (school_id, visit_id) FK below
+    referralId: uuid("referral_id"), // nullable composite (school_id, referral_id) FK below
+    // Reuse the shipped notification_log (R196) — single-column SET NULL best-effort delivery link.
+    notificationLogId: uuid("notification_log_id").references(() => notificationLog.id, {
+      onDelete: "set null",
+    }),
+    retryOfId: uuid("retry_of_id"), // nullable composite (school_id, retry_of_id) SELF-FK below — RESTRICT
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    tier: smallint("tier").notNull(), // 1 parent · 2 HM · 3 headmaster/district — CHECK 1..3 below
+    channel: sickbayNotifyChannelEnum("channel").notNull(),
+    direction: sickbayNotifyDirectionEnum("direction").notNull(),
+    recipient: sickbayNotifyRecipientEnum("recipient").notNull(),
+    triggerLabel: text("trigger_label"),
+    body: text("body"), // parent-facing
+    privateNote: text("private_note"), // 🔴 F4 — NEVER parent-facing; adjacent to `body`
+    callDurationSeconds: smallint("call_duration_seconds"),
+    answered: boolean("answered"),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for the SELF-FK (retry_of_id) — INLINE so it exists before the ADD FOREIGN
+    // KEY that references it (the 0033 hazard, sharpest here because the target is this very table).
+    tenantUk: unique("sickbay_notification_tenant_uk").on(t.schoolId, t.id),
+    // R196 — tier 1..3 (product policy, single-row CHECK, no trigger).
+    tierRange: check("sickbay_notification_tier_range", sql`${t.tier} BETWEEN 1 AND 3`),
+    // INCR-26's reads: a referral's notification thread, and a student's notifications, in time order.
+    // Authored NOW (this is the notification table's one migration) so INCR-26 needs no follow-on DDL.
+    byReferral: index("sickbay_notification_referral_idx").on(t.schoolId, t.referralId, t.createdAt),
+    byStudent: index("sickbay_notification_student_idx").on(t.schoolId, t.studentId, t.createdAt),
+    // Composite intra-tenant FKs. student (NOT NULL) / visit / referral CASCADE; the self-FK RESTRICTs.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    visitFk: foreignKey({
+      columns: [t.schoolId, t.visitId],
+      foreignColumns: [sickbayVisit.schoolId, sickbayVisit.id],
+    }).onDelete("cascade"),
+    referralFk: foreignKey({
+      columns: [t.schoolId, t.referralId],
+      foreignColumns: [sickbayReferral.schoolId, sickbayReferral.id],
+    }).onDelete("cascade"),
+    // The retry SELF-FK. RESTRICT: a retried row must not be deletable out from under its retry. Named
+    // explicitly — drizzle's default self-FK name exceeds Postgres's 63-char limit (the
+    // sickbay_med_admin_corrects_fk precedent).
+    retryOfFk: foreignKey({
+      name: "sickbay_notification_retry_of_fk",
+      columns: [t.schoolId, t.retryOfId],
+      foreignColumns: [t.schoolId, t.id],
     }).onDelete("restrict"),
   }),
 );

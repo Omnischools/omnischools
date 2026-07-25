@@ -19,9 +19,11 @@ import {
   getStandingOrders,
   getStockRegister,
 } from "@/lib/sickbay/stock-reads";
+import { getSickbayHospitals } from "@/lib/sickbay/hospitals-reads";
 import { SICKBAY_POLICY_ANCHORS, formatDayType, splitBold } from "@/lib/sickbay/defaults";
 import { SickbaySetupConsole, type StaffRow } from "@/components/sickbay/setup-console";
 import { StockConsole } from "@/components/sickbay/stock-console";
+import { HospitalsConsole } from "@/components/sickbay/hospitals-console";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +51,7 @@ export default async function SickbaySetupPage() {
 
   const config = await getSickbayConfig(school.id);
   const caps = config.capabilities;
-  const [slots, prefects, matronCandidates, staff, standingOrders, stock, controlled] =
+  const [slots, prefects, matronCandidates, staff, standingOrders, stock, controlled, hospitals] =
     await Promise.all([
       getScheduleSlots(school.id),
       getHealthPrefects(school.id),
@@ -60,6 +62,9 @@ export default async function SickbaySetupPage() {
       getStandingOrders(school.id),
       getStockRegister(school.id),
       getControlledRegister(school.id),
+      // §04 referral hospitals (INCR-25a) — mode-independent (R198): read in every mode, including
+      // REFERRAL_ONLY where every case routes to one. Config write gate is SICKBAY_CONFIG_WRITE_ROLES.
+      getSickbayHospitals(school.id),
     ]);
 
   // The doctor's working pattern is DERIVED from his DOCTOR_VISIT slot (days + window) — the same
@@ -119,6 +124,10 @@ export default async function SickbaySetupPage() {
         controlled={controlled}
         clinicians={matronCandidates}
       />
+
+      {/* ═══ §4 · Referral hospitals (INCR-25a) — config gate [ADMIN, HEADMASTER]; MATRON reads only.
+          Mode-independent (R198): renders in every mode, and matters most in REFERRAL_ONLY. ═══ */}
+      <HospitalsConsole canWrite={canWrite} hospitals={hospitals} />
 
       {/* ═══ §5 · Policy anchors — pure editorial, zero schema, zero controls, every mode ═══ */}
       <section className="px-6 pb-10 md:px-9">
