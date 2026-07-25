@@ -421,6 +421,13 @@
       "when": 1784971197469,
       "tag": "0059_solid_timeslip",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1784989229384,
+      "tag": "0060_sickbay_medication",
+      "breakpoints": true
     }
   ]
 }

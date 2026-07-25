@@ -584,3 +584,42 @@ export const sickbayGrantScopeEnum = pgEnum("sickbay_grant_scope", [
   "PARTIAL",
   "DIRECTIVE",
 ]);
+
+// Sickbay MEDICATION LAYER (SHS module 4.4) — INCR-24 (Kofi rulings R141–R170). Migration 0060.
+// THREE enums. Deliberately NOT enums (R144/R155/R162): `drug_name`, `dose_label`, `route`,
+// `witness_override_reason`, `notes`, `amendment_note`, and every stock/standing-order/movement
+// descriptor are FREE TEXT — the medication layer adds no new structured clinical vocabulary beyond
+// these three provenance/status/movement discriminators (chronic_condition remains the only clinical
+// taxonomy in 4.4). R43's `diagnos` ban extends to every identifier this migration ships.
+
+// Where a MAR administration was AUTHORISED (R143) — PROVENANCE, never permission. Each value except
+// AD_HOC carries a matching composite RESTRICT pointer (chronic_med_id / standing_order_id /
+// consult_id), CHECK-tied so a non-null pointer can only accompany its own source. DOCTOR_ORDERED is
+// attribution only — the visiting doctor is not a system user (R21) and can never be a co-sign or a
+// gate; AD_HOC is a one-off with no plan, order or consult behind it (the CHRONIC "patient's own
+// bottle" case, R163, is a CHRONIC row that may carry no chronic_med_id at all).
+export const sickbayMedSourceEnum = pgEnum("sickbay_med_source", [
+  "CHRONIC",
+  "STANDING_ORDER",
+  "DOCTOR_ORDERED",
+  "AD_HOC",
+]);
+// The OUTCOME of one administration EVENT (R145). A REFUSED / HELD / OMITTED dose is a recorded event,
+// not an absence — the MAR is append-only, so "not given" is a written row, never a missing one.
+// SELF_ADMIN is deliberately NOT a value (owner O1): a self-admin status would attest to something the
+// clinician did not do; a self-administered dose is GIVEN with a note.
+export const sickbayMedStatusEnum = pgEnum("sickbay_med_status", [
+  "GIVEN",
+  "REFUSED",
+  "HELD",
+  "OMITTED",
+]);
+// A controlled-stock movement's kind (R152). The controlled balance is DERIVED over an append-only
+// ledger — balance = Σ RECEIPT − Σ(controlled GIVEN MAR dispensed_qty) − Σ WASTAGE ± Σ ADJUSTMENT —
+// so administrations are NOT a movement row (they are read from the MAR, one source of truth); only
+// these three non-administration events land here.
+export const sickbayStockMovementTypeEnum = pgEnum("sickbay_stock_movement_type", [
+  "RECEIPT",
+  "WASTAGE",
+  "ADJUSTMENT",
+]);
