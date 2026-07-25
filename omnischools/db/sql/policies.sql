@@ -117,6 +117,7 @@ BEGIN
     'senior_score_ledger_version',
     'senior_ledger_path',
     'senior_subject_teacher',
+    'student_subject_enrolment',
     'wassce_cohort',
     'wassce_programmes',
     'wassce_subjects',
