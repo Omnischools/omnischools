@@ -9,6 +9,7 @@ import {
 } from "@/lib/access";
 import { getSickbayConfig } from "@/lib/sickbay/config";
 import { getVisitRecord, openAdmissionBeds } from "@/lib/sickbay/visit-reads";
+import { getVisitMar, getMarFormOptions } from "@/lib/sickbay/med-admin-reads";
 import { getStudentChronicChips } from "@/lib/sickbay/chronic-reads";
 import { CONDITION_PILL } from "@/lib/sickbay/chronic-copy";
 import { attendanceLine } from "@/lib/sickbay/visit-copy";
@@ -16,6 +17,7 @@ import { ATTENDANCE_STATUS_META } from "@/lib/attendance-status";
 import { formatElapsed } from "@/lib/sickbay/visits";
 import { ClinicalRestricted } from "@/components/sickbay/clinical-restricted";
 import { VisitRecordConsole, type VisitView } from "@/components/sickbay/visit-record-console";
+import { MarLog } from "@/components/sickbay/mar-log";
 
 // B15 — wall-clock derivations (`05h 31m`) are computed SERVER-SIDE at request time and rendered as
 // static strings. A stale minute is honest; a ticking client clock on a clinical page is not.
@@ -178,15 +180,41 @@ export default async function VisitRecordPage({
     attendanceNote,
   };
 
+  // §3 — the visit MAR (INCR-24b · R176). Clinical-read gated inside getVisitMar; we are already in the
+  // clinical branch, so it never returns null here. The Add-dose pickers exist only for the MATRON writer;
+  // the consult labels make a Doctor-ordered row traceable to its consult in §02 (R143 — attribution).
+  const marRows = (await getVisitMar(school.id, visitId, { userId: actorUserId, roles })) ?? [];
+  const marBase = canWrite ? await getMarFormOptions(school.id, { userId: actorUserId, roles }) : null;
+  const marPickers = {
+    witnesses: marBase?.witnesses ?? [],
+    stockItems: marBase?.stockItems ?? [],
+    standingOrders: marBase?.standingOrders ?? [],
+    consults: record.consults.map((c) => ({ id: c.id, label: `${hhmm(c.occurredAt)} · ${c.clinicianName}` })),
+  };
+  const consultTimeById: Record<string, string> = Object.fromEntries(
+    record.consults.map((c) => [c.id, hhmm(c.occurredAt)]),
+  );
+
   return (
-    <VisitRecordConsole
-      visit={visit}
-      canWrite={canWrite}
-      capabilities={{
-        admissions: config.capabilities.admissions,
-        visitingDoctor: config.capabilities.visitingDoctor,
-      }}
-      {...(availableBeds && { availableBeds })}
-    />
+    <>
+      <VisitRecordConsole
+        visit={visit}
+        canWrite={canWrite}
+        capabilities={{
+          admissions: config.capabilities.admissions,
+          visitingDoctor: config.capabilities.visitingDoctor,
+        }}
+        {...(availableBeds && { availableBeds })}
+      />
+      <div className="mx-auto max-w-page px-6 pb-16 md:px-9">
+        <MarLog
+          rows={marRows}
+          canWrite={canWrite}
+          visitId={record.id}
+          pickers={marPickers}
+          consultTimeById={consultTimeById}
+        />
+      </div>
+    </>
   );
 }
