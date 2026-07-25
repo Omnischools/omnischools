@@ -265,6 +265,9 @@ export const CHRONIC_ROW_KEYS = {
   // DIRECTIVE (R132) — one grant-row sentence + its entry id + scope, sorted. NOTHING entry-derived,
   // no condition/label/pill/colour anywhere.
   directive: ["directiveNote", "entryId", "scope"],
+  // FLOOR (R132.1) — the name-only degrade a PARTIAL grant collapses to on an hm_restricted entry.
+  // Pinned too, so ALL four projections route through a pin and the invariant is uniform (Dex LOW-1).
+  floor: ["entryId", "floorNote"],
 } as const;
 
 // ============================================================================
@@ -358,7 +361,28 @@ export function buildDirectiveView(entryId: string, directiveNote: string): Chro
 
 /** The name-only floor (R132.1) — the degraded PARTIAL-on-mental-health payload. */
 export function buildFloorView(entryId: string): ChronicFloorView {
-  return { entryId, floorNote: FLOOR_NOTE };
+  const view: ChronicFloorView = { entryId, floorNote: FLOOR_NOTE };
+  pinRowKeys(view, CHRONIC_ROW_KEYS.floor);
+  return view;
+}
+
+/**
+ * 🔴 R132.1 — THE MENTAL-HEALTH VALUE-SAFETY SEAL, extracted pure so it has a committed tripwire.
+ *
+ * The S6 key-set pin is keys-ONLY; it cannot catch a *value* leak. So the ONLY thing keeping a
+ * psychiatric label out of a dorm card — when a PARTIAL grant survives an ASTHMA→MENTAL_HEALTH
+ * reclassification (the FK CASCADE flips `hm_restricted` but the grant row lives on) — is this one
+ * branch. In the reader it was inline and untested: Quinn (23b MINOR-2) neutered `if (r.hmRestricted)`
+ * to `if (false)` and the whole 751-test suite stayed GREEN. Pulled out here so a unit test asserts
+ * the seal directly and that same mutation reds it. The reader calls THIS; it must never inline the
+ * decision again.
+ */
+export function partialProjection(
+  hmRestricted: boolean,
+  dorm: Parameters<typeof buildDormCardView>[0],
+): Extract<ChronicEntryProjection, { kind: "PARTIAL" | "FLOOR" }> {
+  if (hmRestricted) return { kind: "FLOOR", floor: buildFloorView(dorm.entryId) };
+  return { kind: "PARTIAL", card: buildDormCardView(dorm) };
 }
 
 // ============================================================================

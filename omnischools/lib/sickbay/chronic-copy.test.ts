@@ -13,6 +13,7 @@ import {
   buildDirectiveView,
   buildDormCardView,
   buildFloorView,
+  partialProjection,
   conditionLabel,
   dormMedNote,
   formatChronicAuditEvent,
@@ -55,6 +56,40 @@ const read = (p: string) => stripComments(readFileSync(resolve(cwd(), p), "utf8"
 // ============================================================================
 // R43/R94 — the `diagnos` ban, swept across every 23a file that ships an identifier.
 // ============================================================================
+
+// ============================================================================
+// 🔴 R132.1 — the MENTAL-HEALTH value-safety seal. The key-set pin is keys-ONLY; this branch is the
+// ONLY thing that keeps a psychiatric label out of a dorm card on a reclassified entry. Quinn (23b
+// MINOR-2) neutered the reader's inline `if (r.hmRestricted)` and the whole suite stayed green — so
+// the decision now lives in the pure `partialProjection`, and THIS test is its tripwire.
+// ============================================================================
+
+describe("R132.1 · partialProjection degrades an hm_restricted entry to FLOOR, never the dorm card", () => {
+  const dorm = {
+    entryId: "e1",
+    condition: "MENTAL_HEALTH" as ChronicCondition,
+    conditionLabel: "Adjustment disorder",
+    triggers: "bereavement",
+    redFlags: "self-harm talk",
+    firstAction: "escalate to DMHU",
+    dormMedNote: null,
+  };
+
+  it("hm_restricted = true → FLOOR, and NO entry value survives (condition/label/triggers absent)", () => {
+    const p = partialProjection(true, dorm);
+    expect(p.kind).toBe("FLOOR");
+    // The whole point: a keys-only pin can't catch a value leak, so assert no VALUE crosses.
+    const blob = JSON.stringify(p);
+    expect(blob).not.toMatch(/MENTAL_HEALTH|Adjustment disorder|bereavement|self-harm|DMHU/);
+    if (p.kind === "FLOOR") expect(Object.keys(p.floor).sort()).toEqual(["entryId", "floorNote"]);
+  });
+
+  it("hm_restricted = false → the dorm card (the seal only fires on a restricted entry)", () => {
+    const p = partialProjection(false, { ...dorm, condition: "ASTHMA", conditionLabel: "Asthma" });
+    expect(p.kind).toBe("PARTIAL");
+    if (p.kind === "PARTIAL") expect(p.card.conditionLabel).toBe("Asthma");
+  });
+});
 
 describe("R43/R94 · `diagnos` appears in no identifier this increment ships", () => {
   // The ACTUAL shipped 23a files (Quinn M1: the old list named two files that never shipped —

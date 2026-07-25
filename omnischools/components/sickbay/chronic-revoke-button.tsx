@@ -25,7 +25,13 @@ export function ChronicRevokeButton({
   function onClick() {
     if (!window.confirm(grantRevokeConfirm(granteeName, studentName))) return;
     start(async () => {
-      await revokeAccess({ grantId });
+      // Surface a refused revoke (Dex LOW-2) — without this, a rejected action (non-matron replay,
+      // already-revoked, unresolved session) was a silent no-op and the row reappeared un-revoked.
+      const res = await revokeAccess({ grantId });
+      if (!res.ok) {
+        window.alert(res.error ?? "Could not revoke this grant.");
+        return;
+      }
       router.refresh();
     });
   }

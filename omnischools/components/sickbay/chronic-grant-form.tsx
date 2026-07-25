@@ -9,6 +9,7 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { grantAccess } from "@/lib/actions/sickbay-chronic";
+import { GRANT_MH_CONSEQUENCE } from "@/lib/sickbay/chronic-copy"; // pure/client-safe (Dex-confirmed)
 
 type StaffOpt = { id: string; name: string; roleLabel: string };
 type EntryOpt = {
@@ -139,6 +140,13 @@ export function ChronicGrantForm({
             </option>
             <option value="DIRECTIVE">Directive</option>
           </select>
+          {/* R135/E20 — the grant-side consequence line: granting on a mental-health plan shares a
+              psychiatric history in full. The matron sees it at the point of choice. */}
+          {isMH && (
+            <p className="mt-2 rounded-md bg-terra-bg px-3 py-2 text-[11px] font-medium text-terra">
+              {GRANT_MH_CONSEQUENCE}
+            </p>
+          )}
         </div>
         <div>
           <label className={label} htmlFor="scopeLabel">

@@ -42,6 +42,7 @@ import { chronicWriteError, R102_REFUSAL, PRN_XOR_SLOT } from "@/lib/sickbay/chr
 import {
   GRANT_DIRECTIVE_NEEDS_NOTE,
   GRANT_NOT_STAFF_REFUSAL,
+  GRANT_ONLY_MATRON,
   GRANT_PARTIAL_ON_MH_REFUSAL,
 } from "@/lib/sickbay/chronic-copy";
 
@@ -522,7 +523,7 @@ const GrantSchema = z.object({
  */
 export async function grantAccess(input: unknown): Promise<Result> {
   const auth = await authorizeChronicWrite();
-  if (!auth.ok) return auth;
+  if (!auth.ok) return { ok: false, error: GRANT_ONLY_MATRON }; // R135/E20 — grant-specific refusal
   const parsed = GrantSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: "Choose a member of staff, a plan and a scope, and give a reason." };
@@ -633,7 +634,7 @@ const RevokeSchema = z.object({ grantId: z.string().uuid() });
  */
 export async function revokeAccess(input: unknown): Promise<Result> {
   const auth = await authorizeChronicWrite();
-  if (!auth.ok) return auth;
+  if (!auth.ok) return { ok: false, error: GRANT_ONLY_MATRON }; // R135/E20 — grant-specific refusal
   const parsed = RevokeSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid grant." };
   const d = parsed.data;

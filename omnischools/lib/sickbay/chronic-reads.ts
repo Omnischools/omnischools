@@ -55,12 +55,14 @@ import { getRoundSchedule } from "./config";
 import {
   buildDirectiveView,
   buildDormCardView,
-  buildFloorView,
   dormMedNote,
   formatChronicAuditEvent,
   medicationLine,
+  partialProjection,
+  pinRowKeys,
   resolveWinningScope,
   roundColumns,
+  CHRONIC_ROW_KEYS,
   conditionLabel as conditionWords,
 } from "./chronic-copy";
 import type {
@@ -71,6 +73,7 @@ import type {
   ChronicDormCardView,
   ChronicEntryProjection,
   ChronicMedView,
+  ChronicPlanEntryView,
   ChronicPlanView,
   ChronicRegisterRow,
   ChronicScope,
@@ -457,55 +460,53 @@ export async function getChronicPlan(
             slotId: m.slotId,
             note: m.note,
           }));
-        projections.push({
-          kind: "FULL_PLAN",
-          entry: {
+        const entry: ChronicPlanEntryView = {
+          entryId: r.id,
+          condition: r.condition as ChronicCondition,
+          conditionLabel: r.conditionLabel,
+          status: r.status as ChronicStatus,
+          referralManaged: r.referralManaged,
+          onSiteTreatable: r.onSiteTreatable,
+          hmRestricted: r.hmRestricted,
+          version: r.version,
+          reviewedAt: r.reviewedAt,
+          reviewedByName: r.reviewedByName,
+          coReviewerNote: r.coReviewerNote,
+          conditionDetail: r.conditionDetail,
+          baselineStatus: r.baselineStatus,
+          careGoals: r.careGoals,
+          emergencyProtocol: r.emergencyProtocol,
+          dischargeCriteria: r.dischargeCriteria,
+          triggers: r.triggers,
+          redFlags: r.redFlags,
+          firstAction: r.firstAction,
+          externalClinicalHome: r.externalClinicalHome,
+          externalPastoralHome: r.externalPastoralHome,
+          externalCareCadence: r.externalCareCadence,
+          externalNextVisitAt: r.externalNextVisitAt,
+          meds,
+        };
+        // Pin FULL too, so all four projections route through a runtime pin (Dex LOW-1). FULL is the
+        // widest scope so this guards a future refactor, not a live leak — the invariant is now uniform.
+        pinRowKeys(entry as object, CHRONIC_ROW_KEYS.entry);
+        projections.push({ kind: "FULL_PLAN", entry });
+      } else if (winning === "PARTIAL") {
+        // 🔴 R132.1 — the MH value-safety seal lives in `partialProjection` (pure, unit-pinned): a
+        // PARTIAL grant on an hm_restricted entry (a survived reclassification) degrades to the
+        // name-only FLOOR. NEVER inline this decision again — the reader-inline version was the
+        // untested branch Quinn's mutation left green (23b MINOR-2).
+        const hasRoundMed = medRows.some((m) => m.entryId === r.id && !m.isPrn && m.slotId !== null);
+        projections.push(
+          partialProjection(r.hmRestricted, {
             entryId: r.id,
             condition: r.condition as ChronicCondition,
             conditionLabel: r.conditionLabel,
-            status: r.status as ChronicStatus,
-            referralManaged: r.referralManaged,
-            onSiteTreatable: r.onSiteTreatable,
-            hmRestricted: r.hmRestricted,
-            version: r.version,
-            reviewedAt: r.reviewedAt,
-            reviewedByName: r.reviewedByName,
-            coReviewerNote: r.coReviewerNote,
-            conditionDetail: r.conditionDetail,
-            baselineStatus: r.baselineStatus,
-            careGoals: r.careGoals,
-            emergencyProtocol: r.emergencyProtocol,
-            dischargeCriteria: r.dischargeCriteria,
             triggers: r.triggers,
             redFlags: r.redFlags,
             firstAction: r.firstAction,
-            externalClinicalHome: r.externalClinicalHome,
-            externalPastoralHome: r.externalPastoralHome,
-            externalCareCadence: r.externalCareCadence,
-            externalNextVisitAt: r.externalNextVisitAt,
-            meds,
-          },
-        });
-      } else if (winning === "PARTIAL") {
-        // 🔴 R132.1 — a PARTIAL grant on an hm_restricted entry (a survived reclassification) degrades
-        // to the name-only FLOOR: no condition, no label, no pill, no dorm card.
-        if (r.hmRestricted) {
-          projections.push({ kind: "FLOOR", floor: buildFloorView(r.id) });
-        } else {
-          const hasRoundMed = medRows.some((m) => m.entryId === r.id && !m.isPrn && m.slotId !== null);
-          projections.push({
-            kind: "PARTIAL",
-            card: buildDormCardView({
-              entryId: r.id,
-              condition: r.condition as ChronicCondition,
-              conditionLabel: r.conditionLabel,
-              triggers: r.triggers,
-              redFlags: r.redFlags,
-              firstAction: r.firstAction,
-              dormMedNote: dormMedNote(anchor?.startsAt ?? null, hasRoundMed),
-            }),
-          });
-        }
+            dormMedNote: dormMedNote(anchor?.startsAt ?? null, hasRoundMed),
+          }),
+        );
       } else {
         // DIRECTIVE — one sentence off the newest live DIRECTIVE grant row (CHECK-forced non-null).
         const note = entryGrants
