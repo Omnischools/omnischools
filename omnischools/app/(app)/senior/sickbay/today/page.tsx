@@ -155,6 +155,13 @@ export default async function SickbayTodayPage() {
               New visit
             </Link>
           )}
+          {/* INCR-24b — the derived medication rounds, a sibling board (surface map §1.2 · Q1). */}
+          <Link
+            href="/senior/sickbay/rounds"
+            className="rounded-[5px] border border-border-2 bg-surface px-[14px] py-[8px] text-[12px] font-semibold text-navy no-underline"
+          >
+            Rounds
+          </Link>
           {/* §1.3 — the register is reached from the board head, one flat nav row (R84). */}
           <Link
             href="/senior/sickbay/chronic-register"

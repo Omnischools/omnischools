@@ -41,8 +41,10 @@ export function reorderCount(
 /**
  * R152 — the controlled-substance balance is DERIVED over the append-only movement ledger AND the MAR,
  * never stored (R10):  balance = Σ RECEIPT + Σ ADJUSTMENT(±) − Σ WASTAGE − Σ(controlled GIVEN MAR
- * dispensed_qty). ADJUSTMENT carries a signed delta (the ±). At 24a there are no MAR rows, so
- * `administered` is 0 — but the reader computes the term now (R152), so 24b needs no reader change.
+ * dispensed_qty). ADJUSTMENT carries a signed delta (the ±). This term is PURE arithmetic — the reader
+ * (`getControlledRegister`) sums the MAR `dispensed_qty` per stock item. R168 — 24b DID switch the
+ * reader's MAR join key from the mutable `drug_name` snapshot to `stock_item_id` (the earlier
+ * "24b needs no reader change" note was wrong); this function is join-key-agnostic and unchanged.
  */
 export function deriveControlledBalance(x: {
   receipt: number;

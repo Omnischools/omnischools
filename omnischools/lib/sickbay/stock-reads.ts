@@ -11,8 +11,9 @@
  * `dispensed_qty` with the `student_id` column deliberately never in the projection.
  *
  * 🔴 The controlled balance is DERIVED each read (R152), never stored: Σ RECEIPT + Σ ADJUSTMENT(±) −
- * Σ WASTAGE − Σ(controlled GIVEN MAR dispensed_qty). The MAR term is JOINED now (empty at 24a — no MAR
- * rows exist until 24b) so 24b needs no reader change.
+ * Σ WASTAGE − Σ(controlled GIVEN MAR dispensed_qty). The MAR term is JOINED by `stock_item_id` (R168):
+ * 24b SWITCHED the join key from the mutable `drug_name` snapshot to the 0061 `stock_item_id` column, so
+ * a tablet and a syrup of the same drug keep separate balances and a later rename cannot orphan history.
  */
 import "server-only";
 import { and, asc, eq, inArray } from "drizzle-orm";
@@ -106,13 +107,15 @@ export async function getStockRegister(
 
 /**
  * The controlled-substance register — one block per controlled item, each with its DERIVED balance and
- * an append-only movement list. The MAR-derived controlled GIVEN administrations are JOINed (matched by
- * the `drug_name` snapshot, the only key the MAR shares with a stock item) so a 24b administration
- * appears here and deducts from the balance with no reader change.
+ * an append-only movement list. The MAR-derived controlled GIVEN administrations are JOINed by
+ * `stock_item_id` (R168 — the 0061 column) so a 24b administration appears here and deducts from the
+ * right item's balance.
  *
- * ponytail: the MAR↔stock link is `drug_name` (the MAR carries no stock_item_id). A drug stocked as two
- * form rows would attribute its administrations to both; harmless at 24a (zero MAR rows) — upgrade to a
- * stock_item_id on the MAR only if form-split controlled drugs need per-row balances at 24b.
+ * 🔴 R168 — 24b SWITCHED the MAR join key from the mutable `drug_name` snapshot to `stock_item_id`. The
+ * old `drug_name` match attributed a drug stocked as two form rows (tablet + syrup) to BOTH, and a later
+ * rename orphaned the history; `stock_item_id` (RESTRICT-FK'd to the exact item) fixes both. A controlled
+ * dose ALWAYS names its stock item (the `med_admin_controlled_needs_stock_item` CHECK), so no controlled
+ * GIVEN administration is lost by the tighter join.
  */
 export async function getControlledRegister(schoolId: string): Promise<ControlledBlockView[]> {
   return withSchool(schoolId, async (tx) => {
@@ -127,7 +130,6 @@ export async function getControlledRegister(schoolId: string): Promise<Controlle
       .where(and(eq(sickbayStockItem.schoolId, schoolId), eq(sickbayStockItem.isControlled, true)));
     if (items.length === 0) return [];
     const itemIds = items.map((i) => i.id);
-    const drugNames = [...new Set(items.map((i) => i.drugName))];
 
     const movements = await tx
       .select({
@@ -150,12 +152,13 @@ export async function getControlledRegister(schoolId: string): Promise<Controlle
       )
       .orderBy(asc(sickbayControlledMovement.occurredAt));
 
-    // 🔴 The MAR contribution — controlled GIVEN administrations. NO `student_id` in the projection
-    // (R162): only the drug it deducts from, the quantity, when, by whom and witnessed by whom.
+    // 🔴 The MAR contribution — controlled GIVEN administrations. NO patient column in the projection
+    // (R162): only the stock item it deducts from, the quantity, when, by whom and witnessed by whom.
+    // R168 — matched by `stock_item_id`, not the mutable `drug_name` snapshot.
     const administrations = await tx
       .select({
         id: sickbayMedAdmin.id,
-        drugName: sickbayMedAdmin.drugName,
+        stockItemId: sickbayMedAdmin.stockItemId,
         dispensedQty: sickbayMedAdmin.dispensedQty,
         administeredAt: sickbayMedAdmin.administeredAt,
         actorUserId: sickbayMedAdmin.administeredByUserId,
@@ -168,7 +171,7 @@ export async function getControlledRegister(schoolId: string): Promise<Controlle
           eq(sickbayMedAdmin.schoolId, schoolId),
           eq(sickbayMedAdmin.isControlled, true),
           eq(sickbayMedAdmin.status, "GIVEN"),
-          inArray(sickbayMedAdmin.drugName, drugNames),
+          inArray(sickbayMedAdmin.stockItemId, itemIds),
         ),
       )
       .orderBy(asc(sickbayMedAdmin.administeredAt));
@@ -204,7 +207,7 @@ export async function getControlledRegister(schoolId: string): Promise<Controlle
             reason: m.reason,
           })),
         ...administrations
-          .filter((a) => a.drugName === item.drugName)
+          .filter((a) => a.stockItemId === item.id)
           .map((a) => ({
             id: a.id,
             kind: "ADMINISTERED" as const,
@@ -223,7 +226,7 @@ export async function getControlledRegister(schoolId: string): Promise<Controlle
         adjustment: sum(movements, item.id, "ADJUSTMENT"),
         wastage: sum(movements, item.id, "WASTAGE"),
         administered: administrations
-          .filter((a) => a.drugName === item.drugName)
+          .filter((a) => a.stockItemId === item.id)
           .reduce((t, a) => t + Number(a.dispensedQty ?? 0), 0),
       });
 

@@ -1,0 +1,3 @@
+ALTER TABLE "sickbay_med_admin" ADD COLUMN "stock_item_id" uuid;--> statement-breakpoint
+ALTER TABLE "sickbay_med_admin" ADD CONSTRAINT "sickbay_med_admin_school_id_stock_item_id_sickbay_stock_item_school_id_id_fk" FOREIGN KEY ("school_id","stock_item_id") REFERENCES "public"."sickbay_stock_item"("school_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "sickbay_med_admin" ADD CONSTRAINT "med_admin_controlled_needs_stock_item" CHECK (NOT "sickbay_med_admin"."is_controlled" OR "sickbay_med_admin"."stock_item_id" IS NOT NULL);
