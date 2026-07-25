@@ -100,6 +100,23 @@ export const SICKBAY_CONFIG_WRITE_ROLES = [
 ] as const satisfies readonly KnownAppRole[];
 
 /**
+ * Sickbay §3 — standing orders / drug stock / the controlled-substance register (SHS module 4.4 /
+ * INCR-24a). The ONE gate where the MATRON GAINS write and the HEADMASTER LOSES it, inverting §1/§2
+ * (Kofi R165): §3 is the Matron's clinical-supply authority, so [ADMIN, MATRON] write. Grounding —
+ * the surface's sidebar footer switches from the Headmaster to the Matron on §3 alone.
+ *
+ * READ of §3 stays the module gate SICKBAY_ROLES (ADMIN / HEADMASTER / MATRON): §3 is config, not the
+ * clinical graph, and ADMIN reading a drug list is exactly why R162 forbids a student name on it. The
+ * MAR's tighter SICKBAY_CLINICAL_* pair is a separate boundary (24b).
+ *
+ * HOUSEMASTER / STUDENT / PARENT / TEACHER never reach it.
+ */
+export const SICKBAY_STOCK_WRITE_ROLES = [
+  "ADMIN",
+  "MATRON",
+] as const satisfies readonly KnownAppRole[];
+
+/**
  * Sickbay CLINICAL gates (SHS module 4.4 / INCR-22a) — the visit record's first real clinical data,
  * and a SEPARATE, tighter pair from the module gate above. Owner decision D2 + Kofi R39/R40 + Lucy
  * Q2 (rated build-blocking):
