@@ -28,7 +28,7 @@ import {
   students,
   users,
 } from "@/db/schema";
-import { hasAnyRole, SICKBAY_CLINICAL_READ_ROLES } from "@/lib/access";
+import { hasAnyRole, SICKBAY_CLINICAL_READ_ROLES, SICKBAY_CLINICAL_WRITE_ROLES } from "@/lib/access";
 import { getRoundSchedule } from "./config";
 import { civilDate } from "./visits";
 import {
@@ -43,7 +43,7 @@ import {
   type RoundStatus,
 } from "./med-admin";
 
-/** The actor shape — clinical role membership drives the gate; the id is unused by these READS. */
+/** The actor shape — clinical role membership drives the gate; the id filters the actor out of the witness list (getMarFormOptions). */
 export interface MedActor {
   userId: string | null;
   roles: readonly string[];
@@ -336,7 +336,7 @@ export async function getMarFormOptions(
   schoolId: string,
   actor: MedActor,
 ): Promise<MarFormOptions | null> {
-  if (!actor.roles.includes("MATRON")) return null;
+  if (!hasAnyRole(actor.roles, SICKBAY_CLINICAL_WRITE_ROLES)) return null;
   return withSchool(schoolId, async (tx) => {
     // N&MC clinicians in this school (the witness set) — MATRON with a licence, minus the acting user.
     const clinicians = await tx
