@@ -6,6 +6,7 @@ import {
   users,
   students,
   classes,
+  houses,
   auditLog,
   wassceCohort,
   wassceProgrammes,
@@ -274,6 +275,23 @@ async function main() {
     )
     .returning();
   const studentIdByCode = new Map(studentRows.map((r) => [r.studentCode, r.id]));
+
+  // R201 (INCR-25b) — Yaa Aidoo `SHS-2023-0817` is the referral log's canonical cross-module demo
+  // case. The 22b fix gave every SHS-2023-* row a CLASS (so it can receive an attendance mark) but no
+  // HOUSE or RESIDENCY, so she could not render `F3 Slessor` nor exercise the referred-out / in-House
+  // boarding fact. Give her Slessor House + BOARDER, SCOPED to this ONE marker row (repo memory
+  // `seed-cleanup-must-be-scoped`): no other seed's students, classes or periods are touched.
+  const [slessor] = await db
+    .select({ id: houses.id })
+    .from(houses)
+    .where(and(eq(houses.schoolId, schoolId), eq(houses.name, "Slessor")))
+    .limit(1);
+  if (slessor) {
+    await db
+      .update(students)
+      .set({ houseId: slessor.id, residency: "BOARDER" })
+      .where(and(eq(students.schoolId, schoolId), eq(students.studentCode, "SHS-2023-0817")));
+  }
 
   const candidateRows = await db
     .insert(wassceCandidates)

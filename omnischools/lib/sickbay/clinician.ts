@@ -65,3 +65,31 @@ export async function assertSchoolClinician(
     return rows.length > 0;
   });
 }
+
+/**
+ * Generic "does `userId` hold `roleCode` in `schoolId`?" — the same app-layer tenancy guard as
+ * `assertSchoolClinician` (the DB cannot check role membership on a GLOBAL ref_user pointer), for a
+ * NON-matron actor pointer. INCR-25b uses it for the referral's HM co-sign (R191:
+ * `hm_authorised_by_user_id` must hold HEADMASTER in THIS school). One tenant-scoped statement.
+ */
+export async function holdsSchoolRole(
+  schoolId: string,
+  userId: string,
+  roleCode: string,
+): Promise<boolean> {
+  return withSchool(schoolId, async (tx) => {
+    const rows = await tx
+      .select({ userId: roleAssignments.userId })
+      .from(roleAssignments)
+      .innerJoin(roles, eq(roles.id, roleAssignments.roleId))
+      .where(
+        and(
+          eq(roleAssignments.schoolId, schoolId),
+          eq(roleAssignments.userId, userId),
+          eq(roles.code, roleCode),
+        ),
+      )
+      .limit(1);
+    return rows.length > 0;
+  });
+}
