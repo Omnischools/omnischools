@@ -7,19 +7,30 @@ import {
   CHRONIC_ROW_KEYS,
   CONDITION_PILL,
   DORM_CARD_FOOT,
+  FLOOR_NOTE,
   PASTORAL_BODY,
   PLAN_REVIEW_DAYS,
+  buildDirectiveView,
+  buildDormCardView,
+  buildFloorView,
+  partialProjection,
   conditionLabel,
+  dormMedNote,
+  formatChronicAuditEvent,
   grantCountLabel,
   lastVisitStamp,
   medicationLine,
+  pinRowKeys,
   planVersionMeta,
   registerCounts,
   registerLede,
   relativeVisitAge,
+  resolveWinningScope,
   roundColumns,
   statusPill,
+  type ChronicAuditEvent,
   type ChronicCondition,
+  type ChronicScope,
 } from "./chronic-copy";
 import { CANONICAL_SICKBAY_SLOTS, roundSchedule, type SickbaySlot } from "./defaults";
 
@@ -45,6 +56,40 @@ const read = (p: string) => stripComments(readFileSync(resolve(cwd(), p), "utf8"
 // ============================================================================
 // R43/R94 — the `diagnos` ban, swept across every 23a file that ships an identifier.
 // ============================================================================
+
+// ============================================================================
+// 🔴 R132.1 — the MENTAL-HEALTH value-safety seal. The key-set pin is keys-ONLY; this branch is the
+// ONLY thing that keeps a psychiatric label out of a dorm card on a reclassified entry. Quinn (23b
+// MINOR-2) neutered the reader's inline `if (r.hmRestricted)` and the whole suite stayed green — so
+// the decision now lives in the pure `partialProjection`, and THIS test is its tripwire.
+// ============================================================================
+
+describe("R132.1 · partialProjection degrades an hm_restricted entry to FLOOR, never the dorm card", () => {
+  const dorm = {
+    entryId: "e1",
+    condition: "MENTAL_HEALTH" as ChronicCondition,
+    conditionLabel: "Adjustment disorder",
+    triggers: "bereavement",
+    redFlags: "self-harm talk",
+    firstAction: "escalate to DMHU",
+    dormMedNote: null,
+  };
+
+  it("hm_restricted = true → FLOOR, and NO entry value survives (condition/label/triggers absent)", () => {
+    const p = partialProjection(true, dorm);
+    expect(p.kind).toBe("FLOOR");
+    // The whole point: a keys-only pin can't catch a value leak, so assert no VALUE crosses.
+    const blob = JSON.stringify(p);
+    expect(blob).not.toMatch(/MENTAL_HEALTH|Adjustment disorder|bereavement|self-harm|DMHU/);
+    if (p.kind === "FLOOR") expect(Object.keys(p.floor).sort()).toEqual(["entryId", "floorNote"]);
+  });
+
+  it("hm_restricted = false → the dorm card (the seal only fires on a restricted entry)", () => {
+    const p = partialProjection(false, { ...dorm, condition: "ASTHMA", conditionLabel: "Asthma" });
+    expect(p.kind).toBe("PARTIAL");
+    if (p.kind === "PARTIAL") expect(p.card.conditionLabel).toBe("Asthma");
+  });
+});
 
 describe("R43/R94 · `diagnos` appears in no identifier this increment ships", () => {
   // The ACTUAL shipped 23a files (Quinn M1: the old list named two files that never shipped —
@@ -255,5 +300,195 @@ describe("CHRONIC_ROW_KEYS pins the view shape so a scope leak fails a test", ()
   });
   it("the entry key-set is sorted (so `Object.keys().sort()` can compare it directly)", () => {
     expect([...CHRONIC_ROW_KEYS.entry]).toEqual([...CHRONIC_ROW_KEYS.entry].sort());
+  });
+});
+
+// ============================================================================
+// INCR-23b — the three frozen scope projections (R132). MEDIUM-3: the reader's per-scope key-set is
+// the ONLY control between a grantee and the R109 clinical tier.
+// ============================================================================
+
+/** The clinical tier that must NEVER appear on a PARTIAL/DIRECTIVE projection (S2/S3). */
+const CLINICAL_LEAK_KEYS = [
+  "conditionDetail",
+  "baselineStatus",
+  "careGoals",
+  "emergencyProtocol",
+  "dischargeCriteria",
+  "externalClinicalHome",
+  "externalPastoralHome",
+  "externalCareCadence",
+  "externalNextVisitAt",
+  "reviewedByName",
+  "coReviewerNote",
+  "version",
+  "status",
+  "onSiteTreatable",
+  "referralManaged",
+  "hmRestricted",
+  "meds",
+];
+
+describe("S2 · PARTIAL projects EXACTLY the dorm card — clinical columns ABSENT, not empty", () => {
+  const dorm = buildDormCardView({
+    entryId: "e1",
+    condition: "SICKLE_CELL",
+    conditionLabel: "Sickle cell · HbSS",
+    triggers: "dehydration, cold",
+    redFlags: "severe pain · fever",
+    firstAction: "walk her to sickbay",
+    dormMedNote: "06:30 round at sickbay (must attend)",
+  });
+
+  it("the frozen key-set is the seven sorted dorm-card keys and nothing clinical", () => {
+    expect([...CHRONIC_ROW_KEYS.partial]).toEqual([
+      "condition",
+      "conditionLabel",
+      "dormMedNote",
+      "entryId",
+      "firstAction",
+      "redFlags",
+      "triggers",
+    ]);
+    expect([...CHRONIC_ROW_KEYS.partial]).toEqual([...CHRONIC_ROW_KEYS.partial].sort());
+    for (const leak of CLINICAL_LEAK_KEYS) {
+      expect([...CHRONIC_ROW_KEYS.partial], leak).not.toContain(leak);
+    }
+  });
+
+  it("the built object's OWN keys equal the pin, and the meds array is gone (a string stands in)", () => {
+    expect(Object.keys(dorm).sort()).toEqual([...CHRONIC_ROW_KEYS.partial]);
+    for (const leak of CLINICAL_LEAK_KEYS) {
+      expect(Object.prototype.hasOwnProperty.call(dorm, leak), `dorm card carries ${leak}`).toBe(
+        false,
+      );
+    }
+    // The condition label + colour ARE present (the card names the condition on purpose).
+    expect(dorm.condition).toBe("SICKLE_CELL");
+    expect(dorm.conditionLabel).toBe("Sickle cell · HbSS");
+    // POSITIVE control — a matron reads the SAME entry at the FULL key-set (24 keys), not the dorm 7.
+    expect(CHRONIC_ROW_KEYS.entry.length).toBeGreaterThan(CHRONIC_ROW_KEYS.partial.length);
+  });
+});
+
+describe("S3 · DIRECTIVE projects ONE sentence — no condition value/label/pill/colour anywhere", () => {
+  const view = buildDirectiveView("e9", "No cross-country. If unwell, walk to sickbay.");
+  it("the frozen key-set is [directiveNote, entryId, scope], sorted", () => {
+    expect([...CHRONIC_ROW_KEYS.directive]).toEqual(["directiveNote", "entryId", "scope"]);
+    expect([...CHRONIC_ROW_KEYS.directive]).toEqual([...CHRONIC_ROW_KEYS.directive].sort());
+  });
+  it("the built object carries the note + scope and NOTHING entry-derived", () => {
+    expect(Object.keys(view).sort()).toEqual([...CHRONIC_ROW_KEYS.directive]);
+    expect(view.scope).toBe("DIRECTIVE");
+    for (const leak of ["condition", "conditionLabel", ...CLINICAL_LEAK_KEYS]) {
+      expect(Object.prototype.hasOwnProperty.call(view, leak), `directive carries ${leak}`).toBe(
+        false,
+      );
+    }
+  });
+  it("the three scope key-sets are pairwise distinct (runtime-distinguishable, R120/ADV-2)", () => {
+    const j = (a: readonly string[]) => a.join("|");
+    expect(j(CHRONIC_ROW_KEYS.partial)).not.toBe(j(CHRONIC_ROW_KEYS.directive));
+    expect(j(CHRONIC_ROW_KEYS.entry)).not.toBe(j(CHRONIC_ROW_KEYS.partial));
+    expect(j(CHRONIC_ROW_KEYS.entry)).not.toBe(j(CHRONIC_ROW_KEYS.directive));
+  });
+});
+
+describe("S6 · the key-set pin is RED-CAPABLE — an extra clinical key must FAIL", () => {
+  it("a clean dorm card passes the pin", () => {
+    const clean = buildDormCardView({
+      entryId: "e1",
+      condition: "ASTHMA",
+      conditionLabel: "Asthma · moderate",
+      triggers: "dust",
+      redFlags: "breathless at rest",
+      firstAction: "salbutamol",
+      dormMedNote: null,
+    });
+    expect(() => pinRowKeys(clean, CHRONIC_ROW_KEYS.partial)).not.toThrow();
+  });
+  it("🔴 a PARTIAL projection with an extra `conditionDetail` key makes the pin go RED", () => {
+    // The exact disclosure S6 exists to catch: a clinical column smuggled onto the dorm card.
+    const leaked = {
+      condition: "SICKLE_CELL",
+      conditionLabel: "Sickle cell · HbSS",
+      dormMedNote: null,
+      entryId: "e1",
+      firstAction: "walk to sickbay",
+      redFlags: "severe pain",
+      triggers: "dehydration",
+      conditionDetail: "homozygous HbSS, family history positive", // the leak
+    };
+    expect(() => pinRowKeys(leaked, CHRONIC_ROW_KEYS.partial)).toThrow(/key-set mismatch/);
+  });
+  it("a MISSING key also fails — the allow-list is exact in both directions", () => {
+    const short = { entryId: "e1", condition: "ASTHMA", conditionLabel: null };
+    expect(() => pinRowKeys(short, CHRONIC_ROW_KEYS.partial)).toThrow(/key-set mismatch/);
+  });
+});
+
+describe("S7 · widest-wins resolution (R133)", () => {
+  const S = (xs: ChronicScope[]) => xs;
+  it("a default clinical reader outranks every grant → FULL_PLAN, whatever grants exist", () => {
+    expect(resolveWinningScope(S([]), true)).toBe("FULL_PLAN");
+    expect(resolveWinningScope(S(["DIRECTIVE"]), true)).toBe("FULL_PLAN");
+  });
+  it("among grants: FULL+DIRECTIVE → FULL, PARTIAL+DIRECTIVE → PARTIAL, DIRECTIVE only → DIRECTIVE", () => {
+    expect(resolveWinningScope(S(["FULL_PLAN", "DIRECTIVE"]), false)).toBe("FULL_PLAN");
+    expect(resolveWinningScope(S(["DIRECTIVE", "PARTIAL"]), false)).toBe("PARTIAL");
+    expect(resolveWinningScope(S(["DIRECTIVE"]), false)).toBe("DIRECTIVE");
+  });
+  it("an expired FULL beside a live DIRECTIVE resolves to DIRECTIVE (the reader passes only LIVE scopes)", () => {
+    // The reader filters to live grants BEFORE calling this; a dead FULL is simply absent from the set.
+    expect(resolveWinningScope(S(["DIRECTIVE"]), false)).toBe("DIRECTIVE");
+  });
+  it("no live grant and no clinical role → null (no access)", () => {
+    expect(resolveWinningScope(S([]), false)).toBeNull();
+  });
+});
+
+describe("S8 · the dorm-med note is derived, and the floor names no condition", () => {
+  it("dormMedNote is the anchor round string only when a round-scheduled med exists", () => {
+    expect(dormMedNote("06:30", true)).toBe("06:30 round at sickbay (must attend)");
+    expect(dormMedNote("06:30", false)).toBeNull();
+    expect(dormMedNote(null, true)).toBeNull();
+  });
+  it("the floor is name-only — {entryId, floorNote}, no condition/label/pill", () => {
+    const floor = buildFloorView("e3");
+    expect(floor).toEqual({ entryId: "e3", floorNote: FLOOR_NOTE });
+    expect(FLOOR_NOTE.toLowerCase()).not.toContain("mental");
+  });
+});
+
+describe("R122/C14 · the audit formatter never names a condition", () => {
+  const base: ChronicAuditEvent = {
+    kind: "viewed",
+    at: new Date("2026-05-14T09:14:00Z"),
+    actorName: "Mr A. Mensah",
+    studentName: "Adwoa Mensa",
+    granteeName: null,
+    scope: "PARTIAL",
+  };
+  it("renders the drawn templates over (actor · verb · student · scope)", () => {
+    expect(formatChronicAuditEvent(base)).toBe(
+      "Mr A. Mensah viewed **Adwoa Mensa** · Partial (dorm card)",
+    );
+    expect(formatChronicAuditEvent({ ...base, kind: "opened", scope: null })).toBe(
+      "Mr A. Mensah opened **Adwoa Mensa** care plan",
+    );
+    expect(
+      formatChronicAuditEvent({ ...base, kind: "granted", granteeName: "Mr K. Owusu", scope: "DIRECTIVE" }),
+    ).toBe("Mr A. Mensah granted **Mr K. Owusu** Directive to **Adwoa Mensa**");
+    expect(formatChronicAuditEvent({ ...base, kind: "exported", scope: null })).toBe(
+      "Mr A. Mensah printed dorm-side card · **Adwoa Mensa**",
+    );
+  });
+  it("no condition family word can appear — the input has no condition field", () => {
+    for (const kind of ["opened", "viewed", "granted", "revoked", "exported", "updated"] as const) {
+      const s = formatChronicAuditEvent({ ...base, kind, granteeName: "Mr K. Owusu" }).toLowerCase();
+      for (const cond of ["sickle", "asthma", "epilepsy", "anxiety", "mental", "diabet", "allerg"]) {
+        expect(s.includes(cond), `${kind} leaked ${cond}`).toBe(false);
+      }
+    }
   });
 });

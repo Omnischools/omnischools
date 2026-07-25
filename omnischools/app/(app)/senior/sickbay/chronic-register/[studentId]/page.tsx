@@ -4,7 +4,14 @@ import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasAnyRole, SICKBAY_CLINICAL_WRITE_ROLES } from "@/lib/access";
 import { getChronicPlan } from "@/lib/sickbay/chronic-reads";
-import type { ChronicPlanEntryView, ChronicPlanView, RoundColumn } from "@/lib/sickbay/chronic-copy";
+import type {
+  ChronicDirectiveView,
+  ChronicDormCardView,
+  ChronicFloorView,
+  ChronicPlanEntryView,
+  ChronicPlanView,
+  RoundColumn,
+} from "@/lib/sickbay/chronic-copy";
 import {
   CONDITION_PILL,
   DORM_CARD_FOOT,
@@ -64,7 +71,11 @@ export default async function ChronicPlanPage({
     notFound();
   }
 
-  const allPastoral = plan.entries.every((e) => e.hmRestricted);
+  // Only a full-scope reader of an all-mental-health plan gets the pastoral heading; a grantee's
+  // projection (dorm card / directive / floor) never reveals the family through the H1 (M10).
+  const allPastoral =
+    plan.entries.length > 0 &&
+    plan.entries.every((p) => p.kind === "FULL_PLAN" && p.entry.hmRestricted);
 
   return (
     <div className="mx-auto max-w-page px-6 pb-16 pt-6 md:px-9">
@@ -116,14 +127,105 @@ export default async function ChronicPlanPage({
         <div className="font-mono text-[10px] font-medium text-gold-soft">{plan.studentCode}</div>
       </div>
 
-      {plan.entries.map((entry) =>
-        entry.hmRestricted ? (
-          <PastoralEntry key={entry.entryId} entry={entry} plan={plan} canWrite={canWrite} />
-        ) : (
-          <CarePlanEntry key={entry.entryId} entry={entry} plan={plan} canWrite={canWrite} />
-        ),
-      )}
+      {plan.entries.map((p) => {
+        switch (p.kind) {
+          case "FULL_PLAN":
+            return p.entry.hmRestricted ? (
+              <PastoralEntry key={p.entry.entryId} entry={p.entry} plan={plan} canWrite={canWrite} />
+            ) : (
+              <CarePlanEntry key={p.entry.entryId} entry={p.entry} plan={plan} canWrite={canWrite} />
+            );
+          case "PARTIAL":
+            return <DormCardProjection key={p.card.entryId} card={p.card} plan={plan} />;
+          case "DIRECTIVE":
+            return <DirectiveEntry key={p.directive.entryId} directive={p.directive} />;
+          case "FLOOR":
+            return <FloorEntry key={p.floor.entryId} floor={p.floor} />;
+        }
+      })}
     </div>
+  );
+}
+
+// ============================================================================
+// INCR-23b — a GRANTEE's per-scope projections. Each renders ONLY the pinned view type's fields; no
+// reader row is spread and no clinical column is reachable (R120/MEDIUM-3).
+// ============================================================================
+
+/** PARTIAL — exactly the dorm card (§5.6), from a `ChronicDormCardView` + the scope-gated wrapper. */
+function DormCardProjection({ card, plan }: { card: ChronicDormCardView; plan: ChronicPlanView }) {
+  return (
+    <section className="mb-8">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span
+          className={`inline-block rounded-full px-[10px] py-1 text-[10px] font-bold uppercase tracking-[0.04em] ${CONDITION_PILL[card.condition]}`}
+        >
+          {conditionLabel(card.condition, card.conditionLabel)}
+        </span>
+        <PrintDormLink studentId={plan.studentId} entryId={card.entryId} />
+      </div>
+      <div className="relative mb-4 rounded-xl border-[1.5px] border-dashed border-gold bg-surface p-[18px_22px]">
+        <span className="absolute -top-[9px] left-[18px] bg-bg px-[10px] text-[9px] font-bold tracking-[0.18em] text-gold">
+          {DORM_CARD_LABEL}
+        </span>
+        <div className="font-display text-[16px] font-semibold text-navy">
+          {plan.firstName} <em className="font-normal italic text-gold">{plan.lastName}</em>
+          {plan.houseName ? ` · ${plan.houseName} House` : ""}
+        </div>
+        <div className="mb-3 text-[11px] text-navy-3">
+          <Bold text={DORM_CARD_SUB} />
+        </div>
+        <AcRow label="Condition" value={conditionLabel(card.condition, card.conditionLabel)} />
+        <AcRow label="Triggers" value={card.triggers} />
+        <AcRow label="Red flags" value={card.redFlags} />
+        <AcRow label="Action" value={card.firstAction} />
+        <AcRow label="Daily med" value={card.dormMedNote} />
+        {plan.guardian && <AcRow label="Parent" value={plan.guardian.name} />}
+        {plan.matronName && plan.matronPhone && (
+          <AcRow label="Matron" value={`${plan.matronName} · ${plan.matronPhone}`} />
+        )}
+        <p className="mt-3 border-t border-border pt-3 text-[11px] leading-[1.5] text-navy-3">
+          <Bold text={DORM_CARD_FOOT} />
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/** DIRECTIVE — the one matron-authored sentence, and NOTHING from the entry (R109). */
+function DirectiveEntry({ directive }: { directive: ChronicDirectiveView }) {
+  return (
+    <section className="mb-8">
+      <div className="rounded-[14px] border border-border bg-surface p-[20px_24px]">
+        <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-navy-3">
+          Care instruction
+        </div>
+        <p className="text-[14px] leading-[1.6] text-navy-2">{directive.directiveNote}</p>
+      </div>
+    </section>
+  );
+}
+
+/** R132.1 — the name-only FLOOR a PARTIAL grant degrades to on a mental-health entry. */
+function FloorEntry({ floor }: { floor: ChronicFloorView }) {
+  return (
+    <section className="mb-8">
+      <div className="rounded-[14px] border border-dashed border-border-2 bg-bg p-[20px_24px]">
+        <p className="text-[13px] italic leading-[1.6] text-navy-3">{floor.floorNote}</p>
+      </div>
+    </section>
+  );
+}
+
+/** R136 — `Print dorm copy`. Present only where a dorm card exists (never MH, never a directive). */
+function PrintDormLink({ studentId, entryId }: { studentId: string; entryId: string }) {
+  return (
+    <Link
+      href={`/senior/sickbay/chronic-register/${studentId}/${entryId}/dorm-print`}
+      className="ml-auto rounded-[6px] border border-border-2 bg-surface px-[12px] py-[6px] text-[11px] font-semibold text-navy no-underline hover:border-gold"
+    >
+      Print dorm copy
+    </Link>
   );
 }
 
@@ -158,6 +260,8 @@ function CarePlanEntry({
         <span className="text-[11px] text-navy-3">
           {planVersionMeta(entry.version, entry.reviewedAt, entry.reviewedByName)}
         </span>
+        {/* R136 — the dorm card is a physical (non-MH) entry's artefact; absent on §03 (C13). */}
+        <PrintDormLink studentId={plan.studentId} entryId={entry.entryId} />
         <EditPlanLink plan={plan} entry={entry} canWrite={canWrite} />
       </div>
 

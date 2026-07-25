@@ -3,20 +3,30 @@ import { hasAnyRole, SICKBAY_CLINICAL_WRITE_ROLES } from "@/lib/access";
 import { readCode, TENANT_READ } from "@/lib/test-utils/source-shape";
 
 /**
- * 🔴 Chronic-register WRITES are MATRON-only (R39/R111 — the Headmaster READS the register but must
- * never author a care plan). This pins the app-layer half of the boundary; the DB `WITH CHECK`
+ * 🔴 Chronic-register WRITES — entry/med authoring AND grant/revoke (INCR-23b) — are MATRON-only
+ * (R39/R111 — the Headmaster READS the register but must never author a care plan NOR issue/revoke a
+ * grant). This pins the app-layer half of the boundary; the DB `WITH CHECK`
  * (`chronic_clinical_role(...) = 'MATRON'`) is the other half, and on dev the app connects as a
  * superuser so the app gate is the only boundary a preview exercises.
  *
  * ADV-3 — ASSERT THE EXPRESSION, NEVER THE NAME. A bare `indexOf("authorizeChronicWrite")` also
  * matches a comment or a mis-shaped gate, so this file pins (a) the CALL as each mutator's first
- * statement, before any DB access, and (b) the DEFINITION's actual role check + refusal.
+ * statement, before any DB access, and (b) the DEFINITION's actual role check + refusal. `grantAccess`
+ * / `revokeAccess` mirror the same gate, so a HEADMASTER or ADMIN POSTing them directly is refused
+ * before any query runs (S12).
  */
 const ACTIONS = "lib/actions/sickbay-chronic.ts";
 
 const EXPORTED_FN =
   /^export (?:default\s+async function (\w+)|async function (\w+)|const (\w+)\s*=\s*async)/gm;
-const EXPECTED = ["createChronicEntry", "editChronicEntry", "addChronicMed", "removeChronicMed"];
+const EXPECTED = [
+  "createChronicEntry",
+  "editChronicEntry",
+  "addChronicMed",
+  "removeChronicMed",
+  "grantAccess",
+  "revokeAccess",
+];
 
 /** The gate CALL — a real invocation, not the identifier alone. */
 const GATE_CALL = /\bconst auth = await authorizeChronicWrite\(\)/;
@@ -74,6 +84,40 @@ describe("every chronic-register mutator asserts the MATRON gate before touching
     // …and the CONSEQUENCE: it refuses (returns ok:false), not merely evaluates a condition.
     expect(body, "the gate must REFUSE when the role check fails").toMatch(
       /if\s*\([\s\S]*?\)\s*\{[\s\S]*?return\s*\{[\s\S]*?ok:\s*false/,
+    );
+  });
+});
+
+describe("S12 · grant/revoke enforce their rules in the ACTION, not just the UI", () => {
+  const src = () => readCode(ACTIONS);
+
+  it("grantAccess refuses PARTIAL on a mental-health entry (R132.1) — the expression, not the name", () => {
+    const s = src();
+    expect(s).toMatch(/d\.scope === "PARTIAL" && entry\.hmRestricted/);
+    expect(s).toContain("GRANT_PARTIAL_ON_MH_REFUSAL");
+  });
+
+  it("grantAccess refuses a non-staff / out-of-school grantee via isStaff over in-school role codes (E19)", () => {
+    const s = src();
+    expect(s).toMatch(/isStaff\(roleRows\.map\(\(r\) => r\.code\)\)/);
+    expect(s).toContain("GRANT_NOT_STAFF_REFUSAL");
+  });
+
+  it("grantAccess requires a directive note when the scope is DIRECTIVE (R109)", () => {
+    const s = src();
+    expect(s).toMatch(/d\.scope === "DIRECTIVE" && !d\.directiveNote/);
+    expect(s).toContain("GRANT_DIRECTIVE_NEEDS_NOTE");
+  });
+
+  it("🔴 revoke is APPEND-ONLY — it STAMPS revoked_at, and NOTHING deletes a grant or UPDATEs scope (R110)", () => {
+    const s = src();
+    expect(s, "revoke must stamp revoked_at + revoked_by_user_id").toMatch(
+      /\.set\(\{ revokedAt: now, revokedByUserId: userId \}\)/,
+    );
+    // A DELETE of a grant, or a `.set({ scope: … })`, would break append-only. Neither may exist.
+    expect(s, "a grant must never be DELETEd").not.toMatch(/\.delete\(\s*sickbayChronicGrant/);
+    expect(s, "a grant's scope must never be UPDATEd (a scope change is revoke + re-grant)").not.toMatch(
+      /\.set\(\{[^}]*\bscope:/,
     );
   });
 });

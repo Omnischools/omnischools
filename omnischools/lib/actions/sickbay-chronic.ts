@@ -26,14 +26,30 @@ import type { Tx } from "@/lib/db";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
-import { hasAnyRole, SICKBAY_CLINICAL_WRITE_ROLES } from "@/lib/access";
+import { hasAnyRole, isStaff, SICKBAY_CLINICAL_WRITE_ROLES } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
-import { sickbayChronicEntry, sickbayChronicMed, sickbayScheduleSlot, students } from "@/db/schema";
+import {
+  houses,
+  roleAssignments,
+  roles,
+  sickbayChronicEntry,
+  sickbayChronicGrant,
+  sickbayChronicMed,
+  sickbayScheduleSlot,
+  students,
+} from "@/db/schema";
 import { chronicWriteError, R102_REFUSAL, PRN_XOR_SLOT } from "@/lib/sickbay/chronic-write-errors";
+import {
+  GRANT_DIRECTIVE_NEEDS_NOTE,
+  GRANT_NOT_STAFF_REFUSAL,
+  GRANT_ONLY_MATRON,
+  GRANT_PARTIAL_ON_MH_REFUSAL,
+} from "@/lib/sickbay/chronic-copy";
 
 type Result = { ok: boolean; error?: string; id?: string };
 
 const REGISTER_PATH = "/senior/sickbay/chronic-register";
+const GRANTS_PATH = `${REGISTER_PATH}/access-grants`;
 const planPath = (studentId: string) => `${REGISTER_PATH}/${studentId}`;
 
 const CONDITIONS = [
@@ -475,6 +491,208 @@ export async function removeChronicMed(input: unknown): Promise<Result> {
   } catch (err) {
     if (err instanceof NamedError) return { ok: false, error: err.message };
     return { ok: false, error: chronicWriteError(err, "Could not remove the medication.") };
+  }
+}
+
+// ============================================================================
+// Grant / revoke access (SHS module 4.4 / INCR-23b · R135) — MATRON-only, append-only, per ENTRY.
+// ============================================================================
+
+const GRANT_SCOPES = ["FULL_PLAN", "PARTIAL", "DIRECTIVE"] as const;
+
+const GrantSchema = z.object({
+  entryId: z.string().uuid(),
+  granteeUserId: z.string().uuid(),
+  scope: z.enum(GRANT_SCOPES),
+  scopeLabel: z.string().trim().max(120).nullish(),
+  reason: z.string().trim().min(1).max(2000),
+  directiveNote: z.string().trim().max(2000).nullish(),
+  houseId: z.string().uuid().nullish(),
+  expiresAt: z.coerce.date().nullish(),
+});
+
+/**
+ * Grant a member of staff access to ONE care-plan entry (R105 — per entry, never per student). The
+ * `authorizeChronicWrite()` gate is the MATRON-only first statement (R111); the DB `WITH CHECK =
+ * 'MATRON'` is the backstop, but on dev the app is a superuser so this gate is the only boundary a
+ * preview exercises. R106 — the grantee must be a STAFF `ref_user` with a role assignment IN THIS
+ * school (app-layer tenancy, because `ref_user` is global): `isStaff()` over their in-school role codes
+ * refuses STUDENT/PARENT and a non-school user (no codes) alike (E19). PARTIAL is VOID on a
+ * mental-health entry (R132.1); DIRECTIVE requires its one sentence. The grant's `hm_restricted` is
+ * COPIED from the entry — the composite FK makes a wrong value an FK violation, never a silent leak.
+ */
+export async function grantAccess(input: unknown): Promise<Result> {
+  const auth = await authorizeChronicWrite();
+  if (!auth.ok) return { ok: false, error: GRANT_ONLY_MATRON }; // R135/E20 — grant-specific refusal
+  const parsed = GrantSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Choose a member of staff, a plan and a scope, and give a reason." };
+  }
+  const d = parsed.data;
+  const userId = auth.actor.id;
+  if (!userId) return { ok: false, error: "Your session could not be resolved. Sign in again." };
+  // R135/R109 — DIRECTIVE needs its one sentence (the DB CHECK `..._directive_needs_note` is backstop).
+  if (d.scope === "DIRECTIVE" && !d.directiveNote?.trim()) {
+    return { ok: false, error: GRANT_DIRECTIVE_NEEDS_NOTE };
+  }
+
+  try {
+    const out = await withStaffScope(auth.schoolId, userId, async (tx) => {
+      // R106 — grantee is staff in THIS school. No assignment ⇒ empty codes ⇒ isStaff false ⇒ refused
+      // (this is also how a STUDENT, a PARENT and an out-of-school ref_user are all refused — E19).
+      const roleRows = await tx
+        .select({ code: roles.code })
+        .from(roleAssignments)
+        .innerJoin(roles, eq(roles.id, roleAssignments.roleId))
+        .where(
+          and(
+            eq(roleAssignments.schoolId, auth.schoolId),
+            eq(roleAssignments.userId, d.granteeUserId),
+          ),
+        );
+      if (!isStaff(roleRows.map((r) => r.code))) throw new NamedError(GRANT_NOT_STAFF_REFUSAL);
+
+      const [entry] = await tx
+        .select({
+          id: sickbayChronicEntry.id,
+          studentId: sickbayChronicEntry.studentId,
+          hmRestricted: sickbayChronicEntry.hmRestricted,
+        })
+        .from(sickbayChronicEntry)
+        .where(
+          and(
+            eq(sickbayChronicEntry.schoolId, auth.schoolId),
+            eq(sickbayChronicEntry.id, d.entryId),
+            eq(sickbayChronicEntry.active, true),
+          ),
+        )
+        .limit(1);
+      if (!entry) throw new NamedError("That care plan no longer exists.");
+      // 🔴 R132.1 — PARTIAL is VOID on a mental-health entry: no dorm-side card exists for it.
+      if (d.scope === "PARTIAL" && entry.hmRestricted) {
+        throw new NamedError(GRANT_PARTIAL_ON_MH_REFUSAL);
+      }
+
+      let houseId: string | null = null;
+      if (d.houseId) {
+        const [house] = await tx
+          .select({ id: houses.id })
+          .from(houses)
+          .where(and(eq(houses.schoolId, auth.schoolId), eq(houses.id, d.houseId)))
+          .limit(1);
+        if (!house) throw new NamedError("That House is not in this school.");
+        houseId = house.id;
+      }
+
+      const [row] = await tx
+        .insert(sickbayChronicGrant)
+        .values({
+          schoolId: auth.schoolId,
+          entryId: entry.id,
+          hmRestricted: entry.hmRestricted, // COPIED from the entry — the composite FK pins it (R129)
+          granteeUserId: d.granteeUserId,
+          scope: d.scope,
+          scopeLabel: d.scopeLabel || null,
+          reason: d.reason,
+          directiveNote: d.scope === "DIRECTIVE" ? d.directiveNote?.trim() || null : null,
+          houseId,
+          grantedByUserId: userId,
+          expiresAt: d.expiresAt ?? null,
+        })
+        .returning({ id: sickbayChronicGrant.id });
+      await audit(tx, auth.schoolId, auth.actor, {
+        actionType: "created",
+        entityType: "sickbay_chronic_grant",
+        entityId: row.id,
+        after: {
+          entryId: entry.id,
+          granteeUserId: d.granteeUserId,
+          scope: d.scope,
+          houseId,
+          expiresAt: d.expiresAt ?? null,
+        },
+        reason: "Care-plan access granted",
+      });
+      return { grantId: row.id, studentId: entry.studentId };
+    });
+    safeRevalidate(GRANTS_PATH);
+    safeRevalidate(REGISTER_PATH);
+    safeRevalidate(planPath(out.studentId));
+    return { ok: true, id: out.grantId };
+  } catch (err) {
+    if (err instanceof NamedError) return { ok: false, error: err.message };
+    return { ok: false, error: chronicWriteError(err, "Could not grant access.") };
+  }
+}
+
+const RevokeSchema = z.object({ grantId: z.string().uuid() });
+
+/**
+ * Revoke a grant. 🔴 R110 — APPEND-ONLY: this STAMPS `revoked_at` + `revoked_by_user_id` and NOTHING
+ * else. It is NEVER a DELETE (the row is the audit evidence access ever existed) and NEVER a `scope`
+ * UPDATE (a scope change is revoke + re-grant). MATRON-only, mirroring the write path.
+ */
+export async function revokeAccess(input: unknown): Promise<Result> {
+  const auth = await authorizeChronicWrite();
+  if (!auth.ok) return { ok: false, error: GRANT_ONLY_MATRON }; // R135/E20 — grant-specific refusal
+  const parsed = RevokeSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid grant." };
+  const d = parsed.data;
+  const userId = auth.actor.id;
+  if (!userId) return { ok: false, error: "Your session could not be resolved. Sign in again." };
+
+  try {
+    const studentId = await withStaffScope(auth.schoolId, userId, async (tx) => {
+      const [grant] = await tx
+        .select({
+          id: sickbayChronicGrant.id,
+          scope: sickbayChronicGrant.scope,
+          granteeUserId: sickbayChronicGrant.granteeUserId,
+          revokedAt: sickbayChronicGrant.revokedAt,
+          studentId: sickbayChronicEntry.studentId,
+        })
+        .from(sickbayChronicGrant)
+        .innerJoin(
+          sickbayChronicEntry,
+          and(
+            eq(sickbayChronicEntry.schoolId, auth.schoolId),
+            eq(sickbayChronicEntry.id, sickbayChronicGrant.entryId),
+          ),
+        )
+        .where(
+          and(
+            eq(sickbayChronicGrant.schoolId, auth.schoolId),
+            eq(sickbayChronicGrant.id, d.grantId),
+          ),
+        )
+        .limit(1);
+      if (!grant) throw new NamedError("That grant no longer exists.");
+      if (grant.revokedAt) throw new NamedError("That access has already been revoked.");
+
+      const now = new Date();
+      await tx
+        .update(sickbayChronicGrant)
+        .set({ revokedAt: now, revokedByUserId: userId })
+        .where(
+          and(eq(sickbayChronicGrant.schoolId, auth.schoolId), eq(sickbayChronicGrant.id, grant.id)),
+        );
+      await audit(tx, auth.schoolId, auth.actor, {
+        actionType: "revoked",
+        entityType: "sickbay_chronic_grant",
+        entityId: grant.id,
+        before: { scope: grant.scope, granteeUserId: grant.granteeUserId, revokedAt: null },
+        after: { revokedAt: now, revokedByUserId: userId },
+        reason: "Care-plan access revoked",
+      });
+      return grant.studentId;
+    });
+    safeRevalidate(GRANTS_PATH);
+    safeRevalidate(REGISTER_PATH);
+    safeRevalidate(planPath(studentId));
+    return { ok: true, id: studentId };
+  } catch (err) {
+    if (err instanceof NamedError) return { ok: false, error: err.message };
+    return { ok: false, error: chronicWriteError(err, "Could not revoke access.") };
   }
 }
 

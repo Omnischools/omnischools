@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
-import { hasAnyRole, SICKBAY_CLINICAL_WRITE_ROLES } from "@/lib/access";
+import { hasAnyRole, SICKBAY_CLINICAL_READ_ROLES, SICKBAY_CLINICAL_WRITE_ROLES } from "@/lib/access";
 import { getChronicRegister } from "@/lib/sickbay/chronic-reads";
 import { splitBold } from "@/lib/sickbay/defaults";
 import {
@@ -53,6 +53,16 @@ export default async function ChronicRegisterPage() {
 
   const current = await getCurrentUser();
   const roles = current?.roles ?? user.roles;
+
+  // 🔴 R137 — §01 is a clinical-reader's register (condition pills, the drug-name column, six at once).
+  // A grantee's "register" is only his granted entries — not a register — so he reaches a student's
+  // DETAIL page by direct link (the visit record's `View care plan →`), never this list. ADMIN keeps
+  // the module-access panel (D2); any other non-clinical staffer must not learn the register exists.
+  if (!hasAnyRole(roles, SICKBAY_CLINICAL_READ_ROLES)) {
+    if (roles.includes("ADMIN")) return <ClinicalRestricted label="Chronic register" />;
+    notFound();
+  }
+
   const canWrite = hasAnyRole(roles, SICKBAY_CLINICAL_WRITE_ROLES);
   const { id: userId } = await resolveActor(school.id);
 

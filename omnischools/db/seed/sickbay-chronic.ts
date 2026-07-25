@@ -5,6 +5,7 @@ import {
   auditLog,
   schools,
   sickbayChronicEntry,
+  sickbayChronicGrant,
   sickbayChronicMed,
   sickbayScheduleSlot,
   students,
@@ -40,6 +41,10 @@ import {
 const GES_CODE = "WR-WAW-014";
 const MATRON_PHONE = "+233244000005"; // Mrs Akua Bediako, seeded by db:seed-sickbay
 const ADWOA_CODE = "ASK-24-0142";
+// INCR-23b demo grantees — real seeded staff (asankrangwa.ts): a Housemaster and a class teacher.
+const GRANTEE_HM_PHONE = "+233244000004"; // Mr A. Mensah (Form Master + Housemaster)
+const GRANTEE_TEACHER_PHONE = "+233244000003"; // Mr K. Owusu (Teacher)
+const AKWASI_CODE = "ASK-24-0143"; // epilepsy plan — the revoked-grant demo target
 
 const R = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000); // n days ago
 
@@ -302,6 +307,7 @@ async function main() {
   // ---- 5) Insert the entries + their med rows ----
   let entryCount = 0;
   let medCount = 0;
+  const entryIdByKey = new Map<string, string>(); // `${studentCode}:${condition}` → entry id
   for (const e of ENTRIES) {
     const studentId = idByCode.get(e.studentCode);
     if (!studentId) continue;
@@ -335,6 +341,7 @@ async function main() {
       })
       .returning({ id: sickbayChronicEntry.id });
     entryCount++;
+    entryIdByKey.set(`${e.studentCode}:${e.condition}`, row.id);
 
     if (e.meds.length > 0) {
       await db.insert(sickbayChronicMed).values(
@@ -352,6 +359,84 @@ async function main() {
     }
   }
 
+  // ---- 6) Demo access grants (INCR-23b) — so §04 renders and the per-scope reader is demoable ----
+  // All three targets are NON-mental-health entries, so hm_restricted = false (the composite FK pins
+  // it to the entry's generated bit; false is the entry's value). A HOUSEMASTER opening Adwoa's detail
+  // then sees her SCD as a dorm card (PARTIAL) and her asthma as a one-line directive; the revoked row
+  // demonstrates append-only. Grants CASCADE-delete with the marker-scoped entry delete on re-run.
+  const granteeRows = await db
+    .select({ id: users.id, phone: users.phone })
+    .from(users)
+    .where(inArray(users.phone, [GRANTEE_HM_PHONE, GRANTEE_TEACHER_PHONE]));
+  const granteeByPhone = new Map(granteeRows.map((u) => [u.phone, u.id]));
+  const hmGrantee = granteeByPhone.get(GRANTEE_HM_PHONE);
+  const teacherGrantee = granteeByPhone.get(GRANTEE_TEACHER_PHONE);
+
+  type GrantSeed = {
+    entryId: string | undefined;
+    granteeUserId: string | undefined;
+    scope: (typeof sickbayChronicGrant.scope.enumValues)[number];
+    scopeLabel?: string;
+    reason: string;
+    directiveNote?: string;
+    revoked?: boolean;
+  };
+  const grantSeeds: GrantSeed[] = [
+    {
+      entryId: entryIdByKey.get(`${ADWOA_CODE}:SICKLE_CELL`),
+      granteeUserId: hmGrantee,
+      scope: "PARTIAL",
+      scopeLabel: "Dorm-side card",
+      reason: "Housemaster holds the dorm-side card — round attendance and first action.",
+    },
+    {
+      entryId: entryIdByKey.get(`${ADWOA_CODE}:ASTHMA`),
+      granteeUserId: teacherGrantee,
+      scope: "DIRECTIVE",
+      reason: "Class teacher needs the one operational instruction, nothing clinical.",
+      directiveNote:
+        "No games or cross-country without her inhaler. If she is breathless, walk her to sickbay.",
+    },
+    {
+      entryId: entryIdByKey.get(`${AKWASI_CODE}:EPILEPSY`),
+      granteeUserId: hmGrantee,
+      scope: "FULL_PLAN",
+      reason: "Superseded grant — re-issued to the current Housemaster.",
+      revoked: true,
+    },
+  ];
+
+  let grantCount = 0;
+  for (const g of grantSeeds) {
+    if (!g.entryId || !g.granteeUserId) continue;
+    const [grantRow] = await db
+      .insert(sickbayChronicGrant)
+      .values({
+        schoolId,
+        entryId: g.entryId,
+        hmRestricted: false, // non-MH entries; matches the entry's generated bit (composite FK)
+        granteeUserId: g.granteeUserId,
+        scope: g.scope,
+        scopeLabel: g.scopeLabel ?? null,
+        reason: g.reason,
+        directiveNote: g.directiveNote ?? null,
+        grantedByUserId: matron.id,
+        revokedAt: g.revoked ? R(2) : null,
+        revokedByUserId: g.revoked ? matron.id : null,
+      })
+      .returning({ id: sickbayChronicGrant.id });
+    grantCount++;
+    await db.insert(auditLog).values({
+      schoolId,
+      actorUserId: matron.id,
+      actorRole: "MATRON",
+      actionType: g.revoked ? "revoked" : "created",
+      entityType: "sickbay_chronic_grant",
+      entityId: grantRow.id,
+      reason: g.revoked ? "Care-plan access revoked" : "Care-plan access granted",
+    });
+  }
+
   await db.insert(auditLog).values({
     schoolId,
     actorUserId: matron.id,
@@ -359,13 +444,20 @@ async function main() {
     actionType: "created",
     entityType: "sickbay_chronic_entry",
     entityId: schoolId,
-    afterState: { entries: entryCount, meds: medCount, mentalHealth: 1, multiCondition: "Adwoa Mensa" },
-    reason: "Chronic register demo seed (INCR-23a)",
+    afterState: {
+      entries: entryCount,
+      meds: medCount,
+      grants: grantCount,
+      mentalHealth: 1,
+      multiCondition: "Adwoa Mensa",
+    },
+    reason: "Chronic register demo seed (INCR-23a/23b)",
   });
 
   console.log(
     `✓ Seeded chronic register — ${entryCount} entries (1 mental-health · Adwoa Mensa multi-condition), ` +
-      `${medCount} med rows. Headmaster sees ${entryCount - 1} of ${entryCount}.`,
+      `${medCount} med rows, ${grantCount} grants (1 partial · 1 directive · 1 revoked). ` +
+      `Headmaster sees ${entryCount - 1} of ${entryCount}.`,
   );
 }
 
