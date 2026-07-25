@@ -438,3 +438,59 @@ export const seniorScoreLedgerVersion = pgTable(
     }),
   }),
 );
+
+/**
+ * Which subjects a student is enrolled in — one row per (student × subject). CAPTURED, not designed:
+ * this table was created directly on PROD via raw SQL in an ad-hoc session and modelled back into the
+ * repo (migration 0059) so a from-migrations rebuild (dev, or a fresh prod) reproduces exactly what
+ * prod holds today. It carried no Drizzle model, no migration, no policies.sql/prod-paste RLS and does
+ * NOT exist on dev; prod has it (0 rows) with tenant_isolation + parent_deny already applied by hand.
+ * See db/sql/prod-paste-0059-student-subject-enrolment.sql (a deliberate NO-OP on current prod).
+ *
+ * SHAPE (matched column-for-column to the live prod catalog, 2026-07-23): the wassce_candidate_subject
+ * leaf idiom — composite (school_id, student_id) → students and (school_id, subject_id) → subject keep
+ * both refs intra-tenant (cross-tenant structurally impossible; CASCADE with either). `created_by_user_id`
+ * is a single-column ref_user pointer with NO on-delete (global-table link stays single-column, matches
+ * prod). LEAF: nothing references it, so NO composite (school_id, id) tenant UK — prod has none either.
+ *
+ * The UNIQUE is pinned to the custom prod name `uniq_student_subject_enrolment` (NOT drizzle's default)
+ * and the read index to `student_subject_enrolment_subject_idx`, so db:generate reproduces prod's exact
+ * catalog. FORCE RLS + tenant_isolation (dev via db:policies; prod via the prod-paste); parent_deny is
+ * applied by the catalog-driven loop (FORCE-RLS + school_id + no parent_scope). No triggers.
+ */
+export const studentSubjectEnrolment = pgTable(
+  "student_subject_enrolment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    // Single-column ref_user pointer, NO on-delete (matches prod) — a global-table link stays single
+    // -column; nullable, so a removed actor leaves the enrolment intact rather than cascading.
+    createdByUserId: uuid("created_by_user_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One enrolment per (student × subject) — custom prod name (NOT drizzle's default), pinned so
+    // db:generate reproduces prod's catalog exactly. Its (school_id, student_id) prefix serves the
+    // per-student subject-list read; the by-subject read gets its own index below.
+    uniqEnrolment: unique("uniq_student_subject_enrolment").on(
+      t.schoolId,
+      t.studentId,
+      t.subjectId,
+    ),
+    // "Who takes this subject" read — custom prod index name, pinned.
+    bySubject: index("student_subject_enrolment_subject_idx").on(t.schoolId, t.subjectId),
+    // Composite intra-tenant FKs — cross-tenant student/subject structurally impossible (CASCADE).
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    subjectFk: foreignKey({
+      columns: [t.schoolId, t.subjectId],
+      foreignColumns: [subjects.schoolId, subjects.id],
+    }).onDelete("cascade"),
+  }),
+);

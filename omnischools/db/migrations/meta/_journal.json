@@ -414,6 +414,13 @@
       "when": 1784744622802,
       "tag": "0058_windy_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1784971197469,
+      "tag": "0059_solid_timeslip",
+      "breakpoints": true
     }
   ]
 }
