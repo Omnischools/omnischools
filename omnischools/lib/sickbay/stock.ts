@@ -53,6 +53,29 @@ export function deriveControlledBalance(x: {
   return x.receipt + x.adjustment - x.wastage - x.administered;
 }
 
+export type ControlledMovementType = "RECEIPT" | "WASTAGE" | "ADJUSTMENT";
+export type MovementWitnessError = "MISSING_WITNESS" | "SELF_WITNESS";
+
+/**
+ * 🔴 R152/D5.3 — the controlled-movement witness DECISION, pure so it has a committed tripwire.
+ *
+ * A controlled WASTAGE (the classic diversion point) MUST carry a witness, and no one witnesses
+ * themselves. This is the require + self-witness logic Quinn's `&& false` mutation slipped past
+ * (24a MINOR-2): the action's guards were only source-shape-tested, so disabling the whole
+ * accountability rule left the suite green. The N&MC-clinician-in-this-school check is DB-backed
+ * (`assertSchoolClinician`, verified live) and stays in the action; this pure fn is the part a unit
+ * test can pin and a mutation must red.
+ */
+export function controlledMovementWitnessError(
+  movementType: ControlledMovementType,
+  witnessId: string | null,
+  actorId: string | null,
+): MovementWitnessError | null {
+  if (movementType === "WASTAGE" && !witnessId) return "MISSING_WITNESS";
+  if (witnessId && actorId && witnessId === actorId) return "SELF_WITNESS";
+  return null;
+}
+
 // ---- View types (client-safe · pre-formatted strings / scalars, never a DB row) ----
 
 export interface StandingOrderView {

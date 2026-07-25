@@ -31,6 +31,18 @@ describe("R167(e) · sargable half-open ranges replace the column::date casts", 
     expect(s).toMatch(/\$\{date\}::date \+ interval '1 day'/);
     // admission lower bound on discharge, and the clinic lower bound, are bare `>= ${date}::date`.
     expect(s).toMatch(/>= \$\{date\}::date/);
+    // 🔴 24a MINOR-2 (Quinn): the upper bounds must be STRICT `<`, not `<=` — a `<=` would hold a
+    // next-midnight admit on the every-register-save path, and the presence checks above don't see it.
+    // Pin the strict operator on BOTH upper-bound expressions so that mutation reds here.
+    expect(s, "the admission upper bound must be strict `<`").toMatch(
+      /admittedAt\}\s*<\s*\$\{date\}::date \+ interval '1 day'/,
+    );
+    expect(s, "the clinic upper bound must be strict `<`").toMatch(
+      /presentedAt\}\s*<\s*\$\{date\}::date \+ interval '1 day'/,
+    );
+    expect(s, "no `<=` may sneak onto a half-open upper bound").not.toMatch(
+      /(admittedAt|presentedAt)\}\s*<=\s*\$\{date\}::date \+ interval/,
+    );
   });
 });
 

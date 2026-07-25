@@ -46,13 +46,17 @@ async function main() {
   await db.delete(sickbayStockItem).where(eq(sickbayStockItem.schoolId, schoolId));
   await db.delete(sickbayStandingOrder).where(eq(sickbayStandingOrder.schoolId, schoolId));
 
-  // The two matrons seeded by db:seed-sickbay — the receipt's actor + witness (a real N&MC clinician).
+  // The two matrons seeded by db:seed-sickbay. The witness of a controlled movement must be an N&MC
+  // clinician (R155) and NOT the recorder — only Mrs Akua Bediako (MATRON_PHONE) carries the licence
+  // (N-04827), so she is the WITNESS and Ms Grace Antwi (ASSISTANT_PHONE) is the recording ACTOR. The
+  // reverse (Akua as both) would be self-witness, and Grace as witness would fail requireNmc — i.e. a
+  // state the real `recordControlledMovement` refuses (Quinn 24a MINOR-3, fidelity).
   const matrons = await db
     .select({ id: users.id, phone: users.phone })
     .from(users)
     .where(inArray(users.phone, [MATRON_PHONE, ASSISTANT_PHONE]));
-  const matronId = matrons.find((m) => m.phone === MATRON_PHONE)?.id ?? null;
-  const witnessId = matrons.find((m) => m.phone === ASSISTANT_PHONE)?.id ?? null;
+  const matronId = matrons.find((m) => m.phone === ASSISTANT_PHONE)?.id ?? null; // recorder (actor)
+  const witnessId = matrons.find((m) => m.phone === MATRON_PHONE)?.id ?? null; // N&MC witness (N-04827)
 
   // ---- 2) One standing order (the Matron's own authority — provenance not permission, R160) ----
   await db.insert(sickbayStandingOrder).values({

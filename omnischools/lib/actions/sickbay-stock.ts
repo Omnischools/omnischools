@@ -35,6 +35,7 @@ import {
   sickbayStockItem,
 } from "@/db/schema";
 import { assertSchoolClinician } from "@/lib/sickbay/clinician";
+import { controlledMovementWitnessError } from "@/lib/sickbay/stock";
 
 type Result = { ok: boolean; error?: string; id?: string };
 const SETUP_PATH = "/senior/sickbay/setup";
@@ -400,20 +401,21 @@ export async function recordControlledMovement(input: unknown): Promise<Result> 
   }
 
   const witnessId = d.witnessUserId || null;
-  const witnessRequired = d.movementType === "WASTAGE";
-  if (witnessRequired && !witnessId) {
+  // The require-witness + self-witness decision is the pure, unit-pinned `controlledMovementWitnessError`
+  // (24a MINOR-2 — the guard the `&& false` mutation slipped past). The N&MC/tenancy check stays here
+  // (DB-backed — the global `ref_user` can't be checked in SQL).
+  const werr = controlledMovementWitnessError(d.movementType, witnessId, auth.actor.id ?? null);
+  if (werr === "MISSING_WITNESS") {
     return { ok: false, error: "A controlled wastage needs a witness — a second N&MC clinician." };
   }
-  if (witnessId) {
-    if (witnessId === auth.actor.id) {
-      return { ok: false, error: "The witness must be a second person, not the one recording it." };
-    }
-    if (!(await assertSchoolClinician(auth.schoolId, witnessId, { requireNmc: true }))) {
-      return {
-        ok: false,
-        error: "The witness must be a staff member with an N&MC licence in this school.",
-      };
-    }
+  if (werr === "SELF_WITNESS") {
+    return { ok: false, error: "The witness must be a second person, not the one recording it." };
+  }
+  if (witnessId && !(await assertSchoolClinician(auth.schoolId, witnessId, { requireNmc: true }))) {
+    return {
+      ok: false,
+      error: "The witness must be a staff member with an N&MC licence in this school.",
+    };
   }
 
   try {

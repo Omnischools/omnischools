@@ -1,10 +1,31 @@
 import { describe, it, expect } from "vitest";
 import {
+  controlledMovementWitnessError,
   deriveControlledBalance,
   reorderCount,
   stockStatus,
   type StockItemView,
 } from "./stock";
+
+// 🔴 R152/D5.3 — the controlled-movement witness rule, the accountability that justifies the whole
+// controlled layer. Quinn (24a MINOR-2) proved a `&& false` mutation disabling the WASTAGE-needs-a-
+// witness refusal passed the source-shape authz suite. This pins the pure decision the action calls.
+describe("R152/D5.3 · controlledMovementWitnessError — the diversion-control decision", () => {
+  it("WASTAGE without a witness → MISSING_WITNESS (the require rule — the mutation target)", () => {
+    expect(controlledMovementWitnessError("WASTAGE", null, "actor")).toBe("MISSING_WITNESS");
+  });
+  it("RECEIPT / ADJUSTMENT without a witness → null (only wastage requires one)", () => {
+    expect(controlledMovementWitnessError("RECEIPT", null, "actor")).toBeNull();
+    expect(controlledMovementWitnessError("ADJUSTMENT", null, "actor")).toBeNull();
+  });
+  it("witness === actor → SELF_WITNESS, for any movement (no self-witness)", () => {
+    expect(controlledMovementWitnessError("WASTAGE", "x", "x")).toBe("SELF_WITNESS");
+    expect(controlledMovementWitnessError("RECEIPT", "x", "x")).toBe("SELF_WITNESS");
+  });
+  it("WASTAGE with a DISTINCT witness → null (the happy path; N&MC/tenancy is the action's DB check)", () => {
+    expect(controlledMovementWitnessError("WASTAGE", "witness", "actor")).toBeNull();
+  });
+});
 
 describe("R161 · stockStatus — DERIVED from qty vs reorder point, reproducing the surface's 12 pills", () => {
   it("REORDER when strictly below the reorder point (terra)", () => {

@@ -74,14 +74,21 @@ describe("every §3 mutator asserts the [ADMIN, MATRON] gate before touching the
 describe("R152 · controlled movements — witness rule + append-only, in the ACTION not just the UI", () => {
   const src = () => readCode(ACTIONS);
 
-  it("a controlled WASTAGE requires a witness, and the witness passes assertSchoolClinician{requireNmc}", () => {
+  // ⚠️ The require-witness + self-witness DECISION now lives in the pure `controlledMovementWitnessError`
+  // (stock.ts) with its own unit test (24a MINOR-2) — that is the behavioural tripwire a `&& false`
+  // mutation reds. Here we pin only that the action DELEGATES to it and refuses both outcomes, and that
+  // the DB-backed N&MC check still runs (the part a unit test can't cover).
+  it("the action delegates the witness decision to controlledMovementWitnessError and refuses both outcomes", () => {
     const s = src();
-    expect(s).toMatch(/movementType === "WASTAGE"/);
-    expect(s).toMatch(/assertSchoolClinician\(\s*auth\.schoolId,\s*witnessId,\s*\{\s*requireNmc:\s*true\s*\}\s*\)/);
+    expect(s).toMatch(/controlledMovementWitnessError\(\s*d\.movementType,\s*witnessId,\s*auth\.actor\.id/);
+    expect(s, "MISSING_WITNESS must be refused").toMatch(/werr === "MISSING_WITNESS"[\s\S]{0,120}?ok:\s*false/);
+    expect(s, "SELF_WITNESS must be refused").toMatch(/werr === "SELF_WITNESS"[\s\S]{0,120}?ok:\s*false/);
   });
 
-  it("the witness cannot be the recorder (self-witness refused — the diversion premise)", () => {
-    expect(src()).toMatch(/witnessId === auth\.actor\.id/);
+  it("a provided witness still passes the DB-backed assertSchoolClinician{requireNmc} (N&MC + tenancy)", () => {
+    expect(src()).toMatch(
+      /assertSchoolClinician\(\s*auth\.schoolId,\s*witnessId,\s*\{\s*requireNmc:\s*true\s*\}\s*\)/,
+    );
   });
 
   it("🔴 APPEND-ONLY — no movement is ever updated or deleted (a correction is a new ADJUSTMENT)", () => {
