@@ -88,6 +88,40 @@ describe("every chronic-register mutator asserts the MATRON gate before touching
   });
 });
 
+describe("S12 · grant/revoke enforce their rules in the ACTION, not just the UI", () => {
+  const src = () => readCode(ACTIONS);
+
+  it("grantAccess refuses PARTIAL on a mental-health entry (R132.1) — the expression, not the name", () => {
+    const s = src();
+    expect(s).toMatch(/d\.scope === "PARTIAL" && entry\.hmRestricted/);
+    expect(s).toContain("GRANT_PARTIAL_ON_MH_REFUSAL");
+  });
+
+  it("grantAccess refuses a non-staff / out-of-school grantee via isStaff over in-school role codes (E19)", () => {
+    const s = src();
+    expect(s).toMatch(/isStaff\(roleRows\.map\(\(r\) => r\.code\)\)/);
+    expect(s).toContain("GRANT_NOT_STAFF_REFUSAL");
+  });
+
+  it("grantAccess requires a directive note when the scope is DIRECTIVE (R109)", () => {
+    const s = src();
+    expect(s).toMatch(/d\.scope === "DIRECTIVE" && !d\.directiveNote/);
+    expect(s).toContain("GRANT_DIRECTIVE_NEEDS_NOTE");
+  });
+
+  it("🔴 revoke is APPEND-ONLY — it STAMPS revoked_at, and NOTHING deletes a grant or UPDATEs scope (R110)", () => {
+    const s = src();
+    expect(s, "revoke must stamp revoked_at + revoked_by_user_id").toMatch(
+      /\.set\(\{ revokedAt: now, revokedByUserId: userId \}\)/,
+    );
+    // A DELETE of a grant, or a `.set({ scope: … })`, would break append-only. Neither may exist.
+    expect(s, "a grant must never be DELETEd").not.toMatch(/\.delete\(\s*sickbayChronicGrant/);
+    expect(s, "a grant's scope must never be UPDATEd (a scope change is revoke + re-grant)").not.toMatch(
+      /\.set\(\{[^}]*\bscope:/,
+    );
+  });
+});
+
 describe("SICKBAY_CLINICAL_WRITE_ROLES has the MATRON-only polarity a clinical author needs", () => {
   it("admits the Matron and refuses the Headmaster and the Admin", () => {
     expect(hasAnyRole(["MATRON"], SICKBAY_CLINICAL_WRITE_ROLES)).toBe(true);
