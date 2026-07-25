@@ -71,7 +71,6 @@ import type {
   ChronicDormCardView,
   ChronicEntryProjection,
   ChronicMedView,
-  ChronicPlanEntryView,
   ChronicPlanView,
   ChronicRegisterRow,
   ChronicScope,
@@ -958,7 +957,7 @@ export async function getDormCardForPrint(
   studentId: string,
   entryId: string,
   actor: ChronicActor,
-  now: Date,
+  _now: Date,
 ): Promise<DormPrintView | null> {
   if (!isStaff(actor.roles)) return null;
   const userId = actor.userId;
@@ -1104,4 +1103,76 @@ async function studentHouseId(tx: Tx, schoolId: string, studentId: string): Prom
     .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
     .limit(1);
   return s?.houseId ?? null;
+}
+
+/** The `+ Grant access` form's option lists (R139 fields). MATRON-only — the sole grant writer. */
+export interface GrantFormOptions {
+  staff: { id: string; name: string; roleLabel: string }[];
+  entries: { entryId: string; studentName: string; conditionLabel: string; hmRestricted: boolean }[];
+  houses: { id: string; name: string }[];
+}
+
+export async function getGrantFormOptions(
+  schoolId: string,
+  actor: ChronicActor,
+): Promise<GrantFormOptions | null> {
+  if (!actor.roles.includes("MATRON")) return null; // only the grant writer needs the pickers
+  const userId = actor.userId;
+  if (!userId) return null;
+
+  return withStaffScope(schoolId, userId, async (tx) => {
+    const staffRows = await tx
+      .select({ id: users.id, name: users.fullName, roleLabel: roles.label, code: roles.code })
+      .from(roleAssignments)
+      .innerJoin(roles, eq(roles.id, roleAssignments.roleId))
+      .innerJoin(users, eq(users.id, roleAssignments.userId))
+      .where(eq(roleAssignments.schoolId, schoolId));
+    const staffById = new Map<string, { id: string; name: string; roleLabel: string }>();
+    for (const r of staffRows) {
+      if (r.code === "STUDENT" || r.code === "PARENT") continue; // R106 — staff only
+      if (!staffById.has(r.id)) {
+        staffById.set(r.id, { id: r.id, name: r.name ?? "Unnamed staff", roleLabel: r.roleLabel });
+      }
+    }
+
+    const entryRows = await tx
+      .select({
+        entryId: sickbayChronicEntry.id,
+        condition: sickbayChronicEntry.condition,
+        conditionLabel: sickbayChronicEntry.conditionLabel,
+        hmRestricted: sickbayChronicEntry.hmRestricted,
+        firstName: students.firstName,
+        lastName: students.lastName,
+      })
+      .from(sickbayChronicEntry)
+      .innerJoin(
+        students,
+        and(eq(students.schoolId, schoolId), eq(students.id, sickbayChronicEntry.studentId)),
+      )
+      .where(
+        and(
+          eq(sickbayChronicEntry.schoolId, schoolId),
+          eq(sickbayChronicEntry.active, true),
+          readableEntryFilter(schoolId, userId),
+        ),
+      );
+
+    const houseRows = await tx
+      .select({ id: houses.id, name: houses.name })
+      .from(houses)
+      .where(eq(houses.schoolId, schoolId));
+
+    return {
+      staff: [...staffById.values()].sort((a, b) => a.name.localeCompare(b.name)),
+      entries: entryRows
+        .map((e) => ({
+          entryId: e.entryId,
+          studentName: `${e.firstName} ${e.lastName}`,
+          conditionLabel: conditionWords(e.condition as ChronicCondition, e.conditionLabel),
+          hmRestricted: e.hmRestricted,
+        }))
+        .sort((a, b) => a.studentName.localeCompare(b.studentName)),
+      houses: houseRows.sort((a, b) => a.name.localeCompare(b.name)),
+    };
+  });
 }
