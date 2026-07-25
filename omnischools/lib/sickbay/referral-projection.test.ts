@@ -179,3 +179,51 @@ describe("🔴 audit before/after carries no diagnosis, no menses, no handoff, n
     expect(s, "the create audit must mask the NHIS card").toContain("maskNhisCard(nhis.nhisCardNumber)");
   });
 });
+
+// ============================================================================
+// 🔴 R205 · void frees the visit for re-referral; a voided referral is read-only and takes NO write.
+// The DB-behaviour proof (picker inclusion/exclusion, hold/off-campus dedup) is the phaseRV block in
+// scripts/verify-sickbay-referral.ts; these are the source-shape counterparts that RED in `pnpm test`.
+// ============================================================================
+describe("🔴 R205 · void frees the visit + a voided referral takes no write", () => {
+  it("RV2 · both one-per-visit guards block only a NON-VOIDED referral (voided_at IS NULL)", () => {
+    const reads = readCode(READS);
+    // The picker's leftJoin predicate excludes voided rows IN THE JOIN (so a voided-only visit re-offers).
+    const picker = reads.slice(reads.indexOf("getReferableVisits"), reads.indexOf("export interface StaffOption"));
+    expect(picker, "the picker join must exclude voided referrals").toContain("isNull(sickbayReferral.voidedAt)");
+
+    const action = readCode(ACTION);
+    // The create-guard's existing-referral select excludes voided rows too — the same free-the-slot rule.
+    const create = action.slice(action.indexOf("export async function recordReferral("), action.indexOf(".insert(sickbayReferral)"));
+    expect(create, "the create-guard must ignore voided referrals").toContain("isNull(sickbayReferral.voidedAt)");
+  });
+
+  it("RV4 · the case page derives voided from voidedAt, names the reason, and the panel is read-only", () => {
+    const page = readCode("app/(app)/senior/sickbay/referrals/[ref]/page.tsx");
+    // Mirrors the visit page's `record.voidedAt !== null`.
+    expect(page, "page must derive voided from the voidedAt timestamp").toContain("d.voidedAt !== null");
+    expect(page, "page must pass the void reason to the panel").toMatch(/voidReason=\{d\.voidReason\}/);
+    expect(page, "page must render a voided banner").toContain("This referral was voided");
+
+    const actions = readCode("components/sickbay/referral-actions.tsx");
+    // The read-only branch short-circuits BEFORE any advance/return/void control and names the reason.
+    const early = actions.indexOf("if (voided)");
+    const controls = actions.indexOf("Void this referral");
+    expect(early, "the read-only branch must exist").toBeGreaterThan(-1);
+    expect(early, "the read-only branch must precede the write controls").toBeLessThan(controls);
+    expect(actions, "the read-only banner names the void reason").toContain("voidReason");
+  });
+
+  it("RV5 · recordReferralUpdate + addReferralCostLine refuse a write to a voided referral (ADV-3: the voidedAt check itself)", () => {
+    const action = readCode(ACTION);
+    for (const [fn, stop] of [
+      ["export async function recordReferralUpdate", ".insert(sickbayReferralUpdate)"],
+      ["export async function addReferralCostLine", ".insert(sickbayReferralCostLine)"],
+    ] as const) {
+      const start = action.indexOf(fn);
+      const region = action.slice(start, action.indexOf(stop, start));
+      // Pin the guard EXPRESSION (the re-resolved row's voidedAt), not a copy of the error string.
+      expect(region, `${fn} must re-check voidedAt before inserting`).toMatch(/if\s*\(\s*r\.voidedAt\s*\)/);
+    }
+  });
+});

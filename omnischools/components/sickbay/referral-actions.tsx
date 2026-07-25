@@ -46,10 +46,12 @@ export function ReferralCaseActions({
   referralId,
   status,
   voided,
+  voidReason,
 }: {
   referralId: string;
   status: ReferralStatus;
   voided: boolean;
+  voidReason?: string | null;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -67,7 +69,8 @@ export function ReferralCaseActions({
   if (voided) {
     return (
       <div className="rounded-[12px] border border-border bg-bg p-[16px_20px] text-[12px] italic text-navy-3">
-        This referral was voided and is read-only.
+        {voidReason ? `Voided — ${voidReason}. ` : "This referral was voided. "}
+        It is retained as a record and cannot be changed.
       </div>
     );
   }

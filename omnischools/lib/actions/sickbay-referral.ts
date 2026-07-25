@@ -18,7 +18,7 @@
  * feed is ADMIN-readable): no diagnosis, no full NHIS number, no menses note, no cost item label
  * reaches `before`/`after` (the 25a `maskNhisCard` precedent).
  */
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import type { Tx } from "@/lib/db";
@@ -128,11 +128,20 @@ export async function recordReferral(input: unknown): Promise<Result> {
       if (visit.voidedAt) throw new NamedError("That visit was voided.");
       if (visit.disposition !== "REFER") throw new NamedError("A referral hangs off a referred visit — refer the visit first.");
 
-      // One referral per visit (app check — the picker only offers un-referred visits; this closes the race window).
+      // One LIVE referral per visit (app check — the picker only offers un-referred visits; this closes
+      // the race window). R205 — a VOIDED referral is ignored (voided_at IS NULL): void frees the visit
+      // for re-referral, while a RETURNED (non-voided) referral stays a block — the episode is closed, not
+      // re-referred off the same visit.
       const [existing] = await tx
         .select({ id: sickbayReferral.id })
         .from(sickbayReferral)
-        .where(and(eq(sickbayReferral.schoolId, auth.schoolId), eq(sickbayReferral.visitId, d.visitId)))
+        .where(
+          and(
+            eq(sickbayReferral.schoolId, auth.schoolId),
+            eq(sickbayReferral.visitId, d.visitId),
+            isNull(sickbayReferral.voidedAt),
+          ),
+        )
         .limit(1);
       if (existing) throw new NamedError("This visit already has a referral.");
 
@@ -235,6 +244,9 @@ export async function recordReferralUpdate(input: unknown): Promise<Result> {
     const id = await withSchool(auth.schoolId, async (tx) => {
       const r = await loadReferral(tx, auth.schoolId, d.referralId);
       if (!r) throw new NamedError("That referral no longer exists.");
+      // R205 — a voided referral takes NO write (mirrors advance/mark-returned/void). A late POST must
+      // not append a clinical update to a referral that was retracted as an error.
+      if (r.voidedAt) throw new NamedError("That referral was voided.");
       const now = new Date();
       const [row] = await tx
         .insert(sickbayReferralUpdate)
@@ -433,6 +445,9 @@ export async function addReferralCostLine(input: unknown): Promise<Result> {
     const id = await withSchool(auth.schoolId, async (tx) => {
       const r = await loadReferral(tx, auth.schoolId, d.referralId);
       if (!r) throw new NamedError("That referral no longer exists.");
+      // R205 — a voided referral takes NO write (mirrors advance/mark-returned/void). A late POST must
+      // not append a cost line to a referral that was retracted as an error.
+      if (r.voidedAt) throw new NamedError("That referral was voided.");
       const [row] = await tx
         .insert(sickbayReferralCostLine)
         .values({

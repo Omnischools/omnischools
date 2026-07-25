@@ -145,6 +145,10 @@ export function initials(full: string | null): string | null {
   return `${parts[0].charAt(0)}. ${parts[parts.length - 1]}`;
 }
 
+/** The SAME one-name abbreviation, re-exported under a non-colliding name for referral-reads (which
+ *  already binds `defaults.initials`, the distinct avatar-glyph form). One rule, two callers (Dex #2). */
+export { initials as abbreviateName };
+
 /**
  * The lede, TRIMMED (Z3: the referral and cluster clauses advertise affordances that do not exist
  * until INCR-25/27). A zero clause is DROPPED, never rendered as `0`; all three zero renders the

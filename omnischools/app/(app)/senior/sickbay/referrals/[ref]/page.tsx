@@ -56,6 +56,14 @@ export default async function ReferralCasePage({ params }: { params: Promise<{ r
         <em className="font-normal italic text-gold">{d.workingImpression ?? "referral"}.</em>
       </h1>
 
+      {/* R205 — voided banner, mirroring the visit record's treatment (visit-record-console). */}
+      {d.voidedAt && (
+        <div className="mb-4 mt-3 rounded-md border border-navy-3 bg-bg px-4 py-2 text-[12px] italic text-navy-3">
+          This referral was voided{d.voidReason ? ` — ${d.voidReason}` : ""}. It is retained as a record
+          and cannot be changed.
+        </div>
+      )}
+
       {/* Patient header */}
       <div className="mb-6 mt-4 grid grid-cols-[auto_1fr_auto] items-center gap-6 rounded-[14px] bg-[linear-gradient(135deg,var(--navy)_0%,var(--navy-2)_100%)] p-[24px_28px] text-bg">
         <span className="flex size-[68px] items-center justify-center rounded-full bg-gold font-display text-[22px] font-semibold text-navy">
@@ -202,7 +210,12 @@ export default async function ReferralCasePage({ params }: { params: Promise<{ r
 
         <div>
           {canWrite ? (
-            <ReferralCaseActions referralId={d.id} status={d.status} voided={false} />
+            <ReferralCaseActions
+              referralId={d.id}
+              status={d.status}
+              voided={d.voidedAt !== null}
+              voidReason={d.voidReason}
+            />
           ) : (
             <div className="rounded-[12px] border border-border bg-bg p-[16px_20px] text-[12px] italic text-navy-3">
               The Headmaster reads the referral record; the Matron records updates and marks the return.

@@ -121,8 +121,8 @@ export async function referredOutStudentIds(schoolId: string, asOf: Date = new D
         and(
           eq(sickbayReferral.schoolId, schoolId),
           isNull(sickbayReferral.voidedAt),
-          sql`${sickbayReferral.departedAt} <= ${asOf}`,
-          sql`(${sickbayReferral.returnedAt} IS NULL OR ${sickbayReferral.returnedAt} > ${asOf})`,
+          sql`${sickbayReferral.departedAt} <= ${asOf.toISOString()}`,
+          sql`(${sickbayReferral.returnedAt} IS NULL OR ${sickbayReferral.returnedAt} > ${asOf.toISOString()})`,
         ),
       );
     return new Set(rows.map((r) => r.studentId));

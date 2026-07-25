@@ -36,20 +36,14 @@ import {
   users,
 } from "@/db/schema";
 import { formLabel, initials } from "./defaults";
+// `A. Bediako` — the one-name abbreviation IS the A2/R73 disclosure tier; reuse the canonical board-copy
+// rule (aliased to dodge the collision with defaults.initials, the avatar-glyph form imported above).
+import { abbreviateName as shortName } from "./board-copy";
 import {
   formatReferralRef,
   referralDayLabel,
   type ReferralStatus,
 } from "./referrals";
-
-/** `A. Bediako` — the render form; the FK is what is stored. */
-const shortName = (full: string | null): string | null => {
-  if (!full) return null;
-  const parts = full.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return null;
-  const last = parts[parts.length - 1];
-  return parts.length > 1 ? `${parts[0].charAt(0)}. ${last}` : last;
-};
 
 const REL_LABEL: Record<string, string> = {
   MOTHER: "Mother",
@@ -105,8 +99,15 @@ export async function getReferableVisits(schoolId: string): Promise<ReferableVis
       .leftJoin(classes, and(eq(classes.schoolId, schoolId), eq(classes.id, students.classId)))
       .leftJoin(houses, and(eq(houses.schoolId, schoolId), eq(houses.id, students.houseId)))
       .leftJoin(
+        // R205 — join only a LIVE referral. A voided referral frees the visit for re-referral, so a
+        // visit whose only referral rows are voided still yields ONE row with a null referralId here
+        // (the predicate sits in the JOIN, not a post-filter, so several voided rows can't multiply it).
         sickbayReferral,
-        and(eq(sickbayReferral.schoolId, schoolId), eq(sickbayReferral.visitId, sickbayVisit.id)),
+        and(
+          eq(sickbayReferral.schoolId, schoolId),
+          eq(sickbayReferral.visitId, sickbayVisit.id),
+          isNull(sickbayReferral.voidedAt),
+        ),
       )
       .where(
         and(
@@ -453,6 +454,10 @@ export interface ReferralDetail {
   travelNote: string | null;
   nhisCardNumber: string | null;
   nhisValid: boolean | null;
+  // R205 — a voided referral renders read-only and takes no write; the page mirrors the visit page's
+  // `voided: record.voidedAt !== null` treatment and names the reason on the banner.
+  voidedAt: Date | null;
+  voidReason: string | null;
   updates: ReferralUpdateRow[];
   costLines: ReferralCostLine[];
 }
@@ -591,6 +596,8 @@ export async function getReferralDetail(
       travelNote: r.travelNote,
       nhisCardNumber: r.nhisCardNumber,
       nhisValid: r.nhisValid,
+      voidedAt: r.voidedAt,
+      voidReason: r.voidReason,
       updates: updateRows.map((u) => ({ ...u, recordedByName: shortName(u.recordedByName) })),
       costLines,
     };

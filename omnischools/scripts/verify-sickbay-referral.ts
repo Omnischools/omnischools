@@ -14,6 +14,7 @@ import {
 } from "@/db/schema";
 import {
   getActiveReferrals,
+  getReferableVisits,
   getReferralDetail,
   getReferralCostLines,
 } from "@/lib/sickbay/referral-reads";
@@ -235,6 +236,129 @@ async function phaseA() {
   }
 }
 
+/**
+ * Kofi R205 · RV1–RV3 — VOID FREES THE VISIT for re-referral, and the LIVE row is the only projection
+ * contributor. Real DB (committed fixtures, deleted in `finally`), because the picker + medical-hold +
+ * off-campus derivations are the observable boundary. The write-side guards (RV4/RV5) are source-shape
+ * in referral-projection.test.ts. NB there is NO unique(school_id, visit_id) — several referral rows on
+ * one visit (one voided, one live) is a legal state the app relies on, so we insert them directly.
+ */
+type RefStatus = "REFERRED" | "INPATIENT" | "RETURNING" | "RETURNED";
+async function phaseRV() {
+  const rand = Math.random().toString(36).slice(2, 8);
+  let schoolId = "";
+  let hmUserId = "";
+  try {
+    const [{ id: sId }] = await db
+      .insert(schools)
+      .values({ name: `QVR-RV-${rand}`, gesCode: `QVR-RV-${rand}`, schoolType: "SENIOR" })
+      .returning({ id: schools.id });
+    schoolId = sId;
+    const [{ id: hmId }] = await db
+      .insert(users)
+      .values({ phone: `+233901${rand}`.slice(0, 15), fullName: "RV Headmaster" })
+      .returning({ id: users.id });
+    hmUserId = hmId;
+    const [{ id: hospitalId }] = await db
+      .insert(sickbayHospital)
+      .values({ schoolId, name: "RV Hospital", acceptsNhis: true, active: true })
+      .returning({ id: sickbayHospital.id });
+
+    const mkStudent = async (code: string) => {
+      const [{ id }] = await db
+        .insert(students)
+        .values({ schoolId, studentCode: code, firstName: "R", lastName: "V", sex: "MALE" })
+        .returning({ id: students.id });
+      return id;
+    };
+    const mkReferVisit = async (studentId: string) => {
+      const [{ id }] = await db
+        .insert(sickbayVisit)
+        .values({
+          schoolId,
+          studentId,
+          presentedAt: new Date("2026-05-10T06:30:00Z"),
+          presentingComplaint: "x",
+          disposition: "REFER",
+          dispositionAt: new Date("2026-05-10T07:00:00Z"),
+        })
+        .returning({ id: sickbayVisit.id });
+      return id;
+    };
+    const mkReferral = async (
+      studentId: string,
+      visitId: string,
+      opts: { status?: RefStatus; voided?: boolean } = {},
+    ) => {
+      const [{ id }] = await db
+        .insert(sickbayReferral)
+        .values({
+          schoolId,
+          studentId,
+          visitId,
+          hospitalId,
+          hmAuthorisedByUserId: hmUserId,
+          hmAuthorisedAt: new Date("2026-05-10T07:15:00Z"),
+          status: opts.status ?? "REFERRED",
+          departedAt: new Date("2026-05-10T07:15:00Z"),
+          reasonReferredOut: "r",
+          voidedAt: opts.voided ? new Date("2026-05-10T08:00:00Z") : null,
+          voidReason: opts.voided ? "logged in error" : null,
+        })
+        .returning({ id: sickbayReferral.id });
+      return id;
+    };
+    const liveGuard = (visitId: string) =>
+      withSchool(schoolId, (tx) =>
+        tx
+          .select({ id: sickbayReferral.id })
+          .from(sickbayReferral)
+          .where(
+            and(
+              eq(sickbayReferral.schoolId, schoolId),
+              eq(sickbayReferral.visitId, visitId),
+              sql`${sickbayReferral.voidedAt} IS NULL`,
+            ),
+          )
+          .limit(1),
+      );
+
+    // ── RV1 · a visit whose ONLY referral is voided → the picker re-offers it; the create-guard is clear ─
+    const s1 = await mkStudent(`RV1-${rand}`);
+    const v1 = await mkReferVisit(s1);
+    const voided1 = await mkReferral(s1, v1, { voided: true });
+    ok((await getReferableVisits(schoolId)).some((p) => p.visitId === v1), "RV1: a voided-only REFER visit is RE-OFFERED by the picker");
+    ok((await liveGuard(v1)).length === 0, "RV1: the create-guard sees NO live referral on the voided-only visit (re-referral allowed)");
+    const persisted = await withSchool(schoolId, (tx) =>
+      tx.select({ id: sickbayReferral.id }).from(sickbayReferral).where(eq(sickbayReferral.id, voided1)),
+    );
+    ok(persisted.length === 1, "RV1: the prior voided referral row PERSISTS (soft-void, history retained)");
+
+    // ── RV2 · a LIVE referral in ANY state (open OR RETURNED) blocks re-referral — BOTH sides ──────────
+    for (const [label, status] of [["open", "INPATIENT"], ["returned", "RETURNED"]] as const) {
+      const s = await mkStudent(`RV2${label[0]}-${rand}`);
+      const v = await mkReferVisit(s);
+      await mkReferral(s, v, { status });
+      ok(!(await getReferableVisits(schoolId)).some((p) => p.visitId === v), `RV2: a ${label} (non-voided) referral EXCLUDES the visit from the picker`);
+      ok((await liveGuard(v)).length === 1, `RV2: the create-guard REFUSES — a ${label} referral is a live one-per-visit block`);
+    }
+
+    // ── RV3 · a voided + a fresh LIVE referral on the SAME visit → held/off-campus EXACTLY once ─────────
+    const s3 = await mkStudent(`RV3-${rand}`);
+    const v3 = await mkReferVisit(s3);
+    await mkReferral(s3, v3, { voided: true }); // the erroneous, voided one — contributes nothing
+    await mkReferral(s3, v3, { status: "INPATIENT" }); // the fresh live re-referral
+    const hold = await withSchool(schoolId, (tx) => medicalHoldStudentIds(tx, schoolId, "2026-05-11", [s3]));
+    ok(hold.has(s3) && hold.size === 1, "RV3: the medical hold returns the student EXACTLY once (voided row adds nothing)");
+    ok((await referredOutStudentIds(schoolId, new Date("2026-05-11T10:00:00Z"))).has(s3), "RV3: referredOutStudentIds includes the student from the LIVE row");
+
+    console.log(`\nPhase RV (void frees the visit · R205) done.`);
+  } finally {
+    if (schoolId) await db.delete(schools).where(eq(schools.id, schoolId));
+    if (hmUserId) await db.delete(users).where(eq(users.id, hmUserId));
+  }
+}
+
 async function phaseB() {
   const rand = Math.random().toString(36).slice(2, 8);
   const APP_ROLE = sql`set local role omnischools_app`;
@@ -329,6 +453,7 @@ async function phaseB() {
 
 async function main() {
   await phaseA();
+  await phaseRV();
   await phaseB();
   console.log(
     `\n${failures === 0 ? "✓ ALL SICKBAY-REFERRAL PROJECTION + ISOLATION ASSERTIONS PASS" : `✗ ${failures} ASSERTION(S) FAILED`}`,

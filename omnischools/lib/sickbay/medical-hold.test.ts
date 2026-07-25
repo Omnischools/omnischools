@@ -136,7 +136,9 @@ describe("🔴 R192 · referredOutStudentIds — off-campus at asOf, referral ta
     const s = src();
     const fn = s.slice(s.indexOf("export async function referredOutStudentIds"));
     expect(fn).toMatch(/isNull\(sickbayReferral\.voidedAt\)/);
-    expect(fn).toMatch(/departedAt\} <= \$\{asOf\}/);
-    expect(fn).toMatch(/returnedAt\} IS NULL OR .*returnedAt\} > \$\{asOf\}/);
+    // 🔴 Quinn RED-1 — the bound is a SERIALISED string (`asOf.toISOString()`), never a raw JS Date:
+    // interpolating a Date into the sql fragment throws under postgres.js. Matches the medical-hold arm.
+    expect(fn).toMatch(/departedAt\} <= \$\{asOf\.toISOString\(\)\}/);
+    expect(fn).toMatch(/returnedAt\} IS NULL OR .*returnedAt\} > \$\{asOf\.toISOString\(\)\}/);
   });
 });

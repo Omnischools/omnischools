@@ -76,7 +76,12 @@ export const HANDOFF_FIELDS = [
   "travelNote",
 ] as const;
 
-/** Returns the first frozen handoff key present in an update patch, or null. A non-null result is a bug. */
+/**
+ * Returns the first frozen handoff key present in an update patch, or null. A non-null result is a bug.
+ * Dex #3 — this is the SPEC GUARD, unit-pinned with no runtime caller ON PURPOSE: write-once is
+ * guaranteed structurally (no edit action carries a handoff key), so wiring this into the write path
+ * would be dead defense. It stays as the executable statement of the R187 invariant.
+ */
 export function handoffKeyInPatch(patch: Record<string, unknown>): string | null {
   return HANDOFF_FIELDS.find((k) => k in patch) ?? null;
 }
