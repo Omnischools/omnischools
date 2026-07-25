@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { cwd } from "node:process";
 import { formatNhisHolderLine, nhisCardStatus, NHIS_EXPIRING_DAYS } from "./nhis";
 
 // A fixed clock so the boundary maths is deterministic. `asOf` is 2026-05-14 (the demo referral date).
@@ -57,5 +60,22 @@ describe("S2 · formatNhisHolderLine — holder ≠ student", () => {
     expect(
       formatNhisHolderLine({ cardNumber: "X-1", holderName: "  ", holderKind: "GUARDIAN" }, "Yaa Aidoo"),
     ).toBe("X-1 · Guardian · Yaa Aidoo (minor)");
+  });
+});
+
+// 🔴 R182 — the STPSHS `1,108/1,200 · 92.3%` card-health matrix is FORBIDDEN (never build, incl. INCR-27).
+// A school-wide roll-up would be an aggregate over the card table at the reader; doc comments alone don't
+// red a regression. This greps the two shipped NHIS source modules for any `count(`-style aggregate call —
+// a future `select({ n: count() })` in nhis-reads, or a set→number roll-up in the pure module, reds here.
+// Anchored word-initial (ADV-3, assert the aggregate CALL, not the "No COUNT/rate" doc prose, which has no
+// paren). The rendered tile can't exist downstream: the console is fed ONE student's NhisCardView, no cohort.
+describe("R182 · NO school-wide NHIS roll-up in the shipped NHIS modules", () => {
+  const read = (rel: string) => readFileSync(resolve(cwd(), rel), "utf8");
+  const SOURCES = [read("lib/sickbay/nhis.ts"), read("lib/sickbay/nhis-reads.ts")];
+
+  it("no `count(`-style aggregate over student_nhis_card exists in either module", () => {
+    for (const src of SOURCES) {
+      expect(/\bcount\w*\s*\(/i.test(src), "an aggregate call crept into an NHIS module").toBe(false);
+    }
   });
 });
