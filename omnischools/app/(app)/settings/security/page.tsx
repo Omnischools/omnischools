@@ -3,6 +3,7 @@ import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
 import { schools } from "@/db/schema";
 import { SecurityForm } from "@/components/settings/security-form";
+import { ChangePasswordForm } from "@/components/auth/change-password-form";
 import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,15 @@ export default async function SecurityPage() {
           Two-factor for admins and how long sign-ins last.
         </p>
       </div>
+      <section className="mb-6 rounded-xl border border-border bg-surface p-6">
+        <h2 className="mb-1 font-display text-lg font-medium text-navy">Change password</h2>
+        <p className="mb-4 text-sm text-navy-3">
+          Update the password you use to sign in. You can also sign in with a one-time code sent to
+          your phone.
+        </p>
+        <ChangePasswordForm />
+      </section>
+
       <SecurityForm
         initial={{
           require2fa: row?.require2fa ?? false,
