@@ -173,3 +173,33 @@ describe("🔴 NF4 · no escalate control, no HEADMASTER/DISTRICT row written", 
     expect(/escalate/i.test(s), "no escalate affordance").toBe(false);
   });
 });
+
+// ============================================================================
+// 🔴 NF13 (CALL-SITE) — the HM row's body is the fixed template, never client text / a literal.
+// notify.test.ts pins the template STRING; this pins that confirmEventNotification actually WIRES it.
+// A mutant that hardcodes a clinical literal or routes `d.body` into the HM insert (bypassing the
+// fixed template) slips the pure suite entirely — this reds it.
+// ============================================================================
+describe("🔴 NF13 · the HOUSEMASTER insert body is housemasterNotificationBody(...), never client text", () => {
+  it("the confirm fan-out schema accepts NO client body (nothing to route into an HM row)", () => {
+    const s = readCode(ACTION);
+    const schema = s.slice(s.indexOf("const ConfirmSchema"), s.indexOf("const ConfirmSchema") + 200);
+    expect(schema.includes("body"), "ConfirmSchema must not carry a client-typed body").toBe(false);
+  });
+
+  it("the HOUSEMASTER insert payload's body is the fixed template, not a literal or a client field", () => {
+    const s = readCode(ACTION);
+    // The only HM writer: scope to the insert payload between `recipient: "HOUSEMASTER"` and its `});`.
+    const start = s.indexOf('recipient: "HOUSEMASTER"');
+    expect(start, "expected an HM insert payload").toBeGreaterThan(-1);
+    const hm = s.slice(start, s.indexOf("});", start));
+    const body = hm.match(/body:\s*([^\n]+?),\s*$/m)?.[1].trim() ?? hm.match(/body:\s*([^\n,]+)/)?.[1].trim() ?? "";
+    expect(
+      body.startsWith("housemasterNotificationBody("),
+      `the HM body is "${body}" — a literal or client field would leak clinical text past NF13`,
+    ).toBe(true);
+    // Belt-and-braces: no client-supplied field / string literal reaches the HM body.
+    expect(/body:\s*"/.test(hm), "an HM body must never be a string literal").toBe(false);
+    expect(/body:\s*d\./.test(hm), "an HM body must never be a client field (d.*)").toBe(false);
+  });
+});
