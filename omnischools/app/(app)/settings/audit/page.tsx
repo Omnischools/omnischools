@@ -7,6 +7,7 @@ import { auditLog, users } from "@/db/schema";
 import { BackLink } from "@/components/ui/back-link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AuditActivityFeed } from "@/components/settings/audit-activity-feed";
+import { isRedactedAuditEntity, REDACTED_REASON } from "@/lib/audit/redaction";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Audit log" };
@@ -205,7 +206,9 @@ export default async function AuditLogPage(
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-navy-3">{r.reason ?? "—"}</td>
+                  <td className="px-4 py-2.5 text-navy-3">
+                    {isRedactedAuditEntity(r.entityType) ? REDACTED_REASON : r.reason ?? "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>

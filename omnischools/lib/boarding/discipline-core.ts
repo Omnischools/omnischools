@@ -81,7 +81,11 @@ export async function insertInfraction(tx: Tx, args: InsertInfractionArgs): Prom
       entityType: "student",
       entityId: studentId,
       after: { severity, sourceKind, routedTo: "Dean of Boarding (VLC 4.5 stub)" },
-      reason: "Pastoral case active — routed to the Dean, not laddered (no infraction written).",
+      // INCR-30 (R240): this rides entityType="student" (NOT in the redact set — legitimate student
+      // audits must still show), so the render rule can't catch it. The raw reason discloses a named
+      // student's safeguarding status to all staff in both feeds; neutralize it at the write site.
+      // The fact survives in `after.{severity,routedTo}` for a narrower-gated reader.
+      reason: "Discipline routing — details restricted",
     });
     return { status: "bypassed" };
   }

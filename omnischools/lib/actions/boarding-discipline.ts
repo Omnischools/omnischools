@@ -538,7 +538,10 @@ export async function reinstate(input: unknown): Promise<ActionResult> {
       entityId: rec.studentId,
       before: { residency: "DEBOARDINIZED" },
       after: { residency: "BOARDER", bunkRestored: false, recordId },
-      reason: boardDecisionText.slice(0, 200),
+      // 🔴 R245.1 — the free-text Board narrative is confidential and rides the non-redacted `student`
+      // audit (the render redaction is entity-keyed, R240). Neutralize here; the full text stays on the
+      // redacted `deboardinization_records.board_decision_text`, so the audit loses nothing.
+      reason: "Reinstated to boarding by Board decision — details restricted",
     });
     return { ok: true, message: "Reinstated to boarding — bunk not restored (re-allocate on the roster)." };
   });
