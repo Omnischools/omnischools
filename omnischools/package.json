@@ -29,6 +29,7 @@
     "db:seed-sickbay": "tsx db/seed/sickbay.ts",
     "db:seed-sickbay-chronic": "tsx db/seed/sickbay-chronic.ts",
     "db:seed-medication": "tsx db/seed/sickbay-medication.ts",
+    "db:seed-sickbay-notify": "tsx db/seed/sickbay-notify.ts",
     "db:seed-wassce": "tsx db/seed/wassce.ts",
     "db:seed-wassce-mock": "tsx db/seed/wassce-mock.ts",
     "db:seed-wassce-readiness": "tsx db/seed/wassce-readiness.ts",

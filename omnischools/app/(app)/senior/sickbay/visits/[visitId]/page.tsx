@@ -15,9 +15,12 @@ import { CONDITION_PILL } from "@/lib/sickbay/chronic-copy";
 import { attendanceLine } from "@/lib/sickbay/visit-copy";
 import { ATTENDANCE_STATUS_META } from "@/lib/attendance-status";
 import { formatElapsed } from "@/lib/sickbay/visits";
+import { getVisitCommsLog, type CommsLogRow } from "@/lib/sickbay/notify-reads";
 import { ClinicalRestricted } from "@/components/sickbay/clinical-restricted";
 import { VisitRecordConsole, type VisitView } from "@/components/sickbay/visit-record-console";
 import { MarLog } from "@/components/sickbay/mar-log";
+import { CommsCompose } from "@/components/sickbay/comms-compose";
+import type { SickbayEventKind } from "@/lib/sickbay/notify";
 
 // B15 — wall-clock derivations (`05h 31m`) are computed SERVER-SIDE at request time and rendered as
 // static strings. A stale minute is honest; a ticking client clock on a clinical page is not.
@@ -195,6 +198,13 @@ export default async function VisitRecordPage({
     record.consults.map((c) => [c.id, hhmm(c.occurredAt)]),
   );
 
+  // §05 — the communications trail (INCR-26). The event severity keys the tier: a referred visit is
+  // Tier 3, an admission Tier 2, a routine visit Tier 1. `canConfirm` (tier ≥ 2) offers the parent + HM
+  // fan-out. The comms log is the recipient fan-out §03 never shows.
+  const commsLog = await getVisitCommsLog(school.id, visitId);
+  const commsEventKind: SickbayEventKind =
+    record.disposition === "REFER" ? "REFERRAL" : record.admission ? "ADMISSION" : "VISIT";
+
   return (
     <>
       <VisitRecordConsole
@@ -214,7 +224,55 @@ export default async function VisitRecordPage({
           pickers={marPickers}
           consultTimeById={consultTimeById}
         />
+
+        <section id="communications" className="mt-4">
+          <div className="overflow-hidden rounded-[12px] border border-border bg-surface">
+            <div className="flex items-baseline justify-between gap-3 border-b border-border p-[14px_20px_12px]">
+              <span className="font-display text-[16px] font-semibold text-navy">
+                Notification <em className="font-normal italic text-gold">log</em>
+              </span>
+              <span className="text-[10px] font-semibold tracking-[0.06em] text-navy-3">
+                {commsLog.length} {commsLog.length === 1 ? "entry" : "entries"} · per the three-tier rule
+              </span>
+            </div>
+            <div className="p-[8px_20px_16px]">
+              {commsLog.length === 0 ? (
+                <p className="py-3 text-[12px] italic text-navy-3">No notifications logged.</p>
+              ) : (
+                commsLog.map((r) => <CommsLogRowView key={r.id} r={r} />)
+              )}
+            </div>
+          </div>
+          {canWrite && <CommsCompose visitId={record.id} eventKind={commsEventKind} canConfirm={commsEventKind !== "VISIT"} />}
+        </section>
       </div>
     </>
+  );
+}
+
+function CommsLogRowView({ r }: { r: CommsLogRow }) {
+  return (
+    <div className="grid grid-cols-[80px_1fr_auto] items-start gap-4 border-b border-border py-[14px] last:border-b-0">
+      <div className="pt-[2px] font-mono text-[11px] font-semibold text-navy-2">{r.timeHHMM}</div>
+      <div>
+        <div className="mb-[3px] font-display text-[14px] font-semibold tracking-[-0.005em] text-navy">{r.who}</div>
+        {r.detail && (
+          <div className="mb-[5px] text-[11px] text-navy-3">
+            {r.detail}
+            {/* 🔴 console-only — the delivery line is honest ("Queued · console"), never "delivered {ts}". */}
+            {r.deliveryLabel ? ` · ${r.deliveryLabel}` : ""}
+          </div>
+        )}
+        {r.body && (
+          <div className="rounded-[0_6px_6px_0] border-l-2 border-gold bg-bg px-3 py-2 text-[12px] italic leading-[1.5] text-navy-2">
+            {r.body}
+          </div>
+        )}
+      </div>
+      {/* Neutral channel pill (§0.2 — a colour must not mean "Tier 3" here and "Phone" there). */}
+      <span className="rounded-full border border-border bg-bg px-2 py-[3px] text-[9px] font-bold uppercase tracking-[0.1em] text-navy-2">
+        {r.channelLabel}
+      </span>
+    </div>
   );
 }

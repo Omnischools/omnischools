@@ -4,8 +4,10 @@ import { requireSchoolRole } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasAnyRole, SICKBAY_CLINICAL_READ_ROLES, SICKBAY_CLINICAL_WRITE_ROLES, SICKBAY_ROLES } from "@/lib/access";
 import { getReferralDetail, type ReferralUpdateRow } from "@/lib/sickbay/referral-reads";
+import { getReferralThread, type ThreadEvent } from "@/lib/sickbay/notify-reads";
 import { ClinicalRestricted } from "@/components/sickbay/clinical-restricted";
 import { ReferralCaseActions } from "@/components/sickbay/referral-actions";
+import { CommsCompose } from "@/components/sickbay/comms-compose";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,9 @@ export default async function ReferralCasePage({ params }: { params: Promise<{ r
   if (!d) notFound();
 
   const canWrite = hasAnyRole(roles, SICKBAY_CLINICAL_WRITE_ROLES);
+  // 🔴 F4/NF11 — the MATRON (the writer) reads `private_note`; the HEADMASTER reads the thread WITHOUT
+  // it (trimmed server-side in getReferralThread). Since clinical WRITE = [MATRON], canWrite ≡ isMatron.
+  const thread = await getReferralThread(school.id, d.id, now, canWrite);
   const dob = d.student.dateOfBirth ? new Date(d.student.dateOfBirth) : null;
   const age = dob ? Math.floor((now.getTime() - dob.getTime()) / (365.25 * 24 * 3600_000)) : null;
   const totalOop = d.costLines.reduce((s, l) => s + (l.outOfPocketAmount ?? 0), 0);
@@ -228,6 +233,116 @@ export default async function ReferralCasePage({ params }: { params: Promise<{ r
             </p>
           )}
         </div>
+      </div>
+
+      {/* §02-thread — the parent comms thread (INCR-26). recipient = PARENT, chronological. */}
+      <section id="comms" className="mt-4">
+        <div className="overflow-hidden rounded-[12px] border border-border bg-surface">
+          <div className="flex items-baseline justify-between gap-3 border-b border-border p-[14px_20px_12px]">
+            <span className="font-display text-[16px] font-semibold text-navy">
+              Parent comms <em className="font-normal italic text-gold">thread</em>
+              {thread.head.guardianLabel ? ` · ${thread.head.guardianLabel}` : ""}
+            </span>
+            <span className="text-[10px] font-semibold tracking-[0.06em] text-navy-3">
+              {thread.head.count} {thread.head.count === 1 ? "event" : "events"}
+              {thread.head.phoneMasked ? ` · phone ${thread.head.phoneMasked}` : ""}
+            </span>
+          </div>
+          <div className="p-[8px_20px_16px]">
+            {thread.events.length === 0 ? (
+              <p className="py-3 text-[12px] italic text-navy-3">No parent contact recorded yet.</p>
+            ) : (
+              thread.events.map((e) => <ThreadRow key={e.id} e={e} />)
+            )}
+          </div>
+        </div>
+        {canWrite && <CommsCompose referralId={d.id} eventKind="REFERRAL" canConfirm />}
+      </section>
+    </div>
+  );
+}
+
+/** Direction/channel → the .ct-chan glyph + circle colour, the tag, and the duration/status line (Lucy §1.4/§4). */
+function chanMeta(e: ThreadEvent): {
+  glyph: string;
+  circle: string;
+  head: string;
+  tagClass: string;
+  tagText: string;
+  dur: string | null;
+} {
+  const tierTag = `Tier ${e.tier}${e.triggerLabel ? ` · ${e.triggerLabel}` : ""}`;
+  if (e.isFailedCall) {
+    return {
+      glyph: "×",
+      circle: "bg-bg text-navy-3 border-[1.5px] border-dashed border-border-2",
+      head: "Outbound call · no answer",
+      tagClass: "text-navy-3 bg-bg border border-dashed border-border",
+      tagText: "attempted",
+      dur: "no answer",
+    };
+  }
+  if (e.direction === "INBOUND") {
+    const isSms = e.channel === "SMS";
+    return {
+      glyph: isSms ? "S" : "←",
+      circle: isSms
+        ? "bg-[rgba(45,107,71,0.08)] text-green border-[1.5px] border-dashed border-green"
+        : "bg-green-bg text-green border-[1.5px] border-green",
+      head: isSms ? "Inbound SMS" : "Inbound call",
+      tagClass: "text-green bg-green-bg border border-green",
+      tagText: tierTag,
+      dur: e.durationLabel,
+    };
+  }
+  if (e.channel === "SMS") {
+    return {
+      glyph: "S",
+      circle: "bg-gold-bg text-gold border-[1.5px] border-gold",
+      head: "Outbound SMS",
+      tagClass: "text-gold bg-gold-bg border border-gold-soft",
+      tagText: tierTag,
+      dur: e.deliveryLabel, // 🔴 "Queued · console" — never "delivered"
+    };
+  }
+  return {
+    glyph: "→",
+    circle: "bg-gold text-navy",
+    head: "Outbound call",
+    tagClass: "text-gold bg-gold-bg border border-gold-soft",
+    tagText: tierTag,
+    dur: e.durationLabel,
+  };
+}
+
+function ThreadRow({ e }: { e: ThreadEvent }) {
+  const m = chanMeta(e);
+  const isSms = e.channel === "SMS";
+  return (
+    <div className="grid grid-cols-[80px_36px_1fr] items-start gap-[14px] border-t border-border py-[14px] first:border-t-0">
+      <div className="pt-[5px] font-mono text-[11px] font-semibold text-navy-2">
+        {e.timeHHMM}
+        <span className="mt-[2px] block text-[9px] font-medium text-navy-3">{e.ago}</span>
+      </div>
+      <span className={`grid size-9 place-items-center rounded-full font-display text-[11px] font-semibold ${m.circle}`}>
+        {m.glyph}
+      </span>
+      <div className="text-[12px] leading-[1.5] text-navy-2">
+        <div className="mb-[3px] flex flex-wrap items-baseline gap-[10px]">
+          <span className="font-semibold text-navy">{m.head}</span>
+          <span className={`rounded-full px-[7px] py-[2px] text-[8px] font-bold uppercase tracking-[0.1em] ${m.tagClass}`}>
+            {m.tagText}
+          </span>
+          {m.dur && <span className="font-mono text-[10px] font-medium text-navy-3">{m.dur}</span>}
+        </div>
+        {e.body &&
+          (isSms ? (
+            <div className={`mt-1 rounded-lg border-l-2 border-gold-soft bg-bg px-3 py-2 italic text-navy-2`}>{e.body}</div>
+          ) : (
+            <div>{e.body}</div>
+          ))}
+        {/* 🔴 F4/NF11 — the private matron note, MATRON-only, muted below the parent-facing body. */}
+        {e.privateNote && <div className="mt-1 text-[11px] text-navy-3">{e.privateNote}</div>}
       </div>
     </div>
   );
