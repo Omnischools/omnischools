@@ -25,6 +25,10 @@ export const REDACTED_AUDIT_ENTITIES = new Set([
   "senior_score_ledger", // per-student score + correction note
   "mock_result", // per-student mock grade + raw score
   "mock_result_moderation", // per-student moderated grade
+  // Projected WASSCE aggregate + band in the audit `after` (wassce-readiness.ts:236) — mark-adjacent
+  // (same class as the mock/score marks), read-gated WASSCE_SETUP_ROLES (excludes the 5 non-teaching
+  // roles that reach the feed); the parent PDF even strips the band. NOT config despite the name (Sarah).
+  "readiness_statement", // per-student projected aggregate/band
 ]);
 
 /**
@@ -97,8 +101,8 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   "report_cards", // "generated N report cards" event — diff is {periodId, count}, no per-student mark
   "ledger_book", // blank paper-ledger PDF export — payload has counts only, no names/scores (route I2)
   "mock_exam", // mock-exam DEFINITION (the exam, not a result); mock results are redacted
-  "readiness_statement", // WASSCE readiness note (operational guidance; not a score row)
-  "university_target", // student's university target (operational guidance; not a mark)
+  // NB: readiness_statement is REDACTED (its `after` carries a projected aggregate+band — mark-adjacent).
+  "university_target", // student's university target (programme + rank; no band/aggregate — guidance, not a mark)
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker
