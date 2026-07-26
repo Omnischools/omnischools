@@ -25,6 +25,92 @@ export const REDACTED_AUDIT_ENTITIES = new Set([
   "senior_score_ledger", // per-student score + correction note
   "mock_result", // per-student mock grade + raw score
   "mock_result_moderation", // per-student moderated grade
+  // Projected WASSCE aggregate + band in the audit `after` (wassce-readiness.ts:236) — mark-adjacent
+  // (same class as the mock/score marks), read-gated WASSCE_SETUP_ROLES (excludes the 5 non-teaching
+  // roles that reach the feed); the parent PDF even strips the band. NOT config despite the name (Sarah).
+  "readiness_statement", // per-student projected aggregate/band
+]);
+
+/**
+ * INCR-30 follow-up — the classify-at-creation ALLOW-LIST (Sarah's standing mitigation for the
+ * hybrid deny-list's future-non-namespaced-entity residual, R239/R244).
+ *
+ * Every audited `entityType` deliberately SHOWN in the all-staff `/settings/audit` feed: operational
+ * records ADMIN legitimately reads, config that carries no student mark, lower-tier boarding
+ * logistics, and dev-only seed markers. Paired with `audit-classification.test.ts`, which sweeps the
+ * repo for every audited entityType and FAILS the build if one is neither redacted nor listed here —
+ * so a FUTURE sensitive audited entity cannot silently reach the feed.
+ *
+ * 🔴 INVARIANT: no member here may be redacted. A `sickbay_*` name or a `REDACTED_AUDIT_ENTITIES`
+ * member must NEVER appear below (the guard asserts the two sets are disjoint). Redact iff read-gated
+ * NARROWER than all-staff AND a confidentiality class (health/pay/discipline/marks); everything else
+ * is SHOWN. This changes NO production behaviour — it is a registry the guard reads, nothing else.
+ */
+export const SHOWN_AUDIT_ENTITIES = new Set([
+  // — core people & workspace records (operational; ADMIN reads) —
+  "student", // roster record (name/class) — not a health/discipline record
+  "student_batch", // bulk student import summary
+  "staff", // staff record (employment/role) — not the pay row (staff_compensation is redacted)
+  "staff_batch", // bulk staff import summary
+  "staff_profile", // staff bio/contact, no compensation
+  "class", // class definition
+  "class_batch", // bulk class import summary
+  "attendance", // attendance action (P/L/E/M/A code — no clinical detail; the M-not-A seam)
+  "attendance_record", // a day's attendance mark; the M code carries no medical narrative
+  "attendance_settings", // attendance config
+  "admission_application", // applicant pipeline record (operational)
+  "invite", // staff invite
+  "household_autogroup", // household grouping (operational)
+  "school", // school profile / settings
+  "school_year", // academic-year config
+  "school_holiday", // calendar config
+  "academic_period", // term/period config
+  "conversation", // inbox thread (operational; content-less audit)
+  "inbox_routing_rule", // inbox routing config
+  "announcement", // broadcast announcement (operational comms)
+  "sms_broadcast", // SMS broadcast (operational comms)
+  "whatsapp_template", // WhatsApp template config
+  // — finance & bookkeeping (operational; ADMIN / Accountant read) —
+  "fee_structure", // fee config
+  "discount", // discount config
+  "invoice", // invoice (operational finance)
+  "invoice_batch", // invoice-run summary
+  "book_category", // bookkeeping category config
+  "book_entry", // bookkeeping ledger entry (operational finance, not a student mark)
+  "fixed_asset", // asset-register entry
+  // — boarding config & logistics (lower-tier operational; owner left SHOWN at INCR-30) —
+  "boarding_settings", // boarding config
+  "daily_schedule_template", // boarding schedule config
+  "house", // boarding house config
+  "boarding_dormitory", // dormitory config
+  "boarding_calendar_event", // boarding calendar (operational)
+  "boarding_exeat", // exeat pass (logistics; owner-confirmed SHOWN — not the discipline triad)
+  "boarding_visit", // visitor log (logistics; owner-confirmed SHOWN)
+  "boarding_approved_visitor", // approved-visitor list (logistics)
+  "boarding_arrival", // resumption arrival (logistics)
+  "inspections", // dorm inspection (operational — not a disciplinary narrative)
+  "prep_attendance", // prep-session attendance (operational)
+  // — academic CONFIG & generation events (NO per-student mark in the diff; INCR-30 kept SHOWN) —
+  "subject", // subject config
+  "gradebook", // gradebook config
+  "gradebook_column", // column/assessment DEFINITION — no student mark (the marks are redacted, not the column)
+  "gradebook_config", // gradebook settings
+  "grade_scale", // grade-scale config
+  "senior_assessment", // SHS assessment DEFINITION (test/column config) — no student mark
+  "senior_ledger_path", // capture-path config (class×subject×period → path); no mark
+  "report_cards", // "generated N report cards" event — diff is {periodId, count}, no per-student mark
+  "ledger_book", // blank paper-ledger PDF export — payload has counts only, no names/scores (route I2)
+  "mock_exam", // mock-exam DEFINITION (the exam, not a result); mock results are redacted
+  // NB: readiness_statement is REDACTED (its `after` carries a projected aggregate+band — mark-adjacent).
+  "university_target", // student's university target (programme + rank; no band/aggregate — guidance, not a mark)
+  // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
+  "wassce_cohort", // seed marker
+  "boarding_spine", // seed marker
+  "boarding_daily_seed", // seed marker
+  "boarding_exeat_seed", // seed marker
+  "boarding_discipline_seed", // seed marker (seed summary; real discipline uses the redacted triad)
+  "boarding_visiting_seed", // seed marker
+  "boarding_resumption_seed", // seed marker
 ]);
 
 export function isRedactedAuditEntity(entityType: string | null | undefined): boolean {

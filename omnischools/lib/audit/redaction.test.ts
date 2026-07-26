@@ -45,11 +45,12 @@ describe("INCR-30 predicate — the one source of truth", () => {
   });
 
   it("academic per-student MARKS are redacted (owner-confirmed audience correction); assessment/column CONFIG is not", () => {
-    for (const e of ["senior_score_ledger", "mock_result", "mock_result_moderation"]) {
-      expect(isRedactedAuditEntity(e), `${e} carries a per-student mark + reason → redact`).toBe(true);
+    // readiness_statement's `after` carries a projected aggregate+band (mark-adjacent) — redacted with the marks (Sarah).
+    for (const e of ["senior_score_ledger", "mock_result", "mock_result_moderation", "readiness_statement"]) {
+      expect(isRedactedAuditEntity(e), `${e} carries a per-student mark/band → redact`).toBe(true);
     }
     // The definition/config siblings carry no student mark (title/maxMark/column name) → stay shown.
-    for (const e of ["senior_assessment", "gradebook_column", "mock_exam", "readiness_statement"]) {
+    for (const e of ["senior_assessment", "gradebook_column", "mock_exam"]) {
       expect(isRedactedAuditEntity(e), `${e} is config, not a per-student mark → shown`).toBe(false);
     }
   });
