@@ -164,3 +164,71 @@ const MON = new Intl.DateTimeFormat("en-GB", {
 });
 
 export { STATUS_LABEL as REFERRAL_STATUS_LABEL };
+
+// ============================================================================
+// INCR-27 — the 30-day history (§R4) + the NHIS reconciliation (§R5) pure helpers.
+// ============================================================================
+
+/**
+ * The NHIS coverage tri-state a referral line renders, DERIVED from the FROZEN snapshot `nhis_valid`
+ * (R184) plus whether the referral left any out-of-pocket gap (Σ cost-line out_of_pocket):
+ *   nhis_valid === false          → Expired (the card was not usable at admission)
+ *   valid, some out-of-pocket     → Partial (covered, but with a gap NHIS did not fill)
+ *   valid, zero out-of-pocket     → Yes (fully covered)
+ * A referral with no card on file (`nhis_valid === null`) reads Partial when it carries a gap, Yes
+ * otherwise — the payment fact, never a clinical one.
+ */
+export type NhisTriState = "YES" | "PARTIAL" | "EXPIRED";
+
+export function nhisTriState(nhisValid: boolean | null, outOfPocket: number): NhisTriState {
+  if (nhisValid === false) return "EXPIRED";
+  return outOfPocket > 0 ? "PARTIAL" : "YES";
+}
+
+export const NHIS_TRISTATE_LABEL: Record<NhisTriState, string> = {
+  YES: "Yes",
+  PARTIAL: "Partial",
+  EXPIRED: "Expired",
+};
+
+/** The four range facets on the 30-day history filter strip (§R4.2). */
+export type HistoryRange = "30d" | "90d" | "term" | "year";
+
+export const HISTORY_RANGE_LABEL: Record<HistoryRange, string> = {
+  "30d": "30 days",
+  "90d": "90 days",
+  term: "This term",
+  year: "This year",
+};
+
+export const HISTORY_RANGES: readonly HistoryRange[] = ["30d", "90d", "term", "year"];
+
+export function parseHistoryRange(raw: string | undefined): HistoryRange {
+  return (HISTORY_RANGES as readonly string[]).includes(raw ?? "") ? (raw as HistoryRange) : "30d";
+}
+
+/**
+ * The inclusive start of a history range, all UTC (Ghana = UTC+0). `30d`/`90d` are rolling day
+ * windows; `term`/`year` use the Ghanaian SHS academic calendar as a heuristic — the most recent
+ * term boundary (Sep / Jan / May 1) and the most recent academic-year boundary (Sep 1). A precise
+ * term needs the academic_periods table; this is the honest approximation until a surface asks for it
+ * (ponytail: swap in the real period boundaries if term drift ever matters).
+ */
+export function historyWindowStart(range: HistoryRange, now: Date): Date {
+  const y = now.getUTCFullYear();
+  if (range === "30d") return new Date(now.getTime() - 30 * 86_400_000);
+  if (range === "90d") return new Date(now.getTime() - 90 * 86_400_000);
+  if (range === "year") {
+    // Academic year starts 1 Sep; before Sep, it began last year.
+    return new Date(Date.UTC(now.getUTCMonth() >= 8 ? y : y - 1, 8, 1));
+  }
+  // term: most recent of 1 Sep / 1 Jan / 1 May.
+  const boundaries = [
+    Date.UTC(y, 8, 1), // Sep
+    Date.UTC(y, 4, 1), // May
+    Date.UTC(y, 0, 1), // Jan
+  ];
+  const t = now.getTime();
+  const start = boundaries.find((b) => b <= t) ?? Date.UTC(y - 1, 8, 1);
+  return new Date(start);
+}

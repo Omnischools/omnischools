@@ -27,6 +27,7 @@ import { closedTermLabel } from "@/lib/attendance/mark";
 import { civilDate } from "@/lib/attendance/mark-rules";
 import type { AttendanceStatus } from "@/lib/attendance-status";
 import { formLabel, initials } from "./defaults";
+import type { SurveillanceCategory } from "./surveillance";
 
 /** One open admission's bed — what R56 (mode guard) and R59 (capacity reconcile) both read. */
 export interface OpenAdmissionBed {
@@ -199,6 +200,8 @@ export interface VisitRecord {
   attendingName: string | null;
   attendingNmcLicence: string | null;
   workingImpression: string | null;
+  /** R215 (INCR-27) — the MATRON-set surveillance bucket, NULL until an assessment is recorded. */
+  surveillanceCategory: SurveillanceCategory | null;
   redFlagsScreened: string | null;
   hydrationStatus: string | null;
   plan: string | null;
@@ -400,6 +403,7 @@ export async function getVisitRecord(
       attendingName: shortName(nameOf(v.attendingUserId)),
       attendingNmcLicence: nmcOf(v.attendingUserId),
       workingImpression: v.workingImpression,
+      surveillanceCategory: v.surveillanceCategory,
       redFlagsScreened: v.redFlagsScreened,
       hydrationStatus: v.hydrationStatus,
       plan: v.plan,

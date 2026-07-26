@@ -531,7 +531,7 @@ describe("O · the omitted elements appear NOWHERE in the shipped board", () => 
     }
   });
 
-  it("§02 / §04 / §05 have no shell, no badge and no anchor target", () => {
+  it("§02 / §04 have no shell, no badge; §05 links out but never inlines the cluster watch", () => {
     for (const { path, code } of SHIPPED_22C) {
       for (const token of [
         "medication round",
@@ -539,7 +539,10 @@ describe("O · the omitted elements appear NOWHERE in the shipped board", () => 
         "#rounds",
         "#referrals",
         "#outbreak",
-        "Outbreak",
+        // INCR-27 REINSTATES §05 as a SIBLING route (/today/outbreak) — the board now carries an
+        // `Outbreak` LINK to it (the today-map Z2 reinstatement trigger), exactly like the `Rounds`
+        // link to §02's route. So `Outbreak` is no longer forbidden; the board must still NOT inline
+        // the cluster-watch CONTENT (`Cluster`, the rounds schedule times below).
         "Cluster",
         "06:30",
         "12:30",

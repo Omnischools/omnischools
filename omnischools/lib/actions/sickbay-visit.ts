@@ -41,6 +41,7 @@ import {
 import { holdsMatronRole } from "@/lib/sickbay/config";
 import { sickbayCapabilities } from "@/lib/sickbay/defaults";
 import { dispositionGuard, isolationGuard, voidGuard } from "@/lib/sickbay/visits";
+import { SURVEILLANCE_CATEGORY_VALUES } from "@/lib/sickbay/surveillance";
 import { openVisitCollisionError } from "@/lib/sickbay/board-copy";
 import { VITAL_BOUNDS, isEmptyReading } from "@/lib/sickbay/vitals";
 import { markSickbayMedical } from "@/lib/attendance/mark";
@@ -266,6 +267,11 @@ const AssessSchema = z.object({
   visitId: z.string().uuid(),
   // R43 — `working_impression`, never `diagnosis`. Free text, required when an assessment is written.
   workingImpression: z.string().trim().min(1).max(2000),
+  // R215 (F-27A) — the coarse GHS/IDSR surveillance BUCKET (NOT a diagnosis; it aggregates, it does
+  // not name a condition). APP-REQUIRED at assessment: an assessment writes working_impression, so a
+  // save without a category is refused here. The DB column stays nullable (a queued visit never
+  // assessed reads NULL = "Uncategorised") — requiredness is app-layer only, never a DB constraint.
+  surveillanceCategory: z.enum(SURVEILLANCE_CATEGORY_VALUES),
   redFlagsScreened: z.string().trim().max(2000).nullish(),
   hydrationStatus: z.string().trim().max(2000).nullish(),
   plan: z.string().trim().max(2000).nullish(),
@@ -285,7 +291,10 @@ export async function assessVisit(input: unknown): Promise<Result> {
   if (!auth.ok) return auth;
   const parsed = AssessSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Record a working impression to save the assessment." };
+    return {
+      ok: false,
+      error: "Record a working impression and a surveillance category to save the assessment.",
+    };
   }
   const d = parsed.data;
 
@@ -300,6 +309,7 @@ export async function assessVisit(input: unknown): Promise<Result> {
         .update(sickbayVisit)
         .set({
           workingImpression: d.workingImpression,
+          surveillanceCategory: d.surveillanceCategory,
           redFlagsScreened: d.redFlagsScreened || null,
           hydrationStatus: d.hydrationStatus || null,
           plan: d.plan || null,
@@ -314,6 +324,7 @@ export async function assessVisit(input: unknown): Promise<Result> {
         entityId: v.id,
         before: {
           workingImpression: v.workingImpression,
+          surveillanceCategory: v.surveillanceCategory,
           redFlagsScreened: v.redFlagsScreened,
           hydrationStatus: v.hydrationStatus,
           plan: v.plan,
@@ -321,6 +332,7 @@ export async function assessVisit(input: unknown): Promise<Result> {
         },
         after: {
           workingImpression: d.workingImpression,
+          surveillanceCategory: d.surveillanceCategory,
           redFlagsScreened: d.redFlagsScreened || null,
           hydrationStatus: d.hydrationStatus || null,
           plan: d.plan || null,

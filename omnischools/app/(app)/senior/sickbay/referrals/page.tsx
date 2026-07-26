@@ -2,10 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireSchoolRole } from "@/lib/auth/server";
 import { getCurrentUser } from "@/lib/auth";
-import { hasAnyRole, SICKBAY_CLINICAL_READ_ROLES, SICKBAY_CLINICAL_WRITE_ROLES, SICKBAY_ROLES } from "@/lib/access";
+import {
+  hasAnyRole,
+  SICKBAY_CLINICAL_READ_ROLES,
+  SICKBAY_CLINICAL_WRITE_ROLES,
+  SICKBAY_RECON_READ_ROLES,
+  SICKBAY_ROLES,
+} from "@/lib/access";
 import { getActiveReferrals, type ActiveReferralRow } from "@/lib/sickbay/referral-reads";
 import { ClinicalRestricted } from "@/components/sickbay/clinical-restricted";
 import { MarkReturnedButton } from "@/components/sickbay/referral-actions";
+import { ReferralNav } from "@/components/sickbay/referral-nav";
 
 // B15 — wall-clock derivations are computed SERVER-SIDE at request time and rendered as static strings.
 export const dynamic = "force-dynamic";
@@ -79,6 +86,12 @@ export default async function ReferralsPage() {
           )}
         </div>
       </div>
+
+      <ReferralNav
+        active="active"
+        showHistory
+        showReconciliation={hasAnyRole(roles, SICKBAY_RECON_READ_ROLES)}
+      />
 
       {/* Stats strip — 3 tiles (tile 4 "Outstanding cost" omitted at 25, Y4/D6). */}
       <div className="mb-6 grid gap-[14px] sm:grid-cols-3">
