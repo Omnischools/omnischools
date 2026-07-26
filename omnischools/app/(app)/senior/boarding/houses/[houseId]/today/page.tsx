@@ -103,7 +103,7 @@ export default async function HouseTodayPage(props: {
         </div>
         <div className="flex gap-6 text-right">
           <Stat label="In House now" value={view.counts.inHouse} />
-          <Stat label="Sick bay" value="—" />
+          <Stat label="Sick bay" value={view.sickbay.count} />
           <Stat label="Exeats today" value={view.counts.exeatsToday} />
           <Stat label="Lights out" value={view.counts.lightsOut ?? "—"} />
         </div>
@@ -122,7 +122,7 @@ export default async function HouseTodayPage(props: {
             {view.dayLabel.split("·")[0]} <em className="italic text-gold">· {view.dateIso}</em>
           </h2>
           <div className="mt-1 text-[12px] text-navy-3">
-            {view.counts.boarderCount} boarders · {view.counts.currentlyOut} currently off campus ·
+            {view.counts.boarderCount} boarders · {view.counts.offCampus} currently off campus ·
             day type <b className="text-navy-2">{view.dayType}</b>
           </div>
         </div>
@@ -131,7 +131,11 @@ export default async function HouseTodayPage(props: {
       {/* Summary cards — every number derived; the scrubbing card is suppressed on non-scrubbing days. */}
       <div className="grid grid-cols-2 gap-3 border-x border-border bg-bg px-6 py-5 md:grid-cols-5">
         <SumCard featured label="In House right now" big={`${view.counts.inHouse} / ${view.counts.boarderCount}`}>
-          {view.counts.currentlyOut === 0 ? "all boarders on campus" : `${view.counts.currentlyOut} on exeat`}
+          {view.counts.offCampus === 0
+            ? "all boarders on campus"
+            : `${view.counts.offCampus} off campus${
+                view.counts.currentlyOut > 0 ? ` · ${view.counts.currentlyOut} on exeat` : ""
+              }`}
           {" · sick-bay not subtracted"}
         </SumCard>
         <SumCard
@@ -152,8 +156,10 @@ export default async function HouseTodayPage(props: {
             {weekdayLong(view.dateIso)} · House yards, dining hall
           </SumCard>
         )}
-        <SumCard label="Sick bay queue" big="—">
-          Placeholder · sick bay module ships separately
+        <SumCard label="In sick bay" big={view.sickbay.count}>
+          {view.sickbay.count === 0
+            ? "no boarders admitted"
+            : `${view.sickbay.count} admitted · on-site, still in House count`}
         </SumCard>
       </div>
 
@@ -432,41 +438,53 @@ export default async function HouseTodayPage(props: {
           </Block>
         )}
 
-        {/* ---- Sick bay placeholder (BINDING override: shell + badge + note + empty state only) ---- */}
+        {/* ---- Sick bay · admitted boarders (R225.2 — names + time only, condition withheld) ---- */}
         <Block
-          eyebrow="Sick bay · light log · full module ships in a separate batch"
+          eyebrow={`Sick bay · ${view.sickbay.count} of this House's boarders admitted`}
           title={
             <>
-              Sick bay <em className="italic text-gold">· today&apos;s traffic</em>
+              In sick bay <em className="italic text-gold">· who is on the ward</em>
             </>
           }
-          meta="Placeholder until the sick bay / matron batch (module 4.4) ships"
+          meta="Location only — who is admitted, not why. The condition stays with the matron's record (module 4.4)."
         >
           <div className="rounded-xl border border-border bg-surface p-5">
             <div className="flex items-start justify-between border-b border-dashed border-border pb-3">
               <div>
                 <h4 className="font-display text-base font-semibold text-navy">
-                  — visits today <em className="italic text-gold">· count not yet tracked</em>
+                  {view.sickbay.count} admitted{" "}
+                  <em className="italic text-gold">· on-site, still counted in House</em>
                 </h4>
                 <div className="mt-1 text-[10px] text-navy-3">
-                  Count stubbed (0/—) · does not feed the in-House number
+                  Sick-bay admissions are on campus — they do NOT subtract from the in-House number
                 </div>
               </div>
               <span className="rounded-pill border border-border bg-bg px-2.5 py-1 text-[9px] font-bold tracking-[0.08em] text-navy-3">
-                LIGHT · PLACEHOLDER
+                NAMES · NO CONDITION
               </span>
             </div>
-            <div className="py-6 text-center text-sm text-navy-3">
-              No sick-bay records here yet — patient records, temperatures and parent notifications are
-              owned by the sick bay / matron module (module 4.4), which gets its own batch.
-            </div>
-            <p className="rounded-lg border-l-[3px] border-gold bg-bg px-4 py-3 text-[11px] leading-relaxed text-navy-2">
-              The light log <b className="text-navy">captures the boarding-day relevant fact</b>: who is
-              not in their usual place during scheduled activities?{" "}
-              <em className="font-display italic text-gold">The matron&apos;s medical record</em> —
-              symptoms, treatment, family history, parent calls — is owned by the sick bay module, which
-              gets its own batch. The boarding day surface only needs the operational fact: who is in
-              sick bay, not in their dorm, not at prep tonight unless cleared.
+            {view.sickbay.count === 0 ? (
+              <div className="py-6 text-center text-sm text-navy-3">
+                No boarders of this House are in the sick bay right now.
+              </div>
+            ) : (
+              <ul className="mt-3 divide-y divide-border overflow-hidden rounded-lg border border-border">
+                {view.sickbay.admissions.map((a, i) => (
+                  <li key={i} className="flex flex-wrap items-center gap-2 px-4 py-2 text-[12px]">
+                    <span className="font-semibold text-navy">{a.studentName}</span>
+                    <span className="rounded bg-navy-2 px-1.5 py-0.5 text-[10px] font-bold text-bg">
+                      IN SICK BAY
+                    </span>
+                    <span className="ml-auto text-[11px] text-navy-3">admitted {a.admittedLabel}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-4 rounded-lg border-l-[3px] border-gold bg-bg px-4 py-3 text-[11px] leading-relaxed text-navy-2">
+              The boarding view carries the <b className="text-navy">operational fact</b>: who is
+              admitted to the sick bay and therefore not in their dorm, not at prep tonight unless
+              cleared. The <em className="font-display italic text-gold">matron&apos;s medical record</em>{" "}
+              — symptoms, treatment, family history, parent calls — stays with the sick bay module.
             </p>
           </div>
         </Block>

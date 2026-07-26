@@ -11,6 +11,7 @@ import {
   computeAnomalies,
   computePrepSummary,
   isPrepExceptionStatus,
+  offCampusBoarders,
   type PrepExceptionStatus,
 } from "./daily-life";
 
@@ -199,5 +200,59 @@ describe("F · prep exception summary", () => {
   it("only LATE/ABSENT/EXCUSED/MEDICAL are exception statuses (never PRESENT)", () => {
     expect(isPrepExceptionStatus("PRESENT")).toBe(false);
     expect(isPrepExceptionStatus("LATE")).toBe(true);
+  });
+});
+
+// R225.1 (INCR-28a) — the in-House off-campus formula. `inHouse = boarders.length − offCampus.size`.
+describe("🔴 R225.1 · offCampusBoarders — exeat ∪ referred-out, deduped, this-house only", () => {
+  const boarders = new Set(["a", "b", "c", "d"]);
+  const inHouse = (off: Set<string>) => boarders.size - off.size;
+
+  // AC-R225-1 — the partition invariant holds for ANY inputs.
+  it("AC-R225-1 · partition invariant: inHouse + offCampus.size === boarders.length", () => {
+    const cases: [Set<string>, Set<string>][] = [
+      [new Set(), new Set()],
+      [new Set(["a"]), new Set(["b"])],
+      [new Set(["a", "b"]), new Set(["a", "c"])], // overlap between the two arms
+      [new Set(["a", "b", "c", "d"]), new Set(["a", "b", "c", "d"])], // everyone out
+    ];
+    for (const [exeat, referred] of cases) {
+      const off = offCampusBoarders(boarders, exeat, referred);
+      expect(inHouse(off) + off.size).toBe(boarders.size);
+    }
+  });
+
+  // AC-R225-2 — a boarder on BOTH exeat AND referred-out subtracts exactly ONCE (SET union, not −size−size).
+  it("AC-R225-2 · a doubly-out boarder subtracts once (never −size−size)", () => {
+    const exeat = new Set(["a", "b"]); // 2 on exeat
+    const referred = new Set(["b", "c"]); // b is BOTH; c is referral-only
+    const off = offCampusBoarders(boarders, exeat, referred);
+    expect(off).toEqual(new Set(["a", "b", "c"])); // 3 distinct, not 4
+    expect(inHouse(off)).toBe(1); // d only — NOT 4 − 2 − 2 = 0
+  });
+
+  // AC-R225-3 — the school-wide referred-out set is intersected with THIS house's boarders.
+  it("AC-R225-3 · a referred-out student of ANOTHER house / a day student is a no-op", () => {
+    const exeat = new Set<string>();
+    const referred = new Set(["x", "y", "a"]); // x,y belong to other houses; a is ours
+    const off = offCampusBoarders(boarders, exeat, referred);
+    expect(off).toEqual(new Set(["a"]));
+    expect(inHouse(off)).toBe(3); // only `a` moved; x,y never touch this house's count
+  });
+
+  // AC-R225-4 — admissions are NEVER an input: an admitted boarder is not in either set, stays in-House.
+  it("AC-R225-4 · sick-bay admissions are not passed in — in-House is unchanged by an admission", () => {
+    // `d` is admitted to the sick bay but on NO exeat and NOT referred out → not in offCampus.
+    const off = offCampusBoarders(boarders, new Set(), new Set());
+    expect(off.has("d")).toBe(false);
+    expect(inHouse(off)).toBe(4); // full house — the admission does not subtract
+  });
+
+  // AC-R225-8 — a Basic-tier / no-sickbay house: referredOut = ∅, so in-House == the exeat-only prior.
+  it("AC-R225-8 · empty referred-out set reproduces the exeat-only in-House (no throw)", () => {
+    const exeat = new Set(["a"]);
+    const off = offCampusBoarders(boarders, exeat, new Set()); // ∅ referrals
+    expect(off).toEqual(exeat);
+    expect(inHouse(off)).toBe(boarders.size - exeat.size); // identical to the pre-28 formula
   });
 });
