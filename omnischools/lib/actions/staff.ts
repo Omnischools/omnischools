@@ -4,7 +4,7 @@ import { z } from "zod";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor, assertAnyRole } from "@/lib/auth/server";
-import { STAFF_ADMIN_ROLES } from "@/lib/access";
+import { STAFF_ADMIN_ROLES, canGrantRole } from "@/lib/access";
 import { normalizeGhanaPhone } from "@/lib/auth";
 import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
@@ -147,7 +147,7 @@ const AddStaffSchema = z.object({
 });
 
 export async function addStaff(input: unknown): Promise<Result> {
-  const { school } = await requireSchool();
+  const { user, school } = await requireSchool();
   await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = AddStaffSchema.safeParse(input);
   if (!parsed.success) {
@@ -156,6 +156,11 @@ export async function addStaff(input: unknown): Promise<Result> {
   const d = parsed.data;
   const phone = normalizeGhanaPhone(d.phone);
   const role = resolveRole(d.role);
+  // 🔴 INCR-37 (R280) — staff-admin status is not enough: refuse a grant that OUTRANKS the actor
+  // (the role is free-text through resolveRole, so a typed "PROPRIETOR" would otherwise self-mint).
+  if (!canGrantRole(user.roles, role.code)) {
+    return { ok: false, error: "You cannot assign a role at or above your own level." };
+  }
   const actor = await resolveActor(school.id);
   try {
     await withSchool(school.id, async (tx) => {
@@ -206,8 +211,8 @@ const ImportStaffSchema = z.object({
 
 export async function importStaff(
   input: unknown,
-): Promise<Result & { created?: number; invited?: number }> {
-  const { school } = await requireSchool();
+): Promise<Result & { created?: number; invited?: number; skipped?: number }> {
+  const { user, school } = await requireSchool();
   await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = ImportStaffSchema.safeParse(input);
   if (!parsed.success) {
@@ -220,6 +225,7 @@ export async function importStaff(
     const out = await withSchool(school.id, async (tx) => {
       let created = 0;
       let invited = 0;
+      let skipped = 0;
       const notify: {
         phone: string;
         email: string | null;
@@ -230,6 +236,13 @@ export async function importStaff(
       for (const r of rows) {
         const phone = normalizeGhanaPhone(r.phone);
         const role = resolveRole(r.role);
+        // 🔴 INCR-37 (R280) — PER ROW: reject a row whose role outranks the importer, so a CSV
+        // `role:"PROPRIETOR"` becomes neither an assignment NOR an invite. Skips the whole row
+        // (no user row, no assign, no invite) rather than silently granting it.
+        if (!canGrantRole(user.roles, role.code)) {
+          skipped++;
+          continue;
+        }
         await tx
           .insert(users)
           .values({ phone, fullName: r.fullName.trim(), email: r.email || null })
@@ -269,10 +282,10 @@ export async function importStaff(
         actorRole: actor.role,
         actionType: "created",
         entityType: "staff_batch",
-        after: { count: created, invited },
+        after: { count: created, invited, skipped },
         reason: "Bulk staff import",
       });
-      return { created, invited, notify };
+      return { created, invited, skipped, notify };
     });
 
     // best-effort invite notifications (stubbed providers; mirrors createInvite)
@@ -300,7 +313,7 @@ export async function importStaff(
     }
 
     safeRevalidate("/staff");
-    return { ok: true, created: out.created, invited: out.invited };
+    return { ok: true, created: out.created, invited: out.invited, skipped: out.skipped };
   } catch {
     return { ok: false, error: "Could not import staff. Please try again." };
   }
@@ -538,11 +551,15 @@ const AssignSchema = z.object({
 });
 
 export async function assignStaffRole(input: unknown): Promise<Result> {
-  const { school } = await requireSchool();
+  const { user, school } = await requireSchool();
   await assertAnyRole(STAFF_ADMIN_ROLES);
   const parsed = AssignSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid input" };
   const role = resolveRole(parsed.data.role);
+  // 🔴 INCR-37 (R280) — refuse a grant that outranks the actor (see addStaff).
+  if (!canGrantRole(user.roles, role.code)) {
+    return { ok: false, error: "You cannot assign a role at or above your own level." };
+  }
   const actor = await resolveActor(school.id);
   try {
     await withSchool(school.id, async (tx) => {
