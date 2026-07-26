@@ -318,26 +318,18 @@ export async function assessVisit(input: unknown): Promise<Result> {
           updatedAt: now,
         })
         .where(and(eq(sickbayVisit.schoolId, auth.schoolId), eq(sickbayVisit.id, v.id)));
+      // 🔴 NO clinical free-text in the audit snapshot (Sarah, INCR-27 BLOCK-1). `/settings/audit`
+      // is staff-readable incl. ADMIN, who is deliberately NOT a clinical reader (D2/R166) — a
+      // `working_impression`/`plan`/red-flags diff in that feed leaks a named student's clinical
+      // record to the proprietor account. Mirror sickbay-referral.ts: keep the FACT + who/when +
+      // the coarse surveillance bucket (not a diagnosis); the impression lives on the visit row,
+      // read only through the clinical-gated readers.
       await audit(tx, auth.schoolId, auth.actor, {
         actionType: "updated",
         entityType: "sickbay_visit",
         entityId: v.id,
-        before: {
-          workingImpression: v.workingImpression,
-          surveillanceCategory: v.surveillanceCategory,
-          redFlagsScreened: v.redFlagsScreened,
-          hydrationStatus: v.hydrationStatus,
-          plan: v.plan,
-          escalationTriggers: v.escalationTriggers,
-        },
-        after: {
-          workingImpression: d.workingImpression,
-          surveillanceCategory: d.surveillanceCategory,
-          redFlagsScreened: d.redFlagsScreened || null,
-          hydrationStatus: d.hydrationStatus || null,
-          plan: d.plan || null,
-          escalationTriggers: d.escalationTriggers || null,
-        },
+        before: { surveillanceCategory: v.surveillanceCategory, assessedAt: v.assessedAt },
+        after: { surveillanceCategory: d.surveillanceCategory, assessedAt: now },
         reason: "Sickbay assessment recorded",
       });
     });
