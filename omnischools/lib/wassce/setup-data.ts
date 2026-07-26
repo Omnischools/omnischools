@@ -1,15 +1,17 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Tx } from "@/lib/db";
 import {
   wassceProgrammes,
   wassceSubjects,
   wassceCandidates,
   wasscePapers,
+  waecSpecialConsideration,
   students,
   universities,
   universityProgrammes,
   universityTargets,
 } from "@/db/schema";
+import { sc12BannerRows, SC12_BANNER_STATUSES, type Sc12BannerRow } from "@/lib/wassce/sc12";
 import { getActiveCohort } from "@/lib/wassce/active-cohort";
 import { examWindowView, type ExamWindowView } from "@/lib/wassce/exam-window";
 import { computeCohortAggregates } from "@/lib/wassce/readiness-data";
@@ -143,6 +145,12 @@ export type WassceSetupData = {
   targets: WassceTargetsView; // §3 university-target config (INCR-17b)
   /** §1.2 live-exam banner — DERIVED from wassce_papers + the request instant; null with no dated paper. */
   examWindow: ExamWindowView | null;
+  /**
+   * §4.2 medical special-consideration banner (R227) — the LIVE (non-DRAFT) SC-12 filings for this
+   * cohort, derived from `waec_special_consideration`. WAEC workflow facts ONLY (name/index/status/ref/
+   * make-up/filed date) — zero clinical content. Empty ⇒ the page omits the banner entirely.
+   */
+  sc12Banner: Sc12BannerRow[];
 };
 
 const EMPTY_TARGETS: WassceTargetsView = {
@@ -327,6 +335,7 @@ export async function loadWassceSetup(
       roster: [],
       targets: EMPTY_TARGETS,
       examWindow: null,
+      sc12Banner: [],
     };
   }
 
@@ -474,6 +483,54 @@ export async function loadWassceSetup(
     .from(wasscePapers)
     .where(and(eq(wasscePapers.schoolId, schoolId), eq(wasscePapers.cohortId, cohort.id)));
 
+  // §4.2 — the LIVE SC-12 fact (R227). Read this cohort's non-DRAFT SC-12 filings in a live state
+  // (FILED/ACKNOWLEDGED/APPROVED/SCHEDULED — the DRAFT auto-suggest is filtered OUT in SQL) joined to the
+  // candidate + student for name/index. WAEC workflow columns ONLY — no clinical column is selected, so
+  // none can leak to the ADMIN/VHA readers of this surface. Empty ⇒ the page renders no banner.
+  const sc12Rows = await tx
+    .select({
+      firstName: students.firstName,
+      lastName: students.lastName,
+      indexNumber: wassceCandidates.indexNumber,
+      status: waecSpecialConsideration.status,
+      waecRef: waecSpecialConsideration.waecRef,
+      makeUpScheduledAt: waecSpecialConsideration.makeUpScheduledAt,
+      makeUpCentre: waecSpecialConsideration.makeUpCentre,
+      filedAt: waecSpecialConsideration.filedAt,
+    })
+    .from(waecSpecialConsideration)
+    .innerJoin(
+      wassceCandidates,
+      and(
+        eq(wassceCandidates.schoolId, waecSpecialConsideration.schoolId),
+        eq(wassceCandidates.id, waecSpecialConsideration.candidateId),
+      ),
+    )
+    .innerJoin(
+      students,
+      and(eq(students.schoolId, wassceCandidates.schoolId), eq(students.id, wassceCandidates.studentId)),
+    )
+    .where(
+      and(
+        eq(waecSpecialConsideration.schoolId, schoolId),
+        eq(wassceCandidates.cohortId, cohort.id),
+        eq(waecSpecialConsideration.scForm, "SC-12"),
+        inArray(waecSpecialConsideration.status, [...SC12_BANNER_STATUSES]),
+      ),
+    );
+
+  const sc12Banner = sc12BannerRows(
+    sc12Rows.map((r) => ({
+      candidateName: shortName(r.firstName, r.lastName),
+      indexNumber: r.indexNumber,
+      status: r.status,
+      waecRef: r.waecRef,
+      makeUpScheduledAt: r.makeUpScheduledAt,
+      makeUpCentre: r.makeUpCentre,
+      filedAt: r.filedAt,
+    })),
+  );
+
   return {
     cohort: { examYear: cohort.examYear, frozen: cohort.setupFrozenAt != null },
     centreCode: candRows[0]?.centreCode ?? "—",
@@ -493,6 +550,7 @@ export async function loadWassceSetup(
     matrix,
     roster,
     examWindow: examWindowView(paperRows, now),
+    sc12Banner,
     targets: await loadTargetsView(
       tx,
       schoolId,

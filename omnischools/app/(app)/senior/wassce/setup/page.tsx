@@ -450,8 +450,8 @@ export default async function WassceSetupPage() {
             <>
               <b className="text-navy-2">{counts.candidates} candidates registered</b> with WAEC.
               Centre code <span className="font-mono font-bold text-navy">{data.centreCode}</span>.
-              Index numbers issued Feb 2026. {counts.flagged} students flagged today — one inpatient
-              (medical exemption process active), two with NHIS-card issues affecting the WAEC fee
+              Index numbers issued Feb 2026. {counts.flagged} students flagged today — one on a medical
+              special-consideration (SC-12) process, two with NHIS-card issues affecting the WAEC fee
               reconciliation.
             </>
           }
@@ -462,32 +462,48 @@ export default async function WassceSetupPage() {
           ]}
         />
 
-        {/* §4.2 Medical-exemption banner — static from Y. Aidoo's candidate flag (Sickbay deferred).
-            The surface's `since 06:45 today` / `filed at 11:00` clocks are DROPPED, not replicated:
-            nothing on this page reads `waec_special_consideration.filed_at`, so a stamp here would be a
-            drawn time that is wrong from the day after it was written (R90). */}
-        <div
-          className="mb-5 grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-xl border border-warn px-5 py-4"
-          style={{ background: "linear-gradient(135deg, var(--warn-bg), var(--surface))" }}
-        >
-          <span className="flex h-[42px] w-[42px] items-center justify-center rounded-lg bg-warn font-display text-lg font-bold text-bg">
-            !
-          </span>
-          <div>
-            <div className="font-display text-[15px] font-medium text-navy">
-              One <em className="italic text-gold">candidate</em> on medical leave · WAEC special
-              consideration form filed
-            </div>
-            <div className="mt-1 text-[12px] text-navy-2">
-              <b className="text-navy">Y. Aidoo (F3 Slessor SCI · index 0184-0817)</b> is inpatient at
-              Asankrangwa Government Hospital with severe malaria.{" "}
-              <b className="text-navy">WAEC Form SC-12 filed</b>; awaiting acknowledgment. Medical
-              certificate from Dr K. Mensah pending hospital discharge. Sickbay module → Referral log
-              integration carries the case across modules.
+        {/* §4.2 Medical special-consideration banner — the LIVE, non-DRAFT SC-12 fact (R227), DERIVED
+            from waec_special_consideration (never hardcoded). WAEC workflow ONLY: name, index, SC-12
+            status, WAEC ref, make-up, filed DATE — never any clinical field, since ADMIN + VHA
+            (non-clinical roles) read this surface. A DRAFT auto-suggest is excluded upstream (it stays
+            the exams officer's private worklist), and with no live SC-12 the banner is omitted entirely
+            rather than drawn empty (R90: derive, never redraw). */}
+        {data.sc12Banner.length > 0 && (
+          <div
+            className="mb-5 grid grid-cols-[auto_1fr] items-start gap-4 rounded-xl border border-warn px-5 py-4"
+            style={{ background: "linear-gradient(135deg, var(--warn-bg), var(--surface))" }}
+          >
+            <span className="flex h-[42px] w-[42px] items-center justify-center rounded-lg bg-warn font-display text-lg font-bold text-bg">
+              !
+            </span>
+            <div>
+              <div className="font-display text-[15px] font-medium text-navy">
+                {data.sc12Banner.length === 1
+                  ? "One candidate"
+                  : `${data.sc12Banner.length} candidates`}{" "}
+                on a WAEC <em className="italic text-gold">special consideration</em> · SC-12
+              </div>
+              <ul className="mt-1.5 space-y-1.5 text-[12px] text-navy-2">
+                {data.sc12Banner.map((s) => (
+                  <li key={s.indexNumber}>
+                    <b className="text-navy">
+                      {s.candidateName} · index {s.indexNumber}
+                    </b>{" "}
+                    — {s.statusLabel}
+                    {s.waecRef ? (
+                      <>
+                        {" "}
+                        · WAEC ref <span className="font-mono">{s.waecRef}</span>
+                      </>
+                    ) : null}
+                    {s.makeUpLabel ? <> · make-up {s.makeUpLabel}</> : null}
+                    {s.filedDateLabel ? <> · filed {s.filedDateLabel}</> : null}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-          <InertButton label="Open case" kind="nav" />
-        </div>
+        )}
 
         {/* §4.3 Roster stat tiles — derive from real rows; fee tile = count × GES anchor. */}
         <div className="mb-5 grid gap-3.5 md:grid-cols-4">
@@ -524,15 +540,15 @@ export default async function WassceSetupPage() {
         <div className="mt-5 grid gap-3.5 md:grid-cols-3">
           <XmodCard
             label="Cross-module · Sickbay"
-            titlePre="Y. Aidoo case "
-            titleEm="linked"
-            titlePost=" to today's referral"
+            titlePre="Auto-suggested "
+            titleEm="SC-12"
+            titlePost=" from sickbay"
             body={
               <>
-                The medical exemption banner above pulls live from{" "}
-                <b className="text-bg">sickbay → referral log</b>. When the matron updates her status
-                on the referral log, this banner updates here. Discharge will trigger the WAEC make-up
-                scheduling.
+                A sickbay referral or admission of a live candidate auto-suggests a{" "}
+                <b className="text-bg">DRAFT WAEC SC-12</b> for the exams officer to review and file.
+                The draft carries the candidate and form only — never any clinical detail — and stays
+                off the parent portal until the school files it.
               </>
             }
           />
