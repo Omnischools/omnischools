@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { requestOtp, verifyLogin, passwordLogin } from "@/lib/actions/auth";
 
 const fieldClass =
@@ -135,6 +136,14 @@ export function LoginForm({ accepted = false }: { accepted?: boolean }) {
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && signInPassword()}
           />
+          {/* L3 — port of the landing modal's `.forgot` (below password, above submit, right-aligned,
+              12px gold, hover underline). Password tab only: the OTP tab is already password-free. */}
+          <Link
+            href="/reset"
+            className="mt-1 block text-right text-xs font-medium text-gold hover:underline"
+          >
+            Forgot password?
+          </Link>
           <button
             onClick={signInPassword}
             disabled={busy}

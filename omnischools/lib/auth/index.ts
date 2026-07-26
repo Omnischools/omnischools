@@ -131,6 +131,16 @@ type SupabaseAuthApi = {
   }): Promise<{ error: { message: string } | null }>;
   // INCR-34 (L2a) — change the CURRENT session's own password (self-service; no target id).
   updateUser(attrs: { password: string }): Promise<{ error: { message: string } | null }>;
+  // INCR-36 (L3) — send a password-recovery email. Supabase mints + owns the recovery token; the link
+  // lands the user on `redirectTo` (/reset-password?code=…). No token row on our side (seam-only).
+  resetPasswordForEmail(
+    email: string,
+    options: { redirectTo: string },
+  ): Promise<{ error: { message: string } | null }>;
+  // INCR-36 (L3) — exchange the PKCE `?code=…` on the reset-password landing for a recovery session.
+  exchangeCodeForSession(
+    code: string,
+  ): Promise<{ error: { message: string } | null }>;
   getUser(): Promise<{ data: { user: { phone?: string | null } | null } }>;
   getSession(): Promise<{
     data: {
@@ -219,6 +229,37 @@ export async function updatePassword(
 ): Promise<{ ok: boolean; error?: string }> {
   if (!authIsLive()) return { ok: true };
   const { error } = await (await authApi()).updateUser({ password: newPassword });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/**
+ * INCR-36 (L3) — send a password-reset EMAIL. Supabase mints and owns the recovery token; the link it
+ * emails lands the user on `redirectTo` (`…/reset-password?code=…`), which our page exchanges for a
+ * recovery session. No token table on our side (seam-only). `redirectTo` is built by the caller from
+ * `NEXT_PUBLIC_SITE_URL`, mirroring `createInvite`'s link. Dev-bypass no-op (no real email in dev).
+ */
+export async function sendPasswordResetEmail(
+  email: string,
+  redirectTo: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!authIsLive()) return { ok: true };
+  const { error } = await (await authApi()).resetPasswordForEmail(email, { redirectTo });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/**
+ * INCR-36 (L3) — exchange the PKCE `?code=…` on the email-reset landing (`/reset-password`) for a
+ * recovery session, so the subsequent `updatePassword` acts on the just-proven identity. Dev-bypass
+ * no-op. NB (Sarah / wiring): a code-exchange from a Server-Component render cannot persist the
+ * session cookie (Next 15 render is cookie-read-only; there is no session-refresh middleware here), so
+ * the live email path likely needs this moved to a Route Handler / Server Action — flagged, email path
+ * is structurally-verified only in this increment.
+ */
+export async function establishRecoverySession(
+  code: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!authIsLive()) return { ok: true };
+  const { error } = await (await authApi()).exchangeCodeForSession(code);
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
@@ -338,6 +379,38 @@ function sessionIdFromJwt(jwt: string): string | null {
     return typeof claim === "string" && claim ? claim : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * INCR-36 (L3) — the `amr` (Authentication Methods References) methods of the CURRENT access token,
+ * e.g. `["otp"]`, `["password"]`, `["recovery"]`. Decoded UNVERIFIED, exactly like `sessionIdFromJwt`:
+ * this ONLY gates a fresh-proof check (R276), it is never an authorization decision (RLS remains the
+ * boundary). Returns `[]` if unreadable / no session (dev-bypass has no JWT → `[]`).
+ */
+export async function sessionAuthMethods(): Promise<string[]> {
+  if (!authIsLive()) return [];
+  const {
+    data: { session },
+  } = await (await authApi()).getSession();
+  return session?.access_token ? amrFromJwt(session.access_token) : [];
+}
+
+/** Decode the `amr[].method` list from a Supabase access-token JWT (unverified — R276 gate only). */
+function amrFromJwt(jwt: string): string[] {
+  try {
+    const payload = jwt.split(".")[1];
+    if (!payload) return [];
+    const amr = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))?.amr;
+    if (!Array.isArray(amr)) return [];
+    // GoTrue amr entries are `{ method, timestamp }`; tolerate a bare-string shape too.
+    return amr
+      .map((e: unknown) =>
+        typeof e === "string" ? e : (e as { method?: unknown })?.method,
+      )
+      .filter((m: unknown): m is string => typeof m === "string" && m.length > 0);
+  } catch {
+    return [];
   }
 }
 

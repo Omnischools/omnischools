@@ -5,6 +5,8 @@ import {
   verifyPhoneOtp,
   signInWithPassword,
   updatePassword,
+  sendPasswordResetEmail,
+  sessionAuthMethods,
   signOut,
 } from "@/lib/auth";
 import { requireUser, resolveActor } from "@/lib/auth/server";
@@ -88,5 +90,70 @@ export async function changeOwnPassword(input: {
       // swallow — a missing audit row is acceptable; a false failure on a succeeded change is not.
     }
   }
+  return { ok: true };
+}
+
+/**
+ * INCR-36 (L3, R273) — request a password-reset EMAIL. NEUTRAL-ALWAYS: this ALWAYS returns { ok: true }
+ * regardless of whether the email is on file, and swallows EVERY error server-side (logged, never
+ * surfaced). Enumeration-resistance is OUR binding guarantee here — not a behaviour we borrow from
+ * Supabase — so the UI can never tell a registered address from an unknown one. `redirectTo` is built
+ * from NEXT_PUBLIC_SITE_URL, mirroring `createInvite`'s link (invites.ts).
+ */
+export async function requestPasswordReset(input: { email: string }): Promise<{ ok: true }> {
+  const email = input?.email?.trim() ?? "";
+  try {
+    const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/reset-password`;
+    const res = await sendPasswordResetEmail(email, redirectTo);
+    if (res.error) console.error("[auth] reset email send error (swallowed for R273):", res.error);
+  } catch (err) {
+    console.error("[auth] requestPasswordReset threw (swallowed for R273):", err);
+  }
+  return { ok: true };
+}
+
+/**
+ * INCR-36 (L3) — verify a phone OTP for the RESET flow. Wraps `verifyPhoneOtp` and returns the result
+ * WITHOUT redirecting (unlike `verifyLogin`, which hard-redirects to /dashboard) so the reset card can
+ * advance to the set-new-password step on the session the OTP just established.
+ */
+export async function verifyResetOtp(
+  phone: string,
+  token: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await verifyPhoneOtp(phone, token);
+  if (!res.ok) return { ok: false, error: res.error ?? "Invalid code." };
+  return { ok: true };
+}
+
+/**
+ * INCR-36 (L3, R274) — complete a password reset on the CURRENT (proven) session. Takes ONLY
+ * `newPassword` — NO target/user id anywhere, so it structurally cannot set another account's password
+ * (the just-proven session IS the authorization, exactly like L2a's `updatePassword`). Distinct from
+ * `changeOwnPassword`: it requires NO current password (identity was proven by the phone OTP or the
+ * email recovery link, not by re-typing the old password). min-8 matches AcceptSchema.
+ *
+ * R276 walk-up guard: a reset must ride FRESH proof. We read the session's `amr`; a session that is
+ * clearly password-method-only (non-empty AND every method === "password", i.e. someone reached this on
+ * an ordinary password login with no OTP/recovery proof) is REFUSED. otp / recovery / magiclink proceed.
+ *
+ * ⚠️ FAIL-OPEN caveat (Sarah's to harden): when `amr` is empty or unreadable we PROCEED, so an
+ * unexpected JWT shape (or dev-bypass) never locks out a legitimate reset. This trades strictness for
+ * availability; the hardening is a verified decode / a server-side recovery-flag check. Flagged for Sarah.
+ */
+export async function completePasswordReset(input: {
+  newPassword: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const newPassword = input?.newPassword ?? "";
+  if (newPassword.length < 8) {
+    return { ok: false, error: "Password must be at least 8 characters" };
+  }
+  const methods = await sessionAuthMethods();
+  const passwordOnly = methods.length > 0 && methods.every((m) => m === "password");
+  if (passwordOnly) {
+    return { ok: false, error: "Your reset link has expired — start again." };
+  }
+  const res = await updatePassword(newPassword);
+  if (!res.ok) return { ok: false, error: res.error ?? "Could not update your password." };
   return { ok: true };
 }
