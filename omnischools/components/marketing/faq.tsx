@@ -17,7 +17,7 @@ const FAQS = [
   },
   {
     q: "Where is our school's data stored?",
-    a: "In data centres serving Ghana, governed by Ghana's Data Protection Act. We're registered with the Data Protection Commission, and named-record access — including by us, for support — is justification-gated and audit-logged.",
+    a: "In a secure data centre in the region closest to Ghana (currently the EU — London), governed by Ghana's Data Protection Act, 2012 (Act 843). Named-record access — including by us, for support — is justification-gated and audit-logged.",
   },
   {
     q: "Is there a discount for small schools?",
