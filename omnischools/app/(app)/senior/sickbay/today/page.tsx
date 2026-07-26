@@ -169,6 +169,13 @@ export default async function SickbayTodayPage() {
           >
             Rounds
           </Link>
+          {/* INCR-27 — the 7-day outbreak monitor (today §05). Counts-only syndromic surveillance. */}
+          <Link
+            href="/senior/sickbay/today/outbreak"
+            className="rounded-[5px] border border-border-2 bg-surface px-[14px] py-[8px] text-[12px] font-semibold text-navy no-underline"
+          >
+            Outbreak
+          </Link>
           {/* §1.3 — the register is reached from the board head, one flat nav row (R84). */}
           <Link
             href="/senior/sickbay/chronic-register"

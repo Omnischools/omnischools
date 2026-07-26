@@ -45,6 +45,11 @@ import {
   vitalTrend,
   type VitalReading,
 } from "@/lib/sickbay/vitals";
+import {
+  OUTBREAK_CATEGORY_ORDER,
+  SURVEILLANCE_CATEGORY_META,
+  type SurveillanceCategory,
+} from "@/lib/sickbay/surveillance";
 
 // ── plain client shapes (ISO strings, no DB rows) ──────────────────────────
 export interface VitalRow {
@@ -114,6 +119,8 @@ export interface VisitView {
   attendingNmcLicence: string | null;
   assessment: {
     workingImpression: string | null;
+    /** R215 — the surveillance bucket the matron set at assessment (NOT a diagnosis). */
+    surveillanceCategory: SurveillanceCategory | null;
     redFlagsScreened: string | null;
     hydrationStatus: string | null;
     plan: string | null;
@@ -505,6 +512,12 @@ export function VisitRecordConsole({
             </div>
             <div className="p-[16px_20px_20px]">
               <AssessRow lbl={ASSESSMENT_ROW_LABELS[0]} val={visit.assessment.workingImpression} />
+              {visit.assessment.surveillanceCategory && (
+                <AssessRow
+                  lbl="Surveillance category"
+                  val={SURVEILLANCE_CATEGORY_META[visit.assessment.surveillanceCategory].label}
+                />
+              )}
               {visit.assessment.redFlagsScreened && (
                 <AssessRow lbl={ASSESSMENT_ROW_LABELS[1]} val={visit.assessment.redFlagsScreened} />
               )}
@@ -872,6 +885,9 @@ function VitalsForm({ pending, onSubmit }: { pending: boolean; onSubmit: (d: Rec
   );
 }
 
+/** Infectious syndromes first (the outbreak set, surface order), then the OTHER catch-all. */
+const SURVEILLANCE_PICKER_ORDER: SurveillanceCategory[] = [...OUTBREAK_CATEGORY_ORDER, "OTHER"];
+
 function AssessForm({
   pending,
   initial,
@@ -890,6 +906,9 @@ function AssessForm({
     plan: initial.plan ?? "",
     escalationTriggers: initial.escalationTriggers ?? "",
   });
+  // R215 (F-27A) — required at assessment. A surveillance BUCKET (aggregates for the outbreak monitor),
+  // never a diagnosis; the free-text working impression stays the clinical record.
+  const [category, setCategory] = useState<SurveillanceCategory | "">(initial.surveillanceCategory ?? "");
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLTextAreaElement>) => setF((p) => ({ ...p, [k]: e.target.value }));
   const rows: [keyof typeof f, string][] = [
     ["workingImpression", "Working impression (required)"],
@@ -900,19 +919,46 @@ function AssessForm({
   ];
   return (
     <div className="mt-3 rounded-[10px] border border-border bg-surface p-4">
-      {rows.map(([k, lbl]) => (
+      <div className="mb-3">
+        <label className={labelCls}>Working impression (required)</label>
+        <textarea
+          rows={3}
+          value={f.workingImpression}
+          onChange={set("workingImpression")}
+          className={textareaCls}
+        />
+      </div>
+      {/* R215 — the surveillance bucket. Required; it feeds the anonymous outbreak monitor, never a
+          diagnosis code beside the name. */}
+      <div className="mb-3">
+        <label className={labelCls}>Surveillance category (required · syndrome bucket, not a condition)</label>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as SurveillanceCategory | "")}
+          className={inputCls}
+        >
+          <option value="">Select a surveillance category…</option>
+          {SURVEILLANCE_PICKER_ORDER.map((k) => (
+            <option key={k} value={k}>
+              {SURVEILLANCE_CATEGORY_META[k].label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {rows.slice(1).map(([k, lbl]) => (
         <div key={k} className="mb-3">
           <label className={labelCls}>{lbl}</label>
-          <textarea rows={k === "workingImpression" ? 3 : 2} value={f[k]} onChange={set(k)} className={textareaCls} />
+          <textarea rows={2} value={f[k]} onChange={set(k)} className={textareaCls} />
         </div>
       ))}
       <div className="flex gap-2">
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || !f.workingImpression.trim() || category === ""}
           onClick={() =>
             onSubmit({
               workingImpression: f.workingImpression.trim(),
+              surveillanceCategory: category,
               redFlagsScreened: f.redFlagsScreened.trim() || null,
               hydrationStatus: f.hydrationStatus.trim() || null,
               plan: f.plan.trim() || null,

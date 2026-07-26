@@ -152,6 +152,7 @@ export default async function VisitRecordPage({
     attendingNmcLicence: record.attendingNmcLicence,
     assessment: {
       workingImpression: record.workingImpression,
+      surveillanceCategory: record.surveillanceCategory,
       redFlagsScreened: record.redFlagsScreened,
       hydrationStatus: record.hydrationStatus,
       plan: record.plan,

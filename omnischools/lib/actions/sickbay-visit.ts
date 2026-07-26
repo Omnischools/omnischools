@@ -41,6 +41,7 @@ import {
 import { holdsMatronRole } from "@/lib/sickbay/config";
 import { sickbayCapabilities } from "@/lib/sickbay/defaults";
 import { dispositionGuard, isolationGuard, voidGuard } from "@/lib/sickbay/visits";
+import { SURVEILLANCE_CATEGORY_VALUES } from "@/lib/sickbay/surveillance";
 import { openVisitCollisionError } from "@/lib/sickbay/board-copy";
 import { VITAL_BOUNDS, isEmptyReading } from "@/lib/sickbay/vitals";
 import { markSickbayMedical } from "@/lib/attendance/mark";
@@ -266,6 +267,11 @@ const AssessSchema = z.object({
   visitId: z.string().uuid(),
   // R43 — `working_impression`, never `diagnosis`. Free text, required when an assessment is written.
   workingImpression: z.string().trim().min(1).max(2000),
+  // R215 (F-27A) — the coarse GHS/IDSR surveillance BUCKET (NOT a diagnosis; it aggregates, it does
+  // not name a condition). APP-REQUIRED at assessment: an assessment writes working_impression, so a
+  // save without a category is refused here. The DB column stays nullable (a queued visit never
+  // assessed reads NULL = "Uncategorised") — requiredness is app-layer only, never a DB constraint.
+  surveillanceCategory: z.enum(SURVEILLANCE_CATEGORY_VALUES),
   redFlagsScreened: z.string().trim().max(2000).nullish(),
   hydrationStatus: z.string().trim().max(2000).nullish(),
   plan: z.string().trim().max(2000).nullish(),
@@ -285,7 +291,10 @@ export async function assessVisit(input: unknown): Promise<Result> {
   if (!auth.ok) return auth;
   const parsed = AssessSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Record a working impression to save the assessment." };
+    return {
+      ok: false,
+      error: "Record a working impression and a surveillance category to save the assessment.",
+    };
   }
   const d = parsed.data;
 
@@ -300,6 +309,7 @@ export async function assessVisit(input: unknown): Promise<Result> {
         .update(sickbayVisit)
         .set({
           workingImpression: d.workingImpression,
+          surveillanceCategory: d.surveillanceCategory,
           redFlagsScreened: d.redFlagsScreened || null,
           hydrationStatus: d.hydrationStatus || null,
           plan: d.plan || null,
@@ -308,24 +318,18 @@ export async function assessVisit(input: unknown): Promise<Result> {
           updatedAt: now,
         })
         .where(and(eq(sickbayVisit.schoolId, auth.schoolId), eq(sickbayVisit.id, v.id)));
+      // 🔴 NO clinical free-text in the audit snapshot (Sarah, INCR-27 BLOCK-1). `/settings/audit`
+      // is staff-readable incl. ADMIN, who is deliberately NOT a clinical reader (D2/R166) — a
+      // `working_impression`/`plan`/red-flags diff in that feed leaks a named student's clinical
+      // record to the proprietor account. Mirror sickbay-referral.ts: keep the FACT + who/when +
+      // the coarse surveillance bucket (not a diagnosis); the impression lives on the visit row,
+      // read only through the clinical-gated readers.
       await audit(tx, auth.schoolId, auth.actor, {
         actionType: "updated",
         entityType: "sickbay_visit",
         entityId: v.id,
-        before: {
-          workingImpression: v.workingImpression,
-          redFlagsScreened: v.redFlagsScreened,
-          hydrationStatus: v.hydrationStatus,
-          plan: v.plan,
-          escalationTriggers: v.escalationTriggers,
-        },
-        after: {
-          workingImpression: d.workingImpression,
-          redFlagsScreened: d.redFlagsScreened || null,
-          hydrationStatus: d.hydrationStatus || null,
-          plan: d.plan || null,
-          escalationTriggers: d.escalationTriggers || null,
-        },
+        before: { surveillanceCategory: v.surveillanceCategory, assessedAt: v.assessedAt },
+        after: { surveillanceCategory: d.surveillanceCategory, assessedAt: now },
         reason: "Sickbay assessment recorded",
       });
     });
@@ -435,7 +439,11 @@ export async function addVitals(input: unknown): Promise<Result> {
         actionType: "created",
         entityType: "sickbay_vital_reading",
         entityId: row.id,
-        after: { ...reading, takenAt },
+        // Who/when only — the vital MEASUREMENTS stay off the audit snapshot (Sarah, INCR-27): they
+        // are clinical data-at-rest in the ADMIN-adjacent audit_log, and a future "show created
+        // values" feed would surface a student's vitals to a non-clinical reader (D2/R166). The
+        // readings live on the sickbay_vital_reading row behind the clinical gate. Mirrors assessVisit.
+        after: { takenAt },
         reason: "Sickbay vitals recorded",
       });
       return row.id;

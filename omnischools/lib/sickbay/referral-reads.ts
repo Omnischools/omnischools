@@ -18,7 +18,7 @@
  * (RLS + explicit school predicate + a re-resolved id) means a bad id returns null → notFound().
  */
 import "server-only";
-import { and, asc, desc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, ne } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import type { Tx } from "@/lib/db";
 import {
@@ -36,6 +36,19 @@ import {
   users,
 } from "@/db/schema";
 import { formLabel, initials } from "./defaults";
+import {
+  HISTORY_RANGES,
+  NHIS_TRISTATE_LABEL,
+  historyWindowStart,
+  nhisTriState,
+  type HistoryRange,
+  type NhisTriState,
+} from "./referrals";
+import {
+  SURVEILLANCE_CATEGORY_META,
+  SURVEILLANCE_CATEGORY_VALUES,
+  type SurveillanceCategory,
+} from "./surveillance";
 // `A. Bediako` — the one-name abbreviation IS the A2/R73 disclosure tier; reuse the canonical board-copy
 // rule (aliased to dodge the collision with defaults.initials, the avatar-glyph form imported above).
 import { abbreviateName as shortName } from "./board-copy";
@@ -605,6 +618,213 @@ export async function getReferralDetail(
 }
 
 // ============================================================================
+// §R4 — the 30-day referral HISTORY (INCR-27 · R217/R218). CLINICAL-read gated (the page refuses a
+// non-clinical reader BEFORE this runs): every row pairs a name with the visit's LIVE
+// `working_impression` (the "Diagnosis" column, R190 — never re-stored). The mix aggregates are
+// COUNTS-ONLY — the category walks the 7 canonical surveillance buckets via the referral→visit join
+// (R218 — no separate referral-category column; SCD/asthma collapse to their assigned acute bucket).
+// ============================================================================
+
+export interface HistoryRow {
+  id: string;
+  departedAt: Date | null;
+  studentName: string;
+  initials: string;
+  studentCode: string;
+  formLabel: string;
+  houseName: string | null;
+  /** 🔴 the visit's LIVE `working_impression` — the "Diagnosis" column (R190). Clinical-read only. */
+  workingImpression: string | null;
+  hospitalName: string;
+  hospitalDistanceKm: number | null;
+  hospitalIsPrimary: boolean;
+  status: ReferralStatus;
+  dayLabel: string;
+  nhis: NhisTriState;
+  nhisLabel: string;
+  outOfPocket: number;
+  /** For the counts-only mix (never rendered beside a name). Null = uncategorised (pre-0063 / queued). */
+  category: SurveillanceCategory | null;
+}
+
+export interface HistoryMixBar {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface ReferralHistory {
+  range: HistoryRange;
+  category: SurveillanceCategory | null;
+  rows: HistoryRow[];
+  total: number;
+  closed: number;
+  open: number;
+  topCategory: { label: string; count: number } | null;
+  rangeCounts: Record<HistoryRange, number>;
+  categoryFacets: { key: SurveillanceCategory; label: string; count: number }[];
+  categoryMix: HistoryMixBar[];
+  hospitalMix: HistoryMixBar[];
+  asOf: Date;
+}
+
+/**
+ * getReferralHistory → §R4. Fetches non-voided referrals across the widest range (year) ONCE, joined
+ * to the visit for the LIVE working_impression + surveillance_category, then derives every count in
+ * JS: the range facets (30/90/term/year), the active-range table rows (optionally category-filtered),
+ * and the two counts-only mix bars. Every count is derived from one query — never a copied `12`.
+ */
+export async function getReferralHistory(
+  schoolId: string,
+  now: Date,
+  opts: { range: HistoryRange; category: SurveillanceCategory | null },
+): Promise<ReferralHistory> {
+  return withSchool(schoolId, async (tx) => {
+    const yearStart = historyWindowStart("year", now);
+    const rows = await tx
+      .select({
+        id: sickbayReferral.id,
+        studentId: sickbayReferral.studentId,
+        status: sickbayReferral.status,
+        departedAt: sickbayReferral.departedAt,
+        returnedAt: sickbayReferral.returnedAt,
+        createdAt: sickbayReferral.createdAt,
+        nhisValid: sickbayReferral.nhisValid,
+        firstName: students.firstName,
+        lastName: students.lastName,
+        studentCode: students.studentCode,
+        programme: students.programme,
+        className: classes.name,
+        classLevel: classes.level,
+        houseName: houses.name,
+        hospitalName: sickbayHospital.name,
+        hospitalDistanceKm: sickbayHospital.distanceKm,
+        hospitalIsPrimary: sickbayHospital.isPrimary,
+        workingImpression: sickbayVisit.workingImpression,
+        category: sickbayVisit.surveillanceCategory,
+      })
+      .from(sickbayReferral)
+      .innerJoin(students, and(eq(students.schoolId, schoolId), eq(students.id, sickbayReferral.studentId)))
+      .innerJoin(
+        sickbayHospital,
+        and(eq(sickbayHospital.schoolId, schoolId), eq(sickbayHospital.id, sickbayReferral.hospitalId)),
+      )
+      .innerJoin(
+        sickbayVisit,
+        and(eq(sickbayVisit.schoolId, schoolId), eq(sickbayVisit.id, sickbayReferral.visitId)),
+      )
+      .leftJoin(classes, and(eq(classes.schoolId, schoolId), eq(classes.id, students.classId)))
+      .leftJoin(houses, and(eq(houses.schoolId, schoolId), eq(houses.id, students.houseId)))
+      .where(
+        and(
+          eq(sickbayReferral.schoolId, schoolId),
+          isNull(sickbayReferral.voidedAt),
+          gte(sickbayReferral.departedAt, yearStart),
+        ),
+      )
+      .orderBy(desc(sickbayReferral.departedAt));
+
+    // Σ out-of-pocket per referral — the diagnosis-free cost lines, fetched once for the whole set.
+    const ids = rows.map((r) => r.id);
+    const costRows = ids.length
+      ? await tx
+          .select({
+            referralId: sickbayReferralCostLine.referralId,
+            outOfPocket: sickbayReferralCostLine.outOfPocketAmount,
+          })
+          .from(sickbayReferralCostLine)
+          .where(
+            and(
+              eq(sickbayReferralCostLine.schoolId, schoolId),
+              inArray(sickbayReferralCostLine.referralId, ids),
+            ),
+          )
+      : [];
+    const oopByRef = new Map<string, number>();
+    for (const c of costRows) {
+      oopByRef.set(c.referralId, (oopByRef.get(c.referralId) ?? 0) + Number(c.outOfPocket ?? 0));
+    }
+
+    const refDate = (r: (typeof rows)[number]) => (r.departedAt ?? r.createdAt).getTime();
+    const inWindow = (r: (typeof rows)[number], range: HistoryRange) =>
+      refDate(r) >= historyWindowStart(range, now).getTime();
+
+    const rangeCounts = Object.fromEntries(
+      HISTORY_RANGES.map((rg) => [rg, rows.filter((r) => inWindow(r, rg)).length]),
+    ) as Record<HistoryRange, number>;
+
+    const windowRows = rows.filter((r) => inWindow(r, opts.range));
+
+    // Counts-only mixes over the active range (NOT category-filtered — they analyse the whole window).
+    const categoryMix: HistoryMixBar[] = SURVEILLANCE_CATEGORY_VALUES.map((key) => ({
+      key,
+      label: SURVEILLANCE_CATEGORY_META[key].short,
+      count: windowRows.filter((r) => r.category === key).length,
+    })).filter((b) => b.count > 0);
+    categoryMix.sort((a, b) => b.count - a.count);
+
+    const hospitalMixMap = new Map<string, number>();
+    for (const r of windowRows) hospitalMixMap.set(r.hospitalName, (hospitalMixMap.get(r.hospitalName) ?? 0) + 1);
+    const hospitalMix: HistoryMixBar[] = [...hospitalMixMap.entries()]
+      .map(([label, count]) => ({ key: label, label, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const categoryFacets = SURVEILLANCE_CATEGORY_VALUES.map((key) => ({
+      key,
+      label: SURVEILLANCE_CATEGORY_META[key].short,
+      count: windowRows.filter((r) => r.category === key).length,
+    })).filter((f) => f.count > 0);
+
+    const tableRows = opts.category
+      ? windowRows.filter((r) => r.category === opts.category)
+      : windowRows;
+
+    const shaped: HistoryRow[] = tableRows.map((r) => {
+      const oop = oopByRef.get(r.id) ?? 0;
+      const nhis = nhisTriState(r.nhisValid, oop);
+      const fullName = `${r.firstName} ${r.lastName}`;
+      return {
+        id: r.id,
+        departedAt: r.departedAt,
+        studentName: fullName,
+        initials: initials(fullName),
+        studentCode: r.studentCode,
+        formLabel: formLabel(r.classLevel, r.className, r.programme),
+        houseName: r.houseName,
+        workingImpression: r.workingImpression,
+        hospitalName: r.hospitalName,
+        hospitalDistanceKm: r.hospitalDistanceKm === null ? null : Number(r.hospitalDistanceKm),
+        hospitalIsPrimary: r.hospitalIsPrimary,
+        status: r.status,
+        dayLabel: referralDayLabel(
+          { status: r.status, departedAt: r.departedAt, returnedAt: r.returnedAt },
+          now,
+        ),
+        nhis,
+        nhisLabel: NHIS_TRISTATE_LABEL[nhis],
+        outOfPocket: oop,
+        category: r.category,
+      };
+    });
+
+    return {
+      range: opts.range,
+      category: opts.category,
+      rows: shaped,
+      total: windowRows.length,
+      closed: windowRows.filter((r) => r.status === "RETURNED").length,
+      open: windowRows.filter((r) => r.status !== "RETURNED").length,
+      topCategory: categoryMix[0] ? { label: categoryMix[0].label, count: categoryMix[0].count } : null,
+      rangeCounts,
+      categoryFacets,
+      categoryMix,
+      hospitalMix,
+      asOf: now,
+    };
+  });
+}
+
+// ============================================================================
 // 🔴 The BURSAR projection (R195) — diagnosis-free cost lines. Same shape the MATRON reads at §02.
 // ============================================================================
 
@@ -642,5 +862,167 @@ export async function getReferralCostLines(
   return withSchool(schoolId, async (tx) => {
     const lines = await costLinesFor(tx, schoolId, referralId);
     return { lines, totalOutOfPocket: lines.reduce((s, l) => s + (l.outOfPocketAmount ?? 0), 0) };
+  });
+}
+
+// ============================================================================
+// 🔴 §R5 — the NHIS RECONCILIATION (INCR-27 · R219/R220). FINANCE-gated, STRUCTURALLY clinical-free:
+// this reader joins ONLY sickbay_referral + sickbay_referral_cost_line + students, NEVER the visit —
+// the cost line has no clinical column, and a BURSAR reading this must be incapable of seeing a
+// condition (Risk-4, A12). It renders the cost reason (the item label — "cast materials", "IV
+// artesunate course"), the age and the payment-relevant NHIS fact, and drops the surface's condition
+// fragments (demo drift). NO invoice write (billing_line_item_id stays NULL, D6); NO SMS. The whole
+// region below is swept by referral-projection.test.ts's RF3 for a smuggled clinical field/join.
+// ============================================================================
+
+export interface ReconOutstandingRow {
+  referralId: string;
+  studentName: string;
+  initials: string;
+  studentCode: string;
+  formLabel: string;
+  houseName: string | null;
+  departedAt: Date | null;
+  /** The cost REASON from the cost-line item (never a condition) + a generic tag when unlabelled. */
+  itemLabel: string;
+  outOfPocket: number;
+  nhis: NhisTriState;
+  nhisLabel: string;
+  ageDays: number | null;
+  overThirty: boolean;
+}
+
+export interface NhisReconciliation {
+  totalOutstanding: number;
+  familyCount: number;
+  overThirtyCount: number;
+  withinWindowCount: number;
+  /** N of M referrals fully covered (30-day window) — the COUNT that replaces the omitted cedi tile. */
+  coveredCount: number;
+  referralCount: number;
+  averageParentCost: number | null;
+  rows: ReconOutstandingRow[];
+  asOf: Date;
+}
+
+/**
+ * getNhisReconciliation → §R5. Aggregates the diagnosis-free cost lines over unbilled out-of-pocket:
+ * the outstanding total (Σ OOP > 0, aged by referral date), the covered count, and the average parent
+ * cost. Two flat statements (referrals + their cost lines), everything else derived in JS.
+ */
+export async function getNhisReconciliation(
+  schoolId: string,
+  now: Date,
+): Promise<NhisReconciliation> {
+  return withSchool(schoolId, async (tx) => {
+    const yearStart = historyWindowStart("year", now);
+    const refs = await tx
+      .select({
+        id: sickbayReferral.id,
+        departedAt: sickbayReferral.departedAt,
+        createdAt: sickbayReferral.createdAt,
+        nhisValid: sickbayReferral.nhisValid,
+        firstName: students.firstName,
+        lastName: students.lastName,
+        studentId: sickbayReferral.studentId,
+        studentCode: students.studentCode,
+        programme: students.programme,
+        className: classes.name,
+        classLevel: classes.level,
+        houseName: houses.name,
+      })
+      .from(sickbayReferral)
+      .innerJoin(students, and(eq(students.schoolId, schoolId), eq(students.id, sickbayReferral.studentId)))
+      .leftJoin(classes, and(eq(classes.schoolId, schoolId), eq(classes.id, students.classId)))
+      .leftJoin(houses, and(eq(houses.schoolId, schoolId), eq(houses.id, students.houseId)))
+      .where(
+        and(
+          eq(sickbayReferral.schoolId, schoolId),
+          isNull(sickbayReferral.voidedAt),
+          gte(sickbayReferral.departedAt, yearStart),
+        ),
+      );
+
+    const ids = refs.map((r) => r.id);
+    const costRows = ids.length
+      ? await tx
+          .select({
+            referralId: sickbayReferralCostLine.referralId,
+            itemLabel: sickbayReferralCostLine.itemLabel,
+            outOfPocket: sickbayReferralCostLine.outOfPocketAmount,
+          })
+          .from(sickbayReferralCostLine)
+          .where(
+            and(
+              eq(sickbayReferralCostLine.schoolId, schoolId),
+              inArray(sickbayReferralCostLine.referralId, ids),
+            ),
+          )
+      : [];
+    const oopByRef = new Map<string, number>();
+    const reasonByRef = new Map<string, string[]>();
+    for (const c of costRows) {
+      const oop = Number(c.outOfPocket ?? 0);
+      oopByRef.set(c.referralId, (oopByRef.get(c.referralId) ?? 0) + oop);
+      if (oop > 0 && c.itemLabel) {
+        const parts = reasonByRef.get(c.referralId) ?? [];
+        if (!parts.includes(c.itemLabel)) parts.push(c.itemLabel);
+        reasonByRef.set(c.referralId, parts);
+      }
+    }
+
+    const DAY = 86_400_000;
+    const refDate = (r: (typeof refs)[number]) => (r.departedAt ?? r.createdAt).getTime();
+    const in30d = (r: (typeof refs)[number]) => refDate(r) >= historyWindowStart("30d", now).getTime();
+
+    // 30-day window: the covered count + the average parent cost.
+    const window = refs.filter(in30d);
+    const referralCount = window.length;
+    const coveredCount = window.filter((r) => (oopByRef.get(r.id) ?? 0) === 0).length;
+    const windowOop = window.reduce((s, r) => s + (oopByRef.get(r.id) ?? 0), 0);
+    const averageParentCost = referralCount > 0 ? windowOop / referralCount : null;
+
+    // Outstanding: every referral carrying an out-of-pocket gap (all dates), aged by referral date.
+    const outstanding = refs.filter((r) => (oopByRef.get(r.id) ?? 0) > 0);
+    const rows: ReconOutstandingRow[] = outstanding
+      .map((r) => {
+        const oop = oopByRef.get(r.id) ?? 0;
+        const ageDays = r.departedAt ? Math.floor((now.getTime() - r.departedAt.getTime()) / DAY) : null;
+        const nhis = nhisTriState(r.nhisValid, oop);
+        const fullName = `${r.firstName} ${r.lastName}`;
+        return {
+          referralId: r.id,
+          studentName: fullName,
+          initials: initials(fullName),
+          studentCode: r.studentCode,
+          formLabel: formLabel(r.classLevel, r.className, r.programme),
+          houseName: r.houseName,
+          departedAt: r.departedAt,
+          itemLabel: (reasonByRef.get(r.id) ?? []).join(" · ") || "Sickbay referral",
+          outOfPocket: oop,
+          nhis,
+          nhisLabel: NHIS_TRISTATE_LABEL[nhis],
+          ageDays,
+          overThirty: ageDays !== null && ageDays > 30,
+        };
+      })
+      .sort((a, b) => (b.ageDays ?? -1) - (a.ageDays ?? -1));
+
+    const families = new Set(outstanding.map((r) => r.studentId));
+    const overThirtyFamilies = new Set(
+      rows.filter((r) => r.overThirty).map((r) => refs.find((x) => x.id === r.referralId)?.studentId),
+    );
+
+    return {
+      totalOutstanding: rows.reduce((s, r) => s + r.outOfPocket, 0),
+      familyCount: families.size,
+      overThirtyCount: overThirtyFamilies.size,
+      withinWindowCount: families.size - overThirtyFamilies.size,
+      coveredCount,
+      referralCount,
+      averageParentCost,
+      rows,
+      asOf: now,
+    };
   });
 }

@@ -36,6 +36,7 @@ import {
   sickbayNotifyChannelEnum,
   sickbayNotifyDirectionEnum,
   sickbayNotifyRecipientEnum,
+  sickbaySurveillanceCategoryEnum,
 } from "./_enums";
 
 /**
@@ -295,6 +296,12 @@ export const sickbayVisit = pgTable(
     hydrationStatus: text("hydration_status"),
     plan: text("plan"),
     escalationTriggers: text("escalation_triggers"), // INERT — stored, never evaluated
+    // R215 (INCR-27) — the coarse GHS/IDSR syndromic-surveillance bucket, MATRON-set at assessment.
+    // NULLABLE: pre-0063 rows read NULL = "Uncategorised", and requiredness is APP-LAYER only (F-27A),
+    // never a DB NOT NULL/CHECK. NOT a diagnosis (R43 — `diagnos` grep-clean); it AGGREGATES (the
+    // outbreak monitor + 30-day mix derive from it at read), it does not diagnose. No referral/cost
+    // column mirrors it (R218 — the mix derives the category via the referral→visit join).
+    surveillanceCategory: sickbaySurveillanceCategoryEnum("surveillance_category"),
     assessedAt: timestamp("assessed_at", { withTimezone: true }),
     // ---- disposition. NULL ⇒ the visit is OPEN. IMMUTABLE once set (R36).
     disposition: sickbayDispositionEnum("disposition"),

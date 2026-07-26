@@ -662,3 +662,21 @@ export const sickbayNotifyRecipientEnum = pgEnum("sickbay_notify_recipient", [
   "HEADMASTER",
   "DISTRICT_HEALTH",
 ]);
+
+// Sickbay SURVEILLANCE (SHS module 4.4) — INCR-27 (Kofi ruling R215). Migration 0063.
+// A COARSE GHS/IDSR syndromic-surveillance bucket for a visit — 7 values, "Malaria SUSPECTED", NOT a
+// diagnosis (R43/Decision-12: `diagnos` stays grep-clean, `working_impression` stays free text). It
+// AGGREGATES (the outbreak monitor + 30-day mix, all derived-at-read), it does not diagnose. A
+// SEPARATE axis from chronic_condition_enum, which is standing conditions — a surveillance bucket is
+// the acute episode's presenting syndrome. MATRON-set at assessment, NEVER inferred from free text
+// (that inference IS the reserved surveillance mechanism). Nullable on the visit (pre-0063 rows read
+// NULL = "Uncategorised"); requiredness at assessment is APP-LAYER ONLY (F-27A), never a DB NOT NULL.
+export const sickbaySurveillanceCategoryEnum = pgEnum("sickbay_surveillance_category", [
+  "MALARIA",
+  "RESPIRATORY",
+  "DIARRHOEA",
+  "SKIN",
+  "EYE",
+  "INJURY",
+  "OTHER",
+]);

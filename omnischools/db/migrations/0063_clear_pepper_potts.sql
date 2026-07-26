@@ -1,0 +1,2 @@
+CREATE TYPE "public"."sickbay_surveillance_category" AS ENUM('MALARIA', 'RESPIRATORY', 'DIARRHOEA', 'SKIN', 'EYE', 'INJURY', 'OTHER');--> statement-breakpoint
+ALTER TABLE "sickbay_visit" ADD COLUMN "surveillance_category" "sickbay_surveillance_category";

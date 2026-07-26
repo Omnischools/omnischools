@@ -442,6 +442,13 @@
       "when": 1785007562019,
       "tag": "0062_minor_microchip",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1785029328273,
+      "tag": "0063_clear_pepper_potts",
+      "breakpoints": true
     }
   ]
 }

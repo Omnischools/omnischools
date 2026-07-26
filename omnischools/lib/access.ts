@@ -140,6 +140,20 @@ export const SICKBAY_CLINICAL_WRITE_ROLES = [
   "MATRON",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * Sickbay NHIS RECONCILIATION read (SHS module 4.4 / INCR-27 · R219/R223). The §R5 outstanding-cost
+ * reconciliation is FINANCE-owned and STRUCTURALLY clinical-free (it reads `sickbay_referral_cost_line`,
+ * which has no condition column): a BURSAR reads it clinical-free, and the MATRON may read it too (her
+ * name is in the audit; sickbay creates the cost, billing carries it). Deliberately DIFFERENT from the
+ * clinical read: the 30-day history's condition column is NOT finance-readable, and a BURSAR never
+ * reaches it. HEADMASTER is NOT here (the clinical reader has the history; this is the money view).
+ */
+export const SICKBAY_RECON_READ_ROLES = [
+  "ACCOUNTANT",
+  "BURSAR",
+  "MATRON",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",
@@ -193,6 +207,10 @@ export const FINANCE_SECTIONS = [
   "/books",
   "/students",
   "/classes",
+  // INCR-27 — the NHIS reconciliation is a Bursar-owned finance surface that lives under the sickbay
+  // route tree. This ONE clinical-free page (getNhisReconciliation reads only diagnosis-free cost
+  // lines) is reachable by a finance-only Bursar; the rest of /senior/sickbay stays out of reach.
+  "/senior/sickbay/referrals/reconciliation",
 ];
 
 /** Sections a finance-only user may reach but only *read* (no create/edit/delete). */
