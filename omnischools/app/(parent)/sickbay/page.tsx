@@ -4,6 +4,11 @@ import {
   loadParentSickbayStatus,
   type ParentSickbayStatus,
 } from "@/lib/parent/parent-sickbay-data";
+import {
+  loadParentNhisStatus,
+  type ParentNhisStatus,
+} from "@/lib/parent/parent-nhis-data";
+import type { NhisStatus } from "@/lib/sickbay/nhis";
 import { relationshipLabel, parentLongDate } from "@/lib/wassce/parent-copy";
 import { ParentHeader, ParentNav } from "../parent-chrome";
 
@@ -20,6 +25,7 @@ export default async function ParentSickbayPage() {
   const data = await loadParentPortal(school.id, user.id);
   const child = data.children[0] ?? null;
   const status = child ? await loadParentSickbayStatus(school.id, user.id, child.studentId) : null;
+  const nhis = child ? await loadParentNhisStatus(school.id, user.id, child.studentId) : null;
 
   const guardianDisplay = data.guardianName ?? user.name ?? "Parent";
   const relation = data.guardianRelationship ? relationshipLabel(data.guardianRelationship) : "Parent";
@@ -38,7 +44,10 @@ export default async function ParentSickbayPage() {
         {!child ? (
           <NoChild />
         ) : (
-          <SickbayBody firstName={child.firstName} status={status!} />
+          <div className="space-y-5">
+            <SickbayBody firstName={child.firstName} status={status!} />
+            <NhisSection firstName={child.firstName} nhis={nhis} />
+          </div>
         )}
       </div>
     </div>
@@ -106,5 +115,61 @@ function EmptyCare({ firstName }: { firstName: string }) {
         touch.
       </div>
     </div>
+  );
+}
+
+/**
+ * INCR-32 · the standing NHIS status panel (D8's NHIS half · Kofi R247/R250–R253). Owner call: STATUS +
+ * EXPIRY only — never the membership number, holder, or holder-kind (the reader is the column guard).
+ * Renders whenever a child is linked (a standing fact, not a care event): four states from the derived
+ * status, plus the honest not-registered empty when no card is on file.
+ */
+const NHIS_LABEL: Record<NhisStatus, string> = {
+  ACTIVE: "Active",
+  EXPIRING: "Active · renew soon", // valid THROUGH today — still active, a renewal nudge (R247)
+  EXPIRED: "Expired",
+  UNKNOWN: "On file · expiry not recorded", // a card exists but no expiry recorded (R251)
+};
+
+function NhisSection({ firstName, nhis }: { firstName: string; nhis: ParentNhisStatus | null }) {
+  // R250 — no card on file (the R183 singleton returns null). Honest, distinct from UNKNOWN (R251).
+  if (!nhis) {
+    return (
+      <section className="rounded-xl border border-border bg-surface px-[26px] py-[22px]">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-navy-3">
+          National Health Insurance
+        </h3>
+        <p className="mt-2 text-[13px] text-navy-2">
+          No NHIS card is on file for {firstName}.
+        </p>
+        <p className="mt-2 text-xs leading-relaxed text-navy-3">
+          The school office can help you register {firstName} with the NHIS.
+        </p>
+      </section>
+    );
+  }
+
+  const label = NHIS_LABEL[nhis.status];
+  // Expiry shows for the three dated states; UNKNOWN has no valid_to so no date (R252).
+  const expiryLabel =
+    nhis.status !== "UNKNOWN" && nhis.validTo
+      ? parentLongDate(new Date(`${nhis.validTo}T00:00:00Z`))
+      : null;
+  const expiryVerb = nhis.status === "EXPIRED" ? "Expired on" : "Valid until";
+
+  return (
+    <section className="rounded-xl border border-border bg-surface px-[26px] py-[22px]">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-navy-3">
+        National Health Insurance
+      </h2>
+      <p className="mt-2 text-[15px] font-medium text-navy">
+        {firstName}&apos;s NHIS card is <em className="not-italic text-gold">{label}</em>.
+      </p>
+      {expiryLabel && (
+        <p className="mt-1.5 text-[13px] text-navy-2">
+          {expiryVerb} <span className="font-mono">{expiryLabel}</span>.
+        </p>
+      )}
+    </section>
   );
 }

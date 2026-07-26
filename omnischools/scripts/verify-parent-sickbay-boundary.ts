@@ -21,9 +21,10 @@ import {
 } from "@/db/schema";
 
 /**
- * INCR-29 parent-SICKBAY-boundary verification. The FIRST widening of the 19a parent boundary
- * (9 → 11 parent_scope tables): a parent gains ROW access to their OWN child's sickbay_admission +
- * sickbay_referral. This proves the widening is exactly two tables wide and child-scoped.
+ * INCR-29 + INCR-32 parent-SICKBAY/NHIS-boundary verification. INCR-29 was the FIRST widening of the
+ * 19a parent boundary (9 → 11): a parent gains ROW access to their OWN child's sickbay_admission +
+ * sickbay_referral. INCR-32 is the THIRD widening (11 → 12): + their OWN child's student_nhis_card.
+ * This proves the widening is exactly those three tables wide and child-scoped.
  *
  * MECHANISM (mirrors scripts/verify-parent-boundary.ts): the dev app role is a SUPERUSER, which
  * bypasses RLS, so `SET LOCAL ROLE omnischools_app` (the non-superuser role prod connects as) is set
@@ -211,8 +212,18 @@ async function main() {
         channel: "SMS", direction: "OUTBOUND", recipient: "PARENT",
         privateNote: "STAFF ONLY — do not surface", // F4 — must never reach a parent
       });
+      // student_nhis_card now carries parent_scope (INCR-32) — so childA's card is a POSITIVE read, and
+      // childB (same school, unlinked) + childC (foreign school) cards must stay invisible. `valid_to`
+      // is set so the derived status is real, but the boundary test cares about ROW access, not the date.
+      const [{ id: cardA }] = await tx
+        .insert(studentNhisCard)
+        .values({ schoolId: schoolA, studentId: childA, cardNumber: "NHIS-123456", validTo: "2027-12-31" })
+        .returning({ id: studentNhisCard.id });
       await tx.insert(studentNhisCard).values({
-        schoolId: schoolA, studentId: childA, cardNumber: "NHIS-123456",
+        schoolId: schoolA, studentId: childB, cardNumber: "NHIS-222222", validTo: "2027-12-31",
+      });
+      await tx.insert(studentNhisCard).values({
+        schoolId: schoolB, studentId: childC, cardNumber: "NHIS-333333", validTo: "2027-12-31",
       });
       await tx.insert(sickbayChronicEntry).values({
         schoolId: schoolA, studentId: childA, condition: "ASTHMA",
@@ -259,6 +270,24 @@ async function main() {
       ok(menses[0]?.m === "LMP 12 days ago",
         "Class-4: the parent GUC CAN select menses_note off the in-scope row — RLS opens the ROW; the reader projection is the sole column guard (⚠ Sarah)");
 
+      // ── NHIS (INCR-32) — own child's card visible; cross-child + cross-tenant → 0 (R254/NH11). ──
+      console.log("\n── NHIS (INCR-32): own child's card visible; cross-child + cross-tenant → 0 ──");
+      const nhisRows = await tx
+        .select({ id: studentNhisCard.id, s: studentNhisCard.studentId })
+        .from(studentNhisCard);
+      ok(nhisRows.length === 1 && nhisRows[0].s === childA,
+        `NHIS: parent sees EXACTLY childA's 1 card row (got ${nhisRows.length})`);
+      ok(!nhisRows.some((r) => r.s === childB), "NHIS: childB's card (same school, same-phone unlinked) → 0");
+      ok(!nhisRows.some((r) => r.s === childC), "NHIS: childC's card (foreign school) → 0");
+      // MEDIUM-3 (⚠ Sarah, mirrors the menses canary): the in-scope parent CAN select card_number off the
+      // reachable row. RLS opens the ROW; the reader's {status,validTo} projection is the SOLE guard.
+      const cardNo = await tx
+        .select({ c: studentNhisCard.cardNumber })
+        .from(studentNhisCard)
+        .where(eq(studentNhisCard.id, cardA));
+      ok(cardNo[0]?.c === "NHIS-123456",
+        "NHIS Class-4: the parent GUC CAN select card_number off the in-scope row — the reader projection is the sole column guard (⚠ Sarah)");
+
       // ── (d) EVERY other sickbay table → 0 to the parent. Catalog-driven, so a FUTURE sickbay table is
       //    covered automatically: enumerate every FORCE-RLS + school_id sickbay table (+ student_nhis_card),
       //    minus the two parent_scope tables, and assert (1) it carries parent_deny not parent_scope and
@@ -279,12 +308,16 @@ async function main() {
             select 1 from pg_policy p where p.polrelid = c.oid and p.polname = 'parent_scope')
         order by c.relname`)) as unknown as { t: string }[];
       const siblings = discovered.map((r) => r.t);
-      ok(siblings.length >= 18,
-        `(d) discovered ${siblings.length} non-parent-scope sickbay tables to probe (≥ 18)`);
+      // student_nhis_card LEFT the deny set at INCR-32 (it now carries parent_scope), so the floor drops
+      // by one and it is no longer a must-deny sibling.
+      ok(siblings.length >= 17,
+        `(d) discovered ${siblings.length} non-parent-scope sickbay tables to probe (≥ 17)`);
+      ok(!siblings.includes("student_nhis_card"),
+        "(d) student_nhis_card is NO LONGER in the deny set (it gained parent_scope at INCR-32)");
       for (const must of [
         "sickbay_visit", "sickbay_vital_reading", "sickbay_doctor_consult", "sickbay_chronic_entry",
         "sickbay_chronic_grant", "sickbay_chronic_read", "sickbay_med_admin", "sickbay_referral_update",
-        "sickbay_referral_cost_line", "sickbay_notification", "sickbay_hospital", "student_nhis_card",
+        "sickbay_referral_cost_line", "sickbay_notification", "sickbay_hospital",
       ]) {
         ok(siblings.includes(must), `(d) ${must} is in the deny set (no parent_scope)`);
       }
@@ -295,16 +328,22 @@ async function main() {
       }
       ok(leaks.length === 0, `(d) parent reads 0 rows on EVERY other sickbay table (leaks: ${leaks.join(", ") || "none"})`);
 
-      // ── catalog: EXACTLY the two INCR-29 tables opened; every other sickbay table stays denied. ──
-      console.log("\n── catalog: exactly {sickbay_admission, sickbay_referral} carry parent_scope ──");
+      // ── catalog: EXACTLY the INCR-29 pair + the INCR-32 NHIS table opened; all else stays denied. ──
+      console.log("\n── catalog: exactly {sickbay_admission, sickbay_referral, student_nhis_card} carry parent_scope ──");
       const scoped = (await tx.execute(sql`
         select c.relname as t
         from pg_class c join pg_policy p on p.polrelid = c.oid
-        where p.polname = 'parent_scope' and c.relname like 'sickbay\_%'
+        where p.polname = 'parent_scope'
+          and (c.relname like 'sickbay\_%' or c.relname = 'student_nhis_card')
         order by c.relname`)) as unknown as { t: string }[];
       const scopedNames = scoped.map((r) => r.t);
-      ok(scopedNames.length === 2 && scopedNames.includes("sickbay_admission") && scopedNames.includes("sickbay_referral"),
-        `catalog: exactly sickbay_admission + sickbay_referral have parent_scope (got: ${scopedNames.join(", ")})`);
+      ok(
+        scopedNames.length === 3 &&
+          scopedNames.includes("sickbay_admission") &&
+          scopedNames.includes("sickbay_referral") &&
+          scopedNames.includes("student_nhis_card"),
+        `catalog: exactly sickbay_admission + sickbay_referral + student_nhis_card have parent_scope (got: ${scopedNames.join(", ")})`,
+      );
 
       throw new Rollback();
     });

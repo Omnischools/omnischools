@@ -109,13 +109,14 @@ describe("🔴 PS1/PS2/PS11/PS14 · no clinical / nhis / menses / expected-retur
 
   it("PS11 · the served page markup carries no clinical token (Class-4 grep-clean)", () => {
     // Proxy for "grep the served HTML" — the page renders only allow-listed copy (fact + date + reassurance).
+    // NB (INCR-32): "nhis" is NO LONGER banned — the page now renders an allow-listed NHIS status panel
+    // (status + expiry only). The membership number itself is guarded below and in parent-nhis-data.test.ts.
     const p = readCode(PAGE).toLowerCase();
     for (const token of [
       "diagnos",
       "impression",
       "complaint",
       "vital",
-      "nhis",
       "menses",
       "hospital",
       "ward",
@@ -124,6 +125,12 @@ describe("🔴 PS1/PS2/PS11/PS14 · no clinical / nhis / menses / expected-retur
     ]) {
       expect(p, `served markup must not contain "${token}"`).not.toContain(token);
     }
+    // The INCR-32 NHIS panel is status+expiry only — the verbatim card_number / holder must never render.
+    for (const token of ["card_number", "cardnumber", "holder_name", "holdername", "holderkind"]) {
+      expect(p, `served markup must not contain "${token}"`).not.toContain(token);
+    }
+    expect(readCode(PAGE), "no NHIS-number pattern on the page").not.toMatch(/NHIS-\d/);
+    expect(readCode(PAGE), "no 8+ digit run (a membership number)").not.toMatch(/\d{8,}/);
   });
 });
 
