@@ -439,7 +439,11 @@ export async function addVitals(input: unknown): Promise<Result> {
         actionType: "created",
         entityType: "sickbay_vital_reading",
         entityId: row.id,
-        after: { ...reading, takenAt },
+        // Who/when only — the vital MEASUREMENTS stay off the audit snapshot (Sarah, INCR-27): they
+        // are clinical data-at-rest in the ADMIN-adjacent audit_log, and a future "show created
+        // values" feed would surface a student's vitals to a non-clinical reader (D2/R166). The
+        // readings live on the sickbay_vital_reading row behind the clinical gate. Mirrors assessVisit.
+        after: { takenAt },
         reason: "Sickbay vitals recorded",
       });
       return row.id;
