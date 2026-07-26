@@ -37,6 +37,7 @@ import {
 } from "@/db/schema";
 import { holdsSchoolRole } from "@/lib/sickbay/clinician";
 import { maskNhisCard } from "@/lib/sickbay/nhis";
+import { maybeSuggestSc12 } from "@/lib/sickbay/sc12-suggest";
 import {
   snapshotNhis,
   transitionGuard,
@@ -117,7 +118,7 @@ export async function recordReferral(input: unknown): Promise<Result> {
   }
 
   try {
-    const id = await withSchool(auth.schoolId, async (tx) => {
+    const { id, studentId } = await withSchool(auth.schoolId, async (tx) => {
       // Re-resolve the visit server-side: a REFER-disposition, un-voided visit OF THIS SCHOOL (R187).
       const [visit] = await tx
         .select({ id: sickbayVisit.id, studentId: sickbayVisit.studentId, disposition: sickbayVisit.disposition, voidedAt: sickbayVisit.voidedAt })
@@ -206,11 +207,18 @@ export async function recordReferral(input: unknown): Promise<Result> {
         },
         reason: "Sickbay referral created",
       });
-      return row.id;
+      return { id: row.id, studentId: visit.studentId };
     });
     // The medical hold now UNIONS this open referral (medical-hold.ts) — day 2+ marks on register INSERT,
     // no scheduler. Today's mark was already written by the visit's REFER disposition (22b). Off-campus
     // fact is now live for the boarding in-House arm (INCR-28).
+    // 🔴 R226/R54 — SC-12 auto-suggest is BEST-EFFORT and runs OUTSIDE the committed clinical tx: it
+    // opens its own connection and can never roll back or block the referral. A throw is swallowed here.
+    try {
+      await maybeSuggestSc12(auth.schoolId, studentId, auth.actor);
+    } catch (e) {
+      console.error("sc12 auto-suggest (referral) failed — referral stands", e);
+    }
     safeRevalidate(LIST_PATH);
     safeRevalidate(TODAY_PATH);
     return { ok: true, id };

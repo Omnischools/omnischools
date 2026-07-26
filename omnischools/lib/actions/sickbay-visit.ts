@@ -45,6 +45,7 @@ import { SURVEILLANCE_CATEGORY_VALUES } from "@/lib/sickbay/surveillance";
 import { openVisitCollisionError } from "@/lib/sickbay/board-copy";
 import { VITAL_BOUNDS, isEmptyReading } from "@/lib/sickbay/vitals";
 import { markSickbayMedical } from "@/lib/attendance/mark";
+import { maybeSuggestSc12 } from "@/lib/sickbay/sc12-suggest";
 
 type Result = { ok: boolean; error?: string; id?: string };
 const TODAY_PATH = "/senior/sickbay/today";
@@ -633,6 +634,13 @@ export async function admitPatient(input: unknown): Promise<Result> {
     // R46/R54 — the mark is written AFTER the clinical commit and cannot roll it back. R48's PULL arm
     // then carries days 2, 3 and 4 of this admission with no scheduler anywhere.
     await fireAttendanceHook(auth.schoolId, auth.actor, admitted, admitted.at);
+    // 🔴 R226/R54 — SC-12 auto-suggest is BEST-EFFORT and runs OUTSIDE the committed clinical tx: it
+    // opens its own connection and can never roll back or block the admission. A throw is swallowed here.
+    try {
+      await maybeSuggestSc12(auth.schoolId, admitted.studentId, auth.actor);
+    } catch (e) {
+      console.error("sc12 auto-suggest (admission) failed — admission stands", e);
+    }
     safeRevalidate(visitPath(d.visitId));
     safeRevalidate(TODAY_PATH);
     return { ok: true, id: admitted.id };
