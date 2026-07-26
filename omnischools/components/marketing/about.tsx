@@ -39,8 +39,8 @@ export function About() {
               </b>
               . It means the gradebook understands a WASSCE qualification rate, not just
               an American GPA. It means attendance can be taken on a phone with patchy
-              data and sync later. And it means the data stays in Ghana, governed by
-              Ghanaian law.
+              data and sync later. And it means your data is governed by Ghanaian law,
+              hosted in a secure data centre in the region closest to Ghana.
             </p>
             <p>
               Three products, one platform:{" "}

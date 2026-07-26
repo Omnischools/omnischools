@@ -80,9 +80,6 @@ processing. We rely on the provider's contractual and technical safeguards for t
 consistent with the cross-border-transfer provisions of Act 843. If we change where data is hosted,
 we will update this policy.
 
-> **[Reconcile before launch]** Any public claim that data is "resident in Ghana" (e.g. marketing
-> copy) must be reconciled with EU hosting, or the hosting changed.
-
 ## 6. Children's data and lawful basis
 
 Much of the data concerns children. Because we act as a **processor** for that data, each school is

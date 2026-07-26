@@ -179,11 +179,7 @@ const sections: Section[] = [
         personal data is transferred outside Ghana for storage and processing. We rely on the
         provider&rsquo;s contractual and technical safeguards for that transfer, consistent with the
         cross-border-transfer provisions of Act 843. If we change where data is hosted, we will
-        update this policy.{" "}
-        <span className="text-navy-3">
-          [Note for review: any public claim that data is &ldquo;resident in Ghana&rdquo; must be
-          reconciled with EU hosting before launch.]
-        </span>
+        update this policy.
       </p>
     ),
   },
