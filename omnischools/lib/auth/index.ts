@@ -18,6 +18,11 @@ import { env } from "@/lib/env";
 export const KNOWN_APP_ROLES = [
   "ADMIN",
   "HEADMASTER",
+  // INCR-33 (Module L / L1) — PROPRIETOR registered, PROVISION ONLY. Top-rank school owner (outranks
+  // ADMIN/HEADMASTER, un-blockable by them), composable with them. Deliberately in NO lib/access.ts
+  // role-group, no STAFF_ROLES picker entry, never assigned at signup → INERT until L2 (user-management)
+  // + the separate Proprietor increment wire its permissions / rank / composability.
+  "PROPRIETOR",
   "VICE_HEADMASTER_ACADEMIC",
   "TEACHER",
   "FORM_MASTER",

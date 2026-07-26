@@ -22,7 +22,7 @@ import {
 } from "@/lib/onboarding";
 import { onboardSchool } from "@/lib/actions/onboarding";
 
-type Form = Partial<OnboardInput> & { subtype?: SchoolSubtype };
+type Form = Partial<OnboardInput> & { subtype?: SchoolSubtype; confirmPassword?: string };
 
 const labelCls = "flex items-center gap-1.5 text-xs font-semibold text-navy";
 const helpCls = "text-[11px] leading-snug text-navy-3";
@@ -46,7 +46,9 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
         }
       : { ownership: "PUBLIC" },
   );
-  const [step, setStep] = useState<"type" | "identity">(preset ? "identity" : "type");
+  const [step, setStep] = useState<"type" | "identity" | "password">(
+    preset ? "identity" : "type",
+  );
   const [phase, setPhase] = useState<"form" | "done">("form");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -81,6 +83,24 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
     setError(null);
     setStep("type");
   };
+  // Step 2 → 3: validate the identity step (incl. Terms) before moving to the password step.
+  const goToPassword = () => {
+    const err = identityError();
+    if (err) return setError(err);
+    setError(null);
+    setStep("password");
+  };
+  const backToIdentity = () => {
+    setError(null);
+    setStep("identity");
+  };
+  // Same policy as the invite/accept flow (min-8) + a confirm-match guard (R257b).
+  const passwordError = (): string | null => {
+    if (!form.password || form.password.length < 8)
+      return "Password must be at least 8 characters";
+    if (form.password !== form.confirmPassword) return "Passwords don't match.";
+    return null;
+  };
 
   const identityError = (): string | null => {
     if (!form.schoolName) return "Enter the school name.";
@@ -96,7 +116,8 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
   };
 
   async function launch() {
-    const err = identityError();
+    // Defensive re-check of both steps; onboardSchool re-validates everything server-side too.
+    const err = identityError() ?? passwordError();
     if (err) return setError(err);
     setSubmitting(true);
     setError(null);
@@ -149,7 +170,11 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
       <div className="bg-surface">
         {phase !== "done" && (
           <div className="border-b border-border px-6 py-3 text-xs font-semibold text-navy-3 md:px-10">
-            {step === "type" ? "Step 1 of 2 · School type" : "Step 2 of 2 · School identity"}
+            {step === "type"
+              ? "Step 1 of 3 · School type"
+              : step === "identity"
+                ? "Step 2 of 3 · School identity"
+                : "Step 3 of 3 · Set your password"}
           </div>
         )}
 
@@ -163,7 +188,7 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
               pickCard={pickCard}
               setSeniorTrack={setSeniorTrack}
             />
-          ) : (
+          ) : step === "identity" ? (
             <IdentityStep
               form={form}
               f={f}
@@ -172,6 +197,8 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
               card={card}
               onChangeType={backToType}
             />
+          ) : (
+            <PasswordStep form={form} f={f} set={set} />
           )}
 
           {error && <p className="mt-4 text-sm text-terra">{error}</p>}
@@ -185,6 +212,11 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
                 <>
                   <b className="text-navy">Pick your school type</b> · this configures your
                   classes, subjects and grade scale
+                </>
+              ) : step === "identity" ? (
+                <>
+                  <b className="text-navy">Your school &amp; you</b> · next you&apos;ll set a
+                  password to sign in
                 </>
               ) : (
                 <>
@@ -203,9 +235,25 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
                   ← Back
                 </button>
               )}
+              {step === "password" && (
+                <button
+                  onClick={backToIdentity}
+                  disabled={submitting}
+                  className="rounded-lg px-4 py-2.5 text-sm font-semibold text-navy-3 transition-colors hover:text-navy disabled:opacity-60"
+                >
+                  ← Back
+                </button>
+              )}
               {step === "type" ? (
                 <button
                   onClick={goToIdentity}
+                  className="rounded-lg bg-navy px-6 py-2.5 text-sm font-bold text-bg transition-colors hover:bg-navy-deep"
+                >
+                  Continue →
+                </button>
+              ) : step === "identity" ? (
+                <button
+                  onClick={goToPassword}
                   className="rounded-lg bg-navy px-6 py-2.5 text-sm font-bold text-bg transition-colors hover:bg-navy-deep"
                 >
                   Continue →
@@ -280,7 +328,7 @@ function TypeStep({
   return (
     <div>
       <Head
-        pill="Step 1 of 2 · School type"
+        pill="Step 1 of 3 · School type"
         title="What kind of"
         em="school are you?"
         lede="This sets up the right academic structure — Basic schools are class-based; Senior schools are programme-based. We pre-configure your classes, subjects and grade scale from your answer; you can refine everything later."
@@ -402,7 +450,7 @@ function IdentityStep({
       )}
 
       <Head
-        pill="Step 2 of 2 · School identity"
+        pill="Step 2 of 3 · School identity"
         title="Tell us about"
         em="your school."
         lede="The basics — name, official codes, and where you sit on the Ghana education map — plus your own details, so you can sign in. Everything else is pre-configured; you finish setup from a checklist after signing in."
@@ -426,21 +474,15 @@ function IdentityStep({
             />
           </Field>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* CSSPS school code intentionally removed from signup (INCR-33 / owner 2026-07-26) — it is
+            entered & updated in Settings › School instead. */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="GES school code" req help={<>From EMIS. Format <b className="text-navy-2">RG-DIST-NNN</b>.</>}>
             <input
               className={cn(inputCls(!!f("gesCode")), "font-mono")}
               value={f("gesCode")}
               onChange={(e) => set("gesCode", e.target.value)}
               placeholder="BR-SUN-018"
-            />
-          </Field>
-          <Field label="CSSPS school code" help="SHS / TVI only · hm.cssps.gov.gh">
-            <input
-              className={cn(inputCls(!!f("csspsCode")), "font-mono")}
-              value={f("csspsCode")}
-              onChange={(e) => set("csspsCode", e.target.value)}
-              placeholder="ST-0741"
             />
           </Field>
           <Field label="Year founded">
@@ -563,6 +605,64 @@ function IdentityStep({
   );
 }
 
+/* --------------------------------------------------------- step ③ · password */
+
+function PasswordStep({
+  form,
+  f,
+  set,
+}: {
+  form: Form;
+  f: (k: keyof Form) => string;
+  set: (k: keyof Form, v: string) => void;
+}) {
+  const pw = f("password");
+  const confirm = f("confirmPassword");
+  const tooShort = pw.length > 0 && pw.length < 8;
+  const mismatch = confirm.length > 0 && pw !== confirm;
+  return (
+    <div>
+      <Head
+        pill="Step 3 of 3 · Set your password"
+        title="Secure your"
+        em="account."
+        lede="Set a password so you can sign in. You can also sign in with your phone number via a one-time code — your choice each time."
+      />
+      <div className="max-w-[460px] space-y-4">
+        <Field label="Set a password" req help="At least 8 characters.">
+          <input
+            className={inputCls(!!pw)}
+            type="password"
+            value={pw}
+            onChange={(e) => set("password", e.target.value)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+          />
+        </Field>
+        <Field label="Confirm password" req help="Re-enter it — cheap insurance against a typo.">
+          <input
+            className={inputCls(!!confirm)}
+            type="password"
+            value={confirm}
+            onChange={(e) => set("confirmPassword", e.target.value)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+          />
+        </Field>
+        {tooShort && (
+          <p className="text-[12px] text-terra">Password must be at least 8 characters.</p>
+        )}
+        {mismatch && <p className="text-[12px] text-terra">Passwords don&apos;t match.</p>}
+        <div className="rounded-r-lg border-l-[3px] border-gold bg-gold-bg px-4 py-3 text-[12px] leading-relaxed text-navy-2">
+          <b className="text-navy">Two ways to sign in.</b> After launch you can use this password
+          or a one-time code sent to{" "}
+          <b className="text-navy">{form.adminPhone || "your phone"}</b>.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ----------------------------------------------------------------------- done */
 
 function DonePanel({
@@ -587,13 +687,13 @@ function DonePanel({
             <p className="mt-1.5 max-w-[540px] text-[13px] leading-relaxed text-navy-2">
               Academic year <b className="text-navy">{result.academicYear}</b>
               {result.periodsCreated > 0 ? ` with ${result.periodsCreated} periods` : ""} is
-              seeded, along with your classes, subjects and grade scale. Sign in with your{" "}
-              <b className="text-navy">phone number</b> — we&apos;ll guide you through the rest
-              from a checklist.
+              seeded, along with your classes, subjects and grade scale. Sign in with the{" "}
+              <b className="text-navy">password you just set</b> or a one-time code to your phone —
+              we&apos;ll guide you through the rest from a checklist.
             </p>
           </div>
           <Link
-            href="/login"
+            href="/login?accepted=1"
             className="rounded-lg bg-gold px-6 py-3.5 text-sm font-bold text-navy transition-colors hover:brightness-95"
           >
             Sign in →
@@ -625,7 +725,7 @@ function DonePanel({
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <Link
-          href="/login"
+          href="/login?accepted=1"
           className="rounded-lg border border-border-2 bg-surface px-5 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-bg"
         >
           Go to sign in
