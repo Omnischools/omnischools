@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { authIsLive, establishRecoverySession } from "@/lib/auth";
+import { authIsLive, getCurrentUser } from "@/lib/auth";
 import { SetNewPassword } from "@/components/auth/set-new-password";
 
 export const dynamic = "force-dynamic";
@@ -14,18 +14,17 @@ const Shell = ({ children }: { children: React.ReactNode }) => (
 );
 
 /**
- * INCR-36 (L3) — the EMAIL-link landing. The recovery link Supabase emails carries a PKCE `?code=…`;
- * we exchange it for a recovery session, then let the user set a new password (→ /login?reset=1).
- * Supabase mints + owns the token — no token row on our side (seam-only). Dev-bypass shows a "not yet
- * configured" notice, not a live form; a missing/invalid/expired code shows the unavailable shell
- * (mirrors accept/[token]). NB (Sarah / wiring): the code-exchange runs in a Server-Component render,
- * which cannot persist the session cookie in production — this path is structurally-verified only; the
- * live fix is a Route Handler / Server Action exchange. Flagged.
+ * INCR-36 (L3) — the EMAIL-link landing. The PKCE `?code=…` was already exchanged for a recovery session
+ * by the `/auth/reset-callback` Route Handler (which redirected here); THIS page only READS that session
+ * (a Server Component can read cookies) and renders the set-new-password form. No exchange happens here —
+ * that is why the cookie now persists (see the route handler docblock). No session / a failed exchange
+ * (`?error=1`) / an ordinary visit with no recovery → the unavailable state. `completePasswordReset`
+ * re-checks the session's `amr` as the real boundary (R276). Supabase mints + owns the token — no token
+ * row on our side (seam-only). Dev-bypass shows a "not yet configured" notice, never a live form.
  */
 export default async function ResetPasswordPage(props: {
-  searchParams: Promise<{ code?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  // Dev bypass: no real Supabase / recovery link exists — mirror login's dev notice, never a live form.
   if (!authIsLive()) {
     return (
       <Shell>
@@ -41,10 +40,12 @@ export default async function ResetPasswordPage(props: {
     );
   }
 
-  const { code } = await props.searchParams;
-  const recovery = code ? await establishRecoverySession(code) : { ok: false };
+  const { error } = await props.searchParams;
+  // The callback set (or failed to set) the recovery-session cookie; here we only read it. A live
+  // session ⇒ the exchange succeeded ⇒ show the form. Missing/failed ⇒ unavailable.
+  const user = error ? null : await getCurrentUser();
 
-  if (!recovery.ok) {
+  if (!user) {
     return (
       <Shell>
         <h1 className="font-display text-2xl font-semibold text-navy">Link unavailable</h1>

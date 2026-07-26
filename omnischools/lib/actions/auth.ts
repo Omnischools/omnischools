@@ -103,7 +103,10 @@ export async function changeOwnPassword(input: {
 export async function requestPasswordReset(input: { email: string }): Promise<{ ok: true }> {
   const email = input?.email?.trim() ?? "";
   try {
-    const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/reset-password`;
+    // The recovery link lands on a ROUTE HANDLER (not the /reset-password Server Component): only a
+    // route handler / server action can PERSIST the exchanged session cookie (a Server Component's
+    // cookie write is a silent no-op — lib/supabase/server.ts setAll catch, no refresh middleware).
+    const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/reset-callback`;
     const res = await sendPasswordResetEmail(email, redirectTo);
     if (res.error) console.error("[auth] reset email send error (swallowed for R273):", res.error);
   } catch (err) {

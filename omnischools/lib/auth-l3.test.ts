@@ -124,4 +124,16 @@ describe("L3 · forgot-password", () => {
     expect(SETPW).not.toContain("Current password");
     expect(SETPW).toContain("completePasswordReset({ newPassword: next })");
   });
+
+  it("L3 · the email recovery exchange runs in a Route Handler, NOT the Server Component (cookie-persist fix)", () => {
+    const CALLBACK = readCode("app/auth/reset-callback/route.ts");
+    // the reset email lands on the route handler, not the page (so the exchanged cookie persists)
+    expect(ACTION).toContain("/auth/reset-callback");
+    // the route handler does the exchange via the seam...
+    expect(CALLBACK).toContain("establishRecoverySession(code)");
+    expect(CALLBACK).toMatch(/export async function GET/);
+    // ...and the Server Component page NO LONGER exchanges — it only reads the session the handler set
+    expect(RESET_PW_PAGE).not.toContain("establishRecoverySession");
+    expect(RESET_PW_PAGE).toContain("getCurrentUser()");
+  });
 });
