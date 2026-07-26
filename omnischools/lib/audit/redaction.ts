@@ -17,6 +17,14 @@ export const REDACTED_AUDIT_ENTITIES = new Set([
   "boarding_infractions", // disciplinary narrative
   "bond_artefacts", // disciplinary
   "deboardinization_records", // disciplinary
+  // Academic per-student marks (owner-confirmed 2026-07-26 — Sarah's audience correction): read-gated to
+  // SENIOR_LEDGER_ROLES / WASSCE_SETUP_ROLES, which EXCLUDE Matron/Dean/Housemaster/Accountant/Bursar —
+  // non-teaching staff who reach the feed. The score-correction reason is an unbounded teacher note
+  // (e.g. a mark-down rationale). NOT the assessment/column CONFIG (senior_assessment/gradebook_column —
+  // a test/column definition, no student mark), which stays shown.
+  "senior_score_ledger", // per-student score + correction note
+  "mock_result", // per-student mock grade + raw score
+  "mock_result_moderation", // per-student moderated grade
 ]);
 
 export function isRedactedAuditEntity(entityType: string | null | undefined): boolean {
