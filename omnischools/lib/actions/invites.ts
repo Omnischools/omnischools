@@ -9,7 +9,7 @@ import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { safeRevalidate } from "@/lib/revalidate";
 import { resolveRole, roleLabel } from "@/lib/staff-roles";
-import { isStaff, hasAnyRole, STAFF_ADMIN_ROLES } from "@/lib/access";
+import { isStaff, hasAnyRole, STAFF_ADMIN_ROLES, canGrantRole, rankOf } from "@/lib/access";
 import { isParentRole, parentInviteError } from "@/lib/parent/claim";
 import { resolveParentInviteTargetTx, stampGuardianUserId } from "@/lib/parent/parent-data";
 import { invites, users, roles, roleAssignments } from "@/db/schema";
@@ -102,6 +102,12 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
     : hasAnyRole(user.roles, STAFF_ADMIN_ROLES);
   if (!canInvite) {
     return { ok: false, error: "Only an administrator can invite staff." };
+  }
+  // 🔴 INCR-37 (R280) — staff-admin status (canInvite) gates WHO may invite, not the RANK granted: an
+  // ADMIN could otherwise invite a PROPRIETOR. Refuse a grant that outranks the actor. (PARENT is
+  // rank 0, so this never blocks a legitimate parent invite issued by any staff member.)
+  if (!canGrantRole(user.roles, role.code)) {
+    return { ok: false, error: "You cannot invite someone at or above your own level." };
   }
 
   const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
@@ -200,6 +206,29 @@ export async function acceptInvite(input: unknown): Promise<Result> {
       return { error: "This invite has already been used or was revoked." };
     if (inv.expiresAt && inv.expiresAt.getTime() < Date.now())
       return { error: "This invite has expired — ask your school to resend it." };
+    // 🔴 INCR-37 (R280 · Kofi P4) DEFENSE-IN-DEPTH — createInvite gates the grant at write time, but an
+    // invite row inserted DIRECTLY (bypassing the action) must still not be honoured if its role
+    // outranks the INVITER. Resolve the inviter's current roles at the invite's school and refuse when
+    // the grant escalates; if the inviter can't be resolved (no id, or no roles left here) refuse only
+    // an ELEVATED role (ADMIN/HEADMASTER/PROPRIETOR) so a plain staff/parent invite still accepts.
+    const inviterRoles = inv.invitedByUserId
+      ? (
+          await tx
+            .select({ code: roles.code })
+            .from(roleAssignments)
+            .innerJoin(roles, eq(roleAssignments.roleId, roles.id))
+            .where(
+              and(
+                eq(roleAssignments.schoolId, inv.schoolId),
+                eq(roleAssignments.userId, inv.invitedByUserId),
+              ),
+            )
+        ).map((r) => r.code)
+      : [];
+    const grantOk =
+      inviterRoles.length > 0 ? canGrantRole(inviterRoles, inv.role) : rankOf([inv.role]) <= 1;
+    if (!grantOk)
+      return { error: "This invite grants a role above the person who sent it, so it can't be used." };
     return { inv };
   });
   if ("error" in found) return { ok: false, error: found.error };

@@ -27,19 +27,28 @@ export const FINANCE_ROLES = ["ACCOUNTANT", "BURSAR"];
  *
  * Deliberately narrow. Widening it is a decision about who may mint administrators, not a
  * convenience tweak; `VICE_HEADMASTER_ACADEMIC` is the obvious candidate if a school asks.
+ *
+ * 🔴 INCR-37 — PROPRIETOR joins the root. The governance model (owner Option A) is that the
+ * proprietor's power IS appointing/role-granting, so it belongs here and NOT in the operational
+ * groups. This lifts INCR-35's deliberate "do NOT add PROPRIETOR to STAFF_ADMIN_ROLES" inertness
+ * guard. Widening the SET is not widening the ESCALATION: `canGrantRole` still forbids a member
+ * from granting a role that OUTRANKS them, so an ADMIN reaching these actions still cannot mint a
+ * PROPRIETOR.
  */
 export const STAFF_ADMIN_ROLES = [
   "ADMIN",
   "HEADMASTER",
+  "PROPRIETOR",
 ] as const satisfies readonly KnownAppRole[];
 
 /**
  * 🔴 INCR-35 (L2b) — who may open the user-management surface and block / reset / activate OTHER users.
- * PROPRIETOR (top rank) + ADMIN + HEADMASTER. DELIBERATELY DISTINCT from STAFF_ADMIN_ROLES: this gates
+ * PROPRIETOR (top rank) + ADMIN + HEADMASTER. DISTINCT PURPOSE from STAFF_ADMIN_ROLES: this gates
  * login-lifecycle verbs (block/reset/activate) over ALL users incl. parents, whereas STAFF_ADMIN_ROLES
- * mints staff + assigns roles and stays narrow — do NOT add PROPRIETOR to STAFF_ADMIN_ROLES. Membership
- * here is only the FIRST gate; the SECOND is `canManageTarget` (you must also strictly outrank the
- * specific target). PROPRIETOR is otherwise still inert (in no other group).
+ * gates role-GRANTING. Membership here is only the FIRST gate; the SECOND is `canManageTarget` (you must
+ * also strictly outrank the specific target). NB (INCR-37): PROPRIETOR is now ALSO in STAFF_ADMIN_ROLES
+ * (its governance power is appointing/granting) — the two groups overlap by design; `canGrantRole` is
+ * what stops an ADMIN minting a PROPRIETOR, not the group membership.
  */
 export const USER_ADMIN_ROLES = [
   "PROPRIETOR",
@@ -241,6 +250,22 @@ export function canManageTarget(
   targetId: string,
 ): boolean {
   return actorId !== targetId && rankOf(actorRoles) > rankOf(targetRoles);
+}
+
+/**
+ * 🔴 INCR-37 (R280) — the role-GRANT escalation guard, and the fix for a LIVE privilege escalation.
+ * An actor may grant a role IFF that role does NOT outrank them: `rank(code) <= rank(actor)`.
+ *   ADMIN(2)  granting PROPRIETOR(3) → 3<=2 false → REFUSED (the leak: `resolveRole` turns a typed
+ *             "PROPRIETOR" into a real ref_role, so an admin could self-mint the top rank).
+ *   ADMIN(2)  granting ADMIN(2)      → 2<=2 true  → allowed (peers may mint peers — preserved).
+ *   PROPRIETOR(3) granting anything  → allowed.
+ * DISTINCT from `canManageTarget` (block/reset) which needs STRICT outrank + non-self: granting a
+ * same-rank role is legitimate, blocking a same-rank user is not. Because the role code is free-text
+ * through `resolveRole`, this MUST run server-side at every grant WRITE (addStaff / assignStaffRole /
+ * importStaff / createInvite / acceptInvite), never as a UI filter.
+ */
+export function canGrantRole(actorRoles: readonly string[], code: string): boolean {
+  return rankOf([code]) <= rankOf(actorRoles);
 }
 
 /** Roles that are NOT staff — a session holding only these never manages the school (mirrors staff-roles). */

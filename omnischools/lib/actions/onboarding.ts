@@ -190,7 +190,7 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
         .insert(schoolProducts)
         .values(productRows.map((p) => ({ schoolId: school.id, product: p })));
 
-      // ensure ADMIN + HEADMASTER + ACCOUNTANT roles exist
+      // ensure ADMIN + HEADMASTER + ACCOUNTANT + PROPRIETOR roles exist
       await tx
         .insert(roles)
         .values([
@@ -205,10 +205,15 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
             label: "Accountant",
             description: "Billing, fees & financial reports",
           },
+          {
+            code: "PROPRIETOR",
+            label: "Proprietor",
+            description: "School owner / proprietor",
+          },
         ])
         .onConflictDoNothing({ target: roles.code });
       const roleRows = await tx.select().from(roles);
-      const roleId = (code: "ADMIN" | "HEADMASTER") =>
+      const roleId = (code: "ADMIN" | "HEADMASTER" | "PROPRIETOR") =>
         roleRows.find((r) => r.code === code)!.id;
 
       // users (find-or-create by phone). `adminPhone` is computed once above (before the tx) for the
@@ -230,6 +235,12 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
       const roleValues = [
         { userId: adminId, schoolId: school.id, roleId: roleId("ADMIN") },
       ];
+      // INCR-37 (R281) — an OWNED school (ownership !== "PUBLIC" → PRIVATE / MISSION / INTERNATIONAL)
+      // grants the creator PROPRIETOR *in addition to* ADMIN: the governance model is that the owner
+      // appoints. PUBLIC / GES schools stay ADMIN-only (no proprietor to seat).
+      if (d.ownership !== "PUBLIC") {
+        roleValues.push({ userId: adminId, schoolId: school.id, roleId: roleId("PROPRIETOR") });
+      }
       // Headmaster is optional in the slim onboarding — create + assign only when both
       // name and phone were provided (else it's set up post-signup / by super-admin).
       const hmName = nz(d.headmasterName);

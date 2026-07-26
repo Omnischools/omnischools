@@ -31,9 +31,13 @@ export const STAFF_ROLE_CODES = STAFF_ROLES.map((r) => r.code) as [
   ...StaffRoleCode[],
 ];
 
-export const STAFF_ROLE_LABEL: Record<string, string> = Object.fromEntries(
-  STAFF_ROLES.map((r) => [r.code, r.label]),
-);
+export const STAFF_ROLE_LABEL: Record<string, string> = {
+  ...Object.fromEntries(STAFF_ROLES.map((r) => [r.code, r.label])),
+  // INCR-37 (R282) — PROPRIETOR has a canonical display label (for roleLabel / audit / the user list),
+  // but is deliberately NOT in the assignable STAFF_ROLES picker: a proprietor grants it via the
+  // free-text role field, and the R280 `canGrantRole` guard is what actually authorises it.
+  PROPRIETOR: "Proprietor",
+};
 
 /** Roles that are NOT staff — used to include everyone else (incl. custom roles) as staff. */
 export const NON_STAFF_ROLE_CODES = ["STUDENT", "PARENT"] as [string, ...string[]];

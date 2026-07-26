@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readCode } from "@/lib/test-utils/source-shape";
 import { KNOWN_APP_ROLES } from "@/lib/auth";
+import { STAFF_ROLES } from "@/lib/staff-roles";
 import {
   FINANCE_ROLES,
   STAFF_ADMIN_ROLES,
@@ -26,7 +27,6 @@ const WIZARD = readCode("components/onboarding/wizard.tsx");
 const ACTION = readCode("lib/actions/onboarding.ts");
 const SCHEMA = readCode("lib/onboarding.ts");
 const SETTINGS = readCode("components/settings/school-info-form.tsx");
-const STAFF_ROLES_SRC = readCode("lib/staff-roles.ts");
 
 describe("L1 · CSSPS removed from signup, kept in Settings", () => {
   it("L1-1 · the signup wizard has NO CSSPS field", () => {
@@ -95,15 +95,16 @@ describe("L1 · the signup password step", () => {
   });
 });
 
-describe("L1 · PROPRIETOR provisioned but INERT (Kofi R258)", () => {
+describe("L1 · PROPRIETOR provisioning (Kofi R258; INCR-37 lifts the inertness — see proprietor-l37)", () => {
   it("L1-11 · PROPRIETOR is a member of KNOWN_APP_ROLES", () => {
     expect(KNOWN_APP_ROLES).toContain("PROPRIETOR");
   });
 
-  it("L1-12 · PROPRIETOR is in NONE of the access role-groups (widens no gate)", () => {
-    const groups: Record<string, readonly string[]> = {
+  it("L1-12 · PROPRIETOR is in no OPERATIONAL role-group; INCR-37 seats it in STAFF_ADMIN_ROLES only", () => {
+    // The governance model (owner Option A): the proprietor's power is role-granting, so it joins the
+    // authorization root (STAFF_ADMIN_ROLES) and NONE of the operational/clinical groups.
+    const operational: Record<string, readonly string[]> = {
       FINANCE_ROLES,
-      STAFF_ADMIN_ROLES,
       SENIOR_LEDGER_ROLES,
       SENIOR_MANAGEMENT_ROLES,
       WASSCE_SETUP_ROLES,
@@ -116,17 +117,20 @@ describe("L1 · PROPRIETOR provisioned but INERT (Kofi R258)", () => {
       SICKBAY_CLINICAL_WRITE_ROLES,
       SICKBAY_RECON_READ_ROLES,
     };
-    for (const [name, roles] of Object.entries(groups)) {
+    for (const [name, roles] of Object.entries(operational)) {
       expect(roles, `${name} must NOT contain PROPRIETOR`).not.toContain("PROPRIETOR");
     }
+    expect(STAFF_ADMIN_ROLES, "INCR-37 seats PROPRIETOR in the grant root").toContain("PROPRIETOR");
   });
 
-  it("L1-13 · signup does not assign PROPRIETOR (only ADMIN + optional HEADMASTER)", () => {
-    expect(ACTION).not.toContain("PROPRIETOR");
+  it("L1-13 · signup assigns PROPRIETOR only for owned (non-PUBLIC) schools; PUBLIC/GES stays ADMIN-only", () => {
+    // INCR-37 (R281) lifts L1's "never assigned at signup": an owned school's creator gets PROPRIETOR + ADMIN.
+    expect(ACTION).toContain("PROPRIETOR");
+    expect(ACTION).toContain('d.ownership !== "PUBLIC"');
   });
 
-  it("L1-14 · PROPRIETOR is not in the assignable /staff role picker (deferred to L2)", () => {
-    expect(STAFF_ROLES_SRC).not.toContain("PROPRIETOR");
+  it("L1-14 · PROPRIETOR is not in the assignable /staff role picker (R282 — free-text + R280 grant it)", () => {
+    expect(STAFF_ROLES.map((r) => r.code)).not.toContain("PROPRIETOR");
   });
 
   it("L1-15 · AUTH_DEV_ROLES=PROPRIETOR would not throw (it is a known role)", () => {
