@@ -76,10 +76,18 @@ export type ScopedRoles = {
 export function scopeRolesToActiveSchool(
   assignments: readonly RoleAssignmentRow[],
   today: string = new Date().toISOString().slice(0, 10),
+  blockedSchoolIds: ReadonlySet<string> = new Set(),
 ): ScopedRoles {
   // Re-apply the time window here rather than trusting the caller's SQL — see `isCurrentlyActive`.
   // A row carrying no dates is treated as active, so callers that pre-filter lose nothing.
-  const live = assignments.filter((a) => isCurrentlyActive(a.startDate, a.endDate, today));
+  // INCR-35 (L2b) — and drop any assignment at a school where THIS user is blocked, BEFORE the active
+  // school is chosen. So a user blocked at their earliest school falls through to the next unblocked one
+  // (or to no active school → authenticated-but-powerless). `getCurrentUser` reads the blocked-school set
+  // in SQL and passes it here; this pure filter is the tested authority (a typo would otherwise be
+  // invisible to the suite, exactly as with `isCurrentlyActive`).
+  const live = assignments.filter(
+    (a) => isCurrentlyActive(a.startDate, a.endDate, today) && !blockedSchoolIds.has(a.schoolId),
+  );
 
   const activeSchoolId = live[0]?.schoolId;
   if (!activeSchoolId) return { roles: [] };

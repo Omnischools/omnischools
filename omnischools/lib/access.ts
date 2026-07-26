@@ -34,6 +34,20 @@ export const STAFF_ADMIN_ROLES = [
 ] as const satisfies readonly KnownAppRole[];
 
 /**
+ * 🔴 INCR-35 (L2b) — who may open the user-management surface and block / reset / activate OTHER users.
+ * PROPRIETOR (top rank) + ADMIN + HEADMASTER. DELIBERATELY DISTINCT from STAFF_ADMIN_ROLES: this gates
+ * login-lifecycle verbs (block/reset/activate) over ALL users incl. parents, whereas STAFF_ADMIN_ROLES
+ * mints staff + assigns roles and stays narrow — do NOT add PROPRIETOR to STAFF_ADMIN_ROLES. Membership
+ * here is only the FIRST gate; the SECOND is `canManageTarget` (you must also strictly outrank the
+ * specific target). PROPRIETOR is otherwise still inert (in no other group).
+ */
+export const USER_ADMIN_ROLES = [
+  "PROPRIETOR",
+  "ADMIN",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
+/**
  * Senior (SHS) tier role groups. The score ledger is a teaching surface (teachers + form
  * masters + academic leadership); the Vice Headmaster progress view is management-only
  * (Admin, Headmaster, Vice Headmaster Academic). STUDENT / PARENT never reach either.
@@ -184,6 +198,49 @@ export function hasAnyRole(
   allowed: readonly string[],
 ): boolean {
   return roles.some((r) => allowed.includes(r));
+}
+
+/**
+ * 🔴 INCR-35 (L2b) — the user-management rank ladder (Kofi R265). A user's rank at a school is the MAX
+ * over their roles held there. Higher outranks lower:
+ *   3  PROPRIETOR (top; owner ruling)
+ *   2  ADMIN, HEADMASTER (peers)
+ *   1  every other staff role (Vice Head, Teacher, Matron, Bursar, …)
+ *   0  PARENT, STUDENT (non-staff)
+ *  -1  no roles at this school (never a valid target)
+ */
+export function rankOf(roles: readonly string[]): number {
+  let rank = -1;
+  for (const r of roles) {
+    const n =
+      r === "PROPRIETOR"
+        ? 3
+        : r === "ADMIN" || r === "HEADMASTER"
+          ? 2
+          : r === "PARENT" || r === "STUDENT"
+            ? 0
+            : 1; // any other (staff) role
+    if (n > rank) rank = n;
+  }
+  return rank;
+}
+
+/**
+ * 🔴 INCR-35 (L2b) — the privilege-inversion guard (Kofi R265), the SINGLE source of truth for both the
+ * server action and the UI (the UI disables a control it fails; the server refusal is the real boundary).
+ * An actor may block / reset a target IFF they are a DIFFERENT user AND STRICTLY outrank them.
+ * Strictly-greater ⇒ no self-action AND no peer action: an ADMIN(2) can never act on another ADMIN(2), a
+ * HEADMASTER(2), or a PROPRIETOR(3); a PROPRIETOR(3) cannot act on a co-PROPRIETOR(3). Structural lockout
+ * safety: the top rank present in a school can never be blocked by anyone there, so a school always keeps
+ * ≥1 active manager — no separate last-manager guard needed.
+ */
+export function canManageTarget(
+  actorRoles: readonly string[],
+  targetRoles: readonly string[],
+  actorId: string,
+  targetId: string,
+): boolean {
+  return actorId !== targetId && rankOf(actorRoles) > rankOf(targetRoles);
 }
 
 /** Roles that are NOT staff — a session holding only these never manages the school (mirrors staff-roles). */

@@ -60,7 +60,8 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   "attendance_settings", // attendance config
   "admission_application", // applicant pipeline record (operational)
   "invite", // staff invite
-  "user_account", // INCR-34 L2a — self password-change event (actionType only, NEVER the value); admin, not a protected class
+  "user_account", // INCR-34 L2a — self password-change / admin reset-initiated event (actionType only, NEVER a value)
+  "user_block", // INCR-35 L2b — block/activate event; fixed neutral reason (the admin's free-text stays on user_school_block, R240)
   "household_autogroup", // household grouping (operational)
   "school", // school profile / settings
   "school_year", // academic-year config
