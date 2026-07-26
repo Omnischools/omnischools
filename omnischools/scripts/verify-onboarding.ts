@@ -28,6 +28,8 @@ async function main() {
     headmasterPhone: "0240000010",
     adminName: "A. Test",
     adminPhone: "0240000011",
+    password: "test-password-1", // INCR-33 L1 — password is now mandatory at signup
+    termsAccepted: true,
   });
   console.log("onboard result:", res);
   if (!res.ok) process.exit(1);

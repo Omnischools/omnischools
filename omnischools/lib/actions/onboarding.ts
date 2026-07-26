@@ -12,7 +12,7 @@ import {
 } from "@/lib/onboarding";
 import { withoutTenantScope, pgError } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
-import { normalizeGhanaPhone } from "@/lib/auth";
+import { normalizeGhanaPhone, createPasswordUser } from "@/lib/auth";
 import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { captureEvent, captureError } from "@/lib/observability";
@@ -68,6 +68,13 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
   if (!d.termsAccepted) {
     return { ok: false, error: "Please accept the Terms & Privacy Policy to continue." };
   }
+  // INCR-33 (L1) — mirror acceptInvite: create the Supabase password credential BEFORE any DB write, so
+  // a live-mode auth failure aborts with NO orphaned school. Idempotent (createPasswordUser swallows
+  // "already registered"); a no-op returning ok in dev-bypass. The ref_user row is linked by phone in
+  // the tx below (adminPhone reused). The owner can still also sign in via OTP.
+  const adminPhone = normalizeGhanaPhone(d.adminPhone);
+  const auth = await createPasswordUser(adminPhone, d.password);
+  if (!auth.ok) return { ok: false, error: auth.error ?? "Could not set your password." };
   const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
   const academicYear = nz(d.academicYear) ?? currentAcademicYear();
   const schoolType = d.product === "COMBINED" ? "COMBINED" : d.product;
@@ -204,8 +211,8 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
       const roleId = (code: "ADMIN" | "HEADMASTER") =>
         roleRows.find((r) => r.code === code)!.id;
 
-      // users (find-or-create by phone)
-      const adminPhone = normalizeGhanaPhone(d.adminPhone);
+      // users (find-or-create by phone). `adminPhone` is computed once above (before the tx) for the
+      // Supabase password-credential call and captured here for the ref_user link.
       async function upsertUser(phone: string, name: string, email?: string) {
         const [u] = await tx
           .insert(users)
