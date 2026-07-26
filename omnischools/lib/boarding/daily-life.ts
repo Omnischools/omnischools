@@ -363,3 +363,27 @@ export function computePrepSummary(
     ),
   };
 }
+
+/**
+ * R225.1 (INCR-28a) — the OFF-CAMPUS set for one House's in-House headcount.
+ *
+ * `offCampus = outStudentIds ∪ { id ∈ referredOut : boarderIds.has(id) }` — a SET UNION, so a boarder
+ * who is BOTH on exeat AND referred-out to hospital subtracts EXACTLY ONCE (never `−size−size`, which
+ * double-counts the overlap and can drive in-House negative). `referredOut` is SCHOOL-WIDE (the
+ * referral set spans every House), so it is intersected with THIS House's boarder ids here — a
+ * referred-out student of another House, or a day student, must not move this count.
+ *
+ * `outStudentIds` (exeat DEPARTED&!returned) is passed through unchanged. Sick-bay ADMISSIONS are
+ * NOT an input: an admitted patient is ON-SITE and stays in the in-House count (OQ5 — the page's
+ * "· sick-bay not subtracted" gloss). Caller: `inHouse = boarders.length − offCampus.size`, which
+ * makes the partition invariant `inHouse + offCampus.size === boarders.length` hold by construction.
+ */
+export function offCampusBoarders(
+  boarderIds: ReadonlySet<string>,
+  outStudentIds: ReadonlySet<string>,
+  referredOut: ReadonlySet<string>,
+): Set<string> {
+  const off = new Set(outStudentIds);
+  for (const id of referredOut) if (boarderIds.has(id)) off.add(id);
+  return off;
+}

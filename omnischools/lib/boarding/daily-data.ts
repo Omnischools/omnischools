@@ -44,6 +44,7 @@ import {
   policyHasDay,
   policyTimeRange,
   computePrepSummary,
+  offCampusBoarders,
   dailyFindingsSchema,
   weeklyFindingsSchema,
   type Timeline,
@@ -53,6 +54,8 @@ import {
   type DailyFindings,
   type WeeklyFindings,
 } from "./daily-life";
+import { referredOutStudentIds } from "@/lib/sickbay/medical-hold";
+import { boardingSickbayAdmissions } from "@/lib/sickbay/boarding-admissions";
 
 const shortName = (first: string, last: string) => `${first.charAt(0)}. ${last}`;
 const fmtTime = (d: Date): string =>
@@ -106,9 +109,15 @@ export interface DailyLifeView {
   counts: {
     boarderCount: number;
     inHouse: number;
-    currentlyOut: number;
+    currentlyOut: number; // exeat DEPARTED&!returned only (the exeat breakdown)
+    offCampus: number; // R225.1 — exeat ∪ referred-out (the true off-campus total; what inHouse subtracts)
     exeatsToday: number;
     lightsOut: string | null;
+  };
+  /** R225.2 — open sick-bay admissions of THIS House's boarders (ON-SITE, NOT subtracted from inHouse). */
+  sickbay: {
+    count: number;
+    admissions: { studentName: string; admittedLabel: string }[];
   };
   inspection: {
     dorms: DormInspection[];
@@ -160,6 +169,9 @@ export async function getDailyLife(
 
   // Config reads via the FROZEN contract only (READ-ONLY — never re-modeled).
   const policy = await getInspectionPolicy(schoolId);
+  // R225.1 build caveat — the SCHOOL-WIDE referred-out set. Fetched BEFORE the outer tx: it opens its
+  // OWN withSchool, and calling it inside the callback is the e08c042 nested-connection hazard.
+  const referredOut = await referredOutStudentIds(schoolId, now);
 
   return withSchool(schoolId, async (tx) => {
     const [house] = await tx
@@ -240,7 +252,27 @@ export async function getDailyLife(
         inWindow(e.departedAt, dayStart, dayEnd) ||
         inWindow(e.returnedAt, dayStart, dayEnd),
     ).length;
-    const inHouse = boarders.length - outStudentIds.size; // sick-bay NOT subtracted (Kofi G2)
+    // R225.1 — off-campus = exeat ∪ (referred-out ∩ this House's boarders); a doubly-out boarder
+    // subtracts ONCE (SET union). Sick-bay ADMISSIONS are NOT subtracted (OQ5 — on-site, still counted).
+    const boarderIds = new Set(boarders.map((b) => b.id));
+    const offCampus = offCampusBoarders(boarderIds, outStudentIds, referredOut);
+    const inHouse = boarders.length - offCampus.size; // sick-bay admissions NOT subtracted (Kofi G2/OQ5)
+
+    // R225.2 — open sick-bay admissions of THIS House's boarders (name + time only, condition-free).
+    // Runs on the outer tx (no nested connection). `admitted HH:MM` when admitted on the viewed date,
+    // else a short date. Names ALL on >1 (the HM's own boarders — not the board's A2 truncation).
+    const sickbayRows = await boardingSickbayAdmissions(tx, schoolId, [...boarderIds]);
+    const admittedLabel = (d: Date): string =>
+      d.toISOString().slice(0, 10) === viewedDate
+        ? fmtTime(d)
+        : new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(d);
+    const sickbay = {
+      count: sickbayRows.length,
+      admissions: sickbayRows.map((r) => ({
+        studentName: r.studentName,
+        admittedLabel: admittedLabel(r.admittedAt),
+      })),
+    };
 
     // Dorms of this House + which boarder sits in which dorm (for the per-dorm boarder count).
     const dorms = await tx
@@ -439,9 +471,11 @@ export async function getDailyLife(
         boarderCount: boarders.length,
         inHouse,
         currentlyOut: outStudentIds.size,
+        offCampus: offCampus.size,
         exeatsToday,
         lightsOut: timeline?.lightsOutLabel ?? null,
       },
+      sickbay,
       inspection: {
         dorms: dormInspections,
         total: houseDorms.length,
