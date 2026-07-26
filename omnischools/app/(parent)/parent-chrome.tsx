@@ -32,7 +32,12 @@ export function ParentHeader({
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2.5">
+      {/* INCR-34 (L2a) — the guardian block links to the account page (change password). */}
+      <Link
+        href="/account"
+        title="Account & password"
+        className="-mr-1.5 flex items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors hover:bg-bg"
+      >
         <div className="text-right">
           <div className="text-xs font-semibold text-navy">{initialSurname(guardianDisplay)}</div>
           <div className="text-[10px] text-navy-3">{relation}</div>
@@ -40,7 +45,7 @@ export function ParentHeader({
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-navy font-display text-[13px] font-semibold text-gold">
           {avatarInitials(guardianDisplay)}
         </div>
-      </div>
+      </Link>
     </header>
   );
 }

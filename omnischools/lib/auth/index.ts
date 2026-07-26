@@ -129,6 +129,8 @@ type SupabaseAuthApi = {
     phone: string;
     password: string;
   }): Promise<{ error: { message: string } | null }>;
+  // INCR-34 (L2a) — change the CURRENT session's own password (self-service; no target id).
+  updateUser(attrs: { password: string }): Promise<{ error: { message: string } | null }>;
   getUser(): Promise<{ data: { user: { phone?: string | null } | null } }>;
   getSession(): Promise<{
     data: {
@@ -203,6 +205,20 @@ export async function signInWithPassword(
     phone: normalizeGhanaPhone(phone),
     password,
   });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/**
+ * INCR-34 (L2a) — self-service password change on the CURRENT session. Takes NO target id (the session
+ * IS the authorization), so it structurally cannot be used to change another account's password. Callers
+ * that want the "require the current password first" control re-auth via `signInWithPassword` before this
+ * (see `changeOwnPassword`). Dev-bypass no-op, like every other seam function.
+ */
+export async function updatePassword(
+  newPassword: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!authIsLive()) return { ok: true };
+  const { error } = await (await authApi()).updateUser({ password: newPassword });
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
