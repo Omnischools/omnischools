@@ -1,4 +1,5 @@
 import "server-only";
+import { isRedactedAuditEntity, REDACTED_MARKER } from "@/lib/audit/redaction";
 
 /**
  * §01 "Today's activity · most recent first" — the activity-feed section of
@@ -124,7 +125,11 @@ export function AuditActivityFeed({
             const bulk = e.entityType ? BULK_ENTITIES.has(e.entityType) : false;
             const actor = e.actorName ?? title(e.actorRole) ?? "System";
             const moduleLabel = e.entityType ? title(e.entityType) : "System";
-            const diff = computeDiff(e.before, e.after);
+            // INCR-30: a read-gated clinical/pay/discipline entity leaks its diff + reason to all
+            // staff here. Suppress BOTH channels (R240) and show the neutral marker (R241). Keyed on
+            // the shared predicate, not on before-presence — a redacted `created` event redacts too.
+            const redacted = isRedactedAuditEntity(e.entityType);
+            const diff = redacted ? [] : computeDiff(e.before, e.after);
             return (
               <div
                 key={e.id}
@@ -141,7 +146,7 @@ export function AuditActivityFeed({
                     <span className="font-bold">{actor}</span>{" "}
                     <span className="text-navy-2">{title(e.actionType)}</span>{" "}
                     <span className="font-semibold">{moduleLabel}</span>
-                    {e.reason ? (
+                    {e.reason && !redacted ? (
                       <span className="text-navy-2"> — {e.reason}</span>
                     ) : null}
                   </p>
@@ -168,8 +173,14 @@ export function AuditActivityFeed({
                     ) : null}
                   </div>
 
-                  {/* Per-event diff (before → after) — surface §01 diff block */}
-                  {diff.length > 0 ? (
+                  {/* Per-event diff (before → after) — surface §01 diff block.
+                      INCR-30: a redacted entry shows the neutral marker in place of BOTH the diff
+                      and the reason (never a "clinical record" label — that itself discloses). */}
+                  {redacted ? (
+                    <div className="mt-2 rounded-md border border-dashed border-border bg-bg p-2.5 text-[11px] italic text-navy-3">
+                      {REDACTED_MARKER}
+                    </div>
+                  ) : diff.length > 0 ? (
                     <div className="mt-2 rounded-md border border-dashed border-border bg-bg p-2.5 font-mono text-[11px] leading-relaxed">
                       {diff.map((d) => (
                         <div
