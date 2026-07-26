@@ -159,9 +159,9 @@ function NhisSection({ firstName, nhis }: { firstName: string; nhis: ParentNhisS
 
   return (
     <section className="rounded-xl border border-border bg-surface px-[26px] py-[22px]">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-navy-3">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-navy-3">
         National Health Insurance
-      </h3>
+      </h2>
       <p className="mt-2 text-[15px] font-medium text-navy">
         {firstName}&apos;s NHIS card is <em className="not-italic text-gold">{label}</em>.
       </p>

@@ -7,18 +7,20 @@
 -- 🔴 THE THIRD WIDENING OF THE INCR-19a PARENT BOUNDARY (11 → 12 parent_scope tables). The first was
 -- INCR-29 (prod-paste-0064: sickbay_admission + sickbay_referral, 9 → 11). This one (owner-authorised,
 -- reverses D8's NHIS carve-out) opens ROW access to a parent's OWN child's NHIS-card row so the read-only
--- parent portal can show the card number + validity (Active / Expiring≤30d / Expired is derived in lib/).
+-- parent portal can show the card's STATUS + EXPIRY ONLY — NEVER the membership number (owner call
+-- 2026-07-26; Active / Expiring≤30d / Expired / Unknown is derived from valid_to in lib/).
 --
 -- ⚠ WHAT HAPPENS IF THIS IS NOT RUN — FAIL-CLOSED, NEVER A LEAK. db:policies configures LOCAL DEV ONLY.
 -- Without this paste, student_nhis_card keeps its existing parent_deny on prod, so a parent session
 -- (app.current_parent_user set) reads ZERO rows → the parent NHIS panel is an honest empty state, never a
 -- cross-tenant or cross-child leak. The cost of skipping is a blank panel, not exposure. Run it to ship.
 --
--- 🔴 COLUMN CONTROL LIVES IN THE APP READER (R229), NOT THE DB. RLS is ROW-level and CANNOT mask columns.
+-- 🔴 COLUMN CONTROL LIVES IN THE APP READER (R255), NOT THE DB. RLS is ROW-level and CANNOT mask columns.
 -- Once parent_scope opens the row, an in-scope parent session CAN select every column on the card
--- (card_number, holder_name, holder_kind, valid_from/valid_to, student_guardian_id). The card is the
--- intended parent view here, but per the module convention the reader's frozen key-set projection in
--- lib/parent/parent-sickbay-data.ts remains the SOLE column control — a view that kept the base table
+-- (card_number, holder_name, holder_kind, valid_from/valid_to, student_guardian_id). The parent view is
+-- STATUS + EXPIRY ONLY (owner call — the reader NEVER selects card_number/holder_name), so the reader's
+-- frozen {status, validTo} projection in lib/parent/parent-nhis-data.ts remains the SOLE column control
+-- — a view that kept the base table
 -- parent_deny (Option 3) is non-functional under this repo's FORCE-RLS + single shared non-superuser app
 -- role + no-BYPASSRLS model (it returns 0 rows to a parent on prod). Column control is in the reader by
 -- construction, not in the DB.
