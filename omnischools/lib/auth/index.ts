@@ -239,7 +239,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
 
   // Privileged identity lookup (runs before tenant context) — bypass RLS.
   const { withoutTenantScope } = await import("@/lib/db/rls");
-  const { users, roleAssignments, roles } = await import("@/db/schema");
+  const { users, roleAssignments, roles, userSchoolBlock } = await import("@/db/schema");
   const { and, eq, gte, isNull, lte, or } = await import("drizzle-orm");
   const { scopeRolesToActiveSchool } = await import("./roles");
 
@@ -247,6 +247,16 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     const [u] = await tx.select().from(users).where(eq(users.phone, phone));
     if (!u) return null;
     const today = new Date().toISOString().slice(0, 10); // role_assignment start/end are DATE columns
+
+    // INCR-35 (L2b) — the schools where THIS user is blocked. Read under the same bypass tx (identity is
+    // pre-tenant, exactly like role_assignment). Presence = blocked. Passed to scopeRolesToActiveSchool,
+    // which drops those schools before choosing the active one — so a blocked user is authenticated but
+    // powerless at that school (and falls through to any unblocked school). Per-school by construction.
+    const blockRows = await tx
+      .select({ schoolId: userSchoolBlock.schoolId })
+      .from(userSchoolBlock)
+      .where(eq(userSchoolBlock.userId, u.id));
+    const blockedSchoolIds = new Set(blockRows.map((b) => b.schoolId));
 
     const ra = await tx
       .select({
@@ -281,8 +291,9 @@ export async function getCurrentUser(): Promise<AppUser | null> {
       .orderBy(roleAssignments.createdAt, roleAssignments.schoolId, roles.code);
 
     // Roles are scoped to the active school. See ./roles for why this is fixed HERE and not at the
-    // ~129 call sites: every existing and future role check inherits the correction for free.
-    const scoped = scopeRolesToActiveSchool(ra, today);
+    // ~129 call sites: every existing and future role check inherits the correction for free. The
+    // blocked-school set (read above) is applied INSIDE — the pure, tested authority.
+    const scoped = scopeRolesToActiveSchool(ra, today, blockedSchoolIds);
     return {
       id: u.id,
       phone,

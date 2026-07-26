@@ -180,6 +180,15 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         desc: "Password policy, session length, two-factor for admins and the login activity log.",
         href: "/settings/security",
       },
+      {
+        key: "users",
+        name: "Users &",
+        em: "access",
+        icon: "U",
+        tone: "gold",
+        desc: "Block, reactivate, or reset a password for anyone at your school — staff and parents.",
+        href: "/settings/users",
+      },
     ],
   },
   {
