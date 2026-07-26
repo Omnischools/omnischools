@@ -21,9 +21,9 @@ const COLS = [
   {
     title: "Legal & trust",
     links: [
-      { href: "/legal/privacy", label: "Privacy policy" },
-      { href: "/legal/data-protection", label: "Data protection" },
-      { href: "/legal/terms", label: "Terms of service" },
+      { href: "/privacy", label: "Privacy policy" },
+      { href: "/privacy#data-protection", label: "Data protection" },
+      { href: "/terms", label: "Terms of service" },
     ],
   },
 ];
