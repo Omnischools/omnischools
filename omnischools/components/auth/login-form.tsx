@@ -1,11 +1,18 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { requestOtp, verifyLogin, passwordLogin } from "@/lib/actions/auth";
 
 const fieldClass =
   "w-full rounded-md border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
 
-export function LoginForm({ accepted = false }: { accepted?: boolean }) {
+export function LoginForm({
+  accepted = false,
+  reset = false,
+}: {
+  accepted?: boolean;
+  reset?: boolean;
+}) {
   const [mode, setMode] = useState<"otp" | "password">("otp");
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
@@ -62,6 +69,11 @@ export function LoginForm({ accepted = false }: { accepted?: boolean }) {
       {accepted && (
         <p className="mb-4 rounded-md bg-green-bg px-3 py-2 text-sm font-medium text-green">
           Account ready — sign in below.
+        </p>
+      )}
+      {reset && (
+        <p className="mb-4 rounded-md bg-green-bg px-3 py-2 text-sm font-medium text-green">
+          Password updated — sign in with your new password.
         </p>
       )}
 
@@ -135,6 +147,14 @@ export function LoginForm({ accepted = false }: { accepted?: boolean }) {
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && signInPassword()}
           />
+          {/* L3 — port of the landing modal's `.forgot` (below password, above submit, right-aligned,
+              12px gold, hover underline). Password tab only: the OTP tab is already password-free. */}
+          <Link
+            href="/reset"
+            className="mt-1 block text-right text-xs font-medium text-gold hover:underline"
+          >
+            Forgot password?
+          </Link>
           <button
             onClick={signInPassword}
             disabled={busy}

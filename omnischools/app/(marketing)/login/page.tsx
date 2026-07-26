@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LoginPage(
   props: {
-    searchParams: Promise<{ accepted?: string }>;
+    searchParams: Promise<{ accepted?: string; reset?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
@@ -20,7 +20,10 @@ export default async function LoginPage(
   if (authIsLive()) {
     return (
       <main className="mx-auto flex min-h-[70vh] max-w-content items-center justify-center px-6 py-20">
-        <LoginForm accepted={searchParams?.accepted === "1"} />
+        <LoginForm
+          accepted={searchParams?.accepted === "1"}
+          reset={searchParams?.reset === "1"}
+        />
       </main>
     );
   }
