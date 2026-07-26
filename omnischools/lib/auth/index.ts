@@ -18,10 +18,11 @@ import { env } from "@/lib/env";
 export const KNOWN_APP_ROLES = [
   "ADMIN",
   "HEADMASTER",
-  // INCR-33 (Module L / L1) — PROPRIETOR registered, PROVISION ONLY. Top-rank school owner (outranks
-  // ADMIN/HEADMASTER, un-blockable by them), composable with them. Deliberately in NO lib/access.ts
-  // role-group, no STAFF_ROLES picker entry, never assigned at signup → INERT until L2 (user-management)
-  // + the separate Proprietor increment wire its permissions / rank / composability.
+  // INCR-33/35/37 — PROPRIETOR: top-rank school owner (outranks ADMIN/HEADMASTER, un-blockable by them),
+  // composable with them. Registered inert in L1; L2b seated it in USER_ADMIN_ROLES (block/reset/activate);
+  // INCR-37 (governance model) seats it in STAFF_ADMIN_ROLES (its power is appointing/granting) — NOT in
+  // any operational or sickbay-clinical group, and NOT in the assignable STAFF_ROLES picker. An owned
+  // school's creator is seated PROPRIETOR at signup; `canGrantRole` stops a lower rank minting it.
   "PROPRIETOR",
   "VICE_HEADMASTER_ACADEMIC",
   "TEACHER",

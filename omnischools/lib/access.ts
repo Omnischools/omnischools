@@ -43,11 +43,12 @@ export const STAFF_ADMIN_ROLES = [
 
 /**
  * 🔴 INCR-35 (L2b) — who may open the user-management surface and block / reset / activate OTHER users.
- * PROPRIETOR (top rank) + ADMIN + HEADMASTER. DELIBERATELY DISTINCT from STAFF_ADMIN_ROLES: this gates
+ * PROPRIETOR (top rank) + ADMIN + HEADMASTER. DISTINCT PURPOSE from STAFF_ADMIN_ROLES: this gates
  * login-lifecycle verbs (block/reset/activate) over ALL users incl. parents, whereas STAFF_ADMIN_ROLES
- * mints staff + assigns roles and stays narrow — do NOT add PROPRIETOR to STAFF_ADMIN_ROLES. Membership
- * here is only the FIRST gate; the SECOND is `canManageTarget` (you must also strictly outrank the
- * specific target). PROPRIETOR is otherwise still inert (in no other group).
+ * gates role-GRANTING. Membership here is only the FIRST gate; the SECOND is `canManageTarget` (you must
+ * also strictly outrank the specific target). NB (INCR-37): PROPRIETOR is now ALSO in STAFF_ADMIN_ROLES
+ * (its governance power is appointing/granting) — the two groups overlap by design; `canGrantRole` is
+ * what stops an ADMIN minting a PROPRIETOR, not the group membership.
  */
 export const USER_ADMIN_ROLES = [
   "PROPRIETOR",
