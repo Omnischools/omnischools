@@ -492,6 +492,33 @@ CREATE POLICY parent_scope ON sickbay_referral AS RESTRICTIVE FOR ALL TO public
     )
   );
 
+-- ---- INCR-32: the THIRD widening of the 19a parent boundary (11 → 12 parent_scope tables), owner
+-- decision D8. A parent gains ROW access to their own child's ONE NHIS-card row so the read-only parent
+-- portal (lib/parent/parent-sickbay-data.ts) can show the card number + validity (Active/Expiring/Expired
+-- is derived in lib/). Kept in sync with db/sql/prod-paste-0065-parent-nhis-scope.sql — this block is DEV;
+-- that file is the hand-paste on PROD (⚠ RLS is NOT auto-applied on prod; without the paste
+-- student_nhis_card keeps parent_deny and the parent NHIS panel is an honest empty state — fail-closed,
+-- never a leak).
+--
+-- Same table-level parent_scope mechanism as INCR-29 above, byte-shaped like the 11 policies before it.
+-- student_nhis_card carries student_id DIRECTLY (beneficiary singleton, composite (school_id, student_id)
+-- FK). RLS opens the ROW; the reader's frozen key-set projection (R229) is the SOLE column control. The
+-- catalog parent_deny loop below auto-excludes student_nhis_card (it now carries parent_scope) and
+-- re-affirms parent_deny on every other sickbay table — sickbay_notification and sickbay_referral_cost_line
+-- included — with ZERO edits.
+
+-- student_nhis_card — the parent reads their own child's ONE NHIS-card row (the beneficiary singleton).
+DROP POLICY IF EXISTS parent_deny ON student_nhis_card;
+DROP POLICY IF EXISTS parent_scope ON student_nhis_card;
+CREATE POLICY parent_scope ON student_nhis_card AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR student_id IN (
+      SELECT parent_student_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+
 -- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
 -- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
 -- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).
