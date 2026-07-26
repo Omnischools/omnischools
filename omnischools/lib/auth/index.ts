@@ -132,7 +132,8 @@ type SupabaseAuthApi = {
   // INCR-34 (L2a) — change the CURRENT session's own password (self-service; no target id).
   updateUser(attrs: { password: string }): Promise<{ error: { message: string } | null }>;
   // INCR-36 (L3) — send a password-recovery email. Supabase mints + owns the recovery token; the link
-  // lands the user on `redirectTo` (/reset-password?code=…). No token row on our side (seam-only).
+  // lands the user on `redirectTo` (the /auth/reset-callback Route Handler, which exchanges the code).
+  // No token row on our side (seam-only).
   resetPasswordForEmail(
     email: string,
     options: { redirectTo: string },
@@ -234,8 +235,8 @@ export async function updatePassword(
 
 /**
  * INCR-36 (L3) — send a password-reset EMAIL. Supabase mints and owns the recovery token; the link it
- * emails lands the user on `redirectTo` (`…/reset-password?code=…`), which our page exchanges for a
- * recovery session. No token table on our side (seam-only). `redirectTo` is built by the caller from
+ * emails lands the user on `redirectTo` (`…/auth/reset-callback?code=…`), the Route Handler that
+ * exchanges the code. No token table on our side (seam-only). `redirectTo` is built by the caller from
  * `NEXT_PUBLIC_SITE_URL`, mirroring `createInvite`'s link. Dev-bypass no-op (no real email in dev).
  */
 export async function sendPasswordResetEmail(
@@ -248,12 +249,12 @@ export async function sendPasswordResetEmail(
 }
 
 /**
- * INCR-36 (L3) — exchange the PKCE `?code=…` on the email-reset landing (`/reset-password`) for a
- * recovery session, so the subsequent `updatePassword` acts on the just-proven identity. Dev-bypass
- * no-op. NB (Sarah / wiring): a code-exchange from a Server-Component render cannot persist the
- * session cookie (Next 15 render is cookie-read-only; there is no session-refresh middleware here), so
- * the live email path likely needs this moved to a Route Handler / Server Action — flagged, email path
- * is structurally-verified only in this increment.
+ * INCR-36 (L3) — exchange the PKCE `?code=…` for a recovery session, so the subsequent
+ * `updatePassword` acts on the just-proven identity. Dev-bypass no-op. Called ONLY from the
+ * `app/auth/reset-callback` Route Handler — NOT a Server Component render — because only a route
+ * handler / server action can PERSIST the exchanged session cookie (a Next 15 SC cookie write is a
+ * silent no-op, and there is no session-refresh middleware). The email path is structurally-verified
+ * only in dev (no real Supabase recovery link); it needs a live Supabase env to confirm end-to-end.
  */
 export async function establishRecoverySession(
   code: string,
