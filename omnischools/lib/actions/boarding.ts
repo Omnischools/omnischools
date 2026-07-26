@@ -164,7 +164,10 @@ export async function reassignBunk(input: unknown): Promise<Result> {
         entityId: studentId,
         before: { bunkId: stu.currentBunkId },
         after: { bunkId: targetBunkId },
-        reason,
+        // 🔴 R245.3 — free-text operator input under the non-redacted `student` audit can carry a
+        // safeguarding/medical justification (the render redaction is entity-keyed, R240). Neutralize
+        // here; the justification stays on the BOARDING_ROLES-gated `bunk_allocation.reason`.
+        reason: "Bunk reassigned",
       });
       return { ok: true as const, houseId: stu.houseId };
     });

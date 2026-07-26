@@ -12,6 +12,8 @@ const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.met
 const FEED = read("../../components/settings/audit-activity-feed.tsx");
 const PAGE = read("../../app/(app)/settings/audit/page.tsx");
 const DISCIPLINE = read("../../lib/boarding/discipline-core.ts");
+const BOARD_DISC = read("../../lib/actions/boarding-discipline.ts");
+const BOARDING = read("../../lib/actions/boarding.ts");
 
 describe("INCR-30 predicate — the one source of truth", () => {
   it("redacts every enumerated non-namespaced entity (pay / health-id / discipline triad)", () => {
@@ -87,6 +89,23 @@ describe("INCR-30 R240 — pastoral-bypass reason neutralized at the write site"
   it("the fact still lands in `after` (severity + routedTo) — routing behaviour unchanged", () => {
     expect(DISCIPLINE).toContain("routedTo: \"Dean of Boarding (VLC 4.5 stub)\"");
     expect(DISCIPLINE).toMatch(/after: \{ severity, sourceKind, routedTo/);
+  });
+});
+
+describe("INCR-30 R245 — reason-channel siblings under entityType:\"student\"", () => {
+  it("AC10 — REINSTATED neutralizes the free-text Board narrative (kept on the redacted deboardinization_records)", () => {
+    expect(BOARD_DISC).not.toContain("reason: boardDecisionText.slice");
+    expect(BOARD_DISC).toContain("Reinstated to boarding by Board decision — details restricted");
+  });
+
+  it("AC10 — BUNK_REASSIGNED neutralizes the free-text operator reason (kept on the BOARDING_ROLES-gated bunk_allocation.reason)", () => {
+    expect(BOARDING).toContain('reason: "Bunk reassigned"');
+  });
+
+  it("AC11 — DEBOARDINIZED is LEFT operational (not over-redacted): student is not a redacted entity, and the residency flip + fixed reason stay", () => {
+    expect(isRedactedAuditEntity("student")).toBe(false);
+    expect(BOARD_DISC).toContain("Deboardinization effected"); // the fixed detail-free reason stays
+    expect(BOARD_DISC).toContain('residency: "DEBOARDINIZED"'); // the operational flip staff need stays
   });
 });
 
