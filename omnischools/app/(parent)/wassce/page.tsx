@@ -9,9 +9,9 @@ import {
 } from "@/lib/parent/parent-portal-data";
 import { PROGRAMME_TRACKS } from "@/lib/wassce/constants";
 import type { FrozenTargetUniversity } from "@/lib/wassce/university-match";
+import { ParentHeader, ParentNav } from "../parent-chrome";
 import {
   avatarInitials,
-  initialSurname,
   relationshipLabel,
   parentLongDate,
   parentShortDate,
@@ -67,7 +67,7 @@ export default async function ParentWasscePage() {
         guardianDisplay={guardianDisplay}
         relation={relation}
       />
-      <ParentNav />
+      <ParentNav active="WASSCE" />
 
       <div className="px-7 pb-9 pt-6">
         {data.hasChildrenAtOtherSchools && (
@@ -83,67 +83,6 @@ export default async function ParentWasscePage() {
         )}
       </div>
     </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────── chrome ── */
-
-function ParentHeader({
-  schoolName,
-  childName,
-  guardianDisplay,
-  relation,
-}: {
-  schoolName: string;
-  childName: string | null;
-  guardianDisplay: string;
-  relation: string;
-}) {
-  return (
-    <header className="flex items-center gap-3.5 border-b border-border bg-surface px-7 py-[18px]">
-      <div className="flex flex-1 items-center gap-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gold font-display text-sm font-semibold text-navy">
-          {schoolName.trim()[0]?.toUpperCase() ?? "S"}
-        </div>
-        <div>
-          <div className="font-display text-[15px] font-medium text-navy">{schoolName}</div>
-          <div className="text-[11px] text-navy-3">
-            Parent portal{childName ? ` · ${childName}` : ""}
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-2.5">
-        <div className="text-right">
-          <div className="text-xs font-semibold text-navy">{initialSurname(guardianDisplay)}</div>
-          <div className="text-[10px] text-navy-3">{relation}</div>
-        </div>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-navy font-display text-[13px] font-semibold text-gold">
-          {avatarInitials(guardianDisplay)}
-        </div>
-      </div>
-    </header>
-  );
-}
-
-/** Six tabs; only WASSCE is built (Lucy §0.6). The unread dot renders on WASSCE only, no faked markers. */
-function ParentNav() {
-  const tabs = ["WASSCE", "Sickbay", "Communications", "Billing", "Boarding", "School calendar"];
-  return (
-    <nav className="flex gap-0 overflow-x-auto border-b border-border bg-surface px-7">
-      {tabs.map((t, i) => (
-        <span
-          key={t}
-          className={
-            i === 0
-              ? "whitespace-nowrap border-b-2 border-gold px-4 py-3.5 text-[13px] font-semibold text-navy"
-              : "whitespace-nowrap border-b-2 border-transparent px-4 py-3.5 text-[13px] font-medium text-navy-3"
-          }
-          aria-current={i === 0 ? "page" : undefined}
-        >
-          {t}
-        </span>
-      ))}
-    </nav>
   );
 }
 

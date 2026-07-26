@@ -54,6 +54,7 @@
     "db:verify-sickbay-attendance-rollover": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-attendance-rollover.ts",
     "db:verify-sickbay-board": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-board.ts",
     "db:verify-sickbay-grant-boundary": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-grant-boundary.ts",
+    "db:verify-parent-sickbay-boundary": "tsx --tsconfig scripts/tsconfig.json scripts/verify-parent-sickbay-boundary.ts",
     "db:prod-schema-diff": "tsx --tsconfig scripts/tsconfig.json scripts/prod-schema-diff.ts"
   },
   "dependencies": {

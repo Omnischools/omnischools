@@ -439,6 +439,59 @@ CREATE POLICY parent_scope ON inbox_message AS RESTRICTIVE FOR ALL TO public
     )
   );
 
+-- ---- INCR-29: the FIRST widening of the 19a parent boundary since it shipped (9 → 11 parent_scope
+-- tables). A parent gains ROW access to their own child's sickbay_admission + sickbay_referral so the
+-- read-only parent portal (lib/parent/parent-sickbay-data.ts) can show on-site/referred-out status.
+-- Kept in sync with db/sql/prod-paste-0064-parent-sickbay-scope.sql — this block is DEV; that file is
+-- the hand-paste on PROD (⚠ RLS is NOT auto-applied on prod; without the paste these two tables keep
+-- parent_deny and the parent tab is an honest empty state — fail-closed, never a leak).
+--
+-- 🔴 MECHANISM (Kofi R231, WELLS's call): table-level parent_scope on these TWO tables ONLY, byte-shaped
+-- like the 9 policies above. A VIEW that keeps the base tables parent_deny (Option 3) was REJECTED: it
+-- is non-functional under this repo's FORCE-RLS + single shared app role + no-BYPASSRLS model. Proven on
+-- dev — a security_invoker view returns 0 rows to a parent (the invoker hits parent_deny), and a plain
+-- view returns rows ONLY because the LOCAL owner is a superuser that bypasses RLS (a dev-only illusion;
+-- on prod the non-superuser owner under FORCE returns 0 → a permanently empty tab). Making a view work
+-- requires opening the base tables anyway, at which point the columns are reachable and the view buys no
+-- DB-enforced column control. So RLS opens the ROW; the reader's frozen key-set projection (R229) is the
+-- SOLE column control (MEDIUM-3).
+--
+-- ⚠ CLASS-4 ADJACENCY (flagged to Sarah). RLS is row-level and CANNOT mask columns: an in-scope parent
+-- session CAN select sickbay_referral.menses_note (Class-4 reproductive PII, F5) and the ER handoff
+-- snapshot (reason_referred_out / handoff_labs / last_meal / travel_note) off the reachable row. The
+-- reader's frozen projection is the only guard against those columns reaching the wire. NO other sickbay
+-- table gains parent_scope — the catalog parent_deny loop below auto-excludes exactly these two (they
+-- now carry parent_scope) and re-affirms parent_deny on every other sickbay table with ZERO edits.
+--
+-- OPEN-STATE is the READER's job (R230), NOT RLS: RLS scopes by child, so the parent's own child's
+-- CLOSED admission (discharged_at set) and RETURNED/VOIDED referral rows ARE returned here — the loader
+-- filters to the current-open set.
+
+-- sickbay_admission — the parent reads their own child's admission rows (open + closed alike).
+DROP POLICY IF EXISTS parent_deny ON sickbay_admission;
+DROP POLICY IF EXISTS parent_scope ON sickbay_admission;
+CREATE POLICY parent_scope ON sickbay_admission AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR student_id IN (
+      SELECT parent_student_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+
+-- sickbay_referral — same shape. ⚠ carries the Class-4 menses_note + the ER-handoff snapshot; the row
+-- (all columns) is reachable to an in-scope parent — the reader projection is the only column guard.
+DROP POLICY IF EXISTS parent_deny ON sickbay_referral;
+DROP POLICY IF EXISTS parent_scope ON sickbay_referral;
+CREATE POLICY parent_scope ON sickbay_referral AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR student_id IN (
+      SELECT parent_student_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+
 -- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
 -- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
 -- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).
