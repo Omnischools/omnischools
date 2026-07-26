@@ -65,21 +65,28 @@ export async function changeOwnPassword(input: {
   if (!reauth.ok) return { ok: false, error: "Current password is incorrect." };
   const res = await updatePassword(newPassword);
   if (!res.ok) return { ok: false, error: res.error ?? "Could not update your password." };
-  // Security event — the value is NEVER recorded. Best-effort: only when an active school is resolved.
+  // Security event — the value is NEVER recorded. Best-effort + FAIL-OPEN (Dex L2a finding): the password
+  // already changed, so an audit-write failure must NOT surface as an error — else the user retries with
+  // the now-invalid old password and gets a misleading "Current password is incorrect." Only attempted
+  // when an active school resolves (the audit table is tenant-scoped).
   if (user.schoolId) {
     const schoolId = user.schoolId;
-    const actor = await resolveActor(schoolId);
-    await withSchool(schoolId, (tx) =>
-      recordAudit(tx, {
-        schoolId,
-        actorUserId: actor.id ?? user.id,
-        actorRole: actor.role,
-        actionType: "password_changed",
-        entityType: "user_account",
-        entityId: user.id,
-        reason: "Self-service password change",
-      }),
-    );
+    try {
+      const actor = await resolveActor(schoolId);
+      await withSchool(schoolId, (tx) =>
+        recordAudit(tx, {
+          schoolId,
+          actorUserId: actor.id ?? user.id,
+          actorRole: actor.role,
+          actionType: "password_changed",
+          entityType: "user_account",
+          entityId: user.id,
+          reason: "Self-service password change",
+        }),
+      );
+    } catch {
+      // swallow — a missing audit row is acceptable; a false failure on a succeeded change is not.
+    }
   }
   return { ok: true };
 }
