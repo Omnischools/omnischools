@@ -332,12 +332,13 @@ describe("R43 · `diagnos` appears in NO column, enum, type, zod key, label or r
     // It is written and read, and NOTHING branches on its content: no comparison, no notify, no job.
     expect(src.includes("escalationTriggers")).toBe(true);
     expect(/escalationTriggers\s*[<>=]/.test(src)).toBe(false);
-    // ⚠️ Match the dispatch tokens WORD-INITIAL, not as substrings (ADV-3 — assert the call, not the
-    // name). 0062 (INCR-25) authored the notification table's `sickbayNotify{Channel,Direction,
-    // Recipient}Enum` types into this SHIPPED_22B schema file — authored-not-built, no dispatch. A bare
-    // /notify/ substring false-positived on those identifiers (where "Notify" sits mid-word after
-    // "sickbay"); `\b` excludes them while a real `notify(`/`sendSms(`/`enqueue(`/`scheduleJob(` still reds.
-    expect(/\bnotify|\bsendSms|\benqueue|\bscheduleJob/i.test(src)).toBe(false);
+    // ⚠️ Match the dispatch CALL, not the name (ADV-3 — assert the call, not the identifier). 0062
+    // authored the notification enum TYPES here; INCR-26 additionally wires the notify READS
+    // (`getVisitCommsLog` from `lib/sickbay/notify-reads`) + the `CommsCompose` client into the visit
+    // page — a read + a server-action compose, NOT a dispatch (the console-only send lives in
+    // lib/actions/sickbay-notify.ts, outside SHIPPED). So the bare-word `\bnotify` false-positived on
+    // the `notify-reads` import PATH; require the trailing `(` so only a real dispatch call reds.
+    expect(/\bnotify\(|\bsendSms\(|\benqueue\(|\bscheduleJob\(/i.test(src)).toBe(false);
   });
 });
 

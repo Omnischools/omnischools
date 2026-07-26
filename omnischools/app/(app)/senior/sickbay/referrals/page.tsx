@@ -61,14 +61,23 @@ export default async function ReferralsPage() {
             )}
           </p>
         </div>
-        {canWrite && (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* §03 (INCR-26) — today's parent-notifications day view, reachable from the referral log. */}
           <Link
-            href="/senior/sickbay/referrals/new"
-            className="rounded-[5px] border border-navy bg-navy px-[14px] py-[8px] text-[12px] font-bold text-bg no-underline"
+            href="/senior/sickbay/referrals/notifications"
+            className="rounded-[5px] border border-border-2 bg-surface px-[14px] py-[8px] text-[12px] font-semibold text-navy no-underline"
           >
-            + New referral
+            Today&apos;s notifications
           </Link>
-        )}
+          {canWrite && (
+            <Link
+              href="/senior/sickbay/referrals/new"
+              className="rounded-[5px] border border-navy bg-navy px-[14px] py-[8px] text-[12px] font-bold text-bg no-underline"
+            >
+              + New referral
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Stats strip — 3 tiles (tile 4 "Outstanding cost" omitted at 25, Y4/D6). */}
