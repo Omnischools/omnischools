@@ -8,6 +8,7 @@ import {
   sendPasswordResetEmail,
   sessionAuthMethods,
   signOut,
+  getSessionId,
 } from "@/lib/auth";
 import { requireUser, resolveActor } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
@@ -55,7 +56,7 @@ export async function signOutAction(): Promise<void> {
 export async function changeOwnPassword(input: {
   currentPassword: string;
   newPassword: string;
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<{ ok: boolean; error?: string; newSessionId?: string }> {
   const currentPassword = input?.currentPassword ?? "";
   const newPassword = input?.newPassword ?? "";
   if (newPassword.length < 8) {
@@ -90,7 +91,12 @@ export async function changeOwnPassword(input: {
       // swallow — a missing audit row is acceptable; a false failure on a succeeded change is not.
     }
   }
-  return { ok: true };
+  // INCR-39: the R264 re-auth above rotated the Supabase session_id — our offline-buffer partition
+  // prefix (pwa-store recordKey). Return the NEW id so the self change-password form can re-key THIS
+  // user's own pending scores old→new before the next PwaSession purge orphans them. session_id is a
+  // non-secret partition key (getSessionId docblock), so returning it is safe.
+  const newSessionId = await getSessionId();
+  return { ok: true, newSessionId };
 }
 
 /**

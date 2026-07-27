@@ -131,6 +131,59 @@ export async function loadSnapshot(ctx: LedgerContext): Promise<LedgerSnapshot |
 }
 
 /**
+ * Re-key every snapshot from `${oldSessionId}::…` to `${newSessionId}::…`, preserving the
+ * `${subjectId}::${periodId}` suffix, all snapshot fields, and `storeVersion` — only the session
+ * prefix (key + `sessionId` field) changes.
+ *
+ * EXISTS ONLY for a SELF password-change (INCR-39): the R264 re-auth (`signInWithPassword`) rotates
+ * the Supabase `session_id`, which is our partition-key prefix — so without this the user's OWN
+ * pending offline scores would be orphaned under the old prefix and then deleted by the next
+ * `PwaSession` purge-on-identify. Because the trigger IS the user changing THEIR OWN password, every
+ * `${oldSessionId}::*` record belongs to that same identity, so `old→new` is inherently same-identity.
+ *
+ * MUST NEVER be called with another user's session: a different teacher's records live under a
+ * different session prefix and are never touched here — moving them would defeat the R3 shared-tablet
+ * PII partition. The sole caller (the self change-password form) guarantees same-identity. This does
+ * NOT change `recordKey`, `purgeSnapshots`, or the purge-on-identify mechanism (R3 stays byte-identical).
+ *
+ * Best-effort; never throws (mirrors saveSnapshot/purgeSnapshots). One readwrite tx:
+ * getAllKeys → for each matching key, get + put-under-new-key + delete-old.
+ */
+export async function rekeySnapshots(oldSessionId: string, newSessionId: string): Promise<void> {
+  if (!oldSessionId || !newSessionId || oldSessionId === newSessionId) return;
+  const db = await openDb();
+  if (!db) return;
+  const oldPrefix = `${oldSessionId}::`;
+  await new Promise<void>((resolve) => {
+    try {
+      const tx = db.transaction(STORE, "readwrite");
+      const store = tx.objectStore(STORE);
+      const req = store.getAllKeys();
+      req.onsuccess = () => {
+        for (const key of req.result) {
+          if (typeof key !== "string" || !key.startsWith(oldPrefix)) continue;
+          const getReq = store.get(key);
+          getReq.onsuccess = () => {
+            const rec = getReq.result as StoredRecord | undefined;
+            if (!rec) return;
+            // Preserve the ::subject::period suffix + every snapshot field; swap only the session.
+            const newKey = newSessionId + key.slice(oldSessionId.length);
+            store.put({ ...rec, key: newKey, sessionId: newSessionId });
+            store.delete(key);
+          };
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+  db.close();
+}
+
+/**
  * Delete every snapshot NOT belonging to `keepSessionId` (purge-on-identify — a new teacher on a
  * shared tablet). With no argument, wipe the whole store (logout). Best-effort; never throws.
  */

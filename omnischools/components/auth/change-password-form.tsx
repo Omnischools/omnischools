@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { changeOwnPassword } from "@/lib/actions/auth";
+import { rekeySnapshots } from "@/lib/score-ledger/pwa-store";
 
 /**
  * INCR-34 (L2a) — self-service change password. Shared by the staff Settings › Login & security page
@@ -12,7 +13,7 @@ const fieldClass =
   "w-full rounded-md border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
 const labelClass = "mb-1 block text-xs font-semibold text-navy";
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ sessionId }: { sessionId?: string }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -31,13 +32,25 @@ export function ChangePasswordForm() {
     if (next !== confirm) return setError("Passwords don't match.");
     setBusy(true);
     const res = await changeOwnPassword({ currentPassword: current, newPassword: next });
-    setBusy(false);
     if (res.ok) {
+      // INCR-39: the R264 re-auth rotated the session id — our offline-buffer partition prefix. Re-key
+      // THIS user's own pending scores old→new BEFORE the success state / any nav, so the next
+      // PwaSession purge-on-identify keeps them. Best-effort: a re-key miss must never block the
+      // confirmed password change (and it's a harmless no-op for a parent with no ledger buffer).
+      if (res.newSessionId && sessionId && res.newSessionId !== sessionId) {
+        try {
+          await rekeySnapshots(sessionId, res.newSessionId);
+        } catch {
+          // swallow — the password already changed; re-key is best-effort.
+        }
+      }
+      setBusy(false);
       setDone(true);
       setCurrent("");
       setNext("");
       setConfirm("");
     } else {
+      setBusy(false);
       setError(res.error ?? "Could not update your password.");
     }
   }
