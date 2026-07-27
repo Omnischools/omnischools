@@ -289,7 +289,12 @@ export const VLC_VALUES: readonly VlcValueDefault[] = [
   },
 ];
 
-/** Frozen editorial (descriptor / capstone) keyed by ordinal — attached to stored rows by the reader. */
+/**
+ * Frozen editorial (descriptor / capstone) keyed by ordinal — attached to stored rows by the reader.
+ * ordinal-keyed: safe only while add/reorder/remove are deferred (R291). When that lands a new or
+ * reordered value will mis-key/null its descriptor — at that point make descriptor/capstone stored
+ * columns or drop them.
+ */
 export const VLC_VALUE_BY_ORDINAL: ReadonlyMap<number, VlcValueDefault> = new Map(
   VLC_VALUES.map((v) => [v.ordinal, v]),
 );

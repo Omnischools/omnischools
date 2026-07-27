@@ -372,8 +372,12 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
       // lib/vlc/defaults, so a new Dean of Students inherits a ready, editable curriculum library and
       // never re-types it. Deliberately NO vlc_programme row — the cadence/phases stay null and
       // coalesce to the frozen Wednesday-2:30 defaults until the Dean configures (setup-data). Guarded
-      // to productLine SENIOR so a Basic school never gets a VLC library.
-      if (productLine === "SENIOR") {
+      // to schools carrying a SENIOR tier (pure SENIOR *or* COMBINED — productLine collapses COMBINED
+      // to BASIC, so check productRows, not productLine). This matches the /senior/vlc/setup page gate,
+      // which admits COMBINED; without it a COMBINED Dean lands on a permanently read-only library.
+      // (Unlike the SENIOR_F3 hook above, which correctly skips COMBINED — COMBINED runs the BASIC
+      // calendar and gets no F3 row.)
+      if (productRows.includes("SENIOR")) {
         const vlcValueRows = await tx
           .insert(vlcValue)
           .values(

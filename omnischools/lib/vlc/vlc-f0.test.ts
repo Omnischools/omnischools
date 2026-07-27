@@ -144,9 +144,12 @@ describe("VLC40-3/4 · the canonical 11 values + 22 session templates (counts DE
     const seed = src("db/seed/vlc.ts");
     expect(seed).toMatch(/VLC_VALUES/);
     expect(seed).toMatch(/vlcSessionTemplate/);
-    // onboarding seeds values + templates (NOT a programme row) for every SENIOR school
+    // onboarding seeds values + templates (NOT a programme row) for every school with a SENIOR tier.
+    // The guard is productRows.includes("SENIOR") — NOT productLine === "SENIOR", which collapses
+    // COMBINED to BASIC and would strand a COMBINED Dean on the read-only page the gate admits them to
+    // (Dex MED-1). The VLC insert block must sit under the productRows guard, ahead of vlcSessionTemplate.
     const onboard = src("lib/actions/onboarding.ts");
-    expect(onboard).toMatch(/productLine === "SENIOR"[\s\S]*vlcValue[\s\S]*vlcSessionTemplate/);
+    expect(onboard).toMatch(/productRows\.includes\("SENIOR"\)[\s\S]*vlcValue[\s\S]*vlcSessionTemplate/);
     expect(onboard).not.toMatch(/vlcProgramme/); // programme stays null until the Dean configures
   });
 });
