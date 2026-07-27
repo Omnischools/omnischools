@@ -159,6 +159,8 @@ BEGIN
     'vlc_peer_guide',
     'vlc_training',
     'vlc_training_absence',
+    'vlc_session',
+    'vlc_session_attendance',
     'announcement',
     'sms_template',
     'notification_log',

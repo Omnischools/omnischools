@@ -1,27 +1,16 @@
 /**
- * VLC Peer Guide eligibility (SHS module 4.5 / INCR-41) — PURE, DB-free, unit-tested. The ONE place a
- * `classes` row's SHS form (F1/F2/F3) is resolved for Peer Guide eligibility, so the rule that "Form 1
- * students receive, they don't lead" (R301) has a single source both the reader and the appoint action
- * read.
+ * VLC Peer Guide eligibility (SHS module 4.5 / INCR-41) — PURE, DB-free, unit-tested. The ONE place the
+ * rule that "Form 1 students receive, they don't lead" (R301) lives, so the reader and the appoint action
+ * read one source.
  *
- * `classFormNumber` mirrors the senior-tier form resolver already used across boarding
- * (lib/boarding/resumption-data · visiting-data · visiting-notify — the same `(?:Form|F)\s*([123])`
- * regex over `level` then `name`): the senior tier carries no structured form column, so the form is
- * derived from the class's `level` ("Form 2") with its `name` ("Form 2 General Arts A") as a fallback —
- * NEVER re-invented off free-text alone. Kept VLC-local rather than refactoring the three boarding copies
- * into a shared import (that cross-module extraction + its re-test is out of INCR-41 scope).
- * ponytail: one small duplicated regex vs touching three shipped boarding readers + their gates.
+ * The class-form resolution itself now lives in the shared senior resolver `@/lib/senior/form`
+ * (extracted at INCR-42a — build-plan L3151, the 4th copy folded in). `classFormNumber` is re-exported
+ * here so every INCR-41 caller (peer-guides-data, vlc-peer-guides actions, the seed, the tests) keeps
+ * importing it from `./eligibility` unchanged.
  */
+import { classFormNumber } from "@/lib/senior/form";
 
-/** Form number 1|2|3 from a class's `level` ("Form 2") then its `name`; null when neither carries one. */
-export function classFormNumber(
-  level: string | null | undefined,
-  name: string | null | undefined,
-): number | null {
-  const src = `${level ?? ""} ${name ?? ""}`;
-  const m = src.match(/(?:Form|F)\s*([123])/i);
-  return m ? Number(m[1]) : null;
-}
+export { classFormNumber };
 
 /**
  * Peer Guides are appointed only in Form 2 and Form 3 classes (R301). Form 1 — and any class whose form

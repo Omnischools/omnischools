@@ -17,6 +17,7 @@ import { schools } from "./tenancy";
 import { users } from "./identity";
 import { students, classes } from "./students";
 import { academicPeriod } from "./periods";
+import { attendanceStatusEnum } from "./_enums";
 
 /**
  * VLC F0 spine (SHS module 4.5 / INCR-40, migration 0065) — the configuration the whole Values &
@@ -142,10 +143,10 @@ export const vlcValue = pgTable(
  *
  * `value_id` is a composite (school_id, value_id) intra-tenant FK → vlc_value_tenant_uk, CASCADE — a
  * cross-tenant value reference is structurally impossible, and deleting a value drops its templates.
- * `tenant_uk UNIQUE(school_id, id)` is authored AHEAD here (nothing references it yet) for INCR-42's
- * vlc_session `(school_id, template_id)` FK — the 0056 sickbay_bed_tenant_uk "author the UK a
- * migration early" precedent — and it is INLINE, ahead of the FK ALTER, per the 0033 discipline.
- * (INCR-41 / Peer Guides builds NO vlc_session — that lands at INCR-42.)
+ * `tenant_uk UNIQUE(school_id, id)` was authored AHEAD (the 0056 sickbay_bed_tenant_uk "author the UK a
+ * migration early" precedent) and is now REALISED: it is the composite-FK target of `vlc_session`'s
+ * `(school_id, session_template_id)` FK, built below in THIS file (INCR-42a, migration 0067). It is
+ * INLINE, ahead of that FK ALTER, per the 0033 discipline.
  */
 export const vlcSessionTemplate = pgTable(
   "vlc_session_template",
@@ -169,7 +170,8 @@ export const vlcSessionTemplate = pgTable(
       t.valueId,
       t.slot,
     ),
-    // Authored-ahead composite-FK target for INCR-42's vlc_session. INLINE (the 0033 discipline).
+    // Composite-FK target for vlc_session.session_template_id (school_id, id) — realised below in this
+    // file (INCR-42a). INLINE, ahead of that FK ALTER (the 0033 discipline).
     tenantUk: unique("vlc_session_template_tenant_uk").on(t.schoolId, t.id),
     slotValid: check("vlc_session_template_slot_valid", sql`${t.slot} IN ('A', 'B')`),
     // Composite intra-tenant FK — a cross-tenant value reference is structurally impossible.
@@ -345,6 +347,145 @@ export const vlcTrainingAbsence = pgTable(
     peerGuideFk: foreignKey({
       columns: [t.schoolId, t.peerGuideId],
       foreignColumns: [vlcPeerGuide.schoolId, vlcPeerGuide.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * VLC Session register (SHS module 4.5 / INCR-42a, migration 0067) — the OPERATIONAL, SHOWN-audit
+ * Wednesday live-session register. TWO NEW tenant tables: `vlc_session` (the held-session instance, one
+ * per class×date) + `vlc_session_attendance` (present-by-default student P/L/A). This is the same audit
+ * class as `attendance` / `prep_attendance`: operational, NO pastoral PII, NO confidential machinery.
+ * The confidential pastoral graph (`vlc_pastoral_flag`, reflection/journal, PG-write path) is INCR-42b/43
+ * and OUT OF SCOPE here — 42a builds NO `vlc_pastoral_` table, NO reflection/journal, NO small-group or
+ * project-brief table, NO facilitation-points column.
+ *
+ * OWNER-LOCKED (2026-07-27, d): attendance writer = the session's-class Form Master, FM-only DB write
+ * ("PG-first" is a UI capture-order convention, NOT a student/PG write grant — no student or PG writes
+ * any 42a table). Enforced app-layer in lib/vlc/ (own-class), NOT a trigger.
+ *
+ * Both tables are tenant-scoped and get ENABLE + FORCE RLS + tenant_isolation (db:policies on dev;
+ * db/sql/prod-paste-0069-vlc-session-register.sql by hand on prod) and — via the catalog-driven loop in
+ * db/sql/policies.sql — parent_deny. Owner decision #4 LOCKED: a parent sees NOTHING VLC-wide, delivered
+ * structurally by the parent_deny catalog (FORCE-RLS + school_id, no parent_scope).
+ *
+ * DERIVED, NEVER STORED (R311/R312/R315): the lifecycle bar + agenda windows compute from the F0
+ * programme's session_start + the five frozen phase durations (the F0 endTime derivation); the "held"
+ * state = the row exists; the "auto-locked at 3:33" late-edit guard DERIVES from session_date + the
+ * programme window vs now. So there is deliberately NO started_at, NO phase/duration column, NO
+ * status/locked/closed, and NO present_count/attendance_rate/late_count summary — every one DERIVES.
+ * Cross-row validation (FM own-class write, auto-lock) is app-layer in lib/vlc/, never a DB trigger
+ * (portability).
+ * ==========================================================================*/
+
+/**
+ * The HELD-session instance — one row per (class × date). "Held" = this row exists (R312); there is no
+ * status/locked/closed column. `session_template_id` is a composite (school_id, session_template_id) FK →
+ * vlc_session_template.tenant_uk (CASCADE): the value and its slot A|B DERIVE THROUGH the template, so
+ * there is deliberately NO value_id column. `session_date` is a STORED date (not derived from a timestamp
+ * — the prep_attendance tz-boundary discipline). There is NO programme_id (the programme is a per-school
+ * singleton) and NO academic_period_id (it DERIVES from session_date). `held_by_user_id` is the
+ * single-column SET NULL users actor-stamp.
+ *
+ * `tenant_uk UNIQUE(school_id, id)` is carried INLINE in CREATE TABLE because it is the composite-FK
+ * TARGET of vlc_session_attendance's (school_id, session_id) FK created in the SAME migration (0067):
+ * the UNIQUE must exist before that ALTER ... ADD FOREIGN KEY (the 0033 ordering hazard). Composite
+ * (school_id, X) intra-tenant FKs to classes / vlc_session_template make a cross-tenant reference
+ * structurally impossible (CASCADE).
+ */
+export const vlcSession = pgTable(
+  "vlc_session",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull(), // composite (school_id, class_id) FK below
+    sessionTemplateId: uuid("session_template_id").notNull(), // composite (school_id, id) FK below — value+slot derive through it
+    sessionDate: date("session_date").notNull(), // stored date (not derived) — avoids the tz-boundary trap
+    // Global-table SET NULL → single column (exeat actor-stamp pattern).
+    heldByUserId: uuid("held_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for vlc_session_attendance.session_id (school_id, id). INLINE, ahead of that
+    // FK's ALTER in this same migration (the 0033 / sickbay-0057 ordering discipline).
+    tenantUk: unique("vlc_session_tenant_uk").on(t.schoolId, t.id),
+    // One held session per (class × date) — the natural key and the upsert conflict target. Its
+    // (school_id, class_id) prefix also serves the per-class session history read, so no separate index.
+    uniqPerClassDate: unique("uniq_vlc_session").on(t.schoolId, t.classId, t.sessionDate),
+    // Composite intra-tenant FKs — a cross-tenant class / template reference is structurally impossible.
+    classFk: foreignKey({
+      columns: [t.schoolId, t.classId],
+      foreignColumns: [classes.schoolId, classes.id],
+    }).onDelete("cascade"),
+    templateFk: foreignKey({
+      columns: [t.schoolId, t.sessionTemplateId],
+      foreignColumns: [vlcSessionTemplate.schoolId, vlcSessionTemplate.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * PRESENT-BY-DEFAULT student session-attendance log (the prep_attendance idiom) — one row ONLY for a
+ * student who was NOT present at the session. PRESENT is NEVER a row: present-by-default is the absence
+ * of a row (the parent vlc_session confirms the register was taken), so present = enrolled − ABSENT rows
+ * and the rate/counts all DERIVE (R315 — NO stored present_count/attendance_rate/late_count/status). LATE
+ * is a present sub-state, so `minutes_late` (nullable smallint, CHECK ≥ 0) is set for LATE. `status`
+ * REUSES the canonical 5-status attendanceStatusEnum (NOT a forked VLC enum) — capture surfaces P/L/A;
+ * E/M are storable-not-rejected so the M-not-A seam + a future Sickbay hook stay open, but 42a builds no
+ * such control. The "PG-gold marked first" highlight DERIVES from the INCR-41 roster — there is NO
+ * marked_by_pg column and NO PG on the row (R313).
+ *
+ * LEAF table: NO tenant UK (nothing references it). UNIQUE(school_id, session_id, student_id) is the
+ * upsert conflict target (re-marking the same student for the same session updates the one row, never a
+ * second); its (school_id, session_id) prefix also serves the per-session roster read, so no separate
+ * index. Composite (school_id, X) intra-tenant FKs to vlc_session / students keep both refs intra-tenant
+ * (CASCADE); the recorder stamp is the single-column SET NULL users FK. FM-only write (owner d) is
+ * enforced app-layer in lib/vlc/, not the DB.
+ */
+export const vlcSessionAttendance = pgTable(
+  "vlc_session_attendance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").notNull(), // composite (school_id, session_id) FK below
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
+    // Reuses the canonical 5-status attendance enum; capture surfaces P/L/A (E/M storable-not-rejected).
+    status: attendanceStatusEnum("status").notNull(),
+    minutesLate: smallint("minutes_late"), // nullable — set for LATE
+    note: text("note"),
+    // Global-table SET NULL → single column (exeat actor-stamp pattern).
+    recordedByUserId: uuid("recorded_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One attendance row per (session × student) — the upsert conflict target. Its (school_id, session_id)
+    // prefix also serves the per-session "who was not present" roster read, so no separate index.
+    uniqPerSessionStudent: unique("uniq_vlc_session_attendance").on(
+      t.schoolId,
+      t.sessionId,
+      t.studentId,
+    ),
+    minutesLateNonneg: check(
+      "vlc_session_attendance_minutes_late_nonneg",
+      sql`${t.minutesLate} >= 0`,
+    ),
+    // Composite intra-tenant FKs — a cross-tenant session / student reference is structurally impossible.
+    sessionFk: foreignKey({
+      columns: [t.schoolId, t.sessionId],
+      foreignColumns: [vlcSession.schoolId, vlcSession.id],
+    }).onDelete("cascade"),
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
     }).onDelete("cascade"),
   }),
 );

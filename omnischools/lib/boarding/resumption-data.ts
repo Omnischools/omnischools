@@ -24,6 +24,7 @@ import {
   schools,
 } from "@/db/schema";
 import { canAccessHouse } from "@/lib/access";
+import { classFormNumber } from "@/lib/senior/form";
 import { getCurrentPeriod } from "./period";
 import { isLightColour } from "./roster";
 import {
@@ -74,12 +75,6 @@ const fmtTime = (d: Date): string =>
     timeZone: "UTC",
   }).format(d);
 
-/** Form number (1|2|3) from the class level ("Form 2") else its name — null when neither carries one. */
-function formNumberOf(level: string | null, name: string | null): number | null {
-  const src = `${level ?? ""} ${name ?? ""}`;
-  const m = src.match(/(?:Form|F)\s*([123])/i);
-  return m ? Number(m[1]) : null;
-}
 /** Short form label "F2 GA" (form + programme abbreviation), else the class name, else "—". */
 function shortForm(form: number | null, programme: string | null, className: string | null): string {
   if (form && programme) return `F${form} ${PROGRAMME_ABBR[programme] ?? programme}`;
@@ -325,7 +320,7 @@ export async function getResumptionBoard(
 
     const boarders: BoarderRow[] = boarderRaw.map((b) => {
       const house = houseById.get(b.houseId!);
-      const form = formNumberOf(b.classLevel, b.className);
+      const form = classFormNumber(b.classLevel, b.className);
       const bunkAllocated = b.currentBunkId != null && b.bunkPos != null;
       return {
         studentId: b.studentId,

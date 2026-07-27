@@ -25,6 +25,7 @@ import {
   schools,
 } from "@/db/schema";
 import { canAccessHouse, hasAnyRole, BOARDING_SCHOOL_SCOPED_ROLES } from "@/lib/access";
+import { classFormNumber } from "@/lib/senior/form";
 import { getVisitingPolicy, getBoardingCalendar, type VisitingPolicy } from "./config";
 import { getCurrentPeriod } from "./period";
 import { isLightColour } from "./roster";
@@ -65,11 +66,6 @@ const initials = (first: string, last: string) =>
 const fmtTime = (d: Date): string =>
   new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" }).format(d);
 
-function formNumberOf(level: string | null, name: string | null): number | null {
-  const src = `${level ?? ""} ${name ?? ""}`;
-  const m = src.match(/(?:Form|F)\s*([123])/i);
-  return m ? Number(m[1]) : null;
-}
 function shortForm(form: number | null, programme: string | null, className: string | null): string {
   if (form && programme) return `F${form} ${PROGRAMME_ABBR[programme] ?? programme}`;
   if (form) return `F${form}`;
@@ -334,7 +330,7 @@ export async function getVisitingBoard(
       .orderBy(students.lastName);
 
     const boarders = boarderRaw.map((b) => {
-      const form = formNumberOf(b.classLevel, b.className);
+      const form = classFormNumber(b.classLevel, b.className);
       return {
         studentId: b.studentId,
         studentCode: b.studentCode,
