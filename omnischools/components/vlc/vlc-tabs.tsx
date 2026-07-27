@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/senior/vlc/setup", label: "Setup" },
   { href: "/senior/vlc/peer-guides", label: "Peer Guides" },
+  { href: "/senior/vlc/sessions", label: "Sessions" },
 ] as const;
 
 export function VlcTabs() {

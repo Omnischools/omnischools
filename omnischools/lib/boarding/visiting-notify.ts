@@ -28,6 +28,7 @@ import {
   schools,
 } from "@/db/schema";
 import { canAccessHouse } from "@/lib/access";
+import { classFormNumber } from "@/lib/senior/form";
 import { sendSms } from "@/lib/sms";
 import { insertInfraction } from "./discipline-core";
 import { isPastorallyFlagged } from "./pastoral-stub";
@@ -43,12 +44,6 @@ import {
 import type { CalendarEvent, VisitingPolicy } from "./config";
 
 const shortName = (first: string, last: string) => `${first.charAt(0)}. ${last}`;
-
-function formNumberOf(level: string | null, name: string | null): number | null {
-  const src = `${level ?? ""} ${name ?? ""}`;
-  const m = src.match(/(?:Form|F)\s*([123])/i);
-  return m ? Number(m[1]) : null;
-}
 
 async function primaryGuardianPhone(tx: Tx, schoolId: string, studentId: string): Promise<string | null> {
   const [g] = await tx
@@ -150,7 +145,7 @@ export async function sendCohortReminder(
     const body = cohortSms(kind, schoolName, fmtDate(event.date), policy.hoursStart, policy.hoursEnd);
     const phones = new Set<string>();
     for (const b of boarders) {
-      if (!formInScope(formNumberOf(b.classLevel, b.className), event.formScope)) continue;
+      if (!formInScope(classFormNumber(b.classLevel, b.className), event.formScope)) continue;
       const phone = await primaryGuardianPhone(tx, schoolId, b.studentId);
       if (phone) phones.add(phone);
     }

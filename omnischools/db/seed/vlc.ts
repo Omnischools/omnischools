@@ -9,6 +9,8 @@ import {
   students,
   vlcPeerGuide,
   vlcProgramme,
+  vlcSession,
+  vlcSessionAttendance,
   vlcSessionTemplate,
   vlcTraining,
   vlcTrainingAbsence,
@@ -223,6 +225,86 @@ async function main() {
     console.log(
       `✓ Seeded Peer Guides — ${pgRows.length} appointments, ${trainingRows.length} trainings.`,
     );
+  }
+
+  // ---- 5) Session register (INCR-42a) — one demo held session + a few P/L/A rows. ----
+  // Marker-scoped + re-run-safe: delete only THIS school's two new tables, child → parent
+  // (attendance → session). Sessions are FM-created (not provisioned at signup), so this is demo data
+  // only — present-by-default, so a row exists ONLY for a LATE/ABSENT student.
+  await db.delete(vlcSessionAttendance).where(eq(vlcSessionAttendance.schoolId, schoolId));
+  await db.delete(vlcSession).where(eq(vlcSession.schoolId, schoolId));
+
+  // The value/session to run: Value 7 (Patriotism) slot B — the surface's Service-project session — else
+  // any active template. The class: the first senior-form class that has students + a Form Master.
+  const [tpl] = await db
+    .select({ id: vlcSessionTemplate.id })
+    .from(vlcSessionTemplate)
+    .innerJoin(vlcValue, and(eq(vlcValue.schoolId, vlcSessionTemplate.schoolId), eq(vlcValue.id, vlcSessionTemplate.valueId)))
+    .where(and(eq(vlcSessionTemplate.schoolId, schoolId), eq(vlcValue.ordinal, 7), eq(vlcSessionTemplate.slot, "B")))
+    .limit(1);
+  const [anyTpl] = tpl
+    ? [tpl]
+    : await db
+        .select({ id: vlcSessionTemplate.id })
+        .from(vlcSessionTemplate)
+        .where(eq(vlcSessionTemplate.schoolId, schoolId))
+        .limit(1);
+
+  const sessionClassRows = await db
+    .select({ id: classes.id, name: classes.name, level: classes.level, ct: classes.classTeacherUserId })
+    .from(classes)
+    .where(eq(classes.schoolId, schoolId));
+  const sessionStudents = await db
+    .select({ id: students.id, classId: students.classId })
+    .from(students)
+    .where(and(eq(students.schoolId, schoolId), eq(students.status, "ACTIVE")));
+  const targetClass = sessionClassRows.find(
+    (c) => classFormNumber(c.level, c.name) !== null && sessionStudents.some((s) => s.classId === c.id),
+  );
+
+  if (anyTpl && targetClass) {
+    const today = new Date().toISOString().slice(0, 10);
+    const [session] = await db
+      .insert(vlcSession)
+      .values({
+        schoolId,
+        classId: targetClass.id,
+        sessionTemplateId: anyTpl.id,
+        sessionDate: today,
+        heldByUserId: targetClass.ct ?? undefined,
+      })
+      .returning({ id: vlcSession.id });
+    // Present-by-default: mark the first 2 in-class students LATE + the next 4 ABSENT (the rest present).
+    const inClass = sessionStudents.filter((s) => s.classId === targetClass.id);
+    const rows = [
+      ...inClass.slice(0, 2).map((s) => ({ studentId: s.id, status: "LATE" as const, minutesLate: 5 })),
+      ...inClass.slice(2, 6).map((s) => ({ studentId: s.id, status: "ABSENT" as const, minutesLate: null })),
+    ];
+    if (rows.length) {
+      await db.insert(vlcSessionAttendance).values(
+        rows.map((r) => ({
+          schoolId,
+          sessionId: session.id,
+          studentId: r.studentId,
+          status: r.status,
+          minutesLate: r.minutesLate ?? undefined,
+        })),
+      );
+    }
+    await db.insert(auditLog).values({
+      schoolId,
+      actorRole: "ADMIN",
+      actionType: "created",
+      entityType: "vlc_session",
+      entityId: session.id,
+      afterState: { classId: targetClass.id, sessionDate: today, notPresentRows: rows.length },
+      reason: "VLC session register demo seed (INCR-42a)",
+    });
+    console.log(
+      `✓ Seeded VLC session — ${targetClass.name} on ${today}, ${rows.length} not-present rows (present-by-default).`,
+    );
+  } else {
+    console.log("… no eligible class with students / no session template — VLC session skipped.");
   }
 }
 

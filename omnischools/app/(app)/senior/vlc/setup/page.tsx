@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { requireSchoolRole } from "@/lib/auth/server";
-import { getCurrentUser } from "@/lib/auth";
 import { hasAnyRole, VLC_CONFIG_READ_ROLES, VLC_CONFIG_WRITE_ROLES } from "@/lib/access";
 import { getVlcSetup } from "@/lib/vlc/setup-data";
 import { VLC_TERM_ARCS } from "@/lib/vlc/defaults";
@@ -25,9 +24,7 @@ export default async function VlcSetupPage() {
   const { school, user } = await requireSchoolRole(VLC_CONFIG_READ_ROLES);
   if (school.schoolType === "BASIC") redirect("/dashboard");
 
-  const current = await getCurrentUser();
-  const roles = current?.roles ?? user.roles;
-  const canEdit = hasAnyRole(roles, VLC_CONFIG_WRITE_ROLES);
+  const canEdit = hasAnyRole(user.roles, VLC_CONFIG_WRITE_ROLES);
 
   const setup = await getVlcSetup(school.id);
   const valuesByGroup = (g: number) => setup.values.filter((v) => v.termGroup === g);

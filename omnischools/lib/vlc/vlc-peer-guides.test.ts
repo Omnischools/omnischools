@@ -118,6 +118,14 @@ describe("VLC41-8/9 · append-only vacate + fill", () => {
 // ── VLC41-5/11 · no derived-duplicate scalars on the roster or the training ──────────────────────
 describe("VLC41-5/11 · the schema stores no derivable / status column", () => {
   const schema = stripComments(src("db/schema/vlc.ts"));
+  // Scope to the INCR-41 tables only (vlc_peer_guide → the INCR-42a tables that follow). INCR-42a
+  // legitimately adds a status-bearing vlc_session_attendance ("attendance"-named, reusing the canonical
+  // attendance_status enum, R313) to the SAME file — so this INCR-41 invariant is asserted against the
+  // INCR-41 block, not the whole vlc.ts (a scope reconciliation, not a gutting).
+  const incr41Schema = schema.slice(
+    schema.indexOf("export const vlcPeerGuide ="),
+    schema.indexOf("export const vlcSession ="),
+  );
   it("no stored status / count / gender-balance / slot-gender / training-complete on the PG table", () => {
     for (const forbidden of [
       "slot_gender",
@@ -132,12 +140,12 @@ describe("VLC41-5/11 · the schema stores no derivable / status column", () => {
       '"status"',
       "status:",
     ]) {
-      expect(schema, `vlc.ts must not carry ${forbidden}`).not.toContain(forbidden);
+      expect(incr41Schema, `the INCR-41 tables must not carry ${forbidden}`).not.toContain(forbidden);
     }
   });
   it("vlc_training stores no attendance / % / status / count", () => {
     for (const forbidden of ["attendance", "percent", "present_count", "presentCount", "attended"]) {
-      expect(schema, `vlc_training must not carry ${forbidden}`).not.toContain(forbidden);
+      expect(incr41Schema, `vlc_training must not carry ${forbidden}`).not.toContain(forbidden);
     }
   });
 });
@@ -208,7 +216,7 @@ describe("VLC41-15 · read gate", () => {
     const page = src("app/(app)/senior/vlc/peer-guides/page.tsx");
     expect(page).toMatch(/requireSchoolRole\(VLC_CONFIG_READ_ROLES\)/);
     expect(page).toMatch(/schoolType === "BASIC"[\s\S]*redirect\("\/dashboard"\)/);
-    expect(page).toMatch(/hasAnyRole\(roles,\s*VLC_CONFIG_WRITE_ROLES\)/);
+    expect(page).toMatch(/hasAnyRole\(user\.roles,\s*VLC_CONFIG_WRITE_ROLES\)/);
   });
   it("the VLC layout gates the shared sub-nav to the read group", () => {
     const layout = src("app/(app)/senior/vlc/layout.tsx");

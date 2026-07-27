@@ -119,6 +119,12 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   "vlc_peer_guide", // appointment roster row (student × class × period, ended_at open-row)
   "vlc_training", // Dean-authored training event (title/date/duration)
   "vlc_training_absence", // present-by-default training-attendance row (excused/note)
+  // — VLC Session register (SHS module 4.5 / INCR-42a) — the OPERATIONAL Wednesday live-session register,
+  // the same audit class as attendance / prep_attendance. NO pastoral PII (the confidential
+  // vlc_pastoral_flag is INCR-42b). Neither uses the reserved `vlc_pastoral_` prefix, so both MUST be
+  // listed here or the classify-at-creation guard fails the build (R316). —
+  "vlc_session", // held-session instance (one per class × date; "held" = the row exists)
+  "vlc_session_attendance", // present-by-default student P/L/A row (minutes_late/note)
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker
