@@ -34,6 +34,11 @@ export const KNOWN_APP_ROLES = [
   "ACCOUNTANT",
   "DEAN_OF_BOARDING",
   "MATRON",
+  // INCR-40 (Module 4.5 / VLC F0) — DEAN_OF_STUDENTS: the Values Learning Communities config owner
+  // (writes the programme, cadence, values & prompts; Headmaster reads). Appended (no reshuffle);
+  // a free-text ref_role.code, NOT an appRoleEnum member (see db/schema/_enums.ts). Rank-1 by
+  // default (rankOf), inert in every access group except VLC_CONFIG_*_ROLES.
+  "DEAN_OF_STUDENTS",
 ] as const;
 export type KnownAppRole = (typeof KNOWN_APP_ROLES)[number];
 export type AppRole = KnownAppRole | (string & {});

@@ -105,6 +105,12 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   "mock_exam", // mock-exam DEFINITION (the exam, not a result); mock results are redacted
   // NB: readiness_statement is REDACTED (its `after` carries a projected aggregate+band — mark-adjacent).
   "university_target", // student's university target (programme + rank; no band/aggregate — guidance, not a mark)
+  // — VLC config spine (SHS module 4.5 / INCR-40) — operational config, NO pastoral PII (all three are
+  // the programme cadence, the value list, and the session prompts). The pastoral graph (journal /
+  // flags) lands at INCR-42/43 as a `vlc_pastoral_*` REDACTED family; these three are SHOWN. —
+  "vlc_programme", // cadence + phase durations config
+  "vlc_value", // taught-value name (EN/Twi) + term group
+  "vlc_session_template", // per-value session title/prompt (curriculum copy, no student data)
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker

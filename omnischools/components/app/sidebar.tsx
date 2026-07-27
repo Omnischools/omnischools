@@ -22,6 +22,7 @@ import {
   Award,
   Target,
   HeartPulse,
+  HeartHandshake,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ import {
   BOARDING_ROLES,
   WASSCE_SETUP_ROLES,
   SICKBAY_ROLES,
+  VLC_CONFIG_READ_ROLES,
 } from "@/lib/access";
 
 const NAV: { href: string; label: string; Icon: LucideIcon }[] = [
@@ -104,6 +106,16 @@ const SENIOR_ITEMS = [
     label: "Sickbay",
     Icon: HeartPulse,
     roles: SICKBAY_ROLES,
+  },
+  {
+    // VLC — Values Learning Communities (INCR-40 config spine). Label is "Student support", NEVER
+    // "Pastoral" (repo/README convention: "pastoral" is editorial/CSS only, never a nav label). Gated
+    // to the VLC read group (Dean / Admin / Headmaster / Form Master); flat + role-gated like its
+    // siblings, so no sub-nav and no `NEW` badge.
+    href: "/senior/vlc/setup",
+    label: "Student support",
+    Icon: HeartHandshake,
+    roles: VLC_CONFIG_READ_ROLES,
   },
 ];
 
