@@ -14,7 +14,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  * `/senior/vlc/sessions/[classId]/[date]` — the VLC live-session register (SHS module 4.5 / INCR-42a):
  * the derived 5-phase clock, the facilitator strip, the value focus banner, the two PG-led small groups,
  * the P/L/A attendance grid and the phase agenda. READ = VLC_CONFIG_READ_ROLES (operational, SHOWN);
- * WRITE = the class's own Form Master (∥ Dean ∥ Admin) — `canWriteSession`. Everything DERIVES; nothing
+ * WRITE = the class's own Form Master ONLY (FM-only, owner d) — `canWriteSession`. Everything DERIVES; nothing
  * pastoral is surfaced (the flag callout / reflection meter / PG points are INCR-42b/43, omitted-not-faked).
  */
 export default async function VlcSessionRegisterPage({
@@ -59,7 +59,7 @@ export default async function VlcSessionRegisterPage({
               <OpenSessionForm classId={classId} date={date} templates={view.templates} />
             ) : (
               <p className="text-[13px] italic text-navy-3">
-                Only the class Form Master (or the Dean of Students) can open this session.
+                Only the class Form Master can open this session.
               </p>
             )}
           </div>

@@ -155,14 +155,16 @@ describe("VLC42a-8 · vlc_session_attendance FKs + upsert key", () => {
 });
 
 // ── VLC42a-9 · FM-only write (own-class), everyone else refused ────────────────────────────────────
-describe("VLC42a-9 · canWriteSession = own-class Form Master ∥ Dean ∥ Admin", () => {
+describe("VLC42a-9 · canWriteSession = own-class Form Master ONLY (FM-only, owner d)", () => {
   it("the own-class Form Master writes; a different class's FM does not", () => {
     expect(canWriteSession({ roles: ["FORM_MASTER"], userId: "u1", classTeacherUserId: "u1" })).toBe(true);
     expect(canWriteSession({ roles: ["FORM_MASTER"], userId: "u1", classTeacherUserId: "u2" })).toBe(false);
   });
-  it("Dean / Admin write any class (school-wide fallback)", () => {
-    expect(canWriteSession({ roles: ["DEAN_OF_STUDENTS"], userId: "u1", classTeacherUserId: "u2" })).toBe(true);
-    expect(canWriteSession({ roles: ["ADMIN"], userId: "u1", classTeacherUserId: "u2" })).toBe(true);
+  it("Dean / Admin do NOT get a school-wide write (owner d = FM-only; they READ, and a break-glass widen is a later opt-in)", () => {
+    expect(canWriteSession({ roles: ["DEAN_OF_STUDENTS"], userId: "u1", classTeacherUserId: "u2" })).toBe(false);
+    expect(canWriteSession({ roles: ["ADMIN"], userId: "u1", classTeacherUserId: "u2" })).toBe(false);
+    // being the class's assigned teacher IS being its FM — a Dean who also holds the class writes that class
+    expect(canWriteSession({ roles: ["DEAN_OF_STUDENTS"], userId: "u1", classTeacherUserId: "u1" })).toBe(true);
   });
   it("Headmaster (read-only), a student, a Peer Guide and a null user are refused", () => {
     expect(canWriteSession({ roles: ["HEADMASTER"], userId: "u1", classTeacherUserId: "u2" })).toBe(false);

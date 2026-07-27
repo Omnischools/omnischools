@@ -2,9 +2,10 @@
 /**
  * VLC Session register mutations (SHS module 4.5 / INCR-42a · the Wednesday live-session register).
  *
- * Owner-locked (d): the writer is the session's-class **Form Master, own-class** (Dean/Admin as a
- * school-wide fallback) — enforced server-side via `canWriteSession` (lib/vlc/authz) on EVERY action, so
- * a student, a Peer Guide, a Headmaster (read-only), or the Form Master of a DIFFERENT class is refused
+ * Owner-locked (d): the writer is the session's-class **Form Master, own-class ONLY** (no Dean/Admin
+ * write in 42a — loosening later is safe) — enforced server-side via `canWriteSession` (lib/vlc/authz) on
+ * EVERY action, so a student, a Peer Guide, a Dean, an Admin, a Headmaster (read-only), or the Form Master
+ * of a DIFFERENT class is refused
  * before a single row is touched, including a hand-crafted POST that never rendered the UI. "PG-first" is
  * a UI capture-ORDER convention, NOT a write grant. Each write records one audit row (entityType
  * vlc_session / vlc_session_attendance — both SHOWN, no pastoral PII, R316).
@@ -49,7 +50,7 @@ const PROGRAMME_COLS = {
   configuredAt: vlcProgramme.configuredAt,
 } as const;
 
-/** The own-class Form Master (∥ Dean ∥ Admin) write check, re-run inside the tenant scope on every write. */
+/** The own-class Form Master write check (FM-only, owner d), re-run inside the tenant scope on every write. */
 async function mayWrite(
   tx: Tx,
   schoolId: string,

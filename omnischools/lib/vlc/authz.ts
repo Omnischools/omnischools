@@ -3,26 +3,27 @@
  * page (for `canEdit`) and every session server action (as the real boundary) both import from here so
  * the write scope cannot drift between the UI and the mutation.
  *
- * The session-register writer diverges from the roster's Dean/Admin write (owner decision d, INCR-42a):
- * the attendance/register writer is the session's-class **Form Master, own-class** — the FM whose user id
- * is the class's `class_teacher_user_id` — with Dean/Admin as a school-wide fallback. "PG-first" is a UI
- * capture-order convention, NOT a write grant: no student or PG writes any 42a table. This mirrors
- * `canAccessHouse` exactly (school-scoped roles reach any unit; else an own-unit id match).
+ * Owner decision (d), INCR-42a: the session-register writer is the session's-class **Form Master,
+ * own-class ONLY** — the user whose id is the class's `class_teacher_user_id`. There is NO Dean/Admin/HM
+ * school-wide write in 42a ("no break-glass co-writer; loosening later is safe" — owner). Dean/Admin/HM
+ * still READ via VLC_CONFIG_READ_ROLES. "PG-first" is a UI capture-order convention, NOT a write grant:
+ * no student or Peer Guide writes any 42a table.
  */
-import { hasAnyRole, VLC_CONFIG_WRITE_ROLES } from "@/lib/access";
 
 /**
- * True when the user may WRITE the given class's session register (open it, mark P/L/A). Dean/Admin
- * (`VLC_CONFIG_WRITE_ROLES`) write any class as the school-wide fallback; otherwise the ONLY writer is
- * the class's own Form Master — the user assigned as its `class_teacher_user_id`. A Form Master of a
- * DIFFERENT class, a Headmaster (read-only), a student, a Peer Guide, or any other role is refused.
+ * True when the user may WRITE the given class's session register (open it, mark P/L/A): ONLY the class's
+ * own Form Master — the user assigned as its `class_teacher_user_id`. A Form Master of a DIFFERENT class,
+ * a Dean of Students, an Admin, a Headmaster (read-only), a student, or a Peer Guide is refused.
+ *
+ * `roles` is accepted but unused today: the owner anticipated a later break-glass widen (a Dean/Admin
+ * co-writer), so keeping it on the signature makes that a one-line change here without re-threading
+ * every caller. Until then, write is purely the own-class identity match.
  */
 export function canWriteSession(input: {
   roles: readonly string[];
   userId: string | null | undefined;
   classTeacherUserId: string | null | undefined;
 }): boolean {
-  if (hasAnyRole(input.roles, VLC_CONFIG_WRITE_ROLES)) return true; // Dean / Admin — school-wide
   return (
     !!input.userId &&
     !!input.classTeacherUserId &&
