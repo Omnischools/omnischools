@@ -14,7 +14,7 @@
  * A missing current period → an empty, coherent view (the page renders the empty state, never a throw).
  */
 import "server-only";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import { getCurrentPeriod } from "@/lib/boarding/period";
 import {
@@ -261,7 +261,7 @@ export async function getPeerGuides(schoolId: string): Promise<PeerGuidesView> {
             studentId: a.studentId,
             name: `${a.firstName} ${a.lastName}`,
             initials: initialsOf(a.firstName, a.lastName),
-            sex: a.sex as "MALE" | "FEMALE",
+            sex: a.sex,
             rep,
             roleLabel: `${rep === "boy" ? "Boys'" : "Girls'"} rep${form ? ` · F${form}` : ""}`,
           };
@@ -293,7 +293,7 @@ export async function getPeerGuides(schoolId: string): Promise<PeerGuidesView> {
                 .map((s) => ({
                   studentId: s.id,
                   name: `${s.firstName} ${s.lastName}`,
-                  sex: s.sex as "MALE" | "FEMALE",
+                  sex: s.sex,
                 }))
             : [],
         };
@@ -329,6 +329,11 @@ export async function getPeerGuides(schoolId: string): Promise<PeerGuidesView> {
           ? "NEXT"
           : "FUTURE";
       const absentIds = absencesByTraining.get(t.id) ?? [];
+      // ponytail: the denominator is the CURRENT active-PG count, not the roster as-of the training
+      // date — a PG appointed/ended after a past training skews that training's present/total (and can
+      // disagree with the attendance modal, which iterates current active PGs). Fine for a display %
+      // (roster is stable within a semester; F3 roll-off lands at the period boundary = new period).
+      // Upgrade: snapshot the active-PG set per training, or count active-as-of scheduled_date.
       const present = isPast ? Math.max(0, activeCount - absentIds.length) : null;
       const pct = isPast && activeCount > 0 ? Math.round((present! / activeCount) * 100) : null;
       const attendanceLabel = isPast

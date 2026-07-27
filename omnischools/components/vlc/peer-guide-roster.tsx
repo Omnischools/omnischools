@@ -255,7 +255,7 @@ function SlotCard({
   onAppoint: () => void;
   onEnd: (t: { slot: PeerGuideSlot; className: string }) => void;
 }) {
-  const empties = Math.max(0, 2 - c.slots.length);
+  const empties = c.openSlots;
   return (
     <div
       className={`rounded-[10px] border p-4 ${c.vacancy ? "border-terra bg-terra-bg" : "border-border bg-surface"}`}

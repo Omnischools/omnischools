@@ -294,8 +294,9 @@ export async function recordTrainingAbsence(input: unknown): Promise<Result> {
   try {
     await withSchool(gate.schoolId, async (tx) => {
       if (present) {
-        // Mark present = remove the absence row (present is the absence of a row).
-        await tx
+        // Mark present = remove the absence row (present is the absence of a row). Only audit when a
+        // row actually existed — re-marking an already-present PG is a no-op, not a state change.
+        const removed = await tx
           .delete(vlcTrainingAbsence)
           .where(
             and(
@@ -303,17 +304,20 @@ export async function recordTrainingAbsence(input: unknown): Promise<Result> {
               eq(vlcTrainingAbsence.trainingId, trainingId),
               eq(vlcTrainingAbsence.peerGuideId, peerGuideId),
             ),
-          );
-        await recordAudit(tx, {
-          schoolId: gate.schoolId,
-          actorUserId: gate.actor.id ?? undefined,
-          actorRole: gate.actor.role,
-          actionType: "deleted",
-          entityType: "vlc_training_absence",
-          entityId: trainingId,
-          after: { peerGuideId, present: true },
-          reason: "Peer Guide marked present at training",
-        });
+          )
+          .returning({ id: vlcTrainingAbsence.id });
+        if (removed.length > 0) {
+          await recordAudit(tx, {
+            schoolId: gate.schoolId,
+            actorUserId: gate.actor.id ?? undefined,
+            actorRole: gate.actor.role,
+            actionType: "deleted",
+            entityType: "vlc_training_absence",
+            entityId: trainingId,
+            after: { peerGuideId, present: true },
+            reason: "Peer Guide marked present at training",
+          });
+        }
         return;
       }
       await tx
