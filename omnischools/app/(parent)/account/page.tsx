@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireParent } from "@/lib/auth/server";
+import { getSessionId } from "@/lib/auth";
 import { loadParentPortal } from "@/lib/parent/parent-portal-data";
 import { relationshipLabel } from "@/lib/wassce/parent-copy";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
@@ -15,6 +16,9 @@ export const dynamic = "force-dynamic";
 
 export default async function ParentAccountPage() {
   const { user, school } = await requireParent();
+  // INCR-39: pass the pre-change session for the offline-buffer re-key (harmless no-op for a parent
+  // with no ledger buffer, but keeps the form's contract identical across both hosts).
+  const sessionId = await getSessionId();
   const data = await loadParentPortal(school.id, user.id);
   const child = data.children[0] ?? null;
   const guardianDisplay = data.guardianName ?? user.name ?? "Parent";
@@ -41,7 +45,7 @@ export default async function ParentAccountPage() {
             Update the password you use to sign in. You can also sign in with a one-time code sent to
             your phone.
           </p>
-          <ChangePasswordForm />
+          <ChangePasswordForm sessionId={sessionId} />
         </section>
       </div>
     </div>

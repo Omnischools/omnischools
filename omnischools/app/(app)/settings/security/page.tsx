@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
+import { getSessionId } from "@/lib/auth";
 import { withSchool } from "@/lib/db/rls";
 import { schools } from "@/db/schema";
 import { SecurityForm } from "@/components/settings/security-form";
@@ -11,6 +12,9 @@ export const metadata = { title: "Login & security" };
 
 export default async function SecurityPage() {
   const { school } = await requireSchool();
+  // INCR-39: hand the form the PRE-change session so it can re-key this user's offline buffer after
+  // the R264 re-auth rotates it.
+  const sessionId = await getSessionId();
   const [row] = await withSchool(school.id, (tx) =>
     tx
       .select({ require2fa: schools.require2fa, sessionHours: schools.sessionHours })
@@ -35,7 +39,7 @@ export default async function SecurityPage() {
           Update the password you use to sign in. You can also sign in with a one-time code sent to
           your phone.
         </p>
-        <ChangePasswordForm />
+        <ChangePasswordForm sessionId={sessionId} />
       </section>
 
       <SecurityForm
