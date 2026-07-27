@@ -19,6 +19,12 @@ describe("INCR-38 · OTP existence gate — no auto-provisioning for unknown pho
     expect(body.indexOf("phoneIsRegistered")).toBeLessThan(body.indexOf("signInWithOtp"));
     // enumeration-safe: an unknown phone returns the SAME { ok: true } (no error, no code sent)
     expect(body).toContain("if (!(await phoneIsRegistered(normalized))) return { ok: true }");
+    // Sarah BLOCK fix — the SEND path is neutral-always too: a registered phone's signInWithOtp error
+    // (e.g. a rate-limit) is SWALLOWED, not returned, so it can't be the only path that yields {ok:false}
+    // (which would re-open the oracle). No `{ ok: false }` after the send.
+    const sendTail = body.slice(body.indexOf("signInWithOtp"));
+    expect(sendTail).not.toContain("ok: false");
+    expect(sendTail).toContain("swallowed for enumeration-safety");
   });
 
   it("phoneIsRegistered reads ref_user under withoutTenantScope (pre-tenant identity)", () => {

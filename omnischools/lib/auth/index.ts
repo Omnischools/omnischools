@@ -174,7 +174,12 @@ export async function signInWithPhone(
   // their first OTP still creates + links their account normally.
   if (!(await phoneIsRegistered(normalized))) return { ok: true };
   const { error } = await (await authApi()).signInWithOtp({ phone: normalized });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  // Enumeration-safety (Sarah, INCR-38): an unknown phone never reaches GoTrue (can't rate-limit), so a
+  // REGISTERED phone must NOT be the only one able to return {ok:false} — that asymmetry is an existence
+  // oracle (a target that ever rate-limits is registered). Swallow + log server-side; return the SAME
+  // {ok:true}. ponytail: neutral-always, mirrors requestPasswordReset R273; also flattens the timing tell.
+  if (error) console.error("[auth] OTP send error (swallowed for enumeration-safety):", error.message);
+  return { ok: true };
 }
 
 /** INCR-38 — does this NORMALIZED phone already have an account? Pre-tenant identity read (bypass RLS). */
