@@ -177,6 +177,27 @@ export const SICKBAY_RECON_READ_ROLES = [
   "MATRON",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * VLC — Values Learning Communities (SHS module 4.5 / INCR-40) — the config spine's two gates,
+ * mirroring the boarding "Dean writes, Headmaster reads" shape. WRITE (programme cadence, phase
+ * durations, value names, session prompts) = DEAN_OF_STUDENTS + ADMIN. READ (the setup surface,
+ * read-only for HM/FM) = the write pair + HEADMASTER + FORM_MASTER.
+ *
+ * DEAN_OF_STUDENTS is INERT everywhere else: it appears in NO other group, so `rankOf` returns 1
+ * (any other staff role) and a Dean can never mint an ADMIN/HEADMASTER/PROPRIETOR (`canGrantRole`).
+ * `as const satisfies readonly KnownAppRole[]` makes a typo'd code a compile error.
+ */
+export const VLC_CONFIG_WRITE_ROLES = [
+  "DEAN_OF_STUDENTS",
+  "ADMIN",
+] as const satisfies readonly KnownAppRole[];
+export const VLC_CONFIG_READ_ROLES = [
+  "DEAN_OF_STUDENTS",
+  "ADMIN",
+  "HEADMASTER",
+  "FORM_MASTER",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",

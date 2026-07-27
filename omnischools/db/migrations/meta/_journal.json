@@ -456,6 +456,13 @@
       "when": 1785096256594,
       "tag": "0064_thin_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1785135293673,
+      "tag": "0065_light_james_howlett",
+      "breakpoints": true
     }
   ]
 }

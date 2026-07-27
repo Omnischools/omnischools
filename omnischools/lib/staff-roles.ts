@@ -22,6 +22,9 @@ export const STAFF_ROLES = [
   { code: "HOUSEMASTER", label: "Housemaster" },
   { code: "DEAN_OF_BOARDING", label: "Dean of Boarding" },
   { code: "MATRON", label: "Matron" },
+  // INCR-40 (VLC F0) — assignable (unlike PROPRIETOR): a school appoints a Dean of Students who owns
+  // the Values Learning Communities config surface.
+  { code: "DEAN_OF_STUDENTS", label: "Dean of Students" },
 ] as const satisfies ReadonlyArray<{ code: AppRole; label: string }>;
 
 export type StaffRoleCode = (typeof STAFF_ROLES)[number]["code"];

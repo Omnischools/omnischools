@@ -21,6 +21,7 @@ export * from "./gradebook";
 export * from "./score-ledger";
 export * from "./wassce";
 export * from "./sickbay";
+export * from "./vlc";
 export * from "./timetable";
 export * from "./comms";
 export * from "./inbox";

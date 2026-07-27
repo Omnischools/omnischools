@@ -33,7 +33,10 @@ import {
   feeStructures,
   feeStructureItems,
   invites,
+  vlcValue,
+  vlcSessionTemplate,
 } from "@/db/schema";
+import { VLC_VALUES } from "@/lib/vlc/defaults";
 
 const FOUNDER_EMAIL = "hello@omnischools.gh";
 
@@ -362,6 +365,39 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
             productLine: "SENIOR_F3",
           });
         }
+      }
+
+      // VLC F0 provisioning (INCR-40 / repo memory `onboarding-inputs-cascade`): every SENIOR/COMBINED
+      // school opens with the canonical 11 values + 22 session templates already seeded from
+      // lib/vlc/defaults, so a new Dean of Students inherits a ready, editable curriculum library and
+      // never re-types it. Deliberately NO vlc_programme row — the cadence/phases stay null and
+      // coalesce to the frozen Wednesday-2:30 defaults until the Dean configures (setup-data). Guarded
+      // to productLine SENIOR so a Basic school never gets a VLC library.
+      if (productLine === "SENIOR") {
+        const vlcValueRows = await tx
+          .insert(vlcValue)
+          .values(
+            VLC_VALUES.map((v) => ({
+              schoolId: school.id,
+              ordinal: v.ordinal,
+              nameEn: v.nameEn,
+              nameTwi: v.nameTwi,
+              termGroup: v.termGroup,
+            })),
+          )
+          .returning({ id: vlcValue.id, ordinal: vlcValue.ordinal });
+        const vlcIdByOrdinal = new Map(vlcValueRows.map((r) => [r.ordinal, r.id]));
+        await tx.insert(vlcSessionTemplate).values(
+          VLC_VALUES.flatMap((v) =>
+            v.sessions.map((s) => ({
+              schoolId: school.id,
+              valueId: vlcIdByOrdinal.get(v.ordinal)!,
+              slot: s.slot,
+              title: s.title,
+              prompt: s.prompt,
+            })),
+          ),
+        );
       }
 
       // grade scale — wizard rows, else the tier preset. Ordered highest-first.

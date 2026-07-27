@@ -27,6 +27,7 @@
     "db:seed-visiting": "tsx db/seed/boarding-visiting.ts",
     "db:seed-discipline": "tsx db/seed/boarding-discipline.ts",
     "db:seed-sickbay": "tsx db/seed/sickbay.ts",
+    "db:seed-vlc": "tsx db/seed/vlc.ts",
     "db:seed-sickbay-chronic": "tsx db/seed/sickbay-chronic.ts",
     "db:seed-medication": "tsx db/seed/sickbay-medication.ts",
     "db:seed-sickbay-notify": "tsx db/seed/sickbay-notify.ts",
