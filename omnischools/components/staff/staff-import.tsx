@@ -77,7 +77,8 @@ export function StaffImport({ schoolName }: { schoolName?: string }) {
     setBusy(false);
     if (res.ok) {
       const inv = invite && res.invited ? ` · ${res.invited} invited` : "";
-      setDone(`Added ${res.created} staff member${res.created === 1 ? "" : "s"}${inv}.`);
+      const skip = res.skipped ? ` · ${res.skipped} skipped (role above your level)` : "";
+      setDone(`Added ${res.created} staff member${res.created === 1 ? "" : "s"}${inv}${skip}.`);
       setRows([]);
       setSummary(null);
       setFileName(null);

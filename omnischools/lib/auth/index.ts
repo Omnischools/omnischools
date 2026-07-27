@@ -166,8 +166,30 @@ export async function signInWithPhone(
     console.info(`[auth:dev] OTP requested for ${normalized} (bypass enabled)`);
     return { ok: true };
   }
+  // INCR-38 — send an OTP ONLY to a phone that already has an account (a `ref_user` row). An unknown
+  // phone would otherwise auto-provision a Supabase user (`signInWithOtp`'s `shouldCreateUser` default) —
+  // a spam / junk-account vector (Sarah's L3 follow-up). ENUMERATION-SAFE: return the SAME `{ ok: true }`
+  // for an unknown phone (the caller still advances to the code step; no code is ever sent), so there is
+  // no known-vs-unknown oracle. A legitimate `ref_user` with no Supabase account yet IS "known" here, so
+  // their first OTP still creates + links their account normally.
+  if (!(await phoneIsRegistered(normalized))) return { ok: true };
   const { error } = await (await authApi()).signInWithOtp({ phone: normalized });
   return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/** INCR-38 — does this NORMALIZED phone already have an account? Pre-tenant identity read (bypass RLS). */
+async function phoneIsRegistered(normalizedPhone: string): Promise<boolean> {
+  const { withoutTenantScope } = await import("@/lib/db/rls");
+  const { users } = await import("@/db/schema");
+  const { eq } = await import("drizzle-orm");
+  return withoutTenantScope(async (tx) => {
+    const [u] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.phone, normalizedPhone))
+      .limit(1);
+    return !!u;
+  });
 }
 
 /** Verify a phone-OTP code; establishes the session cookie in live mode. */
