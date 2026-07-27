@@ -6,6 +6,7 @@ import { getVlcSetup } from "@/lib/vlc/setup-data";
 import { VLC_TERM_ARCS } from "@/lib/vlc/defaults";
 import { RhythmEditor } from "@/components/vlc/rhythm-editor";
 import { CurriculumLibrary } from "@/components/vlc/curriculum-library";
+import { SectionHead, SumCard } from "@/components/vlc/chrome";
 
 export const dynamic = "force-dynamic";
 
@@ -166,57 +167,3 @@ const ARC_TOKENS = {
   green: { bg: "bg-green-bg", border: "border-green", text: "text-green" },
   terra: { bg: "bg-terra-bg", border: "border-terra", text: "text-terra" },
 } as const;
-
-function SectionHead({
-  eyebrow,
-  meta,
-  children,
-}: {
-  eyebrow: string;
-  meta?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mb-4 flex flex-wrap items-end justify-between gap-2 border-b border-border pb-3">
-      <div>
-        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-gold">{eyebrow}</div>
-        <h3 className="mt-0.5 font-display text-2xl font-semibold text-navy">{children}</h3>
-      </div>
-      {meta && <div className="max-w-md text-right text-[11px] text-navy-3">{meta}</div>}
-    </div>
-  );
-}
-
-function SumCard({
-  label,
-  big,
-  children,
-  featured,
-}: {
-  label: string;
-  big: string;
-  children: React.ReactNode;
-  featured?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-xl border p-4 ${featured ? "border-navy bg-navy text-bg" : "border-border bg-surface"}`}
-    >
-      <div
-        className={`text-[10px] font-bold uppercase tracking-[0.12em] ${featured ? "text-gold-soft" : "text-navy-3"}`}
-      >
-        {label}
-      </div>
-      <div
-        className={`mt-1 font-display text-2xl font-semibold leading-none ${featured ? "text-gold" : "text-navy"}`}
-      >
-        {big}
-      </div>
-      <div
-        className={`mt-1.5 text-[11px] leading-snug ${featured ? "text-gold-soft" : "text-navy-3"}`}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}

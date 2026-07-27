@@ -2,15 +2,21 @@ import {
   pgTable,
   uuid,
   text,
+  date,
   smallint,
   boolean,
   timestamp,
   unique,
+  uniqueIndex,
+  index,
   foreignKey,
   check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { schools } from "./tenancy";
+import { users } from "./identity";
+import { students, classes } from "./students";
+import { academicPeriod } from "./periods";
 
 /**
  * VLC F0 spine (SHS module 4.5 / INCR-40, migration 0065) — the configuration the whole Values &
@@ -136,9 +142,10 @@ export const vlcValue = pgTable(
  *
  * `value_id` is a composite (school_id, value_id) intra-tenant FK → vlc_value_tenant_uk, CASCADE — a
  * cross-tenant value reference is structurally impossible, and deleting a value drops its templates.
- * `tenant_uk UNIQUE(school_id, id)` is authored AHEAD here (nothing references it yet) for INCR-41's
+ * `tenant_uk UNIQUE(school_id, id)` is authored AHEAD here (nothing references it yet) for INCR-42's
  * vlc_session `(school_id, template_id)` FK — the 0056 sickbay_bed_tenant_uk "author the UK a
  * migration early" precedent — and it is INLINE, ahead of the FK ALTER, per the 0033 discipline.
+ * (INCR-41 / Peer Guides builds NO vlc_session — that lands at INCR-42.)
  */
 export const vlcSessionTemplate = pgTable(
   "vlc_session_template",
@@ -162,13 +169,182 @@ export const vlcSessionTemplate = pgTable(
       t.valueId,
       t.slot,
     ),
-    // Authored-ahead composite-FK target for INCR-41's vlc_session. INLINE (the 0033 discipline).
+    // Authored-ahead composite-FK target for INCR-42's vlc_session. INLINE (the 0033 discipline).
     tenantUk: unique("vlc_session_template_tenant_uk").on(t.schoolId, t.id),
     slotValid: check("vlc_session_template_slot_valid", sql`${t.slot} IN ('A', 'B')`),
     // Composite intra-tenant FK — a cross-tenant value reference is structurally impossible.
     valueFk: foreignKey({
       columns: [t.schoolId, t.valueId],
       foreignColumns: [vlcValue.schoolId, vlcValue.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * VLC Peer Guides (SHS module 4.5 / INCR-41, migration 0066) — the OPERATIONAL, SHOWN-audit
+ * student-leadership roster + its training-attendance log. Three NEW tenant tables. Peer Guides are
+ * senior students (2/class, Forms F2–F3) elected by classmates to facilitate VLC small-groups — a
+ * visible, prefect-like role, NOT confidential counselling. The confidential pastoral graph
+ * (vlc_pastoral_flag, journal, PG-first *session* attendance) is INCR-42/43 and OUT OF SCOPE here.
+ *
+ * OWNER-LOCKED (2026-07-27): the class vote is OFFLINE — the Dean records only the OUTCOME. So there
+ * is deliberately NO candidate table, NO ballot/vote table, NO vacancy table and NO vote-date storage:
+ * a VACANCY is DERIVED (an eligible class with <2 active PGs in the current period), never a stored
+ * row (R307). All cross-row validation — the hard cap of 2 active per (class × period) (R301), F2/F3
+ * eligibility (R301), one-active-per-student-per-period — lives in lib/vlc/ server actions, NOT the DB
+ * (portability; no trigger). The DB enforces only the two structural invariants a constraint can:
+ * one active appointment per student per period (partial unique) and one absence row per (training × PG).
+ *
+ * All three tables are tenant-scoped and get ENABLE + FORCE RLS + tenant_isolation (db:policies on dev;
+ * db/sql/prod-paste-0068-vlc-peer-guides.sql by hand on prod) and — via the catalog-driven loop in
+ * db/sql/policies.sql — parent_deny. Owner decision #4 LOCKED: a parent sees NOTHING VLC-wide (R309),
+ * delivered structurally by the parent_deny catalog (FORCE-RLS + school_id, no parent_scope).
+ *
+ * NO derived-duplicate scalars (R302/R305): no stored status/count/gender-balance/slot-gender on the
+ * roster, no stored attendance/%/status on training — rep-gender derives from students.sex, the 1+1
+ * boy/girl target is an ADVISORY read-time flag (never refused), attendance % derives from the absence
+ * rows. A stored count that can disagree with its source is the R10 stored-count failure.
+ * ==========================================================================*/
+
+/**
+ * APPEND-ONLY Peer Guide appointment roster (the bunk_allocation open-row idiom). One row per
+ * appointment; `ended_at IS NULL` marks a PG who is CURRENTLY SERVING. Vacate = set `ended_at` (never
+ * DELETE); fill = INSERT a fresh row scoped to the SAME current `academic_period_id` (R307). Tenure is
+ * ONE academic_period (SHS semester, R303) — no expiry job, the appointment simply scopes out of the
+ * next period by its `academic_period_id`; re-selection in a later period is allowed because the partial
+ * unique below is period-scoped. `class_id` is the CONSTITUENCY class (a `classes` row — the same
+ * form-class unit attendance/gradebook use, R301). `ended_reason` is an optional operational note
+ * (SHOWN audit, R308 — welfare detail belongs in INCR-43).
+ *
+ * `tenant_uk UNIQUE(school_id, id)` is carried INLINE in CREATE TABLE because it is the composite-FK
+ * TARGET of vlc_training_absence's (school_id, peer_guide_id) FK created in the SAME migration (0066):
+ * the UNIQUE must exist before that ALTER ... ADD FOREIGN KEY (the 0033 ordering hazard). Composite
+ * (school_id, X) intra-tenant FKs to students / classes / academic_period make a cross-tenant reference
+ * structurally impossible (CASCADE); the appointer stamp is the single-column SET NULL users FK.
+ */
+export const vlcPeerGuide = pgTable(
+  "vlc_peer_guide",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
+    classId: uuid("class_id").notNull(), // the constituency class — composite (school_id, class_id) FK
+    academicPeriodId: uuid("academic_period_id").notNull(), // tenure scope — composite FK
+    appointedAt: timestamp("appointed_at", { withTimezone: true }).notNull().defaultNow(),
+    // Global-table SET NULL → single column (exeat actor-stamp pattern).
+    appointedByUserId: uuid("appointed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    endedAt: timestamp("ended_at", { withTimezone: true }), // null = currently serving (open-row idiom)
+    endedReason: text("ended_reason"), // optional operational note (SHOWN)
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for vlc_training_absence.peer_guide_id (school_id, id). INLINE, ahead of that
+    // FK's ALTER in this same migration (the 0033 / sickbay-0057 ordering discipline).
+    tenantUk: unique("vlc_peer_guide_tenant_uk").on(t.schoolId, t.id),
+    // At most one ACTIVE appointment per student per period (the one_active_deboard_per_student
+    // precedent). Ended rows are exempt via the WHERE, so a student may be re-appointed after stepping
+    // aside or in a later period. PARTIAL unique index.
+    oneActivePerStudentPeriod: uniqueIndex("uniq_vlc_peer_guide_active")
+      .on(t.schoolId, t.studentId, t.academicPeriodId)
+      .where(sql`${t.endedAt} IS NULL`),
+    // The roster grid + the hard-cap-2 / vacancy reads: active PGs per (class × period).
+    byClassPeriod: index("vlc_peer_guide_class_period_idx").on(
+      t.schoolId,
+      t.classId,
+      t.academicPeriodId,
+    ),
+    // Composite intra-tenant FKs — a cross-tenant student/class/period reference is structurally impossible.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    classFk: foreignKey({
+      columns: [t.schoolId, t.classId],
+      foreignColumns: [classes.schoolId, classes.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.academicPeriodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * Dean-authored monthly PG training event (R305). `academic_year` is TEXT (periods carry academic_year
+ * as text — it is NOT an FK). NO stored attendance/status/count — training attendance is the absence
+ * rows below and the % DERIVES from them. `tenant_uk UNIQUE(school_id, id)` is carried INLINE because it
+ * is the composite-FK TARGET of vlc_training_absence's (school_id, training_id) FK in the SAME migration
+ * (0066) — the UNIQUE must exist before that ALTER (the 0033 discipline). LEAF otherwise: single-column
+ * school_id FK. `duration_min` CHECK > 0 (a zero-minute training is not a training).
+ */
+export const vlcTraining = pgTable(
+  "vlc_training",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    academicYear: text("academic_year").notNull(), // text, mirrors periods (NOT an FK)
+    scheduledDate: date("scheduled_date").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    durationMin: smallint("duration_min").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for vlc_training_absence.training_id (school_id, id). INLINE (the 0033 discipline).
+    tenantUk: unique("vlc_training_tenant_uk").on(t.schoolId, t.id),
+    // Per-year training calendar read (boarding_calendar_event byYear precedent).
+    byYear: index("vlc_training_year_idx").on(t.schoolId, t.academicYear),
+    durationPositive: check("vlc_training_duration_min_positive", sql`${t.durationMin} > 0`),
+  }),
+);
+
+/**
+ * PRESENT-BY-DEFAULT PG training-attendance log (the prep_attendance idiom) — one row ONLY for a PG who
+ * was NOT present at a training. PRESENT is NEVER a row: present-by-default is the absence of a row, so
+ * the attendance % for a training DERIVES as (active PGs − absence rows) / active PGs. `excused` (default
+ * false) distinguishes an excused absence; `note` is an optional reason. UNIQUE(school_id, training_id,
+ * peer_guide_id) is the upsert conflict target (re-logging the same PG for the same training updates the
+ * one row, never a second). LEAF table: NO tenant UK. Composite (school_id, X) intra-tenant FKs to
+ * vlc_training / vlc_peer_guide keep both refs intra-tenant (CASCADE); the recorder stamp is the
+ * single-column SET NULL users FK.
+ */
+export const vlcTrainingAbsence = pgTable(
+  "vlc_training_absence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    trainingId: uuid("training_id").notNull(), // composite (school_id, training_id) FK below
+    peerGuideId: uuid("peer_guide_id").notNull(), // composite (school_id, peer_guide_id) FK below
+    excused: boolean("excused").notNull().default(false),
+    note: text("note"),
+    // Global-table SET NULL → single column (exeat actor-stamp pattern).
+    recordedByUserId: uuid("recorded_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One absence row per (training × PG) — the upsert conflict target. Its (school_id, training_id)
+    // prefix also serves the per-training "who was absent" read, so no separate index.
+    uniqAbsence: unique("uniq_vlc_training_absence").on(t.schoolId, t.trainingId, t.peerGuideId),
+    // Per-PG attendance-% derivation (count a PG's absences across trainings).
+    byPeerGuide: index("vlc_training_absence_peer_guide_idx").on(t.schoolId, t.peerGuideId),
+    // Composite intra-tenant FKs — a cross-tenant training/peer-guide reference is structurally impossible.
+    trainingFk: foreignKey({
+      columns: [t.schoolId, t.trainingId],
+      foreignColumns: [vlcTraining.schoolId, vlcTraining.id],
+    }).onDelete("cascade"),
+    peerGuideFk: foreignKey({
+      columns: [t.schoolId, t.peerGuideId],
+      foreignColumns: [vlcPeerGuide.schoolId, vlcPeerGuide.id],
     }).onDelete("cascade"),
   }),
 );

@@ -156,9 +156,13 @@ describe("VLC40-3/4 · the canonical 11 values + 22 session templates (counts DE
 
 // ── VLC40-5 · no derived / frozen-lib duplicate columns in the schema ───────────────────────────
 describe("VLC40-5 · the schema stores no derivable or frozen-lib duplicate", () => {
-  it("vlc.ts has no session_end / total_minutes / term_arc / academic_year / programme_id column", () => {
-    // Strip comments first — the schema's prose deliberately NAMES the omitted columns.
-    const schema = stripComments(src("db/schema/vlc.ts"));
+  it("the F0 tables carry no session_end / total_minutes / term_arc / academic_year / programme_id column", () => {
+    // Strip comments first — the schema's prose deliberately NAMES the omitted columns. Scope the scan to
+    // the F0 portion (vlc_programme / vlc_value / vlc_session_template): INCR-41's vlc_training legitimately
+    // stores `academic_year` as text (R305, mirroring periods), so a whole-file forbid would false-positive.
+    const full = stripComments(src("db/schema/vlc.ts"));
+    const f0End = full.indexOf("export const vlcPeerGuide");
+    const schema = f0End > -1 ? full.slice(0, f0End) : full;
     for (const forbidden of [
       "session_end",
       "sessionEnd",
@@ -171,7 +175,7 @@ describe("VLC40-5 · the schema stores no derivable or frozen-lib duplicate", ()
       "programme_id",
       "programmeId",
     ]) {
-      expect(schema, `vlc.ts must not carry ${forbidden}`).not.toContain(forbidden);
+      expect(schema, `the F0 vlc tables must not carry ${forbidden}`).not.toContain(forbidden);
     }
   });
 });

@@ -111,6 +111,14 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   "vlc_programme", // cadence + phase durations config
   "vlc_value", // taught-value name (EN/Twi) + term group
   "vlc_session_template", // per-value session title/prompt (curriculum copy, no student data)
+  // — VLC Peer Guides (SHS module 4.5 / INCR-41) — OPERATIONAL student-leadership roster + training,
+  // NO pastoral PII (R308). Peer Guides are a visible, prefect-like role the whole staff sees, not
+  // confidential counselling; `ended_reason` is an operational note (welfare detail belongs to the
+  // INCR-43 `vlc_pastoral_*` REDACTED family). NONE uses the reserved `vlc_pastoral_` prefix, so they
+  // MUST be listed here explicitly or the classify-at-creation guard fails the build. —
+  "vlc_peer_guide", // appointment roster row (student × class × period, ended_at open-row)
+  "vlc_training", // Dean-authored training event (title/date/duration)
+  "vlc_training_absence", // present-by-default training-attendance row (excused/note)
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker
