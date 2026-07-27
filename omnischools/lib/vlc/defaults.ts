@@ -394,3 +394,32 @@ export function formatVlcWindow(start: string, end: string): string {
   const e = formatVlcTime(end);
   return `${s.time} — ${e.time} ${e.meridiem}`;
 }
+
+// ============================================================================
+// Peer Guides (INCR-41) — frozen editorial policy copy (identical for every school), VERBATIM from
+// Surfaces/schoolup-vlc-peer-guides.html. Same discipline as the F0 phase names: these strings live in
+// lib/, DB-free, never a stored column. The reader/page render them; the DB stores only the roster rows.
+// ============================================================================
+
+/** The Form-1 "no Peer Guides by policy" card body (surface `.no-pg-note`). */
+export const VLC_NO_PG_BY_POLICY = {
+  title: "No Peer Guides by policy",
+  body: "Form 1 students receive · they don't lead in their first year",
+} as const;
+
+/** The vacancy-protocol steps (surface `.gc-body`) — offline vote, Dean records the outcome (OC2). */
+export const VLC_VACANCY_PROTOCOL: readonly string[] = [
+  "A Peer Guide who steps aside mid-term is never deleted — the appointment is closed, opening a vacancy.",
+  "The class holds its vote offline (Form Master runs it, Dean of Students ratifies) — Omnischools records only the outcome, not a ballot.",
+  "The replacement serves the remainder of the current semester (not a fresh full tenure).",
+  "The remaining Peer Guide continues solo until the vacancy is filled.",
+];
+
+/** The "Why not a longer tenure?" rules (surface `.notes`) — shown by "View tenure rules", read-only too. */
+export const VLC_TENURE_RULES: readonly string[] = [
+  "Tenure is one semester by design — it spreads leadership wider across the cohort.",
+  "A one-semester term prevents burnout accumulating on the same students.",
+  "Each class meets several Peer Guide personalities across the year.",
+  "Re-selection is allowed — around 20–30% stand again the next year.",
+  "Form 3 Peer Guides roll off for WASSCE preparation; some Form 2 Peer Guides roll off at the end of their one-semester tenure.",
+];
