@@ -290,7 +290,6 @@ export async function editCase(input: unknown): Promise<Result> {
         entityType: "vlc_pastoral_case",
         entityId: updated[0].id,
         reason: "Case revised", // REDACTED — metadata only, never the summary text
-
       });
       safeRevalidate(journalPath(studentId));
       return { ok: true };
