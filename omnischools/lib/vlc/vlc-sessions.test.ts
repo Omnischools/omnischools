@@ -269,15 +269,20 @@ describe("VLC42a-15/16 · RLS is configured for both tables", () => {
 
 // ── VLC42a-17 · the hard scope fence — NO pastoral / journal / points / PG-write / small-group ─────
 describe("VLC42a-17 · scope fence — 42a builds none of the 42b/43 apparatus", () => {
+  // NB (INCR-42b): the session register PAGE now legitimately carries the confidential flag-callout
+  // wiring (VLC_PASTORAL_READ_ROLES, canAccessPastoralFlag, getPastoralFlags), so it is no longer a
+  // 42a-only fence file — that gate moved to vlc-pastoral.test.ts. The 42a operational files below stay
+  // fenced: they must NOT reference the pastoral apparatus.
+  // db/schema/vlc.ts is intentionally NOT fenced here: it is a SHARED file, and INCR-42b legitimately
+  // added vlc_pastoral_flag to it. The 42a-scoped schema guarantee is the migration-0067 check below
+  // (0067 builds ONLY the two operational tables). The files below are the 42a OPERATIONAL code paths,
+  // which must never reference the pastoral apparatus.
   const FENCE_FILES = [
-    "db/schema/vlc.ts",
     "lib/vlc/session-data.ts",
     "lib/vlc/session-clock.ts",
-    "lib/vlc/authz.ts",
     "lib/actions/vlc-sessions.ts",
     "components/vlc/session-register.tsx",
     "app/(app)/senior/vlc/sessions/page.tsx",
-    "app/(app)/senior/vlc/sessions/[classId]/[date]/page.tsx",
   ];
   const FORBIDDEN = [
     "vlc_pastoral",
@@ -299,10 +304,6 @@ describe("VLC42a-17 · scope fence — 42a builds none of the 42b/43 apparatus",
         expect(code, `${f} must not reference ${token}`).not.toContain(token);
       }
     }
-  });
-  it("the redaction predicate has NO vlc_pastoral_ branch yet (that lands at 42b)", () => {
-    const redaction = stripComments(src("lib/audit/redaction.ts"));
-    expect(redaction).not.toMatch(/startsWith\(["']vlc_pastoral_/);
   });
   it("migration 0067 creates exactly the two INCR-42a tables and no pastoral table", () => {
     const mig = src("db/migrations/0067_chubby_unicorn.sql");

@@ -161,6 +161,7 @@ BEGIN
     'vlc_training_absence',
     'vlc_session',
     'vlc_session_attendance',
+    'vlc_pastoral_flag',
     'announcement',
     'sms_template',
     'notification_log',

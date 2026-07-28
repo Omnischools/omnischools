@@ -136,7 +136,17 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
 ]);
 
 export function isRedactedAuditEntity(entityType: string | null | undefined): boolean {
-  return !!entityType && (entityType.startsWith("sickbay_") || REDACTED_AUDIT_ENTITIES.has(entityType));
+  return (
+    !!entityType &&
+    // The `sickbay_` (R239) + `vlc_pastoral_` (INCR-42b / R320) prefixes are deliberate fail-safes: a
+    // FUTURE `vlc_pastoral_*` confidential entity (journal / case note, INCR-43) redacts with no code
+    // change. `vlc_pastoral_flag` is the first — it MUST NOT be in SHOWN_AUDIT_ENTITIES (the classify
+    // guard asserts the two sets disjoint; the prefix branch classifies it redacted-side, so the guard
+    // stays green with no SHOWN entry). Audit records metadata only — no context/severity/surfaced_by.
+    (entityType.startsWith("sickbay_") ||
+      entityType.startsWith("vlc_pastoral_") ||
+      REDACTED_AUDIT_ENTITIES.has(entityType))
+  );
 }
 
 /** The neutral marker shown in place of a redacted entry's suppressed content (R241). */

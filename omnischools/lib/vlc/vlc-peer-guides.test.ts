@@ -278,10 +278,16 @@ describe("VLC41-19 · gender is advisory, not enforced", () => {
 describe("VLC41-20 · INCR-42/43 tables are NOT built", () => {
   const schema = stripComments(src("db/schema/vlc.ts"));
   const mig = src("db/migrations/0066_silky_jigsaw.sql");
-  it("no character_paragraph / pastoral_flag / journal / session table in schema or migration 0066", () => {
-    for (const forbidden of ["character_paragraph", "vlc_pastoral", "vlc_journal", "vlc_reflection"]) {
+  it("no character_paragraph / journal / reflection family in the schema; migration 0066 builds none of them", () => {
+    // The schema file is SHARED across increments — INCR-42b legitimately added vlc_pastoral_flag to it,
+    // so a whole-schema `vlc_pastoral` forbid no longer holds (its own test owns that). What INCR-41 must
+    // still not have introduced is the journal / reflection / character-paragraph family, and migration
+    // 0066 must build ONLY the three PG tables — vlc_pastoral_flag lands in migration 0068 (INCR-42b).
+    for (const forbidden of ["character_paragraph", "vlc_journal", "vlc_reflection"]) {
       expect(schema, `schema must not build ${forbidden}`).not.toContain(forbidden);
-      expect(mig, `migration must not build ${forbidden}`).not.toContain(forbidden);
+    }
+    for (const forbidden of ["character_paragraph", "vlc_pastoral", "vlc_journal", "vlc_reflection"]) {
+      expect(mig, `migration 0066 must not build ${forbidden}`).not.toContain(forbidden);
     }
     // migration 0066 creates exactly the three INCR-41 tables
     expect(mig).toMatch(/CREATE TABLE.*vlc_peer_guide/);

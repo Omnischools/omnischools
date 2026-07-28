@@ -270,8 +270,10 @@ describe("VLC40-12/13 · audit classification", () => {
     }
   });
 
-  it("a reserved vlc_pastoral_* entity is NOT redacted today (INCR-42/43 introduces that family)", () => {
-    expect(isRedactedAuditEntity("vlc_pastoral_case")).toBe(false);
+  it("a reserved vlc_pastoral_* entity IS redacted (INCR-42b landed the prefix branch / family)", () => {
+    // Pre-42b this asserted `false`; INCR-42b wired the `vlc_pastoral_` prefix into isRedactedAuditEntity,
+    // so the whole confidential family now redacts (the F0 three above stay SHOWN — they are not prefixed).
+    expect(isRedactedAuditEntity("vlc_pastoral_case")).toBe(true);
   });
 });
 

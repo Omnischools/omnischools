@@ -489,3 +489,101 @@ export const vlcSessionAttendance = pgTable(
     }).onDelete("cascade"),
   }),
 );
+
+/* ============================================================================
+ * VLC Pastoral flag (SHS module 4.5 / INCR-42b, migration 0068) — the module's FIRST CONFIDENTIAL
+ * pastoral-PII table and its sensitivity boundary. ONE new tenant table: `vlc_pastoral_flag`. This is
+ * a different audit class from 42a's operational register — it is REDACTED (the reserved
+ * `vlc_pastoral_` prefix branch in isRedactedAuditEntity, wired by the build; audit records metadata
+ * only), and its content is READ by a single server-only path (lib/vlc/pastoral-data.ts).
+ *
+ * OWNER-LOCKED (INCR-42 batch): (b) flag READ = FM(own-class) + DEAN_OF_STUDENTS ONLY (ADMIN barred,
+ * HM excluded); (c) flag CREATE = FM + DEAN — the PG is a `surfaced_by` DATA field, NOT a writer;
+ * narrative/case-file is INCR-43; (#4) parents see NOTHING VLC-wide.
+ *
+ * 🔴 THE ACCESS MODEL IS SPLIT ACROSS TWO LAYERS (Kofi R318, deliberately):
+ *   • TENANT + PARENT isolation is RLS — this table gets ENABLE + FORCE + tenant_isolation (db:policies
+ *     on dev; db/sql/prod-paste-0070-vlc-pastoral-flag.sql by hand on prod — THE MODULE'S MOST
+ *     LEAK-CRITICAL PASTE: skip it and the confidential table ships with NO RLS → cross-school PII
+ *     leak) and — via the catalog-driven loop in db/sql/policies.sql — parent_deny (owner #4; FORCE-RLS
+ *     + school_id, NO parent_scope, so the loop auto-denies it).
+ *   • The ROLE gate ([FM, DEAN]) and the FM OWN-CLASS scoping are APP-LAYER (lib/vlc/), NOT RLS and NOT
+ *     a trigger. Own-class is a STATIC identity match (the flagged student's class.class_teacher_user_id
+ *     === caller.userId), not a revocable/expiring grant, so the chronic-register's staff_grant_scope
+ *     machinery (R114) does NOT transfer; 42a's identical own-class WRITE mechanism is already
+ *     Sarah-CLEARED. So NO new GUC, NO new RLS boundary, NO staff_grant_scope here.
+ *
+ * Deliberate omissions (the sickbay/vlc "no derived, no narrative" discipline — R317/R323 scope fence):
+ *   • NO narrative / case-file / note-thread / character-paragraph column — that is INCR-43. `context`
+ *     is a SHORT ≤280 locator, and the 280-cap is the PHYSICAL scope fence keeping the INCR-43 `.fc-body`
+ *     narrative out of this table.
+ *   • NO derived scalars — no `active`/`is_open` bool, no `severity_rank`, no count. ACTIVE derives from
+ *     `resolved_at IS NULL` (the open-row idiom); severity ordering is frozen editorial in lib/.
+ *   • NO tenant_uk — LEAF (nothing in 42b FKs to a flag). NO unique-on-active — multiple concurrent open
+ *     flags per student are allowed (two staff may raise independently).
+ *   • `severity` is TEXT + a CHECK allow-list (the frozen `VLC_PASTORAL_SEVERITY` in lib/), NOT a pg
+ *     enum — a bare three-value domain the app owns needs no type (the vlc_session_template.slot idiom).
+ *
+ * Validation that spans rows (the role gate, own-class scoping, severity/context shape) lives in
+ * lib/vlc/ server actions; the three single-row CHECKs below are defense-in-depth, never the primary
+ * control. NO TRIGGERS (portability).
+ */
+export const vlcPastoralFlag = pgTable(
+  "vlc_pastoral_flag",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    // FIRST-CLASS column (composite (school_id, student_id) FK → students, CASCADE): INCR-45's
+    // isPastorallyFlagged existence-check reads THIS column, never a confidential one.
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
+    // NULLABLE composite (school_id, session_id) FK → vlc_session.tenant_uk, ON DELETE NO ACTION: 42a
+    // sessions are append-only/never deleted so it never fires, and a Dean may raise a session-less
+    // flag (session_id NULL — the composite FK is MATCH SIMPLE, so a NULL member skips the check).
+    sessionId: uuid("session_id"), // composite (school_id, session_id) FK below — nullable, NO ACTION
+    raisedAt: timestamp("raised_at", { withTimezone: true }).notNull().defaultNow(),
+    // The FM/Dean who COMMITTED the flag (SET NULL → global ref_user). ⚠ Distinct from the surface's PG
+    // "Raised by" — that is `surfaced_by` (display DATA), never this actor stamp.
+    raisedByUserId: uuid("raised_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    // Free-text PG attribution — DISPLAY DATA in NO access decision (OC1). ≤80 CHECK (defense-in-depth).
+    surfacedBy: text("surfaced_by"),
+    // Frozen allow-list VLC_PASTORAL_SEVERITY (lib/) — text + CHECK, deliberately NOT a pg enum (OC2).
+    severity: text("severity").notNull(),
+    // The SHORT `.sub` locator (nullable ≤280) — the 280-cap is the physical fence vs the INCR-43 narrative.
+    context: text("context"),
+    // NULL = active (the open-row idiom); set = resolved. `resolved_by_user_id` SET NULL → global ref_user.
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedByUserId: uuid("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // The INCR-45 existence-check AND the FM own-class read filter both look up active flags by student;
+    // this makes both an indexed lookup. Partial (WHERE resolved_at IS NULL) — NOT unique (concurrent
+    // open flags per student are allowed).
+    activeByStudent: index("vlc_pastoral_flag_active_idx")
+      .on(t.schoolId, t.studentId)
+      .where(sql`${t.resolvedAt} IS NULL`),
+    // Defense-in-depth single-row CHECKs (the primary validation is app-layer in lib/vlc/). char_length
+    // is NULL-safe: a NULL surfaced_by/context passes (the columns are nullable).
+    surfacedByLen: check(
+      "vlc_pastoral_flag_surfaced_by_len",
+      sql`char_length(${t.surfacedBy}) <= 80`,
+    ),
+    severityValid: check(
+      "vlc_pastoral_flag_severity_valid",
+      sql`${t.severity} IN ('NOTE', 'CONCERN', 'CRISIS')`,
+    ),
+    contextLen: check("vlc_pastoral_flag_context_len", sql`char_length(${t.context}) <= 280`),
+    // Composite intra-tenant FKs. The student CASCADEs (first-class, cross-tenant ref impossible); the
+    // session is NULLABLE + NO ACTION (append-only sessions never delete; a session-less flag is legal).
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    sessionFk: foreignKey({
+      columns: [t.schoolId, t.sessionId],
+      foreignColumns: [vlcSession.schoolId, vlcSession.id],
+    }).onDelete("no action"),
+  }),
+);

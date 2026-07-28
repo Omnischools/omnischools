@@ -1,10 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 import { requireSchoolRole } from "@/lib/auth/server";
-import { VLC_CONFIG_READ_ROLES } from "@/lib/access";
-import { canWriteSession } from "@/lib/vlc/authz";
+import { VLC_CONFIG_READ_ROLES, VLC_PASTORAL_READ_ROLES, hasAnyRole } from "@/lib/access";
+import { canWriteSession, canAccessPastoralFlag } from "@/lib/vlc/authz";
 import { getVlcSession } from "@/lib/vlc/session-data";
+import { getPastoralFlags } from "@/lib/vlc/pastoral-data";
 import { SectionHead } from "@/components/vlc/chrome";
 import { OpenSessionForm, SessionAttendanceGrid } from "@/components/vlc/session-register";
+import { PastoralFlagPanel } from "@/components/vlc/pastoral-flag";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +16,13 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  * `/senior/vlc/sessions/[classId]/[date]` — the VLC live-session register (SHS module 4.5 / INCR-42a):
  * the derived 5-phase clock, the facilitator strip, the value focus banner, the two PG-led small groups,
  * the P/L/A attendance grid and the phase agenda. READ = VLC_CONFIG_READ_ROLES (operational, SHOWN);
- * WRITE = the class's own Form Master ONLY (FM-only, owner d) — `canWriteSession`. Everything DERIVES; nothing
- * pastoral is surfaced (the flag callout / reflection meter / PG points are INCR-42b/43, omitted-not-faked).
+ * WRITE = the class's own Form Master ONLY (FM-only, owner d) — `canWriteSession`. Everything DERIVES.
+ *
+ * INCR-42b lights the CONFIDENTIAL pastoral-flag callout (between the agenda and the foot-bar) for the two
+ * gated viewers ONLY — own-class FM / Dean (`canAccessPastoralFlag`, NARROWER than the page). A non-gated
+ * viewer (HM / ADMIN / other-class FM) gets a register byte-identical to 42a: the reader is never called and
+ * the callout + gated lede clause + gated foot-stat are absent (no "flag exists" leak). The reflection meter,
+ * PG points, and the INCR-43 case-note/queue/escalate buttons stay omitted-not-faked.
  */
 export default async function VlcSessionRegisterPage({
   params,
@@ -36,6 +43,18 @@ export default async function VlcSessionRegisterPage({
     userId: user.id,
     classTeacherUserId: view.classTeacherUserId,
   });
+
+  // 🔴 The CONFIDENTIAL pastoral gate — NARROWER than the page (own-class FM / Dean, owner b+c). A
+  // non-gated viewer (HM / ADMIN / other-class FM / PG / parent) fails this, so the flag reader is NEVER
+  // called and the callout + gated lede clause + gated foot-stat are ABSENT from their tree (no "flag
+  // exists" leak) — their register stays byte-identical to 42a.
+  const canSeeFlags =
+    hasAnyRole(user.roles, VLC_PASTORAL_READ_ROLES) &&
+    canAccessPastoralFlag({
+      roles: user.roles,
+      userId: user.id,
+      classTeacherUserId: view.classTeacherUserId,
+    });
 
   // ── not-yet-held: the register hasn't been opened for this class × date ──
   if (!view.held) {
@@ -71,6 +90,13 @@ export default async function VlcSessionRegisterPage({
   const { focus, clock, summary } = view;
   const canEdit = canWrite && !view.locked;
 
+  // Fetch confidential flags ONLY past the gate — a non-gated viewer never fetches a row (defense in depth
+  // over RLS). The own-class WHERE in the reader is the intra-tenant boundary.
+  const flags = canSeeFlags
+    ? await getPastoralFlags(school.id, { roles: user.roles, userId: user.id }, classId)
+    : [];
+  const showFlags = canSeeFlags && flags.length > 0;
+
   return (
     <div className="pb-24">
       {/* ── head-row ── */}
@@ -86,7 +112,9 @@ export default async function VlcSessionRegisterPage({
         <p className="max-w-3xl text-sm leading-relaxed text-navy-3">
           {summary.present} of {summary.enrolled} present · {clock.phasesComplete} of {clock.windows.length}{" "}
           phases complete
-          {view.locked ? " · auto-locked" : ` · ${clock.remainingMin} min remaining`}.
+          {view.locked ? " · auto-locked" : ` · ${clock.remainingMin} min remaining`}
+          {/* gated lede clause — present only for a gated viewer with ≥1 flag; absent (42a) otherwise */}
+          {showFlags ? ` · ${flags.length} pastoral flag${flags.length > 1 ? "s" : ""} raised` : ""}.
           {canWrite && view.locked && (
             <span className="ml-1 italic text-navy-3">
               This session has auto-locked — the register is read-only.
@@ -306,9 +334,25 @@ export default async function VlcSessionRegisterPage({
         </div>
       </section>
 
+      {/* ── pastoral flag callout (INCR-42b) — GATED: own-class FM / Dean ONLY. A non-gated viewer never
+             reaches this branch (canSeeFlags false), so the callout is absent from their tree entirely. ── */}
+      {canSeeFlags && (
+        <PastoralFlagPanel
+          flags={flags}
+          roster={view.cells.map((c) => ({ studentId: c.studentId, name: c.name }))}
+          sessionId={view.sessionId}
+        />
+      )}
+
       {/* ── foot-bar (persistent session stats — derived; navy ground, SOLID text-gold-soft) ── */}
       <section className="rounded-2xl border border-navy bg-navy p-5 text-bg">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-[repeat(3,1fr)_auto]">
+        <div
+          className={`grid grid-cols-1 gap-4 ${
+            showFlags
+              ? "sm:grid-cols-4 lg:grid-cols-[repeat(4,1fr)_auto]"
+              : "sm:grid-cols-3 lg:grid-cols-[repeat(3,1fr)_auto]"
+          }`}
+        >
           <FootStat lab="Attendance" val={`${summary.present} / ${summary.enrolled}`}>
             {summary.presentPct}% present · {summary.late} late · {summary.absent} absent
           </FootStat>
@@ -322,6 +366,12 @@ export default async function VlcSessionRegisterPage({
           <FootStat lab="Time remaining" val={view.locked ? "closed" : `${clock.remainingMin} min`}>
             {view.locked ? `Auto-locked at ${clock.closeLabel}` : `Closes ${clock.closeLabel}`}
           </FootStat>
+          {/* gated 4th stat — present only for a gated viewer with ≥1 flag; absent (3-stat 42a) otherwise */}
+          {showFlags && (
+            <FootStat lab="Pastoral flags" val={`${flags.length} raised`}>
+              FM check-in queued · FM + Dean only
+            </FootStat>
+          )}
           <div className="flex items-end">
             <span className="rounded-md border border-gold px-3.5 py-2 text-xs font-bold text-gold">
               {view.locked ? `Locked · ${clock.closeLabel}` : `Auto-locks ${clock.closeLabel}`}
