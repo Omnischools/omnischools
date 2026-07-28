@@ -15,6 +15,7 @@ import {
   vlcPastoralJournal,
   vlcPastoralNote,
   vlcPastoralObservation,
+  vlcPastoralParagraph,
   vlcPeerGuide,
   vlcProgramme,
   vlcSession,
@@ -321,6 +322,8 @@ async function main() {
   // (the recorder). Marker-scoped + re-run-safe: delete only THIS school's flags first. No other student
   // is flagged. The seed audit row is the REDACTED `vlc_pastoral_flag` entity (metadata only).
   // Marker-scoped + re-run-safe: drop this school's casework FIRST (the case FKs the flag), then the flag.
+  // The 43b character paragraph (LEAF, per-student) is dropped too — it is independent of the flag/case.
+  await db.delete(vlcPastoralParagraph).where(eq(vlcPastoralParagraph.schoolId, schoolId));
   await db.delete(vlcPastoralCase).where(eq(vlcPastoralCase.schoolId, schoolId));
   await db.delete(vlcPastoralJournal).where(eq(vlcPastoralJournal.schoolId, schoolId));
   await db.delete(vlcPastoralNote).where(eq(vlcPastoralNote.schoolId, schoolId));
@@ -462,6 +465,39 @@ async function main() {
 
     console.log(
       "✓ Seeded VLC casework — 3 journal entries, 2 FM notes, 1 PG observation, 1 case on Joseph Manu. Confidential (REDACTED).",
+    );
+
+    // ---- 8) Character paragraph (INCR-43b) — ONE FM-authored school-leaver reference paragraph for Joseph,
+    // as a DRAFT (locked_at NULL → editable; the FM may still Edit / Lock it). FM-authored free text, NO
+    // machine derivation (owner #6). Per-student (1:1), REDACTED (`vlc_pastoral_*` prefix). This is the ONE
+    // VLC element the Headmaster may read — but only once FINALISED, so this draft stays FM+Dean-visible. ----
+    await db.insert(vlcPastoralParagraph).values({
+      schoolId,
+      studentId: joseph.id,
+      authorUserId: fmUserId ?? undefined,
+      updatedByUserId: fmUserId ?? undefined,
+      body:
+        "Joseph completed his lower-secondary years at this school with a quiet, dependable steadiness that " +
+        "grew more evident as the year went on. He is at his strongest in small-group work, where he listens " +
+        "closely and helps others find their footing before offering his own view; classmates build on what " +
+        "he says. A family bereavement early in the year tested him, and he carried it with a maturity beyond " +
+        "his age — returning to the work rather than retreating from it. He writes plainly and honestly about " +
+        "wanting his small words to match his big ones. I would recommend him for a service-project lead role " +
+        "in the coming year, subject to his readiness at that point.",
+      // locked_at intentionally UNSET → DRAFT.
+    });
+
+    await db.insert(auditLog).values({
+      schoolId,
+      actorRole: "FORM_MASTER",
+      actionType: "created",
+      entityType: "vlc_pastoral_paragraph", // REDACTED (vlc_pastoral_* prefix) — metadata only, no body
+      entityId: joseph.id,
+      reason: "VLC character paragraph demo seed (INCR-43b)",
+    });
+
+    console.log(
+      "✓ Seeded VLC character paragraph — 1 FM-authored draft on Joseph Manu (locked_at NULL). Confidential (REDACTED).",
     );
   }
 }

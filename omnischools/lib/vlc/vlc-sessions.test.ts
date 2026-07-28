@@ -113,7 +113,11 @@ describe("VLC42a-5 · auto-lock derives from session_date + the F0 close vs now"
   it("markAttendance refuses a write once the derived window has elapsed (no stored `locked`)", () => {
     expect(actions).toMatch(/isSessionWriteLocked\(/);
     expect(actions).toMatch(/auto-locked/);
-    expect(schema).not.toContain("locked");
+    // Scoped to the session table: the auto-lock DERIVES, so vlc_session stores no `locked` column. (The
+    // whole file legitimately carries `locked_at` since INCR-43b's vlc_pastoral_paragraph — a per-student
+    // year-end freeze, unrelated to the session lifecycle — so this guard bounds to the session block, the
+    // same block-bounding discipline the attendance block uses above.)
+    expect(sessionBlock).not.toContain("locked");
   });
 });
 
