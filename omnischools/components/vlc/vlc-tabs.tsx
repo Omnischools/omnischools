@@ -16,6 +16,9 @@ const TABS = [
 
 export function VlcTabs() {
   const pathname = usePathname();
+  // The confidential per-student journal (/senior/vlc/journal/<id>) is a drill-in reached from a flag
+  // callout, not a VLC section — no tab represents it, so hide the section row there (Dex INCR-43a LOW).
+  if (pathname.startsWith("/senior/vlc/journal/")) return null;
   return (
     <nav className="mb-6 flex gap-1 border-b border-border" aria-label="VLC sections">
       {TABS.map((t) => {

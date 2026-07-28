@@ -35,7 +35,12 @@ const sessionBlock = schema.slice(
   schema.indexOf("export const vlcSession ="),
   schema.indexOf("export const vlcSessionAttendance ="),
 );
-const attendanceBlock = schema.slice(schema.indexOf("export const vlcSessionAttendance ="));
+const attendanceBlock = schema.slice(
+  schema.indexOf("export const vlcSessionAttendance ="),
+  // Bound to the next table so the block never over-captures INCR-42b/43a's siblings (which carry
+  // `summary`/`body` and would false-trip the no-derived-scalar guard below).
+  schema.indexOf("export const vlcPastoralFlag ="),
+);
 const actions = src("lib/actions/vlc-sessions.ts");
 const data = src("lib/vlc/session-data.ts");
 

@@ -14,6 +14,7 @@
  * are OMITTED-not-faked; there is NO free-text narrative box (the bereavement paragraph is INCR-43).
  */
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { VLC_PASTORAL_SEVERITY } from "@/lib/vlc/defaults";
 import type { PastoralFlagView } from "@/lib/vlc/pastoral-data";
@@ -95,19 +96,29 @@ export function PastoralFlagPanel({
             </div>
           </div>
 
-          {/* derived active status (NOT a stored narrative — INCR-43) + the RESOLVE affordance */}
+          {/* derived active status (NOT a stored narrative — INCR-43) + the case-note deep-link + resolve */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-[12px] text-navy-2">
               <b className="font-semibold text-navy">Queued for FM check-in</b>
             </span>
-            <button
-              type="button"
-              onClick={() => resolve(f.id)}
-              disabled={pending}
-              className="rounded-md border border-border-2 bg-bg px-3 py-1.5 text-[11px] font-bold text-navy hover:brightness-95 disabled:opacity-60"
-            >
-              Mark resolved
-            </button>
+            <div className="flex items-center gap-2">
+              {/* INCR-43a — the honest replacement for 42b's omitted "Open private case note" button. Only a
+                  gated viewer renders this callout, so the confidential journal link is gated identically. */}
+              <Link
+                href={`/senior/vlc/journal/${f.studentId}`}
+                className="rounded-md border border-terra px-3 py-1.5 text-[11px] font-bold text-terra hover:bg-terra-bg"
+              >
+                Open journal
+              </Link>
+              <button
+                type="button"
+                onClick={() => resolve(f.id)}
+                disabled={pending}
+                className="rounded-md border border-border-2 bg-bg px-3 py-1.5 text-[11px] font-bold text-navy hover:brightness-95 disabled:opacity-60"
+              >
+                Mark resolved
+              </button>
+            </div>
           </div>
         </div>
       ))}
