@@ -249,6 +249,27 @@ export const VLC_PARAGRAPH_READ_ROLES = [
   "HEADMASTER",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * 🔴 INCR-44 — VLC SCHOOL DASHBOARD audience — who may see the school-wide METADATA rollup (counts /
+ * aggregates only, NEVER confidential content). READ = DEAN_OF_STUDENTS + HEADMASTER + ADMIN (owner OC1 —
+ * ADMIN admitted for proprietor-level programme-health oversight of the AGGREGATE numbers).
+ *
+ *   • FORM_MASTER is DELIBERATELY ABSENT — an FM's oversight is their own class (the register + the
+ *     own-class journal drill-in); a school-wide rollup is a leadership view. An FM in VLC_CONFIG_READ_ROLES
+ *     reaches the layout but is redirected off the dashboard page by this gate.
+ *   • This gate governs WHO SEES THE PAGE, not a content path (the dashboard has NO confidential content).
+ *     ADMIN sees the metadata TIERS ONLY: the confidential per-student drill-in links stay gated to the
+ *     tighter VLC_PASTORAL_READ_ROLES (journal/case — Dean) and VLC_PARAGRAPH_READ_ROLES (reference roster
+ *     — FM/Dean/HM) and DO NOT render for ADMIN, so an ADMIN reaches NO names, NO roster, NO content.
+ *
+ * STUDENT / PARENT / PEER-GUIDE never reach it.
+ */
+export const VLC_DASHBOARD_READ_ROLES = [
+  "DEAN_OF_STUDENTS",
+  "HEADMASTER",
+  "ADMIN",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",

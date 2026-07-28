@@ -30,9 +30,11 @@ export function SectionHead({
 }
 
 /**
- * A summary-strip card. Three grounds: default (surface), `featured` (navy, gold number — the shipped F0
- * variant) and `warn` (warn-bg, warn number — new for INCR-41's "Rotating after T2" card). `featured` and
- * `warn` are mutually exclusive; `warn` wins if both are passed.
+ * A summary-strip card. Four grounds: default (surface), `featured` (navy, gold number — the shipped F0
+ * variant), `warn` (warn-bg, warn number — INCR-41's "Rotating after T2" card) and `terra` (terra-bg, terra
+ * number — new for INCR-44's pastoral-flags card). All are mutually exclusive; precedence warn > terra >
+ * featured. Every ground uses SOLID tokens (`bg-terra-bg` / `text-terra`, never a slash-opacity on a raw-hex
+ * token — the no-alpha trap; verify tints in the live preview, not the build).
  */
 export function SumCard({
   label,
@@ -40,21 +42,25 @@ export function SumCard({
   children,
   featured,
   warn,
+  terra,
 }: {
   label: string;
   big: string;
   children: React.ReactNode;
   featured?: boolean;
   warn?: boolean;
+  terra?: boolean;
 }) {
   const ground = warn
     ? "border-warn bg-warn-bg"
-    : featured
-      ? "border-navy bg-navy text-bg"
-      : "border-border bg-surface";
-  const labelColor = warn ? "text-warn" : featured ? "text-gold-soft" : "text-navy-3";
-  const bigColor = warn ? "text-warn" : featured ? "text-gold" : "text-navy";
-  const subColor = warn ? "text-warn" : featured ? "text-gold-soft" : "text-navy-3";
+    : terra
+      ? "border-terra bg-terra-bg"
+      : featured
+        ? "border-navy bg-navy text-bg"
+        : "border-border bg-surface";
+  const labelColor = warn ? "text-warn" : terra ? "text-terra" : featured ? "text-gold-soft" : "text-navy-3";
+  const bigColor = warn ? "text-warn" : terra ? "text-terra" : featured ? "text-gold" : "text-navy";
+  const subColor = warn ? "text-warn" : terra ? "text-terra" : featured ? "text-gold-soft" : "text-navy-3";
   return (
     <div className={`rounded-xl border p-4 ${ground}`}>
       <div className={`text-[10px] font-bold uppercase tracking-[0.12em] ${labelColor}`}>{label}</div>

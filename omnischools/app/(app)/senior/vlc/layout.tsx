@@ -10,11 +10,13 @@ import { VlcTabs } from "@/components/vlc/vlc-tabs";
  * re-check). Renders only the tab row + children; no data fetch here.
  */
 export default async function VlcLayout({ children }: { children: React.ReactNode }) {
-  const { school } = await requireSchoolRole(VLC_CONFIG_READ_ROLES);
+  const { school, user } = await requireSchoolRole(VLC_CONFIG_READ_ROLES);
   if (school.schoolType === "BASIC") redirect("/dashboard");
   return (
     <div className="mx-auto max-w-page">
-      <VlcTabs />
+      {/* Role-conditional tab row (INCR-44): the Dashboard + Leavers tabs render only for their audiences,
+          so no role gets a tab whose target redirects/notFounds them. */}
+      <VlcTabs roles={user.roles} />
       {children}
     </div>
   );
