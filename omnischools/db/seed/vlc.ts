@@ -5,8 +5,12 @@ import {
   academicPeriod,
   auditLog,
   classes,
+  roleAssignments,
+  roles,
   schools,
   students,
+  users,
+  vlcPastoralFlag,
   vlcPeerGuide,
   vlcProgramme,
   vlcSession,
@@ -305,6 +309,75 @@ async function main() {
     );
   } else {
     console.log("… no eligible class with students / no session template — VLC session skipped.");
+  }
+
+  // ---- 6) Pastoral flag (INCR-42b) — the module's FIRST CONFIDENTIAL row. EXACTLY ONE active flag on
+  // Joseph Manu (ASK-24-0118, Form 2 GA A): CONCERN, context "Group B plenary share-back", surfaced_by
+  // "Akua Gyamfi (PG)" (a DISPLAY attribution — the PG never writes), raised_by the class's Form Master
+  // (the recorder). Marker-scoped + re-run-safe: delete only THIS school's flags first. No other student
+  // is flagged. The seed audit row is the REDACTED `vlc_pastoral_flag` entity (metadata only).
+  await db.delete(vlcPastoralFlag).where(eq(vlcPastoralFlag.schoolId, schoolId));
+
+  const [joseph] = await db
+    .select({ id: students.id, classId: students.classId })
+    .from(students)
+    .where(and(eq(students.schoolId, schoolId), eq(students.studentCode, "ASK-24-0118")))
+    .limit(1);
+
+  if (!joseph?.classId) {
+    console.log("… Joseph Manu (ASK-24-0118) not seeded — pastoral flag skipped.");
+  } else {
+    // The surface's FM for Joseph is Mr A. Mensah, but the base roster left Form 2 GA A's class_teacher
+    // unset. Pin it to the FORM_MASTER holder when it is null (targeted + idempotent) so the OWN-CLASS read
+    // gate resolves to a real FM — the demo round-trip (a gated FM sees the callout) depends on it. That
+    // teacher is the flag's raised_by. A Dean sees it school-wide regardless.
+    const [cls] = await db
+      .select({ ct: classes.classTeacherUserId })
+      .from(classes)
+      .where(and(eq(classes.schoolId, schoolId), eq(classes.id, joseph.classId)))
+      .limit(1);
+    let fmUserId = cls?.ct ?? null;
+    if (!fmUserId) {
+      const [fm] = await db
+        .select({ id: users.id })
+        .from(roleAssignments)
+        .innerJoin(roles, eq(roleAssignments.roleId, roles.id))
+        .innerJoin(users, eq(roleAssignments.userId, users.id))
+        .where(and(eq(roleAssignments.schoolId, schoolId), eq(roles.code, "FORM_MASTER")))
+        .limit(1);
+      fmUserId = fm?.id ?? null;
+      if (fmUserId) {
+        await db
+          .update(classes)
+          .set({ classTeacherUserId: fmUserId })
+          .where(and(eq(classes.schoolId, schoolId), eq(classes.id, joseph.classId)));
+      }
+    }
+
+    const [flag] = await db
+      .insert(vlcPastoralFlag)
+      .values({
+        schoolId,
+        studentId: joseph.id,
+        severity: "CONCERN",
+        context: "Group B plenary share-back",
+        surfacedBy: "Akua Gyamfi (PG)",
+        raisedByUserId: fmUserId ?? undefined,
+      })
+      .returning({ id: vlcPastoralFlag.id });
+
+    await db.insert(auditLog).values({
+      schoolId,
+      actorRole: "FORM_MASTER",
+      actionType: "raised",
+      entityType: "vlc_pastoral_flag",
+      entityId: flag.id,
+      reason: "Pastoral flag raised", // REDACTED — metadata only, no context/severity/surfaced_by
+    });
+
+    console.log(
+      "✓ Seeded VLC pastoral flag — Joseph Manu (CONCERN), surfaced by a PG. Confidential (REDACTED).",
+    );
   }
 }
 

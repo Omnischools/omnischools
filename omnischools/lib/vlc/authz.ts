@@ -30,3 +30,40 @@ export function canWriteSession(input: {
     input.userId === input.classTeacherUserId // the session's-class Form Master, own-class only
   );
 }
+
+/**
+ * 🔴 INCR-42b — the CONFIDENTIAL pastoral-flag access gate (READ === WRITE, owner-locked b+c). PURE,
+ * DB-free, unit-tested. THE INCREMENT'S ENTIRE SECURITY VALUE lives here: it is
+ *
+ *     DEAN_OF_STUDENTS ∈ roles  (school-wide pastoral authority)
+ *   OR  caller IS the flagged student's class's OWN Form Master  (userId === classTeacherUserId)
+ *
+ * The FM arm is an IDENTITY match, NEVER `roles.includes("FORM_MASTER")`. A bare FORM_MASTER role check
+ * would let EVERY form master read EVERY class's confidential flags — the exact IDOR this table exists to
+ * prevent. `classTeacherUserId` is the flagged student's class teacher, loaded server-side (un-spoofable),
+ * so an other-class FM, an ADMIN, a HEADMASTER, a Peer Guide, a student, and a parent are all refused.
+ *
+ * This mirrors `canWriteSession` (the 42a own-class identity match, Sarah-CLEARED) but ADDS the school-wide
+ * Dean arm (the Dean reaches any class's flags; the FM only their own). The role gate VLC_PASTORAL_*_ROLES
+ * = [FORM_MASTER, DEAN] is applied at the reader/action entry (who may reach the boundary); this function
+ * is the own-class narrowing inside it.
+ */
+export function canAccessPastoralFlag(input: {
+  roles: readonly string[];
+  userId: string | null | undefined;
+  classTeacherUserId: string | null | undefined;
+}): boolean {
+  if (input.roles.includes("DEAN_OF_STUDENTS")) return true; // school-wide pastoral authority
+  return (
+    !!input.userId &&
+    !!input.classTeacherUserId &&
+    input.userId === input.classTeacherUserId // the flagged student's class's OWN Form Master (identity)
+  );
+}
+
+/**
+ * The pastoral WRITE gate (create + resolve). Owner-locked to the SAME set as read (b+c), so it is exactly
+ * `canAccessPastoralFlag`; aliased (not re-implemented) so the read and write scopes can never drift. Both
+ * the page `canEdit` and BOTH server actions re-check it (the action is the real boundary).
+ */
+export const canWritePastoralFlag = canAccessPastoralFlag;

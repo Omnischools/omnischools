@@ -415,6 +415,16 @@ export const VLC_VACANCY_PROTOCOL: readonly string[] = [
   "The remaining Peer Guide continues solo until the vacancy is filled.",
 ];
 
+/**
+ * INCR-42b — the frozen pastoral-flag SEVERITY allow-list (a 3-level scale, CONCERN = middle, surface
+ * "CONCERN (intermediate level, not crisis)"). MUST stay byte-identical to the `vlc_pastoral_flag.severity`
+ * CHECK (`IN ('NOTE','CONCERN','CRISIS')`) — the DB CHECK is defense-in-depth; this is the primary
+ * validation (the raise action rejects anything else) + the raise-form option list. Ordered low→high; not a
+ * pg enum (a bare 3-value domain the app owns needs no type — the vlc_session_template.slot idiom).
+ */
+export const VLC_PASTORAL_SEVERITY = ["NOTE", "CONCERN", "CRISIS"] as const;
+export type VlcPastoralSeverity = (typeof VLC_PASTORAL_SEVERITY)[number];
+
 /** The "Why not a longer tenure?" rules (surface `.notes`) — shown by "View tenure rules", read-only too. */
 export const VLC_TENURE_RULES: readonly string[] = [
   "Tenure is one semester by design — it spreads leadership wider across the cohort.",

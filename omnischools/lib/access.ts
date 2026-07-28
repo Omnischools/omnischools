@@ -198,6 +198,33 @@ export const VLC_CONFIG_READ_ROLES = [
   "FORM_MASTER",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * VLC PASTORAL flag (SHS module 4.5 / INCR-42b) — the module's FIRST confidential pastoral-PII gate, and
+ * a SEPARATE, tighter pair than the config gates above (mirrors the SICKBAY_CLINICAL_* narrow-gate shape,
+ * owner-locked b+c). READ = WRITE = FORM_MASTER + DEAN_OF_STUDENTS ONLY.
+ *
+ *   • ADMIN + HEADMASTER are DELIBERATELY ABSENT. They are in VLC_CONFIG_READ_ROLES (they see the whole
+ *     OPERATIONAL register) but must get NOTHING pastoral — reusing the wider config set as the flag gate
+ *     would hand the proprietor/IT account every class's confidential welfare flag.
+ *   • This is only the ROLE arm. FORM_MASTER here does NOT mean "every form master reads every flag": the
+ *     confidential reader (lib/vlc/pastoral-data.ts) + the actions narrow the FM arm to an OWN-CLASS
+ *     IDENTITY match (the flagged student's class.class_teacher_user_id === caller.userId) via
+ *     `canAccessPastoralFlag` / `canWritePastoralFlag` (lib/vlc/authz.ts). A bare FORM_MASTER role check
+ *     would be the IDOR this increment exists to prevent. The DEAN arm is school-wide (the pastoral
+ *     authority); no own-class clause for the Dean.
+ *
+ * STUDENT / PARENT / PEER-GUIDE never reach either (a PG is not even in VLC_CONFIG_READ_ROLES; the PG is a
+ * `surfaced_by` DATA field, never a writer — owner c).
+ */
+export const VLC_PASTORAL_READ_ROLES = [
+  "FORM_MASTER",
+  "DEAN_OF_STUDENTS",
+] as const satisfies readonly KnownAppRole[];
+export const VLC_PASTORAL_WRITE_ROLES = [
+  "FORM_MASTER",
+  "DEAN_OF_STUDENTS",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",
