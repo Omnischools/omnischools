@@ -25,7 +25,12 @@ const stripComments = (s: string): string =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const schema = stripComments(src("db/schema/vlc.ts"));
-const flagBlock = schema.slice(schema.indexOf("export const vlcPastoralFlag ="));
+const flagBlock = schema.slice(
+  schema.indexOf("export const vlcPastoralFlag ="),
+  // Bound to the next table so the block never over-captures INCR-43a's casework siblings (which carry
+  // `body`/`summary`/`journal`/`vlc_pastoral_note` and would false-trip the fence guards below).
+  schema.indexOf("export const vlcPastoralJournal ="),
+);
 const reader = stripComments(src("lib/vlc/pastoral-data.ts"));
 const actions = stripComments(src("lib/actions/vlc-pastoral.ts"));
 const component = stripComments(src("components/vlc/pastoral-flag.tsx"));
@@ -81,9 +86,12 @@ describe("VLC42b-2 · partial index on active flags (school_id, student_id) WHER
 
 // ── VLC42b-3 · multiple concurrent active flags allowed ───────────────────────────────────────────
 describe("VLC42b-3 · no unique-on-active — concurrent open flags per student are allowed", () => {
-  it("the active index is NOT unique + there is no tenant_uk (LEAF)", () => {
+  it("the active index is NOT unique (INCR-43a R331 retrofits a composite-FK-target tenant_uk, not a unique-on-active)", () => {
     expect(flagBlock).not.toMatch(/uniqueIndex\([^)]*active/);
-    expect(flagBlock).not.toContain("tenant_uk");
+    // 42b built the flag LEAF; INCR-43a retrofits `vlc_pastoral_flag_tenant_uk UNIQUE(school_id, id)` so
+    // vlc_pastoral_case.flag_id can reference it (R331). It is the FK target, NOT a unique-on-active —
+    // multiple concurrent open flags per student stay allowed.
+    expect(flagBlock).toMatch(/unique\("vlc_pastoral_flag_tenant_uk"\)\.on\(t\.schoolId,\s*t\.id\)/);
   });
 });
 
@@ -305,7 +313,9 @@ describe("VLC42b-17 · scope fence — no journal/case-file/points/queue/small-g
   const FORBIDDEN = [
     "vlc_journal",
     "vlc_case_file",
-    "vlc_pastoral_note",
+    // NB: `vlc_pastoral_note` is INTENTIONALLY not fenced here — INCR-43a legitimately adds it (and its
+    // casework siblings) to db/schema/vlc.ts + extends pastoral-data.ts. The 42b fence keeps out the
+    // WRONG-NAMED / out-of-scope constructs below (vlc_journal / case_file / character_paragraph / …).
     "case_file",
     "facilitation_point",
     "vlc_character_paragraph",

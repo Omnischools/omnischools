@@ -519,8 +519,10 @@ export const vlcSessionAttendance = pgTable(
  *     narrative out of this table.
  *   • NO derived scalars — no `active`/`is_open` bool, no `severity_rank`, no count. ACTIVE derives from
  *     `resolved_at IS NULL` (the open-row idiom); severity ordering is frozen editorial in lib/.
- *   • NO tenant_uk — LEAF (nothing in 42b FKs to a flag). NO unique-on-active — multiple concurrent open
- *     flags per student are allowed (two staff may raise independently).
+ *   • NO tenant_uk in 42b — the flag was LEAF (nothing in 42b FKed to it). ⚠ INCR-43a RETROFITS a
+ *     `vlc_pastoral_flag_tenant_uk UNIQUE(school_id, id)` below because vlc_pastoral_case's composite FK
+ *     targets it (R331). NO unique-on-active — multiple concurrent open flags per student are allowed
+ *     (two staff may raise independently).
  *   • `severity` is TEXT + a CHECK allow-list (the frozen `VLC_PASTORAL_SEVERITY` in lib/), NOT a pg
  *     enum — a bare three-value domain the app owns needs no type (the vlc_session_template.slot idiom).
  *
@@ -558,6 +560,12 @@ export const vlcPastoralFlag = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
+    // R331 (INCR-43a) RETROFIT — the composite-FK TARGET of vlc_pastoral_case's (school_id, flag_id) FK.
+    // 42b built this flag LEAF with no tenant_uk; 43a's vlc_pastoral_case now references it, so the UNIQUE
+    // is added here. In migration 0069 the UNIQUE ALTER is ordered AHEAD of the case FK ALTER (the
+    // 0033/0057 target-before-FK discipline). 🔴 prod's flag came from the hand-run prod-paste-0070, NOT a
+    // replayed migration, so prod lacks this UNIQUE until prod-paste-0071 ALTERs it in (idempotent, FIRST).
+    tenantUk: unique("vlc_pastoral_flag_tenant_uk").on(t.schoolId, t.id),
     // The INCR-45 existence-check AND the FM own-class read filter both look up active flags by student;
     // this makes both an indexed lookup. Partial (WHERE resolved_at IS NULL) — NOT unique (concurrent
     // open flags per student are allowed).
@@ -585,5 +593,174 @@ export const vlcPastoralFlag = pgTable(
       columns: [t.schoolId, t.sessionId],
       foreignColumns: [vlcSession.schoolId, vlcSession.id],
     }).onDelete("no action"),
+  }),
+);
+
+/* ============================================================================
+ * VLC Casework (SHS module 4.5 / INCR-43a, migration 0069) — the module's CONFIDENTIAL pastoral
+ * READ boundary. FOUR NEW tenant tables, all `vlc_pastoral_*` so the reserved REDACTED-audit prefix
+ * branch (isRedactedAuditEntity → startsWith("vlc_pastoral_")) auto-covers them — ZERO redaction.ts
+ * edit, none in SHOWN (R324/R332). Same confidential audit class as 42b's flag; content is read by the
+ * ONE server-only path lib/vlc/pastoral-data.ts (the reader extension is APP code, R329 — not here).
+ *
+ * OWNER-LOCKED (INCR-43 batch): STAFF-FACING — the FM records the journal + the PG observation; the
+ * named PG is attributed as `observed_by` free-text DATA (the 42b surfaced_by precedent), NEVER a
+ * principal (no student/PG login/write/self-read; PG reads NOTHING — structural). READ = FM(own-class)
+ * + DEAN_OF_STUDENTS only (ADMIN/HM barred); WRITE = the same, via canWritePastoralFlag reused VERBATIM.
+ * Both gates are APP-LAYER (lib/vlc/), NOT RLS and NOT a trigger — own-class is a STATIC identity match
+ * (the student's class.class_teacher_user_id === caller.userId), the 42a/42b cleared mechanism. NO new
+ * role/group/enum/GUC/RLS-shape.
+ *
+ * All four are tenant-scoped and get ENABLE + FORCE RLS + tenant_isolation (db:policies on dev;
+ * db/sql/prod-paste-0071-vlc-casework.sql by hand on prod — LEAK-CRITICAL: skip it and four confidential
+ * tables ship with NO RLS → cross-school pastoral-PII leak) and — via the catalog-driven parent_deny loop
+ * in db/sql/policies.sql — parent_deny (owner #4: a parent sees NOTHING VLC-wide; FORCE-RLS + school_id,
+ * NO parent_scope). All four are LEAF (nothing FKs to them).
+ *
+ * APPEND-ONLY vs EDITABLE (R325–R328): journal / note / observation are APPEND-ONLY — corrections are a
+ * new row, so NO `updated_at`, no update/delete action, no status/open/closed column (the surface's
+ * "N open" DERIVES from 42b flags' resolved_at IS NULL, never a stored bool). vlc_pastoral_case is the
+ * SOLE editable table: ONE running summary per flag (1:1 UNIQUE(school_id, flag_id)); an edit bumps
+ * summary + last_revised_at + last_revised_by. Entry date / word count / prompt / value all DERIVE — NO
+ * `entry_date`, no derived-scalar column anywhere (R325). Composite (school_id, X) intra-tenant FKs make
+ * a cross-tenant reference structurally impossible; the FM/author actor stamps are single-column SET NULL
+ * users FKs. Validation that spans rows is app-layer in lib/vlc/, never a DB trigger (portability).
+ * ==========================================================================*/
+
+/**
+ * R325 — Reflection JOURNAL entry, FM-recorded as DATA, APPEND-ONLY (HARD). One row per reflection; a
+ * correction is a NEW row (no edit/delete/backdate — structurally absent, so NO `updated_at`). Entry
+ * DATE derives (the session's session_date, else created_at — NO `entry_date` column); word count /
+ * prompt / value all derive from `body` + the F0 template. `session_id` is a NULLABLE composite
+ * (school_id, session_id) FK → vlc_session.tenant_uk, NO ACTION (append-only sessions never delete; a
+ * session-less journal entry is legal — a NULL member is MATCH SIMPLE, so the check is skipped). LEAF —
+ * nothing FKs to it, so NO tenant_uk. NO unique (corrections are appends). Index (school_id, student_id).
+ */
+export const vlcPastoralJournal = pgTable(
+  "vlc_pastoral_journal",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
+    sessionId: uuid("session_id"), // NULLABLE composite (school_id, session_id) FK below — NO ACTION
+    // The FM who recorded the entry (SET NULL → global ref_user). The student is `student_id`; there is no
+    // student/PG author — this is staff-recorded DATA.
+    recordedByUserId: uuid("recorded_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Per-student journal stream read (the sole reader filters by student after the own-class fence).
+    byStudent: index("vlc_pastoral_journal_student_idx").on(t.schoolId, t.studentId),
+    // Defense-in-depth single-row cap (primary validation is app-layer in lib/vlc/).
+    bodyLen: check("vlc_pastoral_journal_body_len", sql`char_length(${t.body}) <= 4000`),
+    // Composite intra-tenant FKs — the student CASCADEs; the session is NULLABLE + NO ACTION.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    sessionFk: foreignKey({
+      columns: [t.schoolId, t.sessionId],
+      foreignColumns: [vlcSession.schoolId, vlcSession.id],
+    }).onDelete("no action"),
+  }),
+);
+
+/**
+ * R326 — FM/Dean NOTE, APPEND-ONLY, student-scoped. One row per note; append-only (NO `updated_at`,
+ * create-only). `open` is deliberately NOT a column — it DERIVES from 42b flags (resolved_at IS NULL);
+ * the surface "2 open · 4 total" = count(notes) + count(unresolved flags). `author_user_id` is the
+ * single-column SET NULL users stamp. LEAF — no tenant_uk. Index (school_id, student_id).
+ */
+export const vlcPastoralNote = pgTable(
+  "vlc_pastoral_note",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
+    authorUserId: uuid("author_user_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byStudent: index("vlc_pastoral_note_student_idx").on(t.schoolId, t.studentId),
+    bodyLen: check("vlc_pastoral_note_body_len", sql`char_length(${t.body}) <= 4000`),
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * R327 — PG OBSERVATION, FM-recorded, APPEND-ONLY, the PG is DATA not a principal. `observed_by` is
+ * free-text ≤80 naming the PG (the 42b surfaced_by precedent — deliberately NO `peer_guide_id` FK: the
+ * PG never becomes a foreign-key principal, and PG reads NOTHING — structural, no PG login/read path).
+ * `recorded_by_user_id` is the FM who committed it (SET NULL → global ref_user). Append-only. LEAF — no
+ * tenant_uk. Index (school_id, student_id).
+ */
+export const vlcPastoralObservation = pgTable(
+  "vlc_pastoral_observation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
+    // The PG named as free-text DATA (NOT an FK principal). NOT NULL, ≤80 (the surfaced_by precedent).
+    observedBy: text("observed_by").notNull(),
+    // The FM who recorded the observation (SET NULL → global ref_user).
+    recordedByUserId: uuid("recorded_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byStudent: index("vlc_pastoral_observation_student_idx").on(t.schoolId, t.studentId),
+    observedByLen: check("vlc_pastoral_observation_observed_by_len", sql`char_length(${t.observedBy}) <= 80`),
+    bodyLen: check("vlc_pastoral_observation_body_len", sql`char_length(${t.body}) <= 4000`),
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * R328 — CASE: ONE editable running summary per flag (1:1), the SOLE non-append-only casework table.
+ * `flag_id` is a composite (school_id, flag_id) FK → vlc_pastoral_flag.tenant_uk (the R331 retrofit
+ * above), CASCADE — a cross-tenant flag reference is structurally impossible and deleting the flag drops
+ * its case. `UNIQUE(school_id, flag_id)` enforces the 1:1 (lazily created — a flag may have no case yet;
+ * at most one). EDITABLE by FM(own)+Dean: an update bumps `summary` + `last_revised_at` +
+ * `last_revised_by_user_id`. NO delete. LEAF — nothing FKs to it, so NO tenant_uk.
+ */
+export const vlcPastoralCase = pgTable(
+  "vlc_pastoral_case",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    flagId: uuid("flag_id").notNull(), // composite (school_id, flag_id) FK below → the R331 flag tenant_uk
+    summary: text("summary").notNull(),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+    lastRevisedAt: timestamp("last_revised_at", { withTimezone: true }).notNull().defaultNow(),
+    lastRevisedByUserId: uuid("last_revised_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => ({
+    // 1:1 — at most one case per flag (the upsert conflict target). Its (school_id, flag_id) prefix also
+    // serves the per-flag case lookup, so no separate index.
+    uniqPerFlag: unique("uniq_vlc_pastoral_case_flag").on(t.schoolId, t.flagId),
+    summaryLen: check("vlc_pastoral_case_summary_len", sql`char_length(${t.summary}) <= 8000`),
+    // Composite intra-tenant FK → the flag's R331 tenant_uk (school_id, id), CASCADE.
+    flagFk: foreignKey({
+      columns: [t.schoolId, t.flagId],
+      foreignColumns: [vlcPastoralFlag.schoolId, vlcPastoralFlag.id],
+    }).onDelete("cascade"),
   }),
 );

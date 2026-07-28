@@ -10,7 +10,11 @@ import {
   schools,
   students,
   users,
+  vlcPastoralCase,
   vlcPastoralFlag,
+  vlcPastoralJournal,
+  vlcPastoralNote,
+  vlcPastoralObservation,
   vlcPeerGuide,
   vlcProgramme,
   vlcSession,
@@ -316,6 +320,11 @@ async function main() {
   // "Akua Gyamfi (PG)" (a DISPLAY attribution — the PG never writes), raised_by the class's Form Master
   // (the recorder). Marker-scoped + re-run-safe: delete only THIS school's flags first. No other student
   // is flagged. The seed audit row is the REDACTED `vlc_pastoral_flag` entity (metadata only).
+  // Marker-scoped + re-run-safe: drop this school's casework FIRST (the case FKs the flag), then the flag.
+  await db.delete(vlcPastoralCase).where(eq(vlcPastoralCase.schoolId, schoolId));
+  await db.delete(vlcPastoralJournal).where(eq(vlcPastoralJournal.schoolId, schoolId));
+  await db.delete(vlcPastoralNote).where(eq(vlcPastoralNote.schoolId, schoolId));
+  await db.delete(vlcPastoralObservation).where(eq(vlcPastoralObservation.schoolId, schoolId));
   await db.delete(vlcPastoralFlag).where(eq(vlcPastoralFlag.schoolId, schoolId));
 
   const [joseph] = await db
@@ -377,6 +386,82 @@ async function main() {
 
     console.log(
       "✓ Seeded VLC pastoral flag — Joseph Manu (CONCERN), surfaced by a PG. Confidential (REDACTED).",
+    );
+
+    // ---- 7) Casework (INCR-43a) — the confidential document the flag points into. On the SAME flag:
+    // a few APPEND-ONLY journal entries, ≥2 FM notes (incl. the case-opener), ≥1 PG observation (the PG
+    // named as `observed_by` DATA), and ONE editable case summary on the flag (1:1). The FM records it
+    // all; there is no student/PG writer. Session-less entries are legal (entry date derives to
+    // created_at). All four are REDACTED (`vlc_pastoral_*`). ----
+    const at = (iso: string) => new Date(`${iso}T00:00:00Z`);
+    await db.insert(vlcPastoralJournal).values([
+      {
+        schoolId,
+        studentId: joseph.id,
+        recordedByUserId: fmUserId ?? undefined,
+        body: "First session back after the two-session absence. Reflection submitted — twenty-eight words, but submitted. That alone matters more than the words right now.",
+        createdAt: at("2026-04-16"),
+      },
+      {
+        schoolId,
+        studentId: joseph.id,
+        recordedByUserId: fmUserId ?? undefined,
+        body: "On Patriotism he wrote about his father's mason work — finishing the row even when no one is watching. Went quiet in plenary, asked to step out, came back.",
+        createdAt: at("2026-05-07"),
+      },
+      {
+        schoolId,
+        studentId: joseph.id,
+        recordedByUserId: fmUserId ?? undefined,
+        body: "I want my small words to be the same as my big words. That is discipline I think. Not exercise. Word-keeping.",
+        createdAt: at("2026-05-14"),
+      },
+    ]);
+    await db.insert(vlcPastoralNote).values([
+      {
+        schoolId,
+        studentId: joseph.id,
+        authorUserId: fmUserId ?? undefined,
+        body: "Case opener · bereavement. Mother called yesterday evening — Joseph's father died Saturday 7 Feb. Have notified subject teachers. Family situation also flagged in finance — mother enquiring about boarding-fee concessions for next semester.",
+        createdAt: at("2026-02-19"),
+      },
+      {
+        schoolId,
+        studentId: joseph.id,
+        authorUserId: fmUserId ?? undefined,
+        body: "V7B plenary — Akua Gyamfi (PG) flagged him at 3:08 PM during share-back. Joseph became tearful, stepped out, returned. Not crisis level — concern level — but the second flag in three weeks. Considering the Friday Dean check-in.",
+        createdAt: at("2026-05-14"),
+      },
+    ]);
+    await db.insert(vlcPastoralObservation).values({
+      schoolId,
+      studentId: joseph.id,
+      observedBy: "Prince Otoo",
+      recordedByUserId: fmUserId ?? undefined,
+      body: "In small group today Joseph led the conversation about what discipline looks like outside school. Stronger in small group than in plenary — several people built on what he said.",
+      createdAt: at("2026-01-22"),
+    });
+    await db.insert(vlcPastoralCase).values({
+      schoolId,
+      flagId: flag.id,
+      summary:
+        "Joseph's father died unexpectedly 7 February 2026. Mother now sole provider. Academic performance steady — no slip in Maths or English. Social engagement returning gradually. VLC engagement is the most sensitive surface — values material (Compassion, Patriotism, Service) is closest to the bone for him right now. Hold the journal lightly. Watch for triggers. He is doing the work.",
+      openedAt: at("2026-02-19"),
+      lastRevisedAt: at("2026-05-14"),
+      lastRevisedByUserId: fmUserId ?? undefined,
+    });
+
+    await db.insert(auditLog).values({
+      schoolId,
+      actorRole: "FORM_MASTER",
+      actionType: "created",
+      entityType: "vlc_pastoral_case", // REDACTED (vlc_pastoral_* prefix) — metadata only, no bodies
+      entityId: flag.id,
+      reason: "VLC casework demo seed (INCR-43a)",
+    });
+
+    console.log(
+      "✓ Seeded VLC casework — 3 journal entries, 2 FM notes, 1 PG observation, 1 case on Joseph Manu. Confidential (REDACTED).",
     );
   }
 }

@@ -101,6 +101,20 @@ export async function raisePastoralFlag(input: unknown): Promise<Result> {
       if (!gate.ok) {
         return { ok: false, error: "Only the student's own Form Master or a Dean can raise a flag." };
       }
+      // 🔴 R330 (INCR-43a) — retire the 42b class-match deferral at the single choke-point: a
+      // session-linked flag's session MUST belong to the flagged student's class. A matching session
+      // commits; a NULL sessionId commits (a session-less flag is legal); a mismatch is REJECTED (the
+      // case inherits this fence via flag → session). Defends a hand-crafted cross-class sessionId.
+      if (sessionId) {
+        const [sess] = await tx
+          .select({ classId: vlcSession.classId })
+          .from(vlcSession)
+          .where(and(eq(vlcSession.schoolId, school.id), eq(vlcSession.id, sessionId)))
+          .limit(1);
+        if (!sess || sess.classId !== gate.classId) {
+          return { ok: false, error: "That session belongs to a different class than the student." };
+        }
+      }
       const [row] = await tx
         .insert(vlcPastoralFlag)
         .values({
