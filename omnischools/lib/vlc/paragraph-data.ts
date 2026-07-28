@@ -101,17 +101,18 @@ export async function getCharacterParagraph(
     // FINALISED-ONLY below.
     const canAccess = canAccessPastoralFlag(gateInput);
 
-    // 2) the paragraph row — the SOLE projection. Joins ONLY ref_user (the last editor's name); it never
-    // touches the four casework tables.
+    // 2) the paragraph row — the SOLE projection. Joins ONLY ref_user (the AUTHOR's name — the FM who owns
+    // the paragraph, per owner #6 "FM-owned scaffold"; the year-end reference is written BY the author, not
+    // whoever last touched it); it never touches the four casework tables.
     const [row] = await tx
       .select({
         body: vlcPastoralParagraph.body,
         lockedAt: vlcPastoralParagraph.lockedAt,
         updatedAt: vlcPastoralParagraph.updatedAt,
-        editorName: users.fullName,
+        authorName: users.fullName,
       })
       .from(vlcPastoralParagraph)
-      .leftJoin(users, eq(users.id, vlcPastoralParagraph.updatedByUserId))
+      .leftJoin(users, eq(users.id, vlcPastoralParagraph.authorUserId))
       .where(
         and(
           eq(vlcPastoralParagraph.schoolId, schoolId),
@@ -129,7 +130,7 @@ export async function getCharacterParagraph(
       const f = classFormNumber(stu.classLevel, stu.className ?? "");
       return f ? `F${f}` : null;
     })();
-    const author = row?.editorName ?? "the Form Master";
+    const author = row?.authorName ?? "the Form Master";
 
     const paragraph = row
       ? {

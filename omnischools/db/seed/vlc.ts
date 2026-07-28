@@ -471,7 +471,7 @@ async function main() {
     // as a DRAFT (locked_at NULL → editable; the FM may still Edit / Lock it). FM-authored free text, NO
     // machine derivation (owner #6). Per-student (1:1), REDACTED (`vlc_pastoral_*` prefix). This is the ONE
     // VLC element the Headmaster may read — but only once FINALISED, so this draft stays FM+Dean-visible. ----
-    await db.insert(vlcPastoralParagraph).values({
+    const [paragraphRow] = await db.insert(vlcPastoralParagraph).values({
       schoolId,
       studentId: joseph.id,
       authorUserId: fmUserId ?? undefined,
@@ -485,14 +485,15 @@ async function main() {
         "wanting his small words to match his big ones. I would recommend him for a service-project lead role " +
         "in the coming year, subject to his readiness at that point.",
       // locked_at intentionally UNSET → DRAFT.
-    });
+      })
+      .returning({ id: vlcPastoralParagraph.id });
 
     await db.insert(auditLog).values({
       schoolId,
       actorRole: "FORM_MASTER",
       actionType: "created",
       entityType: "vlc_pastoral_paragraph", // REDACTED (vlc_pastoral_* prefix) — metadata only, no body
-      entityId: joseph.id,
+      entityId: paragraphRow.id, // the paragraph row (matches the actions' entityId), not the student id
       reason: "VLC character paragraph demo seed (INCR-43b)",
     });
 
