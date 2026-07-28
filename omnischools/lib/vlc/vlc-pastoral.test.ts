@@ -26,7 +26,6 @@ const stripComments = (s: string): string =>
 
 const schema = stripComments(src("db/schema/vlc.ts"));
 const flagBlock = schema.slice(schema.indexOf("export const vlcPastoralFlag ="));
-const authz = stripComments(src("lib/vlc/authz.ts"));
 const reader = stripComments(src("lib/vlc/pastoral-data.ts"));
 const actions = stripComments(src("lib/actions/vlc-pastoral.ts"));
 const component = stripComments(src("components/vlc/pastoral-flag.tsx"));
