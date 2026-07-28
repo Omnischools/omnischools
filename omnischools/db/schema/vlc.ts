@@ -764,3 +764,70 @@ export const vlcPastoralCase = pgTable(
     }).onDelete("cascade"),
   }),
 );
+
+/* ============================================================================
+ * VLC Character paragraph (SHS module 4.5 / INCR-43b, migration 0070) — the FM-authored school-leaver
+ * reference output, and the ONE VLC table with a WIDER app-read set. ONE new confidential tenant table:
+ * `vlc_pastoral_paragraph`. Same `vlc_pastoral_` family → the reserved REDACTED-audit prefix branch
+ * (isRedactedAuditEntity → startsWith("vlc_pastoral_")) auto-covers it — ZERO redaction.ts / SHOWN edit
+ * (R335/R339). Redaction ≠ read-gate: the audit diff is REDACTED even though its app-read admits the HM.
+ *
+ * OWNER-LOCKED (INCR-43 batch): #6 FM-AUTHORED free text, NO AI / NO auto-summary (the surface's
+ * "auto-drafted/regenerates" framing is OMIT-NOT-FAKED); #2 the Headmaster READS this paragraph
+ * (school-wide, paragraph-only — EXCLUDED from the 43a journal/note/observation/case); #4 parents see
+ * NOTHING here (they receive the paragraph at leaver via INCR-45, R341).
+ *
+ * 🔴 THE ACCESS MODEL — one table, TWO read audiences, split across layers (R336, deliberately):
+ *   • TENANT + PARENT isolation is RLS — ENABLE + FORCE + tenant_isolation (db:policies on dev;
+ *     db/sql/prod-paste-0072-vlc-paragraph.sql by hand on prod — LEAK-CRITICAL: skip it and the
+ *     confidential paragraph ships with NO RLS → cross-school PII leak) and — via the catalog-driven
+ *     parent_deny loop in db/sql/policies.sql — parent_deny (owner #4; FORCE-RLS + school_id, NO
+ *     parent_scope, so the loop auto-denies it).
+ *   • The WIDER read set (own-class FM + Dean + HEADMASTER) is APP-LAYER (lib/vlc/) via a SEPARATE
+ *     reader (lib/vlc/paragraph-data.ts) behind a SEPARATE route — NOT RLS. The HM is same-tenant, so
+ *     RLS passes for him; the app-layer reader is what scopes HM to the paragraph-only (and to FINALISED
+ *     rows). RLS here enforces ONLY tenant + parent isolation. NO new GUC, NO new RLS boundary.
+ *
+ * EDITABLE-IN-PLACE, unlike the 43a append-only tables (hence it HAS `updated_at`): ONE row per student,
+ * lazily created, retunable while `locked_at IS NULL`, frozen once set (R338 — the write re-checks
+ * canWritePastoralFlag AND locked_at IS NULL app-layer; the lock is one-way for the year, no unlock UI).
+ * LEAF — nothing FKs to it, so NO tenant_uk. NO derived scalars (word count / state derive in lib/), NO
+ * triggers (portability). The single-row `body` CHECK ≤3000 is defense-in-depth; the primary caps are
+ * app-layer. `UNIQUE(school_id, student_id)` is the one-per-student invariant AND the upsert conflict
+ * target AND the INCR-45 leaver read key (SELECT body WHERE student_id = X AND locked_at IS NOT NULL) —
+ * its (school_id) prefix + student_id serve that point lookup, so no separate index.
+ * ==========================================================================*/
+export const vlcPastoralParagraph = pgTable(
+  "vlc_pastoral_paragraph",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
+    // The FM's free-text school-leaver character paragraph. NOT NULL, ≤3000 (defense-in-depth CHECK;
+    // retunable — the primary cap is app-layer). FM-authored ONLY — no machine derivation (owner #6).
+    body: text("body").notNull(),
+    // The FM/Dean who first authored the paragraph (SET NULL → global ref_user).
+    authorUserId: uuid("author_user_id").references(() => users.id, { onDelete: "set null" }),
+    // The FM/Dean who last edited it (SET NULL → global ref_user).
+    updatedByUserId: uuid("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    // NULL = draft/editable; set = frozen for the year (R338). The write rejects when non-NULL.
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedByUserId: uuid("locked_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // ONE paragraph per student (lazily created) — the invariant, the upsert conflict target, and the
+    // INCR-45 leaver read key. Its (school_id, student_id) prefix serves the point lookup, so no index.
+    uniqPerStudent: unique("uniq_vlc_pastoral_paragraph_student").on(t.schoolId, t.studentId),
+    // Defense-in-depth single-row cap (primary validation is app-layer in lib/vlc/).
+    bodyLen: check("vlc_pastoral_paragraph_body_len", sql`char_length(${t.body}) <= 3000`),
+    // Composite intra-tenant FK — a cross-tenant student reference is structurally impossible. CASCADE.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+  }),
+);

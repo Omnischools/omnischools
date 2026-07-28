@@ -67,3 +67,25 @@ export function canAccessPastoralFlag(input: {
  * the page `canEdit` and BOTH server actions re-check it (the action is the real boundary).
  */
 export const canWritePastoralFlag = canAccessPastoralFlag;
+
+/**
+ * 🔴 INCR-43b — the CHARACTER-PARAGRAPH read gate. The ONE place the HEADMASTER is admitted to VLC pastoral
+ * content, and the module's only wider-than-FM+Dean read (owner #2, paragraph-only). It is the 43a read gate
+ * PLUS a school-wide HEADMASTER arm:
+ *
+ *     canAccessPastoralFlag(input)        // Dean (school-wide) OR own-class-FM IDENTITY — the authors
+ *   OR  HEADMASTER ∈ roles                // school-wide leadership — the paragraph-only widen (owner #2)
+ *
+ * The FM arm stays the OWN-CLASS IDENTITY match inside `canAccessPastoralFlag` (never a bare
+ * `roles.includes("FORM_MASTER")` — that is the IDOR the module fences). The HEADMASTER arm is school-wide,
+ * like the Dean. An OTHER-class FM fails the identity clause and is refused; ADMIN / PG / student / parent
+ * fail the role gate upstream. WRITE is NOT widened — it stays `canWritePastoralFlag` (HM read-only), and
+ * the reader further narrows the HM read to FINALISED (locked) paragraphs only.
+ */
+export function canReadPastoralParagraph(input: {
+  roles: readonly string[];
+  userId: string | null | undefined;
+  classTeacherUserId: string | null | undefined;
+}): boolean {
+  return canAccessPastoralFlag(input) || input.roles.includes("HEADMASTER");
+}

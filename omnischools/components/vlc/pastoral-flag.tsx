@@ -110,6 +110,15 @@ export function PastoralFlagPanel({
               >
                 Open journal
               </Link>
+              {/* INCR-43b — the school-leaver reference route (own-class FM / Dean write it; the Headmaster
+                  reads the finalised paragraph via the same route). Gated server-side; the link is a
+                  convenience entry for the writers who already see this callout. */}
+              <Link
+                href={`/senior/vlc/reference/${f.studentId}`}
+                className="rounded-md border border-navy-3 bg-bg px-3 py-1.5 text-[11px] font-bold text-navy hover:brightness-95"
+              >
+                Character reference
+              </Link>
               <button
                 type="button"
                 onClick={() => resolve(f.id)}

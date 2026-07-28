@@ -166,6 +166,7 @@ BEGIN
     'vlc_pastoral_note',
     'vlc_pastoral_observation',
     'vlc_pastoral_case',
+    'vlc_pastoral_paragraph',
     'announcement',
     'sms_template',
     'notification_log',

@@ -16,9 +16,15 @@ const TABS = [
 
 export function VlcTabs() {
   const pathname = usePathname();
-  // The confidential per-student journal (/senior/vlc/journal/<id>) is a drill-in reached from a flag
-  // callout, not a VLC section — no tab represents it, so hide the section row there (Dex INCR-43a LOW).
-  if (pathname.startsWith("/senior/vlc/journal/")) return null;
+  // The confidential per-student drill-ins — the 43a journal (/senior/vlc/journal/<id>) and the 43b
+  // school-leaver reference (/senior/vlc/reference/<id>) — are reached from a callout / deep link, not a VLC
+  // section; no tab represents either, so hide the section row there (Dex INCR-43a LOW, extended for 43b).
+  if (
+    pathname.startsWith("/senior/vlc/journal/") ||
+    pathname.startsWith("/senior/vlc/reference/")
+  ) {
+    return null;
+  }
   return (
     <nav className="mb-6 flex gap-1 border-b border-border" aria-label="VLC sections">
       {TABS.map((t) => {

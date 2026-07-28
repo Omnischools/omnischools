@@ -225,6 +225,30 @@ export const VLC_PASTORAL_WRITE_ROLES = [
   "DEAN_OF_STUDENTS",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * 🔴 INCR-43b — VLC CHARACTER PARAGRAPH read set — the ONE VLC gate the HEADMASTER is admitted to, and the
+ * module's ONLY wider-than-FM+Dean read (owner #2, paragraph-only). READ = own-class FM + Dean + HEADMASTER.
+ *
+ * DELIBERATELY SEPARATE from VLC_PASTORAL_READ_ROLES (which stays FM+DEAN, HM-free): the 43a casework
+ * journal/note/observation/case remain invisible to the Headmaster. Only the FM-authored school-leaver
+ * character paragraph widens to him, through a SEPARATE reader (lib/vlc/paragraph-data.ts) behind a
+ * SEPARATE route (/senior/vlc/reference/[studentId]) — never getStudentCasework, never the journal page.
+ *
+ *   • This is only the ROLE arm. FORM_MASTER here does NOT mean "every form master reads every paragraph":
+ *     the reader + the actions narrow the FM arm to an OWN-CLASS IDENTITY match via `canReadPastoralParagraph`
+ *     / `canWritePastoralFlag` (lib/vlc/authz.ts). A bare FORM_MASTER role check would be an IDOR. The DEAN
+ *     and HEADMASTER arms are school-wide (no own-class clause).
+ *   • WRITE (author / edit / lock) stays VLC_PASTORAL_WRITE_ROLES + `canWritePastoralFlag` — HM is NOT there
+ *     (read-only). The HM read is FINALISED-ONLY (locked paragraphs), enforced in the reader.
+ *
+ * ADMIN / STUDENT / PARENT / PEER-GUIDE never reach it.
+ */
+export const VLC_PARAGRAPH_READ_ROLES = [
+  "FORM_MASTER",
+  "DEAN_OF_STUDENTS",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",
