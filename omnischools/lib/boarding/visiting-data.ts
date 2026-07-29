@@ -29,7 +29,7 @@ import { classFormNumber } from "@/lib/senior/form";
 import { getVisitingPolicy, getBoardingCalendar, type VisitingPolicy } from "./config";
 import { getCurrentPeriod } from "./period";
 import { isLightColour } from "./roster";
-import { isPastorallyFlagged } from "./pastoral-stub";
+import { activePastoralFlagStudentIds } from "@/lib/vlc/pastoral-flags";
 import {
   deriveRsvpByHouse,
   deriveVisitStats,
@@ -309,7 +309,6 @@ export async function getVisitingBoard(
     const boarderRaw = await tx
       .select({
         studentId: students.id,
-        studentCode: students.studentCode,
         houseId: students.houseId,
         firstName: students.firstName,
         lastName: students.lastName,
@@ -333,7 +332,6 @@ export async function getVisitingBoard(
       const form = classFormNumber(b.classLevel, b.className);
       return {
         studentId: b.studentId,
-        studentCode: b.studentCode,
         houseId: b.houseId!,
         firstName: b.firstName,
         lastName: b.lastName,
@@ -346,6 +344,10 @@ export async function getVisitingBoard(
     const studentIds = boarders.map((b) => b.studentId);
 
     if (studentIds.length === 0) return emptyBoard();
+
+    // Active VLC pastoral flags (ids only — INCR-30 existence read, never severity); membership-checked
+    // per boarder below. Boarding never SELECTs the flag table (the VLC helper does).
+    const flaggedIds = await activePastoralFlagStudentIds(tx, schoolId);
 
     // Approved-visitor lists for the cohort (per-student list read, the gate's match lookup source).
     const approvedRaw = await tx
@@ -458,7 +460,7 @@ export async function getVisitingBoard(
         studentName: b ? shortName(b.firstName, b.lastName) : "—",
         studentInitials: b ? initials(b.firstName, b.lastName) : "—",
         studentSub: `${b?.shortFormLabel ?? "—"} · ${b?.houseName ?? "—"}`,
-        pastoral: isPastorallyFlagged(b?.studentCode),
+        pastoral: flaggedIds.has(v.studentId),
         visitorName: v.visitorName,
         visitorPhoneMasked: maskPhone(v.visitorPhone),
         idHint: null, // ID is a hint, not surfaced in the list row (§2 — the check is out of parent sight)
@@ -497,14 +499,14 @@ export async function getVisitingBoard(
     // --- Focus approved-visitor detail card (default: a pastoral boarder with a list, else first list) ---
     const focusStudentId =
       (opts.studentId && boarderById.has(opts.studentId) && opts.studentId) ||
-      boarders.find((b) => isPastorallyFlagged(b.studentCode) && (approvedByStudentId.get(b.studentId)?.length ?? 0) > 0)?.studentId ||
+      boarders.find((b) => flaggedIds.has(b.studentId) && (approvedByStudentId.get(b.studentId)?.length ?? 0) > 0)?.studentId ||
       boarders.find((b) => (approvedByStudentId.get(b.studentId)?.length ?? 0) > 0)?.studentId ||
       boarders[0]?.studentId ||
       null;
-    const focus = focusStudentId ? buildFocusCard(focusStudentId, boarderById, approvedByStudentId) : null;
+    const focus = focusStudentId ? buildFocusCard(focusStudentId, boarderById, approvedByStudentId, flaggedIds) : null;
 
     const focusOptions = boarders
-      .filter((b) => isPastorallyFlagged(b.studentCode) || (approvedByStudentId.get(b.studentId)?.length ?? 0) > 0)
+      .filter((b) => flaggedIds.has(b.studentId) || (approvedByStudentId.get(b.studentId)?.length ?? 0) > 0)
       .map((b) => ({ id: b.studentId, label: `${shortName(b.firstName, b.lastName)} · ${b.houseName}` }))
       .slice(0, 60);
     // Ensure the focus student is always selectable even with an empty list.
@@ -572,7 +574,6 @@ export async function getVisitingBoard(
 
 type BoarderLite = {
   studentId: string;
-  studentCode: string;
   firstName: string;
   lastName: string;
   shortFormLabel: string;
@@ -593,6 +594,7 @@ function buildFocusCard(
   studentId: string,
   boarderById: Map<string, BoarderLite>,
   approvedByStudentId: Map<string, ApprovedRow[]>,
+  flaggedIds: Set<string>,
 ): ApprovedListCard {
   const b = boarderById.get(studentId)!;
   const list = approvedByStudentId.get(studentId) ?? [];
@@ -623,7 +625,7 @@ function buildFocusCard(
     studentId,
     studentName: shortName(b.firstName, b.lastName),
     studentSub: `${b.shortFormLabel} · ${b.houseName}`,
-    pastoral: isPastorallyFlagged(b.studentCode),
+    pastoral: flaggedIds.has(studentId),
     approvedCount: list.filter((a) => a.status === "APPROVED").length,
     pendingCount: list.filter((a) => a.status === "PENDING_REVIEW").length,
     slots: slots.slice(0, 6),

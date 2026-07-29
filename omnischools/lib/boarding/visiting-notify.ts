@@ -31,7 +31,7 @@ import { canAccessHouse } from "@/lib/access";
 import { classFormNumber } from "@/lib/senior/form";
 import { sendSms } from "@/lib/sms";
 import { insertInfraction } from "./discipline-core";
-import { isPastorallyFlagged } from "./pastoral-stub";
+import { hasActivePastoralFlag } from "@/lib/vlc/pastoral-flags";
 import {
   cohortSms,
   arrivalConfirmSms,
@@ -208,7 +208,6 @@ export async function sendVisitNotification(
       houseId: boardingVisit.houseId,
       firstName: students.firstName,
       lastName: students.lastName,
-      studentCode: students.studentCode,
     })
     .from(boardingVisit)
     .innerJoin(students, and(eq(students.schoolId, boardingVisit.schoolId), eq(students.id, boardingVisit.studentId)))
@@ -235,9 +234,13 @@ export async function sendVisitNotification(
   const [school] = await tx.select({ name: schools.name }).from(schools).where(eq(schools.id, schoolId)).limit(1);
   const schoolName = school?.name ?? "School";
   const studentName = shortName(v.firstName, v.lastName);
+  // Existence read (INCR-30) — the arrival SMS adds "HM to check in personally" for a flagged boarder; the
+  // overstay SMS never needs it, so only query on ARRIVAL_CONFIRM.
+  const pastoral =
+    kind === "ARRIVAL_CONFIRM" ? await hasActivePastoralFlag(tx, schoolId, v.studentId) : false;
   const body =
     kind === "ARRIVAL_CONFIRM"
-      ? arrivalConfirmSms(studentName, schoolName, isPastorallyFlagged(v.studentCode))
+      ? arrivalConfirmSms(studentName, schoolName, pastoral)
       : overstaySms(studentName, schoolName, policy.hoursEnd);
 
   const phone = await houseHmPhone(tx, schoolId, v.houseId);

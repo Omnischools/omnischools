@@ -24,7 +24,8 @@ import {
 import { BOARDING_SCHOOL_SCOPED_ROLES, canAccessHouse, hasAnyRole } from "@/lib/access";
 import { getCurrentPeriod } from "./period";
 import { getDeboardinizationLadder, type DeboardinizationRung, type DeboardinizationSeverity } from "./deboardinization-ladder";
-import { isPastorallyFlagged } from "./pastoral-stub";
+import { activePastoralFlagStudentIds } from "@/lib/vlc/pastoral-flags";
+import { canAccessPastoralFlag } from "@/lib/vlc/authz";
 import {
   SEVERITY_ROMAN,
   computePenaltyDisplay,
@@ -100,9 +101,13 @@ export interface PenaltyRow {
   pending: boolean;
 }
 export interface PastoralCard {
+  studentId: string; // OC1 — the /senior/vlc/journal/[studentId] href for a gated viewer
   studentName: string;
   studentSub: string;
   house: string;
+  // OC1 — server-computed pastoral gate (Dean of Students OR the flagged student's own-class FM). TRUE
+  // renders the "Open VLC case file" link; FALSE renders the INCR-30 signpost only. Never client-derived.
+  canViewCase: boolean;
 }
 export interface DisciplineBoard {
   schoolName: string;
@@ -124,7 +129,8 @@ export interface DisciplineBoard {
   deboardCards: DeboardCard[];
   bonds: BondCard[];
   penaltyRows: PenaltyRow[];
-  pastoral: PastoralCard | null;
+  // The active-flag protection cards — one per flagged in-scope boarder (may be >1 with the real VLC read).
+  pastoral: PastoralCard[];
   escalation: EscalationPrompt;
   boarderOptions: { id: string; label: string }[];
   canManageBoard: boolean;
@@ -180,7 +186,7 @@ export async function getDisciplineBoard(
       deboardCards: [],
       bonds: [],
       penaltyRows: [],
-      pastoral: null,
+      pastoral: [],
       escalation: { eligible: null, message: null },
       boarderOptions: [],
       canManageBoard,
@@ -396,24 +402,30 @@ export async function getDisciplineBoard(
         ],
       }));
 
-    // --- Pastoral cross-reference card (rendered only when an accessible boarder is flagged) ---
+    // --- Pastoral cross-reference cards (one per flagged in-scope boarder — the real vlc_pastoral_flag
+    // existence read replaces the retired stub; there may be >1 flagged boarder, so don't assume a single
+    // card). Boarding never SELECTs the flag table — the VLC helper returns ids only (INCR-30). The card's
+    // OC1 gate needs the flagged student's class teacher, so join class_teacher_user_id here. ---
+    const flaggedIds = await activePastoralFlagStudentIds(tx, schoolId);
     const boarderRows = await tx
-      .select({ id: students.id, firstName: students.firstName, lastName: students.lastName, studentCode: students.studentCode, className: classes.name, houseId: students.houseId })
+      .select({ id: students.id, firstName: students.firstName, lastName: students.lastName, className: classes.name, classTeacherUserId: classes.classTeacherUserId, houseId: students.houseId })
       .from(students)
       .leftJoin(classes, and(eq(classes.schoolId, students.schoolId), eq(classes.id, students.classId)))
       .where(and(eq(students.schoolId, schoolId), eq(students.status, "ACTIVE"), eq(students.residency, "BOARDER")));
     const scopedBoarders = boarderRows.filter((b) => schoolScoped || (b.houseId != null && houseIds.includes(b.houseId)));
-    const flagged = scopedBoarders.find((b) => isPastorallyFlagged(b.studentCode));
-    const pastoral: PastoralCard | null = flagged
-      ? {
-          studentName: shortName(flagged.firstName, flagged.lastName),
-          studentSub: flagged.className ?? "—",
-          house: flagged.houseId ? houseNameById.get(flagged.houseId) ?? "House" : "House",
-        }
-      : null;
+    const pastoral: PastoralCard[] = scopedBoarders
+      .filter((b) => flaggedIds.has(b.id))
+      .map((b) => ({
+        studentId: b.id,
+        studentName: shortName(b.firstName, b.lastName),
+        studentSub: b.className ?? "—",
+        house: b.houseId ? houseNameById.get(b.houseId) ?? "House" : "House",
+        // OC1 — Dean of Students (school-wide) OR the flagged student's OWN-class FM (un-spoofable identity).
+        canViewCase: canAccessPastoralFlag({ roles, userId, classTeacherUserId: b.classTeacherUserId }),
+      }));
 
     const boarderOptions = scopedBoarders
-      .filter((b) => !isPastorallyFlagged(b.studentCode)) // a flagged student is Dean-routed, not laddered
+      .filter((b) => !flaggedIds.has(b.id)) // a flagged student is Dean-routed, not laddered
       .map((b) => ({ id: b.id, label: `${shortName(b.firstName, b.lastName)} · ${b.className ?? "—"} · ${b.houseId ? houseNameById.get(b.houseId) ?? "House" : "House"}` }))
       .sort((a, b) => a.label.localeCompare(b.label));
 

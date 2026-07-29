@@ -538,7 +538,7 @@ export const vlcPastoralFlag = pgTable(
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
     // FIRST-CLASS column (composite (school_id, student_id) FK → students, CASCADE): INCR-45's
-    // isPastorallyFlagged existence-check reads THIS column, never a confidential one.
+    // hasActivePastoralFlag existence-check reads THIS column, never a confidential one.
     studentId: uuid("student_id").notNull(), // composite (school_id, student_id) FK below
     // NULLABLE composite (school_id, session_id) FK → vlc_session.tenant_uk, ON DELETE NO ACTION: 42a
     // sessions are append-only/never deleted so it never fires, and a Dean may raise a session-less

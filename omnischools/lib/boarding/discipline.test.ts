@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { getDeboardinizationLadder, DEBOARDINIZATION_LADDER } from "./deboardinization-ladder";
-import { isPastorallyFlagged } from "./pastoral-stub";
 import {
   DEBOARD_SLOT_ROLE,
   roleSatisfiesSlot,
@@ -61,16 +60,9 @@ describe("B · 3-co-sign gate + role map", () => {
   });
 });
 
-describe("G · pastoral bypass (STUB) — flagged → zero infraction, manual AND auto", () => {
-  it("the seeded flagged student is bypassed; others are not", () => {
-    // Both the manual log and every auto-sweep route through insertInfraction, which consults this
-    // SAME pure decision at the shared insert site — so the bypass holds for manual AND auto.
-    expect(isPastorallyFlagged("ASK-24-0118")).toBe(true);
-    expect(isPastorallyFlagged("ASK-BRD-AGG-01")).toBe(false);
-    expect(isPastorallyFlagged(null)).toBe(false);
-    expect(isPastorallyFlagged(undefined)).toBe(false);
-  });
-});
+// G · the pastoral bypass — re-homed to lib/vlc/vlc-capstone.test.ts (INCR-45): the retired stub's pure
+// flag decision became the real vlc_pastoral_flag existence read (hasActivePastoralFlag), so its coverage
+// (bypass parity manual+auto, severity-agnostic, existence-only) now lives with the VLC helper.
 
 describe("H · penalty DISPLAY func (no billing read, no invoice write)", () => {
   it("computes days × per-day × 3 from stored snapshots (H1)", () => {

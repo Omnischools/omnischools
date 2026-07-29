@@ -98,7 +98,7 @@ describe("INCR-30 R240 — pastoral-bypass reason neutralized at the write site"
   });
 
   it("the fact still lands in `after` (severity + routedTo) — routing behaviour unchanged", () => {
-    expect(DISCIPLINE).toContain("routedTo: \"Dean of Boarding (VLC 4.5 stub)\"");
+    expect(DISCIPLINE).toContain("routedTo: \"Dean of Students · VLC pastoral\"");
     expect(DISCIPLINE).toMatch(/after: \{ severity, sourceKind, routedTo/);
   });
 });
