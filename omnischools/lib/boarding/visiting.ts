@@ -344,8 +344,8 @@ export function deriveVisitStats(visits: readonly StatVisit[]): VisitStats {
 // ---------------------------------------------------------------------------
 // Indicated-arrivals list-match display (AC C, the two-flag-vocab distinction — Lucy). Three DISTINCT
 // visual states are computed here: the `.approved` column (VERIFIED / +N NEEDS REVIEW / FLAGGED / HM),
-// distinct from the pastoral row highlight (isPastorallyFlagged — pastoral-stub) and from the security
-// FLAGGED gate state. The pastoral highlight is added by the data layer, NOT here.
+// distinct from the pastoral row highlight (the real vlc_pastoral_flag existence read — lib/vlc/pastoral-flags)
+// and from the security FLAGGED gate state. The pastoral highlight is added by the data layer, NOT here.
 // ---------------------------------------------------------------------------
 
 export type ListMatchKind = "verified" | "review" | "flagged" | "hm";

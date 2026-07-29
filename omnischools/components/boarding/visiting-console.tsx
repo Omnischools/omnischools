@@ -506,7 +506,7 @@ export function ApprovedVisitorEditor({
           </div>
           <label className="mt-2 flex items-center gap-2 text-[11px] text-navy-2">
             <input type="checkbox" checked={pastoral} onChange={(e) => setPastoral(e.target.checked)} />
-            Pastoral-sensitive · needs Dean of Boarding to approve (VLC 4.5 stub — no journal write)
+            Pastoral-sensitive · needs Dean of Boarding to approve
           </label>
           {error && <p className="mt-1 text-[11px] text-terra">{error}</p>}
           <div className="mt-2 flex justify-end gap-2">

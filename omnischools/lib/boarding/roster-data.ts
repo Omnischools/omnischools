@@ -26,7 +26,7 @@ import {
   type RosterSummary,
   type PrefectSlot,
 } from "./roster";
-import { isPastorallyFlagged } from "./pastoral-stub";
+import { activePastoralFlagStudentIds } from "@/lib/vlc/pastoral-flags";
 import { canAccessHouse } from "@/lib/access";
 import type { HouseGender, Sex } from "./reassign-decision";
 
@@ -185,6 +185,10 @@ export async function getHouseRoster(
       : [];
     const openByStudent = new Map(openAllocs.map((a) => [a.studentId, a]));
 
+    // Active VLC pastoral flags for the whole school (ids only — INCR-30 existence read, never severity);
+    // membership-checked per boarder below. Boarding never SELECTs the flag table (the VLC helper does).
+    const flaggedIds = await activePastoralFlagStudentIds(tx, schoolId);
+
     // Occupants keyed by bunk; unallocated boarders (J1) go to the tray.
     const occupantByBunkId = new Map<string, RosterOccupant>();
     const unallocated: RosterOccupant[] = [];
@@ -198,7 +202,7 @@ export async function getHouseRoster(
         fullName: `${b.firstName} ${b.lastName}`,
         sex: b.sex as Sex,
         formLabel: b.formLabel ?? null,
-        flagged: isPastorallyFlagged(b.code),
+        flagged: flaggedIds.has(b.id),
         movedThisSem:
           movedThreshold != null && fromAt != null && fromAt.getTime() >= movedThreshold,
         allocatedAtLabel: fromAt ? fmtDate(fromAt) : null,

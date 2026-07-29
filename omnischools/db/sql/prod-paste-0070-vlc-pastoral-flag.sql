@@ -46,7 +46,7 @@
 -- The table is created FIRST (PK + the three CHECKs INLINE), THEN the FKs are added, THEN the index.
 --
 -- CONSTRAINT notes (Kofi R317/R321):
---   • student_id is a FIRST-CLASS column (composite FK, CASCADE) — INCR-45's isPastorallyFlagged
+--   • student_id is a FIRST-CLASS column (composite FK, CASCADE) — INCR-45's hasActivePastoralFlag
 --     existence-check reads it, never a confidential column.
 --   • session_id is NULLABLE (composite FK, ON DELETE NO ACTION): 42a sessions are append-only/never
 --     deleted so NO ACTION never fires, and a Dean may raise a session-less flag (a NULL member of the

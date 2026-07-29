@@ -378,8 +378,8 @@ function DetailCard({
       <div className="flex flex-wrap items-center gap-3 px-5 py-4">
         {flagged && (
           <p className="flex-1 text-[12px] italic text-navy-3">
-            A pastoral flag is set on this boarder. The full case file arrives with the pastoral
-            (VLC) module — it is not part of this release.
+            A pastoral flag is set on this boarder. Any boarding discipline is routed to the Dean
+            before the ledger — details stay with the Dean.
           </p>
         )}
         {!flagged && (

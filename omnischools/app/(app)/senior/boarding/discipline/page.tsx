@@ -178,24 +178,44 @@ export default async function BoardingDisciplinePage() {
             )}
           </Section>
 
-          {/* Pastoral protection cross-reference — STUB, rendered only when a boarder is flagged */}
-          {board.pastoral && (
-            <Section title="Pastoral" em="protection · cross-reference" meta="FROM VLC · 1 STUDENT FLAGGED">
-              <div className="flex items-start gap-4 rounded-xl border border-green bg-green-bg p-5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green font-display italic text-bg">§</div>
-                <div>
-                  <h4 className="font-display text-base font-semibold text-green">
-                    {board.pastoral.studentName} · {board.pastoral.studentSub} · {board.pastoral.house} House
-                  </h4>
-                  <p className="mt-1 text-[13px] leading-relaxed text-navy-2">
-                    Active pastoral case with the Dean. <b className="text-navy">Any disciplinary action is routed to the Dean before
-                    it reaches the ledger.</b> This student does not accumulate boarding-discipline points the way a peer would — the
-                    ladder pauses where pastoral cases run.
-                  </p>
-                  <span className="mt-2 inline-block rounded-pill border border-green bg-surface px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-green">
-                    ↳ Dean-routed (VLC 4.5 stub — no working pastoral system behind this yet)
-                  </span>
-                </div>
+          {/* Pastoral protection cross-reference — the real VLC read; one card per flagged boarder */}
+          {board.pastoral.length > 0 && (
+            <Section
+              title="Pastoral"
+              em="protection · cross-reference"
+              meta={`FROM VLC · ${board.pastoral.length} STUDENT${board.pastoral.length === 1 ? "" : "S"} FLAGGED`}
+            >
+              <div className="flex flex-col gap-4">
+                {board.pastoral.map((p) => (
+                  <div key={p.studentId} className="flex items-start gap-4 rounded-xl border border-green bg-green-bg p-5">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green font-display italic text-bg">§</div>
+                    <div>
+                      <h4 className="font-display text-base font-semibold text-green">
+                        {p.studentName} · {p.studentSub} · {p.house} House
+                      </h4>
+                      <p className="mt-1 text-[13px] leading-relaxed text-navy-2">
+                        Active pastoral case with the Dean. <b className="text-navy">Any disciplinary action is routed to the Dean before
+                        it reaches the ledger.</b> This student does not accumulate boarding-discipline points the way a peer would — the
+                        ladder pauses where pastoral cases run.
+                      </p>
+                      {/* OC1 — a gated viewer (Dean of Students / the flagged student's own-class FM) gets the
+                          confidential case-file link; everyone else gets the INCR-30 signpost (existence + Dean-route,
+                          NO link, NO severity/reason/case number). The destination self-re-gates server-side. */}
+                      {p.canViewCase ? (
+                        <Link
+                          href={`/senior/vlc/journal/${p.studentId}`}
+                          className="mt-2 inline-block rounded-pill border border-green bg-surface px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-green hover:brightness-95"
+                        >
+                          ↳ Open VLC case file
+                        </Link>
+                      ) : (
+                        <span className="mt-2 inline-block rounded-pill border border-green bg-surface px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-green">
+                          ↳ Dean-routed · action is routed to the Dean before the ledger
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </Section>
           )}

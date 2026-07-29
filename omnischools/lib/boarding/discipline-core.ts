@@ -4,9 +4,10 @@
  * inspection FAIL / visit overstay / resumption absent) route through it, so the two cross-cutting
  * rules live in exactly one place:
  *
- *   • PASTORAL BYPASS (AC G1/G2) — a pastorally-flagged student (isPastorallyFlagged, VLC 4.5 stub)
- *     writes ZERO infraction; the trigger records a Dean-route audit marker and returns "bypassed".
- *     Because both manual and auto logs share this site, the bypass holds for both.
+ *   • PASTORAL BYPASS (AC G1/G2) — a student with an ACTIVE VLC pastoral flag (hasActivePastoralFlag,
+ *     the real vlc_pastoral_flag existence read) writes ZERO infraction; the trigger records a Dean-route
+ *     audit marker and returns "bypassed". Because both manual and auto logs share this site, the bypass
+ *     holds for both. Existence-only: boarding never learns the severity/reason (INCR-30).
  *   • IDEMPOTENCY (AC E) — an auto-log carries source_kind/source_ref_id and inserts with
  *     onConflictDoNothing on the partial unique index (source_ref_id IS NOT NULL), so a repeating
  *     on-read sweep never double-logs. A MANUAL log (source_ref_id NULL) is exempt from the index and
@@ -21,7 +22,7 @@ import type { Tx } from "@/lib/db";
 import { boardingInfractions, students, studentGuardians, schools } from "@/db/schema";
 import { recordAudit } from "@/lib/db/audit";
 import { sendSms } from "@/lib/sms";
-import { isPastorallyFlagged } from "./pastoral-stub";
+import { hasActivePastoralFlag } from "@/lib/vlc/pastoral-flags";
 import {
   disciplineParentSms,
   severityNotifiesParent,
@@ -58,10 +59,9 @@ export async function insertInfraction(tx: Tx, args: InsertInfractionArgs): Prom
   const { schoolId, studentId, severity, sourceKind } = args;
   const sourceRefId = args.sourceRefId ?? null;
 
-  // Resolve the student (for the pastoral check + House snapshot + SMS name). Not found → skip.
+  // Resolve the student (for the House snapshot + SMS name). Not found → skip.
   const [stu] = await tx
     .select({
-      code: students.studentCode,
       houseId: students.houseId,
       firstName: students.firstName,
       lastName: students.lastName,
@@ -72,7 +72,8 @@ export async function insertInfraction(tx: Tx, args: InsertInfractionArgs): Prom
   if (!stu) return { status: "no_student" };
 
   // PASTORAL BYPASS (AC G) — a flagged student is routed to the Dean, NOT the ladder. Zero infraction.
-  if (isPastorallyFlagged(stu.code)) {
+  // The real vlc_pastoral_flag existence read (ANY active flag protects, severity-agnostic — OC2).
+  if (await hasActivePastoralFlag(tx, schoolId, studentId)) {
     await recordAudit(tx, {
       schoolId,
       actorUserId: args.loggedByUserId ?? undefined,
@@ -80,7 +81,7 @@ export async function insertInfraction(tx: Tx, args: InsertInfractionArgs): Prom
       actionType: "DISCIPLINE_PASTORAL_BYPASS",
       entityType: "student",
       entityId: studentId,
-      after: { severity, sourceKind, routedTo: "Dean of Boarding (VLC 4.5 stub)" },
+      after: { severity, sourceKind, routedTo: "Dean of Students · VLC pastoral" },
       // INCR-30 (R240): this rides entityType="student" (NOT in the redact set — legitimate student
       // audits must still show), so the render rule can't catch it. The raw reason discloses a named
       // student's safeguarding status to all staff in both feeds; neutralize it at the write site.
