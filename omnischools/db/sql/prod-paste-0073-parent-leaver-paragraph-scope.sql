@@ -22,8 +22,10 @@
 -- 🔴 COLUMN CONTROL LIVES IN THE READER. RLS is ROW-level and CANNOT mask columns. Once parent_scope
 -- opens the row, an in-scope parent session CAN select any column off it (author/updated_by/locked_by
 -- provenance actors, timestamps). The ONLY guard against those columns reaching the wire is the reader's
--- frozen key-set projection (R360) in lib/parent/parent-reference-data.ts — it selects `body` only and
--- re-filters locked_at IS NOT NULL (belt-and-suspenders). A view over a parent_deny base table does NOT
+-- frozen key-set projection (R360) in lib/parent/parent-reference-data.ts — it selects `body` + the
+-- student/school name + the paragraph's OWN FM author name (all non-confidential; NEVER severity/context/
+-- surfaced_by or any casework/journal body) and re-filters locked_at IS NOT NULL (belt-and-suspenders).
+-- A view over a parent_deny base table does NOT
 -- solve this: it is non-functional here (FORCE RLS + a single shared non-superuser app role + no
 -- BYPASSRLS) — it returns 0 rows to a parent on prod. Column control is in the app reader by construction.
 --

@@ -32,7 +32,10 @@ export function LeaverReference({ reference }: { reference: ParentLeaverReferenc
         {studentFirstName} <em className="not-italic text-gold">{surname}</em>
       </div>
       <div className="mt-1 text-[11px] text-navy-3">
-        Written by {authorName}, Form Master · {schoolName}
+        {/* No hard-coded role suffix: author_user_id may be the FM OR the Dean (schema), and the
+            null-author fallback is itself a role phrase — a fixed ", Form Master" would mis-title a
+            Dean author and double-print "the Form Master, Form Master" (Dex/Quinn INCR-46 LOW-2). */}
+        Written by {authorName} · {schoolName}
       </div>
       <div className="mt-3.5 whitespace-pre-wrap border-t border-gold-soft pt-3.5 font-display text-[15px] leading-relaxed text-navy-2">
         {body}

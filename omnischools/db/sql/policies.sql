@@ -549,8 +549,10 @@ CREATE POLICY parent_scope ON student_nhis_card AS RESTRICTIVE FOR ALL TO public
 -- NULL here). The table carries student_id + school_id + locked_at DIRECTLY, so the scope is the simplest
 -- child-reach form, gated by the finalised state. FINALISED-only lives IN the predicate — a DRAFT
 -- (locked_at IS NULL) is NEVER visible to a parent (the crux) — and is re-filtered in the reader
--- (belt-and-suspenders for a confidential widening). body is the ONLY column the reader projects: RLS
--- opens the ROW, the reader's frozen key-set is the column control (the 19a discipline). USING doubles as
+-- (belt-and-suspenders for a confidential widening). The reader projects body + the student/school name +
+-- the paragraph's OWN FM author name (all non-confidential; NEVER severity/context/surfaced_by or any
+-- casework/journal body): RLS opens the ROW, the reader's frozen key-set is the column control (the 19a
+-- discipline). USING doubles as
 -- WITH CHECK, so a parent write is confined to the same finalised-own-child scope — no draft insert, no
 -- unlock, no cross-child write. EVERY OTHER vlc_* table keeps parent_deny — the catalog loop below
 -- auto-excludes ONLY this one (it now carries parent_scope) and re-affirms parent_deny on the other 13
