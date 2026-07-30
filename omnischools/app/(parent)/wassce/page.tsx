@@ -7,6 +7,11 @@ import {
   type ParentPortalSms,
   type ParentPortalStatement,
 } from "@/lib/parent/parent-portal-data";
+import {
+  loadParentLeaverReference,
+  type ParentLeaverReference,
+} from "@/lib/parent/parent-reference-data";
+import { LeaverReference } from "@/components/parent/leaver-reference";
 import { PROGRAMME_TRACKS } from "@/lib/wassce/constants";
 import type { FrozenTargetUniversity } from "@/lib/wassce/university-match";
 import { ParentHeader, ParentNav } from "../parent-chrome";
@@ -55,6 +60,11 @@ export default async function ParentWasscePage() {
   const { user, school } = await requireParent();
   const data = await loadParentPortal(school.id, user.id);
   const child = data.children[0] ?? null;
+  // INCR-46 · the FM-authored leaver reference — own-child + FINALISED only (RLS + reader). studentId is
+  // resolved from the guardian link (children[0]), never a URL param; a draft or absence → null → no card.
+  const leaverReference = child
+    ? await loadParentLeaverReference(school.id, user.id, child.studentId)
+    : null;
 
   const guardianDisplay = data.guardianName ?? user.name ?? "Parent";
   const relation = data.guardianRelationship ? relationshipLabel(data.guardianRelationship) : "Parent";
@@ -79,7 +89,7 @@ export default async function ParentWasscePage() {
         {!child ? (
           <EmptyPortal />
         ) : (
-          <ChildPortal child={child} />
+          <ChildPortal child={child} leaverReference={leaverReference} />
         )}
       </div>
     </div>
@@ -96,7 +106,13 @@ function EmptyPortal() {
 
 /* ─────────────────────────────────────────────────────────────── the child portal ── */
 
-function ChildPortal({ child }: { child: ParentPortalChild }) {
+function ChildPortal({
+  child,
+  leaverReference,
+}: {
+  child: ParentPortalChild;
+  leaverReference: ParentLeaverReference | null;
+}) {
   const cand = child.candidate;
   const today = new Date();
 
@@ -203,6 +219,13 @@ function ChildPortal({ child }: { child: ParentPortalChild }) {
           })}
         />
       </div>
+
+      {/* INCR-46 · the closing word — the FM's finalised leaver reference. Draft/absence → null → omitted. */}
+      {leaverReference && (
+        <div className="mt-5">
+          <LeaverReference reference={leaverReference} />
+        </div>
+      )}
     </>
   );
 }
