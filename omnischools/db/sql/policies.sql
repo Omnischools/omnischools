@@ -535,6 +535,45 @@ CREATE POLICY parent_scope ON student_nhis_card AS RESTRICTIVE FOR ALL TO public
     )
   );
 
+-- ---- INCR-46: the FOURTH widening of the 19a parent boundary (12 → 13 parent_scope tables) and the
+-- FIRST break in owner-#4 ("parents see NOTHING VLC-wide") — owner-authorised (2026-07-30). A parent
+-- gains ROW access to EXACTLY ONE row: their OWN child's FINALISED vlc_pastoral_paragraph, so the
+-- read-only parent portal (lib/parent/parent-reference-data.ts, a card on the /wassce tab) can show the
+-- FM-authored school-leaver character reference. Kept in sync with
+-- db/sql/prod-paste-0073-parent-leaver-paragraph-scope.sql — this block is DEV; that file is the
+-- hand-paste on PROD (⚠ RLS is NOT auto-applied on prod; without the paste vlc_pastoral_paragraph keeps
+-- parent_deny and the parent card is an honest empty state — fail-closed, never a leak).
+--
+-- 🔴 MECHANISM: table-level parent_scope on vlc_pastoral_paragraph ONLY, byte-shaped like the 12 policies
+-- above PLUS the readiness_statements STATE restriction (superseded_at IS NULL there → locked_at IS NOT
+-- NULL here). The table carries student_id + school_id + locked_at DIRECTLY, so the scope is the simplest
+-- child-reach form, gated by the finalised state. FINALISED-only lives IN the predicate — a DRAFT
+-- (locked_at IS NULL) is NEVER visible to a parent (the crux) — and is re-filtered in the reader
+-- (belt-and-suspenders for a confidential widening). The reader projects body + the student/school name +
+-- the paragraph's OWN FM author name (all non-confidential; NEVER severity/context/surfaced_by or any
+-- casework/journal body): RLS opens the ROW, the reader's frozen key-set is the column control (the 19a
+-- discipline). USING doubles as
+-- WITH CHECK, so a parent write is confined to the same finalised-own-child scope — no draft insert, no
+-- unlock, no cross-child write. EVERY OTHER vlc_* table keeps parent_deny — the catalog loop below
+-- auto-excludes ONLY this one (it now carries parent_scope) and re-affirms parent_deny on the other 13
+-- (flag/journal/note/observation/case/session/session_attendance/programme/value/session_template/
+-- peer_guide/training/training_absence) with ZERO edits.
+
+-- vlc_pastoral_paragraph — the parent reads their OWN child's FINALISED leaver paragraph (drafts never).
+DROP POLICY IF EXISTS parent_deny ON vlc_pastoral_paragraph;
+DROP POLICY IF EXISTS parent_scope ON vlc_pastoral_paragraph;
+CREATE POLICY parent_scope ON vlc_pastoral_paragraph AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR (
+      locked_at IS NOT NULL
+      AND student_id IN (
+        SELECT parent_student_ids(
+          school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+      )
+    )
+  );
+
 -- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
 -- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
 -- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).
