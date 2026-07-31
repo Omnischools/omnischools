@@ -18,6 +18,8 @@
  *     every school — the DB stores only the editable durations + value/prompt text.
  */
 
+import { addMinutes, formatClockTime, formatClockWindow } from "@/lib/senior/time";
+
 // ============================================================================
 // Cadence — Wednesday, 2:30 PM (the frozen defaults; a school may adjust both)
 // ============================================================================
@@ -368,32 +370,15 @@ export function coalesceVlcProgramme(row: VlcProgrammeRow | null | undefined): V
 }
 
 // ============================================================================
-// Time formatters — "14:30" → "2:30" + "PM" exactly as the cal-block prints it
+// Time formatters — "14:30" → "2:30" + "PM" exactly as the cal-block prints it.
+// EXTRACTED to lib/senior/time.ts (INCR-47, Dex-directed DRY — shared with PLC); the VLC public names
+// re-alias the generic helpers so behaviour and API stay byte-unchanged (formatVlcTime = formatClockTime,
+// formatVlcWindow = formatClockWindow). `coalesceVlcProgramme` above uses the imported `addMinutes`.
 // ============================================================================
 
-/** Split "HH:MM" into a 12-hour clock time + meridiem. "14:30" → { time: "2:30", meridiem: "PM" }. */
-export function formatVlcTime(hhmm: string): { time: string; meridiem: "AM" | "PM" } {
-  const [h, m] = hhmm.split(":").map((n) => parseInt(n, 10));
-  const hour = Number.isFinite(h) ? h : 0;
-  const min = Number.isFinite(m) ? m : 0;
-  const meridiem = hour < 12 ? "AM" : "PM";
-  const twelve = hour % 12 || 12;
-  return { time: `${twelve}:${String(min).padStart(2, "0")}`, meridiem };
-}
-
-/** Add minutes to an "HH:MM" clock time, wrapping at 24h. */
-export function addMinutes(hhmm: string, mins: number): string {
-  const [h, m] = hhmm.split(":").map((n) => parseInt(n, 10));
-  const total = (((h || 0) * 60 + (m || 0) + mins) % 1440 + 1440) % 1440;
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-}
-
-/** The cal-block / heading label, e.g. "2:30 — 3:30 PM" (en-dash, spaced — surface-exact). */
-export function formatVlcWindow(start: string, end: string): string {
-  const s = formatVlcTime(start);
-  const e = formatVlcTime(end);
-  return `${s.time} — ${e.time} ${e.meridiem}`;
-}
+export { addMinutes };
+export const formatVlcTime = formatClockTime;
+export const formatVlcWindow = formatClockWindow;
 
 // ============================================================================
 // Peer Guides (INCR-41) — frozen editorial policy copy (identical for every school), VERBATIM from

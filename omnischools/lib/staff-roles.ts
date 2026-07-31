@@ -25,6 +25,10 @@ export const STAFF_ROLES = [
   // INCR-40 (VLC F0) — assignable (unlike PROPRIETOR): a school appoints a Dean of Students who owns
   // the Values Learning Communities config surface.
   { code: "DEAN_OF_STUDENTS", label: "Dean of Students" },
+  // INCR-47 (PLC / staff CPD) — assignable: a school appoints a PD Coordinator who owns the
+  // Professional Learning Community config surface. Additive/double-hattable (granted on top of a base
+  // role); ADMIN/HM grant it via /staff (STAFF_ADMIN_ROLES-gated), and it can grant nothing above rank-1.
+  { code: "PD_COORDINATOR", label: "PD Coordinator" },
 ] as const satisfies ReadonlyArray<{ code: AppRole; label: string }>;
 
 export type StaffRoleCode = (typeof STAFF_ROLES)[number]["code"];

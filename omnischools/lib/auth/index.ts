@@ -39,6 +39,12 @@ export const KNOWN_APP_ROLES = [
   // a free-text ref_role.code, NOT an appRoleEnum member (see db/schema/_enums.ts). Rank-1 by
   // default (rankOf), inert in every access group except VLC_CONFIG_*_ROLES.
   "DEAN_OF_STUDENTS",
+  // INCR-47 (Module 4.6 / PLC) — PD_COORDINATOR: the Professional Learning Community / staff-CPD config
+  // owner (writes the PLC programme, groups, membership & term focus; +ADMIN/HEADMASTER). Additive &
+  // double-hattable — a user holds it ALONGSIDE a base role (VHA/FM/Teacher). Appended (no reshuffle);
+  // a free-text ref_role.code, NOT an appRoleEnum member (R366 — no enum, no migration). Rank-1 by
+  // default (rankOf), inert in every access group except PLC_CONFIG_WRITE_ROLES / PLC_SESSION_BREAKGLASS_ROLES.
+  "PD_COORDINATOR",
 ] as const;
 export type KnownAppRole = (typeof KNOWN_APP_ROLES)[number];
 export type AppRole = KnownAppRole | (string & {});
