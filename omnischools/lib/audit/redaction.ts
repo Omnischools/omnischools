@@ -134,6 +134,14 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   "plc", // the PLC group (type/name/facilitator/cadence-override/archive)
   "plc_membership", // open-row staff membership (join/leave)
   "plc_term_focus", // per-PLC free-text focus per academic period
+  // — PLC session register (SHS module 4.6 / INCR-48) — the OPERATIONAL Friday register, the same audit
+  // class as vlc_session / attendance. Attendees are STAFF, so NO pastoral PII, NO parent path; the
+  // reflection ANSWERS are SHOWN (staff CPD ≠ pastoral — audit is metadata only, never an answer body).
+  // None uses a reserved audit prefix, so each MUST be listed here or the classify-at-creation guard
+  // fails the build (R395). —
+  "plc_session", // held-session instance (one per PLC × date; "held" = the row exists)
+  "plc_session_attendance", // present-by-default staff P/L/A row (minutes_late/note)
+  "plc_session_reflection", // per-member CPD reflection (q1/q2/q3, submit + facilitator confirm)
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker
