@@ -125,6 +125,15 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   // listed here or the classify-at-creation guard fails the build (R316). —
   "vlc_session", // held-session instance (one per class × date; "held" = the row exists)
   "vlc_session_attendance", // present-by-default student P/L/A row (minutes_late/note)
+  // — PLC programme-setup spine (SHS module 4.6 / INCR-47) — STAFF CPD config, OPERATIONAL throughout.
+  // Attendees are STAFF, so there is NO confidential/pastoral layer, NO student PII, NO parent path —
+  // the config cadence, the CPD-points contract, the staff PLC groups, membership and per-term focus.
+  // NONE uses a reserved audit prefix, so each MUST be listed here or the classify-at-creation guard
+  // fails the build (R378–R380). —
+  "plc_programme", // per-school singleton: cadence + the 4-scalar CPD contract
+  "plc", // the PLC group (type/name/facilitator/cadence-override/archive)
+  "plc_membership", // open-row staff membership (join/leave)
+  "plc_term_focus", // per-PLC free-text focus per academic period
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker

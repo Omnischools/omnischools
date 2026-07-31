@@ -270,6 +270,60 @@ export const VLC_DASHBOARD_READ_ROLES = [
   "ADMIN",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * 🔴 PLC — Professional Learning Communities / staff CPD (SHS module 4.6 / INCR-47) — the config
+ * spine's WRITE gate. Mirrors the VLC "config owner + management" shape, but the owner is the new
+ * PD_COORDINATOR (not the Dean of Students). Gates EVERY config write (cadence, the 4 CPD scalars,
+ * PLC create/rename/archive, facilitator assignment, membership, term focus).
+ *
+ *   • VICE_HEADMASTER_ACADEMIC is DELIBERATELY NOT in the write set (R367): an academic leader who
+ *     configures PLC wears the PD_COORDINATOR hat (it is additive/double-hattable), rather than the
+ *     gate widening to their base role.
+ *   • Config READ is the shared `isStaff` (R368 — a bare TEACHER who facilitates must read
+ *     cadence/focus/contract for INCR-48); there is deliberately NO PLC_CONFIG_READ_ROLES array.
+ *
+ * PD_COORDINATOR is rank-1 (rankOf default) and appears in NO other group → it can never mint an
+ * ADMIN/HEADMASTER/PROPRIETOR (`canGrantRole`), and ADMIN/HEADMASTER grant IT via /staff.
+ */
+export const PLC_CONFIG_WRITE_ROLES = [
+  "PD_COORDINATOR",
+  "ADMIN",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
+/**
+ * 🔴 PLC session break-glass (INCR-47 · R377) — DEFINED NOW, INERT in 47. No live write path in this
+ * increment references it; it is the target for INCR-48's session write-gate + Sarah's mutation test.
+ *
+ * VHA & ADMIN are DELIBERATELY EXCLUDED (unlike the config write set): a facilitator is an IDENTITY,
+ * not a role — the ONLY roles that may author a PLC session WITHOUT being the assigned facilitator are
+ * the PD_COORDINATOR (the programme owner) and the HEADMASTER (school head). ADMIN self-grant would be
+ * audit-visible; VHA wears the coordinator hat. This is the module's one IDOR fence.
+ */
+export const PLC_SESSION_BREAKGLASS_ROLES = [
+  "PD_COORDINATOR",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
+/**
+ * 🔴 PLC session facilitation gate (INCR-47 · R377) — DEFINED + EXPORTED NOW, WIRED INTO NO LIVE PATH
+ * in 47 (INCR-48's session-write flow consumes it). May the caller author/close a PLC session?
+ *
+ * TRUE iff they ARE the PLC's assigned facilitator (an IDENTITY match on a SERVER-LOADED
+ * `plc.facilitator_user_id` — NEVER a facilitator id taken from the request) OR they hold a
+ * break-glass role. A bare role alone (TEACHER / FORM_MASTER / VICE_HEADMASTER_ACADEMIC / ADMIN,
+ * without the identity match) does NOT satisfy the facilitator arm — that bare-role IDOR is exactly
+ * what R377 exists to prevent (see [[builds-widen-ratified-authz-and-self-bless]]).
+ */
+export function canFacilitatePlcSession(
+  roles: readonly string[],
+  userId: string | null | undefined,
+  plcFacilitatorUserId: string | null | undefined,
+): boolean {
+  if (!!userId && !!plcFacilitatorUserId && userId === plcFacilitatorUserId) return true;
+  return hasAnyRole(roles, PLC_SESSION_BREAKGLASS_ROLES);
+}
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",

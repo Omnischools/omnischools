@@ -498,6 +498,13 @@
       "when": 1785271168354,
       "tag": "0070_tiny_giant_man",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1785483822286,
+      "tag": "0071_shocking_caretaker",
+      "breakpoints": true
     }
   ]
 }

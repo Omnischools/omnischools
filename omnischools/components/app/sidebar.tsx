@@ -23,6 +23,7 @@ import {
   Target,
   HeartPulse,
   HeartHandshake,
+  Presentation,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ import {
   WASSCE_SETUP_ROLES,
   SICKBAY_ROLES,
   VLC_CONFIG_READ_ROLES,
+  isStaff,
 } from "@/lib/access";
 
 const NAV: { href: string; label: string; Icon: LucideIcon }[] = [
@@ -61,8 +63,16 @@ const TIER: Record<string, string> = {
 };
 
 /** Senior (SHS) tier only — inserted after Gradebook. The teacher's score ledger and the
- * Vice Headmaster's completion view. */
-const SENIOR_ITEMS = [
+ * Vice Headmaster's completion view. `gate` (a predicate) overrides `roles` for surfaces read-gated
+ * by something other than a fixed role set (PLC config READ = `isStaff`, R368). */
+type SeniorItem = {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+  roles: readonly string[];
+  gate?: (roles: readonly string[]) => boolean;
+};
+const SENIOR_ITEMS: SeniorItem[] = [
   {
     href: "/senior/score-ledger",
     label: "Score ledger",
@@ -117,6 +127,18 @@ const SENIOR_ITEMS = [
     Icon: HeartHandshake,
     roles: VLC_CONFIG_READ_ROLES,
   },
+  {
+    // PLC — Professional Learning Communities (INCR-47 config spine). Label "Teacher development"
+    // (mirrors the VLC "Student support" naming decision — never "PLC"/"CPD" jargon in the nav).
+    // Read gate = `isStaff` (R368 — a bare TEACHER who facilitates must reach cadence/focus/contract),
+    // so it uses the `gate` predicate rather than a fixed role array. Flat + gated like its siblings;
+    // no sub-nav, no NEW badge.
+    href: "/senior/plc/setup",
+    label: "Teacher development",
+    Icon: Presentation,
+    roles: [],
+    gate: isStaff,
+  },
 ];
 
 /** Finance-only (Accountant/Bursar) nav — billing first, then read-only students/classes. */
@@ -157,7 +179,9 @@ export function AppSidebar({
     school.schoolType === "SENIOR" || school.schoolType === "COMBINED";
   // Senior items are further gated by role — a teacher sees the ledger but not the
   // management progress view; a student/parent sees neither.
-  const seniorItems = SENIOR_ITEMS.filter((i) => hasAnyRole(user.roles, i.roles));
+  const seniorItems = SENIOR_ITEMS.filter((i) =>
+    i.gate ? i.gate(user.roles) : hasAnyRole(user.roles, i.roles),
+  );
   const fullNav = isSenior
     ? NAV.flatMap((n) =>
         n.href === "/gradebook"
