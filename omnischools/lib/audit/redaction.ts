@@ -142,6 +142,11 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   "plc_session", // held-session instance (one per PLC × date; "held" = the row exists)
   "plc_session_attendance", // present-by-default staff P/L/A row (minutes_late/note)
   "plc_session_reflection", // per-member CPD reflection (q1/q2/q3, submit + facilitator confirm)
+  // — PLC CPD ledger (SHS module 4.6 / INCR-49) — the persisted staff-CPD accrual, one frozen row per
+  // (PLC session × member). Attendees are STAFF, so NO pastoral PII, NO parent path (it holds points +
+  // timestamps, no student mark). No reserved audit prefix, so it MUST be listed here or the
+  // classify-at-creation guard fails the build (R404). —
+  "plc_cpd_ledger", // point-in-time-correct frozen CPD accrual (attended_pts + reflection_pts, settled_at)
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker

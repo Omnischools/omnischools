@@ -306,6 +306,28 @@ export const PLC_SESSION_BREAKGLASS_ROLES = [
 ] as const satisfies readonly KnownAppRole[];
 
 /**
+ * 🔴 PLC CPD school dashboard READ set (SHS module 4.6 / INCR-49 · R405) — the module's SECOND app-gate,
+ * and a READ-gate (not the INCR-48 IDOR write-fence). Gates WHO SEES the school-wide CPD rollup (per-staff
+ * X/8 + status bands + at-risk callout). Gated `hasAnyRole` server-side on BOTH the route and the reader —
+ * RLS alone would let any same-school staff SELECT the SHOWN `plc_cpd_ledger`, so the management scope is
+ * an APP-LAYER gate.
+ *
+ *   • This is the config-WRITE set (PD_COORDINATOR / ADMIN / HEADMASTER) + VICE_HEADMASTER_ACADEMIC — the
+ *     deliberate READ ⊋ WRITE asymmetry: the VHA MONITORS CPD (oversight) but does NOT configure it, so it
+ *     is admitted here yet stays OUT of PLC_CONFIG_WRITE_ROLES and PLC_SESSION_BREAKGLASS_ROLES (an academic
+ *     leader who configures PLC wears the PD_COORDINATOR hat — R367).
+ *   • HoD department-scoping is DEFERRED (R405): the dashboard is school-wide to these 4 management roles
+ *     only; a bare TEACHER / FORM_MASTER / HoD-alone / STUDENT / PARENT sees 0 (the route redirects them,
+ *     the reader is never reached). The teacher's OWN X/8 lives on the always-on My-CPD statement instead.
+ */
+export const PLC_DASHBOARD_READ_ROLES = [
+  "PD_COORDINATOR",
+  "HEADMASTER",
+  "VICE_HEADMASTER_ACADEMIC",
+  "ADMIN",
+] as const satisfies readonly KnownAppRole[];
+
+/**
  * 🔴 PLC session facilitation gate (INCR-47 · R377) — DEFINED + EXPORTED NOW, WIRED INTO NO LIVE PATH
  * in 47 (INCR-48's session-write flow consumes it). May the caller author/close a PLC session?
  *
