@@ -174,6 +174,7 @@ BEGIN
     'plc_session',
     'plc_session_attendance',
     'plc_session_reflection',
+    'plc_cpd_ledger',
     'announcement',
     'sms_template',
     'notification_log',

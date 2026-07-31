@@ -462,3 +462,68 @@ export const plcSessionReflection = pgTable(
     }).onDelete("cascade"),
   }),
 );
+
+/* ============================================================================
+ * PLC CPD LEDGER (SHS module 4.6 / INCR-49, migration 0073) — the FINAL increment of the module and its
+ * SOLE plc_cpd_* writer. ONE frozen row per (school × session × member): the point-in-time-correct
+ * persisted CPD accrual, written at the session WRITE-LOCK instant from the SAME lib/plc/points.ts the
+ * INCR-48 register DISPLAYS (display == accrual by construction, R391 — 48 persists events, 49 freezes
+ * the award). Attendees are STAFF, so — like every table in this module — there is NO confidential layer,
+ * NO student PII, NO parent path: OPERATIONAL / SHOWN (listed in SHOWN_AUDIT_ENTITIES; no reserved audit
+ * prefix, so an omitted listing fails the classify-at-creation build guard, R404).
+ *
+ * ENABLE + FORCE RLS + tenant_isolation (db:policies on dev; db/sql/prod-paste-0076-plc-cpd-ledger.sql by
+ * hand on prod) and — via the catalog-driven RESTRICTIVE loop in db/sql/policies.sql — parent_deny
+ * (FORCE-RLS + school_id, NO parent_scope → auto-denied). A parent NEVER sees staff CPD. NO parent_scope,
+ * NO confidential/REDACTED layer, NO new GUC, NO triggers (portability).
+ *
+ * FROZEN, POINT-IN-TIME (R400/R401): `attended_pts` + `reflection_pts` are the two CPD arms captured AT
+ * settle; the TOTAL is attended+reflection, DERIVED in lib/ — deliberately NO stored total column. There
+ * are also deliberately NO plc_id / academic_period_id / session_date columns: each DERIVES via the
+ * session_id join (immutable on the session, so it carries no point-in-time benefit worth freezing). No
+ * rollup table, no per-event table, no source/evidence/licence/NTC table (all deferred). `settled_at` is
+ * the deterministic award instant (the session write-lock instant the freeze is anchored to);
+ * `created_at` is the audit write time.
+ * ==========================================================================*/
+export const plcCpdLedger = pgTable(
+  "plc_cpd_ledger",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").notNull(), // composite (school_id, session_id) FK below
+    // The STAFF member (single-column SET NULL → global ref_user; nullable because SET NULL requires it).
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    // The two frozen CPD arms captured at settle; total = attended + reflection, DERIVED in lib/ (R401 —
+    // NO stored total column). numeric(5,2) mirrors the plc_programme CPD-scalar precision.
+    attendedPts: numeric("attended_pts", { precision: 5, scale: 2 }).notNull(),
+    reflectionPts: numeric("reflection_pts", { precision: 5, scale: 2 }).notNull(),
+    // The deterministic award instant = the session write-lock instant (the point-in-time the freeze is
+    // anchored to); distinct from created_at (the row's DB write time, for audit).
+    settledAt: timestamp("settled_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One frozen row per (school × session × member) — the idempotent-upsert conflict target AND the
+    // ledger-layer anti-double-count key (≤1 award per member × session). Its (school_id, session_id)
+    // prefix serves the settle-time "all members of this session" read, so no separate index. LEAF
+    // (nothing FKs here) → NO tenant UK. (A per-member "my CPD across sessions" dashboard read is
+    // (school_id, user_id); the ledger is tiny — staff × sessions per school — so it stays a scoped scan,
+    // no secondary index until a query pattern measurably needs one.)
+    uniqLedger: unique("uniq_plc_cpd_ledger").on(t.schoolId, t.sessionId, t.userId),
+    // Defense-in-depth non-negativity (the primary compute is app-layer in lib/plc/points.ts).
+    attendedPtsNonneg: check("plc_cpd_ledger_attended_pts_nonneg", sql`${t.attendedPts} >= 0`),
+    reflectionPtsNonneg: check(
+      "plc_cpd_ledger_reflection_pts_nonneg",
+      sql`${t.reflectionPts} >= 0`,
+    ),
+    // Composite intra-tenant FK → the EXISTING plc_session_tenant_uk (school_id, id) (INCR-48 / 0072) — a
+    // cross-tenant session reference is structurally impossible. CASCADE: a session delete removes its
+    // frozen ledger row (school delete cascades through it too).
+    sessionFk: foreignKey({
+      columns: [t.schoolId, t.sessionId],
+      foreignColumns: [plcSession.schoolId, plcSession.id],
+    }).onDelete("cascade"),
+  }),
+);

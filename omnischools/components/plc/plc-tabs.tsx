@@ -3,25 +3,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * The in-page PLC sub-nav (Setup · Sessions), mirroring the VLC tabs idiom (components/vlc/vlc-tabs).
- * Rendered by the PLC nested layout above every /senior/plc page. Both tabs share the same read gate
- * (isStaff, R368), so — unlike the role-conditional VLC row — the tabs are static.
+ * The in-page PLC sub-nav (Setup · Sessions · My CPD · CPD dashboard), mirroring the VLC tabs idiom
+ * (components/vlc/vlc-tabs). Rendered by the PLC nested layout above every /senior/plc page.
  *
- * NB (flag at PR): the shipped sidebar row "Teacher development" points at /senior/plc/setup; this adds a
- * second navigational surface (the tab row). The alternative was a second flat sidebar row for Sessions.
- * The tab row mirrors VLC exactly (Setup/Sessions are two faces of one module), so it is the consistent
- * placement — but the sub-nav-vs-sidebar call is Lucy's to confirm.
+ * Setup / Sessions / My CPD share the shared read gate (isStaff, R368 / own-identity), so they always
+ * render. The CPD dashboard tab is management-only — the layout computes `canSeeDashboard`
+ * (hasAnyRole(roles, PLC_DASHBOARD_READ_ROLES), R405) and this component renders that tab ONLY when true.
+ * The tab visibility is a convenience; the real boundary is the /dashboard route's own redirect gate.
  */
-const TABS = [
+const BASE_TABS = [
   { href: "/senior/plc/setup", label: "Setup" },
   { href: "/senior/plc/sessions", label: "Sessions" },
+  { href: "/senior/plc/my-cpd", label: "My CPD" },
 ] as const;
 
-export function PlcTabs() {
+const DASHBOARD_TAB = { href: "/senior/plc/dashboard", label: "CPD dashboard" } as const;
+
+export function PlcTabs({ canSeeDashboard = false }: { canSeeDashboard?: boolean }) {
   const pathname = usePathname();
+  const tabs = canSeeDashboard ? [...BASE_TABS, DASHBOARD_TAB] : BASE_TABS;
   return (
     <nav className="mb-6 flex gap-1 border-b border-border" aria-label="PLC sections">
-      {TABS.map((t) => {
+      {tabs.map((t) => {
         const active = pathname === t.href || pathname.startsWith(`${t.href}/`);
         return (
           <Link
