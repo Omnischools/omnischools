@@ -505,6 +505,13 @@
       "when": 1785483822286,
       "tag": "0071_shocking_caretaker",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1785495381642,
+      "tag": "0072_brainy_nightshade",
+      "breakpoints": true
     }
   ]
 }

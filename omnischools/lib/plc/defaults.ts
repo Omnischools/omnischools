@@ -71,6 +71,18 @@ export function plcTypeOf(type: string): PlcType {
 }
 
 // ============================================================================
+// The 3 FIXED post-session CPD reflection questions (R387, SHS module 4.6 / INCR-48) — school-generic,
+// NOT configurable, NOT stored. The plc_session_reflection q1/q2/q3 columns hold the ANSWERS; these are
+// the PROMPTS, frozen here so the live register (48) and any later CPD statement render identical
+// wording. Surface-exact (schoolup-plc-session-register.html, the reflection-prompt block).
+// ============================================================================
+export const PLC_REFLECTION_QUESTIONS = [
+  "What's the most useful thing you learned in this session that you can use in your classroom next week?",
+  "What's one action you commit to taking before the next session?",
+  "What's one question or topic you'd like to raise at the next session?",
+] as const;
+
+// ============================================================================
 // Programme coalesce — a missing plc_programme row is legal and meaningful (R370)
 // ============================================================================
 

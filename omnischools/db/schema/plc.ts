@@ -2,6 +2,8 @@ import {
   pgTable,
   uuid,
   text,
+  date,
+  jsonb,
   smallint,
   integer,
   numeric,
@@ -15,6 +17,7 @@ import { sql } from "drizzle-orm";
 import { schools } from "./tenancy";
 import { users } from "./identity";
 import { academicPeriod } from "./periods";
+import { attendanceStatusEnum } from "./_enums";
 
 /**
  * PLC programme-setup spine (SHS module 4.6 / INCR-47, migration 0071) — the staff-CPD config trunk,
@@ -263,6 +266,199 @@ export const plcTermFocus = pgTable(
     periodFk: foreignKey({
       columns: [t.schoolId, t.academicPeriodId],
       foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * PLC SESSION REGISTER (SHS module 4.6 / INCR-48, migration 0072) — the Friday register, the
+ * OPERATIONAL/SHOWN counterpart to VLC's Wednesday vlc_session (INCR-42a) and materially lighter than
+ * it. Three NEW tenant tables capture three event streams: `plc_session` (the held instance), then the
+ * present-by-default `plc_session_attendance` and the SEPARATE `plc_session_reflection`. Attendees are
+ * STAFF, so — exactly like the INCR-47 spine — there is NO confidential layer, NO student PII, NO parent
+ * path: all three are OPERATIONAL / SHOWN (each listed in SHOWN_AUDIT_ENTITIES; none carries a reserved
+ * audit prefix, so an omitted one fails the classify-at-creation build guard). Reflection ANSWERS are
+ * SHOWN (staff CPD ≠ pastoral); audit records metadata only, never an answer body (R395).
+ *
+ * All three get ENABLE + FORCE RLS + tenant_isolation (db:policies on dev; db/sql/prod-paste-0075-plc-
+ * sessions.sql by hand on prod) and — via the catalog-driven RESTRICTIVE loop in db/sql/policies.sql —
+ * parent_deny (FORCE-RLS + school_id, NO parent_scope → auto-denied). A parent NEVER sees staff PD.
+ *
+ * DERIVED, NEVER STORED (R381/R382): lifecycle state (SCHEDULED/HELD/MISSED), the write-lock, and the
+ * whole CPD-points panel + KPIs compute in lib/plc/ (points.ts) from the cadence + the persisted events.
+ * So there is deliberately NO status / started_at / closed_at / held_at / week_no / present_count /
+ * points column anywhere below. 48 PERSISTS events only and DISPLAYS a derived preview; INCR-49 is the
+ * SOLE plc_cpd_* ledger writer, importing the SAME points.ts (display == accrual by construction, R391).
+ * Every cross-row rule (the R384 facilitator write-gate, the R388 within-window submit, the R389
+ * confirm) lives in lib/plc/ server actions — NO triggers (portability).
+ * ==========================================================================*/
+
+/**
+ * The HELD PLC session — one row per (PLC × date), created ONLY when a facilitator (or a break-glass
+ * PLC_SESSION_BREAKGLASS role) OPENS it (R381 manual-open; the vlc_session openSession upsert). "Held" =
+ * this row exists; SCHEDULED / MISSED / the write-lock all DERIVE in lib/plc/. `academic_period_id` is
+ * resolved from `session_date` in lib/ and stored (the term the session belongs to). `agenda_json` is
+ * the editable, facilitator-authored agenda ({items:[{text,durationMin?,done}]}, R385) — Zod-validated
+ * in lib/, NOT append-only, no agenda-item table (YAGNI). `topic` is a nullable sub-topic beneath the
+ * PLC's R375 term-focus headline. `opened_by_user_id` is a single-column SET NULL actor stamp → global
+ * ref_user.
+ *
+ * `plc_session_tenant_uk UNIQUE(school_id, id)` is carried INLINE in CREATE TABLE because it is the
+ * composite-FK TARGET of BOTH plc_session_attendance's and plc_session_reflection's (school_id,
+ * session_id) FKs created in the SAME migration (0072): the UNIQUE must exist before those ALTER ... ADD
+ * FOREIGN KEY (the 0033 target-before-FK ordering hazard, the vlc_session_tenant_uk precedent).
+ * UNIQUE(school_id, plc_id, session_date) is the one-session-per-(PLC × date) invariant AND the
+ * open-upsert conflict target; its (school_id, plc_id) prefix serves the per-PLC register history read.
+ */
+export const plcSession = pgTable(
+  "plc_session",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    plcId: uuid("plc_id").notNull(), // composite (school_id, plc_id) FK below
+    academicPeriodId: uuid("academic_period_id").notNull(), // composite (school_id, period_id) FK below — resolved from session_date
+    sessionDate: date("session_date").notNull(), // stored date (not derived from a timestamp) — the tz-boundary discipline
+    topic: text("topic"), // nullable sub-topic; the headline is the PLC's term focus (R375)
+    // Facilitator-authored agenda {items:[{text,durationMin?,done}]} (R385), Zod-validated in lib/plc/;
+    // editable-until-lock, NOT append-only, NO agenda-item table. Default = the valid empty shape.
+    agendaJson: jsonb("agenda_json").notNull().default(sql`'{"items": []}'::jsonb`),
+    // Single-column SET NULL actor stamp → global ref_user (the opener; a removed user clears it).
+    openedByUserId: uuid("opened_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for the two child tables' (school_id, session_id) FK. INLINE, ahead of those
+    // ALTERs in this same migration (the 0033 / vlc_session ordering discipline).
+    tenantUk: unique("plc_session_tenant_uk").on(t.schoolId, t.id),
+    // One session per (PLC × date) — the invariant + the open-upsert conflict target. Its (school_id,
+    // plc_id) prefix serves the per-PLC register history read, so no separate index.
+    uniqPerPlcDate: unique("uniq_plc_session").on(t.schoolId, t.plcId, t.sessionDate),
+    // Composite intra-tenant FKs — a cross-tenant PLC / period reference is structurally impossible.
+    plcFk: foreignKey({
+      columns: [t.schoolId, t.plcId],
+      foreignColumns: [plc.schoolId, plc.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.academicPeriodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * PRESENT-BY-DEFAULT staff session-attendance (R383, the vlc_session_attendance / prep_attendance
+ * idiom) — a row exists ONLY for a member who was NOT present; mark-present DELETES the row, so present
+ * = live active plc_membership − rows and every count/rate DERIVES (NO stored present_count/rate).
+ * `status` REUSES the canonical attendanceStatusEnum (NO new enum, R383); capture surfaces P/L/A
+ * (Late==Present for CPD), E/M are storable-not-rejected (earn 0). `minutes_late` (nullable int, CHECK ≥
+ * 0) is set for LATE. `user_id` is the STAFF member (single-column SET NULL → global ref_user, nullable
+ * as SET NULL requires). The R384 facilitator write-gate (server-loaded facilitator id via session→plc
+ * join, member-in-PLC, refuse-after-lock) is app-layer in lib/plc/, NOT a DB trigger.
+ *
+ * LEAF (nothing FKs here) → NO tenant UK. UNIQUE(school_id, session_id, user_id) is the upsert conflict
+ * target (guarantees ≤1 attended event per member × session → no INCR-49 double-count, R391); its
+ * (school_id, session_id) prefix serves the per-session "who was not present" roster read, so no
+ * separate index. Composite (school_id, session_id) intra-tenant FK → plc_session.tenant_uk (CASCADE);
+ * the recorder is a single-column SET NULL → ref_user.
+ */
+export const plcSessionAttendance = pgTable(
+  "plc_session_attendance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").notNull(), // composite (school_id, session_id) FK below
+    // The STAFF member (single-column SET NULL → global ref_user; nullable because SET NULL requires it).
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    // Reuses the canonical attendance enum; capture surfaces P/L/A (E/M storable-not-rejected, earn 0).
+    status: attendanceStatusEnum("status").notNull(),
+    minutesLate: integer("minutes_late"), // nullable — set for LATE
+    note: text("note"),
+    // Single-column SET NULL actor stamp → global ref_user.
+    recordedByUserId: uuid("recorded_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One row per (session × member) — the upsert conflict target. Its (school_id, session_id) prefix
+    // serves the per-session roster read, so no separate index.
+    uniqPerSessionUser: unique("uniq_plc_session_attendance").on(t.schoolId, t.sessionId, t.userId),
+    minutesLateNonneg: check(
+      "plc_session_attendance_minutes_late_nonneg",
+      sql`${t.minutesLate} >= 0`,
+    ),
+    // Composite intra-tenant FK — a cross-tenant session reference is structurally impossible.
+    sessionFk: foreignKey({
+      columns: [t.schoolId, t.sessionId],
+      foreignColumns: [plcSession.schoolId, plcSession.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * The post-session CPD reflection (R386 — a SEPARATE table, NOT columns on attendance: present-by-
+ * default means an attendee has NO attendance row, yet the attendee is exactly who reflects). One row
+ * per (session × member).
+ *
+ * ANSWER STORAGE = three FIXED text columns `q1`/`q2`/`q3` (takeaway / commitment / next-session-
+ * question, R387), NOT a single answers_json. Rationale: the questions are frozen school-generic prompts
+ * in lib/plc/, NOT configurable (R387) — a fixed 3-field shape is not EAV, so jsonb buys nothing; three
+ * plain columns keep the projection explicit and are the honest representation of a fixed form. Nullable
+ * so a partial submit is legal (the app requires non-empty answers where needed).
+ *
+ * `submitted_at` is the domain submission time the R393 within-window check reads; the ANSWERS are
+ * append-only-hard (never UPDATE/DELETE, R388, enforced app-layer). `confirmed_at` + `confirmed_by_user_id`
+ * are the facilitator's one-way confirmation stamp (R389 — the ONLY mutation this row ever takes, and
+ * only on those two columns; NOT window-bound, distinct from the append-only answer). `user_id` (author)
+ * and `confirmed_by_user_id` are single-column SET NULL → global ref_user (nullable).
+ *
+ * LEAF → NO tenant UK. UNIQUE(school_id, session_id, user_id) is the one-reflection-per-member invariant
+ * (guarantees ≤1 confirmed reflection event per member × session → no INCR-49 double-count, R391); its
+ * (school_id, session_id) prefix serves the per-session reflection read. Composite (school_id,
+ * session_id) intra-tenant FK → plc_session.tenant_uk (CASCADE).
+ */
+export const plcSessionReflection = pgTable(
+  "plc_session_reflection",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").notNull(), // composite (school_id, session_id) FK below
+    // The reflecting STAFF member (single-column SET NULL → global ref_user; nullable as SET NULL requires).
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    // The 3 frozen prompts (R387) — fixed columns, not EAV. Nullable = a partial submit is legal.
+    q1: text("q1"),
+    q2: text("q2"),
+    q3: text("q3"),
+    // Domain submission time (feeds the R393 within-window check); the answers are append-only (R388).
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    // Facilitator's one-way confirmation stamp (R389) — the ONLY columns this row ever UPDATEs.
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    confirmedByUserId: uuid("confirmed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // One reflection per (session × member) — the invariant + upsert target. Its (school_id, session_id)
+    // prefix serves the per-session reflection read, so no separate index.
+    uniqPerSessionUser: unique("uniq_plc_session_reflection").on(
+      t.schoolId,
+      t.sessionId,
+      t.userId,
+    ),
+    // Composite intra-tenant FK — a cross-tenant session reference is structurally impossible.
+    sessionFk: foreignKey({
+      columns: [t.schoolId, t.sessionId],
+      foreignColumns: [plcSession.schoolId, plcSession.id],
     }).onDelete("cascade"),
   }),
 );
