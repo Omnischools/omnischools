@@ -337,7 +337,7 @@ export function PlcReflectionPanel({
           ) : (
             <div className="space-y-3">
               {submitted.map((m) => (
-                <ConfirmRow key={m.userId} sessionId={sessionId} member={m} questions={questions} />
+                <ConfirmRow key={m.userId} sessionId={sessionId} member={m} />
               ))}
             </div>
           )}
@@ -427,11 +427,9 @@ function ViewerReflection({
 function ConfirmRow({
   sessionId,
   member,
-  questions,
 }: {
   sessionId: string;
   member: PlcSessionMemberView;
-  questions: readonly string[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
