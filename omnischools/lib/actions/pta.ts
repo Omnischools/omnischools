@@ -86,6 +86,7 @@ export async function savePtaTier(input: unknown): Promise<Result> {
           frequencyNorm: ptaTiersConfig.frequencyNorm,
           officerRoles: ptaTiersConfig.officerRoles,
           quorumRule: ptaTiersConfig.quorumRule,
+          tierSettings: ptaTiersConfig.tierSettings,
         })
         .from(ptaTiersConfig)
         .where(and(eq(ptaTiersConfig.schoolId, gate.schoolId), eq(ptaTiersConfig.tierType, d.tierType)))
