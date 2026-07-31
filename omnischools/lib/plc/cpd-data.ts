@@ -29,6 +29,8 @@ import {
 } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import type { Tx } from "@/lib/db";
+import { assertAnyRole } from "@/lib/auth/server";
+import { PLC_DASHBOARD_READ_ROLES } from "@/lib/access";
 import { getCurrentPeriod } from "@/lib/boarding/period";
 import { NON_STAFF_ROLE_CODES, roleLabel } from "@/lib/staff-roles";
 import {
@@ -279,6 +281,10 @@ export interface CpdDashboard {
 
 /** The school-wide CPD rollup (R406). Accrues first; population = staff in ≥1 PLC. Management-gated by the page. */
 export async function getSchoolCpdDashboard(schoolId: string): Promise<CpdDashboard> {
+  // R405: the dashboard is gated on BOTH the route AND the reader. The route redirect is the UX boundary;
+  // this reader-level assert is the real defense-in-depth boundary (throws for any non-management caller),
+  // so a future unguarded caller cannot read the school-wide rollup that RLS alone leaves open to any staff.
+  await assertAnyRole(PLC_DASHBOARD_READ_ROLES);
   return withSchool(schoolId, async (tx) => {
     await accrueSettledSessions(tx, schoolId);
 
