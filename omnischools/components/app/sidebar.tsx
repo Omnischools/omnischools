@@ -24,6 +24,7 @@ import {
   HeartPulse,
   HeartHandshake,
   Presentation,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,7 @@ import {
   WASSCE_SETUP_ROLES,
   SICKBAY_ROLES,
   VLC_CONFIG_READ_ROLES,
+  PTA_CONFIG_WRITE_ROLES,
   isStaff,
 } from "@/lib/access";
 
@@ -138,6 +140,16 @@ const SENIOR_ITEMS: SeniorItem[] = [
     Icon: Presentation,
     roles: [],
     gate: isStaff,
+  },
+  {
+    // PTA — Parent-Teacher Association structure (INCR-50 config spine). Label "PTA" + Landmark icon
+    // (both flagged for PR review). Admin-only: the read gate IS the write gate
+    // (PTA_CONFIG_WRITE_ROLES = Admin / Headmaster) — a plain teacher/parent sees neither the link nor
+    // the page. Flat + role-gated like its siblings; no sub-nav, no NEW badge.
+    href: "/senior/pta/setup",
+    label: "PTA",
+    Icon: Landmark,
+    roles: PTA_CONFIG_WRITE_ROLES,
   },
 ];
 
