@@ -739,6 +739,163 @@ CREATE POLICY parent_scope ON pta_meeting_attendance AS RESTRICTIVE FOR ALL TO p
     )
   );
 
+-- ---- INCR-55b: the SIXTH widening of the 19a parent boundary (17 → 22 parent_scope tables) — the PTA
+-- PARENT READ, records/directory half (Module 4.7 capstone, part b; Kofi R478/R479). A parent gains ROW
+-- access to the CURRENT officer matrix of the PTAs they belong to (pta_officer) and the ADOPTED-minutes
+-- subtree of those PTAs (pta_minutes + pta_agenda_item + pta_action_item + pta_resolution). Builds on the
+-- 55a helpers (parent_in_pta / parent_pta_ids) BYTE-UNCHANGED. Kept in sync with
+-- db/sql/prod-paste-0083-pta-parent-read-b.sql — this block is DEV; that file is the hand-paste on PROD
+-- (⚠ RLS is NOT auto-applied on prod; without the paste these five tables keep parent_deny and the parent
+-- PTA records/officers tab is an honest empty state — fail-closed, never a leak).
+--
+-- 🔴 RLS GATES ROWS, NOT COLUMNS. Once a row is opened the officer-only COLUMNS (pta_officer.election_ref,
+-- pta_officer.end_reason, contact) and the DRAFT/CHAIR_REVIEW exclusion are the READER's frozen projection
+-- job (Claude Code's withParentScope loaders, R478/R479) — EXCEPT where a row-gate structurally covers it:
+--   • pta_officer's `ended_at IS NULL` predicate denies ended rows, so end_reason is NEVER on a visible row.
+--   • pta_minutes's `status = 'ADOPTED'` predicate denies DRAFT/CHAIR_REVIEW, so a parent can NEVER see a
+--     non-adopted minutes — nor any of its agenda/action/resolution children (the subtree is reachable ONLY
+--     through an ADOPTED minutes).
+--
+-- 🔴 THE 55a RECURSION TRAP APPLIES TO THE MINUTES SUBTREE. A parent_scope policy on table T must NEVER read
+-- T inside a SECURITY DEFINER helper: on prod (function owner non-super + FORCE RLS) the inner read RE-FIRES
+-- the same policy → stack-depth error; INVISIBLE on the superuser dev DB (the body bypasses RLS) — the exact
+-- reason 55a split parent_in_pta off parent_pta_ids. So each table's policy reaches UP the tree, reading only
+-- ANCESTOR tables, never its own:
+--   • pta_officer      → reads ptas          (via parent_pta_ids).                 officer ≠ ptas    → acyclic.
+--   • pta_minutes      → reads pta_meeting   (via parent_minutes_row, per-ROW).    NEVER pta_minutes → acyclic.
+--   • pta_agenda_item  → reads pta_minutes   (via parent_readable_minutes_ids).    agenda ≠ minutes  → acyclic.
+--   • pta_action_item  → reads pta_agenda_item (via parent_readable_agenda_item_ids). action ≠ agenda → acyclic.
+--   • pta_resolution   → reads pta_agenda_item (same helper).                       resolution ≠ agenda → acyclic.
+-- Each SET helper MAY read the table one level up because THAT table's policy reaches a level HIGHER still
+-- (pta_minutes's policy reads pta_meeting, not pta_minutes), so no policy ever reads the table it guards.
+
+-- ---- SECURITY DEFINER helper: is THIS minutes row parent-readable (ADOPTED, own-PTA)? (R478) ----
+-- Per-ROW predicate for pta_minutes.parent_scope — reads pta_meeting, NEVER pta_minutes (so pta_minutes's
+-- policy never reads its own table). Takes the row's status + meeting_id as ARGUMENTS (never a table read of
+-- the guarded table). ADOPTED-only is the structural gate. Same discipline as parent_in_pta (STABLE,
+-- explicit search_path public,pg_temp LAST).
+CREATE OR REPLACE FUNCTION parent_minutes_row(school uuid, pu uuid, mstatus text, meeting uuid)
+  RETURNS boolean
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+  SELECT mstatus = 'ADOPTED'
+    AND EXISTS (
+      SELECT 1 FROM pta_meeting m
+      WHERE m.school_id = school
+        AND m.id = meeting
+        AND m.pta_id IN (SELECT parent_pta_ids(school, pu))
+    )
+$$;
+
+-- ---- SECURITY DEFINER helper: the ADOPTED, own-PTA minutes ids, as a set (R478) ----
+-- SET form of parent_minutes_row over pta_minutes — used by the CHILD table's policy (pta_agenda_item), NOT
+-- by pta_minutes.parent_scope (which uses the per-row predicate above), so reading pta_minutes here is
+-- acyclic (pta_minutes's own policy reads pta_meeting, never pta_minutes). Its own parent_minutes_row filter
+-- makes it correct whether the inner pta_minutes read is RLS-bypassed (dev) or RLS-applied (prod).
+CREATE OR REPLACE FUNCTION parent_readable_minutes_ids(school uuid, pu uuid)
+  RETURNS SETOF uuid
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+  SELECT m.id
+  FROM pta_minutes m
+  WHERE m.school_id = school
+    AND parent_minutes_row(school, pu, m.status, m.meeting_id)
+$$;
+
+-- ---- SECURITY DEFINER helper: the agenda-item ids under a parent-readable minutes, as a set (R478) ----
+-- SET form used by the LEAF tables' policies (pta_action_item, pta_resolution), NOT by pta_agenda_item's own
+-- policy (which reaches minutes via parent_readable_minutes_ids), so reading pta_agenda_item here is acyclic.
+CREATE OR REPLACE FUNCTION parent_readable_agenda_item_ids(school uuid, pu uuid)
+  RETURNS SETOF uuid
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+  SELECT ai.id
+  FROM pta_agenda_item ai
+  WHERE ai.school_id = school
+    AND ai.minutes_id IN (SELECT parent_readable_minutes_ids(school, pu))
+$$;
+
+-- pta_officer (R479) — the CURRENT officer matrix of the PTAs the parent belongs to. `ended_at IS NULL`
+-- gates to current holders (AND structurally denies end_reason ever landing on a visible row); pta_id ∈
+-- parent_pta_ids scopes to the parent's PTAs. Reads ptas via parent_pta_ids, NOT pta_officer → acyclic.
+-- election_ref / contact stay officer-only — the reader's projection job (R479).
+DROP POLICY IF EXISTS parent_deny ON pta_officer;
+DROP POLICY IF EXISTS parent_scope ON pta_officer;
+CREATE POLICY parent_scope ON pta_officer AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR (
+      ended_at IS NULL
+      AND pta_id IN (
+        SELECT parent_pta_ids(
+          school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+      )
+    )
+  );
+
+-- pta_minutes (R478) — the ADOPTED minutes of the PTAs the parent belongs to. Uses the per-ROW predicate
+-- parent_minutes_row on this row's status + meeting_id (reads pta_meeting, NEVER pta_minutes → no cycle under
+-- prod FORCE RLS). status='ADOPTED' is structural: DRAFT/CHAIR_REVIEW rows never open to a parent.
+DROP POLICY IF EXISTS parent_deny ON pta_minutes;
+DROP POLICY IF EXISTS parent_scope ON pta_minutes;
+CREATE POLICY parent_scope ON pta_minutes AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR parent_minutes_row(
+         school_id,
+         NULLIF(current_setting('app.current_parent_user', true), '')::uuid,
+         status, meeting_id)
+  );
+
+-- pta_agenda_item (R478) — agenda items under a parent-readable (ADOPTED, own-PTA) minutes. Reads pta_minutes
+-- via parent_readable_minutes_ids, NOT pta_agenda_item → acyclic.
+DROP POLICY IF EXISTS parent_deny ON pta_agenda_item;
+DROP POLICY IF EXISTS parent_scope ON pta_agenda_item;
+CREATE POLICY parent_scope ON pta_agenda_item AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR minutes_id IN (
+      SELECT parent_readable_minutes_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+
+-- pta_action_item (R478) — actions under a parent-readable agenda item. Reads pta_agenda_item via
+-- parent_readable_agenda_item_ids, NOT pta_action_item → acyclic.
+DROP POLICY IF EXISTS parent_deny ON pta_action_item;
+DROP POLICY IF EXISTS parent_scope ON pta_action_item;
+CREATE POLICY parent_scope ON pta_action_item AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR agenda_item_id IN (
+      SELECT parent_readable_agenda_item_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+
+-- pta_resolution (R478) — resolutions under a parent-readable agenda item (same reach as action items).
+-- Reads pta_agenda_item via parent_readable_agenda_item_ids, NOT pta_resolution → acyclic. The vote tallies /
+-- resolution text / derived PASSED are PUBLIC on an adopted minutes (R478); nothing officer-only here.
+DROP POLICY IF EXISTS parent_deny ON pta_resolution;
+DROP POLICY IF EXISTS parent_scope ON pta_resolution;
+CREATE POLICY parent_scope ON pta_resolution AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR agenda_item_id IN (
+      SELECT parent_readable_agenda_item_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+
 -- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
 -- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
 -- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).
