@@ -23,9 +23,15 @@ export type VhmStatus = "ready" | "behind" | "at_risk";
 export type VhmProgressRow = {
   classId: string;
   className: string;
+  /** classes.level text (e.g. "Form 2") — the form/year filter dimension (§6.1). Null for a Basic class. */
+  classLevel: string | null;
+  /** classes.programme enum (GENERAL_ARTS / …) — the programme filter dimension (§6.1). Null off-SHS. */
+  classProgramme: string | null;
   subjectId: string;
   subjectName: string;
   path: CapturePath;
+  /** The assigned teacher's user id — the distinct-teacher key for the §6.4 roll-up (never a request value). */
+  teacherUserId: string | null;
   teacherName: string | null;
   rosterSize: number;
   filled: {
@@ -71,6 +77,121 @@ export function computeVhmTier(
   const status: VhmStatus =
     categoriesDone === 5 ? "ready" : categoriesDone === 0 ? "at_risk" : "behind";
   return { categoriesDone, status };
+}
+
+/** Which of the three §6.4 buckets a subject unit falls in. */
+export type SubjectRollupBucket = "fully_ready" | "partial" | "at_risk";
+
+/**
+ * A teacher blocking a subject's readiness (has ≥1 not-ready row in the unit). Names + how many
+ * of their classes in this subject are flagged + how stale (max days since their last entry;
+ * null = a never-touched row, the most urgent). Rendered ONLY on the at-risk / escalation card
+ * (HM64-10b) — never on the fully/partial cards, and never with a score value.
+ */
+export type RollupBlocker = {
+  teacherName: string | null;
+  classesAffected: number;
+  daysInactive: number | null;
+};
+
+/**
+ * One subject rolled up across ALL its forms for the Headmaster's cascade (spec §6.4).
+ * Completion is counted over DISTINCT TEACHERS, not class-subject rows: `teacherTotal` (N) =
+ * distinct `teacherUserId` in the unit; a teacher is "complete" iff EVERY row they own in the
+ * subject is `ready`; `teacherComplete` (X) = complete teachers. Bucket: fully_ready X==N(N>0) ·
+ * at_risk X==0 · partial 0<X<N. Counts only — no score ever leaves this shape.
+ */
+export type SubjectRollup = {
+  subjectId: string;
+  subjectName: string;
+  teacherTotal: number; // N
+  teacherComplete: number; // X
+  bucket: SubjectRollupBucket;
+  /** Not-complete teachers, most-stale first — the at-risk card's / escalation's naming source. */
+  blockers: RollupBlocker[];
+};
+
+/**
+ * Reduce the per-assignment VHM rows to per-subject readiness buckets (spec §6.4 / HM64-01..08).
+ * Pure & side-effect-free — the money logic, unit-tested directly (no DB). Subject unit = rows
+ * sharing `subjectId` across every form (HM64-01); N = distinct teacher, complete-iff-all-ready
+ * (HM64-02/03). Returned most-behind-first (at_risk → partial → fully_ready), so the first
+ * at-risk element is the single most-urgent escalation (HM64-16).
+ */
+export function rollupBySubject(rows: VhmProgressRow[]): SubjectRollup[] {
+  // A never-touched row (null) is the MOST stale — sorts ahead of any dated row (mirrors the
+  // loader's staleness tiebreak).
+  const staleness = (d: number | null) => d ?? Number.MAX_SAFE_INTEGER;
+
+  const bySubject = new Map<string, VhmProgressRow[]>();
+  for (const r of rows) {
+    const g = bySubject.get(r.subjectId);
+    if (g) g.push(r);
+    else bySubject.set(r.subjectId, [r]);
+  }
+
+  const out: SubjectRollup[] = [];
+  for (const group of bySubject.values()) {
+    // Distinct teachers in the unit (HM64-02). A null teacherUserId shouldn't occur (assignment
+    // FK is NOT NULL) but is keyed distinctly so it can never silently merge two unassigned rows.
+    const byTeacher = new Map<string, VhmProgressRow[]>();
+    for (const r of group) {
+      const key = r.teacherUserId ?? "__unassigned__";
+      const t = byTeacher.get(key);
+      if (t) t.push(r);
+      else byTeacher.set(key, [r]);
+    }
+
+    let teacherComplete = 0;
+    const blockers: RollupBlocker[] = [];
+    for (const teacherRows of byTeacher.values()) {
+      // Complete iff EVERY row this teacher owns in the subject is ready (HM64-03).
+      if (teacherRows.every((r) => r.status === "ready")) {
+        teacherComplete += 1;
+        continue;
+      }
+      const notReady = teacherRows.filter((r) => r.status !== "ready");
+      const daysInactive = notReady.some((r) => r.daysInactive == null)
+        ? null // a never-touched class dominates
+        : notReady.reduce((m, r) => Math.max(m, r.daysInactive ?? 0), 0);
+      blockers.push({
+        teacherName: teacherRows[0].teacherName,
+        classesAffected: notReady.length,
+        daysInactive,
+      });
+    }
+    blockers.sort((a, b) => staleness(b.daysInactive) - staleness(a.daysInactive));
+
+    const teacherTotal = byTeacher.size; // N
+    const bucket: SubjectRollupBucket =
+      teacherTotal > 0 && teacherComplete === teacherTotal
+        ? "fully_ready"
+        : teacherComplete === 0
+          ? "at_risk"
+          : "partial";
+
+    out.push({
+      subjectId: group[0].subjectId,
+      subjectName: group[0].subjectName,
+      teacherTotal,
+      teacherComplete,
+      bucket,
+      blockers,
+    });
+  }
+
+  // Most-behind first (HM64-16): at_risk, then partial, then fully_ready; within a bucket the
+  // subject with the most-stale blocker leads → out.find(at_risk) is the escalation.
+  const rank: Record<SubjectRollupBucket, number> = { at_risk: 0, partial: 1, fully_ready: 2 };
+  const topStale = (s: SubjectRollup) =>
+    s.blockers.length ? staleness(s.blockers[0].daysInactive) : -1;
+  out.sort(
+    (a, b) =>
+      rank[a.bucket] - rank[b.bucket] ||
+      topStale(b) - topStale(a) ||
+      a.subjectName.localeCompare(b.subjectName),
+  );
+  return out;
 }
 
 /**
@@ -179,7 +300,12 @@ export async function loadVhmProgress(
   const rosterByClass = new Map(rosters.map((r) => [r.classId as string, r.size]));
 
   const cls = await tx
-    .select({ id: classes.id, name: classes.name })
+    .select({
+      id: classes.id,
+      name: classes.name,
+      level: classes.level,
+      programme: classes.programme,
+    })
     .from(classes)
     .where(eq(classes.schoolId, schoolId));
   const classById = new Map(cls.map((c) => [c.id, c]));
@@ -245,9 +371,12 @@ export async function loadVhmProgress(
     out.push({
       classId,
       className: cl?.name ?? "—",
+      classLevel: cl?.level ?? null,
+      classProgramme: cl?.programme ?? null,
       subjectId,
       subjectName: subjectById.get(subjectId) ?? "—",
       path: (p?.path ?? "AUTO_COMPILE") as CapturePath,
+      teacherUserId: teacherId,
       teacherName: teacherId ? (nameById.get(teacherId) ?? null) : null,
       rosterSize,
       filled,

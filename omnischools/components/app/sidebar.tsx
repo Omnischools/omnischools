@@ -18,6 +18,7 @@ import {
   Settings,
   NotebookText,
   Gauge,
+  LayoutGrid,
   BedDouble,
   Award,
   Target,
@@ -84,6 +85,14 @@ const SENIOR_ITEMS: SeniorItem[] = [
     href: "/senior/academic-progress",
     label: "Ledger progress",
     Icon: Gauge,
+    roles: SENIOR_MANAGEMENT_ROLES,
+  },
+  {
+    // §6.4 whole-school subject-level readiness roll-up (the Headmaster's cascade). Same
+    // management gate as Ledger progress — it reduces the same data one level up.
+    href: "/senior/headmaster-summary",
+    label: "Headmaster summary",
+    Icon: LayoutGrid,
     roles: SENIOR_MANAGEMENT_ROLES,
   },
   {
