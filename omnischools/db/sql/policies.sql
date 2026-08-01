@@ -896,6 +896,46 @@ CREATE POLICY parent_scope ON pta_resolution AS RESTRICTIVE FOR ALL TO public
     )
   );
 
+-- ---- INCR-58 Item 1 (Kofi R483): the parent resolves the NAME of their OWN children's houses ----
+-- The parent portal relabels the generic "House PTA" with the real House name. The `house` table STAYS
+-- parent_deny — it carries staff PII IN-ROW (hm_user_id, the resident housemaster) plus
+-- colour/capacity/gender/founded_year/named_after/active, NONE of which a parent may read. So we do NOT
+-- open the row with a parent_scope policy (Kofi's Option 1) — that would leave the reader's projection as
+-- the ONLY guard on the housemaster. Instead this SECURITY DEFINER function (Kofi's Option 2) IS the
+-- immutable column guard: it returns ONLY (id, name), so a parent can never reach hm_user_id / colour /
+-- capacity / etc. even via a mutated reader — strictly tighter than a row-opening parent_scope. It reads
+-- students + house internally as the owner (definer) but exposes only the two projected columns; `house`
+-- itself keeps parent_deny (re-affirmed by the catalog loop below, which still covers it — no parent_scope
+-- policy exists on it, so the NOT EXISTS(parent_scope) filter includes it).
+--
+-- ACYCLIC / PII GUARD: because no parent_scope policy on `house` exists (it stays denied), there is no
+-- policy-reads-its-own-table concern — this is a plain definer read, the parent_student_ids / parent_pta_ids
+-- idiom (STABLE, SECURITY DEFINER, search_path public,pg_temp LAST — pg_temp last so an injected temp
+-- `house`/`students` cannot spoof the answer). The reach set = the parent's OWN children's houses via
+-- students.house_id — the SAME set as parent_in_pta's HOUSE branch above (policies.sql HOUSE tier). `pu` is
+-- the GUC arg, NEVER a row column; a NULL pu → empty parent_student_ids → 0 rows (fail-closed). Kept in sync
+-- with db/sql/prod-paste-0084-pta-parent-house-name.sql (the PROD hand-paste; ⚠ RLS is NOT auto-applied on
+-- prod — without it the function is simply absent and the parent tab keeps the generic "House PTA" label,
+-- never a leak). Depends on parent_student_ids() (prod-paste-0055), which already ships on prod.
+CREATE OR REPLACE FUNCTION parent_house_names(school uuid, pu uuid)
+  RETURNS TABLE(house_id uuid, house_name text)
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+  SELECT DISTINCT h.id, h.name
+  FROM house h
+  WHERE h.school_id = school
+    AND h.id IN (
+      SELECT DISTINCT s.house_id
+      FROM students s
+      WHERE s.school_id = school
+        AND s.house_id IS NOT NULL
+        AND s.id IN (SELECT parent_student_ids(school, pu))
+    )
+$$;
+
 -- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
 -- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
 -- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).

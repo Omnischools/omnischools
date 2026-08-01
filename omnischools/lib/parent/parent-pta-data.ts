@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { withParentScope } from "@/lib/db/rls";
 import type { Tx } from "@/lib/db";
 import {
@@ -22,6 +22,12 @@ import {
   isPtaMeetingWriteLocked,
 } from "@/lib/pta/meeting-clock";
 import { resolutionOutcome } from "@/lib/pta/minutes";
+import {
+  bestOfficeByHolder,
+  officeRank,
+  ownerWithOffice,
+  ptaNameFor,
+} from "@/lib/pta/parent-labels";
 import { parentLongDate } from "@/lib/wassce/parent-copy";
 
 /**
@@ -52,12 +58,13 @@ import { parentLongDate } from "@/lib/wassce/parent-copy";
  *   • FORM  → the child's own class: match `ptas.class_id` to the parent-readable `students.class_id` and
  *             use `students.current_class_label` → "{class} PTA".
  *   • GENERAL → the static "General PTA".
- *   • HOUSE → the House NAME is NOT parent-reachable (no name column on `students`; `houses` is
- *             parent_deny), so the honest generic "House PTA" is used. A parent belongs to at most one
- *             House PTA per child's house, so this is unambiguous for the common single-boarder case.
- *             🔴 To name the specific House ("Aggrey PTA") a narrow name-only membership-scoped
- *             `parent_scope` on `houses` from Wells is required — flagged, NOT hacked with a withSchool
- *             sub-read (that would break the parent isolation boundary).
+ *   • HOUSE → 🔴 INCR-58 (R483/R484): the specific House NAME now labels it — "Aggrey PTA". `house` STAYS
+ *             parent_deny (it carries the resident housemaster + colour/capacity/gender IN-ROW), so the name
+ *             comes from Wells's SECURITY DEFINER `parent_house_names(school, pu) → (house_id, house_name)`
+ *             which returns ONLY the parent's OWN children's houses, id+name. The reader NEVER `SELECT`s
+ *             `house`/`houses` in a parent session and builds a name-ONLY `houseNameById` map (the column
+ *             guard). A null/unresolved house_id — or a since-CLOSED House PTA not in the active set — keeps
+ *             the honest generic "House PTA" (unchanged from 55a).
  *   • dues period → the bridge's `academic_year` (text, always set) → the year label directly. The
  *             PER_TERM term label ("Term 2") lives on `academic_period` (parent_deny) and is not shown.
  */
@@ -137,7 +144,11 @@ export interface ParentPtaAgendaItem {
   classification: ParentPtaClassification;
   narrative: string;
 }
-/** FROZEN KEY-SET (R478). description / owner / status ONLY — NO deadline / countdown / SMS reminder. */
+/**
+ * FROZEN KEY-SET (R478). description / owner / status ONLY — NO deadline / countdown / SMS reminder.
+ * `owner` carries the R485 office caption ("{owner} · {office}") baked into the SAME string — no new field;
+ * personUserId is read to derive it, never projected (the officer isYou-derivation idiom).
+ */
 export interface ParentPtaActionItem {
   description: string;
   owner: string;
@@ -188,19 +199,6 @@ const ghs = (n: number): string =>
 /** Parent long date from a 'YYYY-MM-DD' column (the 55a attendance idiom — UTC, no time). */
 const longDay = (isoDate: string): string => parentLongDate(new Date(`${isoDate}T00:00:00Z`));
 
-/** Canonical office order (the surface's badge-num 1..7, ex-officio last); unknown offices sort between. */
-const OFFICE_RANK: Record<string, number> = {
-  Chair: 0,
-  "Vice-Chair": 1,
-  Secretary: 2,
-  "Assistant Secretary": 3,
-  Treasurer: 4,
-  "Financial Secretary": 5,
-  "Organising Secretary": 6,
-};
-const officeRank = (office: string): number =>
-  /ex-officio/i.test(office) ? 100 : (OFFICE_RANK[office] ?? 50);
-
 /** DB classification (uppercase, pinned on adopted minutes) → the surface's title-case chip label. */
 const CLASSIFICATION_LABEL: Record<string, ParentPtaClassification> = {
   DISCUSSION: "Discussion",
@@ -209,22 +207,6 @@ const CLASSIFICATION_LABEL: Record<string, ParentPtaClassification> = {
 };
 /** DB action status (PENDING | DONE) → the surface's pill label. */
 const actionStatusLabel = (s: string): ParentPtaActionStatus => (s === "DONE" ? "Completed" : "Pending");
-
-/** Derive the PTA display name parent-reachably (see the docblock). classLabelById is keyed on class_id. */
-function ptaNameFor(
-  tier: ParentPtaTier,
-  classId: string | null,
-  classLabelById: Map<string, string>,
-): string {
-  if (tier === "GENERAL") return "General PTA";
-  if (tier === "FORM") {
-    const label = classId ? classLabelById.get(classId) : null;
-    return label ? `${label} PTA` : "Class PTA";
-  }
-  // ponytail: generic "House PTA" — the House NAME is parent_deny; upgrade to "{house} PTA" when Wells
-  // opens a name-only membership-scoped parent_scope on `houses`.
-  return "House PTA";
-}
 
 /** The parent's PTA reads (participation + records). MUST run on a tx already scoped by withParentScope. */
 export async function loadParentPtaTx(
@@ -241,9 +223,18 @@ export async function loadParentPtaTx(
   const classLabelById = new Map<string, string>();
   for (const k of kids) if (k.classId && k.classLabel) classLabelById.set(k.classId, k.classLabel);
 
+  // The NAMES of the parent's OWN children's houses (R483/R484) — via Wells's SECURITY DEFINER
+  // parent_house_names, which returns ONLY (house_id, house_name) of the parent's kids' houses. `house`
+  // itself STAYS parent_deny — NEVER SELECT it in a parent session. Build a name-ONLY map (the column guard).
+  const houseNameById = new Map<string, string>();
+  const houseRows = (await tx.execute(
+    sql`SELECT house_id, house_name FROM parent_house_names(${schoolId}::uuid, ${userId}::uuid)`,
+  )) as unknown as { house_id: string; house_name: string }[];
+  for (const h of houseRows) if (h.house_id && h.house_name) houseNameById.set(h.house_id, h.house_name);
+
   // ── Your PTAs — the parent's ACTIVE PTAs (RLS returns ONLY those; EMERGENCY excluded by parent_in_pta).
   const ptaRows = await tx
-    .select({ id: ptas.id, tier: ptas.tierType, classId: ptas.classId })
+    .select({ id: ptas.id, tier: ptas.tierType, classId: ptas.classId, houseId: ptas.houseId })
     .from(ptas)
     .where(eq(ptas.schoolId, schoolId));
   const nameById = new Map<string, string>();
@@ -251,7 +242,7 @@ export async function loadParentPtaTx(
   const memberships: ParentPtaMembership[] = [];
   for (const p of ptaRows) {
     if (!isParentTier(p.tier)) continue; // belt: RLS already excludes EMERGENCY
-    const ptaName = ptaNameFor(p.tier, p.classId, classLabelById);
+    const ptaName = ptaNameFor(p.tier, p.classId, p.houseId, classLabelById, houseNameById);
     nameById.set(p.id, ptaName);
     tierByPtaId.set(p.id, p.tier);
     memberships.push({ ptaName, tier: p.tier });
@@ -274,8 +265,10 @@ export async function loadParentPtaTx(
   const dues: ParentPtaDue[] = [];
   for (const d of dueRows) {
     if (!isParentTier(d.tier)) continue;
-    // A charge on a since-CLOSED PTA is not in nameById (ptas RLS returns ACTIVE only) → tier-generic name.
-    const ptaName = nameById.get(d.ptaId) ?? ptaNameFor(d.tier, null, classLabelById);
+    // A charge on a since-CLOSED PTA is not in nameById (ptas RLS returns ACTIVE only) → tier-generic name
+    // (no class/house context on the dues bridge → generic "House PTA"/"Class PTA", unchanged from 55a).
+    const ptaName =
+      nameById.get(d.ptaId) ?? ptaNameFor(d.tier, null, null, classLabelById, houseNameById);
     dues.push({ ptaName, tier: d.tier, periodLabel: d.academicYear, amountBilled: ghs(num(d.amount)) });
   }
   dues.sort(
@@ -378,6 +371,11 @@ export async function loadParentPtaTx(
       a.office.localeCompare(b.office),
   );
 
+  // (R485) The action-owner office caption: (ptaId, personUserId) → the holder's best CURRENT office in
+  // THAT PTA (multi-hat → highest office wins). Built from the same current-holder officerRows already
+  // loaded above (no extra read) — an ended office is not in officerRows, so it can never caption.
+  const officeByHolder = bestOfficeByHolder(officerRows);
+
   // ── Adopted minutes (R478) — RLS returns ONLY status='ADOPTED' of the parent's PTAs + subtree. Join
   //    pta_meeting (membership-scoped, readable) for the label/date/quorum_met; quorum_met is the ONE public
   //    attendance fact in the MINUTES context (R478) — read here even though 55a's attendance omits it (R480).
@@ -420,6 +418,7 @@ export async function loadParentPtaTx(
           agendaItemId: ptaActionItem.agendaItemId,
           description: ptaActionItem.description,
           externalName: ptaActionItem.externalName,
+          personUserId: ptaActionItem.personUserId, // read to append the owner's office caption (R485); NOT projected
           ownerFullName: users.fullName,
           status: ptaActionItem.status,
         })
@@ -465,9 +464,12 @@ export async function loadParentPtaTx(
     for (const a of items) {
       const act = actionByAgenda.get(a.id);
       if (act) {
+        // (R485) Append the owner's CURRENT office in THIS minutes' PTA ("· {office}"); name-only when the
+        // owner is external / holds no current office in that PTA (see ownerWithOffice).
+        const ownerName = act.ownerFullName ?? act.externalName ?? "—";
         actionItems.push({
           description: act.description,
-          owner: act.ownerFullName ?? act.externalName ?? "—",
+          owner: ownerWithOffice(ownerName, m.ptaId, act.personUserId, officeByHolder),
           status: actionStatusLabel(act.status),
         });
       }

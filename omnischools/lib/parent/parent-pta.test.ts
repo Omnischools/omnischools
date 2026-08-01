@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
 import { readCode } from "@/lib/test-utils/source-shape";
+import {
+  bestOfficeByHolder,
+  officeRank,
+  ownerWithOffice,
+  ptaNameFor,
+} from "@/lib/pta/parent-labels";
 
 /**
  * 🔴 INCR-55a (Kofi R474–R482) — the PARENT PTA participation read: own memberships + own dues (BILLED
@@ -301,5 +307,119 @@ describe("🔴 PTA55-G · the PTA tab is session-scoped and read-only", () => {
     expect(p).toContain("No PTA officers have been recorded for your PTAs yet.");
     expect(p).toContain("Adopted minutes");
     expect(p).toContain("No adopted PTA minutes yet.");
+  });
+});
+
+// ── PTA58-A · Item 1 — the House NAME (R483/R484): relabel via parent_house_names, name-only (PP58-1/2/5/7/9)
+describe("🔴 PTA58-A · House PTA relabels to the child's House NAME via parent_house_names (R483)", () => {
+  it("HOUSE tier resolves the specific House name → '{house} PTA' (PP58-1)", () => {
+    const houses = new Map([["h1", "Aggrey"]]);
+    expect(ptaNameFor("HOUSE", null, "h1", new Map(), houses)).toBe("Aggrey PTA");
+  });
+
+  it("two boarders in two houses → two DISTINCT House names, each resolved (PP58-2)", () => {
+    const houses = new Map([
+      ["h1", "Aggrey"],
+      ["h2", "Guggisberg"],
+    ]);
+    expect(ptaNameFor("HOUSE", null, "h1", new Map(), houses)).toBe("Aggrey PTA");
+    expect(ptaNameFor("HOUSE", null, "h2", new Map(), houses)).toBe("Guggisberg PTA");
+  });
+
+  it("a null houseId (PP58-7) or an unresolved houseId / since-CLOSED House PTA (PP58-9) → generic 'House PTA'", () => {
+    const houses = new Map([["h1", "Aggrey"]]);
+    expect(ptaNameFor("HOUSE", null, null, new Map(), houses)).toBe("House PTA"); // null houseId
+    expect(ptaNameFor("HOUSE", null, "gone", new Map(), houses)).toBe("House PTA"); // not in the active map
+  });
+
+  it("FORM + GENERAL naming is unchanged by INCR-58 (only HOUSE gained a name path)", () => {
+    const classes = new Map([["c1", "Form 2 Science"]]);
+    expect(ptaNameFor("FORM", "c1", null, classes, new Map())).toBe("Form 2 Science PTA");
+    expect(ptaNameFor("FORM", null, null, new Map(), new Map())).toBe("Class PTA");
+    expect(ptaNameFor("GENERAL", null, null, new Map(), new Map())).toBe("General PTA");
+  });
+
+  it("the reader calls parent_house_names, selects ptas.houseId, and builds a name-only house map", () => {
+    const s = reader();
+    expect(s).toContain("parent_house_names");
+    expect(s).toMatch(/houseId:\s*ptas\.houseId/);
+    expect(s).toMatch(/houseNameById\.set/);
+    // the SQL projection is (house_id, house_name) ONLY — no house-PII column crosses the boundary.
+    expect(s).toMatch(/house_id,\s*house_name FROM parent_house_names/);
+  });
+
+  it("PP58-5 · never reads a house-PII column, and the House-bearing shapes keep their frozen key-sets", () => {
+    const s = reader();
+    // `house` STAYS parent_deny (PTA55-D already asserts the table is never joined); a mutation that spread
+    // a housemaster/colour/capacity/gender field would have to name one of these — none may appear.
+    for (const col of ["hmUserId", "colour", "capacity", "foundedYear", "namedAfter"]) {
+      expect(s, `${col} must not appear (house PII is never projected)`).not.toContain(col);
+    }
+    // The name is a plain string on the EXISTING ptaName field — the shapes are byte-frozen (re-affirm 55a).
+    expect(interfaceKeys("ParentPtaMembership")).toEqual(["ptaName", "tier"]);
+    expect(interfaceKeys("ParentPtaDue")).toEqual(["amountBilled", "periodLabel", "ptaName", "tier"]);
+  });
+});
+
+// ── PTA58-B · Item 2 — the action-owner office caption (R485): "· {office}", tie-break, fallbacks (PP58-11..17)
+describe("🔴 PTA58-B · action-owner office caption — current office in THAT PTA, name-only fallbacks (R485)", () => {
+  it("appends the owner's current office in that PTA → '{owner} · {office}' (PP58-11)", () => {
+    const byHolder = new Map([["p1::u1", "Treasurer"]]);
+    expect(ownerWithOffice("Ama Aidoo", "p1", "u1", byHolder)).toBe("Ama Aidoo · Treasurer");
+  });
+
+  it("external owner / no user id → name-only, NO caption (PP58-12)", () => {
+    const byHolder = new Map([["p1::u1", "Treasurer"]]);
+    expect(ownerWithOffice("External Person", "p1", null, byHolder)).toBe("External Person");
+  });
+
+  it("owner holds no current office in that PTA → name-only (PP58-13)", () => {
+    const byHolder = new Map([["p1::u1", "Treasurer"]]);
+    expect(ownerWithOffice("Kofi", "p1", "u2", byHolder)).toBe("Kofi");
+  });
+
+  it("owner's office is in a DIFFERENT PTA → name-only (PP58-14)", () => {
+    const byHolder = new Map([["p1::u1", "Treasurer"]]);
+    expect(ownerWithOffice("Ama Aidoo", "p2", "u1", byHolder)).toBe("Ama Aidoo");
+  });
+
+  it("an ENDED office is never in the current-holder map → name-only (PP58-15)", () => {
+    // bestOfficeByHolder is built ONLY from current holders (endedAt IS NULL) — an ended hat can't caption.
+    expect(ownerWithOffice("Yaa", "p1", "u9", new Map())).toBe("Yaa");
+  });
+
+  it("multi-hat → the HIGHEST office wins (lowest officeRank), order-independent (PP58-16)", () => {
+    expect(officeRank("Chair")).toBeLessThan(officeRank("Treasurer"));
+    const a = bestOfficeByHolder([
+      { ptaId: "p1", personUserId: "u1", office: "Treasurer" },
+      { ptaId: "p1", personUserId: "u1", office: "Chair" },
+    ]);
+    const b = bestOfficeByHolder([
+      { ptaId: "p1", personUserId: "u1", office: "Chair" },
+      { ptaId: "p1", personUserId: "u1", office: "Treasurer" },
+    ]);
+    expect(a.get("p1::u1")).toBe("Chair");
+    expect(b.get("p1::u1")).toBe("Chair");
+    // same person, DIFFERENT PTAs → keyed separately (never bleeds across PTAs)
+    const c = bestOfficeByHolder([
+      { ptaId: "p1", personUserId: "u1", office: "Secretary" },
+      { ptaId: "p2", personUserId: "u1", office: "Treasurer" },
+    ]);
+    expect(c.get("p1::u1")).toBe("Secretary");
+    expect(c.get("p2::u1")).toBe("Treasurer");
+    // external holders (no user id) never land in the map
+    expect(bestOfficeByHolder([{ ptaId: "p1", personUserId: null, office: "Chair" }]).size).toBe(0);
+  });
+
+  it("both ids null → owner stays '—' with NO caption (PP58-17)", () => {
+    const byHolder = new Map([["p1::u1", "Treasurer"]]);
+    expect(ownerWithOffice("—", "p1", null, byHolder)).toBe("—");
+  });
+
+  it("the reader reads personUserId (to caption) but the ActionItem shape stays {description, owner, status}", () => {
+    const s = reader();
+    expect(s).toContain("ownerWithOffice");
+    expect(s).toMatch(/personUserId:\s*ptaActionItem\.personUserId/);
+    expect(interfaceKeys("ParentPtaActionItem")).toEqual(["description", "owner", "status"]);
   });
 });

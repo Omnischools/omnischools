@@ -49,6 +49,13 @@ import { loadParentPtaTx } from "@/lib/parent/parent-pta-data";
  *       meeting they missed; a live meeting is omitted; a TEACHER row and another parent's row are 0;
  *   (4) 0 cross-family / cross-tenant on EVERY one of the 4 PTA tables (raw row probes, both directions);
  *   (5) a parent with no dues/meetings still reads General membership — honest empties elsewhere.
+ *
+ * INCR-58 (Kofi R483/R484/R485) EXTENDS this same harness (no schema/RLS change — Wells's SECURITY DEFINER
+ * parent_house_names is already applied): (6) parent_house_names returns ONLY the parent's OWN children's
+ * houses as (id, name) — two boarders → two DISTINCT names, 0 cross-family / cross-tenant / non-parent, and
+ * `house` direct-SELECT stays 0 (parent_deny); the House PTA RELABELS to the House name ("Aggrey PTA"); and
+ * the adopted-minutes action owner gains the R485 office caption (resolves under the proxy — pta_officer is
+ * a tenant table). The whole tx is rolled back — no residue.
  */
 
 let failures = 0;
@@ -87,9 +94,12 @@ async function main() {
       const classForm = await mkClass(schoolA, "Form 2 Science"); // childA's class
       const classOther = await mkClass(schoolA, "Form 1 Arts"); // childB's class
 
-      const houseA = (
-        await tx.insert(houses).values({ schoolId: schoolA, name: "Aggrey" }).returning({ id: houses.id })
-      )[0].id;
+      const mkHouse = async (schoolId: string, name: string) =>
+        (await tx.insert(houses).values({ schoolId, name }).returning({ id: houses.id }))[0].id;
+      const houseA = await mkHouse(schoolA, "Aggrey"); // childA (mom's) — the House PTA host
+      const houseD = await mkHouse(schoolA, "Guggisberg"); // childA2 (mom's SECOND boarder) — two distinct names
+      const houseE = await mkHouse(schoolA, "Slessor"); // childB (dad2's) — mom must NOT read this name
+      const houseF = await mkHouse(schoolB, "Foreign House"); // childC (cross-tenant) — 0 to every schoolA parent
 
       const hh1 = (
         await tx.insert(households).values({ schoolId: schoolA, name: "Aidoo" }).returning({ id: households.id })
@@ -156,8 +166,11 @@ async function main() {
             .returning({ id: students.id })
         )[0].id;
       const childA = await mkStudent(schoolA, `A1-${rand}`, "Yaw", classForm, "Form 2 Science", houseA, hh1);
-      const childB = await mkStudent(schoolA, `A2-${rand}`, "Adjoa", classOther, "Form 1 Arts", null, hh2);
-      const childC = await mkStudent(schoolB, `B1-${rand}`, "Kofi", null, "Form 3", null, null);
+      // childA2 — mom's SECOND boarder, in a SECOND house (houseD) but the SAME class (no new PTA membership):
+      // proves parent_house_names returns TWO distinct names (PP58-2) without disturbing any 55a count.
+      const childA2 = await mkStudent(schoolA, `A1b-${rand}`, "Efua", classForm, "Form 2 Science", houseD, hh1);
+      const childB = await mkStudent(schoolA, `A2-${rand}`, "Adjoa", classOther, "Form 1 Arts", houseE, hh2);
+      const childC = await mkStudent(schoolB, `B1-${rand}`, "Kofi", null, "Form 3", houseF, null);
 
       const momGuardian = (
         await tx
@@ -165,6 +178,10 @@ async function main() {
           .values({ schoolId: schoolA, studentId: childA, name: "Ama Aidoo", phone: `+2335559${rand}1`, relationship: "MOTHER", userId: mom })
           .returning({ id: studentGuardians.id })
       )[0].id;
+      // mom also guards childA2 (her second boarder, in houseD) — so parent_student_ids(mom) = {childA, childA2}.
+      await tx
+        .insert(studentGuardians)
+        .values({ schoolId: schoolA, studentId: childA2, name: "Ama Aidoo", phone: `+2335559${rand}1`, relationship: "MOTHER", userId: mom });
       const dad2Guardian = (
         await tx
           .insert(studentGuardians)
@@ -403,6 +420,19 @@ async function main() {
       const momMeetings = await tx.select({ id: ptaMeeting.id }).from(ptaMeeting);
       ok(momMeetings.length === 3, `pta_meeting: mom sees her PTAs' 3 meetings, got ${momMeetings.length}`);
 
+      console.log("\n── (58·Item 1) HOUSE NAMES as MOM — parent_house_names returns own children's houses (id+name) ONLY ──");
+      // `house` STAYS parent_deny — a direct SELECT returns 0 even though the definer function resolves the name.
+      ok((await tx.select({ id: houses.id }).from(houses)).length === 0, "(58) `house` direct-SELECT stays 0 for the parent (house is parent_deny — the name comes ONLY via the definer function)");
+      const momHouses = (await tx.execute(
+        sql`SELECT house_id, house_name FROM parent_house_names(${schoolA}::uuid, ${mom}::uuid)`,
+      )) as unknown as { house_id: string; house_name: string }[];
+      const momHouseName = new Map(momHouses.map((h) => [h.house_id, h.house_name]));
+      ok(momHouses.length === 2, `(58) parent_house_names(mom) = 2 rows (her two boarders' two houses), got ${momHouses.length}`);
+      ok(momHouseName.get(houseA) === "Aggrey" && momHouseName.get(houseD) === "Guggisberg", `(58·PP58-2) two DISTINCT names Aggrey + Guggisberg, got ${JSON.stringify([...momHouseName.values()])}`);
+      ok(!momHouseName.has(houseE), "(58·PP58-3) dad2's child's house (Slessor) is NOT returned to mom (0 cross-family)");
+      ok(!momHouseName.has(houseF), "(58·PP58-4) the foreign school's house is NOT returned to mom (0 cross-tenant)");
+      ok(momHouses.every((h) => Object.keys(h).sort().join(",") === "house_id,house_name"), `(58·PP58-5) name-ONLY projection — exactly {house_id, house_name}, got ${JSON.stringify(Object.keys(momHouses[0] ?? {}))}`);
+
       console.log("\n── (1)(2)(3) the REAL reader as MOM — memberships / dues / attendance ──");
       const momView = await loadParentPtaTx(tx, schoolA, mom, now);
       // (1) memberships
@@ -410,7 +440,7 @@ async function main() {
       ok(momView.memberships.length === 3, `(1) memberships = 3, got ${momView.memberships.length}`);
       ok(momView.memberships.map((m) => m.tier).join(",") === "FORM,HOUSE,GENERAL", `(1) tier-ordered FORM,HOUSE,GENERAL, got ${momView.memberships.map((m) => m.tier).join(",")}`);
       ok(mNames.includes("FORM:Form 2 Science PTA"), "(1) Form PTA named from the child's class label ('Form 2 Science PTA')");
-      ok(mNames.includes("HOUSE:House PTA"), "(1) House PTA = generic 'House PTA' (house name is parent_deny — flagged to Wells)");
+      ok(mNames.includes("HOUSE:Aggrey PTA"), "(1·58) House PTA RELABELLED to the child's House NAME ('Aggrey PTA') via parent_house_names (R483)");
       ok(mNames.includes("GENERAL:General PTA"), "(1) General PTA present (universal)");
       // (2) dues — BILLED only
       ok(momView.dues.length === 2, `(2) dues = 2, got ${momView.dues.length}`);
@@ -461,9 +491,11 @@ async function main() {
       const gm = momView.minutes[0];
       ok(gm.ptaName === "General PTA" && gm.quorumMet === true, `(B) adopted minutes = General PTA + quorum met, got ${gm.ptaName}/${gm.quorumMet}`);
       ok(gm.agendaItems.map((a) => a.classification).join(",") === "Discussion,Action,Resolution", `(B) agenda classifications ordered Discussion,Action,Resolution, got ${gm.agendaItems.map((a) => a.classification).join(",")}`);
-      // owner degrades to '—' under the proxy (ref_user owner-read; resolves to "Ama Aidoo" in prod); the
+      // owner NAME degrades to '—' under the proxy (ref_user owner-read; resolves to "Ama Aidoo" in prod), but
+      // the R485 OFFICE caption resolves EVEN under the proxy — pta_officer is a tenant table, so mom's own
+      // General-Treasurer hat is proxy-readable → owner = "— · Treasurer" (prod: "Ama Aidoo · Treasurer"). The
       // ACTION row is correctly scoped and carries description + status only (NO deadline — R478).
-      ok(gm.actionItems.length === 1 && gm.actionItems[0].description === "Repair the dining-hall roof" && gm.actionItems[0].status === "Pending" && gm.actionItems[0].owner === "—", `(B) action = 'Repair the dining-hall roof' · Pending · owner '—' under proxy (no deadline), got ${JSON.stringify(gm.actionItems)}`);
+      ok(gm.actionItems.length === 1 && gm.actionItems[0].description === "Repair the dining-hall roof" && gm.actionItems[0].status === "Pending" && gm.actionItems[0].owner === "— · Treasurer", `(B·58) action = 'Repair the dining-hall roof' · Pending · owner '— · Treasurer' (R485 office caption resolves under proxy; name resolves in prod), got ${JSON.stringify(gm.actionItems)}`);
       ok(gm.resolutions.length === 1 && gm.resolutions[0].result === "PASSED" && gm.resolutions[0].binding === true && gm.resolutions[0].resolutionNo === "GEN-2026-Q2-001", `(B) resolution = PASSED · binding · GEN-2026-Q2-001, got ${JSON.stringify(gm.resolutions[0])}`);
       ok(!momView.minutes.some((m) => m.ptaName.includes("Form 1 Arts")), "(B) no cross-family (Form 1 Arts) adopted minutes for mom");
 
@@ -495,9 +527,11 @@ async function main() {
 
       // ============================ NON-PARENT (a teacher user — no guardian row) ============================
       await tx.execute(setScope(schoolA, teacher));
-      console.log("\n── (55b) NON-PARENT (teacher) — 0 officers, 0 adopted minutes ──");
+      console.log("\n── (55b/58) NON-PARENT (teacher) — 0 officers, 0 adopted minutes, 0 house names ──");
       ok((await tx.select({ id: ptaOfficer.id }).from(ptaOfficer)).length === 0, "pta_officer: a non-parent (teacher) sees 0 officers");
       ok((await tx.select({ id: ptaMinutes.id }).from(ptaMinutes)).length === 0, "pta_minutes: a non-parent (teacher) sees 0 adopted minutes");
+      ok(((await tx.execute(sql`SELECT house_id FROM parent_house_names(${schoolA}::uuid, ${teacher}::uuid)`)) as unknown as unknown[]).length === 0, "(58·PP58-6) parent_house_names returns 0 for a NON-parent (teacher — no children)");
+      ok((await tx.select({ id: houses.id }).from(houses)).length === 0, "(58·PP58-10) `house` direct-SELECT stays 0 for a non-parent too (parent_deny)");
       const teacherView = await loadParentPtaTx(tx, schoolA, teacher, now);
       ok(teacherView.officers.length === 0 && teacherView.minutes.length === 0, `(reader) non-parent officers+minutes = 0, got ${teacherView.officers.length}/${teacherView.minutes.length}`);
 
