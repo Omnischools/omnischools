@@ -68,7 +68,15 @@ export const households = pgTable(
     name: text("name").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({ bySchool: index("household_school_idx").on(t.schoolId) }),
+  (t) => ({
+    bySchool: index("household_school_idx").on(t.schoolId),
+    // Composite-FK target for pta_dues_charge (school_id, household_id) -> (school_id, id) — the PER_FAMILY
+    // dues bridge (INCR-54a / migration 0078). The existing students.household_id link is single-column
+    // SET NULL (a soft grouping, re-parented not deleted), but the dues bridge keys PER_FAMILY idempotency
+    // on the household and must not reach across tenants, so it uses a composite FK to this UNIQUE.
+    // (school_id, id) is trivially unique because id is the PK, so the ADD never fails on existing rows.
+    tenantUk: unique("household_tenant_uk").on(t.schoolId, t.id),
+  }),
 );
 
 /**

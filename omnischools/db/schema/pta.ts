@@ -19,7 +19,8 @@ import { schools } from "./tenancy";
 import { users } from "./identity";
 import { academicPeriod } from "./periods";
 import { attendanceStatusEnum } from "./_enums";
-import { classes, houses, studentGuardians } from "./students";
+import { classes, houses, studentGuardians, students, households } from "./students";
+import { invoiceLineItems } from "./fees";
 
 /**
  * PTA structure-setup spine (SHS module 4.7 / INCR-50, migration 0074) — the Parent-Teacher Association
@@ -770,6 +771,160 @@ export const ptaResolution = pgTable(
     agendaItemFk: foreignKey({
       columns: [t.schoolId, t.agendaItemId],
       foreignColumns: [ptaAgendaItem.schoolId, ptaAgendaItem.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * The PTA DUES BRIDGE (SHS module 4.7 / INCR-54a, migration 0078) — ONE new tenant table that thin-links a
+ * generated dues line item back to the PTA that levied it. OC2: the module REUSES the Basic billing engine
+ * (fee_category / invoice / invoice_line_item / payment / payment_allocation / receipt), NOT a parallel
+ * ledger; this bridge is the ONLY new table (R460). It is 1:1 with a dues invoice_line_item and carries the
+ * PTA context the billing tables can't (which PTA, tier, basis, cadence, billed period, family, and the
+ * snapshotted rate) so the Treasurer report (R467) can aggregate Expected/Collected/Outstanding per tier and
+ * per PTA WITHOUT a bare pta_id column on invoice_line_item (which could carry none of period/basis/family
+ * and could not be parent-scoped independently of tuition in INCR-55, R470).
+ *
+ * WHY A DEDICATED DUES INVOICE (R459): dues sit on their OWN invoice, never a line on the tuition invoice —
+ * a per-invoice paid/balance then reads directly as dues collected/outstanding (a tuition line would make
+ * "dues outstanding, tuition paid" inexpressible). ONE "PTA dues" fee_category per school (tier is DERIVED
+ * through THIS bridge, not per-tier categories); that category is an idempotent app-side upsert in lib/pta/,
+ * NOT a migration.
+ *
+ * FORWARD-ONLY RATE (R463): generation reads pta_dues_config_history for the rate in force (greatest
+ * effective_from ≤ the billed period's start) and SNAPSHOTS it onto both invoice_line_item.amount and
+ * `rate_snapshot` here; a later history row NEVER re-rates an issued invoice. `rate_snapshot` is the report's
+ * Expected figure AND — with the family identity — the INCR-55 parent own-dues read source (R470), so a
+ * parent can be shown amount/status WITHOUT the reader ever touching the tuition-bearing `invoice` table.
+ *
+ * IDEMPOTENT GENERATION (R462, the crux) — one charge per (school, pta, subject, billed period) via the THREE
+ * PARTIAL UNIQUE indexes below; re-running Generate is onConflictDoNothing → 0 new rows. Form = PER_STUDENT
+ * (one per active student, keyed on the period); General = PER_FAMILY (one per household → the rank-1 sibling;
+ * a household-less student is a family-of-one keyed on the student). House/Emergency dues-disabled → the
+ * generator writes NOTHING and the report is honestly empty (R471).
+ *
+ * TENANT / OPERATIONAL / SHOWN (`pta_dues_charge` in SHOWN_AUDIT_ENTITIES; no reserved audit prefix, so an
+ * omitted one FAILS the classify-at-creation build guard, R471). ENABLE + FORCE RLS + tenant_isolation
+ * (db:policies on dev; db/sql/prod-paste-0081-pta-dues.sql by hand on prod) and — via the catalog-driven
+ * RESTRICTIVE loop in db/sql/policies.sql — parent_deny (FORCE-RLS + school_id + NO parent_scope ⇒
+ * auto-denied). A parent sees NOTHING of dues in THIS increment; the own-family own-dues parent read
+ * RETURNS at INCR-55 (R470), scoped on THIS bridge (never a blanket parent_scope on `invoice`, which would
+ * leak tuition — RLS is row-level). NO confidential/REDACTED layer, NO triggers (portability).
+ *
+ * Composite `(school_id, …)` intra-tenant FKs throughout — every reference is a tenant table, so a
+ * cross-tenant line item / PTA / period / student / household is structurally impossible
+ * ([[composite-tenant-fks]]); there is NO single-column SET NULL (no reference is to a global table). The
+ * line_item / household FK targets are the (school_id, id) tenant UKs ADDED in THIS migration to
+ * invoice_line_item and household (both previously lacked one — the target-before-FK 0033 discipline is why
+ * the ALTER … ADD UNIQUE runs before the ALTER … ADD FOREIGN KEY). LEAF — nothing FKs to a dues charge → NO
+ * tenant UK.
+ *
+ * ⚠ THE R472 NON-ADDITIVE APP EDIT (lib/actions/billing.ts) is Claude Code's, NOT Wells's: the tuition
+ * skip-existence query must EXCLUDE a PTA-dues-only invoice (NOT EXISTS pta_dues_charge …) or a dues invoice
+ * makes tuition issuance skip the student (under-bill). The `uniq_pta_dues_charge_line_item` UNIQUE is what
+ * lets that guard identify a dues line item cheaply.
+ */
+export const ptaDuesCharge = pgTable(
+  "pta_dues_charge",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    // The billed dues line item — composite (school_id, line_item_id) FK below; UNIQUE(school_id,
+    // line_item_id) makes it strictly 1:1. CASCADE: a line-item delete takes its bridge row (the bridge must
+    // never outlive its line item, or R472's existence test would misclassify the dues invoice as tuition).
+    lineItemId: uuid("line_item_id").notNull(),
+    // The levying PTA — composite (school_id, pta_id) FK → ptas tenant UK below, CASCADE. PTAs are soft-CLOSED
+    // (R412), hard-deleted only via the school cascade, so CASCADE here only fires when the line item does too.
+    ptaId: uuid("pta_id").notNull(),
+    // Denormalised tier (CHECK) — lets the Treasurer report group per tier without re-joining ptas.
+    tierType: text("tier_type").notNull(),
+    academicYear: text("academic_year").notNull(),
+    // Set when cadence = PER_TERM (the billed term); NULL for PER_YEAR / ONE_OFF. Composite (school_id,
+    // academic_period_id) FK → academic_period tenant UK below.
+    academicPeriodId: uuid("academic_period_id"),
+    // Snapshots of the tier's dues contract at generation (CHECKs below). Basis drives which partial-unique
+    // idempotency index applies; cadence drives whether academic_period_id is set.
+    basis: text("basis").notNull(),
+    cadence: text("cadence").notNull(),
+    // The billed student — always set: the individual (PER_STUDENT) or the household's rank-1 representative
+    // sibling (PER_FAMILY). Composite (school_id, subject_student_id) FK → students tenant UK below, CASCADE.
+    subjectStudentId: uuid("subject_student_id").notNull(),
+    // Set for PER_FAMILY when the rep sibling has a household; NULL for a family-of-one (household-less) and
+    // for PER_STUDENT. Composite (school_id, household_id) FK → household tenant UK below, CASCADE.
+    householdId: uuid("household_id"),
+    // The forward-only rate snapshotted from pta_dues_config_history (R463) — the report's Expected figure and
+    // the INCR-55 parent own-dues amount source. Repo money type numeric(12,2).
+    rateSnapshot: money("rate_snapshot").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // The 1:1 with the dues line item (R460) AND the generation upsert conflict target for the line-item link;
+    // ALSO what lets R472's tuition skip-guard identify a dues line item cheaply. Its (school_id) prefix
+    // serves a per-school scan, but per-PTA drill wants (school_id, pta_id) — see byPta.
+    uniqLineItem: unique("uniq_pta_dues_charge_line_item").on(t.schoolId, t.lineItemId),
+    // ---- R462: the THREE partial-unique idempotency indexes (the generation crux) ----
+    // PER_STUDENT (Form): one charge per (pta × billed period × student). Keyed on academic_period_id because
+    // PER_STUDENT is PER_TERM (R461), so the period is always set.
+    idemPerStudent: uniqueIndex("uniq_pta_dues_per_student")
+      .on(t.schoolId, t.ptaId, t.academicPeriodId, t.subjectStudentId)
+      .where(sql`${t.basis} = 'PER_STUDENT'`),
+    // PER_FAMILY with a household: one charge per (pta × year × household). Partial on household_id IS NOT NULL
+    // so the family-of-one rows (NULL household) fall to the third index instead of colliding on many NULLs.
+    idemPerFamily: uniqueIndex("uniq_pta_dues_per_family")
+      .on(t.schoolId, t.ptaId, t.academicYear, t.householdId)
+      .where(sql`${t.basis} = 'PER_FAMILY' AND ${t.householdId} IS NOT NULL`),
+    // PER_FAMILY family-of-one (household-less student): one charge per (pta × year × student). Split from the
+    // above so the household-less case dedups on the student, not on a NULL household (NULLs are distinct).
+    idemPerFamilyOfOne: uniqueIndex("uniq_pta_dues_per_family_of_one")
+      .on(t.schoolId, t.ptaId, t.academicYear, t.subjectStudentId)
+      .where(sql`${t.basis} = 'PER_FAMILY' AND ${t.householdId} IS NULL`),
+    // The Treasurer report access path (R467/R469): school-wide (ADMIN/HEADMASTER, leading school_id) and
+    // per-PTA-instance drill / the Treasurer's own-PTA read (school_id + pta_id). Non-partial so it covers
+    // every basis in one index (the three uniques above are partial and cannot serve a whole-school scan).
+    byPta: index("pta_dues_charge_pta_idx").on(t.schoolId, t.ptaId),
+    // Domain CHECKs (defense in depth on the value sets; all three columns are NOT NULL so each is total).
+    tierTypeValid: check(
+      "pta_dues_charge_tier_type_valid",
+      sql`${t.tierType} IN ('FORM', 'HOUSE', 'GENERAL', 'EMERGENCY')`,
+    ),
+    basisValid: check(
+      "pta_dues_charge_basis_valid",
+      sql`${t.basis} IN ('PER_STUDENT', 'PER_FAMILY')`,
+    ),
+    cadenceValid: check(
+      "pta_dues_charge_cadence_valid",
+      sql`${t.cadence} IN ('PER_TERM', 'PER_YEAR', 'ONE_OFF')`,
+    ),
+    // ---- composite intra-tenant FKs (a cross-tenant reference is structurally impossible) ----
+    // 1:1 dues line item → invoice_line_item (school_id, id) tenant UK (added this migration). CASCADE.
+    lineItemFk: foreignKey({
+      columns: [t.schoolId, t.lineItemId],
+      foreignColumns: [invoiceLineItems.schoolId, invoiceLineItems.id],
+    }).onDelete("cascade"),
+    // levying PTA → ptas (school_id, id) tenant UK (INCR-50). CASCADE.
+    ptaFk: foreignKey({
+      columns: [t.schoolId, t.ptaId],
+      foreignColumns: [ptas.schoolId, ptas.id],
+    }).onDelete("cascade"),
+    // billed period → academic_period (school_id, period_id) tenant UK. CASCADE (period is deleted only via
+    // the school cascade, where the line item goes too).
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.academicPeriodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
+    // billed student / rep sibling → students (school_id, id) tenant UK. CASCADE.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.subjectStudentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+    // family → household (school_id, id) tenant UK (added this migration). CASCADE (households are never
+    // app-deleted — only re-parented — so this only fires under the school cascade).
+    householdFk: foreignKey({
+      columns: [t.schoolId, t.householdId],
+      foreignColumns: [households.schoolId, households.id],
     }).onDelete("cascade"),
   }),
 );

@@ -99,6 +99,11 @@ export const invoiceLineItems = pgTable(
     isOptional: boolean("is_optional").notNull().default(false),
   },
   (t) => ({
+    // Composite-FK target for pta_dues_charge (school_id, line_item_id) -> (school_id, id) — the 1:1 dues
+    // bridge (INCR-54a / migration 0078). Declared here so a dues charge cannot reference another tenant's
+    // line item; (school_id, id) is trivially unique because id is the PK, so this ADD never fails on
+    // existing rows. The bridge FK targets this UNIQUE, so it must exist before the ADD FOREIGN KEY.
+    tenantUk: unique("invoice_line_item_tenant_uk").on(t.schoolId, t.id),
     // Composite school-scoped FKs — invoice and fee category are same-tenant.
     invoiceFk: foreignKey({
       columns: [t.schoolId, t.invoiceId],

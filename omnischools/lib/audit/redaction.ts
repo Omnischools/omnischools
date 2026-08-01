@@ -174,6 +174,11 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   "pta_agenda_item", // a minuted item (seq/title/classification DISCUSSION|ACTION|RESOLUTION, narrative)
   "pta_action_item", // an ACTION assignment (description, owner person_user_id XOR external_name, deadline, status)
   "pta_resolution", // a RESOLUTION (resolution_no, text, for/against/abstain tallies, binding; outcome derived)
+  // — PTA dues bridge (SHS module 4.7 / INCR-54a) — OPERATIONAL billing link (which PTA levied a dues line
+  // item, tier/basis/cadence/period/family + the snapshotted rate). No student mark, no confidential layer; a
+  // parent reads NOTHING here (own-family own-dues read = INCR-55, R470/R471). No reserved audit prefix, so it
+  // MUST be listed here or the classify-at-creation guard fails the build. —
+  "pta_dues_charge", // 1:1 dues line item ↔ pta (tier/basis/cadence, subject/rep-sibling student, household, rate_snapshot)
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker
