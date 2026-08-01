@@ -19,7 +19,24 @@ import {
   invoices,
   invoiceLineItems,
   notificationLog,
+  ptaDuesCharge,
 } from "@/db/schema";
+
+/**
+ * 🔴 R472 (INCR-54a) — the ONE non-additive money-critical edit. PTA dues sit on a DEDICATED dues
+ * invoice (never a line on tuition), each bridged 1:1 by a `pta_dues_charge`. The tuition skip-existence
+ * check below ("this student already has a non-VOIDED invoice for the year → skip") must EXCLUDE those
+ * dues invoices — otherwise generating dues would make tuition issuance skip the student (UNDER-BILL).
+ * This predicate is TRUE for a NON-dues invoice (one whose line item has no bridge row). Single source,
+ * both callers (issueAllInvoices + generateInvoicesForClass). Removing it lets a dues invoice suppress
+ * tuition — the mutation the guard test reds.
+ */
+const notADuesInvoice = sql`not exists (
+  select 1 from ${ptaDuesCharge} dc
+  join ${invoiceLineItems} ili
+    on ili.school_id = dc.school_id and ili.id = dc.line_item_id
+  where ili.school_id = ${invoices.schoolId} and ili.invoice_id = ${invoices.id}
+)`;
 
 /** Current academic year as "YYYY/YY" (Sept rollover) — mirrors app/(app)/billing/page.tsx. */
 function currentAcademicYear(): string {
@@ -446,6 +463,7 @@ export async function generateInvoicesForClass(input: unknown): Promise<Generate
               eq(invoices.studentId, stu.id),
               eq(invoices.academicYear, structure.academicYear),
               sql`${invoices.status} <> 'VOIDED'`,
+              notADuesInvoice, // R472 — a dues invoice must NOT suppress tuition issuance
             ),
           )
           .limit(1);
@@ -634,6 +652,7 @@ export async function issueAllInvoices(): Promise<IssueAllResult> {
                 eq(invoices.studentId, stu.id),
                 eq(invoices.academicYear, year),
                 sql`${invoices.status} <> 'VOIDED'`,
+                notADuesInvoice, // R472 — a dues invoice must NOT suppress tuition issuance
               ),
             )
             .limit(1);

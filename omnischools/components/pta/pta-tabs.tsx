@@ -13,14 +13,26 @@ import { usePathname } from "next/navigation";
  * per-meeting server-loaded write gate).
  */
 const MEETINGS_TAB = { href: "/senior/pta/meetings", label: "Meetings" } as const;
+const DUES_TAB = { href: "/senior/pta/dues", label: "Dues" } as const;
 const ADMIN_TABS = [
   { href: "/senior/pta/setup", label: "Setup" },
   { href: "/senior/pta/officers", label: "Officers" },
 ] as const;
 
-export function PtaTabs({ canManage = false }: { canManage?: boolean }) {
+export function PtaTabs({
+  canManage = false,
+  canViewDues = false,
+}: {
+  canManage?: boolean;
+  canViewDues?: boolean;
+}) {
   const pathname = usePathname();
-  const tabs = canManage ? [MEETINGS_TAB, ...ADMIN_TABS] : [MEETINGS_TAB];
+  // Dues (INCR-54a): visible to management OR a Treasurer of any PTA (the layout computes canViewDues).
+  const tabs = [
+    MEETINGS_TAB,
+    ...(canViewDues ? [DUES_TAB] : []),
+    ...(canManage ? ADMIN_TABS : []),
+  ];
   return (
     <nav className="mb-6 flex gap-1 border-b border-border" aria-label="PTA sections">
       {tabs.map((t) => {

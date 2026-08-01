@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireSchool } from "@/lib/auth/server";
 import { hasAnyRole, isStaff, PTA_CONFIG_WRITE_ROLES } from "@/lib/access";
+import { resolveDuesAccess } from "@/lib/pta/dues-data";
 import { PtaTabs } from "@/components/pta/pta-tabs";
 
 /**
@@ -21,9 +22,12 @@ export default async function PtaLayout({ children }: { children: React.ReactNod
   if (school.schoolType === "BASIC") redirect("/dashboard");
   if (!isStaff(user.roles)) redirect("/dashboard");
   const canManage = hasAnyRole(user.roles, PTA_CONFIG_WRITE_ROLES);
+  // Dues tab (INCR-54a): visible to management (school-wide) OR a Treasurer of any PTA (server-loaded,
+  // R469). A parent-Treasurer can't reach this layout (isStaff redirect above) — their read is INCR-55.
+  const canViewDues = (await resolveDuesAccess(school.id, { userId: user.id, roles: user.roles })).canView;
   return (
     <div className="mx-auto max-w-page">
-      <PtaTabs canManage={canManage} />
+      <PtaTabs canManage={canManage} canViewDues={canViewDues} />
       {children}
     </div>
   );

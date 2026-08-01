@@ -185,6 +185,7 @@ BEGIN
     'pta_agenda_item',
     'pta_action_item',
     'pta_resolution',
+    'pta_dues_charge',
     'announcement',
     'sms_template',
     'notification_log',
