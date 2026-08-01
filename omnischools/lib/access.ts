@@ -346,6 +346,23 @@ export function canFacilitatePlcSession(
   return hasAnyRole(roles, PLC_SESSION_BREAKGLASS_ROLES);
 }
 
+/**
+ * 🔴 PTA — Parent-Teacher Association structure setup (SHS module 4.7 / INCR-50 · R415) — the config
+ * spine's WRITE gate, AND (unusually) its READ gate: the whole surface is admin-only, so read == write
+ * (the page redirects anyone who fails it; a plain TEACHER/PARENT sees neither the nav link nor the
+ * page). Gates EVERY config write (tier config, the forward-only dues change, and Generate).
+ *
+ *   • ADMIN + HEADMASTER only. PROPRIETOR is DELIBERATELY ABSENT (flagged rec-no at PR — its power is
+ *     appointing/governance, not operating the PTA config surface; widen later if a school asks).
+ *   • NO new KnownAppRole (OC3 — a PTA officer is a DATA position, not a role; officers land at INCR-51).
+ *
+ * STUDENT / PARENT / TEACHER never reach it. `as const satisfies` makes a typo'd code a compile error.
+ */
+export const PTA_CONFIG_WRITE_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",

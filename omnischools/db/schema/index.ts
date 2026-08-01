@@ -23,6 +23,7 @@ export * from "./wassce";
 export * from "./sickbay";
 export * from "./vlc";
 export * from "./plc";
+export * from "./pta";
 export * from "./timetable";
 export * from "./comms";
 export * from "./inbox";

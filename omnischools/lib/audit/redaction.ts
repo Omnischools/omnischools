@@ -147,6 +147,14 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   // timestamps, no student mark). No reserved audit prefix, so it MUST be listed here or the
   // classify-at-creation guard fails the build (R404). —
   "plc_cpd_ledger", // point-in-time-correct frozen CPD accrual (attended_pts + reflection_pts, settled_at)
+  // — PTA structure-setup spine (SHS module 4.7 / INCR-50) — OPERATIONAL config throughout: the four-tier
+  // config, the generated instances, and the append-only dues-rate history. Officers are a DATA LIST, not
+  // roles (OC3); no student PII, no parent path in this increment (parent_scope returns at INCR-55). None
+  // uses a reserved audit prefix, so each MUST be listed here or the classify-at-creation guard fails the
+  // build (R416). —
+  "pta_tiers_config", // per (school × tier): active, frequency, officer-role list, quorum, dues contract
+  "ptas", // a generated PTA instance (tier_type + class/House scope, ACTIVE/CLOSED)
+  "pta_dues_config_history", // append-only, forward-only dues-rate snapshot per change (reason mandatory)
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker
