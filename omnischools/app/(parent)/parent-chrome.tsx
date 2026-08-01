@@ -2,10 +2,10 @@ import Link from "next/link";
 import { avatarInitials, initialSurname } from "@/lib/wassce/parent-copy";
 
 /**
- * The shared parent-portal chrome (SHS module 4.3) — header + flat six-tab nav, extracted from the
+ * The shared parent-portal chrome (SHS module 4.3) — header + flat seven-tab nav, extracted from the
  * wassce page so the tab-flip lives in ONE place (INCR-29 R234: activate the inert "Sickbay" tab as a
  * live link). One child, resolved from the session (never a URL param); labels verbatim; NO faked
- * unread dot (R234). Only WASSCE and Sickbay are live routes today; the other four stay inert spans.
+ * unread dot (R234). WASSCE, Sickbay, and PTA are live routes today; the other four stay inert spans.
  */
 
 export function ParentHeader({
