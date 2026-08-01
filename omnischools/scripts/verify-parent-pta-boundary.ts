@@ -1,5 +1,5 @@
 import "../db/_loadenv";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   schools,
@@ -17,13 +17,21 @@ import {
   ptaMeeting,
   ptaMeetingAttendance,
   ptaDuesCharge,
+  ptaOfficer,
+  ptaMinutes,
+  ptaAgendaItem,
+  ptaActionItem,
+  ptaResolution,
 } from "@/db/schema";
 import { loadParentPtaTx } from "@/lib/parent/parent-pta-data";
 
 /**
- * INCR-55a parent-PTA participation boundary verification — the FIFTH widening of the 19a boundary
- * (13 → 17 parent_scope tables): a parent gains ROW access to their ACTIVE PTAs (ptas + pta_meeting,
- * membership-scoped) + their OWN dues + OWN attendance (pta_dues_charge + pta_meeting_attendance).
+ * INCR-55a/b parent-PTA boundary verification — the FIFTH widening of the 19a boundary (13 → 22
+ * parent_scope tables): 55a gave ROW access to ACTIVE PTAs (ptas + pta_meeting, membership-scoped) +
+ * OWN dues + OWN attendance (pta_dues_charge + pta_meeting_attendance); 55b adds the RECORDS & DIRECTORY
+ * subtree — pta_officer (current holders of own PTAs, R479) + the ADOPTED-only minutes subtree
+ * (pta_minutes / pta_agenda_item / pta_action_item / pta_resolution, R478). This harness proves 55a AND
+ * the 55b additions against the SAME fixture, all as omnischools_app under the parent GUC, rolled back.
  *
  * MECHANISM (mirrors scripts/verify-parent-sickbay-boundary.ts): the dev app role is a SUPERUSER which
  * bypasses RLS, so `SET LOCAL ROLE omnischools_app` (the non-superuser role prod connects as) is set
@@ -261,6 +269,113 @@ async function main() {
       await tx.insert(ptaMeetingAttendance).values({ schoolId: schoolA, meetingId: mForm, register: "TEACHER", userId: teacher, status: "PRESENT" });
       await tx.insert(ptaMeetingAttendance).values({ schoolId: schoolA, meetingId: mGeneral, register: "PARENT", studentGuardianId: dad2Guardian, status: "PRESENT" });
 
+      // ── 55b fixture: OFFICERS (R479) ────────────────────────────────────────────────────────────
+      // Current holders of mom's PTAs (visible), an ENDED holder (invisible), a cross-family Form officer
+      // and a cross-tenant officer (both invisible). termEnd null → "While in post"; set → a date range.
+      const mkOfficer = async (
+        sId: string,
+        pta: string,
+        office: string,
+        opts: { userId?: string; external?: string; termEnd?: string | null; ended?: boolean } = {},
+      ) =>
+        tx.insert(ptaOfficer).values({
+          schoolId: sId,
+          ptaId: pta,
+          office,
+          personUserId: opts.userId ?? null,
+          externalName: opts.userId ? null : (opts.external ?? "External Holder"),
+          assignmentBasis: "ELECTED",
+          electionRef: "AGM 2025",
+          termStart: daysAgo(300),
+          termEnd: opts.termEnd === undefined ? daysAhead(400) : opts.termEnd,
+          endedAt: opts.ended ? now : null,
+          endReason: opts.ended ? "relocated" : null,
+        });
+      await mkOfficer(schoolA, pGeneral, "Chair", { userId: teacher, termEnd: null }); // While in post
+      await mkOfficer(schoolA, pGeneral, "Treasurer", { userId: mom }); // mom's OWN hat; date-range term
+      await mkOfficer(schoolA, pGeneral, "Secretary", { userId: dad2, ended: true }); // ENDED → invisible
+      await mkOfficer(schoolA, pForm, "Chair", { external: "Mr Boahen" }); // mom's Form
+      await mkOfficer(schoolA, pFormOther, "Chair", { userId: dad2, termEnd: null }); // dad2's Form — mom 0
+      await mkOfficer(schoolB, pForeign, "Chair", {}); // cross-tenant — mom 0
+
+      // ── 55b fixture: ADOPTED MINUTES (R478) + subtree ───────────────────────────────────────────
+      await tx
+        .update(ptaMeeting)
+        .set({ quorumMet: true })
+        .where(and(eq(ptaMeeting.schoolId, schoolA), eq(ptaMeeting.id, mGeneral)));
+      const mkAgenda = async (
+        sId: string,
+        minutesId: string,
+        seqNo: number,
+        title: string,
+        classification: string,
+        narrative: string | null = null,
+      ) =>
+        (
+          await tx
+            .insert(ptaAgendaItem)
+            .values({ schoolId: sId, minutesId, seqNo, title, classification, narrative })
+            .returning({ id: ptaAgendaItem.id })
+        )[0].id;
+
+      // Adopted minutes on mom's CLOSED General meeting — mom (and every General member) reads it.
+      const genMinutes = (
+        await tx
+          .insert(ptaMinutes)
+          .values({ schoolId: schoolA, meetingId: mGeneral, status: "ADOPTED" })
+          .returning({ id: ptaMinutes.id })
+      )[0].id;
+      await mkAgenda(schoolA, genMinutes, 1, "Budget review", "DISCUSSION", "The committee reviewed the term budget.");
+      const aiAction = await mkAgenda(schoolA, genMinutes, 2, "Roof repair", "ACTION");
+      const aiRes = await mkAgenda(schoolA, genMinutes, 3, "Annual dues", "RESOLUTION");
+      await tx.insert(ptaActionItem).values({ schoolId: schoolA, agendaItemId: aiAction, description: "Repair the dining-hall roof", personUserId: mom, status: "PENDING" });
+      await tx.insert(ptaResolution).values({ schoolId: schoolA, agendaItemId: aiRes, resolutionNo: "GEN-2026-Q2-001", resolutionText: "RESOLVED THAT annual dues be set at GHS 200.", votesFor: 20, votesAgainst: 3, votesAbstain: 1, binding: true });
+
+      // DRAFT minutes on mom's Form meeting — un-adopted, must NEVER surface (R478 status gate).
+      const draftMinutes = (
+        await tx.insert(ptaMinutes).values({ schoolId: schoolA, meetingId: mForm, status: "DRAFT" }).returning({ id: ptaMinutes.id })
+      )[0].id;
+      await mkAgenda(schoolA, draftMinutes, 1, "Draft item", "DISCUSSION", "Not yet adopted.");
+
+      // Adopted minutes on dad2's Form (another family) — visible to dad2, 0 to mom (cross-family).
+      const mFormOther = await mkMeeting(pFormOther, daysAgo(4), "Form meeting");
+      const otherMinutes = (
+        await tx.insert(ptaMinutes).values({ schoolId: schoolA, meetingId: mFormOther, status: "ADOPTED" }).returning({ id: ptaMinutes.id })
+      )[0].id;
+      await mkAgenda(schoolA, otherMinutes, 1, "Other-class item", "DISCUSSION", "Adopted, but not mom's PTA.");
+
+      // Adopted minutes in the FOREIGN school — cross-tenant, 0 to every schoolA parent.
+      await tx.insert(academicPeriodConfig).values({ schoolId: schoolB, academicYear: "2024/2025", periodType: "SEMESTER", periodCount: 2, source: "GES_DEFAULT" });
+      const periodB = (
+        await tx
+          .insert(academicPeriod)
+          .values({ schoolId: schoolB, academicYear: "2024/2025", periodNumber: 2, periodLabel: "Term 2", startsOn: daysAgo(60), endsOn: daysAhead(60), productLine: "SENIOR" })
+          .returning({ periodId: academicPeriod.periodId })
+      )[0].periodId;
+      const mForeign = (
+        await tx
+          .insert(ptaMeeting)
+          .values({ schoolId: schoolB, ptaId: pForeign, academicPeriodId: periodB, meetingType: "General meeting", meetingDate: daysAgo(5), startTime: "10:00", endTime: "12:00", quorumMet: true })
+          .returning({ id: ptaMeeting.id })
+      )[0].id;
+      const foreignMinutes = (
+        await tx.insert(ptaMinutes).values({ schoolId: schoolB, meetingId: mForeign, status: "ADOPTED" }).returning({ id: ptaMinutes.id })
+      )[0].id;
+      const foreignAgenda = await mkAgenda(schoolB, foreignMinutes, 1, "Foreign item", "RESOLUTION");
+      await tx.insert(ptaResolution).values({ schoolId: schoolB, agendaItemId: foreignAgenda, resolutionNo: "B-2026-Q2-001", resolutionText: "RESOLVED", votesFor: 5, votesAgainst: 0, votesAbstain: 0, binding: true });
+
+      // ── PROD-MODEL: the officer / action-owner NAME join reads the GLOBAL ref_user. In prod the app
+      //    connects as the TABLE OWNER (omnischools), which is EXEMPT from ref_user's ENABLE-not-FORCE RLS
+      //    (policies.sql §global — "the app's direct connection … keeps full access"), so the holder name
+      //    RESOLVES. The omnischools_app PROXY used below is a NON-owner (to FORCE the tenant-table RLS
+      //    boundary) and therefore CANNOT read the global ref_user — so ref_user-backed names DEGRADE to
+      //    '—' under the proxy. That is NOT a leak: the officer ROW is already parent-scoped; the holder
+      //    name is a global-identity governance fact resolved by the owner-connection. Prove that here.
+      ok(
+        (await tx.select({ n: users.fullName }).from(users).where(eq(users.id, mom)))[0]?.n === "Ama Aidoo",
+        "PROD-MODEL: the owner connection resolves ref_user names — the officer/owner name join works in prod",
+      );
+
       // ── Drop to the non-superuser role so the RESTRICTIVE parent_scope applies. ──────────────────
       await tx.execute(APP_ROLE);
 
@@ -289,7 +404,7 @@ async function main() {
       ok(momMeetings.length === 3, `pta_meeting: mom sees her PTAs' 3 meetings, got ${momMeetings.length}`);
 
       console.log("\n── (1)(2)(3) the REAL reader as MOM — memberships / dues / attendance ──");
-      const momView = await loadParentPtaTx(tx, schoolA, now);
+      const momView = await loadParentPtaTx(tx, schoolA, mom, now);
       // (1) memberships
       const mNames = momView.memberships.map((m) => `${m.tier}:${m.ptaName}`);
       ok(momView.memberships.length === 3, `(1) memberships = 3, got ${momView.memberships.length}`);
@@ -312,6 +427,46 @@ async function main() {
       ok(attGen?.status === "Absent", `(3) mom's missed General meeting = DERIVED Absent (no own row, closed), got ${attGen?.status}`);
       ok(!momView.attendance.some((a) => a.meetingLabel === "Form meeting" && a.status !== "Present"), "(3) the future/live Form meeting is omitted (not closed)");
 
+      console.log("\n── (55b·A) OFFICERS as MOM — current holders of her PTAs; ended/cross-family/cross-tenant = 0 ──");
+      const momOfficerRows = await tx.select({ ptaId: ptaOfficer.ptaId }).from(ptaOfficer);
+      ok(momOfficerRows.length === 3, `pta_officer: mom sees exactly 3 current holders (Form Chair + General Chair/Treasurer), got ${momOfficerRows.length}`);
+      ok(!momOfficerRows.some((r) => r.ptaId === pFormOther), "pta_officer: another class's Form officer is NOT visible (cross-family)");
+      ok(!momOfficerRows.some((r) => r.ptaId === pForeign), "pta_officer: the foreign school's officer is NOT visible (cross-tenant)");
+
+      ok(momView.officers.length === 3, `(A) reader officers = 3, got ${momView.officers.length}`);
+      ok(momView.officers.map((o) => o.tier).join(",") === "FORM,GENERAL,GENERAL", `(A) tier-ordered FORM,GENERAL,GENERAL, got ${momView.officers.map((o) => o.tier).join(",")}`);
+      const momGenOfficers = momView.officers.filter((o) => o.ptaName === "General PTA");
+      ok(momGenOfficers.map((o) => o.office).join(",") === "Chair,Treasurer", `(A) General officers office-ranked Chair,Treasurer, got ${momGenOfficers.map((o) => o.office).join(",")}`);
+      const momYou = momView.officers.filter((o) => o.isYou);
+      ok(momYou.length === 1 && momYou[0].office === "Treasurer" && momYou[0].ptaName === "General PTA", `(A) exactly one 'You' hat = Treasurer of General PTA, got ${JSON.stringify(momYou)}`);
+      ok(momGenOfficers.find((o) => o.office === "Chair")?.term === "While in post", "(A) the term_end-null Chair reads 'While in post'");
+      ok(momYou[0].term.includes("→"), `(A) the Treasurer (term_end set) reads a date range, got ${momYou[0].term}`);
+      ok(!momView.officers.some((o) => o.ptaName.includes("Form 1 Arts")), "(A) no cross-family (Form 1 Arts) officer in mom's projection");
+      ok(momView.officers.find((o) => o.ptaName === "Form 2 Science PTA")?.holderName === "Mr Boahen", "(A) the EXTERNAL (non-user) Form Chair name projects from external_name (a tenant column — proxy-readable)");
+      // ref_user is owner-read (see PROD-MODEL above) → the staff-user Chair name degrades to '—' under the
+      // omnischools_app proxy. The ROW is still correctly scoped; the name resolves in prod / the preview.
+      ok(momGenOfficers.find((o) => o.office === "Chair")?.holderName === "—", "(A) staff-user holder name is '—' under the proxy (global ref_user is owner-read; resolves in prod)");
+
+      console.log("\n── (55b·B) ADOPTED MINUTES as MOM — adopted own-PTA only; DRAFT/cross-family/cross-tenant = 0 ──");
+      const momMinutesRows = await tx.select({ id: ptaMinutes.id }).from(ptaMinutes);
+      ok(momMinutesRows.length === 1, `pta_minutes: mom sees exactly 1 ADOPTED own-PTA minutes (DRAFT + cross-family + cross-tenant excluded), got ${momMinutesRows.length}`);
+      const momAgendaRows = await tx.select({ id: ptaAgendaItem.id }).from(ptaAgendaItem);
+      ok(momAgendaRows.length === 3, `pta_agenda_item: mom sees the 3 agenda items of her adopted minutes only, got ${momAgendaRows.length}`);
+      const momResRows = await tx.select({ id: ptaResolution.id }).from(ptaResolution);
+      ok(momResRows.length === 1, `pta_resolution: mom sees the 1 resolution of her adopted minutes only, got ${momResRows.length}`);
+      const momActRows = await tx.select({ id: ptaActionItem.id }).from(ptaActionItem);
+      ok(momActRows.length === 1, `pta_action_item: mom sees the 1 action of her adopted minutes only, got ${momActRows.length}`);
+
+      ok(momView.minutes.length === 1, `(B) reader minutes = 1, got ${momView.minutes.length}`);
+      const gm = momView.minutes[0];
+      ok(gm.ptaName === "General PTA" && gm.quorumMet === true, `(B) adopted minutes = General PTA + quorum met, got ${gm.ptaName}/${gm.quorumMet}`);
+      ok(gm.agendaItems.map((a) => a.classification).join(",") === "Discussion,Action,Resolution", `(B) agenda classifications ordered Discussion,Action,Resolution, got ${gm.agendaItems.map((a) => a.classification).join(",")}`);
+      // owner degrades to '—' under the proxy (ref_user owner-read; resolves to "Ama Aidoo" in prod); the
+      // ACTION row is correctly scoped and carries description + status only (NO deadline — R478).
+      ok(gm.actionItems.length === 1 && gm.actionItems[0].description === "Repair the dining-hall roof" && gm.actionItems[0].status === "Pending" && gm.actionItems[0].owner === "—", `(B) action = 'Repair the dining-hall roof' · Pending · owner '—' under proxy (no deadline), got ${JSON.stringify(gm.actionItems)}`);
+      ok(gm.resolutions.length === 1 && gm.resolutions[0].result === "PASSED" && gm.resolutions[0].binding === true && gm.resolutions[0].resolutionNo === "GEN-2026-Q2-001", `(B) resolution = PASSED · binding · GEN-2026-Q2-001, got ${JSON.stringify(gm.resolutions[0])}`);
+      ok(!momView.minutes.some((m) => m.ptaName.includes("Form 1 Arts")), "(B) no cross-family (Form 1 Arts) adopted minutes for mom");
+
       // ============================ DAD2 (the other family — 0 cross-family the other way) ============================
       await tx.execute(setScope(schoolA, dad2));
       console.log("\n── (4)(5) DAD2 — sees only childB's slice, 0 of mom's ──");
@@ -319,10 +474,32 @@ async function main() {
       ok(dadDues.length === 1 && dadDues[0].s === childB, `dues: dad2 sees ONLY childB's 1 charge, got ${dadDues.length}`);
       ok(!dadDues.some((r) => r.s === childA), "dues: mom's family (childA) charges are NOT visible to dad2 (0 cross-family both directions)");
 
-      const dadView = await loadParentPtaTx(tx, schoolA, now);
+      const dadView = await loadParentPtaTx(tx, schoolA, dad2, now);
       ok(dadView.memberships.map((m) => `${m.tier}:${m.ptaName}`).sort().join("|") === "FORM:Form 1 Arts PTA|GENERAL:General PTA", `(5) dad2 memberships = Form(1 Arts)+General only (no House, no other Form), got ${dadView.memberships.map((m) => m.ptaName).join(", ")}`);
       ok(dadView.dues.length === 1 && dadView.dues[0].ptaName === "Form 1 Arts PTA", "(5) dad2 dues = his own 1 Form charge");
-      ok(dadView.attendance.length === 1 && dadView.attendance[0].ptaName === "General PTA" && dadView.attendance[0].status === "Present", `(5) dad2 attendance = Present at the General meeting he attended (mom saw Absent for the SAME meeting), got ${JSON.stringify(dadView.attendance)}`);
+      // dad2 now has TWO closed meetings: the General meeting he ATTENDED (Present — mom saw Absent for the
+      // SAME meeting) + his Form's closed meeting (mFormOther, the 55b adopted-minutes host) he missed
+      // (derived Absent). Order = most-recent first (Form daysAgo(4) is older than General daysAgo(2)).
+      ok(dadView.attendance.length === 2, `(5) dad2 attendance = 2 closed meetings, got ${dadView.attendance.length}`);
+      ok(dadView.attendance.find((a) => a.ptaName === "General PTA")?.status === "Present", "(5) dad2 = Present at the General meeting he attended (mom saw Absent for the SAME meeting)");
+      ok(dadView.attendance.find((a) => a.ptaName === "Form 1 Arts PTA")?.status === "Absent", "(5) dad2 = derived Absent at his Form's closed meeting he missed");
+
+      console.log("\n── (55b) DAD2 — General officers/minutes (member) + his OWN Form; 0 of mom's Form ──");
+      ok(dadView.officers.length === 3, `(A) dad2 sees 3 officers (General Chair/Treasurer + his own Form Chair), got ${dadView.officers.length}`);
+      ok(dadView.officers.some((o) => o.ptaName === "General PTA" && o.office === "Treasurer"), "(A) dad2 reads the General Treasurer (public governance — the office-holder is mom)");
+      ok(dadView.officers.some((o) => o.isYou && o.ptaName === "Form 1 Arts PTA"), "(A) dad2's OWN Form Chair carries the 'You' hat (own-hats is per-viewer)");
+      ok(!dadView.officers.some((o) => o.ptaName === "Form 2 Science PTA"), "(A) mom's Form (2 Science) officer is NOT visible to dad2 (0 cross-family)");
+      ok(dadView.minutes.length === 2, `(B) dad2 sees 2 adopted minutes (General + his own Form), got ${dadView.minutes.length}`);
+      ok(dadView.minutes.some((m) => m.ptaName === "General PTA"), "(B) dad2 reads the General adopted minutes (he is a General member)");
+      ok(dadView.minutes.some((m) => m.ptaName === "Form 1 Arts PTA"), "(B) dad2 reads his own Form's adopted minutes");
+
+      // ============================ NON-PARENT (a teacher user — no guardian row) ============================
+      await tx.execute(setScope(schoolA, teacher));
+      console.log("\n── (55b) NON-PARENT (teacher) — 0 officers, 0 adopted minutes ──");
+      ok((await tx.select({ id: ptaOfficer.id }).from(ptaOfficer)).length === 0, "pta_officer: a non-parent (teacher) sees 0 officers");
+      ok((await tx.select({ id: ptaMinutes.id }).from(ptaMinutes)).length === 0, "pta_minutes: a non-parent (teacher) sees 0 adopted minutes");
+      const teacherView = await loadParentPtaTx(tx, schoolA, teacher, now);
+      ok(teacherView.officers.length === 0 && teacherView.minutes.length === 0, `(reader) non-parent officers+minutes = 0, got ${teacherView.officers.length}/${teacherView.minutes.length}`);
 
       throw new Rollback();
     });

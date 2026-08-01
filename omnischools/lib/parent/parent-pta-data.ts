@@ -1,14 +1,27 @@
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { withParentScope } from "@/lib/db/rls";
 import type { Tx } from "@/lib/db";
-import { students, ptas, ptaMeeting, ptaDuesCharge, ptaMeetingAttendance } from "@/db/schema";
+import {
+  students,
+  ptas,
+  ptaMeeting,
+  ptaDuesCharge,
+  ptaMeetingAttendance,
+  ptaOfficer,
+  ptaMinutes,
+  ptaAgendaItem,
+  ptaActionItem,
+  ptaResolution,
+  users,
+} from "@/db/schema";
 import { num } from "@/lib/fees-helpers";
 import {
   DEFAULT_REGISTER_LOCK_GRACE_HOURS,
   deriveParentStatus,
   isPtaMeetingWriteLocked,
 } from "@/lib/pta/meeting-clock";
+import { resolutionOutcome } from "@/lib/pta/minutes";
 import { parentLongDate } from "@/lib/wassce/parent-copy";
 
 /**
@@ -49,8 +62,28 @@ import { parentLongDate } from "@/lib/wassce/parent-copy";
  *             PER_TERM term label ("Term 2") lives on `academic_period` (parent_deny) and is not shown.
  */
 
+/**
+ * 🔴 INCR-55b · the RECORDS & DIRECTORY half — TWO more parent reads on the SAME `withParentScope` tx:
+ *   • OFFICERS from `pta_officer` — Wells's parent_scope returns ONLY current holders (`ended_at IS NULL`)
+ *     of the parent's PTAs (R479). leftJoins `ref_user` for the holder name (a PUBLIC governance fact).
+ *     Vacancies are the ABSENCE of a row — NEVER synthesised. election_ref / end_reason / contact are the
+ *     officer-only fields the projection (the column guard) strips — RLS gates ROWS, the frozen key-set
+ *     gates COLUMNS. `isYou` is a reader DERIVATION (row.personUserId === userId); the id is read to derive
+ *     the boolean, NEVER projected.
+ *   • ADOPTED MINUTES from `pta_minutes` — parent_scope returns ONLY `status='ADOPTED'` of the parent's
+ *     PTAs + its subtree (agenda / action / resolution, R478). The resolution PASSED/NOT-PASSED derivation
+ *     is REUSED from lib/pta/minutes (`resolutionOutcome`), not re-derived. `quorum_met` is the ONE
+ *     surviving attendance fact — public in the MINUTES context (R478), unlike 55a's attendance reader
+ *     which omits it (R480). STRIPPED: any DRAFT/CHAIR_REVIEW (RLS already excludes), per-parent + numeric
+ *     attendance aggregates, action deadlines/countdowns/SMS, distribution/validation cards, convened_by.
+ * Both are read-only SELECTs on the parent-scoped tx; the entry threads the signed-in `userId` for own-hats.
+ */
+
 export type ParentPtaTier = "FORM" | "HOUSE" | "GENERAL";
 export type ParentPtaAttendanceStatus = "Present" | "Late" | "Absent";
+export type ParentPtaClassification = "Discussion" | "Action" | "Resolution";
+export type ParentPtaActionStatus = "Pending" | "Completed";
+export type ParentPtaResolutionResult = "PASSED" | "NOT_PASSED";
 
 /**
  * FROZEN KEY-SET (R480). NEVER project ptaId / classId / houseId / status / officer_roles / quorum_rule /
@@ -83,10 +116,65 @@ export interface ParentPtaAttendance {
   status: ParentPtaAttendanceStatus;
 }
 
+/**
+ * FROZEN KEY-SET (R479). CURRENT holders only. NEVER project electionRef / endReason / contact /
+ * personUserId / the holder's child-class caption — those change the key-set and RED parent-pta.test.ts,
+ * not production. `isYou` is the BOOLEAN own-hat derivation, never the id.
+ */
+export interface ParentPtaOfficer {
+  ptaName: string;
+  tier: ParentPtaTier;
+  office: string; // the STORED office label (school-configurable), NOT a hardcoded enum
+  holderName: string; // server-resolved display STRING; public governance fact
+  term: string; // "{start} → {end}"; ex-officio / holdover (term_end null) → "While in post"
+  isYou: boolean;
+}
+
+/** FROZEN KEY-SET (R478). NEVER project a DRAFT field / attendance aggregate / owner deadline. */
+export interface ParentPtaAgendaItem {
+  order: number;
+  title: string;
+  classification: ParentPtaClassification;
+  narrative: string;
+}
+/** FROZEN KEY-SET (R478). description / owner / status ONLY — NO deadline / countdown / SMS reminder. */
+export interface ParentPtaActionItem {
+  description: string;
+  owner: string;
+  status: ParentPtaActionStatus;
+}
+/** FROZEN KEY-SET (R478). All fields PUBLIC on an adopted minutes; result via the reused staff derivation. */
+export interface ParentPtaResolution {
+  resolutionNo: string;
+  title: string;
+  body: string;
+  votesFor: number;
+  votesAgainst: number;
+  votesAbstain: number;
+  result: ParentPtaResolutionResult;
+  binding: boolean;
+}
+/**
+ * FROZEN KEY-SET (R478). quorumMet is the ONLY attendance-derived fact that is public in the minutes
+ * context (R478); NEVER project numeric/per-parent attendance, convened_by, or any DRAFT/CHAIR_REVIEW row.
+ */
+export interface ParentPtaMinutes {
+  ptaName: string;
+  tier: ParentPtaTier;
+  meetingLabel: string;
+  meetingDateLabel: string;
+  quorumMet: boolean;
+  agendaItems: ParentPtaAgendaItem[];
+  actionItems: ParentPtaActionItem[];
+  resolutions: ParentPtaResolution[];
+}
+
 export interface ParentPtaData {
   memberships: ParentPtaMembership[];
   dues: ParentPtaDue[];
   attendance: ParentPtaAttendance[];
+  officers: ParentPtaOfficer[];
+  minutes: ParentPtaMinutes[];
 }
 
 const TIER_RANK: Record<ParentPtaTier, number> = { FORM: 0, HOUSE: 1, GENERAL: 2 };
@@ -96,6 +184,31 @@ const isParentTier = (t: string): t is ParentPtaTier =>
 /** Pre-format the billed rate as the codebase's standard cedi string (finance-data / receipt idiom). */
 const ghs = (n: number): string =>
   `GHS ${n.toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** Parent long date from a 'YYYY-MM-DD' column (the 55a attendance idiom — UTC, no time). */
+const longDay = (isoDate: string): string => parentLongDate(new Date(`${isoDate}T00:00:00Z`));
+
+/** Canonical office order (the surface's badge-num 1..7, ex-officio last); unknown offices sort between. */
+const OFFICE_RANK: Record<string, number> = {
+  Chair: 0,
+  "Vice-Chair": 1,
+  Secretary: 2,
+  "Assistant Secretary": 3,
+  Treasurer: 4,
+  "Financial Secretary": 5,
+  "Organising Secretary": 6,
+};
+const officeRank = (office: string): number =>
+  /ex-officio/i.test(office) ? 100 : (OFFICE_RANK[office] ?? 50);
+
+/** DB classification (uppercase, pinned on adopted minutes) → the surface's title-case chip label. */
+const CLASSIFICATION_LABEL: Record<string, ParentPtaClassification> = {
+  DISCUSSION: "Discussion",
+  ACTION: "Action",
+  RESOLUTION: "Resolution",
+};
+/** DB action status (PENDING | DONE) → the surface's pill label. */
+const actionStatusLabel = (s: string): ParentPtaActionStatus => (s === "DONE" ? "Completed" : "Pending");
 
 /** Derive the PTA display name parent-reachably (see the docblock). classLabelById is keyed on class_id. */
 function ptaNameFor(
@@ -113,10 +226,11 @@ function ptaNameFor(
   return "House PTA";
 }
 
-/** The 3 participation reads for the signed-in parent. MUST run on a tx already scoped by withParentScope. */
+/** The parent's PTA reads (participation + records). MUST run on a tx already scoped by withParentScope. */
 export async function loadParentPtaTx(
   tx: Tx,
   schoolId: string,
+  userId: string,
   now: Date = new Date(),
 ): Promise<ParentPtaData> {
   // The parent's own children's class labels (students is parent-readable; RLS scopes to own children).
@@ -133,11 +247,13 @@ export async function loadParentPtaTx(
     .from(ptas)
     .where(eq(ptas.schoolId, schoolId));
   const nameById = new Map<string, string>();
+  const tierByPtaId = new Map<string, ParentPtaTier>();
   const memberships: ParentPtaMembership[] = [];
   for (const p of ptaRows) {
     if (!isParentTier(p.tier)) continue; // belt: RLS already excludes EMERGENCY
     const ptaName = ptaNameFor(p.tier, p.classId, classLabelById);
     nameById.set(p.id, ptaName);
+    tierByPtaId.set(p.id, p.tier);
     memberships.push({ ptaName, tier: p.tier });
   }
   memberships.sort(
@@ -224,10 +340,167 @@ export async function loadParentPtaTx(
     });
   }
 
-  return { memberships, dues, attendance };
+  // ── PTA officers (R479) — CURRENT holders (RLS returns ended_at IS NULL of the parent's PTAs; the
+  //    isNull belt makes that intent explicit). leftJoin ref_user for the holder name. election_ref /
+  //    end_reason are NEVER selected — the projection is the column guard. Vacancies = no row (no synth).
+  const officerRows = await tx
+    .select({
+      ptaId: ptaOfficer.ptaId,
+      office: ptaOfficer.office,
+      personUserId: ptaOfficer.personUserId,
+      externalName: ptaOfficer.externalName,
+      holderFullName: users.fullName,
+      termStart: ptaOfficer.termStart,
+      termEnd: ptaOfficer.termEnd,
+    })
+    .from(ptaOfficer)
+    .leftJoin(users, eq(ptaOfficer.personUserId, users.id))
+    .where(and(eq(ptaOfficer.schoolId, schoolId), isNull(ptaOfficer.endedAt)));
+  const officers: ParentPtaOfficer[] = [];
+  for (const r of officerRows) {
+    const ptaName = nameById.get(r.ptaId);
+    const tier = tierByPtaId.get(r.ptaId);
+    if (!ptaName || !tier) continue; // belt: officer of a PTA not in the parent's ACTIVE set (RLS excludes)
+    officers.push({
+      ptaName,
+      tier,
+      office: r.office,
+      holderName: r.holderFullName ?? r.externalName ?? "—",
+      term: r.termEnd == null ? "While in post" : `${longDay(r.termStart)} → ${longDay(r.termEnd)}`,
+      isYou: r.personUserId != null && r.personUserId === userId,
+    });
+  }
+  officers.sort(
+    (a, b) =>
+      TIER_RANK[a.tier] - TIER_RANK[b.tier] ||
+      a.ptaName.localeCompare(b.ptaName) ||
+      officeRank(a.office) - officeRank(b.office) ||
+      a.office.localeCompare(b.office),
+  );
+
+  // ── Adopted minutes (R478) — RLS returns ONLY status='ADOPTED' of the parent's PTAs + subtree. Join
+  //    pta_meeting (membership-scoped, readable) for the label/date/quorum_met; quorum_met is the ONE public
+  //    attendance fact in the MINUTES context (R478) — read here even though 55a's attendance omits it (R480).
+  const minutesRows = await tx
+    .select({
+      minutesId: ptaMinutes.id,
+      ptaId: ptaMeeting.ptaId,
+      meetingType: ptaMeeting.meetingType,
+      meetingDate: ptaMeeting.meetingDate,
+      quorumMet: ptaMeeting.quorumMet,
+    })
+    .from(ptaMinutes)
+    .innerJoin(
+      ptaMeeting,
+      and(eq(ptaMeeting.schoolId, ptaMinutes.schoolId), eq(ptaMeeting.id, ptaMinutes.meetingId)),
+    )
+    .where(eq(ptaMinutes.schoolId, schoolId));
+  minutesRows.sort((a, b) => b.meetingDate.localeCompare(a.meetingDate)); // most recent first (B.8)
+
+  const minutesIds = minutesRows.map((m) => m.minutesId);
+  const agendaRows = minutesIds.length
+    ? await tx
+        .select({
+          id: ptaAgendaItem.id,
+          minutesId: ptaAgendaItem.minutesId,
+          seqNo: ptaAgendaItem.seqNo,
+          title: ptaAgendaItem.title,
+          classification: ptaAgendaItem.classification,
+          narrative: ptaAgendaItem.narrative,
+        })
+        .from(ptaAgendaItem)
+        .where(and(eq(ptaAgendaItem.schoolId, schoolId), inArray(ptaAgendaItem.minutesId, minutesIds)))
+    : [];
+  const agendaIds = agendaRows.map((a) => a.id);
+
+  // Action items (R478 public = description / owner / status only — deadline/countdown/SMS are STRIPPED).
+  const actionRows = agendaIds.length
+    ? await tx
+        .select({
+          agendaItemId: ptaActionItem.agendaItemId,
+          description: ptaActionItem.description,
+          externalName: ptaActionItem.externalName,
+          ownerFullName: users.fullName,
+          status: ptaActionItem.status,
+        })
+        .from(ptaActionItem)
+        .leftJoin(users, eq(users.id, ptaActionItem.personUserId))
+        .where(and(eq(ptaActionItem.schoolId, schoolId), inArray(ptaActionItem.agendaItemId, agendaIds)))
+    : [];
+  const resolutionRows = agendaIds.length
+    ? await tx
+        .select({
+          agendaItemId: ptaResolution.agendaItemId,
+          resolutionNo: ptaResolution.resolutionNo,
+          resolutionText: ptaResolution.resolutionText,
+          votesFor: ptaResolution.votesFor,
+          votesAgainst: ptaResolution.votesAgainst,
+          votesAbstain: ptaResolution.votesAbstain,
+          binding: ptaResolution.binding,
+        })
+        .from(ptaResolution)
+        .where(and(eq(ptaResolution.schoolId, schoolId), inArray(ptaResolution.agendaItemId, agendaIds)))
+    : [];
+
+  type AgendaRow = (typeof agendaRows)[number];
+  const agendaByMinutes = new Map<string, AgendaRow[]>();
+  for (const a of agendaRows) {
+    const arr = agendaByMinutes.get(a.minutesId);
+    if (arr) arr.push(a);
+    else agendaByMinutes.set(a.minutesId, [a]);
+  }
+  const actionByAgenda = new Map(actionRows.map((a) => [a.agendaItemId, a] as const));
+  const resolutionByAgenda = new Map(resolutionRows.map((r) => [r.agendaItemId, r] as const));
+
+  const minutes: ParentPtaMinutes[] = minutesRows.map((m) => {
+    const items = (agendaByMinutes.get(m.minutesId) ?? []).slice().sort((a, b) => a.seqNo - b.seqNo);
+    const agendaItems: ParentPtaAgendaItem[] = items.map((a) => ({
+      order: a.seqNo,
+      title: a.title,
+      classification: CLASSIFICATION_LABEL[a.classification ?? "DISCUSSION"] ?? "Discussion",
+      narrative: a.narrative ?? "",
+    }));
+    const actionItems: ParentPtaActionItem[] = [];
+    const resolutions: ParentPtaResolution[] = [];
+    for (const a of items) {
+      const act = actionByAgenda.get(a.id);
+      if (act) {
+        actionItems.push({
+          description: act.description,
+          owner: act.ownerFullName ?? act.externalName ?? "—",
+          status: actionStatusLabel(act.status),
+        });
+      }
+      const res = resolutionByAgenda.get(a.id);
+      if (res) {
+        resolutions.push({
+          resolutionNo: res.resolutionNo ?? "—",
+          title: a.title, // the resolution's heading is its parent agenda item's title (B.5)
+          body: res.resolutionText,
+          votesFor: res.votesFor,
+          votesAgainst: res.votesAgainst,
+          votesAbstain: res.votesAbstain,
+          result: resolutionOutcome(res.votesFor, res.votesAgainst),
+          binding: res.binding,
+        });
+      }
+    }
+    return {
+      ptaName: nameById.get(m.ptaId) ?? "PTA",
+      tier: tierByPtaId.get(m.ptaId) ?? "GENERAL",
+      meetingLabel: m.meetingType,
+      meetingDateLabel: longDay(m.meetingDate),
+      quorumMet: m.quorumMet === true, // Secretary judgment; null (unjudged) → not met (B.2 boolean)
+      agendaItems,
+      actionItems,
+      resolutions,
+    };
+  });
+
+  return { memberships, dues, attendance, officers, minutes };
 }
 
-/** Entry point — the parent's PTA participation slice under `withParentScope` (never `withSchool`). */
+/** Entry point — the parent's PTA slice under `withParentScope` (never `withSchool`). */
 export async function loadParentPta(schoolId: string, userId: string): Promise<ParentPtaData> {
-  return withParentScope(schoolId, userId, (tx) => loadParentPtaTx(tx, schoolId));
+  return withParentScope(schoolId, userId, (tx) => loadParentPtaTx(tx, schoolId, userId));
 }

@@ -54,8 +54,95 @@ describe("🔴 PTA55-A · frozen key-sets — the reader is the column guard, no
     ]);
   });
 
-  it("ParentPtaData = EXACTLY {attendance, dues, memberships}", () => {
-    expect(interfaceKeys("ParentPtaData")).toEqual(["attendance", "dues", "memberships"]);
+  it("ParentPtaData = EXACTLY {attendance, dues, memberships, minutes, officers}", () => {
+    expect(interfaceKeys("ParentPtaData")).toEqual([
+      "attendance",
+      "dues",
+      "memberships",
+      "minutes",
+      "officers",
+    ]);
+  });
+});
+
+// ── PTA55b-A · the officer frozen key-set — electionRef/endReason/contact spread REDs a test (R479) ────
+describe("🔴 PTA55b-A · ParentPtaOfficer frozen key-set — the reader is the officer column guard", () => {
+  it("ParentPtaOfficer = EXACTLY {holderName, isYou, office, ptaName, term, tier} — no id/audit/contact", () => {
+    expect(interfaceKeys("ParentPtaOfficer")).toEqual([
+      "holderName",
+      "isYou",
+      "office",
+      "ptaName",
+      "term",
+      "tier",
+    ]);
+  });
+
+  it("never projects the officer-only audit / holder-id columns (electionRef / endReason / basis)", () => {
+    const s = reader();
+    for (const col of ["electionRef", "endReason", "assignmentBasis"]) {
+      expect(s, `${col} must not appear`).not.toContain(col);
+    }
+  });
+
+  it("derives isYou from personUserId (read) but the id is NEVER in the projected shape", () => {
+    // personUserId is read to compute the boolean; the frozen key-set (above) guarantees it isn't exported.
+    const s = reader();
+    expect(s).toMatch(/personUserId != null && r\.personUserId === userId/);
+  });
+});
+
+// ── PTA55b-B · the adopted-minutes frozen key-sets — DRAFT/deadline/aggregate spread REDs a test (R478) ─
+describe("🔴 PTA55b-B · adopted-minutes frozen key-sets — public subtree only", () => {
+  it("ParentPtaMinutes = EXACTLY {actionItems, agendaItems, meetingDateLabel, meetingLabel, ptaName, quorumMet, resolutions, tier}", () => {
+    expect(interfaceKeys("ParentPtaMinutes")).toEqual([
+      "actionItems",
+      "agendaItems",
+      "meetingDateLabel",
+      "meetingLabel",
+      "ptaName",
+      "quorumMet",
+      "resolutions",
+      "tier",
+    ]);
+  });
+
+  it("ParentPtaAgendaItem = EXACTLY {classification, narrative, order, title}", () => {
+    expect(interfaceKeys("ParentPtaAgendaItem")).toEqual([
+      "classification",
+      "narrative",
+      "order",
+      "title",
+    ]);
+  });
+
+  it("ParentPtaActionItem = EXACTLY {description, owner, status} — NO deadline/countdown/SMS", () => {
+    expect(interfaceKeys("ParentPtaActionItem")).toEqual(["description", "owner", "status"]);
+  });
+
+  it("ParentPtaResolution = EXACTLY {binding, body, resolutionNo, result, title, votesAbstain, votesAgainst, votesFor}", () => {
+    expect(interfaceKeys("ParentPtaResolution")).toEqual([
+      "binding",
+      "body",
+      "resolutionNo",
+      "result",
+      "title",
+      "votesAbstain",
+      "votesAgainst",
+      "votesFor",
+    ]);
+  });
+
+  it("touches NONE of the DRAFT / staff-lifecycle / deadline columns of the minutes subtree", () => {
+    const s = reader();
+    for (const col of ["deadline", "secretaryId", "adoptedByUserId", "distributedAt", "completedAt"]) {
+      expect(s, `${col} must not appear`).not.toContain(col);
+    }
+  });
+
+  it("derives PASSED/NOT_PASSED via the REUSED staff helper, not a re-derived vote comparison", () => {
+    const s = reader();
+    expect(s).toContain("resolutionOutcome");
   });
 });
 
@@ -92,9 +179,11 @@ describe("🔴 PTA55-C · own attendance only — no teacher register, no confid
     }
   });
 
-  it("the meeting reader omits agenda / invited teachers / convener / quorum (staff PII, R480)", () => {
+  it("the meeting reader omits agenda / invited teachers / convener (staff PII, R480)", () => {
+    // quorumMet is NO LONGER denied here — R478 makes it PUBLIC in the adopted-MINUTES context (55b reads
+    // it). The attendance shape still never carries it — guaranteed by the ParentPtaAttendance key-set.
     const s = reader();
-    for (const col of ["agendaJson", "invitedTeacherUserIds", "convenedByUserId", "quorumMet"]) {
+    for (const col of ["agendaJson", "invitedTeacherUserIds", "convenedByUserId"]) {
       expect(s, `${col} must not appear`).not.toContain(col);
     }
   });
@@ -102,7 +191,7 @@ describe("🔴 PTA55-C · own attendance only — no teacher register, no confid
 
 // ── PTA55-D · name derivation stays parent-reachable — no parent_deny table joined (Lucy Q2/Q4) ───────
 describe("🔴 PTA55-D · names derive from parent-readable data only", () => {
-  it("touches ONLY the 4 parent-scoped PTA tables + students (for the class label)", () => {
+  it("touches the participation PTA tables + students (for the class label)", () => {
     const s = reader();
     for (const t of ["ptas", "ptaMeeting", "ptaDuesCharge", "ptaMeetingAttendance", "students"]) {
       expect(s, `expected ${t}`).toContain(t);
@@ -116,17 +205,20 @@ describe("🔴 PTA55-D · names derive from parent-readable data only", () => {
     }
   });
 
-  it("touches NONE of the 55b records/directory tables (officers / minutes subtree / config)", () => {
+  it("reads the 5 parent-scoped 55b tables (officers + minutes subtree) but NEVER config / dues-history", () => {
     const s = reader();
+    // 55b WIDENS the reader onto the officer + adopted-minutes subtree (all parent_scoped by Wells).
     for (const t of [
       "ptaOfficer",
       "ptaMinutes",
       "ptaAgendaItem",
       "ptaActionItem",
       "ptaResolution",
-      "ptaTiersConfig",
-      "ptaDuesConfigHistory",
     ]) {
+      expect(s, `expected ${t}`).toContain(t);
+    }
+    // Config + dues-history stay parent_deny — never reachable (tier_settings / officer_roles are staff-only).
+    for (const t of ["ptaTiersConfig", "ptaDuesConfigHistory"]) {
       expect(s, `must NOT touch ${t}`).not.toContain(t);
     }
   });
@@ -197,5 +289,17 @@ describe("🔴 PTA55-G · the PTA tab is session-scoped and read-only", () => {
     const c = readCode(CHROME);
     expect(c).toMatch(/"PTA"/);
     expect(c).toMatch(/PTA:\s*"\/pta"/);
+  });
+
+  it("55b · appends Officers + Adopted minutes, gated on membership, with the honest-empty copy", () => {
+    const p = readCode(PAGE);
+    expect(p).toContain("<Officers officers={pta.officers} />");
+    expect(p).toContain("<AdoptedMinutes minutes={pta.minutes} />");
+    // Omitted when the parent belongs to no PTA — the Memberships empty already tells that story.
+    expect(p).toMatch(/pta\.memberships\.length > 0 &&/);
+    expect(p).toContain("PTA officers");
+    expect(p).toContain("No PTA officers have been recorded for your PTAs yet.");
+    expect(p).toContain("Adopted minutes");
+    expect(p).toContain("No adopted PTA minutes yet.");
   });
 });
