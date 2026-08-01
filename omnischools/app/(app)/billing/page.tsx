@@ -174,12 +174,22 @@ export default async function BillingPage() {
           and(
             eq(students.schoolId, school.id),
             eq(students.status, "ACTIVE"),
+            // R472: a PTA-dues invoice must NOT count as "already billed" for tuition — otherwise a
+            // dues-only student is dropped from this un-billed count, under-reporting or hiding the
+            // tuition-issuance card for exactly the students the issuance guard protects. Mirrors the
+            // `notADuesInvoice` predicate in lib/actions/billing.ts (kept in the iv-correlated shape here).
             sql`not exists (
               select 1 from ${invoices} iv
               where iv.student_id = ${students.id}
                 and iv.school_id = ${school.id}
                 and iv.academic_year = ${year}
                 and iv.status <> 'VOIDED'
+                and not exists (
+                  select 1 from pta_dues_charge dc
+                  join invoice_line_item ili
+                    on ili.school_id = dc.school_id and ili.id = dc.line_item_id
+                  where ili.school_id = iv.school_id and ili.invoice_id = iv.id
+                )
             )`,
           ),
         ),

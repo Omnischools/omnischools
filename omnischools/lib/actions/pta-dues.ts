@@ -40,7 +40,7 @@ import {
   houses,
   students,
 } from "@/db/schema";
-import { coalescePtaTiers, type PtaTierType } from "@/lib/pta/defaults";
+import { coalescePtaTiers } from "@/lib/pta/defaults";
 import {
   billingUnits,
   duesChargeKey,
