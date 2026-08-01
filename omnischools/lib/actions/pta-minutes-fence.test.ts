@@ -16,6 +16,7 @@ const h = vi.hoisted(() => ({
   minuteStatus: "ADOPTED" as string,
   classification: "ACTION" as string | null,
   quorumMet: true as boolean | null,
+  meetingDate: "2020-01-01" as string, // past → ENDED + WRITE-LOCKED; a future date opens neither clock gate
   writes: { insert: 0, update: 0, delete: 0 },
 }));
 
@@ -34,7 +35,7 @@ vi.mock("@/lib/pta/meeting-data", () => ({
     classId: "c1",
     houseId: null,
     meetingType: "Regular",
-    meetingDate: "2020-01-01",
+    meetingDate: h.meetingDate,
     startTime: "10:00",
     endTime: "12:00",
     location: null,
@@ -111,6 +112,7 @@ beforeEach(() => {
   h.minuteStatus = "ADOPTED";
   h.classification = "ACTION";
   h.quorumMet = true;
+  h.meetingDate = "2020-01-01";
 });
 
 describe("🔴 R451 — an ADOPTED minute + its subtree admit ZERO mutation (mutation-proven at the action)", () => {
@@ -166,6 +168,25 @@ describe("R452 — the quorum→resolution gate is enforced in the action", () =
     const res = await actions.upsertResolution({ agendaItemId: UUID, resolutionText: "RESOLVED", votesFor: 9, votesAgainst: 1, votesAbstain: 0 });
     expect(res.ok).toBe(false);
     expect(res.error).toMatch(/quorum/i);
+    expect(h.writes).toEqual({ insert: 0, update: 0, delete: 0 });
+  });
+});
+
+describe("R450 clock gates — draft needs the meeting ENDED, adopt needs it WRITE-LOCKED (action-level)", () => {
+  it("createDraftMinutes on a not-yet-ended (future) meeting is refused, no write", async () => {
+    h.meetingDate = "2999-01-01"; // future → isPtaMeetingEnded false
+    const res = await actions.createDraftMinutes({ meetingId: UUID });
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/ended/i);
+    expect(h.writes).toEqual({ insert: 0, update: 0, delete: 0 });
+  });
+
+  it("adoptMinutes on a CHAIR_REVIEW but not-yet-write-locked (future) meeting is refused, no write", async () => {
+    h.minuteStatus = "CHAIR_REVIEW"; // past the fence + status checks; the write-lock must still refuse
+    h.meetingDate = "2999-01-01"; // future → isPtaMeetingWriteLocked false
+    const res = await actions.adoptMinutes({ minutesId: UUID });
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/lock/i);
     expect(h.writes).toEqual({ insert: 0, update: 0, delete: 0 });
   });
 });
