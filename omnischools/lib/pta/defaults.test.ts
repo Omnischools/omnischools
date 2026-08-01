@@ -130,6 +130,35 @@ describe("reconcilePtas (R411/R412)", () => {
     expect(reopened.filter((e) => e.tierType === "FORM")).toHaveLength(3); // still 3, not 4
   });
 
+  // R441 — the INCR-50 Quinn forward-note. An on-demand Emergency PTA (convened live at INCR-52) never
+  // enters the target set; the close-sweep MUST exclude it, or a later Generate machine-closes the live
+  // Emergency. Removing `&& e.tierType !== "EMERGENCY"` from reconcilePtas reds this test.
+  it("R441 — a live ACTIVE Emergency PTA is NEVER machine-closed by reconcile", () => {
+    const state = apply([], reconcilePtas(ALL_ON, classes, houses, []));
+    // An Emergency PTA convened on-demand — ACTIVE, no class/house scope, not in any target set.
+    const withEmergency: ExistingPta[] = [
+      ...state,
+      { tierType: "EMERGENCY", classId: null, houseId: null, status: "ACTIVE" },
+    ];
+    const ops = reconcilePtas(ALL_ON, classes, houses, withEmergency);
+    // Nothing touches the Emergency (it produces no target, and the close-sweep now excludes it).
+    expect(ops.filter((o) => o.tierType === "EMERGENCY")).toEqual([]);
+    const after = apply(withEmergency, ops);
+    expect(after.find((e) => e.tierType === "EMERGENCY")!.status).toBe("ACTIVE");
+  });
+
+  it("R441 — the exclusion is Emergency-only: a de-scoped FORM/HOUSE still closes", () => {
+    const state = apply([], reconcilePtas(ALL_ON, classes, houses, []));
+    // Drop c3 (a Form scope goes away) alongside a live Emergency: the Form closes, the Emergency doesn't.
+    const withEmergency: ExistingPta[] = [
+      ...state,
+      { tierType: "EMERGENCY", classId: null, houseId: null, status: "ACTIVE" },
+    ];
+    const ops = reconcilePtas(ALL_ON, [{ id: "c1" }, { id: "c2" }], houses, withEmergency);
+    expect(ops).toContainEqual({ tierType: "FORM", classId: "c3", houseId: null, action: "close" });
+    expect(ops.some((o) => o.tierType === "EMERGENCY")).toBe(false);
+  });
+
   it("a tier toggled OFF closes its instances; toggled back ON reopens them", () => {
     const state = apply([], reconcilePtas(ALL_ON, classes, houses, []));
     const houseOff: PtaTierActive[] = ALL_ON.map((t) =>
