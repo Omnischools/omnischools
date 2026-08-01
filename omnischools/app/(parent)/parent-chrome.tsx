@@ -2,10 +2,10 @@ import Link from "next/link";
 import { avatarInitials, initialSurname } from "@/lib/wassce/parent-copy";
 
 /**
- * The shared parent-portal chrome (SHS module 4.3) — header + flat six-tab nav, extracted from the
+ * The shared parent-portal chrome (SHS module 4.3) — header + flat seven-tab nav, extracted from the
  * wassce page so the tab-flip lives in ONE place (INCR-29 R234: activate the inert "Sickbay" tab as a
  * live link). One child, resolved from the session (never a URL param); labels verbatim; NO faked
- * unread dot (R234). Only WASSCE and Sickbay are live routes today; the other four stay inert spans.
+ * unread dot (R234). WASSCE, Sickbay, and PTA are live routes today; the other four stay inert spans.
  */
 
 export function ParentHeader({
@@ -50,16 +50,22 @@ export function ParentHeader({
   );
 }
 
-/** The tab whose route is built today. WASSCE + Sickbay are live links; the rest stay inert. */
-export type ParentTab = "WASSCE" | "Sickbay";
+/** The tab whose route is built today. WASSCE + Sickbay + PTA are live links; the rest stay inert. */
+export type ParentTab = "WASSCE" | "Sickbay" | "PTA";
 
-const TABS = ["WASSCE", "Sickbay", "Communications", "Billing", "Boarding", "School calendar"] as const;
-const HREF: Partial<Record<(typeof TABS)[number], string>> = { WASSCE: "/wassce", Sickbay: "/sickbay" };
+// INCR-55a — PTA is the 7th flat tab, placed after Billing (participation slice; 55b appends Officers +
+// Adopted minutes on the same page).
+const TABS = ["WASSCE", "Sickbay", "Communications", "Billing", "PTA", "Boarding", "School calendar"] as const;
+const HREF: Partial<Record<(typeof TABS)[number], string>> = {
+  WASSCE: "/wassce",
+  Sickbay: "/sickbay",
+  PTA: "/pta",
+};
 
 /**
- * Six flat tabs; `active` is the current one. A non-active tab with a route becomes a real <Link>; the
- * four unbuilt tabs remain inert spans. NO unread dot — it would be faked with no open-episode source
- * on this render path (R234).
+ * Seven flat tabs; `active` is the current one. A non-active tab with a route becomes a real <Link>; the
+ * unbuilt tabs remain inert spans. NO unread dot — it would be faked with no open-episode source on this
+ * render path (R234).
  */
 export function ParentNav({ active }: { active: ParentTab }) {
   return (

@@ -593,6 +593,152 @@ CREATE POLICY parent_scope ON vlc_pastoral_paragraph AS RESTRICTIVE FOR ALL TO p
     )
   );
 
+-- ---- INCR-55a: the FIFTH widening of the 19a parent boundary (13 → 17 parent_scope tables) — the PTA
+-- PARENT READ, participation half (Module 4.7 capstone, part a; Kofi R474–R482). A parent gains ROW access
+-- to the ACTIVE PTAs they belong to (ptas + pta_meeting, membership-scoped) and their OWN dues + OWN
+-- meeting-attendance (pta_dues_charge + pta_meeting_attendance, own-child/own-guardian). Kept in sync with
+-- db/sql/prod-paste-0082-pta-parent-read-a.sql — this block is DEV; that file is the hand-paste on PROD
+-- (⚠ RLS is NOT auto-applied on prod; without the paste these four tables keep parent_deny and the parent
+-- PTA tab is an honest empty state — fail-closed, never a leak). The 55b records/directory half (minutes
+-- subtree + officer matrix) is a LATER widening; those tables keep parent_deny until then.
+--
+-- 🔴 DUES ARE READ OFF THE BRIDGE, NEVER THE BILLING ENGINE (R476). parent_scope lands on pta_dues_charge
+-- (which carries rate_snapshot + the family identity) and NOT on invoice / invoice_line_item / payment /
+-- payment_allocation / receipt — those stay parent_deny, so tuition cannot leak and the money engine is
+-- byte-unchanged for a parent session (0 tuition leak by construction). paid/outstanding is DEFERRED.
+--
+-- 🔴 THE POLICY CYCLE, AND WHY `ptas` DOES NOT CALL `parent_pta_ids`. parent_pta_ids READS `ptas` (it
+-- enumerates the parent's ACTIVE PTAs). A parent_scope on `ptas` that called parent_pta_ids would be a
+-- policy-on-A that reads A through a SECURITY DEFINER function — and under PROD's FORCE RLS + non-superuser
+-- owner the inner `ptas` read RE-FIRES the same policy → unbounded recursion (stack-depth error). DEV CANNOT
+-- catch it: the function owner is a superuser on dev, so the body bypasses RLS and never recurses — the
+-- Sarah-L1 prod-shaped-ownership trap, verbatim the chronic-block "NO POLICY CYCLES" hazard. So the
+-- membership rule is factored the chronic way (one predicate, two enforcement forms, zero divergence, R113):
+--   • parent_in_pta(school, pu, tier, class, house) → boolean — the per-ROW membership predicate; reads
+--     `students` (+ student_guardian via parent_student_ids), NEVER `ptas`. `ptas.parent_scope` calls THIS
+--     on its own row's columns, so `ptas`'s policy never reads `ptas` — no cycle.
+--   • parent_pta_ids(school, pu) → SETOF uuid — the SET form (`SELECT id FROM ptas WHERE … parent_in_pta`);
+--     used by the CHILD tables whose policies do NOT read `ptas` (pta_meeting here; the 55b subtree later).
+--     Because ptas.parent_scope now calls parent_in_pta (not parent_pta_ids), even this helper's own
+--     `FROM ptas` read is acyclic under prod FORCE RLS.
+-- The EXISTS(parent_student_ids) guard inside parent_in_pta is LOAD-BEARING: a non-parent → empty set →
+-- FALSE → 0 PTAs everywhere, INCLUDING the universal GENERAL tier (the R481 non-parent-sees-nothing crux).
+-- EMERGENCY PTAs are excluded structurally (parent_in_pta returns FALSE for any tier that is not
+-- GENERAL/FORM/HOUSE); only status='ACTIVE' PTAs are ever in scope.
+
+-- ---- SECURITY DEFINER helper: the per-row PTA membership predicate (reads students, NEVER ptas) ----
+-- Same discipline as parent_student_ids (STABLE, explicit search_path public,pg_temp — pg_temp LAST pins
+-- relation resolution to public so an injected temp `students` cannot spoof the answer). Takes the ptas
+-- row's tier/class/house as ARGUMENTS so it never reads the table its caller's policy guards.
+CREATE OR REPLACE FUNCTION parent_in_pta(school uuid, pu uuid, tier text, cls uuid, hse uuid)
+  RETURNS boolean
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (SELECT 1 FROM parent_student_ids(school, pu))
+    AND (
+      tier = 'GENERAL'
+      OR (tier = 'FORM' AND cls IN (
+            SELECT s.class_id FROM students s
+            WHERE s.school_id = school
+              AND s.class_id IS NOT NULL
+              AND s.id IN (SELECT parent_student_ids(school, pu))))
+      OR (tier = 'HOUSE' AND hse IN (
+            SELECT s.house_id FROM students s
+            WHERE s.school_id = school
+              AND s.house_id IS NOT NULL
+              AND s.id IN (SELECT parent_student_ids(school, pu))))
+    )
+$$;
+
+-- ---- SECURITY DEFINER helper: the ACTIVE PTAs the parent belongs to, as a set (Kofi R475) ----
+-- The SET form of parent_in_pta over the ptas table — used by the child tables' policies (pta_meeting here),
+-- NOT by ptas.parent_scope (see the cycle note above).
+CREATE OR REPLACE FUNCTION parent_pta_ids(school uuid, pu uuid)
+  RETURNS SETOF uuid
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+  SELECT p.id
+  FROM ptas p
+  WHERE p.school_id = school
+    AND p.status = 'ACTIVE'
+    AND parent_in_pta(school, pu, p.tier_type, p.class_id, p.house_id)
+$$;
+
+-- ptas (R480) — the parent reads the ACTIVE PTAs they belong to. Calls parent_in_pta on THIS row's columns
+-- (never parent_pta_ids) so the policy does not read its own table — no cycle under prod FORCE RLS.
+DROP POLICY IF EXISTS parent_deny ON ptas;
+DROP POLICY IF EXISTS parent_scope ON ptas;
+CREATE POLICY parent_scope ON ptas AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR (
+      status = 'ACTIVE'
+      AND parent_in_pta(
+            school_id,
+            NULLIF(current_setting('app.current_parent_user', true), '')::uuid,
+            tier_type, class_id, house_id)
+    )
+  );
+
+-- pta_meeting (R480) — meetings of a PTA the parent belongs to (membership-scoped). Reads ptas via
+-- parent_pta_ids, NOT pta_meeting, so acyclic.
+DROP POLICY IF EXISTS parent_deny ON pta_meeting;
+DROP POLICY IF EXISTS parent_scope ON pta_meeting;
+CREATE POLICY parent_scope ON pta_meeting AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR pta_id IN (
+      SELECT parent_pta_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+
+-- pta_dues_charge (R476) — the parent's OWN dues. Two reaches, OR'd: the charge is on one of the parent's
+-- own children (subject_student_id, PER_STUDENT), OR it is a PER_FAMILY charge on a HOUSEHOLD one of the
+-- parent's children belongs to (the rep-sibling billed may be a different child in the same household). The
+-- household reach reads `students` (not pta_dues_charge) → no cycle.
+DROP POLICY IF EXISTS parent_deny ON pta_dues_charge;
+DROP POLICY IF EXISTS parent_scope ON pta_dues_charge;
+CREATE POLICY parent_scope ON pta_dues_charge AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR subject_student_id IN (
+      SELECT parent_student_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+    OR household_id IN (
+      SELECT s.household_id FROM students s
+      WHERE s.school_id = pta_dues_charge.school_id
+        AND s.household_id IS NOT NULL
+        AND s.id IN (
+          SELECT parent_student_ids(
+            pta_dues_charge.school_id,
+            NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+        )
+    )
+  );
+
+-- pta_meeting_attendance (R477) — the parent's OWN attendance rows. Keyed on student_guardian_id → the
+-- parent's OWN guardian row (user_id = pu). TEACHER rows carry student_guardian_id NULL → NULL IN (…) is not
+-- TRUE → auto-excluded. Reads `student_guardian` (not pta_meeting_attendance) → no cycle.
+DROP POLICY IF EXISTS parent_deny ON pta_meeting_attendance;
+DROP POLICY IF EXISTS parent_scope ON pta_meeting_attendance;
+CREATE POLICY parent_scope ON pta_meeting_attendance AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR student_guardian_id IN (
+      SELECT g.id FROM student_guardian g
+      WHERE g.school_id = pta_meeting_attendance.school_id
+        AND g.user_id = NULLIF(current_setting('app.current_parent_user', true), '')::uuid
+    )
+  );
+
 -- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
 -- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
 -- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).
