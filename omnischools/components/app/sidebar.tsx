@@ -37,7 +37,6 @@ import {
   WASSCE_SETUP_ROLES,
   SICKBAY_ROLES,
   VLC_CONFIG_READ_ROLES,
-  PTA_CONFIG_WRITE_ROLES,
   isStaff,
 } from "@/lib/access";
 
@@ -142,14 +141,17 @@ const SENIOR_ITEMS: SeniorItem[] = [
     gate: isStaff,
   },
   {
-    // PTA — Parent-Teacher Association structure (INCR-50 config spine). Label "PTA" + Landmark icon
-    // (both flagged for PR review). Admin-only: the read gate IS the write gate
-    // (PTA_CONFIG_WRITE_ROLES = Admin / Headmaster) — a plain teacher/parent sees neither the link nor
-    // the page. Flat + role-gated like its siblings; no sub-nav, no NEW badge.
-    href: "/senior/pta/setup",
+    // PTA — Parent-Teacher Association (INCR-50 config spine + INCR-52 meeting register). Label "PTA" +
+    // Landmark icon (both flagged for PR review). 🔴 INCR-52 widens the gate from admin-only to `isStaff`:
+    // the meeting-register writer is the Secretary — often a NON-ADMIN Form Master — so the entry must be
+    // reachable by all staff, landing on the all-staff Meetings tab (admins still reach Setup/Officers via
+    // the in-page tabs). Flat + gated like its siblings; no sub-nav, no NEW badge. (Landing/nav-discovery
+    // flagged at PR.)
+    href: "/senior/pta/meetings",
     label: "PTA",
     Icon: Landmark,
-    roles: PTA_CONFIG_WRITE_ROLES,
+    roles: [],
+    gate: isStaff,
   },
 ];
 

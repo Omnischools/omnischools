@@ -257,10 +257,13 @@ export function reconcilePtas(
     else if (cur.status === "CLOSED") ops.push({ ...op, action: "reopen" });
   }
 
-  // Each existing row NOT in the target set: close it if it is still ACTIVE.
+  // Each existing row NOT in the target set: close it if it is still ACTIVE. EMERGENCY is EXCLUDED (R441):
+  // an on-demand Emergency PTA (convened live at INCR-52) never enters the target set, so an unconditional
+  // close-sweep would machine-close a live Emergency on the next Generate. Emergency is only ever closed by
+  // an explicit action, never by reconcile.
   for (const e of existing) {
     const k = scopeKey(e.tierType, e.classId, e.houseId);
-    if (!targets.has(k) && e.status === "ACTIVE") {
+    if (!targets.has(k) && e.status === "ACTIVE" && e.tierType !== "EMERGENCY") {
       ops.push({ tierType: e.tierType, classId: e.classId, houseId: e.houseId, action: "close" });
     }
   }

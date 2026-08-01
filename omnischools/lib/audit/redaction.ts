@@ -160,6 +160,12 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   // INCR-55, R428/R429). No reserved audit prefix, so it MUST be listed here or the classify-at-creation
   // guard fails the build. —
   "pta_officer", // office × holder (person_user_id XOR external_name), term, election_ref, soft-end
+  // — PTA meeting register (SHS module 4.7 / INCR-52) — OPERATIONAL dual teacher/parent register. NO
+  // student PII, NO confidential layer; a parent reads NOTHING here (own-child parent_scope = INCR-55,
+  // R442). Neither uses a reserved audit prefix, so both MUST be listed here or the classify-at-creation
+  // guard fails the build. —
+  "pta_meeting", // a convened meeting (type/date/times/location, agenda, quorum_met judgment)
+  "pta_meeting_attendance", // dual register row (TEACHER user_id XOR PARENT student_guardian_id, P/L status)
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker

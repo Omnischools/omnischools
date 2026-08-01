@@ -394,6 +394,20 @@ export function canActAsPtaOfficer(args: {
   return args.office == null ? true : offices.includes(args.office);
 }
 
+/**
+ * 🔴 PTA meeting-register break-glass (SHS module 4.7 / INCR-52 · R433/R439) — the roles that may write a
+ * PTA meeting register WITHOUT holding (or ex-officio-occupying) the PTA's Secretary office. ADMIN +
+ * HEADMASTER only. DISTINCT from the officer arm: `authorizePtaMeetingWrite` allows a write iff
+ * `canActAsPtaOfficer({ office: secretaryOffice })` (a SERVER-loaded identity match, no bare role) ∥
+ * `hasAnyRole(roles, PTA_MEETING_BREAKGLASS_ROLES)`. A bare TEACHER / FORM_MASTER never satisfies the
+ * officer arm — it is an IDENTITY (the class-teacher-Secretary of THIS PTA), not a role. Chair / any-officer
+ * write is DEFERRED (R433, rec-no); the Secretary is the register writer.
+ */
+export const PTA_MEETING_BREAKGLASS_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",

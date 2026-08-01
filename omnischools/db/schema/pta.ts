@@ -4,6 +4,7 @@ import {
   text,
   date,
   boolean,
+  integer,
   jsonb,
   numeric,
   timestamp,
@@ -16,7 +17,9 @@ import {
 import { sql } from "drizzle-orm";
 import { schools } from "./tenancy";
 import { users } from "./identity";
-import { classes, houses } from "./students";
+import { academicPeriod } from "./periods";
+import { attendanceStatusEnum } from "./_enums";
+import { classes, houses, studentGuardians } from "./students";
 
 /**
  * PTA structure-setup spine (SHS module 4.7 / INCR-50, migration 0074) — the Parent-Teacher Association
@@ -352,5 +355,193 @@ export const ptaOfficer = pgTable(
       "pta_officer_assignment_basis_valid",
       sql`${t.assignmentBasis} IN ('ELECTED', 'APPOINTED')`,
     ),
+  }),
+);
+
+/* ============================================================================
+ * PTA MEETING REGISTER (SHS module 4.7 / INCR-52, migration 0076) — the dual teacher/parent meeting
+ * register, the OPERATIONAL/SHOWN counterpart to PLC's Friday plc_session (INCR-48) and the FIRST LIVE use
+ * of the canActAsPtaOfficer identity gate (the module's IDOR fence, wired in lib/pta/). Two NEW tenant
+ * tables: `pta_meeting` (the manually-convened instance) + the DUAL-register `pta_meeting_attendance`. NO
+ * cron (manual convene, R431); NO stored status/counts — lifecycle (scheduled/held/closed), the write-lock
+ * and every present-count / quorum-% DERIVE in lib/pta/meeting-clock.ts (R432). Attendees are STAFF *and*
+ * PARENTS, but this increment holds NO student PII and NO confidential layer: both tables are OPERATIONAL /
+ * SHOWN (each listed in SHOWN_AUDIT_ENTITIES; neither carries a reserved audit prefix, so an omitted one
+ * FAILS the classify-at-creation build guard, R442).
+ *
+ * Both get ENABLE + FORCE RLS + tenant_isolation (db:policies on dev; db/sql/prod-paste-0079-pta-
+ * meetings.sql by hand on prod) and — via the catalog-driven RESTRICTIVE loop in db/sql/policies.sql —
+ * parent_deny (FORCE-RLS + school_id, NO parent_scope → auto-denied). A parent reads NOTHING here in THIS
+ * increment; the own-child own-attendance parent_scope (via student_guardian_id → student_guardian.user_id
+ * = app.current_parent_user) RETURNS at INCR-55 (R442), NOT here. NO confidential/REDACTED layer, NO new
+ * GUC, NO triggers (portability): the R439 write-gate authorizePtaMeetingWrite, the R435 per-register
+ * default polarity, and the R432 lifecycle/write-lock all live in lib/pta/ server code.
+ *
+ * Composite `(school_id, …)` intra-tenant FKs make a cross-tenant reference structurally impossible; the
+ * user / student_guardian links (convened_by / attendee / recorded_by) are SINGLE-column SET NULL (the
+ * [[composite-tenant-fks]] rule exempts SET-NULL links; student_guardian is the sickbay student_nhis_card
+ * best-effort-link precedent).
+ * ==========================================================================*/
+
+/**
+ * The manually-convened PTA meeting (R431) — one row per convened meeting, created when the register is
+ * opened (NO cron, NO auto-schedule; State-1 SMS-scheduling DEFERRED). `academic_period_id` is resolved
+ * from `meeting_date` in lib/ and stored (the term the meeting belongs to). `meeting_type` is a FREE-TEXT
+ * DISPLAY label — NO CHECK, and no logic branches on it (R431). `agenda_json` reuses the INCR-48
+ * plc_session shape ({items:[…]}, Zod-validated in lib/, editable-until-lock). `invited_teacher_user_ids`
+ * is the convener's invite list (jsonb array of ref_user ids) the R436 teacher roster unions in.
+ * `quorum_met` is a NULLABLE Secretary JUDGMENT (R438 — NOT auto-derived; free-text quorum rules have
+ * non-countable clauses); it gates the INCR-53 minutes/resolution UI. `convened_by_user_id` is a
+ * single-column SET NULL actor stamp → global ref_user. NO stored status / present-count — all DERIVED (R432).
+ *
+ * `pta_meeting_tenant_uk UNIQUE(school_id, id)` is carried INLINE in CREATE TABLE because it is the
+ * composite-FK TARGET of pta_meeting_attendance's (school_id, meeting_id) FK created in the SAME migration
+ * (0076): the UNIQUE must exist before that ALTER … ADD FOREIGN KEY (the 0033 target-before-FK ordering
+ * hazard, the plc_session_tenant_uk precedent). There is deliberately NO one-meeting-per-(PTA × date)
+ * unique — a PTA may convene more than once a day (R440 allows multiple Emergencies); the per-PTA meeting-
+ * history read is served by pta_meeting_pta_idx.
+ */
+export const ptaMeeting = pgTable(
+  "pta_meeting",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    ptaId: uuid("pta_id").notNull(), // composite (school_id, pta_id) FK below
+    academicPeriodId: uuid("academic_period_id").notNull(), // composite (school_id, period_id) FK below — resolved from meeting_date
+    meetingType: text("meeting_type").notNull(), // FREE-TEXT display label — NO CHECK, no logic branch (R431)
+    meetingDate: date("meeting_date").notNull(),
+    startTime: text("start_time").notNull(), // "HH:MM" (the plc_programme text-time idiom)
+    endTime: text("end_time").notNull(),
+    location: text("location"),
+    // Convener-authored agenda {items:[…]} (reuse the INCR-48 plc_session shape), Zod-validated in
+    // lib/pta/; editable-until-lock, NOT append-only, NO agenda-item table (that is INCR-53). Default =
+    // the valid empty shape.
+    agendaJson: jsonb("agenda_json").notNull().default(sql`'{"items": []}'::jsonb`),
+    // The convener's invite list — a jsonb array of ref_user ids the R436 teacher roster unions in.
+    invitedTeacherUserIds: jsonb("invited_teacher_user_ids").notNull().default(sql`'[]'::jsonb`),
+    // Secretary JUDGMENT (R438) — NULLABLE, NOT auto-derived (free-text quorum rules have non-countable
+    // clauses); gates the INCR-53 minutes/resolution UI (enabled only when quorum_met = true).
+    quorumMet: boolean("quorum_met"),
+    // Single-column SET NULL actor stamp → global ref_user (the convener; a removed user clears it).
+    convenedByUserId: uuid("convened_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for pta_meeting_attendance's (school_id, meeting_id) FK. INLINE, ahead of that
+    // ALTER in this same migration (the 0033 / plc_session ordering discipline).
+    tenantUk: unique("pta_meeting_tenant_uk").on(t.schoolId, t.id),
+    // The per-PTA meeting-history read ("this PTA's meetings, most recent first"). No natural (PTA × date)
+    // unique — a PTA may meet more than once a day (R440 multiple Emergencies) — so this is a plain index.
+    byPta: index("pta_meeting_pta_idx").on(t.schoolId, t.ptaId, t.meetingDate),
+    // Composite intra-tenant FKs — a cross-tenant PTA / period reference is structurally impossible.
+    ptaFk: foreignKey({
+      columns: [t.schoolId, t.ptaId],
+      foreignColumns: [ptas.schoolId, ptas.id],
+    }).onDelete("cascade"),
+    periodFk: foreignKey({
+      columns: [t.schoolId, t.academicPeriodId],
+      foreignColumns: [academicPeriod.schoolId, academicPeriod.periodId],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * DUAL teacher/parent meeting attendance (R434) — ONE table, two registers discriminated by `register`
+ * (TEACHER | PARENT, CHECK). The attendee is `user_id` (a staff/teacher — single-column SET NULL → global
+ * ref_user) XOR `student_guardian_id` (a PARENT — single-column SET NULL → the school-scoped
+ * student_guardian, the sickbay student_nhis_card best-effort-link precedent; SMS-only guardians have no
+ * ref_user, which is exactly why the parent register keys on the guardian row, NOT a user). The
+ * `pta_meeting_attendance_register_identity` CHECK binds register↔identity EXACTLY: a TEACHER row carries
+ * user_id (and no guardian); a PARENT row carries student_guardian_id (and no user). Unlike the
+ * pta_officer at-MOST-one soft guard, this binding is STRICT (both branches require the register's own
+ * identity column NON-NULL): it is load-bearing for R437 count-once AND the INCR-55 own-child parent_scope
+ * (which reads student_guardian_id → student_guardian.user_id) — a null-identity register row would break
+ * both. See the ⚠ SET NULL note below.
+ *
+ * `status` REUSES the canonical attendanceStatusEnum (NO new enum, R434): capture surfaces P/L/A (Late
+ * counts toward the quorum present-count), E/M are storable-not-rejected. `minutes_late` (nullable int,
+ * CHECK ≥ 0) is set for LATE. PER-REGISTER DEFAULT POLARITY is a pure lib/pta/ DERIVATION, NOT schema
+ * (R435): TEACHER = present-by-default (no row = present, PLC-verbatim); PARENT = absent-by-default (no
+ * row = awaiting-while-live / absent-once-closed, a row = a PRESENT/LATE arrival). The app writes a row
+ * ONLY for the non-default state — there are NO bulk absent rows; the unmarked→absent-on-close flip is a
+ * pure read-time derivation. `recorded_by_user_id` is a single-column SET NULL actor stamp → global ref_user.
+ *
+ * TWO PARTIAL UNIQUES enforce count-once per register (R437): (school_id, meeting_id, user_id) WHERE
+ * register='TEACHER' and (school_id, meeting_id, student_guardian_id) WHERE register='PARENT'. SPLIT by
+ * register so each keys its own identity column and the many NULLs of the other never collide. LEAF
+ * (nothing FKs here) → NO tenant UK. Composite (school_id, meeting_id) intra-tenant FK →
+ * pta_meeting.tenant_uk (CASCADE — a meeting delete takes its register).
+ *
+ * ⚠ SET NULL × strict CHECK edge: student_guardian is school-scoped and cascade-deletes with its student /
+ * school, and the register_identity CHECK requires a PARENT row's student_guardian_id NON-NULL — so a HARD
+ * guardian delete fires SET NULL → NULL and the CHECK would reject it. In practice students/guardians are
+ * SOFT-stated (never hard-deleted, the plc user_id-SET-NULL reasoning), so it does not fire; the
+ * school-delete cascade path is verified empirically at build. If it ever bites, loosen to the SET-NULL-
+ * tolerant form `(register='TEACHER' AND student_guardian_id IS NULL) OR (register='PARENT' AND user_id IS
+ * NULL)` (the pta_officer at-most-one precedent) with the own-column non-null enforced app-side.
+ */
+export const ptaMeetingAttendance = pgTable(
+  "pta_meeting_attendance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    meetingId: uuid("meeting_id").notNull(), // composite (school_id, meeting_id) FK below
+    // TEACHER | PARENT — the register discriminator (CHECK below); binds to user_id XOR student_guardian_id.
+    register: text("register").notNull(),
+    // The staff/teacher attendee (single-column SET NULL → global ref_user; nullable as SET NULL requires).
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    // The PARENT attendee — a school-scoped student_guardian (single-column SET NULL; SMS-only guardians
+    // have no ref_user, so the parent register keys on the guardian row). The student_nhis_card link idiom.
+    studentGuardianId: uuid("student_guardian_id").references(() => studentGuardians.id, {
+      onDelete: "set null",
+    }),
+    // Reuses the canonical attendance enum (R434); capture surfaces P/L/A (E/M storable-not-rejected).
+    status: attendanceStatusEnum("status").notNull(),
+    minutesLate: integer("minutes_late"), // nullable — set for LATE
+    note: text("note"),
+    // Single-column SET NULL actor stamp → global ref_user.
+    recordedByUserId: uuid("recorded_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Count-once per register (R437) — SPLIT partial uniques so each keys its own identity column and the
+    // NULLs of the other never collide. A person appears at most once in their register.
+    uniqTeacher: uniqueIndex("uniq_pta_meeting_attendance_teacher")
+      .on(t.schoolId, t.meetingId, t.userId)
+      .where(sql`${t.register} = 'TEACHER'`),
+    uniqParent: uniqueIndex("uniq_pta_meeting_attendance_parent")
+      .on(t.schoolId, t.meetingId, t.studentGuardianId)
+      .where(sql`${t.register} = 'PARENT'`),
+    // TEACHER | PARENT (R434).
+    registerValid: check(
+      "pta_meeting_attendance_register_valid",
+      sql`${t.register} IN ('TEACHER', 'PARENT')`,
+    ),
+    // Binds register↔identity EXACTLY: a TEACHER row carries user_id (no guardian); a PARENT row carries
+    // student_guardian_id (no user). Load-bearing for R437 count-once + the INCR-55 own-child parent_scope.
+    registerIdentity: check(
+      "pta_meeting_attendance_register_identity",
+      sql`(${t.register} = 'TEACHER' AND ${t.userId} IS NOT NULL AND ${t.studentGuardianId} IS NULL)
+        OR (${t.register} = 'PARENT' AND ${t.studentGuardianId} IS NOT NULL AND ${t.userId} IS NULL)`,
+    ),
+    // Defense-in-depth non-negativity (nullable → a NULL passes; set for LATE).
+    minutesLateNonneg: check(
+      "pta_meeting_attendance_minutes_late_nonneg",
+      sql`${t.minutesLate} >= 0`,
+    ),
+    // Composite intra-tenant FK — a cross-tenant meeting reference is structurally impossible.
+    meetingFk: foreignKey({
+      columns: [t.schoolId, t.meetingId],
+      foreignColumns: [ptaMeeting.schoolId, ptaMeeting.id],
+    }).onDelete("cascade"),
   }),
 );

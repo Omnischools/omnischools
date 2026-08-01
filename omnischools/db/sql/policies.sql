@@ -179,6 +179,8 @@ BEGIN
     'ptas',
     'pta_dues_config_history',
     'pta_officer',
+    'pta_meeting',
+    'pta_meeting_attendance',
     'announcement',
     'sms_template',
     'notification_log',
