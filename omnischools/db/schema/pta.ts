@@ -263,3 +263,94 @@ export const ptaDuesConfigHistory = pgTable(
     }).onDelete("cascade"),
   }),
 );
+
+/**
+ * The PTA OFFICER MATRIX (SHS module 4.7 / INCR-51, migration 0075) — the office×holder appointment
+ * roster, ONE table. It makes the OC3 boundary concrete: an officer is a DATA position, NOT a
+ * KnownAppRole (R419). Authz derives from HOLDING an office BY IDENTITY (`canActAsPtaOfficer`, lib/pta/,
+ * the [[vlc-pastoral-confidential-model]] canAccessPastoralFlag idiom) — NEVER from a widened app-role.
+ * Builds on the INCR-50 spine (`ptas`, the tier's `officer_roles`, `tier_settings`) byte-unchanged.
+ *
+ * HOLDER = `person_user_id` (single-column SET NULL → the GLOBAL ref_user — the parent OR staff holder)
+ * XOR `external_name` (the rare non-user holder, e.g. a BOG member). `person_type` is DERIVED at read
+ * (guardian-link ⇒ parent / staff-role ⇒ staff / external_name ⇒ external) — a DISPLAY tag; authz NEVER
+ * keys on it (R419). The `pta_officer_at_most_one_holder` CHECK is at-MOST-one, NOT exactly-one: a SET
+ * NULL degradation (the holder user is removed → person_user_id nulls, external_name still null) must not
+ * violate it. Exactly-one is the app-side write rule; the looser DB CHECK tolerates the degradation.
+ *
+ * MULTI-HAT = N rows (R421). Vacancy is a DERIVED absence, NEVER a placeholder row; reassignment
+ * soft-ends the incumbent (`ended_at` + `end_reason`, the row is RETAINED as history) and inserts a new
+ * row (previous-holder derives from the most-recent ended row). The partial unique
+ * `uniq_pta_officer_current (school_id, pta_id, office) WHERE ended_at IS NULL` pins ONE CURRENT holder
+ * per office per PTA and exempts ended rows. `office` is TEXT with NO CHECK / NO FK — it is validated
+ * app-side ∈ the tier's `officer_roles` (per-school config data, drift-tolerant: removing an office from
+ * config does NOT cascade onto live rows — R420). `assignment_basis` is the meaningful binary
+ * (ELECTED|APPOINTED, CHECK) that drives term auto-calc (R423); `election_ref` is the MANDATORY free-text
+ * audit of how appointed (the appointer = election_ref + the audit actor, not a third stored axis). The
+ * ex-officio holders (General→Headmaster, Form→class teacher, House→housemaster, R424) are DERIVED at
+ * compose, NEVER stored here.
+ *
+ * TENANT / OPERATIONAL / SHOWN (`pta_officer` in SHOWN_AUDIT_ENTITIES, R428): ENABLE + FORCE RLS +
+ * tenant_isolation (db:policies on dev; db/sql/prod-paste-0078-pta-officer.sql by hand on prod) and — via
+ * the catalog RESTRICTIVE loop — parent_deny (FORCE-RLS + school_id + NO parent_scope ⇒ auto-denied). A
+ * parent sees NOTHING of the matrix in THIS increment; the school-wide-parent public-transparency read is
+ * INCR-55 (R429), NOT here. NO confidential/REDACTED layer, NO trigger (portability). Composite
+ * `(school_id, pta_id)` intra-tenant FK ⇒ a cross-tenant PTA reference is structurally impossible
+ * ([[composite-tenant-fks]]); `person_user_id` is the ONLY single-column SET NULL (→ the GLOBAL ref_user,
+ * which has no school_id). LEAF — nothing FKs to an officer → NO tenant_uk.
+ */
+export const ptaOfficer = pgTable(
+  "pta_officer",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    // Composite (school_id, pta_id) FK → ptas tenant UK below — CASCADE (a PTA delete takes its officers).
+    ptaId: uuid("pta_id").notNull(),
+    // Holder: person_user_id (single-column SET NULL → the GLOBAL ref_user) XOR external_name — the
+    // at-most-one CHECK below. A removed user nulls this and keeps the historical row.
+    personUserId: uuid("person_user_id").references(() => users.id, { onDelete: "set null" }),
+    externalName: text("external_name"), // the rare external non-user holder (e.g. a BOG member)
+    // Office NAME — validated app-side ∈ the tier's officer_roles (R420); NO CHECK / NO FK (per-school
+    // config data, drift-tolerant — a config edit removing an office does not cascade onto live rows).
+    office: text("office").notNull(),
+    // The meaningful binary (R423) — drives ELECTED term auto-calc; CHECK below.
+    assignmentBasis: text("assignment_basis").notNull(),
+    // MANDATORY free-text audit of HOW appointed (R423) — appointer = election_ref + the audit actor.
+    electionRef: text("election_ref").notNull(),
+    termStart: date("term_start").notNull(),
+    termEnd: date("term_end"), // nullable — holdover until re-elected (R422); NO auto-vacate
+    // Soft-end: the row is RETAINED as history (R421). end_reason is the early-end free-text note.
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    endReason: text("end_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // ONE CURRENT holder per office per PTA (R421); ended rows exempt (= history). PARTIAL unique — the
+    // WHERE is what makes soft-end + re-appoint legal (a plain UNIQUE would collide with the ended row).
+    currentHolder: uniqueIndex("uniq_pta_officer_current")
+      .on(t.schoolId, t.ptaId, t.office)
+      .where(sql`${t.endedAt} IS NULL`),
+    // The identity-gate lookup (canActAsPtaOfficer, R426) — "which offices does this user hold?".
+    byPerson: index("pta_officer_person_idx").on(t.schoolId, t.personUserId),
+    // Composite intra-tenant FK → ptas tenant UK (school_id, id). CASCADE — a PTA delete takes its
+    // officers. A cross-tenant PTA reference is structurally impossible.
+    ptaFk: foreignKey({
+      columns: [t.schoolId, t.ptaId],
+      foreignColumns: [ptas.schoolId, ptas.id],
+    }).onDelete("cascade"),
+    // At-MOST-one holder (R419): NOT (both set). A SET NULL degradation must not violate it; exactly-one
+    // is the app-side write rule, deliberately looser at the DB layer.
+    atMostOneHolder: check(
+      "pta_officer_at_most_one_holder",
+      sql`NOT (${t.personUserId} IS NOT NULL AND ${t.externalName} IS NOT NULL)`,
+    ),
+    // The meaningful binary (R423) — drives term auto-calc.
+    assignmentBasisValid: check(
+      "pta_officer_assignment_basis_valid",
+      sql`${t.assignmentBasis} IN ('ELECTED', 'APPOINTED')`,
+    ),
+  }),
+);

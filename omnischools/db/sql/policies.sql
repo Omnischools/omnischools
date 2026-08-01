@@ -178,6 +178,7 @@ BEGIN
     'pta_tiers_config',
     'ptas',
     'pta_dues_config_history',
+    'pta_officer',
     'announcement',
     'sms_template',
     'notification_log',
