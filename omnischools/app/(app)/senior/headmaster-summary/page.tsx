@@ -260,8 +260,8 @@ export default async function HeadmasterSummaryPage(props: {
                 <strong className="text-navy">{escalationBlocker.teacherName ?? "A teacher"}</strong>{" "}
                 on <strong className="text-navy">{escalation.subjectName}</strong> —{" "}
                 {classesLabel(escalationBlocker.classesAffected)} affected,{" "}
-                {daysLabel(escalationBlocker.daysInactive)}, no scores entered. This is where the
-                school&apos;s STPSHS readiness is most at risk.
+                {daysLabel(escalationBlocker.daysInactive)}. This is where the school&apos;s STPSHS
+                readiness is most at risk.
               </p>
             </div>
           )}
