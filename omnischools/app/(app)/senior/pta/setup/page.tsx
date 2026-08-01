@@ -29,7 +29,7 @@ export default async function PtaSetupPage() {
   const { tiers, genPreview, instanceCounts, provenance } = setup;
 
   return (
-    <div className="mx-auto max-w-page pb-20">
+    <div className="pb-20">
       {/* ── Hero ── */}
       <header className="mb-8">
         <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-navy-3">

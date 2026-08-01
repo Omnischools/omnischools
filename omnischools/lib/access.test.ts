@@ -4,6 +4,7 @@ import {
   isFinanceOnly,
   isStaff,
   canAccessHouse,
+  canActAsPtaOfficer,
   BOARDING_ROLES,
   SENIOR_LEDGER_ROLES,
   SENIOR_MANAGEMENT_ROLES,
@@ -42,6 +43,26 @@ describe("Senior role groups — the security boundary", () => {
   it("a finance-only user is unaffected by the senior groups (separate concern)", () => {
     expect(isFinanceOnly(["BURSAR"])).toBe(true);
     expect(hasAnyRole(["BURSAR"], SENIOR_LEDGER_ROLES)).toBe(false);
+  });
+});
+
+describe("canActAsPtaOfficer (R426) — a PTA officer is an IDENTITY, never a role", () => {
+  // The function takes NO `roles` argument at all — so NO bare KnownAppRole can satisfy it. Authority
+  // comes ONLY from a server-loaded held office or an ex-officio derivation ([[builds-widen-ratified-
+  // authz-and-self-bless]] fence). Offices are server-loaded, never request-supplied.
+  it("🔴 nobody with zero held/ex-officio offices is an officer, whatever they hold", () => {
+    expect(canActAsPtaOfficer({ userId: "u1", heldOffices: [], exOfficioOffices: [] })).toBe(false);
+    // a null identity is never an officer (both-null guard)
+    expect(canActAsPtaOfficer({ userId: null, heldOffices: ["Chair"], exOfficioOffices: [] })).toBe(false);
+  });
+  it("a STORED held office satisfies it (any-office when `office` omitted, else the specific office)", () => {
+    expect(canActAsPtaOfficer({ userId: "u1", heldOffices: ["Treasurer"], exOfficioOffices: [] })).toBe(true);
+    expect(canActAsPtaOfficer({ userId: "u1", heldOffices: ["Treasurer"], exOfficioOffices: [], office: "Treasurer" })).toBe(true);
+    expect(canActAsPtaOfficer({ userId: "u1", heldOffices: ["Treasurer"], exOfficioOffices: [], office: "Chair" })).toBe(false);
+  });
+  it("an EX-OFFICIO derivation satisfies it (the class-teacher / housemaster / Headmaster arm)", () => {
+    expect(canActAsPtaOfficer({ userId: "u1", heldOffices: [], exOfficioOffices: ["Secretary"], office: "Secretary" })).toBe(true);
+    expect(canActAsPtaOfficer({ userId: "u1", heldOffices: [], exOfficioOffices: ["Secretary"] })).toBe(true);
   });
 });
 

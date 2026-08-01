@@ -526,6 +526,13 @@
       "when": 1785538422589,
       "tag": "0074_workable_overlord",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1785566257224,
+      "tag": "0075_giant_sabretooth",
+      "breakpoints": true
     }
   ]
 }

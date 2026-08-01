@@ -363,6 +363,37 @@ export const PTA_CONFIG_WRITE_ROLES = [
   "HEADMASTER",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * 🔴 PTA officer identity-gate (SHS module 4.7 / INCR-51 · R426) — DEFINED + EXPORTED NOW, WIRED INTO
+ * NO LIVE PATH in 51 (matrix MANAGEMENT is gated by PTA_CONFIG_WRITE_ROLES, R427 — read == manage,
+ * admin-only). It is the target for INCR-52 (meeting register) + INCR-53 (minutes): may the caller
+ * ACT as a PTA officer of a given PTA?
+ *
+ * An officer is a DATA position, NOT a KnownAppRole (OC3): authority derives from HOLDING an office
+ * BY IDENTITY, never from a widened app-role. This function TAKES NO `roles` ARGUMENT AT ALL — so no
+ * bare KnownAppRole can ever satisfy it (the [[builds-widen-ratified-authz-and-self-bless]] fence,
+ * structural rather than a runtime check, mirroring canFacilitatePlcSession's identity arm).
+ *
+ * TRUE iff the user holds ANY office (when `office` is omitted) or the SPECIFIC `office`, by:
+ *   • STORED identity — `heldOffices` = the SERVER-LOADED active `pta_officer` offices for this
+ *     (school, pta, user); NEVER a request-supplied list; ∥
+ *   • EX-OFFICIO derivation — `exOfficioOffices` = the DERIVED offices this user occupies by staff
+ *     role (General→Headmaster, Form→class teacher, House→housemaster), also server-loaded.
+ * A user with no held and no ex-officio office is NOT an officer, whatever roles they hold.
+ */
+export function canActAsPtaOfficer(args: {
+  userId: string | null | undefined;
+  heldOffices: readonly string[];
+  exOfficioOffices: readonly string[];
+  office?: string;
+}): boolean {
+  if (!args.userId) return false;
+  const offices = [...args.heldOffices, ...args.exOfficioOffices];
+  if (offices.length === 0) return false;
+  // office omitted ⇒ "holds ANY office"; office given ⇒ "holds THAT office".
+  return args.office == null ? true : offices.includes(args.office);
+}
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",

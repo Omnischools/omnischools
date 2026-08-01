@@ -155,6 +155,11 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   "pta_tiers_config", // per (school × tier): active, frequency, officer-role list, quorum, dues contract
   "ptas", // a generated PTA instance (tier_type + class/House scope, ACTIVE/CLOSED)
   "pta_dues_config_history", // append-only, forward-only dues-rate snapshot per change (reason mandatory)
+  // — PTA officer matrix (SHS module 4.7 / INCR-51) — OPERATIONAL appointment roster. Officer = DATA
+  // position, NOT a KnownAppRole (OC3); no student PII, no parent path in this increment (public read =
+  // INCR-55, R428/R429). No reserved audit prefix, so it MUST be listed here or the classify-at-creation
+  // guard fails the build. —
+  "pta_officer", // office × holder (person_user_id XOR external_name), term, election_ref, soft-end
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker
