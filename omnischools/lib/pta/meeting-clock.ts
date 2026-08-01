@@ -148,8 +148,8 @@ export function derivePtaMeetingClock(
       detail: `${graceHours}h to finalise · locks ${lockLabel}`,
       state: pill(endMs, lockMs),
     },
-    // Minutes / resolutions are INCR-53 (deferred) — this pill only tracks the register locking, not minutes.
-    { label: "Closed · register locked", detail: "minutes next (coming soon)", state: writeLocked ? "done" : "pending" },
+    // Minutes / resolutions (INCR-53) open once the meeting ends; this pill tracks the register locking.
+    { label: "Closed · register locked", detail: "minutes open here", state: writeLocked ? "done" : "pending" },
   ];
 
   return {
@@ -184,4 +184,18 @@ export function isPtaMeetingWriteLocked(
 ): boolean {
   const lockMs = ptaMeetingInstant(meetingDate, endTime).getTime() + graceHours * HOUR_MS;
   return now.getTime() >= lockMs;
+}
+
+/**
+ * The meeting has ENDED (now ≥ end_time), independent of the grace tail (R450). The INCR-53 minutes
+ * draft-create gate: a Secretary can start minuting once the bell has rung, DURING the grace window (the
+ * register is still editable, but the meeting is over). Distinct from the write-lock (end + grace), which
+ * gates ADOPTION. Derived every time — no stored `closed_at`.
+ */
+export function isPtaMeetingEnded(
+  meetingDate: string,
+  endTime: string,
+  now: Date = new Date(),
+): boolean {
+  return now.getTime() >= ptaMeetingInstant(meetingDate, endTime).getTime();
 }

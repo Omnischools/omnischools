@@ -57,7 +57,8 @@
     "db:verify-sickbay-grant-boundary": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sickbay-grant-boundary.ts",
     "db:verify-parent-sickbay-boundary": "tsx --tsconfig scripts/tsconfig.json scripts/verify-parent-sickbay-boundary.ts",
     "db:prod-schema-diff": "tsx --tsconfig scripts/tsconfig.json scripts/prod-schema-diff.ts",
-    "db:verify-pta-meeting": "tsx --tsconfig scripts/tsconfig.json scripts/verify-pta-meeting.ts"
+    "db:verify-pta-meeting": "tsx --tsconfig scripts/tsconfig.json scripts/verify-pta-meeting.ts",
+    "db:verify-pta-minutes": "tsx --tsconfig scripts/tsconfig.json scripts/verify-pta-minutes.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",

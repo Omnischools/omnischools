@@ -5,6 +5,7 @@ import {
   deriveParentStatus,
   deriveTeacherStatus,
   isPtaMeetingWriteLocked,
+  isPtaMeetingEnded,
   DEFAULT_REGISTER_LOCK_GRACE_HOURS,
 } from "./meeting-clock";
 
@@ -116,9 +117,21 @@ describe("deriveParentStatus (R435 — absent-by-default, the flip)", () => {
   });
 });
 
-describe("isPtaMeetingWriteLocked (R432 refuse-after-close)", () => {
+describe("isPtaMeetingWriteLocked (R432 refuse-after-close · the INCR-53 ADOPT gate)", () => {
   it("mirrors the clock's write-lock boundary (end + grace)", () => {
     expect(isPtaMeetingWriteLocked(DATE, END, 24, at("2026-05-30T15:00:00Z"))).toBe(false);
     expect(isPtaMeetingWriteLocked(DATE, END, 24, at("2026-06-01T09:00:00Z"))).toBe(true);
+  });
+});
+
+describe("isPtaMeetingEnded (R450 — the INCR-53 DRAFT-create gate: now ≥ end, grace-independent)", () => {
+  it("is false before the end bell", () => {
+    expect(isPtaMeetingEnded(DATE, END, at("2026-05-30T11:59:00Z"))).toBe(false);
+  });
+  it("flips true AT end and stays true through the grace window (unlike the write-lock)", () => {
+    expect(isPtaMeetingEnded(DATE, END, at("2026-05-30T12:00:00Z"))).toBe(true);
+    // 3pm same day: ended (drafting allowed) but NOT yet write-locked (adoption still blocked).
+    expect(isPtaMeetingEnded(DATE, END, at("2026-05-30T15:00:00Z"))).toBe(true);
+    expect(isPtaMeetingWriteLocked(DATE, END, 24, at("2026-05-30T15:00:00Z"))).toBe(false);
   });
 });

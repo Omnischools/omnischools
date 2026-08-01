@@ -166,6 +166,14 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   // guard fails the build. —
   "pta_meeting", // a convened meeting (type/date/times/location, agenda, quorum_met judgment)
   "pta_meeting_attendance", // dual register row (TEACHER user_id XOR PARENT student_guardian_id, P/L status)
+  // — PTA minutes + resolutions + action items (SHS module 4.7 / INCR-53) — OPERATIONAL post-meeting record.
+  // NO student PII, NO confidential layer; a parent reads NOTHING here (ADOPTED-only parent read = INCR-55,
+  // R457). None uses a reserved audit prefix, so each MUST be listed here or the classify-at-creation guard
+  // fails the build (R456). —
+  "pta_minutes", // 1:1 meeting minutes (DRAFT/CHAIR_REVIEW/ADOPTED, secretary/adopter stamps, distributed_at)
+  "pta_agenda_item", // a minuted item (seq/title/classification DISCUSSION|ACTION|RESOLUTION, narrative)
+  "pta_action_item", // an ACTION assignment (description, owner person_user_id XOR external_name, deadline, status)
+  "pta_resolution", // a RESOLUTION (resolution_no, text, for/against/abstain tallies, binding; outcome derived)
   // — dev-only seed markers (idempotency / summary audit rows; never a real student record) —
   "wassce_cohort", // seed marker
   "boarding_spine", // seed marker

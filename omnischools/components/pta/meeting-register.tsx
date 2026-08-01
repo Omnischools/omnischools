@@ -380,8 +380,8 @@ export function PtaQuorumPanel({
       </div>
       <p className="mt-3 text-[11px] leading-snug text-gold-soft">
         {quorumMet === true
-          ? "Quorum met — binding resolutions and minutes open next (minutes are the INCR-53 step, coming soon)."
-          : "Minutes and binding resolutions unlock once quorum is confirmed (INCR-53, coming soon)."}
+          ? "Quorum met — binding resolutions can now be recorded in the minutes."
+          : "Binding resolutions unlock in the minutes once quorum is confirmed."}
       </p>
       {error && <p className="mt-2 text-[12px] text-terra">{error}</p>}
     </div>
