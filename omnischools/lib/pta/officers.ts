@@ -232,7 +232,6 @@ export function composeMatrix(
   const labelOf = new Map(ptas.map((p) => [p.id, p.label]));
 
   const cards = ptas.map((p) => composeCard(p, stored, ended, byPerson, today));
-  const cardById = new Map(cards.map((c) => [c.id, c]));
 
   const general = cards.find((c) => c.tierType === "GENERAL") ?? null;
   const houses = cards.filter((c) => c.tierType === "HOUSE");
@@ -260,7 +259,6 @@ export function composeMatrix(
   houses.sort((a, b) => a.label.localeCompare(b.label));
   forms.sort((a, b) => a.label.localeCompare(b.label));
 
-  void cardById;
   return { general, houses, forms, multiHat, totals: { houses: sum(houses), forms: sum(forms) } };
 }
 

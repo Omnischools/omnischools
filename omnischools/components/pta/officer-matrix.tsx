@@ -670,10 +670,12 @@ function AssignDrawer({
 
         <DrawerField
           label="Term end"
-          hint={basis === "ELECTED" ? "Auto-calculated from the tier's term length (2 academic years)" : "Manual override for interim appointments"}
+          hint={basis === "ELECTED" ? "Auto-set from the tier's configured term length on save" : "Manual override for interim appointments"}
         >
           {basis === "ELECTED" ? (
-            <input className={cn(fieldClass, "w-full")} value={`${addYears(termStart, 2)} · auto`} disabled />
+            // The stored term_end is derived server-side from the tier's configurable officer_term_years
+            // (coalesce 2); don't preview a specific date here — it would drift for a school that changed it.
+            <input className={cn(fieldClass, "w-full")} value="Auto-set from PTA config on save" disabled />
           ) : (
             <input type="date" className={cn(fieldClass, "w-full")} value={termEnd} onChange={(e) => setTermEnd(e.target.value)} />
           )}

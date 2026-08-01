@@ -162,6 +162,7 @@ export async function assignPtaOfficer(input: unknown): Promise<Result> {
         },
         reason: `PTA officer assigned · ${d.office} · ${d.assignmentBasis}`,
       });
+      safeRevalidate(OFFICERS_PATH);
       return { ok: true };
     });
   } catch {
@@ -223,6 +224,7 @@ export async function editPtaOfficer(input: unknown): Promise<Result> {
         after: { office: before.office, assignmentBasis: d.assignmentBasis, electionRef: d.electionRef, termStart: d.termStart, termEnd: d.termEnd ?? null },
         reason: `PTA officer term edited · ${before.office}`,
       });
+      safeRevalidate(OFFICERS_PATH);
       return { ok: true };
     });
   } catch {
@@ -268,6 +270,7 @@ export async function endPtaOfficer(input: unknown): Promise<Result> {
         after: { office: before.office, ptaId: before.ptaId, endReason: d.endReason },
         reason: `PTA officer ended · ${before.office} · ${d.endReason}`,
       });
+      safeRevalidate(OFFICERS_PATH);
       return { ok: true };
     });
   } catch {
