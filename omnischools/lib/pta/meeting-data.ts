@@ -18,8 +18,7 @@
  * satisfies the officer arm, and the offices are SERVER-loaded here, never request-supplied (R439).
  */
 import "server-only";
-import { and, eq, inArray, isNull, isNotNull, gte, lte, or, desc } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, eq, inArray, isNull, gte, lte, or, desc } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import type { Tx } from "@/lib/db";
 import {
