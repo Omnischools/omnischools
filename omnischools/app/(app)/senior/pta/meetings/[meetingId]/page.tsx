@@ -32,6 +32,9 @@ export default async function PtaMeetingRegisterPage({
   if (!view) notFound();
 
   const { clock, quorum } = view;
+  // The minutes CTA appears once the meeting has ENDED (now ≥ end) AND the viewer may write (Secretary ∥
+  // break-glass) — the same conditions the draft-create action enforces (R450).
+  const meetingEnded = Date.now() >= clock.endMs;
 
   return (
     <div className="pb-24">
@@ -112,6 +115,25 @@ export default async function PtaMeetingRegisterPage({
           </span>
         </div>
       </section>
+
+      {/* post-meeting minutes CTA — appears once ended + the viewer can write (R450) */}
+      {meetingEnded && view.canWrite && (
+        <section className="mb-8">
+          <Link
+            href={`/senior/pta/meetings/${view.meetingId}/minutes`}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold-soft bg-gold-bg p-5 hover:brightness-[0.98]"
+          >
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-gold">Post-meeting</div>
+              <div className="font-display text-lg font-semibold text-navy">Draft the minutes</div>
+              <p className="mt-0.5 text-[12px] text-navy-3">
+                Classify each agenda item, capture actions and resolutions, then submit to the Chair.
+              </p>
+            </div>
+            <span className="rounded-md border border-navy bg-navy px-4 py-2 text-[13px] font-bold text-bg">Draft minutes →</span>
+          </Link>
+        </section>
+      )}
 
       {/* dual register */}
       <section className="mb-8">

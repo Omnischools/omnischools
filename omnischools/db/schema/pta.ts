@@ -545,3 +545,231 @@ export const ptaMeetingAttendance = pgTable(
     }).onDelete("cascade"),
   }),
 );
+
+/* ============================================================================
+ * PTA MINUTES + RESOLUTIONS + ACTION ITEMS (SHS module 4.7 / INCR-53, migration 0077) — the post-meeting
+ * record: FOUR NEW tenant tables forming a composite-FK CHAIN (R444). It WIRES canActAsPtaOfficer a 2nd
+ * time (Secretary drafts / Chair adopts) and builds on the CLOSED INCR-52 meeting + its quorum_met.
+ *
+ *   pta_minutes (1:1 meeting, inline tenant_uk)
+ *     └─ pta_agenda_item (FK → minutes tenant_uk, inline tenant_uk)
+ *          ├─ pta_action_item (FK → agenda_item tenant_uk, LEAF)
+ *          └─ pta_resolution  (FK → agenda_item tenant_uk, LEAF)
+ *
+ * Every intra-tenant FK is composite (school_id, …) → the parent's (school_id, id) tenant_uk, CASCADE all
+ * the way down ([[composite-tenant-fks]] — a cross-tenant reference is structurally impossible; a minutes /
+ * meeting / school delete cascades the whole subtree). The ONLY single-column links are the SET NULL actor
+ * stamps → the GLOBAL ref_user (secretary_id / adopted_by_user_id / the action-item person_user_id).
+ *
+ * ALL FOUR are TENANT / OPERATIONAL / SHOWN (each listed in SHOWN_AUDIT_ENTITIES; none carries a reserved
+ * audit prefix, so an omitted one FAILS the classify-at-creation build guard, R456). Each gets ENABLE +
+ * FORCE RLS + tenant_isolation (db:policies on dev; db/sql/prod-paste-0080-pta-minutes.sql by hand on prod)
+ * and — via the catalog-driven RESTRICTIVE loop in db/sql/policies.sql — parent_deny (FORCE-RLS + school_id,
+ * NO parent_scope → auto-denied). A parent reads NOTHING of the minutes record in THIS increment; the
+ * ADOPTED-only parent read (own-child own-PTA + school-wide GENERAL-tier transparency, R457) RETURNS at
+ * INCR-55, NOT here. NO confidential/REDACTED layer, NO new GUC, NO triggers (portability).
+ *
+ * NO DB-level immutability / lifecycle machinery: the 🔴 R451 adopted-is-TOTAL-immutable fence, the R450
+ * lifecycle, the R452 quorum→resolution gate, the R453 resolution-number assignment and the R455 submit
+ * validation are ALL app-enforced in lib/pta/ (the INCR-49 ledger + readiness-freeze pattern — no trigger).
+ * The domain CHECKs below are defense-in-depth on the value SETS only, never the state machine.
+ * ==========================================================================*/
+
+/**
+ * The minutes record — 1:1 with a meeting (R445). `status` walks DRAFT → CHAIR_REVIEW → ADOPTED (a 3-value
+ * CHECK, NOT an enum — the fixed app-owned domain idiom); ADOPTED is the R451 total-immutable terminal state
+ * (app-enforced). `secretary_id` (the drafter) and `adopted_by_user_id` (the Chair, NULL until adoption) are
+ * single-column SET NULL actor stamps → the GLOBAL ref_user. `adopted_at` / `distributed_at` are nullable
+ * lifecycle timestamps (R458 distribution = this column only; SMS/PDF channels DEFERRED). NO stored
+ * preamble / period columns — the R454 preamble (PTA/meeting name, date/times/location, Chair, Secretary,
+ * attendance aggregates, quorum) is DERIVED from the register + officers at read, stable because adoption
+ * waits for the meeting write-lock (R450).
+ *
+ * `UNIQUE(school_id, meeting_id)` is the 1:1 (R445) AND the draft-create upsert conflict target. Inline
+ * `pta_minutes_tenant_uk UNIQUE(school_id, id)` is the composite-FK TARGET of pta_agenda_item — declared in
+ * CREATE TABLE ahead of that FK (the 0033 target-before-FK discipline; the pta_meeting_tenant_uk precedent).
+ */
+export const ptaMinutes = pgTable(
+  "pta_minutes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    // Composite (school_id, meeting_id) FK → pta_meeting tenant_uk below — CASCADE (a meeting delete takes
+    // its minutes). The UNIQUE(school_id, meeting_id) makes it strictly 1:1.
+    meetingId: uuid("meeting_id").notNull(),
+    // DRAFT → CHAIR_REVIEW → ADOPTED (R445/R450). CHECK, not an enum; ADOPTED is R451-immutable app-side.
+    status: text("status").notNull().default("DRAFT"),
+    // The drafter (Secretary) — single-column SET NULL → global ref_user (a removed user clears the stamp).
+    secretaryId: uuid("secretary_id").references(() => users.id, { onDelete: "set null" }),
+    // The adopter (Chair) — NULL until adoption; single-column SET NULL → global ref_user.
+    adoptedByUserId: uuid("adopted_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    adoptedAt: timestamp("adopted_at", { withTimezone: true }), // stamped at adoption (R450)
+    distributedAt: timestamp("distributed_at", { withTimezone: true }), // R458 — distribution marker only
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // The 1:1 (R445) — one minutes per meeting; ALSO the draft-create upsert conflict target. Its
+    // (school_id) prefix serves the per-school reads, so no separate school index.
+    uniqMeeting: unique("uniq_pta_minutes_meeting").on(t.schoolId, t.meetingId),
+    // Composite-FK target for pta_agenda_item's (school_id, minutes_id) FK — INLINE, ahead of that ALTER in
+    // this same migration (the 0033 / pta_meeting_tenant_uk discipline).
+    tenantUk: unique("pta_minutes_tenant_uk").on(t.schoolId, t.id),
+    // DRAFT | CHAIR_REVIEW | ADOPTED (R445). NOT NULL, so the allow-list is mandatory.
+    statusValid: check(
+      "pta_minutes_status_valid",
+      sql`${t.status} IN ('DRAFT', 'CHAIR_REVIEW', 'ADOPTED')`,
+    ),
+    // Composite intra-tenant FK → pta_meeting tenant UK (school_id, id). CASCADE.
+    meetingFk: foreignKey({
+      columns: [t.schoolId, t.meetingId],
+      foreignColumns: [ptaMeeting.schoolId, ptaMeeting.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * An agenda item under a minutes (R446) — one row SEEDED per meeting `agenda_json` item at draft-create,
+ * editable-until-adoption. `seq_no` is the display order, `title` the item heading (both from the seeded
+ * agenda entry). `classification` is a single value the Secretary sets BY HAND (R449 — NO NLP), NULLABLE
+ * WHILE DRAFTING and pinned only at submit-for-review (R455): the CHECK is NULL-tolerant (NULL passes; a set
+ * value must be in the allow-list). Reclassifying away from ACTION/RESOLUTION removes the spawned children
+ * app-side (R449) — the CASCADE FKs below make that a plain child DELETE. `narrative` is the free-text body.
+ *
+ * Inline `pta_agenda_item_tenant_uk UNIQUE(school_id, id)` is the composite-FK TARGET of BOTH pta_action_item
+ * and pta_resolution — declared in CREATE TABLE ahead of those FKs (the 0033 target-before-FK discipline).
+ */
+export const ptaAgendaItem = pgTable(
+  "pta_agenda_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    // Composite (school_id, minutes_id) FK → pta_minutes tenant_uk below — CASCADE (a minutes delete takes
+    // its agenda items, and their children with them).
+    minutesId: uuid("minutes_id").notNull(),
+    seqNo: integer("seq_no").notNull(), // display order, from the seeded agenda_json entry
+    title: text("title").notNull(),
+    // Set BY HAND by the Secretary (R449, NO NLP); NULLABLE while drafting, pinned at submit (R455). The
+    // CHECK is NULL-tolerant — a NULL passes, a set value must be in the allow-list.
+    classification: text("classification"),
+    narrative: text("narrative"), // free-text discussion body (nullable)
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Composite-FK target for pta_action_item + pta_resolution — INLINE, ahead of those ALTERs.
+    tenantUk: unique("pta_agenda_item_tenant_uk").on(t.schoolId, t.id),
+    // The "all agenda items for this minutes, in order" read AND the FK-cascade support.
+    byMinutes: index("pta_agenda_item_minutes_idx").on(t.schoolId, t.minutesId, t.seqNo),
+    // NULL-tolerant (R446): a NULL (drafting) passes; a set value must be in the allow-list.
+    classificationValid: check(
+      "pta_agenda_item_classification_valid",
+      sql`${t.classification} IS NULL OR ${t.classification} IN ('DISCUSSION', 'ACTION', 'RESOLUTION')`,
+    ),
+    // Composite intra-tenant FK → pta_minutes tenant UK (school_id, id). CASCADE.
+    minutesFk: foreignKey({
+      columns: [t.schoolId, t.minutesId],
+      foreignColumns: [ptaMinutes.schoolId, ptaMinutes.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * An action item spawned from an ACTION-classified agenda item (R447) — the LEAF assignment row. `owner` =
+ * `person_user_id` (single-column SET NULL → the GLOBAL ref_user) XOR `external_name` (a non-user owner),
+ * the pta_officer holder shape reused: the `pta_action_item_at_most_one_owner` CHECK is at-MOST-one, NOT
+ * exactly-one, so a SET NULL degradation (the owner user removed → person_user_id nulls, external_name still
+ * null) does not violate it; exactly-one is the app-side write rule. `deadline` is nullable (NULL = Ongoing,
+ * R447 — legal, deadline is ADVISORY per R455). `status` is a 2-value CHECK (PENDING default | DONE);
+ * `completed_at` is stamped when DONE. LEAF — nothing FKs here → NO tenant_uk.
+ */
+export const ptaActionItem = pgTable(
+  "pta_action_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    // Composite (school_id, agenda_item_id) FK → pta_agenda_item tenant_uk below — CASCADE (a reclassify-away
+    // or agenda-item/minutes delete takes the action item with it).
+    agendaItemId: uuid("agenda_item_id").notNull(),
+    description: text("description").notNull(),
+    // Owner: person_user_id (single-column SET NULL → global ref_user) XOR external_name — the at-most-one
+    // CHECK below (the pta_officer holder shape). A removed user nulls this and keeps the row.
+    personUserId: uuid("person_user_id").references(() => users.id, { onDelete: "set null" }),
+    externalName: text("external_name"), // a non-user owner (e.g. a named parent/vendor)
+    deadline: date("deadline"), // nullable — NULL = Ongoing (R447); advisory (R455)
+    status: text("status").notNull().default("PENDING"),
+    completedAt: timestamp("completed_at", { withTimezone: true }), // stamped when DONE
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // The "all actions for this agenda item" read AND the FK-cascade support.
+    byAgendaItem: index("pta_action_item_agenda_item_idx").on(t.schoolId, t.agendaItemId),
+    // At-MOST-one owner (R447): NOT (both set). A SET NULL degradation must not violate it; exactly-one is
+    // the app-side write rule, deliberately looser at the DB layer (the pta_officer at-most-one precedent).
+    atMostOneOwner: check(
+      "pta_action_item_at_most_one_owner",
+      sql`NOT (${t.personUserId} IS NOT NULL AND ${t.externalName} IS NOT NULL)`,
+    ),
+    statusValid: check("pta_action_item_status_valid", sql`${t.status} IN ('PENDING', 'DONE')`),
+    // Composite intra-tenant FK → pta_agenda_item tenant UK (school_id, id). CASCADE.
+    agendaItemFk: foreignKey({
+      columns: [t.schoolId, t.agendaItemId],
+      foreignColumns: [ptaAgendaItem.schoolId, ptaAgendaItem.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/**
+ * A resolution spawned from a RESOLUTION-classified agenda item (R448) — the LEAF decision row, permitted
+ * only when pta_meeting.quorum_met = TRUE (R452, app-enforced — NO cross-table CHECK). `resolution_no` is
+ * NULLABLE UNTIL ADOPTION (R453 — assigned at adopt per (pta × academic_period), frozen `{scope}-{period}-
+ * {NNN}`; a discarded draft burns no number); the `UNIQUE(school_id, resolution_no)` guards the NNN=MAX+1
+ * assignment, and because multiple NULLs are DISTINCT in a UNIQUE, drafts (resolution_no NULL) never collide.
+ * `resolution_text` is the wording; the three vote tallies are NOT NULL with a ≥0 CHECK each; `binding` is
+ * NOT NULL (app defaults TRUE for the GENERAL tier, R448). The OUTCOME (PASSED ⟺ votes_for > votes_against)
+ * is DERIVED at read, NEVER stored (R448). LEAF — nothing FKs here → NO tenant_uk.
+ */
+export const ptaResolution = pgTable(
+  "pta_resolution",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    // Composite (school_id, agenda_item_id) FK → pta_agenda_item tenant_uk below — CASCADE.
+    agendaItemId: uuid("agenda_item_id").notNull(),
+    resolutionNo: text("resolution_no"), // NULLABLE until adoption (R453); NULLs distinct in the UNIQUE
+    resolutionText: text("resolution_text").notNull(),
+    // Vote tallies — NOT NULL, each ≥0 (defense in depth; the app records the count).
+    votesFor: integer("votes_for").notNull(),
+    votesAgainst: integer("votes_against").notNull(),
+    votesAbstain: integer("votes_abstain").notNull(),
+    binding: boolean("binding").notNull(), // app defaults TRUE for GENERAL tier (R448)
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // R453 — the number-collision guard for the AT-ADOPTION NNN=MAX+1 assignment per (pta × period); the
+    // `{scope}-{period}-{NNN}` string embeds both axes, so a school-level UNIQUE suffices. Multiple NULLs are
+    // DISTINCT, so drafting resolutions (resolution_no NULL) never collide.
+    uniqResolutionNo: unique("uniq_pta_resolution_no").on(t.schoolId, t.resolutionNo),
+    // The "all resolutions for this agenda item" read AND the FK-cascade support.
+    byAgendaItem: index("pta_resolution_agenda_item_idx").on(t.schoolId, t.agendaItemId),
+    // Vote tallies are non-negative (defense in depth).
+    votesForNonneg: check("pta_resolution_votes_for_nonneg", sql`${t.votesFor} >= 0`),
+    votesAgainstNonneg: check("pta_resolution_votes_against_nonneg", sql`${t.votesAgainst} >= 0`),
+    votesAbstainNonneg: check("pta_resolution_votes_abstain_nonneg", sql`${t.votesAbstain} >= 0`),
+    // Composite intra-tenant FK → pta_agenda_item tenant UK (school_id, id). CASCADE.
+    agendaItemFk: foreignKey({
+      columns: [t.schoolId, t.agendaItemId],
+      foreignColumns: [ptaAgendaItem.schoolId, ptaAgendaItem.id],
+    }).onDelete("cascade"),
+  }),
+);
