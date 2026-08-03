@@ -52,7 +52,7 @@ export const STAFF_ROLE_LABEL: Record<string, string> = {
 };
 
 /** Roles that are NOT staff — used to include everyone else (incl. custom roles) as staff. */
-export const NON_STAFF_ROLE_CODES = ["STUDENT", "PARENT"] as [string, ...string[]];
+export const NON_STAFF_ROLE_CODES = ["STUDENT", "PARENT", "BOARD_MEMBER"] as [string, ...string[]];
 
 /** Academic/classroom roles — a staff member holding any of these counts as a teacher. */
 export const TEACHING_ROLE_CODES = [

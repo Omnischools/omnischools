@@ -64,7 +64,7 @@ import {
 } from "@/lib/access";
 import { STAFF_ROLES, roleLabel } from "@/lib/staff-roles";
 import { boardTile, boardGhs } from "@/lib/board/tiles";
-import { requireBoard, assertWriteAccess } from "@/lib/auth/server";
+import { requireBoard, requireSchool, assertWriteAccess } from "@/lib/auth/server";
 
 const boardUser = (over: Partial<AppUser> = {}): AppUser => ({
   id: "u-board-1",
@@ -268,6 +268,17 @@ describe("requireSchool · non-staff branch routes a board-only session to /boar
   it("requireBoard composes pathAllowedForBoard → redirect(BOARD_HOME) as its confinement", () => {
     const body = code.slice(code.indexOf("export async function requireBoard"));
     expect(body).toMatch(/!\s*pathAllowedForBoard\s*\([\s\S]*?\)\s*\)\s*redirect\s*\(\s*BOARD_HOME\s*\)/);
+  });
+
+  it("RUNTIME · a board-only session hitting a STAFF page (requireSchool) is redirected to /board — no staff render", async () => {
+    // The actual mechanism that confines a board user OFF the staff (app) shell: requireSchool sees
+    // isStaff false and redirects to BOARD_HOME BEFORE returning a school, so the staff page's own
+    // queries never run. Proven at runtime (not just by the source regex above) for every staff URL.
+    vi.mocked(getCurrentUser).mockResolvedValue(boardUser());
+    for (const p of ["/students", "/dashboard", "/staff", "/billing", "/settings", "/gradebook"]) {
+      headerStore.path = p;
+      await expect(requireSchool(), p).rejects.toThrow("REDIRECT:/board");
+    }
   });
 });
 
