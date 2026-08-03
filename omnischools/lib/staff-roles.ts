@@ -29,6 +29,11 @@ export const STAFF_ROLES = [
   // Professional Learning Community config surface. Additive/double-hattable (granted on top of a base
   // role); ADMIN/HM grant it via /staff (STAFF_ADMIN_ROLES-gated), and it can grant nothing above rank-1.
   { code: "PD_COORDINATOR", label: "PD Coordinator" },
+  // GOV-2 (governance track / R338) — assignable by STAFF_ADMIN_ROLES via /staff (resolveRole mints the
+  // ref_role row on first grant, exactly like DEAN_OF_STUDENTS). BOARD_MEMBER is a READ-ONLY NON-STAFF
+  // persona (in access.ts's NON_STAFF_ROLES → isStaff false, rank-0, inert in every write/management
+  // group); it appears in the picker only so an admin can seat a board/director account.
+  { code: "BOARD_MEMBER", label: "Board member" },
 ] as const satisfies ReadonlyArray<{ code: AppRole; label: string }>;
 
 export type StaffRoleCode = (typeof STAFF_ROLES)[number]["code"];
@@ -47,7 +52,7 @@ export const STAFF_ROLE_LABEL: Record<string, string> = {
 };
 
 /** Roles that are NOT staff — used to include everyone else (incl. custom roles) as staff. */
-export const NON_STAFF_ROLE_CODES = ["STUDENT", "PARENT"] as [string, ...string[]];
+export const NON_STAFF_ROLE_CODES = ["STUDENT", "PARENT", "BOARD_MEMBER"] as [string, ...string[]];
 
 /** Academic/classroom roles — a staff member holding any of these counts as a teacher. */
 export const TEACHING_ROLE_CODES = [
