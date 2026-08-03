@@ -103,6 +103,17 @@ export default async function ReportsPage() {
       snapshotSub: "Which subjects are strong or slipping, school-wide",
     },
     {
+      category: "academic",
+      href: "/reports/terminal-results",
+      icon: "T",
+      iconTone: "bg-navy text-gold",
+      name: "Terminal results",
+      desc: "Capture school-level BECE / WASSCE outcomes (management). Feeds the board overview & census.",
+      snapshotLabel: "BECE & WASSCE",
+      snapshotValue: "Capture →",
+      snapshotSub: "Aggregate pass rates by sex — no candidate detail",
+    },
+    {
       category: "operational",
       href: "/reports/school-stats",
       icon: "S",

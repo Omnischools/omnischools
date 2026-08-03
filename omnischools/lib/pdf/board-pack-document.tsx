@@ -19,6 +19,8 @@ import type {
   FeeCollectionsArm,
   PerformanceArm,
   SeniorReadinessSummary,
+  TerminalResultsArm,
+  TerminalResultSummary,
 } from "@/lib/rollup/school-rollup";
 
 /**
@@ -583,6 +585,56 @@ function SeniorLine({ d }: { d: SeniorReadinessSummary }) {
   );
 }
 
+/**
+ * GOV-6 · terminal exam results. Each exam is honest-absence-gated on its OWN via `tierView`: a
+ * NOT_APPLICABLE exam (a BASIC school's WASSCE / a SENIOR school's BECE) is OMITTED (omit-not-fake),
+ * NOT_CAPTURED shows a reason panel (no number), CAPTURED shows the derived figure. A fabricated number
+ * for a not-captured exam is a compile error — `.data` is reachable only through the `captured` branch.
+ */
+function TerminalSection({ arm }: { arm: TerminalResultsArm }) {
+  const bece = tierView(arm.bece);
+  const wassce = tierView(arm.wassce);
+  return (
+    <View style={s.section} wrap={false}>
+      <SectionHead lead="Terminal" accent="results" />
+      {bece.kind !== "omit" ? (
+        <View style={s.perfBlock}>
+          <Text style={s.eyebrow}>BECE</Text>
+          {bece.kind === "captured" ? (
+            <TerminalLine d={bece.data} />
+          ) : (
+            <ReasonPanel>{bece.reason}</ReasonPanel>
+          )}
+        </View>
+      ) : null}
+      {wassce.kind !== "omit" ? (
+        <View style={s.perfBlock}>
+          <Text style={s.eyebrow}>WASSCE</Text>
+          {wassce.kind === "captured" ? (
+            <TerminalLine d={wassce.data} />
+          ) : (
+            <ReasonPanel>{wassce.reason}</ReasonPanel>
+          )}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function TerminalLine({ d }: { d: TerminalResultSummary }) {
+  return (
+    <View style={s.headRow}>
+      <Text style={s.headline}>{d.passRate}%</Text>
+      <Text style={s.caption}>
+        pass · {d.year} · {num(d.passedCount)}/{num(d.totalCandidates)} passed
+      </Text>
+      <Text style={[s.caption, { fontFamily: MONO }]}>
+        {d.female.passed}/{d.female.candidates}F · {d.male.passed}/{d.male.candidates}M
+      </Text>
+    </View>
+  );
+}
+
 /* ─────────────────────────── document ─────────────────────────── */
 
 export function BoardPackDocument({ data }: { data: BoardPackData }) {
@@ -619,15 +671,7 @@ export function BoardPackDocument({ data }: { data: BoardPackData }) {
           <FinanceSection arm={rollup.netPositionFinance} />
           <PerformanceSection performance={rollup.performance} />
 
-          <View style={s.section} wrap={false}>
-            <SectionHead lead="Terminal" accent="results" />
-            <ComingSoon
-              eyebrow="TERMINAL RESULTS"
-              label="BECE & WASSCE results — coming soon"
-              body={pendingReason(rollup.terminalResults)}
-              tag="GOV-6"
-            />
-          </View>
+          <TerminalSection arm={rollup.terminalResults} />
 
           <View style={s.section} wrap={false}>
             <SectionHead lead="Infrastructure" accent="& facilities" />

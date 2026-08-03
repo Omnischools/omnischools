@@ -16,6 +16,13 @@ import {
   type SeniorReadinessSummary,
 } from "@/lib/reports/senior-readiness-data";
 import { getSchoolType } from "@/lib/reports/school-type-data";
+import {
+  getTerminalResults,
+  deriveTerminalSummary,
+  type ExamType,
+  type TerminalResultRow,
+  type TerminalResultSummary,
+} from "@/lib/reports/terminal-results-data";
 
 /**
  * GOV-1 · the shared `school-rollup` aggregate seam — the spine both the board/director overview
@@ -170,10 +177,28 @@ export type BasicPerformanceSummary = {
 export type { SeniorReadinessSummary };
 
 /**
+ * GOV-6 · the cross-tier terminal-exam-results arm (R363–R373). Like GOV-4 `performance`, an UNWRAPPED
+ * container — NOT itself a `RollupArm` — so each exam is honest-absence-gated on its OWN: a COMBINED
+ * school can show a captured BECE beside a not-captured WASSCE without either masking the other (R367).
+ * There is NO composite across the two exams (a BECE and a WASSCE pass rate are different populations and
+ * combining them would fabricate a meaningless number).
+ *
+ * `TerminalResultSummary` (year + derived total/passed/passRate + the sex split) is DERIVED at read from
+ * the four stored leaves (`deriveTerminalSummary`, R364) — never a stored column. YEAR-scoped and
+ * period-INDEPENDENT: the sitting `year` travels INSIDE `data` (R368), the arm never gates on `period`.
+ */
+export type TerminalResultsArm = {
+  bece: RollupArm<TerminalResultSummary>;
+  wassce: RollupArm<TerminalResultSummary>;
+};
+
+export type { TerminalResultSummary };
+
+/**
  * GOV-4 · a capability NOT YET BUILT (R358). `RollupArm<never>` — the payload is `never`, so a
  * CAPTURED arm is a COMPILE ERROR: this arm can only ever be NOT_CAPTURED, and can never fabricate a
- * number. GOV-6 (terminal BECE/WASSCE results) and GOV-7 (facilities) replace the body later; until
- * then the board sees a deliberate, forward-looking "coming soon", never a zero.
+ * number. GOV-7 (facilities) replaces the body later; until then the board sees a deliberate,
+ * forward-looking "coming soon", never a zero.
  */
 export type PendingArm = RollupArm<never>;
 
@@ -187,7 +212,8 @@ export type SchoolRollup = {
   netPositionFinance: RollupArm<NetPositionFinanceArm>;
   // GOV-4 additions.
   performance: PerformanceArm;
-  terminalResults: PendingArm;
+  // GOV-6 — terminal exam results (unwrapped {bece, wassce} container).
+  terminalResults: TerminalResultsArm;
   infrastructure: PendingArm;
   /** Every real term (newest-first) so the board's period selector needs no second query. */
   terms: AcademicTerm[];
@@ -205,9 +231,12 @@ export async function getSchoolRollup(
   // Resolve ONE term (omitted → current/latest; SENIOR_F3 pseudo-period excluded by the source).
   // schoolType is DB-authoritative (R355) and drives tier-gating — fetched alongside the terms, both
   // independent of the resolved period.
-  const [terms, schoolType] = await Promise.all([
+  // terminalResults is YEAR-scoped and period-INDEPENDENT (R368) — fetched here, alongside the two other
+  // period-independent reads, and never gated on the resolved period.
+  const [terms, schoolType, terminalData] = await Promise.all([
     listAcademicTerms(schoolId),
     getSchoolType(schoolId),
+    getTerminalResults(schoolId),
   ]);
   const period = resolveSelectedTerm(terms, opts?.periodId);
 
@@ -421,14 +450,35 @@ export async function getSchoolRollup(
 
   const performance: PerformanceArm = { basic, senior };
 
+  // ── terminalResults (R363–R373) ──────────────────────────────────────────────────────────────────
+  // Tier-gate BEFORE data-gate (R367): the exam a school does not sit is NOT_APPLICABLE, never
+  // NOT_CAPTURED — so a BASIC school's WASSCE (and a SENIOR school's BECE) can never show as merely
+  // "not captured yet". schoolType is DB-authoritative (getSchoolType). NOT_CAPTURED is drawn at ROW
+  // existence (no latest-year row for the exam); an all-fail sitting (passed 0, candidates ≥ 1) is a
+  // CAPTURED 0% (R369), never hidden. total/passed/passRate are DERIVED here (R364), never stored.
+  const terminalArm = (
+    applies: boolean,
+    row: TerminalResultRow | undefined,
+    examLabel: ExamType,
+    naReason: string,
+  ): RollupArm<TerminalResultSummary> => {
+    if (!applies) return { status: "NOT_APPLICABLE", reason: naReason };
+    if (!row) return { status: "NOT_CAPTURED", reason: `No ${examLabel} results captured yet.` };
+    return { status: "CAPTURED", data: deriveTerminalSummary(row) };
+  };
+  const terminalResults: TerminalResultsArm = {
+    bece: terminalArm(
+      schoolType !== "SENIOR",
+      terminalData.bece,
+      "BECE",
+      "This school does not run a basic (KG–JHS) tier.",
+    ),
+    wassce: terminalArm(schoolType !== "BASIC", terminalData.wassce, "WASSCE", "Not a senior school."),
+  };
+
   // ── pending arms (R358) ────────────────────────────────────────────────────────────────────────
   // ALWAYS NOT_CAPTURED with a forward-looking reason. `never` payload makes CAPTURED a compile error;
-  // GOV-6 / GOV-7 replace these bodies with real arms later.
-  const terminalResults: PendingArm = {
-    status: "NOT_CAPTURED",
-    reason:
-      "Terminal exam results (BECE / WASSCE) are not yet captured in Omnischools — coming in a later release.",
-  };
+  // GOV-7 replaces this body with a real arm later.
   const infrastructure: PendingArm = {
     status: "NOT_CAPTURED",
     reason: "Facilities details are not yet captured — the termly facilities form is coming soon.",

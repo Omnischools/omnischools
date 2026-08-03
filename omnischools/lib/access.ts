@@ -408,6 +408,24 @@ export const PTA_MEETING_BREAKGLASS_ROLES = [
   "HEADMASTER",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * 🔴 GOV-6 — who may CAPTURE terminal-exam results (BECE / WASSCE). These are OFFICIAL school outcomes,
+ * so the write gate is CROSS-TIER management: ADMIN + HEADMASTER + VICE_HEADMASTER_ACADEMIC (the head of
+ * academics, the natural owner of exam outcomes). Cross-tier by design — a BASIC school captures BECE, a
+ * SENIOR school WASSCE, a COMBINED school both; a basic school simply has no one holding
+ * VICE_HEADMASTER_ACADEMIC, so its inclusion never widens basic-tier reach. Gated on BOTH the capture
+ * route (`requireSchoolRole`) AND every capture action (`assertAnyRole`) — a hand-crafted POST that never
+ * touched the UI is still refused. `as const satisfies` makes a typo'd code a compile error.
+ *
+ * NOT the same as STAFF_ADMIN_ROLES (role-granting root, includes PROPRIETOR) — a separate, purpose-named
+ * group: this gates data capture, not the authorization root.
+ */
+export const TERMINAL_RESULTS_WRITE_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "VICE_HEADMASTER_ACADEMIC",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",
