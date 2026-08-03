@@ -8,6 +8,9 @@ import { getSchoolStats } from "@/lib/reports/school-stats-data";
 import { getEnrolmentRoll } from "@/lib/reports/enrolment-roll-data";
 import { getAttendanceSummary } from "@/lib/reports/attendance-summary-data";
 import { getFinanceReport } from "@/lib/reports/finance-data";
+import { getBooksFinanceLine } from "@/lib/reports/books-finance-data";
+import { getPayrollLine } from "@/lib/reports/payroll-line-data";
+import { boardTile } from "@/lib/board/tiles";
 import { getSchoolRollup } from "./school-rollup";
 
 /**
@@ -30,6 +33,8 @@ vi.mock("@/lib/reports/school-stats-data", () => ({ getSchoolStats: vi.fn() }));
 vi.mock("@/lib/reports/enrolment-roll-data", () => ({ getEnrolmentRoll: vi.fn() }));
 vi.mock("@/lib/reports/attendance-summary-data", () => ({ getAttendanceSummary: vi.fn() }));
 vi.mock("@/lib/reports/finance-data", () => ({ getFinanceReport: vi.fn() }));
+vi.mock("@/lib/reports/books-finance-data", () => ({ getBooksFinanceLine: vi.fn() }));
+vi.mock("@/lib/reports/payroll-line-data", () => ({ getPayrollLine: vi.fn() }));
 
 const term = (over: Partial<AcademicTerm> = {}): AcademicTerm => ({
   periodId: "p1",
@@ -107,6 +112,24 @@ const financeStub = (over: Record<string, unknown> = {}) =>
     ...over,
   }) as unknown as Awaited<ReturnType<typeof getFinanceReport>>;
 
+const booksStub = (over: Partial<Awaited<ReturnType<typeof getBooksFinanceLine>>> = {}) => ({
+  income: 30000,
+  expense: 18000,
+  rowCount: 12,
+  ...over,
+});
+
+const payrollStub = (over: Partial<Awaited<ReturnType<typeof getPayrollLine>>> = {}) => ({
+  schoolPaidMonthlyTotal: 24000,
+  schoolPaidStaffCount: 6,
+  gesPaidMonthlyMemo: 9000,
+  gesPaidStaffCount: 3,
+  allowanceMonthlyMemo: 1500,
+  allowanceStaffCount: 2,
+  rowCount: 11,
+  ...over,
+});
+
 beforeEach(() => {
   vi.clearAllMocks(); // reset call history + implementations between cases
   vi.mocked(listAcademicTerms).mockResolvedValue([term()]);
@@ -114,6 +137,8 @@ beforeEach(() => {
   vi.mocked(getEnrolmentRoll).mockResolvedValue(rollStub());
   vi.mocked(getAttendanceSummary).mockResolvedValue(attendanceStub());
   vi.mocked(getFinanceReport).mockResolvedValue(financeStub());
+  vi.mocked(getBooksFinanceLine).mockResolvedValue(booksStub());
+  vi.mocked(getPayrollLine).mockResolvedValue(payrollStub());
 });
 
 // ── GOV1-ENR · enrolment arm faithful re-exposure ─────────────────────────────────────────────────
@@ -396,6 +421,227 @@ describe("GOV1-PER · period resolution", () => {
     expect(d.intakeFemale).toBeNull();
     expect(d.intakeMale).toBeNull();
     expect(d.netChange).toBeNull();
+  });
+});
+
+// ── GOV3 · net-position finance arm (AC GOV3-01..12) ──────────────────────────────────────────────
+// THE HONESTY INVARIANT: three DISTINCT labelled streams (fees · books · payroll), never one summed
+// "net position"/"profit". The ONLY composite is books.net = income − expense (within the books
+// ledger). fees is the feeCollections arm reused verbatim; books absence is drawn at row-count == 0
+// (NEVER net === 0); payroll is NOT_APPLICABLE at zero comp rows, and is a point-in-time monthly
+// figure (period-INDEPENDENT).
+describe("GOV3 · net-position finance arm", () => {
+  const captured = async (opts?: { periodId?: string }) => {
+    const r = await getSchoolRollup("school-1", opts);
+    if (r.netPositionFinance.status !== "CAPTURED") throw new Error("expected CAPTURED arm");
+    return { r, np: r.netPositionFinance.data };
+  };
+
+  // GOV3-01/R347 — arm availability: CAPTURED with a period, NOT_CAPTURED only when period == null.
+  it("GOV3-01 · CAPTURED when a period exists; NOT_CAPTURED (no period) reason otherwise", async () => {
+    const { np } = await captured();
+    expect(Object.keys(np).sort()).toEqual(["books", "fees", "payroll"]);
+
+    // No-period branch: clear the call history first (captured() above already invoked the mocks).
+    vi.mocked(getBooksFinanceLine).mockClear();
+    vi.mocked(getPayrollLine).mockClear();
+    vi.mocked(listAcademicTerms).mockResolvedValue([]);
+    const r = await getSchoolRollup("school-1");
+    expect(r.netPositionFinance).toEqual({
+      status: "NOT_CAPTURED",
+      reason: "No academic period configured.",
+    });
+    // No period → neither books nor payroll is queried.
+    expect(getBooksFinanceLine).not.toHaveBeenCalled();
+    expect(getPayrollLine).not.toHaveBeenCalled();
+  });
+
+  // GOV3-02 — fees is the feeCollections arm reused VERBATIM (deep-equal), never a re-query/"fee net".
+  it("GOV3-02 · fees === feeCollections (verbatim, deep-equal)", async () => {
+    const { r, np } = await captured();
+    expect(np.fees).toEqual(r.feeCollections);
+    // getFinanceReport is called ONCE (the feeCollections arm) — the net-position arm does not re-query.
+    expect(getFinanceReport).toHaveBeenCalledTimes(1);
+  });
+
+  // GOV3-03 — NO summed scalar anywhere. The CAPTURED arm has EXACTLY the three stream keys; adding a
+  // `netPosition`/`total`/`profit` field (a mutation) would break this exact-key assertion (reds).
+  it("GOV3-03 · exposes exactly {fees,books,payroll} — no summed 'net position' scalar", async () => {
+    const { np } = await captured();
+    expect(Object.keys(np).sort()).toEqual(["books", "fees", "payroll"]);
+    // Every top-level value is a tagged RollupArm (a status object), never a bare number.
+    for (const v of Object.values(np)) {
+      expect(typeof v).toBe("object");
+      expect(["CAPTURED", "NOT_CAPTURED", "NOT_APPLICABLE"]).toContain(
+        (v as { status: string }).status,
+      );
+    }
+  });
+
+  // GOV3-04 — no cross-ledger composite: no field equals a sum across ≥2 of {fees,books,payroll}. The
+  // ONLY composite is books.net = income − expense (within books). Sources chosen so any accidental
+  // cross-sum would surface as a recognisable value.
+  it("GOV3-04 · the only composite is books.net = income − expense; no cross-ledger folded field", async () => {
+    const { r, np } = await captured();
+    if (np.books.status !== "CAPTURED") throw new Error("expected books CAPTURED");
+    if (np.payroll.status !== "CAPTURED") throw new Error("expected payroll CAPTURED");
+    // books.net is the within-ledger subtraction ONLY, and books carries no folded fees/payroll figure.
+    expect(np.books.data.net).toBe(np.books.data.income - np.books.data.expense);
+    expect(Object.keys(np.books.data).sort()).toEqual(["expense", "income", "net"]);
+    // payroll exposes exactly its own gross/memo fields + cadence — nothing from fees or books folded in.
+    expect(Object.keys(np.payroll.data).sort()).toEqual([
+      "allowanceMonthlyMemo",
+      "allowanceStaffCount",
+      "cadence",
+      "gesPaidMonthlyMemo",
+      "gesPaidStaffCount",
+      "schoolPaidMonthlyTotal",
+      "schoolPaidStaffCount",
+    ]);
+    // school-paid gross is NOT the sum of the three pay statuses (GES + allowance stay out).
+    expect(np.payroll.data.schoolPaidMonthlyTotal).not.toBe(
+      np.payroll.data.schoolPaidMonthlyTotal +
+        np.payroll.data.gesPaidMonthlyMemo +
+        np.payroll.data.allowanceMonthlyMemo,
+    );
+    // fees is the feeCollections arm verbatim — no extra "fee net" field bolted on.
+    expect(np.fees).toEqual(r.feeCollections);
+  });
+
+  // GOV3-05 — books is term-windowed, and a real-zero net (income == expense, ≥1 entry) is CAPTURED.
+  it("GOV3-05 · books queried on the [startsOn,endsOn] term window; real-zero net is CAPTURED", async () => {
+    await captured();
+    expect(getBooksFinanceLine).toHaveBeenCalledWith("school-1", {
+      startsOn: "2025-09-01",
+      endsOn: "2025-12-19",
+    });
+
+    vi.mocked(getBooksFinanceLine).mockResolvedValue(booksStub({ income: 5000, expense: 5000, rowCount: 4 }));
+    const { np } = await captured();
+    if (np.books.status !== "CAPTURED") throw new Error("expected books CAPTURED (entries exist)");
+    expect(np.books.data).toEqual({ income: 5000, expense: 5000, net: 0 });
+  });
+
+  // GOV3-06 — books absence is drawn at ROW-COUNT == 0, never at net === 0.
+  it("GOV3-06 · books NOT_CAPTURED (term-named) only when row-count is 0", async () => {
+    vi.mocked(getBooksFinanceLine).mockResolvedValue(booksStub({ income: 0, expense: 0, rowCount: 0 }));
+    const { np } = await captured();
+    expect(np.books).toEqual({
+      status: "NOT_CAPTURED",
+      reason: "No books entries recorded for Term 1 · 2025/26.",
+    });
+  });
+
+  // GOV3-07 — payroll school-paid is the GROSS Σ, period-INDEPENDENT (queried with schoolId only, no
+  // window; the figure is never multiplied over the term).
+  it("GOV3-07 · payroll school-paid gross is verbatim + period-independent (no window arg)", async () => {
+    const { np } = await captured();
+    if (np.payroll.status !== "CAPTURED") throw new Error("expected payroll CAPTURED");
+    expect(np.payroll.data.schoolPaidMonthlyTotal).toBe(24000);
+    expect(np.payroll.data.cadence).toBe("MONTHLY");
+    // Called with the schoolId ONLY — no term/window is threaded in, so it cannot be term-scaled.
+    expect(getPayrollLine).toHaveBeenCalledWith("school-1");
+    expect(vi.mocked(getPayrollLine).mock.calls[0]).toHaveLength(1);
+  });
+
+  // GOV3-08 — the GES memo is separate; an all-GES school is a real-zero school-paid, still CAPTURED.
+  it("GOV3-08 · GES memo is separate; all-GES → school-paid 0, CAPTURED, GES memo > 0", async () => {
+    vi.mocked(getPayrollLine).mockResolvedValue(
+      payrollStub({
+        schoolPaidMonthlyTotal: 0,
+        schoolPaidStaffCount: 0,
+        gesPaidMonthlyMemo: 15000,
+        gesPaidStaffCount: 5,
+        allowanceMonthlyMemo: 0,
+        allowanceStaffCount: 0,
+        rowCount: 5,
+      }),
+    );
+    const { np } = await captured();
+    if (np.payroll.status !== "CAPTURED") throw new Error("expected payroll CAPTURED (rows exist)");
+    expect(np.payroll.data.schoolPaidMonthlyTotal).toBe(0); // real zero, not NOT_APPLICABLE
+    expect(np.payroll.data.gesPaidMonthlyMemo).toBe(15000);
+  });
+
+  // GOV3-09 — payroll NOT_APPLICABLE when the school runs no payroll (zero comp rows).
+  it("GOV3-09 · payroll NOT_APPLICABLE when zero staff_compensation rows", async () => {
+    vi.mocked(getPayrollLine).mockResolvedValue(
+      payrollStub({
+        schoolPaidMonthlyTotal: 0,
+        schoolPaidStaffCount: 0,
+        gesPaidMonthlyMemo: 0,
+        gesPaidStaffCount: 0,
+        allowanceMonthlyMemo: 0,
+        allowanceStaffCount: 0,
+        rowCount: 0,
+      }),
+    );
+    const { np } = await captured();
+    expect(np.payroll).toEqual({
+      status: "NOT_APPLICABLE",
+      reason: "This school does not run payroll in Omnischools.",
+    });
+  });
+
+  // GOV3-10 — allowance is its OWN memo, never folded into the school-paid total.
+  it("GOV3-10 · allowance memo is separate and not folded into school-paid", async () => {
+    vi.mocked(getPayrollLine).mockResolvedValue(
+      payrollStub({ schoolPaidMonthlyTotal: 24000, allowanceMonthlyMemo: 1500, allowanceStaffCount: 2 }),
+    );
+    const { np } = await captured();
+    if (np.payroll.status !== "CAPTURED") throw new Error("expected payroll CAPTURED");
+    expect(np.payroll.data.schoolPaidMonthlyTotal).toBe(24000); // excludes the 1500 allowance
+    expect(np.payroll.data.allowanceMonthlyMemo).toBe(1500);
+    expect(np.payroll.data.schoolPaidMonthlyTotal).not.toBe(24000 + 1500);
+  });
+
+  // GOV3-11 — the arm is CAPTURED even when all three inner streams are absent, each keeping its OWN
+  // distinct reason (fees NOT_CAPTURED, books NOT_CAPTURED, payroll NOT_APPLICABLE — not collapsed).
+  it("GOV3-11 · CAPTURED with three DISTINCT absent inner arms (reasons not collapsed)", async () => {
+    vi.mocked(getFinanceReport).mockResolvedValue(financeStub({ totals: { invoiceCount: 0 } }));
+    vi.mocked(getBooksFinanceLine).mockResolvedValue(booksStub({ income: 0, expense: 0, rowCount: 0 }));
+    vi.mocked(getPayrollLine).mockResolvedValue(payrollStub({ rowCount: 0 }));
+    const { np } = await captured();
+    expect(np.fees).toEqual({
+      status: "NOT_CAPTURED",
+      reason: "No fees billed for Term 1 · 2025/26.",
+    });
+    expect(np.books).toEqual({
+      status: "NOT_CAPTURED",
+      reason: "No books entries recorded for Term 1 · 2025/26.",
+    });
+    expect(np.payroll).toEqual({
+      status: "NOT_APPLICABLE",
+      reason: "This school does not run payroll in Omnischools.",
+    });
+    // Three DIFFERENT reasons — never one shared string.
+    const reasons = [np.fees, np.books, np.payroll].map((a) =>
+      a.status === "CAPTURED" ? "" : a.reason,
+    );
+    expect(new Set(reasons).size).toBe(3);
+  });
+
+  // GOV3-12 — tile honesty: the pure boardTile collapses a non-CAPTURED stream to its reason with NO
+  // number (fabricating a zero is impossible); a CAPTURED real zero renders "GHS 0".
+  it("GOV3-12 · boardTile renders reason (no number) for absent streams, real 0 for a captured zero", async () => {
+    // payroll NOT_APPLICABLE → reason, value fn never called.
+    const naTile = boardTile(
+      { status: "NOT_APPLICABLE", reason: "This school does not run payroll in Omnischools." },
+      () => "GHS 999",
+    );
+    expect(naTile).toEqual({
+      status: "NOT_CAPTURED",
+      reason: "This school does not run payroll in Omnischools.",
+    });
+    // fees NOT_CAPTURED → reason.
+    const ncTile = boardTile({ status: "NOT_CAPTURED", reason: "No fees billed for Term 1 · 2025/26." }, () => "GHS 1");
+    expect(ncTile.status).toBe("NOT_CAPTURED");
+    // CAPTURED real zero (all-GES school-paid 0) → "GHS 0", a true zero not an absence tile.
+    const zeroTile = boardTile(
+      { status: "CAPTURED", data: { schoolPaidMonthlyTotal: 0 } },
+      (d) => `GHS ${d.schoolPaidMonthlyTotal.toLocaleString("en-GH")}`,
+    );
+    expect(zeroTile).toEqual({ status: "CAPTURED", value: "GHS 0" });
   });
 });
 

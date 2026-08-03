@@ -8,6 +8,8 @@ import { getSchoolStats } from "@/lib/reports/school-stats-data";
 import { getEnrolmentRoll } from "@/lib/reports/enrolment-roll-data";
 import { getAttendanceSummary } from "@/lib/reports/attendance-summary-data";
 import { getFinanceReport } from "@/lib/reports/finance-data";
+import { getBooksFinanceLine } from "@/lib/reports/books-finance-data";
+import { getPayrollLine } from "@/lib/reports/payroll-line-data";
 
 /**
  * GOV-1 · the shared `school-rollup` aggregate seam — the spine both the board/director overview
@@ -96,6 +98,34 @@ export type FeeCollectionsArm = {
   collectionRate: number;
 };
 
+/**
+ * GOV-3 · the net-position finance arm (R341–R348) — THE HONESTY INVARIANT.
+ *
+ * Fees (the billing engine) and `books` are SEPARATE, un-reconciled ledgers with NO dedup — the
+ * compensation page even feeds school-paid salaries into the books' salaries line, so there are TWO
+ * double-count paths. We therefore present THREE DISTINCT labelled streams and NEVER a single summed
+ * "net position"/"profit"/"surplus" scalar. No field here sums across ≥2 of {fees, books, payroll};
+ * the ONLY permitted composite is `books.net = income − expense`, WITHIN the one books ledger.
+ */
+export type NetPositionFinanceArm = {
+  fees: RollupArm<FeeCollectionsArm>;
+  books: RollupArm<BooksFinanceLine>;
+  payroll: RollupArm<PayrollLine>;
+};
+
+/** The ONLY cross-line composite in the whole arm: net is a subtraction WITHIN the books ledger. */
+export type BooksFinanceLine = { income: number; expense: number; net: number };
+
+export type PayrollLine = {
+  schoolPaidMonthlyTotal: number;
+  schoolPaidStaffCount: number;
+  gesPaidMonthlyMemo: number;
+  gesPaidStaffCount: number;
+  allowanceMonthlyMemo: number;
+  allowanceStaffCount: number;
+  cadence: "MONTHLY";
+};
+
 export type SchoolRollup = {
   schoolId: string;
   period: AcademicTerm | null;
@@ -103,6 +133,7 @@ export type SchoolRollup = {
   enrolment: RollupArm<EnrolmentArm>;
   attendance: RollupArm<AttendanceArm>;
   feeCollections: RollupArm<FeeCollectionsArm>;
+  netPositionFinance: RollupArm<NetPositionFinanceArm>;
 };
 
 /** How the shipped report pages render a term: "Term 1 · 2025/26" (lib/reports/period.ts). */
@@ -128,11 +159,14 @@ export async function getSchoolRollup(
     financeWindow = { start, end };
   }
 
-  const [stats, roll, attendance, finance] = await Promise.all([
+  const [stats, roll, attendance, finance, books, payroll] = await Promise.all([
     getSchoolStats(schoolId),
     getEnrolmentRoll(schoolId, { periodId: opts?.periodId }),
     period ? getAttendanceSummary(schoolId, { periodId: opts?.periodId }) : null,
     financeWindow ? getFinanceReport(schoolId, null, financeWindow) : null,
+    // Books is term-windowed; payroll is point-in-time but only needed once a period frames the arm.
+    period ? getBooksFinanceLine(schoolId, { startsOn: period.startsOn, endsOn: period.endsOn }) : null,
+    period ? getPayrollLine(schoolId) : null,
   ]);
 
   // ── enrolment ─────────────────────────────────────────────────────────────────────────────────
@@ -220,5 +254,65 @@ export async function getSchoolRollup(
             },
           };
 
-  return { schoolId, period, generatedAt, enrolment, attendance: attendanceArm, feeCollections };
+  // ── netPositionFinance (R341–R348) ─────────────────────────────────────────────────────────────
+  // THREE DISTINCT labelled streams — never one summed "net position"/"profit". Fees and books are
+  // separate un-reconciled ledgers (school-paid salaries even double-count into the books' salaries
+  // line), so NO field sums across ≥2 of {fees, books, payroll}. The whole arm is NOT_CAPTURED only
+  // when there is no period; otherwise CAPTURED, and each inner stream keeps its OWN distinct reason.
+  const netPositionFinance: RollupArm<NetPositionFinanceArm> = !period
+    ? { status: "NOT_CAPTURED", reason: "No academic period configured." }
+    : {
+        status: "CAPTURED",
+        data: {
+          // fees: REUSE the feeCollections arm VALUE verbatim — never re-queried, so the two figures
+          // can never disagree. No "fee net" here (net-position is books-only).
+          fees: feeCollections,
+          // books: term-windowed income/expense. Absence is drawn at row-count == 0, NEVER at
+          // net === 0 (income == expense with ≥1 entry is a real, CAPTURED zero).
+          books:
+            !books || books.rowCount === 0
+              ? {
+                  status: "NOT_CAPTURED",
+                  reason: `No books entries recorded for ${termDisplay(period)}.`,
+                }
+              : {
+                  status: "CAPTURED",
+                  data: {
+                    income: books.income,
+                    expense: books.expense,
+                    net: books.income - books.expense, // the ONLY cross-line composite (within books)
+                  },
+                },
+          // payroll: point-in-time monthly run-rate. NOT_APPLICABLE when the school runs no payroll
+          // in Omnischools (zero comp rows); CAPTURED with ≥1 row, INCLUDING all-GES (school-paid 0).
+          payroll:
+            !payroll || payroll.rowCount === 0
+              ? {
+                  status: "NOT_APPLICABLE",
+                  reason: "This school does not run payroll in Omnischools.",
+                }
+              : {
+                  status: "CAPTURED",
+                  data: {
+                    schoolPaidMonthlyTotal: payroll.schoolPaidMonthlyTotal,
+                    schoolPaidStaffCount: payroll.schoolPaidStaffCount,
+                    gesPaidMonthlyMemo: payroll.gesPaidMonthlyMemo,
+                    gesPaidStaffCount: payroll.gesPaidStaffCount,
+                    allowanceMonthlyMemo: payroll.allowanceMonthlyMemo,
+                    allowanceStaffCount: payroll.allowanceStaffCount,
+                    cadence: "MONTHLY",
+                  },
+                },
+        },
+      };
+
+  return {
+    schoolId,
+    period,
+    generatedAt,
+    enrolment,
+    attendance: attendanceArm,
+    feeCollections,
+    netPositionFinance,
+  };
 }
