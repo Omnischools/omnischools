@@ -10,6 +10,9 @@ import { getAttendanceSummary } from "@/lib/reports/attendance-summary-data";
 import { getFinanceReport } from "@/lib/reports/finance-data";
 import { getBooksFinanceLine } from "@/lib/reports/books-finance-data";
 import { getPayrollLine } from "@/lib/reports/payroll-line-data";
+import { getClassPerformance } from "@/lib/reports/class-performance-data";
+import { getSeniorReadiness } from "@/lib/reports/senior-readiness-data";
+import { getSchoolType } from "@/lib/reports/school-type-data";
 import { boardTile } from "@/lib/board/tiles";
 import { getSchoolRollup } from "./school-rollup";
 
@@ -35,6 +38,9 @@ vi.mock("@/lib/reports/attendance-summary-data", () => ({ getAttendanceSummary: 
 vi.mock("@/lib/reports/finance-data", () => ({ getFinanceReport: vi.fn() }));
 vi.mock("@/lib/reports/books-finance-data", () => ({ getBooksFinanceLine: vi.fn() }));
 vi.mock("@/lib/reports/payroll-line-data", () => ({ getPayrollLine: vi.fn() }));
+vi.mock("@/lib/reports/class-performance-data", () => ({ getClassPerformance: vi.fn() }));
+vi.mock("@/lib/reports/senior-readiness-data", () => ({ getSeniorReadiness: vi.fn() }));
+vi.mock("@/lib/reports/school-type-data", () => ({ getSchoolType: vi.fn() }));
 
 const term = (over: Partial<AcademicTerm> = {}): AcademicTerm => ({
   periodId: "p1",
@@ -130,6 +136,27 @@ const payrollStub = (over: Partial<Awaited<ReturnType<typeof getPayrollLine>>> =
   ...over,
 });
 
+// GOV-4 performance-source stubs — only the fields the seam reads.
+const classPerfStub = (over: Record<string, unknown> = {}) =>
+  ({
+    schoolAverage: 72,
+    schoolDelta: 3,
+    classesGraded: 5,
+    totalClasses: 8,
+    hasAnyScores: true,
+    // Fields the seam must DROP (rows[]/teacherName), present here so a leak would surface.
+    rows: [{ classId: "c1", name: "JHS 1", teacherName: "Ama Owusu", average: 72 }],
+    ...over,
+  }) as unknown as Awaited<ReturnType<typeof getClassPerformance>>;
+
+const seniorStub = (over: Partial<Awaited<ReturnType<typeof getSeniorReadiness>>> = {}) => ({
+  subjectsTotal: 12,
+  subjectsReady: 7,
+  subjectsPartial: 3,
+  subjectsAtRisk: 2,
+  ...over,
+});
+
 beforeEach(() => {
   vi.clearAllMocks(); // reset call history + implementations between cases
   vi.mocked(listAcademicTerms).mockResolvedValue([term()]);
@@ -139,6 +166,10 @@ beforeEach(() => {
   vi.mocked(getFinanceReport).mockResolvedValue(financeStub());
   vi.mocked(getBooksFinanceLine).mockResolvedValue(booksStub());
   vi.mocked(getPayrollLine).mockResolvedValue(payrollStub());
+  // Default a COMBINED school so BOTH performance sub-arms compute unless a case narrows the tier.
+  vi.mocked(getSchoolType).mockResolvedValue("COMBINED");
+  vi.mocked(getClassPerformance).mockResolvedValue(classPerfStub());
+  vi.mocked(getSeniorReadiness).mockResolvedValue(seniorStub());
 });
 
 // ── GOV1-ENR · enrolment arm faithful re-exposure ─────────────────────────────────────────────────
@@ -642,6 +673,241 @@ describe("GOV3 · net-position finance arm", () => {
       (d) => `GHS ${d.schoolPaidMonthlyTotal.toLocaleString("en-GH")}`,
     );
     expect(zeroTile).toEqual({ status: "CAPTURED", value: "GHS 0" });
+  });
+});
+
+// ── GOV4 · cross-tier performance arm + pending arms + terms (AC GOV4-01..18) ─────────────────────
+// The performance arm is an UNWRAPPED container {basic, senior}, each an independently honest-absence
+// -gated RollupArm (R352). Tier-gate BEFORE period-gate; schoolType is DB-authoritative (R355). Basic
+// is aggregate-only (no rows/PII, no classes fraction — R353); Senior is COMPLETION COUNTS only, no
+// score/blocker (§6.2 / R356). terminalResults + infrastructure are PendingArms, ALWAYS NOT_CAPTURED
+// with forward reasons (R358). No blended composite across tiers (R357).
+describe("GOV4 · performance arm", () => {
+  const perf = async (opts?: { periodId?: string }) =>
+    (await getSchoolRollup("school-1", opts)).performance;
+
+  // GOV4-01 — the container is UNWRAPPED: exactly {basic, senior}, no top-level status wrapper.
+  it("GOV4-01 · performance is an unwrapped {basic,senior} container, not a RollupArm", async () => {
+    const p = await perf();
+    expect(Object.keys(p).sort()).toEqual(["basic", "senior"]);
+    expect(p).not.toHaveProperty("status");
+    // Each sub-arm is itself a tagged RollupArm.
+    for (const arm of [p.basic, p.senior]) {
+      expect(["CAPTURED", "NOT_CAPTURED", "NOT_APPLICABLE"]).toContain(arm.status);
+    }
+  });
+
+  // GOV4-02 — COMBINED (the default) computes BOTH tiers.
+  it("GOV4-02 · COMBINED → both basic and senior computed", async () => {
+    const p = await perf();
+    expect(p.basic.status).toBe("CAPTURED");
+    expect(p.senior.status).toBe("CAPTURED");
+  });
+
+  // GOV4-03 — BASIC → senior NOT_APPLICABLE "Not a senior school."; basic still computed.
+  it("GOV4-03 · BASIC → senior NOT_APPLICABLE, basic computed", async () => {
+    vi.mocked(getSchoolType).mockResolvedValue("BASIC");
+    const p = await perf();
+    expect(p.senior).toEqual({ status: "NOT_APPLICABLE", reason: "Not a senior school." });
+    expect(p.basic.status).toBe("CAPTURED");
+    // A BASIC school never even queries the Senior source.
+    expect(getSeniorReadiness).not.toHaveBeenCalled();
+  });
+
+  // GOV4-04 — SENIOR → basic NOT_APPLICABLE (reason NAMES the missing basic tier); senior computed.
+  it("GOV4-04 · SENIOR → basic NOT_APPLICABLE (names basic tier), senior computed", async () => {
+    vi.mocked(getSchoolType).mockResolvedValue("SENIOR");
+    const p = await perf();
+    expect(p.basic.status).toBe("NOT_APPLICABLE");
+    if (p.basic.status === "CAPTURED") throw new Error("unreachable");
+    expect(p.basic.reason).toMatch(/basic/i);
+    expect(p.senior.status).toBe("CAPTURED");
+    expect(getClassPerformance).not.toHaveBeenCalled();
+  });
+
+  // GOV4-05 — tier-gate BEFORE period-gate (the mutation guard): a BASIC school with NO period still
+  // yields senior NOT_APPLICABLE (never NOT_CAPTURED). Reordering to period-first reds this.
+  it("GOV4-05 · BASIC + no period → senior NOT_APPLICABLE (tier-gate precedes period-gate)", async () => {
+    vi.mocked(getSchoolType).mockResolvedValue("BASIC");
+    vi.mocked(listAcademicTerms).mockResolvedValue([]);
+    const p = await perf();
+    expect(p.senior).toEqual({ status: "NOT_APPLICABLE", reason: "Not a senior school." });
+    // And symmetrically for a SENIOR school with no period → basic NOT_APPLICABLE, not NOT_CAPTURED.
+    vi.mocked(getSchoolType).mockResolvedValue("SENIOR");
+    const p2 = await perf();
+    expect(p2.basic.status).toBe("NOT_APPLICABLE");
+  });
+
+  // GOV4-06 — basic aggregate mapping: overallAverage=schoolAverage, overallDelta=schoolDelta,
+  // gradedClasses=classesGraded.
+  it("GOV4-06 · basic re-exposes schoolAverage/schoolDelta/classesGraded as the aggregate", async () => {
+    const p = await perf();
+    if (p.basic.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    expect(p.basic.data.overallAverage).toBe(72);
+    expect(p.basic.data.overallDelta).toBe(3);
+    expect(p.basic.data.gradedClasses).toBe(5);
+  });
+
+  // GOV4-07 — basic drops rows[]/teacherName (aggregate-only, no PII).
+  it("GOV4-07 · basic drops rows[]/teacherName (no PII leak onto the arm)", async () => {
+    const p = await perf();
+    if (p.basic.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    const d = p.basic.data as Record<string, unknown>;
+    expect(d).not.toHaveProperty("rows");
+    expect(d).not.toHaveProperty("teacherName");
+  });
+
+  // GOV4-08 — no classes FRACTION: the arm carries gradedClasses (a count) but never totalClasses.
+  it("GOV4-08 · basic exposes gradedClasses count but NOT a gradedClasses/totalClasses fraction", async () => {
+    const p = await perf();
+    if (p.basic.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    expect(p.basic.data).not.toHaveProperty("totalClasses");
+    expect(Object.keys(p.basic.data).sort()).toEqual(["gradedClasses", "overallAverage", "overallDelta"]);
+  });
+
+  // GOV4-09 — real-zero vs absent: no scores → NOT_CAPTURED (never overallAverage:0); a genuine
+  // all-zero average (scores exist) → CAPTURED 0.
+  it("GOV4-09 · zero-scores NOT_CAPTURED (never a fabricated 0); a real 0 average is CAPTURED", async () => {
+    vi.mocked(getClassPerformance).mockResolvedValue(
+      classPerfStub({ hasAnyScores: false, schoolAverage: null, classesGraded: 0 }),
+    );
+    const abs = await perf();
+    expect(abs.basic).toEqual({
+      status: "NOT_CAPTURED",
+      reason: "No gradebook scores recorded for Term 1 · 2025/26.",
+    });
+
+    vi.mocked(getClassPerformance).mockResolvedValue(
+      classPerfStub({ hasAnyScores: true, schoolAverage: 0, schoolDelta: null, classesGraded: 3 }),
+    );
+    const zero = await perf();
+    if (zero.basic.status !== "CAPTURED") throw new Error("expected CAPTURED real zero");
+    expect(zero.basic.data.overallAverage).toBe(0);
+  });
+
+  // GOV4-10 — senior counts re-exposed faithfully.
+  it("GOV4-10 · senior re-exposes the four completion counts faithfully", async () => {
+    const p = await perf();
+    if (p.senior.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    expect(p.senior.data).toEqual({
+      subjectsTotal: 12,
+      subjectsReady: 7,
+      subjectsPartial: 3,
+      subjectsAtRisk: 2,
+    });
+  });
+
+  // GOV4-11 — §6.2: senior carries ONLY completion counts — no score, no blocker, no name.
+  it("GOV4-11 · senior carries only the four counts (§6.2 no score / no blocker / no name)", async () => {
+    const p = await perf();
+    if (p.senior.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    expect(Object.keys(p.senior.data).sort()).toEqual([
+      "subjectsAtRisk",
+      "subjectsPartial",
+      "subjectsReady",
+      "subjectsTotal",
+    ]);
+    const d = p.senior.data as Record<string, unknown>;
+    for (const k of ["blockers", "teacherName", "score", "average", "rows"]) {
+      expect(d).not.toHaveProperty(k);
+    }
+  });
+
+  // GOV4-12 — senior NOT_CAPTURED when no subjects to roll up (subjectsTotal === 0).
+  it("GOV4-12 · senior NOT_CAPTURED when subjectsTotal is 0", async () => {
+    vi.mocked(getSeniorReadiness).mockResolvedValue(
+      seniorStub({ subjectsTotal: 0, subjectsReady: 0, subjectsPartial: 0, subjectsAtRisk: 0 }),
+    );
+    const p = await perf();
+    expect(p.senior).toEqual({
+      status: "NOT_CAPTURED",
+      reason: "No senior readiness data recorded for Term 1 · 2025/26.",
+    });
+  });
+
+  // GOV4-13/14 — the two PendingArms are ALWAYS NOT_CAPTURED with DISTINCT forward-looking reasons,
+  // carry no `.data`, and boardTile cannot render a number for them (the value fn is never called).
+  it("GOV4-13/14 · terminalResults + infrastructure always NOT_CAPTURED with distinct forward reasons", async () => {
+    // Even in a fully-populated COMBINED scenario they stay NOT_CAPTURED.
+    const full = await getSchoolRollup("school-1");
+    // And in an empty scenario.
+    vi.mocked(listAcademicTerms).mockResolvedValue([]);
+    vi.mocked(getSchoolStats).mockResolvedValue(statsStub({ totalStudents: 0 }));
+    const empty = await getSchoolRollup("school-1");
+
+    for (const r of [full, empty]) {
+      expect(r.terminalResults.status).toBe("NOT_CAPTURED");
+      expect(r.infrastructure.status).toBe("NOT_CAPTURED");
+      expect(r.terminalResults).not.toHaveProperty("data");
+      expect(r.infrastructure).not.toHaveProperty("data");
+      if (r.terminalResults.status !== "CAPTURED") expect(r.terminalResults.reason).toMatch(/BECE|WASSCE/);
+      if (r.infrastructure.status !== "CAPTURED") expect(r.infrastructure.reason).toMatch(/[Ff]acilities/);
+      // Distinct reasons — never one shared string.
+      const a = r.terminalResults.status === "CAPTURED" ? "" : r.terminalResults.reason;
+      const b = r.infrastructure.status === "CAPTURED" ? "" : r.infrastructure.reason;
+      expect(a).not.toBe(b);
+    }
+    // Tile honesty: boardTile on a PendingArm collapses to a reason, value fn NEVER called (no number).
+    const valueFn = vi.fn(() => "GHS 999");
+    const t = boardTile(full.infrastructure, valueFn);
+    expect(t.status).toBe("NOT_CAPTURED");
+    expect(valueFn).not.toHaveBeenCalled();
+  });
+
+  // GOV4-15 — no blended composite: the container is exactly {basic, senior}, each a tagged arm, and
+  // no field folds a basic figure and a senior count together.
+  it("GOV4-15 · no blended composite across basic and senior", async () => {
+    const p = await perf();
+    expect(Object.keys(p).sort()).toEqual(["basic", "senior"]);
+    expect(p).not.toHaveProperty("overall");
+    expect(p).not.toHaveProperty("combined");
+    // The two payloads share no key — a basic figure can't be summed into a senior count.
+    const b = p.basic;
+    const s = p.senior;
+    if (b.status === "CAPTURED" && s.status === "CAPTURED") {
+      const seniorKeys = Object.keys(s.data);
+      const shared = Object.keys(b.data).filter((k) => seniorKeys.includes(k));
+      expect(shared).toEqual([]);
+    }
+  });
+
+  // GOV4-16 — schoolType is DB-AUTHORITATIVE: the URL/opts periodId NEVER changes the tier gating.
+  it("GOV4-16 · schoolType (getSchoolType) drives gating; opts/periodId can't change the tier", async () => {
+    vi.mocked(getSchoolType).mockResolvedValue("BASIC");
+    // Even with an explicit periodId, a BASIC school's senior arm stays NOT_APPLICABLE.
+    const p = await perf({ periodId: "p1" });
+    expect(p.senior.status).toBe("NOT_APPLICABLE");
+    expect(getSchoolType).toHaveBeenCalledWith("school-1");
+  });
+
+  // GOV4-17 — composition/purity: the seam DELEGATES to the shipped source fns (never raw SQL). The
+  // zero-SQL guard proper lives in the structural-purity block; here we prove it composes them.
+  it("GOV4-17 · composes getSchoolType + the tier source fns (delegation, not SQL)", async () => {
+    await perf();
+    expect(getSchoolType).toHaveBeenCalledWith("school-1");
+    expect(getClassPerformance).toHaveBeenCalledTimes(1);
+    expect(getSeniorReadiness).toHaveBeenCalledTimes(1);
+  });
+
+  // GOV4-18 — period consistency: both tier sources are pinned to the RESOLVED period id (never
+  // opts.periodId), so a tile can't read a different term than the rest of the rollup.
+  it("GOV4-18 · tier sources are called with the RESOLVED period id + teacherUserId null", async () => {
+    const r = await getSchoolRollup("school-1"); // no opts → resolves p1
+    expect(r.period?.periodId).toBe("p1");
+    expect(getClassPerformance).toHaveBeenCalledWith("school-1", {
+      periodId: "p1",
+      teacherUserId: null,
+    });
+    expect(getSeniorReadiness).toHaveBeenCalledWith("school-1", { periodId: "p1" });
+  });
+
+  // The rollup surfaces the terms list so the board's period selector needs no second query.
+  it("GOV4 · exposes the terms list on the rollup return", async () => {
+    const t1 = term({ periodId: "p1" });
+    const t2 = term({ periodId: "p2", academicYear: "2024/25" });
+    vi.mocked(listAcademicTerms).mockResolvedValue([t1, t2]);
+    const r = await getSchoolRollup("school-1");
+    expect(r.terms).toEqual([t1, t2]);
   });
 });
 
