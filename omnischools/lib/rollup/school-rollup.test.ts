@@ -154,6 +154,27 @@ describe("GOV1-ENR · enrolment arm", () => {
     expect(r.enrolment.data.netChange).toBe(7);
     expect(r.enrolment.data.netChange).not.toBe(999);
   });
+
+  // GOV1-ENR-3 — withdrew/transferred/graduated + lifetimeExits come from stats.enrolmentFlow
+  // (cumulative, period-independent), NOT enrolment-roll. Sources DIVERGE so the wrong one reds.
+  it("GOV1-ENR-3 · lifetime exits + lifetimeExits re-sum come from school-stats, not enrolment-roll", async () => {
+    vi.mocked(getSchoolStats).mockResolvedValue(
+      statsStub({
+        enrolmentFlow: { newAdmissions: 5, withdrew: 3, transferred: 2, graduated: 1, netChange: 999 },
+      }),
+    );
+    vi.mocked(getEnrolmentRoll).mockResolvedValue(
+      rollStub({ withdrew: 99, transferred: 99, graduated: 99, lifetimeExits: 297 }),
+    );
+    const r = await getSchoolRollup("school-1");
+    if (r.enrolment.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    const d = r.enrolment.data;
+    expect(d.withdrew).toBe(3);
+    expect(d.transferred).toBe(2);
+    expect(d.graduated).toBe(1);
+    // Faithful re-sum of stats' OWN three exit fields (6), never enrolment-roll's 297.
+    expect(d.lifetimeExits).toBe(6);
+  });
 });
 
 // ── GOV1-ATT · attendance arm + PII fence ─────────────────────────────────────────────────────────
@@ -215,6 +236,23 @@ describe("GOV1-FEE · fee-collections arm", () => {
     expect(year).toBeNull();
     expect(window?.start.toISOString()).toBe("2025-09-01T00:00:00.000Z");
     expect(window?.end.toISOString()).toBe("2025-12-20T00:00:00.000Z");
+  });
+
+  // invoiceCount is a Postgres count(*) (bigint) — the pg driver returns it as a STRING. The seam
+  // MUST coerce with Number(): a bare '0' === 0 is false and would fabricate a CAPTURED empty tile.
+  it("invoiceCount arrives as a bigint STRING — '0' → NOT_CAPTURED, '5' → CAPTURED", async () => {
+    vi.mocked(getFinanceReport).mockResolvedValue(
+      financeStub({ totals: { invoiceCount: "0" }, billed: 0, collected: 0, outstanding: 0, rate: 0 }),
+    );
+    expect((await getSchoolRollup("school-1")).feeCollections).toEqual({
+      status: "NOT_CAPTURED",
+      reason: "No fees billed for Term 1 · 2025/26.",
+    });
+
+    vi.mocked(getFinanceReport).mockResolvedValue(
+      financeStub({ totals: { invoiceCount: "5" }, billed: 3000, collected: 0, outstanding: 3000, rate: 0 }),
+    );
+    expect((await getSchoolRollup("school-1")).feeCollections.status).toBe("CAPTURED");
   });
 });
 
@@ -298,6 +336,31 @@ describe("GOV1-HON · honesty convention", () => {
         expect(arm.status).not.toBe("NOT_APPLICABLE");
       }
     }
+  });
+
+  // The honesty crux for lifetime exits: the REAL getEnrolmentRoll early-returns 0 for exits when
+  // period == null. A school with withdrawals but no configured term must NOT report withdrew: 0 —
+  // so the seam reads exits from stats. Here enrolment-roll mimics that fabricated-zero shape.
+  it("GOV1-HON · no term + lifetime exits → withdrew from stats, never enrolment-roll's fabricated 0", async () => {
+    vi.mocked(listAcademicTerms).mockResolvedValue([]);
+    vi.mocked(getSchoolStats).mockResolvedValue(
+      statsStub({
+        enrolmentFlow: { newAdmissions: 0, withdrew: 3, transferred: 2, graduated: 1, netChange: 0 },
+      }),
+    );
+    vi.mocked(getEnrolmentRoll).mockResolvedValue(
+      rollStub({
+        withdrew: 0, transferred: 0, graduated: 0, lifetimeExits: 0,
+        netChange: 0, admissionsThisTerm: 0, intakeFemale: 0, intakeMale: 0,
+      }),
+    );
+    const r = await getSchoolRollup("school-1");
+    expect(r.period).toBeNull();
+    if (r.enrolment.status !== "CAPTURED") throw new Error("expected CAPTURED (students exist)");
+    const d = r.enrolment.data;
+    expect(d.withdrew).toBe(3); // from stats, not enrolment-roll's no-term 0
+    expect(d.lifetimeExits).toBe(6);
+    expect(d.netChange).toBeNull(); // term-windowed → null when no period
   });
 });
 
