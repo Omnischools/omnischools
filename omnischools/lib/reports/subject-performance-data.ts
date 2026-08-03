@@ -4,6 +4,7 @@ import { gradebookScores, subjects, gradeScale, gradebookColumns } from "@/db/sc
 import {
   gradeForScore,
   performanceTone,
+  passRateOf,
   PASS_MARK,
   type GradeBand,
   type PerfTone,
@@ -190,7 +191,7 @@ export async function getSubjectPerformance(
         tone: performanceTone(average),
         priorAverage,
         delta: average != null && priorAverage != null ? round1(average - priorAverage) : null,
-        passRate: a && a.graded > 0 ? Math.round((a.passed / a.graded) * 100) : null,
+        passRate: a ? passRateOf(a.passed, a.graded) : null,
         highest: a?.highest != null ? round1(a.highest) : null,
         lowest: a?.lowest != null ? round1(a.lowest) : null,
       };

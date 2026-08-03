@@ -152,10 +152,17 @@ export type PerformanceArm = {
  * graded", which is dishonest in a COMBINED school where the Senior classes have no gradebook — R353 /
  * GOV4-09). `overallGrade` is optional and deliberately omitted here: `getClassPerformance` exposes no
  * school-average grade letter, so sourcing one would need a second query (R362-c — omit-not-fake).
+ *
+ * GOV-4a (R362-a) · `passRate` is the school-wide % of graded gradebook scores at/above PASS_MARK —
+ * the aggregate of the per-subject pass rate (subject-performance-data.ts), computed on the SAME
+ * aggregate pass as the average inside `getClassPerformance` (no extra query — rollup stays zero-SQL).
+ * A genuine `null` when no graded scores (NEVER 0); NOT_CAPTURED still governs the whole arm at zero
+ * scores, so a CAPTURED basic arm always has ≥1 graded score and thus a numeric passRate.
  */
 export type BasicPerformanceSummary = {
   overallAverage: number | null;
   overallDelta: number | null;
+  passRate: number | null;
   gradedClasses: number;
   overallGrade?: string | null;
 };
@@ -393,6 +400,8 @@ export async function getSchoolRollup(
               data: {
                 overallAverage: classPerf.schoolAverage,
                 overallDelta: classPerf.schoolDelta,
+                // GOV-4a — school-wide pass rate, re-exposed from the same aggregate pass (R362-a).
+                passRate: classPerf.schoolPassRate,
                 gradedClasses: classPerf.classesGraded,
                 // overallGrade omitted — getClassPerformance exposes no school-average grade (R362-c).
               },
