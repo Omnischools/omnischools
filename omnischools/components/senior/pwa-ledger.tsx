@@ -153,7 +153,7 @@ export function PwaLedger(props: Props) {
   bufferRef.current = buffer;
   // Re-entrancy latch (inFlight + rerun) — a mid-flush edit drains again so nothing sticks pending.
   const latch = useRef<FlushLatch>({ inFlight: false, rerun: false });
-  const flushTimer = useRef<ReturnType<typeof setTimeout>>();
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const classOfStudent = useMemo(() => {
     const m = new Map<string, PwaClass>();
