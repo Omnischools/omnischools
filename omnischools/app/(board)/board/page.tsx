@@ -57,15 +57,16 @@ export default async function BoardPage({
           </h1>
           <p className="mt-1 text-[13px] text-navy-2">{termLabel} · read-only governance snapshot</p>
         </div>
-        {/* Board-pack PDF is a curated GOV-5 artefact — a disabled honest stub until then, never a raw print. */}
-        <button
-          type="button"
-          disabled
-          title="Coming soon · GOV-5"
-          className="cursor-not-allowed rounded-md border border-border-2 bg-surface px-3 py-1.5 text-xs font-semibold text-navy-3 print:hidden"
+        {/* Board-pack PDF (GOV-5) — streams the governance overview for the on-screen term. It lives
+            under /board so requireBoard()'s x-pathname confinement admits it. */}
+        <a
+          href={`/board/board-pack${rollup.period?.periodId ? `?periodId=${rollup.period.periodId}` : ""}`}
+          target="_blank"
+          rel="noopener"
+          className="rounded-md border border-border-2 bg-surface px-3 py-1.5 text-xs font-semibold text-navy hover:bg-bg print:hidden"
         >
           Board pack (PDF)
-        </button>
+        </a>
       </div>
 
       {/* ── Period selector ── */}
