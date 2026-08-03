@@ -13,6 +13,7 @@ import { getPayrollLine } from "@/lib/reports/payroll-line-data";
 import { getClassPerformance } from "@/lib/reports/class-performance-data";
 import { getSeniorReadiness } from "@/lib/reports/senior-readiness-data";
 import { getSchoolType } from "@/lib/reports/school-type-data";
+import { getTerminalResults, type TerminalResults } from "@/lib/reports/terminal-results-data";
 import { boardTile } from "@/lib/board/tiles";
 import { getSchoolRollup } from "./school-rollup";
 
@@ -41,6 +42,12 @@ vi.mock("@/lib/reports/payroll-line-data", () => ({ getPayrollLine: vi.fn() }));
 vi.mock("@/lib/reports/class-performance-data", () => ({ getClassPerformance: vi.fn() }));
 vi.mock("@/lib/reports/senior-readiness-data", () => ({ getSeniorReadiness: vi.fn() }));
 vi.mock("@/lib/reports/school-type-data", () => ({ getSchoolType: vi.fn() }));
+// Preserve the REAL deriveTerminalSummary (the rollup composes it) — only the DB reader is mocked, so
+// GOV6 exercises the true derived-total/passed/passRate math.
+vi.mock("@/lib/reports/terminal-results-data", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/reports/terminal-results-data")>();
+  return { ...actual, getTerminalResults: vi.fn() };
+});
 
 const term = (over: Partial<AcademicTerm> = {}): AcademicTerm => ({
   periodId: "p1",
@@ -158,6 +165,11 @@ const seniorStub = (over: Partial<Awaited<ReturnType<typeof getSeniorReadiness>>
   ...over,
 });
 
+// GOV-6 terminal-results reader stub — the four leaf counts per exam/latest-year (or absent).
+const terminalStub = (over: TerminalResults = {}): TerminalResults => ({ ...over });
+const beceRow = { year: 2025, femaleCandidates: 58, maleCandidates: 62, femalePassed: 51, malePassed: 49 };
+const wassceRow = { year: 2025, femaleCandidates: 44, maleCandidates: 40, femalePassed: 39, malePassed: 35 };
+
 beforeEach(() => {
   vi.clearAllMocks(); // reset call history + implementations between cases
   vi.mocked(listAcademicTerms).mockResolvedValue([term()]);
@@ -171,6 +183,8 @@ beforeEach(() => {
   vi.mocked(getSchoolType).mockResolvedValue("COMBINED");
   vi.mocked(getClassPerformance).mockResolvedValue(classPerfStub());
   vi.mocked(getSeniorReadiness).mockResolvedValue(seniorStub());
+  // Default: no captured terminal results (each GOV6 case narrows this).
+  vi.mocked(getTerminalResults).mockResolvedValue(terminalStub());
 });
 
 // ── GOV1-ENR · enrolment arm faithful re-exposure ─────────────────────────────────────────────────
@@ -863,27 +877,19 @@ describe("GOV4 · performance arm", () => {
     });
   });
 
-  // GOV4-13/14 — the two PendingArms are ALWAYS NOT_CAPTURED with DISTINCT forward-looking reasons,
-  // carry no `.data`, and boardTile cannot render a number for them (the value fn is never called).
-  it("GOV4-13/14 · terminalResults + infrastructure always NOT_CAPTURED with distinct forward reasons", async () => {
-    // Even in a fully-populated COMBINED scenario they stay NOT_CAPTURED.
+  // GOV4-13/14 — infrastructure is the remaining PendingArm: ALWAYS NOT_CAPTURED with a forward-looking
+  // reason, carries no `.data`, and boardTile cannot render a number for it (value fn never called).
+  // (terminalResults is now a real GOV-6 arm — covered in the GOV6 block below.)
+  it("GOV4-13/14 · infrastructure always NOT_CAPTURED with a forward reason, no `.data`", async () => {
     const full = await getSchoolRollup("school-1");
-    // And in an empty scenario.
     vi.mocked(listAcademicTerms).mockResolvedValue([]);
     vi.mocked(getSchoolStats).mockResolvedValue(statsStub({ totalStudents: 0 }));
     const empty = await getSchoolRollup("school-1");
 
     for (const r of [full, empty]) {
-      expect(r.terminalResults.status).toBe("NOT_CAPTURED");
       expect(r.infrastructure.status).toBe("NOT_CAPTURED");
-      expect(r.terminalResults).not.toHaveProperty("data");
       expect(r.infrastructure).not.toHaveProperty("data");
-      if (r.terminalResults.status !== "CAPTURED") expect(r.terminalResults.reason).toMatch(/BECE|WASSCE/);
       if (r.infrastructure.status !== "CAPTURED") expect(r.infrastructure.reason).toMatch(/[Ff]acilities/);
-      // Distinct reasons — never one shared string.
-      const a = r.terminalResults.status === "CAPTURED" ? "" : r.terminalResults.reason;
-      const b = r.infrastructure.status === "CAPTURED" ? "" : r.infrastructure.reason;
-      expect(a).not.toBe(b);
     }
     // Tile honesty: boardTile on a PendingArm collapses to a reason, value fn NEVER called (no number).
     const valueFn = vi.fn(() => "GHS 999");
@@ -946,6 +952,137 @@ describe("GOV4 · performance arm", () => {
     vi.mocked(listAcademicTerms).mockResolvedValue([t1, t2]);
     const r = await getSchoolRollup("school-1");
     expect(r.terms).toEqual([t1, t2]);
+  });
+});
+
+// ── GOV6 · terminal-results arm (AC GOV6-01..20) ──────────────────────────────────────────────────
+// The terminalResults arm is an UNWRAPPED container {bece, wassce}, each an independently
+// honest-absence-gated RollupArm (R367). Tier-gate BEFORE data-gate; schoolType DB-authoritative.
+// total/passed/passRate are DERIVED from the four stored leaves (R364 — no stored rate). YEAR-scoped +
+// period-INDEPENDENT (R368). An all-fail sitting is a CAPTURED 0% (R369), never absence.
+describe("GOV6 · terminal-results arm", () => {
+  const tr = async (opts?: { periodId?: string }) =>
+    (await getSchoolRollup("school-1", opts)).terminalResults;
+
+  // GOV6-01 — unwrapped {bece, wassce} container, each a tagged RollupArm.
+  it("GOV6-01 · unwrapped {bece,wassce} container, each a tagged RollupArm", async () => {
+    const t = await tr();
+    expect(Object.keys(t).sort()).toEqual(["bece", "wassce"]);
+    expect(t).not.toHaveProperty("status");
+    for (const arm of [t.bece, t.wassce])
+      expect(["CAPTURED", "NOT_CAPTURED", "NOT_APPLICABLE"]).toContain(arm.status);
+  });
+
+  // GOV6-02/04 — total/passed/passRate DERIVED from the four leaves (never a stored column).
+  it("GOV6-02/04 · derives total, passed and pass rate from the sex-split leaves", async () => {
+    vi.mocked(getTerminalResults).mockResolvedValue(terminalStub({ bece: beceRow }));
+    const t = await tr();
+    if (t.bece.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    const d = t.bece.data;
+    expect(d.year).toBe(2025);
+    expect(d.totalCandidates).toBe(120); // 58 + 62
+    expect(d.passedCount).toBe(100); // 51 + 49
+    expect(d.passRate).toBe(83); // round(100 / 120 * 100)
+    expect(d.female).toEqual({ candidates: 58, passed: 51 });
+    expect(d.male).toEqual({ candidates: 62, passed: 49 });
+  });
+
+  // GOV6-03 — entered, NOT computed: passedCount is exactly the ENTERED sum, no WAEC mark threshold.
+  it("GOV6-03 · passed is the ENTERED figure — no pass-mark threshold in the derive", async () => {
+    vi.mocked(getTerminalResults).mockResolvedValue(
+      terminalStub({
+        bece: { year: 2024, femaleCandidates: 10, maleCandidates: 10, femalePassed: 10, malePassed: 10 },
+      }),
+    );
+    const t = await tr();
+    if (t.bece.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    expect(t.bece.data.passedCount).toBe(20);
+    expect(t.bece.data.passRate).toBe(100);
+  });
+
+  // GOV6-06 — BASIC → wassce NOT_APPLICABLE ("Not a senior school."); bece data-gated.
+  it("GOV6-06 · BASIC → wassce NOT_APPLICABLE, bece data-gated", async () => {
+    vi.mocked(getSchoolType).mockResolvedValue("BASIC");
+    const t = await tr();
+    expect(t.wassce).toEqual({ status: "NOT_APPLICABLE", reason: "Not a senior school." });
+    expect(t.bece.status).toBe("NOT_CAPTURED");
+  });
+
+  // GOV6-07 — SENIOR → bece NOT_APPLICABLE (reason NAMES the missing basic tier); wassce data-gated.
+  it("GOV6-07 · SENIOR → bece NOT_APPLICABLE (names basic tier), wassce data-gated", async () => {
+    vi.mocked(getSchoolType).mockResolvedValue("SENIOR");
+    const t = await tr();
+    expect(t.bece.status).toBe("NOT_APPLICABLE");
+    if (t.bece.status === "CAPTURED") throw new Error("unreachable");
+    expect(t.bece.reason).toMatch(/basic/i);
+    expect(t.wassce.status).toBe("NOT_CAPTURED");
+  });
+
+  // GOV6-08 — COMBINED → both data-gated (never NOT_APPLICABLE).
+  it("GOV6-08 · COMBINED → both exams data-gated, neither NOT_APPLICABLE", async () => {
+    vi.mocked(getTerminalResults).mockResolvedValue(terminalStub({ bece: beceRow, wassce: wassceRow }));
+    const t = await tr();
+    expect(t.bece.status).toBe("CAPTURED");
+    expect(t.wassce.status).toBe("CAPTURED");
+  });
+
+  // GOV6-09 — tier-gate PRECEDES data-gate (the mutation guard): a BASIC school with a STRAY wassce row
+  // still yields wassce NOT_APPLICABLE (the row is masked, never leaked as CAPTURED). Reordering reds.
+  it("GOV6-09 · tier-gate precedes data-gate — a stray wrong-tier row stays NOT_APPLICABLE", async () => {
+    vi.mocked(getSchoolType).mockResolvedValue("BASIC");
+    vi.mocked(getTerminalResults).mockResolvedValue(terminalStub({ bece: beceRow, wassce: wassceRow }));
+    const t = await tr();
+    expect(t.wassce.status).toBe("NOT_APPLICABLE"); // NOT CAPTURED, despite the row
+    expect(t.bece.status).toBe("CAPTURED");
+  });
+
+  // GOV6-10 — NOT_CAPTURED at ROW existence (no captured row for the exam), reason names the exam.
+  it("GOV6-10 · NOT_CAPTURED when no row captured for the exam (reason names it)", async () => {
+    vi.mocked(getTerminalResults).mockResolvedValue(terminalStub({ bece: beceRow })); // wassce absent
+    const t = await tr();
+    expect(t.wassce).toEqual({ status: "NOT_CAPTURED", reason: "No WASSCE results captured yet." });
+    expect(t.bece.status).toBe("CAPTURED");
+  });
+
+  // GOV6-11 — an all-fail sitting (passed 0, candidates ≥ 1) is a CAPTURED 0% (R369), never absence.
+  it("GOV6-11 · an all-fail sitting is CAPTURED with passRate 0 (honest zero, not absence)", async () => {
+    vi.mocked(getTerminalResults).mockResolvedValue(
+      terminalStub({
+        bece: { year: 2023, femaleCandidates: 20, maleCandidates: 30, femalePassed: 0, malePassed: 0 },
+      }),
+    );
+    const t = await tr();
+    if (t.bece.status !== "CAPTURED") throw new Error("expected CAPTURED (a real 0% sitting)");
+    expect(t.bece.data.passedCount).toBe(0);
+    expect(t.bece.data.passRate).toBe(0);
+    expect(t.bece.data.totalCandidates).toBe(50);
+  });
+
+  // GOV6-12/13 — YEAR-scoped + period-INDEPENDENT: populated even with NO term, and the sitting `year`
+  // travels inside `data`; the reader is called with NO period argument.
+  it("GOV6-12/13 · period-independent: captured even with no term; year carried in data", async () => {
+    vi.mocked(listAcademicTerms).mockResolvedValue([]); // no period at all
+    vi.mocked(getTerminalResults).mockResolvedValue(terminalStub({ wassce: wassceRow }));
+    const r = await getSchoolRollup("school-1");
+    expect(r.period).toBeNull();
+    if (r.terminalResults.wassce.status !== "CAPTURED")
+      throw new Error("expected CAPTURED with no period");
+    expect(r.terminalResults.wassce.data.year).toBe(2025);
+    // Called with the schoolId ONLY — no period/term threaded in (period-independent seam).
+    expect(getTerminalResults).toHaveBeenCalledWith("school-1");
+    expect(vi.mocked(getTerminalResults).mock.calls[0]).toHaveLength(1);
+  });
+
+  // GOV6-19/20 — arm honesty: a non-captured sub-arm carries a reason and NO `.data`; narrowing on
+  // `status` is the compile-fence (a fabricated number for a not-captured exam can't be constructed).
+  it("GOV6-19/20 · non-captured sub-arms carry a reason and no `.data`", async () => {
+    vi.mocked(getSchoolType).mockResolvedValue("BASIC"); // wassce NA, bece NOT_CAPTURED (default {})
+    const t = await tr();
+    for (const arm of [t.bece, t.wassce]) {
+      expect(arm.status).not.toBe("CAPTURED");
+      expect(arm).not.toHaveProperty("data");
+      if (arm.status !== "CAPTURED") expect(typeof arm.reason).toBe("string");
+    }
   });
 });
 

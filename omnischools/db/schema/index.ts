@@ -24,6 +24,7 @@ export * from "./sickbay";
 export * from "./vlc";
 export * from "./plc";
 export * from "./pta";
+export * from "./terminal-results";
 export * from "./timetable";
 export * from "./comms";
 export * from "./inbox";

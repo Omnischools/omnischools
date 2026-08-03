@@ -9,6 +9,8 @@ import {
   type PerformanceArm,
   type PendingArm,
   type RollupArm,
+  type TerminalResultsArm,
+  type TerminalResultSummary,
 } from "@/lib/rollup/school-rollup";
 import { boardGhs } from "@/lib/board/tiles";
 import { ReportFilters } from "@/components/reports/report-filters";
@@ -485,7 +487,7 @@ function PerformanceTile({
   terminal,
 }: {
   performance: PerformanceArm;
-  terminal: PendingArm;
+  terminal: TerminalResultsArm;
 }) {
   const { basic, senior } = performance;
   return (
@@ -541,15 +543,52 @@ function PerformanceTile({
           </div>
         )}
 
-        {/* Terminal results — coming soon (GOV-6), treatment C. Reads the pending arm's reason. */}
-        <ComingSoon
-          eyebrow="Terminal results"
-          label="BECE & WASSCE results — coming soon"
-          body={pendingReason(terminal)}
-          tag="GOV-6"
-        />
+        {/* Terminal results (GOV-6) — real figures once captured. Each exam is honest-absence-gated on
+            its OWN: NOT_APPLICABLE omitted (omit-not-fake, matching the tier sections above),
+            NOT_CAPTURED shows a reason, CAPTURED shows the figure. Narrows on status → no fabricated
+            number for a not-captured exam. */}
+        {(terminal.bece.status !== "NOT_APPLICABLE" ||
+          terminal.wassce.status !== "NOT_APPLICABLE") && (
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-navy-3">
+              Terminal exams
+            </div>
+            <div className="mt-1 space-y-2">
+              <TerminalLine label="BECE" arm={terminal.bece} />
+              <TerminalLine label="WASSCE" arm={terminal.wassce} />
+            </div>
+          </div>
+        )}
       </div>
     </Tile>
+  );
+}
+
+/** One terminal-exam line on the board. NOT_APPLICABLE → omitted; NOT_CAPTURED → reason (no number);
+ *  CAPTURED → year · pass rate · passed/total · sex split. Narrowing on `status` makes a fabricated
+ *  number for a not-captured exam a compile error. */
+function TerminalLine({ label, arm }: { label: string; arm: RollupArm<TerminalResultSummary> }) {
+  if (arm.status === "NOT_APPLICABLE") return null;
+  return (
+    <div>
+      <div className="text-[11px] font-semibold text-navy-2">{label}</div>
+      {arm.status === "CAPTURED" ? (
+        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="font-display text-xl font-medium text-navy">{arm.data.passRate}%</span>
+          <span className="text-[12px] text-navy-3">pass · {arm.data.year}</span>
+          <span className="text-[12px] text-navy-3">
+            {arm.data.passedCount.toLocaleString("en-GH")}/
+            {arm.data.totalCandidates.toLocaleString("en-GH")} passed
+          </span>
+          <span className="font-mono text-[10px] text-navy-3">
+            {arm.data.female.passed}/{arm.data.female.candidates}F ·{" "}
+            {arm.data.male.passed}/{arm.data.male.candidates}M
+          </span>
+        </div>
+      ) : (
+        <p className="mt-0.5 text-[13px] leading-relaxed text-navy-3">{arm.reason}</p>
+      )}
+    </div>
   );
 }
 
