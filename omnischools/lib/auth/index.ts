@@ -45,6 +45,13 @@ export const KNOWN_APP_ROLES = [
   // a free-text ref_role.code, NOT an appRoleEnum member (R366 — no enum, no migration). Rank-1 by
   // default (rankOf), inert in every access group except PLC_CONFIG_WRITE_ROLES / PLC_SESSION_BREAKGLASS_ROLES.
   "PD_COORDINATOR",
+  // GOV-2 (governance track / R333) — BOARD_MEMBER: a read-only, NON-STAFF board/director persona
+  // (parent-shaped, NOT confined-staff-shaped). A free-text ref_role.code, NOT an appRoleEnum member
+  // (no enum, no migration); its ref_role row is minted lazily by resolveRole on first grant, exactly
+  // like DEAN_OF_STUDENTS / PD_COORDINATOR. It is ALSO in access.ts's NON_STAFF_ROLES, so `isStaff`
+  // is false for it — it never enters the staff shell; `requireBoard()` gates its own `(board)` group.
+  // rank-0 (rankOf), inert in every write/management group, read-only (assertWriteAccess throws for it).
+  "BOARD_MEMBER",
 ] as const;
 export type KnownAppRole = (typeof KNOWN_APP_ROLES)[number];
 export type AppRole = KnownAppRole | (string & {});

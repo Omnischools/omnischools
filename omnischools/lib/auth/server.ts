@@ -9,6 +9,9 @@ import {
   isFinanceOnly,
   pathAllowedForFinance,
   FINANCE_HOME,
+  isBoardOnly,
+  pathAllowedForBoard,
+  BOARD_HOME,
   hasAnyRole,
   isStaff,
 } from "@/lib/access";
@@ -140,10 +143,17 @@ export async function requireSchool(
   const school = await getActiveSchool(user);
   if (!school) redirect("/start");
   if (!opts?.allowNonStaff && !isStaff(user.roles)) {
-    // A parent has somewhere to be; a student-only session has no portal yet, and `/start` is the
-    // honest landing rather than a staff page they cannot use. Neither target is inside `app/(app)`,
+    // A board-only session hitting a staff URL lands on its own read-only overview FIRST (GOV-2 / R334);
+    // a parent has somewhere to be; a student-only session has no portal yet, and `/start` is the honest
+    // landing rather than a staff page they cannot use. None of these targets is inside `app/(app)`,
     // which would loop.
-    redirect(user.roles.includes("PARENT") ? "/wassce" : "/start");
+    redirect(
+      isBoardOnly(user.roles)
+        ? BOARD_HOME
+        : user.roles.includes("PARENT")
+          ? "/wassce"
+          : "/start",
+    );
   }
   // Finance-only staff (Accountant/Bursar) are confined to the billing sections.
   // Runs on every app page (and its server actions) via this shared guard; the path
@@ -162,7 +172,10 @@ export async function requireSchool(
  */
 export async function assertWriteAccess(): Promise<void> {
   const user = await getCurrentUser();
-  if (user && isFinanceOnly(user.roles)) {
+  // GOV-2 (R336) — a board-only session is read-only across the WHOLE app, so it throws here too. Do NOT
+  // fold this clause away: removing `isBoardOnly(user.roles)` reopens a write path for a board session
+  // (a mutation of this line must red a test).
+  if (user && (isFinanceOnly(user.roles) || isBoardOnly(user.roles))) {
     throw new Error("Forbidden: your role has read-only access to this record.");
   }
 }
@@ -194,6 +207,25 @@ export async function requireParent(): Promise<{ user: AppUser; school: ActiveSc
   if (!user.roles.includes("PARENT")) redirect("/dashboard");
   const school = await getActiveSchool(user);
   if (!school) redirect("/start");
+  return { user, school };
+}
+
+/**
+ * Page guard for the read-only BOARD/DIRECTOR overview (GOV-2 / R335) — its OWN `(board)` route group,
+ * NEVER the staff `app/(app)` shell (BOARD_MEMBER is non-staff, so `requireSchool` would bounce it). It
+ * mirrors `requireParent()`, plus a finance-style path confinement: admits a BOARD_MEMBER at the active
+ * school; a non-board session is sent to the staff dashboard; a board session with no resolvable school
+ * lands on /start; and a board session reaching any path OUTSIDE `/board` is redirected to BOARD_HOME.
+ * Every `(board)` page awaits this in its OWN render (before its own queries) — that, not the layout, is
+ * where the confinement actually bites (a layout redirect does not stop a page rendering).
+ */
+export async function requireBoard(): Promise<{ user: AppUser; school: ActiveSchool }> {
+  const user = await requireUser();
+  if (!user.roles.includes("BOARD_MEMBER")) redirect("/dashboard");
+  const school = await getActiveSchool(user);
+  if (!school) redirect("/start");
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  if (pathname && !pathAllowedForBoard(pathname)) redirect(BOARD_HOME);
   return { user, school };
 }
 

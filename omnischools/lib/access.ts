@@ -457,8 +457,8 @@ export function rankOf(roles: readonly string[]): number {
         ? 3
         : r === "ADMIN" || r === "HEADMASTER"
           ? 2
-          : r === "PARENT" || r === "STUDENT"
-            ? 0
+          : r === "PARENT" || r === "STUDENT" || r === "BOARD_MEMBER"
+            ? 0 // non-staff (BOARD_MEMBER is read-only, outranks nobody — R337)
             : 1; // any other (staff) role
     if (n > rank) rank = n;
   }
@@ -499,8 +499,14 @@ export function canGrantRole(actorRoles: readonly string[], code: string): boole
   return rankOf([code]) <= rankOf(actorRoles);
 }
 
-/** Roles that are NOT staff — a session holding only these never manages the school (mirrors staff-roles). */
-const NON_STAFF_ROLES = ["STUDENT", "PARENT"];
+/**
+ * Roles that are NOT staff — a session holding only these never manages the school (mirrors staff-roles).
+ * BOARD_MEMBER (GOV-2 / R333) joins STUDENT/PARENT here: the board is a read-only, non-staff persona, so
+ * `isStaff(["BOARD_MEMBER"]) === false` — it never enters the staff `(app)` shell (its own `(board)`
+ * group + `requireBoard()` gate it instead). A user who is ALSO staff (BOARD_MEMBER + TEACHER) still
+ * passes `isStaff`, exactly like a staffer who is also a parent.
+ */
+const NON_STAFF_ROLES = ["STUDENT", "PARENT", "BOARD_MEMBER"];
 
 /**
  * True when the user holds at least one staff (non-STUDENT/PARENT) role. The invite/manage gate: a
@@ -548,4 +554,35 @@ const matches = (pathname: string, prefix: string) =>
 /** True when a finance-only user is allowed to load this path. */
 export function pathAllowedForFinance(pathname: string): boolean {
   return FINANCE_SECTIONS.some((p) => matches(pathname, p));
+}
+
+/**
+ * GOV-2 (governance track / R333) — the read-only BOARD_MEMBER confinement. Mirrors the finance-only
+ * symbols but STRICTER: the board is a NON-STAFF persona (isStaff false), so it never enters the staff
+ * `(app)` shell at all — it lives entirely behind `requireBoard()` over the `(board)` route group. There
+ * is no write/read section split: EVERY `/board` section is read-only (assertWriteAccess throws for it).
+ */
+export const BOARD_ROLES = ["BOARD_MEMBER"];
+
+/**
+ * Section prefixes a board-only user may reach — ONE read-only prefix. The board account page lives at
+ * `/board/account` (covered by `/board`), deliberately NOT `/account` (that is the parent portal's).
+ */
+export const BOARD_SECTIONS = ["/board"];
+
+/** Where a board-only user lands — their read-only overview. */
+export const BOARD_HOME = "/board";
+
+/**
+ * True when every role the user holds is a board role (and they hold at least one). A user who is also
+ * ADMIN / TEACHER / etc. is NOT board-only and keeps full staff access (mirrors `isFinanceOnly`).
+ */
+export function isBoardOnly(roles: readonly string[]): boolean {
+  const r = roles.filter(Boolean);
+  return r.length > 0 && r.every((role) => BOARD_ROLES.includes(role));
+}
+
+/** True when a board-only user is allowed to load this path. */
+export function pathAllowedForBoard(pathname: string): boolean {
+  return BOARD_SECTIONS.some((p) => matches(pathname, p));
 }
