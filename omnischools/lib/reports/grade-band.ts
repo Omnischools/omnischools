@@ -28,3 +28,12 @@ export function attendanceTone(rate: number | null): PerfTone {
 
 /** Pass / credit mark (GES default). Subject pass-rate uses this threshold. */
 export const PASS_MARK = 50;
+
+/**
+ * Whole-% pass rate — the share of GRADED scores at/above PASS_MARK. `graded` is the count of
+ * non-null scores; `passed` the count of scores ≥ PASS_MARK (so `passed ⊆ graded`). Returns `null`
+ * (never 0) when nothing is graded. The single definition behind BOTH the per-subject pass rate
+ * (subject-performance) and the school-wide one (class-performance / GOV-4a).
+ */
+export const passRateOf = (passed: number, graded: number): number | null =>
+  graded > 0 ? Math.round((passed / graded) * 100) : null;

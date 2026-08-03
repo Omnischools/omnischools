@@ -1,7 +1,14 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import { gradebookScores, students, classes, gradeScale, users } from "@/db/schema";
-import { gradeForScore, performanceTone, type GradeBand, type PerfTone } from "./grade-band";
+import {
+  gradeForScore,
+  performanceTone,
+  passRateOf,
+  PASS_MARK,
+  type GradeBand,
+  type PerfTone,
+} from "./grade-band";
 import {
   listAcademicTerms,
   resolveSelectedTerm,
@@ -38,6 +45,8 @@ export type ClassPerformance = {
   rows: ClassPerfRow[];
   schoolAverage: number | null;
   schoolDelta: number | null;
+  /** School-wide % of graded scores at/above PASS_MARK (per-score basis; null when none graded). */
+  schoolPassRate: number | null;
   classesGraded: number;
   totalClasses: number;
   highest: ClassLeader | null;
@@ -80,16 +89,22 @@ async function classAverages(
   return map;
 }
 
-/** School-wide AVG(total) over the in-scope classes for one period. */
-async function scopedSchoolAverage(
+/** School-wide AVG(total) + per-score pass/graded counts over the in-scope classes for one period. */
+async function scopedSchoolAggregate(
   tx: Tx,
   schoolId: string,
   periodId: string,
   classIds: string[],
-): Promise<number | null> {
-  if (classIds.length === 0) return null;
+): Promise<{ avg: number | null; passed: number; graded: number }> {
+  if (classIds.length === 0) return { avg: null, passed: 0, graded: 0 };
   const [row] = await tx
-    .select({ avg: sql<string | null>`avg(${gradebookScores.total})` })
+    .select({
+      avg: sql<string | null>`avg(${gradebookScores.total})`,
+      // Per-score pass basis — MIRRORS subject-performance-data.ts (count(*) filter ≥ PASS_MARK over
+      // non-null totals), aggregated school-wide with NO group-by. Same pass, no extra round-trip.
+      passed: sql<number>`count(*) filter (where ${gradebookScores.total} >= ${PASS_MARK})::int`,
+      graded: sql<number>`count(*) filter (where ${gradebookScores.total} is not null)::int`,
+    })
     .from(gradebookScores)
     .innerJoin(
       students,
@@ -105,7 +120,11 @@ async function scopedSchoolAverage(
         inArray(students.classId, classIds),
       ),
     );
-  return row?.avg != null ? Number(row.avg) : null;
+  return {
+    avg: row?.avg != null ? Number(row.avg) : null,
+    passed: row?.passed ?? 0,
+    graded: row?.graded ?? 0,
+  };
 }
 
 export async function getClassPerformance(
@@ -125,6 +144,7 @@ export async function getClassPerformance(
     rows: [],
     schoolAverage: null,
     schoolDelta: null,
+    schoolPassRate: null,
     classesGraded: 0,
     totalClasses: 0,
     highest: null,
@@ -151,15 +171,15 @@ export async function getClassPerformance(
       .orderBy(asc(classes.name));
 
     const classIds = classRows.map((c) => c.classId);
-    const [curAvgs, priorAvgs, schoolAverageRaw, priorSchoolRaw] = await Promise.all([
+    const [curAvgs, priorAvgs, schoolAgg, priorSchoolAgg] = await Promise.all([
       classAverages(tx, schoolId, term.periodId),
       prior
         ? classAverages(tx, schoolId, prior.periodId)
         : Promise.resolve(new Map<string, { avg: number | null; students: number }>()),
-      scopedSchoolAverage(tx, schoolId, term.periodId, classIds),
+      scopedSchoolAggregate(tx, schoolId, term.periodId, classIds),
       prior
-        ? scopedSchoolAverage(tx, schoolId, prior.periodId, classIds)
-        : Promise.resolve(null),
+        ? scopedSchoolAggregate(tx, schoolId, prior.periodId, classIds)
+        : Promise.resolve({ avg: null, passed: 0, graded: 0 }),
     ]);
 
     let hasAnyScores = false;
@@ -200,8 +220,10 @@ export async function getClassPerformance(
           }
         : null;
 
-    const schoolAverage = schoolAverageRaw != null ? round1(schoolAverageRaw) : null;
-    const priorSchool = priorSchoolRaw != null ? round1(priorSchoolRaw) : null;
+    const schoolAverage = schoolAgg.avg != null ? round1(schoolAgg.avg) : null;
+    const priorSchool = priorSchoolAgg.avg != null ? round1(priorSchoolAgg.avg) : null;
+    // Per-score pass rate, same definition as the per-subject one in subject-performance-data.ts.
+    const schoolPassRate = passRateOf(schoolAgg.passed, schoolAgg.graded);
 
     return {
       terms,
@@ -212,6 +234,7 @@ export async function getClassPerformance(
       schoolAverage,
       schoolDelta:
         schoolAverage != null && priorSchool != null ? round1(schoolAverage - priorSchool) : null,
+      schoolPassRate,
       classesGraded,
       totalClasses: classRows.length,
       highest,

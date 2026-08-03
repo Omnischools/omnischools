@@ -141,6 +141,7 @@ const classPerfStub = (over: Record<string, unknown> = {}) =>
   ({
     schoolAverage: 72,
     schoolDelta: 3,
+    schoolPassRate: 68, // distinct from average/delta/classesGraded so a mis-wire surfaces
     classesGraded: 5,
     totalClasses: 8,
     hasAnyScores: true,
@@ -748,6 +749,38 @@ describe("GOV4 · performance arm", () => {
     expect(p.basic.data.gradedClasses).toBe(5);
   });
 
+  // GOV4a-01 (R362-a) — the basic arm re-exposes getClassPerformance's school-wide pass rate VERBATIM.
+  // Distinct stub value (68, not the 72 average) means a wire onto the wrong field reds this.
+  it("GOV4a-01 · basic re-exposes schoolPassRate as passRate (verbatim, not the average)", async () => {
+    const p = await perf();
+    if (p.basic.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    expect(p.basic.data.passRate).toBe(68);
+    expect(p.basic.data.passRate).not.toBe(p.basic.data.overallAverage);
+  });
+
+  // GOV4a-02 — pass rate is null (never 0) when the source reports no graded scores but the arm is
+  // still CAPTURED (a hypothetical the seam must pass through faithfully — no fabricated 0).
+  it("GOV4a-02 · passRate is a genuine null (never 0) when the source pass rate is null", async () => {
+    vi.mocked(getClassPerformance).mockResolvedValue(
+      classPerfStub({ hasAnyScores: true, schoolAverage: 40, schoolPassRate: null, classesGraded: 2 }),
+    );
+    const p = await perf();
+    if (p.basic.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    expect(p.basic.data.passRate).toBeNull();
+    expect(p.basic.data.passRate).not.toBe(0);
+  });
+
+  // GOV4a-03 — zero graded scores → the WHOLE basic arm is NOT_CAPTURED (passRate never surfaces),
+  // never a CAPTURED tile carrying passRate: 0.
+  it("GOV4a-03 · zero graded scores → NOT_CAPTURED, no passRate leaks", async () => {
+    vi.mocked(getClassPerformance).mockResolvedValue(
+      classPerfStub({ hasAnyScores: false, schoolAverage: null, schoolPassRate: null, classesGraded: 0 }),
+    );
+    const p = await perf();
+    expect(p.basic.status).toBe("NOT_CAPTURED");
+    expect(p.basic).not.toHaveProperty("data");
+  });
+
   // GOV4-07 — basic drops rows[]/teacherName (aggregate-only, no PII).
   it("GOV4-07 · basic drops rows[]/teacherName (no PII leak onto the arm)", async () => {
     const p = await perf();
@@ -762,7 +795,12 @@ describe("GOV4 · performance arm", () => {
     const p = await perf();
     if (p.basic.status !== "CAPTURED") throw new Error("expected CAPTURED");
     expect(p.basic.data).not.toHaveProperty("totalClasses");
-    expect(Object.keys(p.basic.data).sort()).toEqual(["gradedClasses", "overallAverage", "overallDelta"]);
+    expect(Object.keys(p.basic.data).sort()).toEqual([
+      "gradedClasses",
+      "overallAverage",
+      "overallDelta",
+      "passRate",
+    ]);
   });
 
   // GOV4-09 — real-zero vs absent: no scores → NOT_CAPTURED (never overallAverage:0); a genuine

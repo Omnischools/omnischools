@@ -201,6 +201,8 @@ function academicSummary(p: PerformanceArm): { value: string; sub: ReactNode } {
       value: `${d.overallAverage}%`,
       sub: (
         <>
+          {/* GOV-4a — pass rate on the standing cell; null renders absent, never "0%". */}
+          {d.passRate != null && <>{d.passRate}% pass · </>}
           {d.gradedClasses} {d.gradedClasses === 1 ? "class" : "classes"} graded{" "}
           <TrendPill delta={d.overallDelta} unit="pts" context="vs last term" />
         </>
@@ -495,10 +497,16 @@ function PerformanceTile({
               Basic · gradebook
             </div>
             {basic.status === "CAPTURED" ? (
-              <div className="mt-1 flex items-center gap-3">
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <div className="font-display text-3xl font-medium leading-none text-navy">
                   {basic.data.overallAverage == null ? "—" : `${basic.data.overallAverage}%`}
                 </div>
+                {/* GOV-4a — pass rate beside the average; null renders absent, never "0%". */}
+                {basic.data.passRate != null && (
+                  <span className="text-[11px] font-semibold text-navy-2">
+                    {basic.data.passRate}% pass rate
+                  </span>
+                )}
                 <span className="text-[11px] text-navy-3">
                   {basic.data.gradedClasses} {basic.data.gradedClasses === 1 ? "class" : "classes"}{" "}
                   graded
