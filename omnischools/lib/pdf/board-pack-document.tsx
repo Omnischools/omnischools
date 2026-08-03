@@ -6,7 +6,7 @@ import {
   ATTENDANCE_STATUS_META,
   type AttendanceStatus,
 } from "@/lib/attendance-status";
-import { armView, tierView, pendingReason, ghs, num, dash, pct } from "./board-pack-parts";
+import { armView, tierView, ghs, num, dash, pct } from "./board-pack-parts";
 import type {
   SchoolRollup,
   RollupArm,
@@ -21,6 +21,7 @@ import type {
   SeniorReadinessSummary,
   TerminalResultsArm,
   TerminalResultSummary,
+  InfrastructureSummary,
 } from "@/lib/rollup/school-rollup";
 
 /**
@@ -172,32 +173,6 @@ const s = StyleSheet.create({
   },
   reasonText: { fontSize: 9, color: NAVY3, lineHeight: 1.5 },
 
-  // treatment C · coming-soon (dashed)
-  comingBox: {
-    borderWidth: 1,
-    borderColor: BORDER_2,
-    borderStyle: "dashed",
-    backgroundColor: BG,
-    borderRadius: 6,
-    padding: 14,
-    marginTop: 6,
-  },
-  comingHead: { fontFamily: SERIF, fontStyle: "italic", fontSize: 13, color: NAVY3, marginTop: 2 },
-  comingBody: { fontSize: 9, color: NAVY3, lineHeight: 1.5, marginTop: 4, maxWidth: 380 },
-  tagPill: {
-    marginTop: 8,
-    alignSelf: "flex-start",
-    fontFamily: MONO,
-    fontSize: 8,
-    fontWeight: "bold",
-    color: NAVY3,
-    borderWidth: 1,
-    borderColor: BORDER_2,
-    borderRadius: 8,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-  },
-
   // finance streams
   financeCaption: { fontSize: 9, color: NAVY3, lineHeight: 1.5, marginBottom: 8, maxWidth: 470 },
   streamRow: { flexDirection: "row", gap: 10 },
@@ -258,18 +233,6 @@ function ReasonPanel({ children }: { children: string }) {
   return (
     <View style={s.reasonPanel}>
       <Text style={s.reasonText}>{children}</Text>
-    </View>
-  );
-}
-
-/** Treatment C — a dashed, italic "coming soon" (a PendingArm). Takes only strings, never a number. */
-function ComingSoon({ eyebrow, label, body, tag }: { eyebrow?: string; label: string; body: string; tag: string }) {
-  return (
-    <View style={s.comingBox}>
-      {eyebrow ? <Text style={s.eyebrow}>{eyebrow}</Text> : null}
-      <Text style={s.comingHead}>{label}</Text>
-      <Text style={s.comingBody}>{body}</Text>
-      <Text style={s.tagPill}>{tag}</Text>
     </View>
   );
 }
@@ -635,6 +598,68 @@ function TerminalLine({ d }: { d: TerminalResultSummary }) {
   );
 }
 
+/**
+ * GOV-7 · the LATEST facilities snapshot, projected to the board figures via `armView` — the SAME
+ * compile-fence as every other section: `.data` is reachable only through the CAPTURED branch, so a
+ * fabricated number for a not-captured tile is a compile error, and the census-only fields (caterer /
+ * furniture / staff FTE) are structurally absent from `InfrastructureSummary` and can never print here.
+ */
+function InfrastructureSection({ arm }: { arm: RollupArm<InfrastructureSummary> }) {
+  const v = armView(arm);
+  return (
+    <View style={s.section} wrap={false}>
+      <SectionHead
+        lead="Infrastructure"
+        accent="& facilities"
+        meta={v.shown ? `${v.data.capturedFor.periodLabel} · ${v.data.capturedFor.academicYear}` : undefined}
+      />
+      {!v.shown ? <ReasonPanel>{v.reason}</ReasonPanel> : <InfrastructureBody d={v.data} />}
+    </View>
+  );
+}
+
+function InfrastructureBody({ d }: { d: InfrastructureSummary }) {
+  const yn = (b: boolean) => (b ? "Yes" : "No");
+  const dn = (n: number | null) => (n == null ? "—" : num(n));
+  return (
+    <View>
+      <View style={s.headRow}>
+        <Text style={s.headline}>{d.classrooms.pctGood == null ? "—" : `${d.classrooms.pctGood}%`}</Text>
+        <Text style={s.caption}>
+          classrooms sound · {d.classrooms.good}/{d.classrooms.total} good ·{" "}
+          {d.classrooms.needingRepair} need repair
+        </Text>
+      </View>
+      <View style={{ marginTop: 8 }}>
+        <Line label="Water" value={d.utilities.waterSource} />
+        <Line label="Electricity" value={d.utilities.electricitySource} />
+        <Line
+          label="Sanitation"
+          value={`${d.utilities.latrineType} · ${num(d.utilities.latrinesTotal)} latrines`}
+        />
+        <Line label="Handwashing" value={yn(d.utilities.handwashing)} />
+        <Line
+          label="ICT lab"
+          value={d.ict.hasLab ? `Yes · ${dn(d.ict.working)}/${dn(d.ict.computers)} working` : "No"}
+        />
+        <Line label="Internet" value={yn(d.ict.internet)} />
+        <Line label="Library" value={d.library.has ? `Yes · ${dn(d.library.bookCount)} books` : "No"} />
+        <Line
+          label="Feeding"
+          value={
+            d.feeding.gsfpParticipating
+              ? `GSFP · ${dn(d.feeding.pupilsFedDaily)} fed daily`
+              : d.feeding.hasKitchen
+                ? "Own kitchen"
+                : "None"
+          }
+        />
+        {d.textbooks.availability ? <Line label="Textbooks" value={d.textbooks.availability} /> : null}
+      </View>
+    </View>
+  );
+}
+
 /* ─────────────────────────── document ─────────────────────────── */
 
 export function BoardPackDocument({ data }: { data: BoardPackData }) {
@@ -673,10 +698,7 @@ export function BoardPackDocument({ data }: { data: BoardPackData }) {
 
           <TerminalSection arm={rollup.terminalResults} />
 
-          <View style={s.section} wrap={false}>
-            <SectionHead lead="Infrastructure" accent="& facilities" />
-            <ComingSoon label="Not yet captured" body={pendingReason(rollup.infrastructure)} tag="GOV-7" />
-          </View>
+          <InfrastructureSection arm={rollup.infrastructure} />
         </View>
 
         {/* Fixed footer + pagination */}

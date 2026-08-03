@@ -5,9 +5,9 @@ import {
   type AttendanceArm,
   type AttendanceStatusTotals,
   type EnrolmentArm,
+  type InfrastructureSummary,
   type NetPositionFinanceArm,
   type PerformanceArm,
-  type PendingArm,
   type RollupArm,
   type TerminalResultsArm,
   type TerminalResultSummary,
@@ -16,7 +16,7 @@ import { boardGhs } from "@/lib/board/tiles";
 import { ReportFilters } from "@/components/reports/report-filters";
 import { PerfBar } from "@/components/reports/report-kit";
 import { ATTENDANCE_STATUS_ORDER, ATTENDANCE_STATUS_META } from "@/lib/attendance-status";
-import { TrendPill, ComingSoon, AbsencePanel } from "@/components/board/board-tiles";
+import { TrendPill, AbsencePanel } from "@/components/board/board-tiles";
 import { cn } from "@/lib/utils";
 
 /**
@@ -142,14 +142,22 @@ export default async function BoardPage({
           }
         />
 
-        {/* Cell 5 · Infrastructure — coming-soon chip (treatment C), never a number. */}
-        <div className="rounded-xl border border-dashed border-border-2 bg-bg px-4 py-3.5">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-navy-3">
-            Infrastructure
-          </div>
-          <div className="mt-1 font-display text-lg italic text-navy-3">Not yet captured</div>
-          <div className="mt-1 text-[11px] text-navy-3">Coming soon · GOV-7</div>
-        </div>
+        {/* Cell 5 · Facilities — %-sound classrooms from the LATEST snapshot; honest reason when none. */}
+        <SummaryCell
+          label="Facilities"
+          value={
+            rollup.infrastructure.status === "CAPTURED"
+              ? rollup.infrastructure.data.classrooms.pctGood == null
+                ? "—"
+                : `${rollup.infrastructure.data.classrooms.pctGood}%`
+              : "—"
+          }
+          sub={
+            rollup.infrastructure.status === "CAPTURED"
+              ? `${rollup.infrastructure.data.classrooms.good}/${rollup.infrastructure.data.classrooms.total} classrooms sound`
+              : rollup.infrastructure.reason
+          }
+        />
       </div>
 
       {/* ── Detail tiles — the read layer ── */}
@@ -594,20 +602,86 @@ function TerminalLine({ label, arm }: { label: string; arm: RollupArm<TerminalRe
 
 /* ───────────────────────────── Infrastructure tile ───────────────────────────── */
 
-function InfrastructureTile({ arm }: { arm: PendingArm }) {
+/** The board projection of the LATEST facilities snapshot (GOV-7). Narrows on `status`, so a fabricated
+ *  number for a not-captured tile is a compile error; a captured zero (0 working / handwashing false)
+ *  renders as a real value, never absence. Census-only fields (caterer / furniture / staff FTE) are
+ *  structurally absent from `InfrastructureSummary`, so they can never appear here. */
+function InfrastructureTile({ arm }: { arm: RollupArm<InfrastructureSummary> }) {
   return (
-    <Tile title="Infrastructure" accent="& facilities">
-      <div className="mt-3">
-        <ComingSoon label="Not yet captured" body={pendingReason(arm)} tag="GOV-7" />
-      </div>
+    <Tile
+      title="Infrastructure"
+      accent="& facilities"
+      meta={
+        arm.status === "CAPTURED"
+          ? `${arm.data.capturedFor.periodLabel} · ${arm.data.capturedFor.academicYear}`
+          : undefined
+      }
+    >
+      {arm.status !== "CAPTURED" ? (
+        <div className="mt-4">
+          <AbsencePanel>{arm.reason}</AbsencePanel>
+        </div>
+      ) : (
+        <InfrastructureBody d={arm.data} />
+      )}
     </Tile>
   );
 }
 
-/** A PendingArm is always NOT_CAPTURED at runtime, but the union still carries the (unreachable)
- *  CAPTURED member — narrow to read its forward-looking reason. */
-function pendingReason(arm: PendingArm): string {
-  return arm.status === "CAPTURED" ? "" : arm.reason;
+const yesNo = (b: boolean) => (b ? "Yes" : "No");
+const dashNum = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-GH"));
+
+function InfrastructureBody({ d }: { d: InfrastructureSummary }) {
+  return (
+    <div className="mt-3 space-y-4">
+      {/* Classrooms headline — % sound + the count. */}
+      <div className="flex items-center gap-3">
+        <div className="font-display text-3xl font-medium leading-none text-navy">
+          {d.classrooms.pctGood == null ? "—" : `${d.classrooms.pctGood}%`}
+        </div>
+        <div className="text-[11px] leading-tight text-navy-3">
+          classrooms sound
+          <br />
+          {d.classrooms.good}/{d.classrooms.total} good · {d.classrooms.needingRepair} need repair
+        </div>
+      </div>
+
+      {/* Utilities · ICT · library · feeding · textbooks. */}
+      <dl className="space-y-1 text-[13px]">
+        <Line label="Water" value={d.utilities.waterSource} />
+        <Line label="Electricity" value={d.utilities.electricitySource} />
+        <Line
+          label="Sanitation"
+          value={`${d.utilities.latrineType} · ${d.utilities.latrinesTotal.toLocaleString("en-GH")} latrines`}
+        />
+        <Line label="Handwashing" value={yesNo(d.utilities.handwashing)} />
+        <Line
+          label="ICT lab"
+          value={
+            d.ict.hasLab
+              ? `Yes · ${dashNum(d.ict.working)}/${dashNum(d.ict.computers)} working`
+              : "No"
+          }
+        />
+        <Line label="Internet" value={yesNo(d.ict.internet)} />
+        <Line
+          label="Library"
+          value={d.library.has ? `Yes · ${dashNum(d.library.bookCount)} books` : "No"}
+        />
+        <Line
+          label="Feeding"
+          value={
+            d.feeding.gsfpParticipating
+              ? `GSFP · ${dashNum(d.feeding.pupilsFedDaily)} fed daily`
+              : d.feeding.hasKitchen
+                ? "Own kitchen"
+                : "None"
+          }
+        />
+        {d.textbooks.availability && <Line label="Textbooks" value={d.textbooks.availability} />}
+      </dl>
+    </div>
+  );
 }
 
 /* ───────────────────────────── Shared stream/line bits ───────────────────────────── */

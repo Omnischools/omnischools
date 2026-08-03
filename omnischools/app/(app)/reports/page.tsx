@@ -146,6 +146,17 @@ export default async function ReportsPage() {
       snapshotValue: "View →",
       snapshotSub: "Who joined this term; exits as lifetime totals",
     },
+    {
+      category: "operational",
+      href: "/reports/facilities",
+      icon: "F",
+      iconTone: "bg-navy text-gold",
+      name: "Facilities snapshot",
+      desc: "Capture the termly facilities census — classrooms, WASH, ICT, feeding (management). Feeds the board overview & census.",
+      snapshotLabel: "Classrooms & WASH",
+      snapshotValue: "Capture →",
+      snapshotSub: "Estates census — no student or staff detail",
+    },
   ];
 
   return (

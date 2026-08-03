@@ -14,6 +14,7 @@ import { getClassPerformance } from "@/lib/reports/class-performance-data";
 import { getSeniorReadiness } from "@/lib/reports/senior-readiness-data";
 import { getSchoolType } from "@/lib/reports/school-type-data";
 import { getTerminalResults, type TerminalResults } from "@/lib/reports/terminal-results-data";
+import { getFacilitiesSnapshot } from "@/lib/reports/facilities-data";
 import { boardTile } from "@/lib/board/tiles";
 import { getSchoolRollup } from "./school-rollup";
 
@@ -47,6 +48,12 @@ vi.mock("@/lib/reports/school-type-data", () => ({ getSchoolType: vi.fn() }));
 vi.mock("@/lib/reports/terminal-results-data", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/reports/terminal-results-data")>();
   return { ...actual, getTerminalResults: vi.fn() };
+});
+// Preserve the REAL deriveInfrastructureSummary (the rollup composes it) — only the DB reader is mocked, so
+// GOV7 exercises the true pctGood / latrinesTotal derive + the census-only field DROP.
+vi.mock("@/lib/reports/facilities-data", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/reports/facilities-data")>();
+  return { ...actual, getFacilitiesSnapshot: vi.fn() };
 });
 
 const term = (over: Partial<AcademicTerm> = {}): AcademicTerm => ({
@@ -170,6 +177,51 @@ const terminalStub = (over: TerminalResults = {}): TerminalResults => ({ ...over
 const beceRow = { year: 2025, femaleCandidates: 58, maleCandidates: 62, femalePassed: 51, malePassed: 49 };
 const wassceRow = { year: 2025, femaleCandidates: 44, maleCandidates: 40, femalePassed: 39, malePassed: 35 };
 
+// GOV-7 facilities reader stub — the raw snapshot row + its term label/year (loosely cast, the real shape
+// is wider). catererName/libraryStaffFte/furniture are PRESENT here so a board-projection leak would surface.
+const facilitiesRowStub = (over: Record<string, unknown> = {}) =>
+  ({
+    id: "f1",
+    schoolId: "school-1",
+    periodId: "p1",
+    classroomsTotal: 20,
+    classroomsGood: 15,
+    classroomsRepair: 5,
+    waterSource: "BOREHOLE",
+    electricitySource: "GRID",
+    latrinesBoys: 4,
+    latrinesGirls: 6,
+    latrinesStaff: 2,
+    latrineType: "KVIP",
+    handwashing: true,
+    hasLibrary: true,
+    hasIctLab: true,
+    internet: true,
+    hasKitchen: true,
+    gsfpParticipating: true,
+    libraryBookCount: 1200,
+    libraryStaffFte: "1.5",
+    computersTotal: 30,
+    computersWorking: 24,
+    internetType: "Fibre",
+    mealsServedLastTerm: 5000,
+    pupilsFedDailyAvg: 300,
+    catererName: "Auntie Akos", // census-only — must NOT reach the board projection
+    textbookAvailability: "ADEQUATE",
+    studentDesksUsable: 200,
+    studentDesksBroken: 10,
+    teacherDesks: 20,
+    chalkboards: 20,
+    whiteboards: 5,
+    projectors: 2,
+    note: null,
+    capturedAt: new Date("2026-01-15T10:00:00.000Z"),
+    capturedBy: "u1",
+    periodLabel: "Term 1",
+    academicYear: "2025/26",
+    ...over,
+  }) as unknown as Awaited<ReturnType<typeof getFacilitiesSnapshot>>;
+
 beforeEach(() => {
   vi.clearAllMocks(); // reset call history + implementations between cases
   vi.mocked(listAcademicTerms).mockResolvedValue([term()]);
@@ -185,6 +237,8 @@ beforeEach(() => {
   vi.mocked(getSeniorReadiness).mockResolvedValue(seniorStub());
   // Default: no captured terminal results (each GOV6 case narrows this).
   vi.mocked(getTerminalResults).mockResolvedValue(terminalStub());
+  // Default: no captured facilities snapshot (each GOV7 case narrows this).
+  vi.mocked(getFacilitiesSnapshot).mockResolvedValue(null);
 });
 
 // ── GOV1-ENR · enrolment arm faithful re-exposure ─────────────────────────────────────────────────
@@ -877,26 +931,7 @@ describe("GOV4 · performance arm", () => {
     });
   });
 
-  // GOV4-13/14 — infrastructure is the remaining PendingArm: ALWAYS NOT_CAPTURED with a forward-looking
-  // reason, carries no `.data`, and boardTile cannot render a number for it (value fn never called).
-  // (terminalResults is now a real GOV-6 arm — covered in the GOV6 block below.)
-  it("GOV4-13/14 · infrastructure always NOT_CAPTURED with a forward reason, no `.data`", async () => {
-    const full = await getSchoolRollup("school-1");
-    vi.mocked(listAcademicTerms).mockResolvedValue([]);
-    vi.mocked(getSchoolStats).mockResolvedValue(statsStub({ totalStudents: 0 }));
-    const empty = await getSchoolRollup("school-1");
-
-    for (const r of [full, empty]) {
-      expect(r.infrastructure.status).toBe("NOT_CAPTURED");
-      expect(r.infrastructure).not.toHaveProperty("data");
-      if (r.infrastructure.status !== "CAPTURED") expect(r.infrastructure.reason).toMatch(/[Ff]acilities/);
-    }
-    // Tile honesty: boardTile on a PendingArm collapses to a reason, value fn NEVER called (no number).
-    const valueFn = vi.fn(() => "GHS 999");
-    const t = boardTile(full.infrastructure, valueFn);
-    expect(t.status).toBe("NOT_CAPTURED");
-    expect(valueFn).not.toHaveBeenCalled();
-  });
+  // (terminalResults + infrastructure are now real GOV-6 / GOV-7 arms — covered in their own blocks below.)
 
   // GOV4-15 — no blended composite: the container is exactly {basic, senior}, each a tagged arm, and
   // no field folds a basic figure and a senior count together.
@@ -1083,6 +1118,106 @@ describe("GOV6 · terminal-results arm", () => {
       expect(arm).not.toHaveProperty("data");
       if (arm.status !== "CAPTURED") expect(typeof arm.reason).toBe("string");
     }
+  });
+});
+
+// ── GOV7 · infrastructure arm (AC GOV7-06..13) ────────────────────────────────────────────────────
+// The infrastructure arm is a plain wrapped RollupArm<InfrastructureSummary>, TIER-AGNOSTIC (R379 — never
+// NOT_APPLICABLE, no schoolType branch). It shows the LATEST captured snapshot, period-INDEPENDENT (R380).
+// NOT_CAPTURED is drawn at ROW existence; pctGood / latrinesTotal are DERIVED (R377); catererName /
+// furniture / libraryStaffFte / per-sex latrines are census-only and structurally absent (R378).
+describe("GOV7 · infrastructure arm", () => {
+  const infra = async (opts?: { periodId?: string }) =>
+    (await getSchoolRollup("school-1", opts)).infrastructure;
+
+  // GOV7-10 — NOT_CAPTURED at ROW existence (no snapshot), carries a reason + no `.data`.
+  it("GOV7-10 · NOT_CAPTURED at row-existence with a reason and no `.data`", async () => {
+    const arm = await infra();
+    expect(arm).toEqual({ status: "NOT_CAPTURED", reason: "No facilities snapshot captured yet." });
+    expect(arm).not.toHaveProperty("data");
+  });
+
+  // GOV7-06/07 — CAPTURED board projection: derived pctGood (15/20 → 75) + latrinesTotal (4+6+2 → 12), and
+  // the exact projection shape.
+  it("GOV7-06/07 · CAPTURED derives pctGood + latrinesTotal and exposes the board projection shape", async () => {
+    vi.mocked(getFacilitiesSnapshot).mockResolvedValue(facilitiesRowStub());
+    const arm = await infra();
+    if (arm.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    const d = arm.data;
+    expect(d.classrooms).toEqual({ total: 20, good: 15, needingRepair: 5, pctGood: 75 });
+    expect(d.utilities.latrinesTotal).toBe(12);
+    expect(d.capturedFor).toEqual({ periodLabel: "Term 1", academicYear: "2025/26" });
+    expect(d.capturedAt).toEqual(new Date("2026-01-15T10:00:00.000Z"));
+    expect(Object.keys(d).sort()).toEqual([
+      "capturedAt",
+      "capturedFor",
+      "classrooms",
+      "feeding",
+      "ict",
+      "library",
+      "textbooks",
+      "utilities",
+    ]);
+  });
+
+  // GOV7-07 — pctGood is null (never 0) when there are no classrooms to divide by.
+  it("GOV7-07 · pctGood is null when classroomsTotal is 0 (never a fabricated 0)", async () => {
+    vi.mocked(getFacilitiesSnapshot).mockResolvedValue(
+      facilitiesRowStub({ classroomsTotal: 0, classroomsGood: 0, classroomsRepair: 0 }),
+    );
+    const arm = await infra();
+    if (arm.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    expect(arm.data.classrooms.pctGood).toBeNull();
+  });
+
+  // GOV7-06/08 — the board projection carries NO census-only field: catererName, libraryStaffFte, furniture
+  // (desks/boards/projectors) and the per-sex latrine split are DROPPED (the compile-fence proper is in the
+  // facilities-data test's @ts-expect-error block; here the runtime absence proves the derive drops them).
+  it("GOV7-08 · board projection drops catererName / furniture / libraryStaffFte / per-sex latrines", async () => {
+    vi.mocked(getFacilitiesSnapshot).mockResolvedValue(facilitiesRowStub());
+    const arm = await infra();
+    if (arm.status !== "CAPTURED") throw new Error("expected CAPTURED");
+    const flat = JSON.stringify(arm.data);
+    for (const banned of ["catererName", "libraryStaffFte", "studentDesks", "teacherDesks", "chalkboards", "latrinesBoys"]) {
+      expect(flat).not.toContain(banned);
+    }
+    expect(arm.data.utilities as Record<string, unknown>).not.toHaveProperty("latrinesBoys");
+  });
+
+  // GOV7-09 — TIER-AGNOSTIC: for every schoolType the arm is NEVER NOT_APPLICABLE (captured ⇒ CAPTURED,
+  // absent ⇒ NOT_CAPTURED), with no schoolType branch.
+  it("GOV7-09 · tier-agnostic — never NOT_APPLICABLE for BASIC / SENIOR / COMBINED", async () => {
+    for (const t of ["BASIC", "SENIOR", "COMBINED"] as const) {
+      vi.mocked(getSchoolType).mockResolvedValue(t);
+      vi.mocked(getFacilitiesSnapshot).mockResolvedValue(null);
+      expect((await infra()).status).toBe("NOT_CAPTURED");
+      vi.mocked(getFacilitiesSnapshot).mockResolvedValue(facilitiesRowStub());
+      expect((await infra()).status).toBe("CAPTURED");
+    }
+  });
+
+  // GOV7-11 — a captured ZERO (0 working computers, handwashing false) is CAPTURED and shown, never absence.
+  it("GOV7-11 · a captured zero (0 working computers, handwashing false) is CAPTURED, not absence", async () => {
+    vi.mocked(getFacilitiesSnapshot).mockResolvedValue(
+      facilitiesRowStub({ computersWorking: 0, handwashing: false, gsfpParticipating: false, hasKitchen: false }),
+    );
+    const arm = await infra();
+    if (arm.status !== "CAPTURED") throw new Error("expected CAPTURED (a real zero snapshot)");
+    expect(arm.data.ict.working).toBe(0);
+    expect(arm.data.utilities.handwashing).toBe(false);
+  });
+
+  // GOV7-12/13 — period-INDEPENDENT: captured even with NO term, and the reader is called with the schoolId
+  // ONLY (no period threaded in) — the board always shows the LATEST snapshot regardless of the term.
+  it("GOV7-12/13 · period-independent — captured with no term; reader called with schoolId only", async () => {
+    vi.mocked(listAcademicTerms).mockResolvedValue([]); // no period at all
+    vi.mocked(getFacilitiesSnapshot).mockResolvedValue(facilitiesRowStub());
+    const r = await getSchoolRollup("school-1", { periodId: "p2" });
+    expect(r.period).toBeNull();
+    expect(r.infrastructure.status).toBe("CAPTURED");
+    // Called with the schoolId ONLY — no period/term threaded in (period-independent seam · zero-SQL delegation).
+    expect(getFacilitiesSnapshot).toHaveBeenCalledWith("school-1");
+    expect(vi.mocked(getFacilitiesSnapshot).mock.calls[0]).toHaveLength(1);
   });
 });
 

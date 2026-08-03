@@ -426,6 +426,19 @@ export const TERMINAL_RESULTS_WRITE_ROLES = [
   "VICE_HEADMASTER_ACADEMIC",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * 🔴 GOV-7 — who may CAPTURE the termly facilities snapshot (classrooms / WASH / ICT / feeding). Facilities
+ * are ESTATES, not academics, so the write gate is management-only — ADMIN + HEADMASTER — and DELIBERATELY
+ * NOT the terminal-results set: no VICE_HEADMASTER_ACADEMIC (the head of academics has no estates remit).
+ * Gated on BOTH the capture route (`requireSchoolRole`) AND the capture action (`assertAnyRole`) — a
+ * hand-crafted POST that never touched the UI is still refused. `as const satisfies` makes a typo'd code a
+ * compile error.
+ */
+export const FACILITIES_WRITE_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",

@@ -23,6 +23,11 @@ import {
   type TerminalResultRow,
   type TerminalResultSummary,
 } from "@/lib/reports/terminal-results-data";
+import {
+  getFacilitiesSnapshot,
+  deriveInfrastructureSummary,
+  type InfrastructureSummary,
+} from "@/lib/reports/facilities-data";
 
 /**
  * GOV-1 · the shared `school-rollup` aggregate seam — the spine both the board/director overview
@@ -193,12 +198,12 @@ export type TerminalResultsArm = {
 };
 
 export type { TerminalResultSummary };
+export type { InfrastructureSummary };
 
 /**
- * GOV-4 · a capability NOT YET BUILT (R358). `RollupArm<never>` — the payload is `never`, so a
- * CAPTURED arm is a COMPILE ERROR: this arm can only ever be NOT_CAPTURED, and can never fabricate a
- * number. GOV-7 (facilities) replaces the body later; until then the board sees a deliberate,
- * forward-looking "coming soon", never a zero.
+ * A capability NOT YET BUILT (R358). `RollupArm<never>` — the payload is `never`, so a CAPTURED arm is a
+ * COMPILE ERROR: such an arm can only ever be NOT_CAPTURED and can never fabricate a number. No live arm
+ * uses it now (GOV-6 terminal + GOV-7 infrastructure both shipped real); kept for the GOV-8/9 census arms.
  */
 export type PendingArm = RollupArm<never>;
 
@@ -214,7 +219,8 @@ export type SchoolRollup = {
   performance: PerformanceArm;
   // GOV-6 — terminal exam results (unwrapped {bece, wassce} container).
   terminalResults: TerminalResultsArm;
-  infrastructure: PendingArm;
+  // GOV-7 — facilities snapshot (tier-agnostic; the LATEST captured term, period-independent).
+  infrastructure: RollupArm<InfrastructureSummary>;
   /** Every real term (newest-first) so the board's period selector needs no second query. */
   terms: AcademicTerm[];
 };
@@ -233,10 +239,13 @@ export async function getSchoolRollup(
   // independent of the resolved period.
   // terminalResults is YEAR-scoped and period-INDEPENDENT (R368) — fetched here, alongside the two other
   // period-independent reads, and never gated on the resolved period.
-  const [terms, schoolType, terminalData] = await Promise.all([
+  // infrastructure is the LATEST facilities snapshot — period-INDEPENDENT (R380), fetched here alongside
+  // the other period-independent reads and never gated on the resolved period.
+  const [terms, schoolType, terminalData, facilitiesRow] = await Promise.all([
     listAcademicTerms(schoolId),
     getSchoolType(schoolId),
     getTerminalResults(schoolId),
+    getFacilitiesSnapshot(schoolId),
   ]);
   const period = resolveSelectedTerm(terms, opts?.periodId);
 
@@ -476,13 +485,14 @@ export async function getSchoolRollup(
     wassce: terminalArm(schoolType !== "BASIC", terminalData.wassce, "WASSCE", "Not a senior school."),
   };
 
-  // ── pending arms (R358) ────────────────────────────────────────────────────────────────────────
-  // ALWAYS NOT_CAPTURED with a forward-looking reason. `never` payload makes CAPTURED a compile error;
-  // GOV-7 replaces this body with a real arm later.
-  const infrastructure: PendingArm = {
-    status: "NOT_CAPTURED",
-    reason: "Facilities details are not yet captured — the termly facilities form is coming soon.",
-  };
+  // ── infrastructure (GOV-7 / R379–R381) ───────────────────────────────────────────────────────────
+  // TIER-AGNOSTIC (R379): every school has facilities, so this arm NEVER emits NOT_APPLICABLE and does not
+  // branch on schoolType. It shows the LATEST captured snapshot regardless of the selected period (R380).
+  // NOT_CAPTURED is drawn at ROW existence — a captured zero (0 working computers, handwashing false) is a
+  // real CAPTURED snapshot (R380/R11), never absence. `pctGood` / `latrinesTotal` are derived in the reader.
+  const infrastructure: RollupArm<InfrastructureSummary> = facilitiesRow
+    ? { status: "CAPTURED", data: deriveInfrastructureSummary(facilitiesRow) }
+    : { status: "NOT_CAPTURED", reason: "No facilities snapshot captured yet." };
 
   return {
     schoolId,

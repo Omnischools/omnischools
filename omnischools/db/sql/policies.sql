@@ -197,7 +197,8 @@ BEGIN
     'book_category',
     'book_entry',
     'fixed_asset',
-    'terminal_exam_result'
+    'terminal_exam_result',
+    'facilities_snapshot'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);
