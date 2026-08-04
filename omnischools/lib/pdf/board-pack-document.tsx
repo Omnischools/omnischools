@@ -47,7 +47,6 @@ const TERRA = "#B84A39";
 const TERRA_BG = "#F5E1DC";
 const WARN = "#C58A2E";
 const BORDER = "#E5DFD3";
-const BORDER_2 = "#D4CCBA";
 
 // Gender mini-bar — the school-stats pink/blue (a sanctioned non-token exception, as on the dashboard).
 const FEMALE_HEX = "#C77B9E";
