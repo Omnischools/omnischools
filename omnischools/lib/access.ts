@@ -439,6 +439,20 @@ export const FACILITIES_WRITE_ROLES = [
   "HEADMASTER",
 ] as const satisfies readonly KnownAppRole[];
 
+/**
+ * 🔴 GOV-8 — who may GENERATE the GES statutory census (mid-year / annual). The headteacher signs and files
+ * it, so the write gate is management-only — ADMIN + HEADMASTER (R402) — the same shape as
+ * FACILITIES_WRITE_ROLES but a SEPARATE, purpose-named group (a census filing is a statutory return, not an
+ * estates capture): widening one must never silently widen the other, and no VICE_HEADMASTER_ACADEMIC (the
+ * census is a whole-school statutory return the head owns, not an academic surface). Gated on BOTH the
+ * generation route (`requireSchoolRole`) AND the save action (`assertAnyRole`) — a hand-crafted POST that
+ * never touched the UI is still refused. `as const satisfies` makes a typo'd code a compile error.
+ */
+export const CENSUS_WRITE_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
 /** Boarding roles that see EVERY House in the school (not confined to one they master). */
 export const BOARDING_SCHOOL_SCOPED_ROLES = [
   "ADMIN",
