@@ -568,6 +568,13 @@
       "when": 1785798555825,
       "tag": "0080_dizzy_the_hand",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1785831524667,
+      "tag": "0081_lame_monster_badoon",
+      "breakpoints": true
     }
   ]
 }
