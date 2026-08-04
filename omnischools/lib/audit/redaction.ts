@@ -106,6 +106,7 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   // NB: readiness_statement is REDACTED (its `after` carries a projected aggregate+band — mark-adjacent).
   "university_target", // student's university target (programme + rank; no band/aggregate — guidance, not a mark)
   "terminal_exam_result", // GOV-6 — school-level BECE/WASSCE pass counts (aggregate, sex-split; NO candidate, NO per-student mark)
+  "facilities_snapshot", // GOV-7 — school-level per-term facility census (classrooms/WASH/ICT/feeding; aggregate estates data, NO student/staff PII)
   // — VLC config spine (SHS module 4.5 / INCR-40) — operational config, NO pastoral PII (all three are
   // the programme cadence, the value list, and the session prompts). The pastoral graph (journal /
   // flags) lands at INCR-42/43 as a `vlc_pastoral_*` REDACTED family; these three are SHOWN. —
