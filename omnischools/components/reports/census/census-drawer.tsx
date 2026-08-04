@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CensusView, CensusRowView, RowTag } from "@/lib/reports/census/view";
+import { handFillRows } from "@/lib/reports/census/view";
 import type { CensusIdentification } from "@/lib/reports/census/schema";
 import { CensusGenerateButton } from "@/components/reports/census/census-generate-button";
 
@@ -95,7 +96,7 @@ export function CensusDrawer({
     { label: "Year established", value: identification.yearFounded || "—", mono: true },
     { label: "Ownership", value: identification.ownership || "—" },
   ];
-  const handRows = view.groups.flatMap((g) => g.rows).filter((r) => r.inScope && r.coverage !== "FULL");
+  const handRows = handFillRows(view);
 
   return (
     <div className="mx-auto flex w-full max-w-[600px] flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg">

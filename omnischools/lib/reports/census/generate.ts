@@ -163,8 +163,10 @@ export async function generateCensusSnapshot(
   const teachingStaff = staffGroupArm(staff.teaching, "No teaching staff on record.");
   const nonTeachingStaff = staffGroupArm(staff.nonTeaching, "No non-teaching staff on record.");
 
-  const teachingCount =
-    rollup.enrolment.status === "CAPTURED" ? rollup.enrolment.data.teachingStaff : staff.teaching.total;
+  // Single-source the teaching-staff count (LOW-1): the SAME number feeds the teachingStaff row (above) and
+  // this PTR denominator, so a filing can never show "14 teachers" and "PTR = roll ÷ 13" at once. 0 teachers
+  // → ptrRatio null → the arm is NONE (honest hand-fill), never a divide-by-zero.
+  const teachingCount = staff.teaching.total;
   const ptrRatio =
     teachingCount > 0 && enrolment.roll > 0 ? Math.round(enrolment.roll / teachingCount) : null;
   const ptr: CensusSections["ptr"] =

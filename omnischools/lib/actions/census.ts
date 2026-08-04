@@ -7,6 +7,7 @@ import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, assertAnyRole, resolveActor } from "@/lib/auth/server";
 import { CENSUS_WRITE_ROLES } from "@/lib/access";
 import { censusReturn } from "@/db/schema";
+import { captureError } from "@/lib/observability";
 import { generateCensusSnapshot } from "@/lib/reports/census/generate";
 import { parseCensusSnapshot } from "@/lib/reports/census/schema";
 import { computeCensusView } from "@/lib/reports/census/view";
@@ -111,7 +112,10 @@ export async function saveCensusReturn(input: unknown): Promise<SaveCensusResult
     }
     safeRevalidate("/reports/statutory/generate-annual-census");
     return { ok: true, academicYear };
-  } catch {
+  } catch (err) {
+    // A failed statutory filing must leave a server-side trail (LOW-2) — the admin still gets a friendly
+    // message, never a stack trace.
+    captureError(err, { action: "saveCensusReturn", cadence, academicYear });
     return { ok: false, error: "Could not generate the census. Please try again." };
   }
 }

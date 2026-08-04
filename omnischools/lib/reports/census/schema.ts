@@ -95,13 +95,16 @@ export type CensusSnapshot = {
 export type { SexSplit };
 
 // ── Zod: the persisted/re-read validation (envelope strict, section data = jsonb-drift-tolerant) ──────────
-const armSchema = z.object({
-  coverage: z.enum(CENSUS_COVERAGE),
-  reason: z.string().optional(),
-  captured: z.number().optional(),
-  total: z.number().optional(),
-  data: z.unknown().optional(),
-});
+// FULL/PARTIAL MUST carry `data` — GOV-9 renders a stored snapshot via `dataOf(arm)!`, so a data-less FULL
+// arm would crash it (LOW-3). NONE/NOT_APPLICABLE carry only a hand-fill `reason` (never a fabricated 0). The
+// payload itself stays `z.unknown()` (the jsonb-drift boundary); only its PRESENCE is enforced per coverage.
+const presentData = z.unknown().refine((v) => v !== undefined, { message: "data is required" });
+const armSchema = z.discriminatedUnion("coverage", [
+  z.object({ coverage: z.literal("FULL"), data: presentData, captured: z.number().optional(), total: z.number().optional() }),
+  z.object({ coverage: z.literal("PARTIAL"), data: presentData, reason: z.string(), captured: z.number().optional(), total: z.number().optional() }),
+  z.object({ coverage: z.literal("NONE"), reason: z.string() }),
+  z.object({ coverage: z.literal("NOT_APPLICABLE"), reason: z.string() }),
+]);
 
 const identificationSchema = z.object({
   schoolName: z.string(),

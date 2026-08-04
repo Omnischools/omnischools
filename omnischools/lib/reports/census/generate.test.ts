@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { parseCensusSnapshot } from "./schema";
 
 /**
  * GOV-8 · the census generator composition (AC GOV8-02/07/08/09/12/13). Every reader is mocked, so this pins
@@ -135,5 +136,45 @@ describe("GOV8-12/13 · terminal results tier-gated, aggregate + sex split", () 
       makeRollup({ terminalResults: { bece: NC("No BECE results captured yet."), wassce: NA("Not a senior school.") } }),
     );
     expect((await gen()).sections.terminalResults.coverage).toBe("NONE");
+  });
+});
+
+describe("LOW-1 · teaching-staff count is single-sourced (staff arm == PTR denominator)", () => {
+  it("PTR uses getCensusStaff.teaching.total, NOT the rollup's teaching count", async () => {
+    // Rollup school-stats says 13; the staff reader (role assignments) says 14 — a filing must never show
+    // both "14 teachers" and "PTR = roll ÷ 13". The census single-sources the staff reader's 14.
+    getSchoolRollup.mockResolvedValue(
+      makeRollup({
+        enrolment: CAPTURED({ roll: 260, teachingStaff: 13, admissionsThisTerm: 18, intakeFemale: 8, intakeMale: 10 }),
+      }),
+    );
+    getCensusStaff.mockResolvedValue(makeStaff({ teaching: { female: 6, male: 8, unknown: 0, total: 14 } }));
+    getCensusEnrolment.mockResolvedValue(makeEnrolment({ roll: 260, gender: { female: 120, male: 140, total: 260 } }));
+
+    const snap = await gen();
+    const teachTotal = (snap.sections.teachingStaff as { data: { total: number } }).data.total;
+    const ptr = snap.sections.ptr as { coverage: string; data: { teachingStaff: number; ratio: number } };
+    expect(teachTotal).toBe(14);
+    expect(ptr.coverage).toBe("FULL");
+    expect(ptr.data.teachingStaff).toBe(14); // the staff arm's total, not the rollup's 13
+    expect(ptr.data.teachingStaff).toBe(teachTotal); // one number for "teaching staff" across the return
+    expect(ptr.data.ratio).toBe(Math.round(260 / 14)); // 19, never 20 (roll ÷ 13)
+  });
+
+  it("0 teaching staff → PTR NONE (honest hand-fill), never a divide-by-zero", async () => {
+    getCensusStaff.mockResolvedValue(makeStaff({ teaching: { female: 0, male: 0, unknown: 0, total: 0 } }));
+    expect((await gen()).sections.ptr.coverage).toBe("NONE");
+  });
+});
+
+describe("LOW-3 · the tightened schema — FULL/PARTIAL must carry data (GOV-9 dataOf(arm)! guard)", () => {
+  it("a real generated snapshot round-trips the validator", async () => {
+    const snap = await gen();
+    expect(() => parseCensusSnapshot(snap)).not.toThrow();
+  });
+  it("rejects a data-less FULL arm (would have crashed GOV-9's render)", async () => {
+    const snap = await gen();
+    const broken = { ...snap, sections: { ...snap.sections, teachingStaff: { coverage: "FULL" } } };
+    expect(() => parseCensusSnapshot(broken as never)).toThrow();
   });
 });
