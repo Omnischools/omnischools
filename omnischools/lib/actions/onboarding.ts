@@ -504,7 +504,10 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
     // Action, so the session cookie write persists (dev-bypass no-ops it). Best-effort: the school is
     // already created — a sign-in failure must NOT fail onboarding; the user can sign in manually.
     try {
-      await signInWithPassword(result.adminPhone, d.password);
+      // signInWithPassword RETURNS {ok:false} on a GoTrue error (doesn't throw) — capture that too,
+      // else a soft auto-sign-in failure leaves no trace (Dex LOW-1).
+      const s = await signInWithPassword(result.adminPhone, d.password);
+      if (!s.ok) captureError(new Error(s.error ?? "auto sign-in failed"), { action: "onboardSchool.autoSignIn" });
     } catch (err) {
       captureError(err, { action: "onboardSchool.autoSignIn" });
     }
