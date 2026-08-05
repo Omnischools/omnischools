@@ -84,10 +84,16 @@ describe("L1 · the signup password step", () => {
     );
   });
 
-  it("L1-9 · post-signup routes to sign-in; onboardSchool establishes NO session", () => {
-    expect(WIZARD).toContain("/login?accepted=1");
-    expect(ACTION).not.toContain("setSession");
-    expect(ACTION).not.toContain("signInWith");
+  it("L1-9 · post-signup lands IN the app; onboardSchool auto-establishes the session (fix/onboarding-auth-confirm)", () => {
+    // The creator's account is created CONFIRMED (createPasswordUser → admin.createUser phone_confirm),
+    // so onboardSchool signs them in and the success screen routes to /dashboard, not /login.
+    expect(WIZARD).not.toContain("/login?accepted=1");
+    expect(WIZARD).toContain('href="/dashboard"');
+    // The auto-sign-in runs AFTER the DB tx (best-effort — must not gate onboarding success).
+    expect(ACTION).toContain("signInWithPassword(result.adminPhone, d.password)");
+    expect(ACTION.indexOf("await withoutTenantScope")).toBeLessThan(
+      ACTION.indexOf("signInWithPassword(result.adminPhone"),
+    );
   });
 
   it("L1-10 · the wizard has no live-auth branch (works in dev-bypass)", () => {

@@ -12,7 +12,7 @@ import {
 } from "@/lib/onboarding";
 import { withoutTenantScope, pgError } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
-import { normalizeGhanaPhone, createPasswordUser } from "@/lib/auth";
+import { normalizeGhanaPhone, createPasswordUser, signInWithPassword } from "@/lib/auth";
 import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { captureEvent, captureError } from "@/lib/observability";
@@ -498,6 +498,16 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
       }
     }
     captureEvent("school_onboarded", { product: d.product, region: d.region });
+
+    // Auto-sign-in the creator so the wizard lands them IN the app (/dashboard) instead of bouncing
+    // to /login. The account is CONFIRMED (createPasswordUser above), so this succeeds; it's a Server
+    // Action, so the session cookie write persists (dev-bypass no-ops it). Best-effort: the school is
+    // already created — a sign-in failure must NOT fail onboarding; the user can sign in manually.
+    try {
+      await signInWithPassword(result.adminPhone, d.password);
+    } catch (err) {
+      captureError(err, { action: "onboardSchool.autoSignIn" });
+    }
 
     return {
       ok: true,

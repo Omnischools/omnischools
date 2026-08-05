@@ -232,18 +232,47 @@ export async function verifyPhoneOtp(
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
-/** Create a phone+password account for an invited user (idempotent on re-accept). */
+/**
+ * Create a phone+password account for an admin-provisioned user (onboarding / invite-accept).
+ * Idempotent on re-accept.
+ *
+ * Provisions an ALREADY-CONFIRMED account via the service-role admin API (`phone_confirm: true`):
+ * SMS is stubbed, so an UNCONFIRMED phone account — what the anon `signUp` mints — can never receive
+ * its OTP and is permanently locked out of `signInWithPassword`. `admin.createUser` skips the OTP,
+ * which is the correct pattern for accounts WE provision (the admin sets the password, not the user).
+ * Falls back to the anon `signUp` (unconfirmed, with a warning) only when no service-role key is set.
+ */
 export async function createPasswordUser(
   phone: string,
   password: string,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!authIsLive()) return { ok: true };
-  const { error } = await (
-    await authApi()
-  ).signUp({
-    phone: normalizeGhanaPhone(phone),
-    password,
-  });
+  const normalized = normalizeGhanaPhone(phone);
+  // Dynamic import (matches authApi's) so this file carries no static `server-only` dependency.
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
+  if (admin) {
+    const { error } = await admin.auth.admin.createUser({
+      phone: normalized,
+      password,
+      phone_confirm: true,
+    });
+    // Idempotent: a re-onboard of an existing phone is fine — leave the existing account (and its
+    // password) untouched and report success. (A pre-existing UNCONFIRMED account is NOT healed here —
+    // that needs a manual confirm; out of scope.)
+    if (error && !/already (registered|exists)|been registered/i.test(error.message)) {
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  }
+  // Fallback — no SUPABASE_SERVICE_ROLE_KEY configured. Degrade (don't crash) to the anon signUp; the
+  // account is created UNCONFIRMED, so password sign-in stays blocked until the phone is confirmed by
+  // hand. Warned loudly because it silently reproduces the exact lockout the admin path fixes.
+  console.warn(
+    "[auth] SUPABASE_SERVICE_ROLE_KEY unset — admin account created UNCONFIRMED via signUp; " +
+      "password sign-in will be blocked until the phone is confirmed manually.",
+  );
+  const { error } = await (await authApi()).signUp({ phone: normalized, password });
   if (error && !/already (registered|exists)/i.test(error.message)) {
     return { ok: false, error: error.message };
   }

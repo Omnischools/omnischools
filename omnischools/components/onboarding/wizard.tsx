@@ -687,16 +687,16 @@ function DonePanel({
             <p className="mt-1.5 max-w-[540px] text-[13px] leading-relaxed text-navy-2">
               Academic year <b className="text-navy">{result.academicYear}</b>
               {result.periodsCreated > 0 ? ` with ${result.periodsCreated} periods` : ""} is
-              seeded, along with your classes, subjects and grade scale. Sign in with the{" "}
-              <b className="text-navy">password you just set</b> or a one-time code to your phone —
-              we&apos;ll guide you through the rest from a checklist.
+              seeded, along with your classes, subjects and grade scale. You&apos;re signed in —{" "}
+              <b className="text-navy">open your dashboard</b> to finish setup, and we&apos;ll guide
+              you through the rest from a checklist.
             </p>
           </div>
           <Link
-            href="/login?accepted=1"
+            href="/dashboard"
             className="rounded-lg bg-gold px-6 py-3.5 text-sm font-bold text-navy transition-colors hover:brightness-95"
           >
-            Sign in →
+            Go to dashboard →
           </Link>
         </div>
       </div>
@@ -725,10 +725,10 @@ function DonePanel({
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <Link
-          href="/login?accepted=1"
+          href="/dashboard"
           className="rounded-lg border border-border-2 bg-surface px-5 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-bg"
         >
-          Go to sign in
+          Go to your dashboard
         </Link>
         <p className="font-mono text-[11px] text-navy-3">school id · {result.schoolId}</p>
       </div>
