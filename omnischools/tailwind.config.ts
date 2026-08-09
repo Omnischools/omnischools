@@ -48,6 +48,13 @@ const config: Config = {
           bg: "var(--condition-diabetes-bg)",
         },
 
+        // GOV-10 SEN register — the Intellectual category pill (no brand token; distinct from the
+        // chronic-condition purples).
+        "sen-intellectual": {
+          DEFAULT: "var(--sen-intellectual)",
+          bg: "var(--sen-intellectual-bg)",
+        },
+
         // brand surfaces (used directly: bg-bg, text-bg, bg-surface)
         bg: "var(--bg)",
         surface: "var(--surface)",

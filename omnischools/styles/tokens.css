@@ -37,6 +37,10 @@
   --condition-epilepsy-bg: #f0e9f2;
   --condition-diabetes: #3e7b6b;
   --condition-diabetes-bg: #e4efeb;
+  /* GOV-10 SEN register — the Intellectual category pill (surface map: no brand token, and a DIFFERENT
+     purple from --condition-epilepsy). Named, never inlined as a raw hex. Solid pill, no slash-opacity. */
+  --sen-intellectual: #5847b5;
+  --sen-intellectual-bg: #e8e5f2;
 
   /* ---- semantic roles (shadcn/ui) ---- */
   --background: var(--bg);

@@ -42,6 +42,20 @@ export const STAFF_ADMIN_ROLES = [
 ] as const satisfies readonly KnownAppRole[];
 
 /**
+ * 🔴 GOV-10 (R411) — who may read/write the CONFIDENTIAL SEN register (a child's special-educational-needs
+ * record: category, severity, accommodations, the diagnosis cluster). **ADMIN + HEADMASTER ONLY** —
+ * DELIBERATELY NOT `STAFF_ADMIN_ROLES`: PROPRIETOR's power is appointing/governance, not reading a pupil's
+ * disability record (the same reasoning that keeps PROPRIETOR out of `PTA_CONFIG_WRITE_ROLES`). No new
+ * `KnownAppRole` is introduced (an SEN coordinator is an ADMIN-granted seat, not a rank — `OC-SEN-COORDINATOR-ROLE`
+ * if a school asks). The per-record teacher accommodation-grant is DEFERRED (v1 has no teacher path); when
+ * built it EXTENDS this gate — `role ∈ SEN_REGISTER_ROLES || hasSenGrant(actor, student)`.
+ */
+export const SEN_REGISTER_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
+/**
  * 🔴 INCR-35 (L2b) — who may open the user-management surface and block / reset / activate OTHER users.
  * PROPRIETOR (top rank) + ADMIN + HEADMASTER. DISTINCT PURPOSE from STAFF_ADMIN_ROLES: this gates
  * login-lifecycle verbs (block/reset/activate) over ALL users incl. parents, whereas STAFF_ADMIN_ROLES
