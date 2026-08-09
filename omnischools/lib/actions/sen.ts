@@ -17,6 +17,16 @@ import { senRegister, senModuleAdoption } from "@/db/schema";
 export type SenActionResult = { ok: true } | { ok: false; error: string };
 
 /**
+ * Log a SEN action failure WITHOUT the full error object — a Postgres CHECK/FK violation's `detail` can echo
+ * the (confidential) failing row (the diagnosis cluster). For a children's-sensitive module, keep row values
+ * out of the server logs: log the SQLSTATE code / message text only, never the error object.
+ */
+function logSenError(where: string, err: unknown): void {
+  const e = err as { code?: string; message?: string };
+  console.error(`[sen] ${where} failed:`, e?.code ?? e?.message ?? "unknown error");
+}
+
+/**
  * Explicit opt-in (R413) — writes the `sen_module_adoption` marker so the annual census §5 becomes AUTO
  * (adopted → FULL, even at a captured zero). Idempotent (a re-enable is a no-op).
  */
@@ -44,7 +54,7 @@ export async function enableSenRegister(): Promise<SenActionResult> {
     safeRevalidate("/reports/statutory/generate-annual-census");
     return { ok: true };
   } catch (err) {
-    console.error("[sen] enableSenRegister failed:", err);
+    logSenError("enableSenRegister", err);
     return { ok: false, error: "Could not enable the SEN register. Try again." };
   }
 }
@@ -137,7 +147,7 @@ export async function recordSupportNeed(input: unknown): Promise<SenActionResult
     return { ok: true };
   } catch (err) {
     // A bad studentId trips the composite FK; a stray detail on a PENDING row trips the DB CHECK.
-    console.error("[sen] recordSupportNeed failed:", err);
+    logSenError("recordSupportNeed", err);
     return { ok: false, error: "Could not save the record. Check the details and try again." };
   }
 }

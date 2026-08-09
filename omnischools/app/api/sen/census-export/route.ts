@@ -31,6 +31,8 @@ export async function GET() {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": 'attachment; filename="sen-census-aggregate.csv"',
+      // Aggregate counts only (zero PII), but match the other authenticated download routes (GOV-5).
+      "Cache-Control": "no-store",
     },
   });
 }
