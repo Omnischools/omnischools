@@ -3,6 +3,7 @@ import type { CensusEnrolment, SexSplit } from "@/lib/reports/census-enrolment-d
 import type { CensusStaffGroup, CensusSalaryStatus } from "@/lib/reports/census/census-staff-data";
 import type { TerminalResultSummary } from "@/lib/reports/terminal-results-data";
 import type { FacilitiesSnapshotRow } from "@/lib/reports/facilities-data";
+import type { CensusSpecialNeeds } from "@/lib/reports/census/sen-data";
 
 /**
  * GOV-8 · the census `auto_snapshot` SHAPE — owned here, at the app boundary, NOT in the DDL (the DB stores
@@ -64,7 +65,7 @@ export type CensusSections = {
   enrolment: CensusArm<CensusEnrolment>;
   ageDistribution: CensusArm<CensusAgeSummary>;
   ownership: CensusArm<{ ownership: string }>;
-  specialNeeds: CensusArm<never>;
+  specialNeeds: CensusArm<CensusSpecialNeeds>;
   movement: CensusArm<CensusMovement>;
   repetition: CensusArm<never>;
   teachingStaff: CensusArm<CensusStaffGroup>;

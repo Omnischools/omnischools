@@ -14,6 +14,7 @@ import type {
   CensusTerminal,
 } from "@/lib/reports/census/schema";
 import type { FacilitiesSnapshotRow } from "@/lib/reports/facilities-data";
+import type { CensusSpecialNeeds } from "@/lib/reports/census/sen-data";
 
 /**
  * GOV-8 · the PURE census view — the surface's Auto/Partial/Manual tags and its "% auto-filled" are DERIVED
@@ -65,7 +66,7 @@ export const CENSUS_ROWS: RowDef[] = [
   { id: "ageByClassGender", group: "A", source: "ageDistribution", name: "Age-by-class distribution", cadences: MID, nature: "AUTO", annualHint: "Computed from student DOBs" },
   { id: "ownership", group: "A", source: "ownership", name: "School ownership", cadences: MID, nature: "AUTO", annualHint: "Public / private / mission" },
   { id: "movementAdmissions", group: "A", source: "movement", name: "Admissions this period (by sex)", cadences: MID, nature: "AUTO", annualHint: "Movement — admissions, withdrawals, transfers" },
-  { id: "specialNeeds", group: "A", source: "specialNeeds", name: "Special needs enrolment", cadences: ANNUAL, nature: "HAND", annualHint: "Count by category, split by sex · hand-fill (annual)" },
+  { id: "specialNeeds", group: "A", source: "specialNeeds", name: "Special needs enrolment", cadences: ANNUAL, nature: "AUTO_WHEN_CAPTURED", annualHint: "Count by category, split by sex · from the SEN register (annual)" },
   { id: "repetition", group: "A", source: "repetition", name: "Repetition by class", cadences: ANNUAL, nature: "HAND", annualHint: "Repeaters by class & sex · hand-fill (annual)" },
   // Section B · Staff
   { id: "teachingStaff", group: "B", source: "teachingStaff", name: "Teaching staff (count & sex)", cadences: MID, nature: "AUTO", annualHint: "Teaching staff list, roles, sex" },
@@ -124,6 +125,7 @@ const reasonOf = (arm: CensusArm<unknown>): string =>
 const CAPTURE_HREF: Partial<Record<string, string>> = {
   attendanceRate: "/attendance",
   terminalResults: "/reports/terminal-results",
+  specialNeeds: "/students/special-needs",
   infrastructureClassrooms: "/reports/facilities",
   infrastructureUtilities: "/reports/facilities",
   infrastructureFacilities: "/reports/facilities",
@@ -151,6 +153,10 @@ function metaFor(def: RowDef, arm: CensusArm<unknown>): string {
     case "movementAdmissions": {
       const d = dataOf<CensusMovement>(arm)!;
       return `This period · +${d.admissionsThisPeriod ?? 0} admissions · ${d.intakeMale ?? 0} boys, ${d.intakeFemale ?? 0} girls`;
+    }
+    case "specialNeeds": {
+      const d = dataOf<CensusSpecialNeeds>(arm)!;
+      return `${d.total} student${d.total === 1 ? "" : "s"} with recorded needs · by category × sex`;
     }
     case "teachingStaff":
     case "nonTeachingStaff": {

@@ -575,6 +575,13 @@
       "when": 1785831524667,
       "tag": "0081_lame_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1786301177009,
+      "tag": "0082_great_richard_fisk",
+      "breakpoints": true
     }
   ]
 }

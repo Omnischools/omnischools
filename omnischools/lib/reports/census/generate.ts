@@ -6,6 +6,7 @@ import { getSchoolRollup } from "@/lib/rollup/school-rollup";
 import { getCensusEnrolment } from "@/lib/reports/census-enrolment-data";
 import { getFacilitiesSnapshot } from "@/lib/reports/facilities-data";
 import { getCensusStaff } from "@/lib/reports/census/census-staff-data";
+import { getCensusSpecialNeeds, type CensusSpecialNeeds } from "@/lib/reports/census/sen-data";
 import {
   CENSUS_SNAPSHOT_VERSION,
   type CensusSnapshot,
@@ -67,6 +68,19 @@ async function getCensusIdentification(schoolId: string): Promise<CensusIdentifi
     ownership: r?.ownership ?? null,
     yearFounded: r?.yearFounded ?? null,
   };
+}
+
+/** GOV-10 R413 — narrow the de-identified SEN aggregate into the §5 arm. `adopted` → FULL (a captured 0 is
+ *  a truth the school is entitled to state, not a fabrication); not-adopted → NONE with a hand-fill reason
+ *  (NEVER a zeros payload). Only called in an ANNUAL run — the DB is never read at mid-year. */
+function senArm(sn: CensusSpecialNeeds): CensusSections["specialNeeds"] {
+  return sn.adopted
+    ? { coverage: "FULL", data: sn }
+    : {
+        coverage: "NONE",
+        reason:
+          "SEN register not adopted — special-needs enrolment is hand-filled (annual). Enable the SEN register to auto-fill §5.",
+      };
 }
 
 export type GenerateCensusOpts = { cadence: "MID_YEAR" | "ANNUAL"; censusDate: Date; periodId?: string };
@@ -134,10 +148,15 @@ export async function generateCensusSnapshot(
             },
           };
 
-  const specialNeeds: CensusSections["specialNeeds"] = {
-    coverage: "NONE",
-    reason: "Special-needs enrolment is hand-filled (annual; the SEN register is GOV-10).",
-  };
+  // SEN §5 (GOV-10, R413/R418) — ANNUAL only. Adopted → FULL even at a captured zero; not-adopted → NONE
+  // (hand-fill), NEVER a fabricated zeros payload. The DB is never touched in a mid-year run.
+  const specialNeeds: CensusSections["specialNeeds"] =
+    cadence === "ANNUAL"
+      ? senArm(await getCensusSpecialNeeds(schoolId))
+      : {
+          coverage: "NONE",
+          reason: "Special-needs enrolment is an annual census field (SEN register).",
+        };
   const repetition: CensusSections["repetition"] = {
     coverage: "NONE",
     reason: "Promotion history is not tracked in Omnischools — repeaters are hand-filled (annual).",

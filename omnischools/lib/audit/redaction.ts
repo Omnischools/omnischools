@@ -29,6 +29,13 @@ export const REDACTED_AUDIT_ENTITIES = new Set([
   // (same class as the mock/score marks), read-gated WASSCE_SETUP_ROLES (excludes the 5 non-teaching
   // roles that reach the feed); the parent PDF even strips the band. NOT config despite the name (Sarah).
   "readiness_statement", // per-student projected aggregate/band
+  // GOV-10 (R409) — the CONFIDENTIAL SEN register (a child's special-educational-needs record: category /
+  // severity / accommodations / the diagnosis cluster). Read-gated to SEN_REGISTER_ROLES (ADMIN /
+  // HEADMASTER — narrower than all-staff), a disability/health confidentiality class. Its audit `after`
+  // already carries only the consent state (never a detail value), but the entity is redacted regardless.
+  // NB: the sibling `sen_module_adoption` is SHOWN — a bare `sen_` prefix would wrongly redact that config
+  // flag, so SEN is classified explicitly, not by prefix.
+  "sen_register",
 ]);
 
 /**
@@ -108,6 +115,7 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   "terminal_exam_result", // GOV-6 — school-level BECE/WASSCE pass counts (aggregate, sex-split; NO candidate, NO per-student mark)
   "facilities_snapshot", // GOV-7 — school-level per-term facility census (classrooms/WASH/ICT/feeding; aggregate estates data, NO student/staff PII)
   "census_return", // GOV-8 — the generated GES statutory return (frozen aggregate snapshot + hand-fill; NO per-student/per-staff PII in the audit `after`, which carries only cadence/year/coverage counts)
+  "sen_module_adoption", // GOV-10 — the SEN module opt-in marker (who enabled the register + when). A config flag, NO student data. (The sibling sen_register is REDACTED.)
   // — VLC config spine (SHS module 4.5 / INCR-40) — operational config, NO pastoral PII (all three are
   // the programme cadence, the value list, and the session prompts). The pastoral graph (journal /
   // flags) lands at INCR-42/43 as a `vlc_pastoral_*` REDACTED family; these three are SHOWN. —
