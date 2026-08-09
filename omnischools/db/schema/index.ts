@@ -27,6 +27,7 @@ export * from "./pta";
 export * from "./terminal-results";
 export * from "./facilities-snapshot";
 export * from "./census-return";
+export * from "./sen-register";
 export * from "./timetable";
 export * from "./comms";
 export * from "./inbox";

@@ -680,3 +680,31 @@ export const sickbaySurveillanceCategoryEnum = pgEnum("sickbay_surveillance_cate
   "INJURY",
   "OTHER",
 ]);
+
+// Governance GOV-10 · SEN register (confidential) — migration 0082 (Kofi R406–R418).
+// The SIX census buckets = the annual census §5 6×2 grid (VISUAL/HEARING/PHYSICAL/INTELLECTUAL/SPEECH
+// explicit + OTHER residual). NOT NULL on the register so a pending row still carries its census bucket
+// (R409). Deliberately NO clinical-taxonomy expansion (R406/R407) — OC-SEN-TAXONOMY re-maps if the real
+// EMIS School Census template enumerates a finer list.
+export const senCategoryEnum = pgEnum("sen_category", [
+  "VISUAL",
+  "HEARING",
+  "PHYSICAL",
+  "INTELLECTUAL",
+  "SPEECH",
+  "OTHER",
+]);
+// OPERATIONAL ONLY, NEVER in the census (R408) — the 12-cell grid has no severity dimension, and
+// getCensusSpecialNeeds must not read/emit it. Nullable on the register.
+export const senSeverityEnum = pgEnum("sen_severity", ["MILD", "MODERATE", "SEVERE"]);
+// The sensitive diagnosis cluster's provenance (R409). CLINICAL_DIAGNOSIS = an external clinician
+// diagnosed it; SCHOOL_OBSERVED = the school's own assessment. Nullable — withheld (null) on a
+// PENDING-consent row.
+export const senDiagnosisSourceEnum = pgEnum("sen_diagnosis_source", [
+  "CLINICAL_DIAGNOSIS",
+  "SCHOOL_OBSERVED",
+]);
+// Consent lifecycle (R410, KEY). GRANTED → full detail record; PENDING → student_id + category only
+// (all detail withheld null, DB CHECK-enforced below). NOT NULL. Consent gates the DETAIL, not the
+// census COUNT — getCensusSpecialNeeds counts GRANTED + PENDING alike.
+export const senConsentStateEnum = pgEnum("sen_consent_state", ["GRANTED", "PENDING"]);

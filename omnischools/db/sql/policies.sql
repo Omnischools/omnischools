@@ -199,7 +199,9 @@ BEGIN
     'fixed_asset',
     'terminal_exam_result',
     'facilities_snapshot',
-    'census_return'
+    'census_return',
+    'sen_register',
+    'sen_module_adoption'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);
