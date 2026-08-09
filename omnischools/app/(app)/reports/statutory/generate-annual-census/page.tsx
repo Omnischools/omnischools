@@ -1,9 +1,14 @@
+import { and, eq } from "drizzle-orm";
 import { requireSchoolRole } from "@/lib/auth/server";
 import { CENSUS_WRITE_ROLES } from "@/lib/access";
+import { withSchool } from "@/lib/db/rls";
+import { censusReturn } from "@/db/schema";
 import { generateCensusSnapshot } from "@/lib/reports/census/generate";
 import { computeCensusView } from "@/lib/reports/census/view";
+import { parseCensusHandFill } from "@/lib/reports/census/hand-fill-schema";
 import { ReportHeader } from "@/components/reports/report-header";
 import { CensusDrawer } from "@/components/reports/census/census-drawer";
+import { CensusAnnualPanel } from "@/components/reports/census/census-annual-panel";
 
 /**
  * GOV-8 · GES census generation drawer — management only (`CENSUS_WRITE_ROLES`: ADMIN / HEADMASTER; the
@@ -38,6 +43,29 @@ export default async function GenerateCensusPage({
   const view = computeCensusView(snapshot, cadence);
   const filename = buildFilename(school.shortName ?? school.gesCode, cadence, snapshot.academicYear);
 
+  // GOV-9 · the ANNUAL completion panel needs the persisted DRAFT/COMPLETED row (status + hand-fill) for
+  // THIS year, and whether §5 auto-fills (adopted) or is hand-filled. Mid-year has no PDF/hand-fill.
+  let annualExisting: { status: string; handFill: ReturnType<typeof parseCensusHandFill> } | null = null;
+  if (cadence === "ANNUAL") {
+    const rows = await withSchool(school.id, (tx) =>
+      tx
+        .select({ status: censusReturn.status, handFill: censusReturn.handFill })
+        .from(censusReturn)
+        .where(
+          and(
+            eq(censusReturn.schoolId, school.id),
+            eq(censusReturn.cadence, "ANNUAL"),
+            eq(censusReturn.academicYear, snapshot.academicYear),
+          ),
+        )
+        .limit(1),
+    );
+    annualExisting = rows[0]
+      ? { status: rows[0].status, handFill: parseCensusHandFill(rows[0].handFill) }
+      : null;
+  }
+  const senAdopted = snapshot.sections.specialNeeds.coverage === "FULL";
+
   return (
     <div className="mx-auto max-w-page space-y-6">
       <ReportHeader
@@ -55,6 +83,13 @@ export default async function GenerateCensusPage({
         view={view}
         periodId={snapshot.period?.periodId ?? null}
       />
+      {cadence === "ANNUAL" && (
+        <CensusAnnualPanel
+          academicYear={snapshot.academicYear}
+          existing={annualExisting}
+          senAdopted={senAdopted}
+        />
+      )}
     </div>
   );
 }
