@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SEN_CATEGORIES } from "@/lib/reports/census/sen-data";
 
 /**
  * GOV-9 · the ANNUAL census HAND-FILL contract (R419) — the sections Omnischools genuinely doesn't track
@@ -15,8 +16,6 @@ import { z } from "zod";
 export const CENSUS_HAND_FILL_VERSION = 1 as const;
 
 const sexPair = z.object({ male: z.number().int().min(0), female: z.number().int().min(0) });
-
-const SEN_CATS = ["VISUAL", "HEARING", "PHYSICAL", "INTELLECTUAL", "SPEECH", "OTHER"] as const;
 
 export const censusHandFillSchema = z.object({
   version: z.literal(CENSUS_HAND_FILL_VERSION),
@@ -59,8 +58,11 @@ export const censusHandFillSchema = z.object({
     .nullable()
     .optional(),
   /** SEN §5 12-cell — de-identified counts ONLY, used ONLY when the SEN register is NOT adopted (R423).
-   *  Structurally counts-only (no name/id) — the confidential sole-content-path is untouched. */
-  specialNeeds: z.record(z.enum(SEN_CATS), sexPair).nullable().optional(),
+   *  Structurally counts-only (no name/id) — the confidential sole-content-path is untouched. `partialRecord`
+   *  (NOT `record`) so a subset of categories is valid — the admin enters only the categories present, and
+   *  Zod v4's `z.record(z.enum(...))` would otherwise demand all 6 keys (Quinn MAJOR-1). Single-sourced from
+   *  `SEN_CATEGORIES` so it can't drift from the register's taxonomy (Dex LOW-1). */
+  specialNeeds: z.partialRecord(z.enum(SEN_CATEGORIES), sexPair).nullable().optional(),
 });
 
 export type CensusHandFill = z.infer<typeof censusHandFillSchema>;
