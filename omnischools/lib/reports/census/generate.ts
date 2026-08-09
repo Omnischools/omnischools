@@ -75,7 +75,7 @@ async function getCensusIdentification(schoolId: string): Promise<CensusIdentifi
  *  (NEVER a zeros payload). Only called in an ANNUAL run — the DB is never read at mid-year. */
 function senArm(sn: CensusSpecialNeeds): CensusSections["specialNeeds"] {
   return sn.adopted
-    ? { coverage: "FULL", data: sn, total: sn.total }
+    ? { coverage: "FULL", data: sn }
     : {
         coverage: "NONE",
         reason:

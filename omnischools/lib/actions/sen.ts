@@ -43,7 +43,8 @@ export async function enableSenRegister(): Promise<SenActionResult> {
     safeRevalidate("/students/special-needs");
     safeRevalidate("/reports/statutory/generate-annual-census");
     return { ok: true };
-  } catch {
+  } catch (err) {
+    console.error("[sen] enableSenRegister failed:", err);
     return { ok: false, error: "Could not enable the SEN register. Try again." };
   }
 }
@@ -134,8 +135,9 @@ export async function recordSupportNeed(input: unknown): Promise<SenActionResult
     safeRevalidate("/students/special-needs");
     safeRevalidate("/reports/statutory/generate-annual-census");
     return { ok: true };
-  } catch {
+  } catch (err) {
     // A bad studentId trips the composite FK; a stray detail on a PENDING row trips the DB CHECK.
+    console.error("[sen] recordSupportNeed failed:", err);
     return { ok: false, error: "Could not save the record. Check the details and try again." };
   }
 }

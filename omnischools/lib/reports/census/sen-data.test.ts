@@ -6,6 +6,7 @@ import {
   type CensusSpecialNeeds,
   type SenCategory,
 } from "./sen-data";
+import { SEN_CATEGORY_ORDER } from "@/lib/sen/vocab";
 
 /**
  * GOV-10 · the DE-IDENTIFIED SEN census aggregate — AC GOV10-01/02/07/11/12. The pure category×sex reducer
@@ -22,6 +23,11 @@ const CATS = SEN_CATEGORIES;
 describe("GOV10-01/07 · the taxonomy is the 6-bucket, 12-cell (6×2) grid — no severity dimension", () => {
   it("SEN_CATEGORIES is exactly the six census buckets incl. the OTHER residual", () => {
     expect([...CATS]).toEqual(["VISUAL", "HEARING", "PHYSICAL", "INTELLECTUAL", "SPEECH", "OTHER"]);
+  });
+  it("the client-safe vocab SEN_CATEGORY_ORDER never drifts from SEN_CATEGORIES (LOW-2)", () => {
+    // vocab.ts re-declares the order (can't value-import the server-only SEN_CATEGORIES); a `readonly
+    // SenCategory[]` is satisfied by a SUBSET, so only this equality catches a dropped/reordered bucket.
+    expect([...SEN_CATEGORY_ORDER]).toEqual([...SEN_CATEGORIES]);
   });
   it("byCategory is 6 keys × {male,female} = 12 cells, and carries NO severity/detail key", () => {
     const empty = emptySenByCategory();

@@ -6,7 +6,9 @@ import { SEN_CATEGORY_LABEL } from "@/lib/sen/vocab";
 /**
  * GOV-10 · "Export anonymised stats" — the DE-IDENTIFIED 12-cell aggregate (category × sex counts) as CSV.
  * Admin-gated (SEN_REGISTER_ROLES). Structurally carries NO name / id / severity / diagnosis — it is exactly
- * the same shape that auto-fills the census §5, so what leaves the school's instance is counts only.
+ * the same shape that auto-fills the census §5, so what leaves the school's instance is counts only. Served
+ * from `app/api/*` (the repo's download-route convention — receipts / report-cards / ledger-book), NOT from
+ * under the page tree (which the `no-html-link-for-pages` rule would flag).
  */
 export const dynamic = "force-dynamic";
 

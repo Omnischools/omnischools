@@ -47,7 +47,8 @@ export default async function SpecialNeedsPage() {
           </div>
           {view.adopted && (
             <a
-              href="/students/special-needs/export"
+              href="/api/sen/census-export"
+              download
               className="shrink-0 rounded-md border border-border-2 bg-surface px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-gold-bg"
             >
               Export anonymised stats →

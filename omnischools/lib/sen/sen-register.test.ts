@@ -27,7 +27,7 @@ const senData = stripComments(src("lib/reports/census/sen-data.ts"));
 const actions = stripComments(src("lib/actions/sen.ts"));
 const generate = stripComments(src("lib/reports/census/generate.ts"));
 const page = src("app/(app)/students/special-needs/page.tsx");
-const exportRoute = src("app/(app)/students/special-needs/export/route.ts");
+const exportRoute = src("app/api/sen/census-export/route.ts");
 
 // The seven CONFIDENTIAL detail columns — the diagnosis cluster + operational detail. `category` (the census
 // dimension) and the consent metadata (consentState / consentOnFileAt) are DELIBERATELY not here.
