@@ -1,7 +1,17 @@
 import "server-only";
-import { and, eq, isNull, asc } from "drizzle-orm";
+import { and, eq, isNull, asc, desc, inArray } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
-import { senRegister, senModuleAdoption, students, classes } from "@/db/schema";
+import {
+  senRegister,
+  senModuleAdoption,
+  senSupportGrant,
+  students,
+  classes,
+  users,
+  roleAssignments,
+  roles,
+} from "@/db/schema";
+import { liveSenGrantStudentIds } from "@/lib/sen/grants";
 import { ageAsOf } from "@/lib/reports/census-enrolment-data";
 import {
   SEN_CATEGORIES,
@@ -180,6 +190,75 @@ export async function getSenRegister(schoolId: string): Promise<SenRegisterView>
   });
 }
 
+/**
+ * GOV-10b (R436) · the GRANTEE accommodation record — a granted teacher's ACCOMMODATION-ONLY view. The type
+ * structurally has NO diagnosis field (`diagnosisSource`/`diagnosingClinician`/`diagnosingInstitution`/
+ * `diagnosisYear`) and NO consent metadata — a teacher plans classroom support, not the clinical dossier
+ * (the de-identification-at-the-type-level idiom). Adding a diagnosis key here is a compile/test failure.
+ */
+export type SenAccommodationRecord = {
+  studentName: string;
+  className: string | null;
+  level: string | null;
+  category: SenCategory;
+  severity: SenSeverity | null;
+  supportNotes: string | null;
+  accommodations: string[];
+};
+
+/**
+ * The grantee reader (R437) — lives INSIDE this sole-content-path file because it projects
+ * `accommodations`/`supportNotes`/`severity` (a new file would turn the GOV10-18 sweep RED). GRANTED rows
+ * ONLY (PENDING has no detail, R410), filtered to the teacher's LIVE-granted student set — never the rest of
+ * the register, never the diagnosis cluster.
+ */
+export async function getSenAccommodationsForGrantee(
+  schoolId: string,
+  granteeUserId: string,
+): Promise<SenAccommodationRecord[]> {
+  return withSchool(schoolId, async (tx) => {
+    const studentIds = await liveSenGrantStudentIds(tx, schoolId, granteeUserId);
+    if (studentIds.size === 0) return [];
+    const rows = await tx
+      .select({
+        firstName: students.firstName,
+        lastName: students.lastName,
+        className: classes.name,
+        level: classes.level,
+        category: senRegister.category,
+        severity: senRegister.severity,
+        supportNotes: senRegister.supportNotes,
+        accommodations: senRegister.accommodations,
+      })
+      .from(senRegister)
+      .innerJoin(
+        students,
+        and(eq(students.schoolId, senRegister.schoolId), eq(students.id, senRegister.studentId)),
+      )
+      .leftJoin(
+        classes,
+        and(eq(classes.schoolId, students.schoolId), eq(classes.id, students.classId)),
+      )
+      .where(
+        and(
+          eq(senRegister.schoolId, schoolId),
+          eq(students.status, "ACTIVE"),
+          eq(senRegister.consentState, "GRANTED"),
+          inArray(senRegister.studentId, [...studentIds]),
+        ),
+      );
+    return rows.map((r) => ({
+      studentName: `${r.firstName} ${r.lastName}`.trim(),
+      className: r.className,
+      level: r.level,
+      category: r.category,
+      severity: r.severity,
+      supportNotes: r.supportNotes,
+      accommodations: r.accommodations ?? [],
+    }));
+  });
+}
+
 export type SenCandidateStudent = { id: string; name: string; className: string | null };
 
 /**
@@ -213,6 +292,162 @@ export async function getSenCandidateStudents(schoolId: string): Promise<SenCand
       id: r.id,
       name: `${r.firstName} ${r.lastName}`.trim(),
       className: r.className,
+    }));
+  });
+}
+
+// ── GOV-10b · admin grant-management + pending-consent readers ─────────────────────────────────────────
+
+export type SenGrantRow = {
+  grantId: string;
+  studentName: string;
+  granteeName: string;
+  reason: string;
+  grantedAt: string;
+  expiresAt: string | null;
+  revoked: boolean;
+  live: boolean;
+};
+export type SenGrantStaff = { id: string; name: string; roleLabel: string };
+export type SenGrantableStudent = { id: string; name: string; className: string | null };
+export type SenGrantsAdmin = {
+  grants: SenGrantRow[];
+  granteeOptions: SenGrantStaff[];
+  grantableStudents: SenGrantableStudent[];
+};
+
+/**
+ * GOV-10b (R438) · the admin's Access-grants view: every grant (live + revoked — append-only) + the staff the
+ * admin may grant + the students with a GRANTED record (the grantable set). `live` is computed vs `now()`.
+ * Projects NO `sen_register` DETAIL column → NOT a sole-content-path concern.
+ */
+export async function getSenGrantsAdmin(schoolId: string): Promise<SenGrantsAdmin> {
+  return withSchool(schoolId, async (tx) => {
+    const now = new Date();
+    const grantRows = await tx
+      .select({
+        id: senSupportGrant.id,
+        firstName: students.firstName,
+        lastName: students.lastName,
+        granteeName: users.fullName,
+        reason: senSupportGrant.reason,
+        grantedAt: senSupportGrant.grantedAt,
+        expiresAt: senSupportGrant.expiresAt,
+        revokedAt: senSupportGrant.revokedAt,
+      })
+      .from(senSupportGrant)
+      .innerJoin(
+        students,
+        and(eq(students.schoolId, senSupportGrant.schoolId), eq(students.id, senSupportGrant.studentId)),
+      )
+      .leftJoin(users, eq(users.id, senSupportGrant.granteeUserId))
+      .where(eq(senSupportGrant.schoolId, schoolId))
+      .orderBy(desc(senSupportGrant.grantedAt));
+
+    const grants: SenGrantRow[] = grantRows.map((g) => {
+      const revoked = g.revokedAt != null;
+      const live = !revoked && (g.expiresAt == null || g.expiresAt > now);
+      return {
+        grantId: g.id,
+        studentName: `${g.firstName} ${g.lastName}`.trim(),
+        granteeName: g.granteeName ?? "Unnamed staff",
+        reason: g.reason,
+        grantedAt: g.grantedAt.toISOString().slice(0, 10),
+        expiresAt: g.expiresAt ? g.expiresAt.toISOString().slice(0, 10) : null,
+        revoked,
+        live,
+      };
+    });
+
+    const staffRows = await tx
+      .select({ id: users.id, name: users.fullName, roleLabel: roles.label, code: roles.code })
+      .from(roleAssignments)
+      .innerJoin(roles, eq(roles.id, roleAssignments.roleId))
+      .innerJoin(users, eq(users.id, roleAssignments.userId))
+      .where(eq(roleAssignments.schoolId, schoolId));
+    const staffById = new Map<string, SenGrantStaff>();
+    for (const r of staffRows) {
+      if (r.code === "STUDENT" || r.code === "PARENT") continue;
+      if (!staffById.has(r.id)) {
+        staffById.set(r.id, { id: r.id, name: r.name ?? "Unnamed staff", roleLabel: r.roleLabel });
+      }
+    }
+
+    const studentRows = await tx
+      .select({
+        id: students.id,
+        firstName: students.firstName,
+        lastName: students.lastName,
+        className: classes.name,
+      })
+      .from(senRegister)
+      .innerJoin(
+        students,
+        and(eq(students.schoolId, senRegister.schoolId), eq(students.id, senRegister.studentId)),
+      )
+      .leftJoin(classes, and(eq(classes.schoolId, students.schoolId), eq(classes.id, students.classId)))
+      .where(
+        and(
+          eq(senRegister.schoolId, schoolId),
+          eq(students.status, "ACTIVE"),
+          eq(senRegister.consentState, "GRANTED"),
+        ),
+      )
+      .orderBy(asc(students.firstName), asc(students.lastName));
+
+    return {
+      grants,
+      granteeOptions: [...staffById.values()].sort((a, b) => a.name.localeCompare(b.name)),
+      grantableStudents: studentRows.map((s) => ({
+        id: s.id,
+        name: `${s.firstName} ${s.lastName}`.trim(),
+        className: s.className,
+      })),
+    };
+  });
+}
+
+export type SenPendingRecord = {
+  recordId: string;
+  studentName: string;
+  className: string | null;
+  category: SenCategory;
+};
+
+/**
+ * GOV-10b (R440) · pending-consent records — student + category ONLY (a PENDING row has no detail, R410). The
+ * admin records consent on these (PENDING→GRANTED). In this sole-content-path file, though it projects no
+ * confidential DETAIL column.
+ */
+export async function getSenPendingRecords(schoolId: string): Promise<SenPendingRecord[]> {
+  return withSchool(schoolId, async (tx) => {
+    const rows = await tx
+      .select({
+        recordId: senRegister.id,
+        firstName: students.firstName,
+        lastName: students.lastName,
+        className: classes.name,
+        category: senRegister.category,
+      })
+      .from(senRegister)
+      .innerJoin(
+        students,
+        and(eq(students.schoolId, senRegister.schoolId), eq(students.id, senRegister.studentId)),
+      )
+      .leftJoin(classes, and(eq(classes.schoolId, students.schoolId), eq(classes.id, students.classId)))
+      .where(
+        and(
+          eq(senRegister.schoolId, schoolId),
+          eq(students.status, "ACTIVE"),
+          eq(senRegister.consentState, "PENDING"),
+        ),
+      )
+      .orderBy(asc(students.firstName), asc(students.lastName));
+    return rows.map((r) => ({
+      recordId: r.recordId,
+      studentName: `${r.firstName} ${r.lastName}`.trim(),
+      className: r.className,
+      category: r.category,
     }));
   });
 }

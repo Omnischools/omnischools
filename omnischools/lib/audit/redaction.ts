@@ -36,6 +36,11 @@ export const REDACTED_AUDIT_ENTITIES = new Set([
   // NB: the sibling `sen_module_adoption` is SHOWN — a bare `sen_` prefix would wrongly redact that config
   // flag, so SEN is classified explicitly, not by prefix.
   "sen_register",
+  // GOV-10b (R438) — the SEN teacher accommodation-grant. Its audit `after` carries only `granteeUserId`
+  // (no student-id/name/detail, GOV10-18), but a SEN grant is a confidential-module access record; REDACTED
+  // keeps "who was granted SEN access" out of the ALL-STAFF audit feed (the admin manages grants on the SEN
+  // page, not via the feed). The sibling config flag sen_module_adoption stays SHOWN.
+  "sen_support_grant",
 ]);
 
 /**

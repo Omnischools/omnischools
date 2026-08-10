@@ -1,10 +1,22 @@
-import { requireSchoolRole } from "@/lib/auth/server";
-import { SEN_REGISTER_ROLES } from "@/lib/access";
-import { getSenRegister, getSenCandidateStudents } from "@/lib/sen/register-data";
+import { notFound } from "next/navigation";
+import { requireSchool } from "@/lib/auth/server";
+import { SEN_REGISTER_ROLES, hasAnyRole } from "@/lib/access";
+import { withSchool } from "@/lib/db/rls";
+import { hasAnyLiveSenGrant } from "@/lib/sen/grants";
+import {
+  getSenRegister,
+  getSenCandidateStudents,
+  getSenGrantsAdmin,
+  getSenPendingRecords,
+  getSenAccommodationsForGrantee,
+} from "@/lib/sen/register-data";
 import { SEN_CATEGORY_ORDER, SEN_CATEGORY_LABEL } from "@/lib/sen/vocab";
 import { EnableSenButton } from "@/components/sen/enable-sen-button";
 import { RecordSupportNeedForm } from "@/components/sen/record-support-need-form";
 import { SenRegisterTable } from "@/components/sen/sen-register-table";
+import { SenGranteeView } from "@/components/sen/sen-grantee-view";
+import { SenGrantPanel } from "@/components/sen/sen-grant-panel";
+import { SenConsentPanel } from "@/components/sen/sen-consent-panel";
 
 /**
  * GOV-10 · the CONFIDENTIAL SEN register surface — admin-only (`SEN_REGISTER_ROLES`: ADMIN / HEADMASTER;
@@ -18,10 +30,22 @@ export const metadata = { title: "Special needs register" };
 const capCls = "text-[9px] font-bold uppercase tracking-wide text-navy-3";
 
 export default async function SpecialNeedsPage() {
-  const { school } = await requireSchoolRole(SEN_REGISTER_ROLES);
-  const [view, candidates] = await Promise.all([
+  const { user, school } = await requireSchool();
+
+  // GOV-10b (R435) · 3-way gate. Admin (SEN_REGISTER_ROLES) → the full register. Else a live-grant holder →
+  // the accommodation-only grantee view (R436). Else notFound (membership of the register is itself sensitive).
+  if (!hasAnyRole(user.roles, SEN_REGISTER_ROLES)) {
+    const isGrantee = await withSchool(school.id, (tx) => hasAnyLiveSenGrant(tx, school.id, user.id));
+    if (!isGrantee) notFound();
+    const records = await getSenAccommodationsForGrantee(school.id, user.id);
+    return <SenGranteeView records={records} />;
+  }
+
+  const [view, candidates, grants, pending] = await Promise.all([
     getSenRegister(school.id),
     getSenCandidateStudents(school.id),
+    getSenGrantsAdmin(school.id),
+    getSenPendingRecords(school.id),
   ]);
 
   const pctOfEnrolment =
@@ -66,9 +90,12 @@ export default async function SpecialNeedsPage() {
           <div className="font-display text-[13px] font-semibold text-navy">
             Treated as <em className="italic text-gold">sensitive personal data</em>
           </div>
-          Records here are visible only to <b className="text-navy">school administrators</b>, not
-          teachers. Parents must <b className="text-navy">provide written consent</b> before a record is
-          created. Categories describe <b className="text-navy">support needs</b>, not medical diagnoses.
+          Records here are visible only to <b className="text-navy">school administrators</b>, not teachers{" "}
+          <span className="text-navy-2">
+            (unless an administrator explicitly grants access for accommodation planning)
+          </span>
+          . Parents must <b className="text-navy">provide written consent</b> before a record is created.
+          Categories describe <b className="text-navy">support needs</b>, not medical diagnoses.
           Schools that prefer not to record at student level can still complete the GES census section{" "}
           <b className="text-navy">by hand</b> — this module is opt-in.
         </div>
@@ -186,6 +213,10 @@ export default async function SpecialNeedsPage() {
               <SenRegisterTable records={view.records} />
             )}
           </div>
+
+          {/* GOV-10b · pending-consent (PENDING→GRANTED) + teacher accommodation-grants */}
+          <SenConsentPanel pending={pending} />
+          <SenGrantPanel data={grants} />
         </>
       )}
     </div>

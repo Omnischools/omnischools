@@ -1,5 +1,8 @@
 "use client";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { withdrawSenConsent } from "@/lib/actions/sen";
+import { SenDetailForm } from "./sen-detail-form";
 import type { SenRecord } from "@/lib/sen/register-data";
 import type { SenCategory } from "@/lib/reports/census/sen-data";
 import {
@@ -30,7 +33,10 @@ const pillBase =
   "inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide";
 
 export function SenRegisterTable({ records }: { records: SenRecord[] }) {
+  const router = useRouter();
   const [filter, setFilter] = useState<SenCategory | "ALL">("ALL");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const counts = useMemo(() => {
     const c = new Map<SenCategory, number>();
@@ -39,6 +45,13 @@ export function SenRegisterTable({ records }: { records: SenRecord[] }) {
   }, [records]);
 
   const shown = filter === "ALL" ? records : records.filter((r) => r.category === filter);
+
+  async function onWithdraw(recordId: string) {
+    setBusy(true);
+    const res = await withdrawSenConsent({ recordId });
+    setBusy(false);
+    if (res.ok) router.refresh();
+  }
 
   return (
     <div className="space-y-3.5">
@@ -64,11 +77,13 @@ export function SenRegisterTable({ records }: { records: SenRecord[] }) {
               <th className="px-4 py-2.5 font-bold">Severity</th>
               <th className="px-4 py-2.5 font-bold">Support &amp; accommodations</th>
               <th className="px-4 py-2.5 font-bold">Diagnosis &amp; consent</th>
+              <th className="px-4 py-2.5" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {shown.map((r) => (
-              <tr key={r.id} className="align-top">
+              <Fragment key={r.id}>
+              <tr className="align-top">
                 <td className="px-4 py-3.5">
                   <div className="grid grid-cols-[36px_1fr] items-center gap-2.5">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gold-bg font-display text-[11px] font-semibold text-navy">
@@ -131,11 +146,36 @@ export function SenRegisterTable({ records }: { records: SenRecord[] }) {
                     </b>
                   </div>
                 </td>
+                <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(editingId === r.id ? null : r.id)}
+                    className="rounded border border-border-2 px-2 py-1 text-[11px] font-semibold text-navy hover:bg-gold-bg"
+                  >
+                    Edit
+                  </button>{" "}
+                  <button
+                    type="button"
+                    onClick={() => onWithdraw(r.id)}
+                    disabled={busy}
+                    className="rounded border border-border-2 px-2 py-1 text-[11px] font-semibold text-terra hover:bg-terra-bg disabled:opacity-60"
+                  >
+                    Withdraw
+                  </button>
+                </td>
               </tr>
+              {editingId === r.id && (
+                <tr>
+                  <td colSpan={6} className="px-4 pb-4">
+                    <SenDetailForm mode="edit" record={r} onDone={() => setEditingId(null)} />
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-navy-3">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-navy-3">
                   No records in this category.
                 </td>
               </tr>
