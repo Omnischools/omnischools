@@ -33,6 +33,7 @@ import type {
 
 // design tokens (hex; @react-pdf can't use CSS vars)
 const NAVY = "#1A2B47";
+const NAVY2 = "#2D3F5C";
 const NAVY3 = "#5C6675";
 const GOLD = "#C8975B";
 const GOLD_SOFT = "#E8D4B8";
@@ -63,9 +64,9 @@ const s = StyleSheet.create({
   coverKicker: { fontSize: 8, color: NAVY3, fontWeight: "bold", letterSpacing: 1.5, marginBottom: 4 },
   coverSchool: { fontFamily: SERIF, fontWeight: "bold", fontSize: 20, color: NAVY, textAlign: "center" },
   coverTitle: { fontFamily: SERIF, fontSize: 12, color: NAVY, marginTop: 4, textAlign: "center" },
-  coverMeta: { fontFamily: MONO, fontSize: 9, color: NAVY, marginTop: 7 },
+  coverMeta: { fontFamily: MONO, fontSize: 9, color: NAVY2, marginTop: 7 },
   coverGen: { fontSize: 8, color: NAVY3, marginTop: 3 },
-  statusPill: { marginTop: 8, fontFamily: MONO, fontSize: 8, fontWeight: "bold", letterSpacing: 1, paddingVertical: 3, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: GOLD_SOFT, color: NAVY },
+  statusPill: { marginTop: 8, fontFamily: MONO, fontSize: 8, fontWeight: "bold", letterSpacing: 1, paddingVertical: 3, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: GOLD_SOFT, color: NAVY2 },
 
   body: { paddingHorizontal: 40, paddingTop: 12 },
   section: { marginBottom: 13 },
@@ -76,7 +77,7 @@ const s = StyleSheet.create({
 
   line: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 1.5 },
   lineLbl: { fontSize: 9, color: NAVY3 },
-  lineVal: { fontFamily: MONO, fontSize: 9, color: NAVY },
+  lineVal: { fontFamily: MONO, fontSize: 9, color: NAVY2 },
   lineValStrong: { fontFamily: SERIF, fontWeight: "bold", fontSize: 10, color: NAVY },
 
   hatch: { borderWidth: 1, borderStyle: "dashed", borderColor: GOLD_SOFT, backgroundColor: BG, borderRadius: 5, padding: 9, marginTop: 4 },
@@ -85,14 +86,14 @@ const s = StyleSheet.create({
 
   tRow: { flexDirection: "row", borderBottomWidth: 1, borderColor: BORDER },
   tHead: { backgroundColor: BG },
-  tCell: { paddingVertical: 3, paddingHorizontal: 5, fontSize: 8.5, color: NAVY },
+  tCell: { paddingVertical: 3, paddingHorizontal: 5, fontSize: 8.5, color: NAVY2 },
   tCellHead: { fontSize: 7.5, color: NAVY3, fontWeight: "bold", letterSpacing: 0.4 },
   tNum: { fontFamily: MONO, textAlign: "right" },
 
   small: { fontSize: 7.5, color: NAVY3, lineHeight: 1.5, marginTop: 3 },
 
   declTitle: { fontFamily: SERIF, fontSize: 14, color: NAVY, marginBottom: 6 },
-  declText: { fontSize: 9.5, color: NAVY, lineHeight: 1.6, marginBottom: 12 },
+  declText: { fontSize: 9.5, color: NAVY2, lineHeight: 1.6, marginBottom: 12 },
   sigRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 24 },
   sigBlock: { width: "46%" },
   sigLine: { borderTopWidth: 1, borderColor: NAVY3, marginTop: 26, paddingTop: 3 },

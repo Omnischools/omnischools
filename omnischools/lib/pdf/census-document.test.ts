@@ -115,7 +115,7 @@ describe("GOV9-20 · re-rendering the SAME frozen row is byte-reproducible", () 
     const b = await renderCensusPdf(data);
     expect(a.length).toBeGreaterThan(2000);
     expect(normalise(a)).toEqual(normalise(b));
-  });
+  }, 20_000); // two sequential @react-pdf/fontkit renders (~2.5s each) — well over the 5s default under load
 
   it("NON-VACUOUS — a different frozen row renders DIFFERENT bytes (the doc reflects the data, not a constant)", async () => {
     const adopted = await renderCensusPdf(makeData(makeSnapshot()));
@@ -123,7 +123,7 @@ describe("GOV9-20 · re-rendering the SAME frozen row is byte-reproducible", () 
       makeData(makeSnapshot({ specialNeeds: { coverage: "NONE", reason: "SEN register not adopted — hand-filled." } })),
     );
     expect(normalise(adopted)).not.toEqual(normalise(notAdopted));
-  });
+  }, 20_000); // two sequential renders — same timeout headroom as the reproducibility test
 });
 
 // ── SEN §5 states (07/08) + honest-blank (06) render without throwing (exercises the compile-fenced branches)
@@ -216,6 +216,8 @@ describe("GOV9-09/13/16/17/18/19 · the download route", () => {
     expect(route).toMatch(/searchParams\.get\(\s*["'`]cadence["'`]\s*\)/);
     expect(route).toMatch(/MID_YEAR/);
     expect(route).toMatch(/eq\(\s*censusReturn\.cadence,\s*cadence\s*\)/);
+    // the ternary pins the DEFAULT to ANNUAL (only an explicit MID_YEAR selects mid-year).
+    expect(route).toMatch(/["'`]MID_YEAR["'`]\s*:\s*["'`]ANNUAL["'`]/);
   });
 
   it("is downloadable in DRAFT — it does NOT require status COMPLETED (13)", () => {
