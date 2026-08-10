@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
 import { renderCensusPdf } from "./render-census";
+import { CensusDocument } from "./census-document";
 import type { CensusPdfData } from "./census-document";
 import type { CensusSnapshot, CensusSections } from "@/lib/reports/census/schema";
 import type { CensusEnrolment } from "@/lib/reports/census-enrolment-data";
@@ -257,5 +258,151 @@ describe("GOV9-18/17 · the completion panel + actions are cadence-aware + manag
     expect(actions).toMatch(/eq\(\s*censusReturn\.cadence,\s*cadence\s*\)/);
     const draftLocks = actions.match(/eq\(\s*censusReturn\.status,\s*["'`]DRAFT["'`]\s*\)/g) ?? [];
     expect(draftLocks.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// GOV-9b · the census PDF is CADENCE-AWARE. A MID_YEAR run renders ONLY the mid-year section set;
+// an ANNUAL run is UNCHANGED (all 13 sections + the §5 grid). The rendered PDF's content streams are
+// FlateDecode-compressed (verified: no section title is greppable in the raw buffer), so the SECTION
+// SET is asserted STRUCTURALLY — walk the React element tree CensusDocument returns (each section is a
+// named function-component element, gated inline on `meta.cadence` in the body, the same tree @react-pdf
+// renders). Buffer renders back it up: neither cadence throws, and mid-year is strictly SMALLER — the
+// annual-only sections are OMITTED, not hatched.
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+type El = { type?: unknown; props?: Record<string, unknown> & { children?: unknown } };
+function walkEls(node: unknown, out: El[]): El[] {
+  if (node == null || typeof node !== "object") return out;
+  if (Array.isArray(node)) {
+    for (const n of node) walkEls(n, out);
+    return out;
+  }
+  const el = node as El;
+  if (typeof el.type === "function") out.push(el); // a section is a function component; @react-pdf primitives are not
+  if (el.props && "children" in el.props) walkEls(el.props.children, out);
+  return out;
+}
+const nameOf = (e: El) => (e.type as { name?: string }).name ?? "";
+const sectionEls = (data: CensusPdfData) => walkEls(CensusDocument({ data }), []);
+const sectionNames = (data: CensusPdfData) => sectionEls(data).map(nameOf).filter(Boolean);
+const propsOf = (data: CensusPdfData, name: string) => sectionEls(data).find((e) => nameOf(e) === name)?.props;
+
+const midData = (hf: CensusHandFill = { version: 1 }) => makeData(makeSnapshot(), hf, "DRAFT", "MID_YEAR");
+const annualData = (hf: CensusHandFill = { version: 1 }) => makeData(makeSnapshot(), hf, "DRAFT", "ANNUAL");
+
+// the section set a mid-year run renders (in document order) + the always-on Declaration.
+const MID_YEAR_SET = ["Identification", "Enrolment", "AgeDistribution", "Movement", "Staff", "Attendance", "Declaration"];
+// the annual-only sections a mid-year run MUST OMIT (they belong to the annual return; a hatch here would be noise).
+const ANNUAL_ONLY = ["SpecialNeeds", "Terminal", "Performance", "Infrastructure", "Repetition", "Feeding", "Textbooks"];
+
+describe("GOV-9b · a MID_YEAR run renders ONLY the mid-year section set", () => {
+  it("renders identification/enrolment/age/movement/staff/attendance + declaration — the EXACT mid-year set", () => {
+    expect(sectionNames(midData())).toEqual(MID_YEAR_SET);
+  });
+
+  it("OMITS every annual-only section (SEN §5, terminal, performance, infrastructure, repetition, feeding, textbooks)", () => {
+    const names = sectionNames(midData());
+    for (const s of ANNUAL_ONLY) expect(names).not.toContain(s);
+  });
+
+  it("the mid-year PDF renders — a real, non-throwing document", async () => {
+    const pdf = await renderCensusPdf(midData());
+    expect(pdf.length).toBeGreaterThan(2000);
+  });
+
+  it("mid-year Movement is ADMISSIONS-ONLY — annual=false, no exits hand-fill (no `hand`), numbered §4", () => {
+    const p = propsOf(midData(), "Movement")!;
+    expect(p.annual).toBe(false);
+    expect(p.hand).toBeUndefined(); // the exits hatch (`annual ? hf.movementExits : undefined`) is not passed mid-year
+    expect(p.n).toBe("4");
+  });
+
+  it("mid-year Staff is teaching/non-teaching/PTR-ONLY — annual=false, no salary/qualifications (no `hand`), numbered §5", () => {
+    const p = propsOf(midData(), "Staff")!;
+    expect(p.annual).toBe(false);
+    expect(p.hand).toBeUndefined(); // no qualifications hand-fill, and the salary block is `annual`-gated in the section
+    expect(p.n).toBe("5");
+  });
+
+  it("Attendance is the last numbered section (§6) on a mid-year run", () => {
+    expect(propsOf(midData(), "Attendance")!.n).toBe("6");
+  });
+});
+
+describe("GOV-9b · an ANNUAL run is UNCHANGED — all 13 sections + the §5 grid (regression)", () => {
+  it("renders all 13 sections (incl. §5/SpecialNeeds) + declaration, in order", () => {
+    const names = sectionNames(annualData());
+    expect(names).toEqual([
+      "Identification", "Enrolment", "AgeDistribution", "SpecialNeeds", "Movement", "Staff", "Attendance",
+      "Terminal", "Performance", "Infrastructure", "Repetition", "Feeding", "Textbooks", "Declaration",
+    ]);
+    expect(names.filter((s) => s !== "Declaration")).toHaveLength(13);
+    for (const s of ANNUAL_ONLY) expect(names).toContain(s);
+  });
+
+  it("annual Movement carries the exits hand-fill (annual=true, `hand` present, §5); Staff carries salary/qualifications (annual=true, §6)", () => {
+    const data = annualData({ version: 1, movementExits: { withdrawals: 2, transfersIn: 1, transfersOut: 0 } });
+    const mv = propsOf(data, "Movement")!;
+    expect(mv.annual).toBe(true);
+    expect(mv.hand).toBeDefined();
+    expect(mv.n).toBe("5");
+    const st = propsOf(data, "Staff")!;
+    expect(st.annual).toBe(true);
+    expect(st.n).toBe("6");
+  });
+
+  it("the annual PDF renders and is STRICTLY LARGER than the mid-year one (annual-only sections are real content, not omitted hatches)", async () => {
+    const mid = await renderCensusPdf(midData());
+    const ann = await renderCensusPdf(annualData());
+    expect(ann.length).toBeGreaterThan(2000);
+    expect(mid.length).toBeLessThan(ann.length);
+  });
+
+  it("each cadence is byte-reproducible in ITS cadence, and mid ≠ annual bytes (the section gate is observable, deterministic)", async () => {
+    const m1 = await renderCensusPdf(midData());
+    const m2 = await renderCensusPdf(midData());
+    expect(normalise(m1)).toEqual(normalise(m2));
+    const a1 = await renderCensusPdf(annualData());
+    expect(normalise(m1)).not.toEqual(normalise(a1));
+  });
+});
+
+describe("GOV-9b · the cover / footer / declaration REFERENCE the cadence", () => {
+  const doc = readFileSync(resolve(cwd(), "lib/pdf/census-document.tsx"), "utf8");
+
+  it("gates every annual-only section on `annual` (meta.cadence === 'ANNUAL')", () => {
+    expect(doc).toMatch(/const annual = meta\.cadence === "ANNUAL"/);
+    expect(doc).toMatch(/\{annual && <SpecialNeeds/);
+    expect(doc).toMatch(/\{annual && <Terminal/);
+    expect(doc).toMatch(/\{annual && <Infrastructure/);
+    expect(doc).toMatch(/\{annual && <Textbooks/);
+  });
+
+  it("the cover kicker + labels swap ANNUAL / MID-YEAR by cadence", () => {
+    expect(doc).toMatch(/annual \? "ANNUAL" : "MID-YEAR"/);
+    expect(doc).toMatch(/cadenceLabel = annual \? "Annual" : "Mid-year"/);
+  });
+
+  it("the declaration copy is cadence-worded (a 'mid-year' vs 'annual' census)", () => {
+    expect(doc).toMatch(/meta\.cadence === "MID_YEAR" \? "mid-year" : "annual"/);
+    expect(doc).toMatch(/this \{cad\} census/);
+  });
+});
+
+describe("GOV-9b · the completion panel is cadence-aware — mid-year has NO hand-fill form", () => {
+  const panel = readFileSync(resolve(cwd(), "components/reports/census/census-completion-panel.tsx"), "utf8");
+
+  it("the hand-fill form is gated ANNUAL-only (`annual && !locked`) — a mid-year run never mounts it", () => {
+    expect(panel).toMatch(/const annual = cadence === "ANNUAL"/);
+    expect(panel).toMatch(/\{annual && !locked && \(\s*<form onSubmit=\{onSave\}/);
+  });
+
+  it("a mid-year run (`!annual && !locked`) shows Download + Complete only — no <form>", () => {
+    expect(panel).toMatch(/\{!annual && !locked && \(/);
+    expect(panel).toMatch(/CompleteButton/);
+  });
+
+  it("the Download-PDF link carries the run's cadence (so the route selects the mid-year row)", () => {
+    expect(panel).toMatch(/cadence=\$\{cadence\}/);
   });
 });

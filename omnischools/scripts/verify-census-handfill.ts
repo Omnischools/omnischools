@@ -22,8 +22,10 @@ import {
  *     - markCensusCompleted flips DRAFT→COMPLETED (14);
  *     - once COMPLETED, a hand-fill write matches 0 rows and the stored value is UNCHANGED (locked, 14);
  *     - a second complete matches 0 rows (idempotent refuse); a missing year matches 0 rows.
- *  All rolled back — nothing persists. Cross-school RLS isolation is `pnpm db:rls-test` (census_return is an
- *  auto-discovered tenant table).
+ *  C) GOV-9b — markCensusCompleted is CADENCE-scoped: with a MID_YEAR and an ANNUAL DRAFT under one year, a
+ *     MID_YEAR complete flips only the mid-year row (annual stays DRAFT), is idempotent, and the annual
+ *     completes independently. All rolled back — nothing persists. Cross-school RLS isolation is
+ *  `pnpm db:rls-test` (census_return is an auto-discovered tenant table).
  */
 let failures = 0;
 function ok(cond: boolean, label: string) {
@@ -165,6 +167,73 @@ async function main() {
         )
         .returning({ academicYear: censusReturn.academicYear });
       ok(missing.length === 0, "B8: a hand-fill write with no matching row matches 0 rows (refused)");
+
+      throw new Rollback();
+    });
+  } catch (e) {
+    if (!(e instanceof Rollback)) throw e;
+  }
+
+  // ── C · ROLLED-BACK: markCensusCompleted is CADENCE-scoped (GOV-9b) ─────────────────────────────────
+  // A MID_YEAR complete flips ONLY the mid-year DRAFT; the ANNUAL row of the SAME year is untouched (and
+  // vice-versa). Mirrors the action's UPDATE ... WHERE cadence = <cadence> AND status = 'DRAFT'. All rolled
+  // back — nothing persists.
+  try {
+    await db.transaction(async (tx) => {
+      // seed a MID_YEAR *and* an ANNUAL DRAFT under the same throwaway year (PK is school × cadence × year)
+      for (const cadence of ["MID_YEAR", "ANNUAL"] as const) {
+        await tx.insert(censusReturn).values({
+          schoolId,
+          cadence,
+          academicYear: RB_YEAR,
+          status: "DRAFT",
+          censusDate: snapshot.censusDate,
+          autoSnapshot: snapshot,
+        });
+      }
+      const completeDraft = (cadence: "MID_YEAR" | "ANNUAL") =>
+        tx
+          .update(censusReturn)
+          .set({ status: "COMPLETED", updatedAt: new Date() })
+          .where(
+            and(
+              eq(censusReturn.schoolId, schoolId),
+              eq(censusReturn.cadence, cadence),
+              eq(censusReturn.academicYear, RB_YEAR),
+              eq(censusReturn.status, "DRAFT"),
+            ),
+          )
+          .returning({ academicYear: censusReturn.academicYear });
+      const statusOf = async (cadence: "MID_YEAR" | "ANNUAL") => {
+        const [r] = await tx
+          .select({ status: censusReturn.status })
+          .from(censusReturn)
+          .where(
+            and(
+              eq(censusReturn.schoolId, schoolId),
+              eq(censusReturn.cadence, cadence),
+              eq(censusReturn.academicYear, RB_YEAR),
+            ),
+          );
+        return r?.status;
+      };
+
+      // C1 · markCompleted(MID_YEAR) flips exactly the mid-year DRAFT (1 row) — GOV-9b
+      const midDone = await completeDraft("MID_YEAR");
+      ok(midDone.length === 1, "C1: markCompleted(MID_YEAR) flipped the mid-year DRAFT (1 row) — GOV-9b");
+      ok((await statusOf("MID_YEAR")) === "COMPLETED", "C2: the mid-year row is now COMPLETED");
+      ok(
+        (await statusOf("ANNUAL")) === "DRAFT",
+        "C3: the ANNUAL row of the SAME year is UNTOUCHED by the mid-year complete (cadence-scoped) — GOV-9b",
+      );
+
+      // C4 · a second MID_YEAR complete matches 0 rows (locked, idempotent refuse)
+      const midAgain = await completeDraft("MID_YEAR");
+      ok(midAgain.length === 0, "C4: completing an already-COMPLETED mid-year row matches 0 rows (refused)");
+
+      // C5 · markCompleted(ANNUAL) then flips the annual DRAFT independently (1 row) — the annual lock is intact
+      const annDone = await completeDraft("ANNUAL");
+      ok(annDone.length === 1, "C5: markCompleted(ANNUAL) then flipped the annual DRAFT independently (1 row)");
 
       throw new Rollback();
     });
