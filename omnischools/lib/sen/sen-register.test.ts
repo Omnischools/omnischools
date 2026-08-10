@@ -80,13 +80,27 @@ describe("GOV10-03/15 · SEN_REGISTER_ROLES = [ADMIN, HEADMASTER] — admin-only
       expect(SEN_REGISTER_ROLES, `${barred} must not reach the SEN register`).not.toContain(barred);
     }
   });
-  it("the surface + the anonymised export both gate on requireSchoolRole(SEN_REGISTER_ROLES)", () => {
-    expect(page).toMatch(/requireSchoolRole\(SEN_REGISTER_ROLES\)/);
+  it("the anonymised export gates on requireSchoolRole; the surface is the GOV-10b 3-way gate (admin role OR live grant, else notFound)", () => {
     expect(exportRoute).toMatch(/requireSchoolRole\(SEN_REGISTER_ROLES\)/);
+    // GOV-10b (R435) — the page admits an admin (hasAnyRole SEN_REGISTER_ROLES) OR a live-grant holder;
+    // everyone else notFound()s (membership of the register is itself sensitive).
+    expect(page).toMatch(/hasAnyRole\(\s*user\.roles,\s*SEN_REGISTER_ROLES\s*\)/);
+    expect(page).toMatch(/hasAnyLiveSenGrant/);
+    expect(page).toMatch(/notFound\(\)/);
   });
-  it("BOTH write actions re-check assertAnyRole(SEN_REGISTER_ROLES) server-side before any DB work", () => {
-    expect((actions.match(/assertAnyRole\(SEN_REGISTER_ROLES\)/g) ?? []).length).toBe(2);
-    for (const name of ["enableSenRegister", "recordSupportNeed"]) {
+  it("EVERY write action re-checks assertAnyRole(SEN_REGISTER_ROLES) server-side before any DB work", () => {
+    // GOV-10b added the grant / edit / consent actions — all 7 gate on the same role set.
+    const writeActions = [
+      "enableSenRegister",
+      "recordSupportNeed",
+      "grantSenAccess",
+      "revokeSenAccess",
+      "editSenRecord",
+      "grantSenConsent",
+      "withdrawSenConsent",
+    ];
+    expect((actions.match(/assertAnyRole\(SEN_REGISTER_ROLES\)/g) ?? []).length).toBe(writeActions.length);
+    for (const name of writeActions) {
       const start = actions.indexOf(`export async function ${name}`);
       expect(start, `${name} exported`).toBeGreaterThan(-1);
       const next = actions.indexOf("export async function ", start + 1);
