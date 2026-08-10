@@ -5,7 +5,7 @@
  * the `onboardSchool` action from tier defaults; the full multi-step version lives in
  * `full-wizard.tsx` (kept for the super-admin tenant-setup portal).
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
@@ -747,7 +747,8 @@ export function DonePanel({
  * INCR-AUTH-OTP (Option A) · the done-phase auto-sign-in. Shown only when `otpLoginRequired()` is true.
  * Auto-sends ONE OTP on mount, then verify → confirms the phone + establishes the session + redirects to
  * /dashboard (`verifyLogin`). The account already exists (tx committed before this renders), so a failed
- * send/verify never orphans anything — the "Go to sign in" link below reaches the same OTP tab at /login.
+ * send/verify never orphans anything — DonePanel's always-present "Go to sign in" link reaches the same
+ * OTP tab at /login.
  */
 export function OnboardingOtpFinish({ phone }: { phone: string }) {
   const [code, setCode] = useState("");
@@ -755,9 +756,13 @@ export function OnboardingOtpFinish({ phone }: { phone: string }) {
   const [error, setError] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
 
-  // One app-controlled send on mount. With Supabase "Confirm phone" ON, GoTrue may already have sent a
-  // code at sign-up — so the copy asks for the LATEST code rather than assuming this is the only one.
+  const sentRef = useRef(false);
+  // One app-controlled send on mount, guarded to fire EXACTLY once (React StrictMode double-invokes
+  // effects in dev). With Supabase "Confirm phone" ON, GoTrue may already have sent a code at sign-up —
+  // so the copy asks for the LATEST code rather than assuming this is the only one.
   useEffect(() => {
+    if (sentRef.current) return;
+    sentRef.current = true;
     void requestOtp(phone);
   }, [phone]);
 
