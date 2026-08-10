@@ -132,6 +132,13 @@ export function LoginForm({
         )
       ) : (
         <div className="space-y-3">
+          {/* Static first-login hint (INCR-AUTH-OTP §3) — never varies with whether the number exists or
+              is confirmed, so it leaks nothing (enumeration-safe). A brand-new account must verify by OTP
+              once (which confirms the phone); password sign-in works after that. */}
+          <p className="rounded-md bg-bg px-3 py-2 text-[12px] leading-relaxed text-navy-3">
+            <b className="text-navy-2">First time signing in?</b> Verify your number on the{" "}
+            <b className="text-navy-2">Phone OTP</b> tab first — your password works after that.
+          </p>
           <input
             className={fieldClass}
             type="tel"

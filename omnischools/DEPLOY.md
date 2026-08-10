@@ -26,6 +26,18 @@ SMS/email behind `lib/{sms,email}`, jobs as HTTP POST + shared secret. Hosting t
 4. **Authentication → Providers → Phone** — enable, and attach an SMS provider
    (Twilio / MessageBird / Vonage) per Supabase docs. For first tests you can add test
    phone numbers with fixed OTPs under Auth → Phone.
+   > **⚠️ The OTP SMS provider is Supabase's own (Twilio/etc.), NOT `HUBTEL_*`.** Hubtel only
+   > sends our invite/reminder messages (`lib/sms`); setting `HUBTEL_*` does NOT make login OTP work.
+
+   **OTP-first-login rollout (INCR-AUTH-OTP) — do these IN ORDER, or you risk locking users out:**
+   - **P1.** Attach the Supabase Auth SMS provider (above).
+   - **P2.** Confirm a real test OTP actually delivers to a live Ghana number (MTN / Telecel / AirtelTigo).
+   - **P3.** **Authentication → Providers → Phone → enable "Confirm phone".** This is what makes GoTrue
+     refuse password login on an un-verified phone, so a first login MUST go through OTP. Before P3,
+     sign-ups auto-confirm (password login works, OTP degrades to console) — the safe no-lockout interim.
+   - **P4.** Set `AUTH_OTP_LIVE=true` (env table below) so the app shows the OTP-first flow. Set this LAST.
+
+   See `docs/senior/incr-auth-otp-first-login-ruling.md` §5. `AUTH_OTP_LIVE` stays `false` until P1–P3 are done.
 
 ## 2 · Apply schema + RLS to prod (run locally, once)
 Run from `omnischools/` with the **direct** connection string. These are safe on an empty DB.
@@ -53,6 +65,7 @@ Tip: `pnpm db:rls-test` against prod should pass (cross-tenant reads blocked).
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key |
    | `SUPABASE_SERVICE_ROLE_KEY` | service_role key |
    | `AUTH_DEV_BYPASS` | `false`  ← flips on real phone-OTP auth |
+   | `AUTH_OTP_LIVE` | `false` until P1–P3 done, then `true`  ← OTP-mandatory first login (INCR-AUTH-OTP) |
    | `NEXT_PUBLIC_SITE_URL` | your Vercel URL (e.g. `https://omnischools.vercel.app`) |
    | `CRON_SECRET` | a long random string |
    | `HUBTEL_CLIENT_ID` / `_SECRET` / `_SENDER_ID` | optional (SMS goes live when set) |

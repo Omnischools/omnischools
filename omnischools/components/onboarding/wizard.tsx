@@ -5,7 +5,7 @@
  * the `onboardSchool` action from tier defaults; the full multi-step version lives in
  * `full-wizard.tsx` (kept for the super-admin tenant-setup portal).
  */
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
@@ -21,6 +21,7 @@ import {
   type SchoolSubtype,
 } from "@/lib/onboarding";
 import { onboardSchool } from "@/lib/actions/onboarding";
+import { requestOtp, verifyLogin } from "@/lib/actions/auth";
 
 type Form = Partial<OnboardInput> & { subtype?: SchoolSubtype; confirmPassword?: string };
 
@@ -665,7 +666,7 @@ function PasswordStep({
 
 /* ----------------------------------------------------------------------- done */
 
-function DonePanel({
+export function DonePanel({
   result,
   schoolName,
 }: {
@@ -692,14 +693,20 @@ function DonePanel({
               we&apos;ll guide you through the rest from a checklist.
             </p>
           </div>
-          <Link
-            href="/login?accepted=1"
-            className="rounded-lg bg-gold px-6 py-3.5 text-sm font-bold text-navy transition-colors hover:brightness-95"
-          >
-            Sign in →
-          </Link>
+          {/* When OTP-first is live, the OTP card below is the sign-in action; else link to /login. */}
+          {!result.otpLive && (
+            <Link
+              href="/login?accepted=1"
+              className="rounded-lg bg-gold px-6 py-3.5 text-sm font-bold text-navy transition-colors hover:brightness-95"
+            >
+              Sign in →
+            </Link>
+          )}
         </div>
       </div>
+
+      {/* INCR-AUTH-OTP · auto-sign-in (Option A): verify the phone via OTP → confirms it + lands in /dashboard. */}
+      {result.otpLive && <OnboardingOtpFinish phone={result.adminPhone} />}
 
       <div className="mt-6">
         <div className="mb-3 font-display text-base font-medium text-navy">
@@ -732,6 +739,83 @@ function DonePanel({
         </Link>
         <p className="font-mono text-[11px] text-navy-3">school id · {result.schoolId}</p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * INCR-AUTH-OTP (Option A) · the done-phase auto-sign-in. Shown only when `otpLoginRequired()` is true.
+ * Auto-sends ONE OTP on mount, then verify → confirms the phone + establishes the session + redirects to
+ * /dashboard (`verifyLogin`). The account already exists (tx committed before this renders), so a failed
+ * send/verify never orphans anything — DonePanel's always-present "Go to sign in" link reaches the same
+ * OTP tab at /login.
+ */
+export function OnboardingOtpFinish({ phone }: { phone: string }) {
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
+
+  const sentRef = useRef(false);
+  // One app-controlled send on mount, guarded to fire EXACTLY once (React StrictMode double-invokes
+  // effects in dev). With Supabase "Confirm phone" ON, GoTrue may already have sent a code at sign-up —
+  // so the copy asks for the LATEST code rather than assuming this is the only one.
+  useEffect(() => {
+    if (sentRef.current) return;
+    sentRef.current = true;
+    void requestOtp(phone);
+  }, [phone]);
+
+  async function verify() {
+    if (!code.trim()) return;
+    setBusy(true);
+    setError(null);
+    const res = await verifyLogin(phone, code.trim()); // redirects to /dashboard on success
+    setBusy(false);
+    if (res && !res.ok) setError(res.error);
+  }
+  async function resend() {
+    setResent(false);
+    setError(null);
+    await requestOtp(phone);
+    setResent(true);
+  }
+
+  return (
+    <div className="mt-5 rounded-xl border border-gold-soft bg-gold-bg px-6 py-5">
+      <div className="font-display text-base font-semibold text-navy">
+        Finish signing in — verify your number
+      </div>
+      <p className="mt-1 max-w-[520px] text-[13px] leading-relaxed text-navy-2">
+        We sent a one-time code to <b className="text-navy">{phone}</b>. Enter the latest code to confirm
+        your number and go straight to your dashboard. You&apos;ll be able to sign in with your password
+        after this.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2.5">
+        <input
+          inputMode="numeric"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && verify()}
+          placeholder="••••••"
+          className="w-40 rounded-md border border-border-2 bg-surface px-3 py-2.5 text-center font-mono text-lg tracking-[0.3em] text-navy outline-none focus:border-gold"
+        />
+        <button
+          onClick={verify}
+          disabled={busy}
+          className="rounded-lg bg-navy px-5 py-2.5 text-sm font-bold text-bg transition-colors hover:bg-navy-deep disabled:opacity-60"
+        >
+          {busy ? "Verifying…" : "Verify & go to dashboard"}
+        </button>
+        <button
+          type="button"
+          onClick={resend}
+          className="text-xs font-semibold text-navy-3 transition-colors hover:text-navy"
+        >
+          {resent ? "Code re-sent ✓" : "Resend code"}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-sm text-terra">{error}</p>}
     </div>
   );
 }
