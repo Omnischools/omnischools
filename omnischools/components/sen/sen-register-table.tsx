@@ -11,6 +11,7 @@ import {
   SEN_CATEGORY_PILL,
   SEN_SEVERITY_LABEL,
   SEN_SEVERITY_PILL,
+  SEN_PILL_BASE,
   sexNoun,
   initials,
 } from "@/lib/sen/vocab";
@@ -20,9 +21,6 @@ import {
  * here, R410). Filter pills narrow by category, client-side. The confidential detail is already gated at the
  * page (SEN_REGISTER_ROLES); this only presents what the server chose to send.
  */
-
-const pillBase =
-  "inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide";
 
 export function SenRegisterTable({ records }: { records: SenRecord[] }) {
   const router = useRouter();
@@ -107,7 +105,7 @@ export function SenRegisterTable({ records }: { records: SenRecord[] }) {
                 <td className="px-4 py-3.5">
                   <div className="flex flex-wrap items-center gap-1">
                     <span
-                      className={`${pillBase} ${SEN_CATEGORY_PILL[r.category]}`}
+                      className={`${SEN_PILL_BASE} ${SEN_CATEGORY_PILL[r.category]}`}
                       title="Primary (census) category"
                     >
                       {SEN_CATEGORY_LABEL[r.category]}
@@ -125,7 +123,7 @@ export function SenRegisterTable({ records }: { records: SenRecord[] }) {
                 </td>
                 <td className="px-4 py-3.5">
                   {r.severity ? (
-                    <span className={`${pillBase} ${SEN_SEVERITY_PILL[r.severity]}`}>
+                    <span className={`${SEN_PILL_BASE} ${SEN_SEVERITY_PILL[r.severity]}`}>
                       {SEN_SEVERITY_LABEL[r.severity]}
                     </span>
                   ) : (

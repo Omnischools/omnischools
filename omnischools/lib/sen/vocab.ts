@@ -25,6 +25,10 @@ export const SEN_CATEGORY_LABEL: Record<SenCategory, string> = {
   OTHER: "Other",
 };
 
+/** The shared category-pill base classes (paired with a `SEN_CATEGORY_PILL[c]` colour). */
+export const SEN_PILL_BASE =
+  "inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide";
+
 export const SEN_CATEGORY_PILL: Record<SenCategory, string> = {
   VISUAL: "bg-gold-bg text-gold",
   HEARING: "bg-green-bg text-green",

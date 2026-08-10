@@ -5,6 +5,7 @@ import {
   SEN_CATEGORY_PILL,
   SEN_SEVERITY_LABEL,
   SEN_SEVERITY_PILL,
+  SEN_PILL_BASE,
   initials,
 } from "@/lib/sen/vocab";
 
@@ -16,9 +17,6 @@ import {
  * reconciled to Kofi's per-student-detail ruling — one card per student, multiple category pills, a SINGLE
  * per-student severity/notes/accommodations (categories are tags; the detail is not per-category).
  */
-const pillBase =
-  "inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide";
-
 export function SenGranteeView({ records }: { records: SenAccommodationRecord[] }) {
   return (
     <div className="mx-auto max-w-page space-y-6">
@@ -79,7 +77,7 @@ export function SenGranteeView({ records }: { records: SenAccommodationRecord[] 
                 {/* Category pill(s) + severity */}
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {cats.map((c) => (
-                    <span key={c} className={`${pillBase} ${SEN_CATEGORY_PILL[c]}`}>
+                    <span key={c} className={`${SEN_PILL_BASE} ${SEN_CATEGORY_PILL[c]}`}>
                       {SEN_CATEGORY_LABEL[c]}
                     </span>
                   ))}

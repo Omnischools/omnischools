@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { SenPendingRecord } from "@/lib/sen/register-data";
-import { SEN_CATEGORY_ORDER, SEN_CATEGORY_LABEL, SEN_CATEGORY_PILL } from "@/lib/sen/vocab";
+import { SEN_CATEGORY_ORDER, SEN_CATEGORY_LABEL, SEN_CATEGORY_PILL, SEN_PILL_BASE } from "@/lib/sen/vocab";
 import { SenDetailForm } from "./sen-detail-form";
 
 /**
@@ -30,7 +30,7 @@ export function SenConsentPanel({ pending }: { pending: SenPendingRecord[] }) {
                 <span className="text-sm font-semibold text-navy">{p.studentName}</span>
                 <span className="text-[11px] text-navy-3">{p.className ?? "—"}</span>
                 <span
-                  className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${SEN_CATEGORY_PILL[p.category]}`}
+                  className={`${SEN_PILL_BASE} ${SEN_CATEGORY_PILL[p.category]}`}
                   title="Primary (census) category"
                 >
                   {SEN_CATEGORY_LABEL[p.category]}
