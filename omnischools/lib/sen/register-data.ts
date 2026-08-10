@@ -12,6 +12,7 @@ import {
   roles,
 } from "@/db/schema";
 import { liveSenGrantStudentIds } from "@/lib/sen/grants";
+import { isStaffRole } from "@/lib/access";
 import { ageAsOf } from "@/lib/reports/census-enrolment-data";
 import {
   SEN_CATEGORIES,
@@ -367,7 +368,7 @@ export async function getSenGrantsAdmin(schoolId: string): Promise<SenGrantsAdmi
       .where(eq(roleAssignments.schoolId, schoolId));
     const staffById = new Map<string, SenGrantStaff>();
     for (const r of staffRows) {
-      if (r.code === "STUDENT" || r.code === "PARENT") continue;
+      if (!isStaffRole(r.code)) continue; // canonical staff predicate — excludes STUDENT/PARENT/BOARD_MEMBER
       if (!staffById.has(r.id)) {
         staffById.set(r.id, { id: r.id, name: r.name ?? "Unnamed staff", roleLabel: r.roleLabel });
       }

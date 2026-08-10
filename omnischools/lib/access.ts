@@ -567,6 +567,11 @@ export function canGrantRole(actorRoles: readonly string[], code: string): boole
  */
 const NON_STAFF_ROLES = ["STUDENT", "PARENT", "BOARD_MEMBER"];
 
+/** The per-code form of `isStaff`: a single role code qualifies its holder as staff. */
+export function isStaffRole(code: string): boolean {
+  return code !== "" && !NON_STAFF_ROLES.includes(code);
+}
+
 /**
  * True when the user holds at least one staff (non-STUDENT/PARENT) role. The invite/manage gate: a
  * PARENT- or STUDENT-only session — even one hand-crafting the request — cannot create invites (AC A1).
@@ -574,7 +579,7 @@ const NON_STAFF_ROLES = ["STUDENT", "PARENT", "BOARD_MEMBER"];
  * non-staff role".
  */
 export function isStaff(roles: readonly string[]): boolean {
-  return roles.some((r) => r != null && r !== "" && !NON_STAFF_ROLES.includes(r));
+  return roles.some((r) => r != null && isStaffRole(r));
 }
 
 /** Section prefixes a finance-only user may reach. Order-independent. */

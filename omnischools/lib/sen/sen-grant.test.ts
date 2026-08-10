@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
 import type { SenAccommodationRecord } from "@/lib/sen/register-data";
+import { isStaffRole } from "@/lib/access";
 
 /**
  * GOV-10b · SEN follow-ups (teacher accommodation-grant + editing/lifecycle) — AC GOV10-19..40.
@@ -202,13 +203,25 @@ describe("GOV10-32/33 · grant & revoke are admin-gated; the grantee must be in-
       expect(gate, `${name} gate precedes any DB access`).toBeLessThan(firstDb);
     });
   }
-  it("grantSenAccess refuses a STUDENT/PARENT grantee — the grantee must hold a non-STUDENT/PARENT role", () => {
+  it("grantSenAccess gates the grantee on the canonical isStaffRole predicate (not a hand-rolled denylist)", () => {
     const body = fnBody(actions, "grantSenAccess");
-    expect(body).toMatch(/r\.code !== "STUDENT" && r\.code !== "PARENT"/);
+    expect(body).toMatch(/isStaffRole\(r\.code\)/);
     expect(body).toContain("bad_grantee");
     // and the student must be an ACTIVE student of THIS school.
     expect(body).toMatch(/eq\(students\.status,\s*"ACTIVE"\)/);
     expect(body).toContain("bad_student");
+  });
+  // MAJOR-1 (Dex): the grantee predicate must be the canonical isStaffRole so a read-only BOARD_MEMBER
+  // — non-staff per NON_STAFF_ROLES — is refused, not granted a persisted-but-inert grant.
+  it("isStaffRole excludes STUDENT/PARENT/BOARD_MEMBER and admits an actual staff role", () => {
+    expect(isStaffRole("BOARD_MEMBER")).toBe(false);
+    expect(isStaffRole("STUDENT")).toBe(false);
+    expect(isStaffRole("PARENT")).toBe(false);
+    expect(isStaffRole("TEACHER")).toBe(true);
+  });
+  // and the dropdown of grantable staff uses the SAME predicate — no divergent denylist.
+  it("getSenGrantsAdmin filters the grantable-staff list with isStaffRole (single source with the action)", () => {
+    expect(reader).toMatch(/if \(!isStaffRole\(r\.code\)\) continue/);
   });
 });
 

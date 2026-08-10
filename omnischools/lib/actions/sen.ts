@@ -5,7 +5,7 @@ import { safeRevalidate } from "@/lib/revalidate";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, assertAnyRole, resolveActor } from "@/lib/auth/server";
-import { SEN_REGISTER_ROLES } from "@/lib/access";
+import { SEN_REGISTER_ROLES, isStaffRole } from "@/lib/access";
 import { senRegister, senModuleAdoption, senSupportGrant, students, roleAssignments, roles } from "@/db/schema";
 
 /**
@@ -196,13 +196,14 @@ export async function grantSenAccess(input: unknown): Promise<SenActionResult> {
   const actor = await resolveActor(school.id);
   try {
     const result = await withSchool(school.id, async (tx) => {
-      // R106/R438 — the grantee must hold ≥1 non-STUDENT/PARENT role in THIS school.
+      // R106/R438 — the grantee must hold ≥1 STAFF role in THIS school (the canonical predicate, so
+      // BOARD_MEMBER — read-only, non-staff per NON_STAFF_ROLES — is refused, not silently granted an inert row).
       const granteeRoles = await tx
         .select({ code: roles.code })
         .from(roleAssignments)
         .innerJoin(roles, eq(roles.id, roleAssignments.roleId))
         .where(and(eq(roleAssignments.schoolId, school.id), eq(roleAssignments.userId, d.granteeUserId)));
-      if (!granteeRoles.some((r) => r.code !== "STUDENT" && r.code !== "PARENT")) {
+      if (!granteeRoles.some((r) => isStaffRole(r.code))) {
         return { kind: "bad_grantee" as const };
       }
       const stu = await tx
