@@ -43,7 +43,8 @@ export type SenRecord = {
   level: string | null;
   sex: string;
   age: number | null;
-  category: SenCategory;
+  category: SenCategory; // the primary / census bucket (R445)
+  secondaryCategories: SenCategory[]; // additional categories (operational; never in §5)
   severity: SenSeverity | null;
   supportNotes: string | null;
   accommodations: string[];
@@ -94,6 +95,7 @@ export async function getSenRegister(schoolId: string): Promise<SenRegisterView>
           className: classes.name,
           level: classes.level,
           category: senRegister.category,
+          secondaryCategories: senRegister.secondaryCategories,
           severity: senRegister.severity,
           supportNotes: senRegister.supportNotes,
           accommodations: senRegister.accommodations,
@@ -151,6 +153,7 @@ export async function getSenRegister(schoolId: string): Promise<SenRegisterView>
         sex: r.sex,
         age: ageAsOf(r.dateOfBirth, now),
         category: r.category,
+        secondaryCategories: r.secondaryCategories ?? [],
         severity: r.severity,
         supportNotes: r.supportNotes,
         accommodations: r.accommodations ?? [],
@@ -201,7 +204,8 @@ export type SenAccommodationRecord = {
   studentName: string;
   className: string | null;
   level: string | null;
-  category: SenCategory;
+  category: SenCategory; // the primary category
+  secondaryCategories: SenCategory[]; // additional needs — a teacher plans for the whole child (R445/GOV10-51)
   severity: SenSeverity | null;
   supportNotes: string | null;
   accommodations: string[];
@@ -227,6 +231,7 @@ export async function getSenAccommodationsForGrantee(
         className: classes.name,
         level: classes.level,
         category: senRegister.category,
+        secondaryCategories: senRegister.secondaryCategories,
         severity: senRegister.severity,
         supportNotes: senRegister.supportNotes,
         accommodations: senRegister.accommodations,
@@ -253,6 +258,7 @@ export async function getSenAccommodationsForGrantee(
       className: r.className,
       level: r.level,
       category: r.category,
+      secondaryCategories: r.secondaryCategories ?? [],
       severity: r.severity,
       supportNotes: r.supportNotes,
       accommodations: r.accommodations ?? [],
@@ -413,6 +419,7 @@ export type SenPendingRecord = {
   studentName: string;
   className: string | null;
   category: SenCategory;
+  secondaryCategories: SenCategory[];
 };
 
 /**
@@ -429,6 +436,7 @@ export async function getSenPendingRecords(schoolId: string): Promise<SenPending
         lastName: students.lastName,
         className: classes.name,
         category: senRegister.category,
+        secondaryCategories: senRegister.secondaryCategories,
       })
       .from(senRegister)
       .innerJoin(
@@ -449,6 +457,7 @@ export async function getSenPendingRecords(schoolId: string): Promise<SenPending
       studentName: `${r.firstName} ${r.lastName}`.trim(),
       className: r.className,
       category: r.category,
+      secondaryCategories: r.secondaryCategories ?? [],
     }));
   });
 }

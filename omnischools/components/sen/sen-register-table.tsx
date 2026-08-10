@@ -12,6 +12,7 @@ import {
   SEN_SEVERITY_LABEL,
   SEN_SEVERITY_PILL,
   sexNoun,
+  initials,
 } from "@/lib/sen/vocab";
 
 /**
@@ -19,15 +20,6 @@ import {
  * here, R410). Filter pills narrow by category, client-side. The confidential detail is already gated at the
  * page (SEN_REGISTER_ROLES); this only presents what the server chose to send.
  */
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
-}
 
 const pillBase =
   "inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide";
@@ -38,13 +30,21 @@ export function SenRegisterTable({ records }: { records: SenRecord[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Incidence counts (a multi-category student is counted under each) — an OPERATIONAL tally, distinct from
+  // the census headcount in the hero (R445/GOV10-50; the caption below labels it so it can't be misread).
   const counts = useMemo(() => {
     const c = new Map<SenCategory, number>();
-    for (const r of records) c.set(r.category, (c.get(r.category) ?? 0) + 1);
+    for (const r of records) {
+      for (const cat of [r.category, ...r.secondaryCategories]) c.set(cat, (c.get(cat) ?? 0) + 1);
+    }
     return c;
   }, [records]);
+  const hasMulti = useMemo(() => records.some((r) => r.secondaryCategories.length > 0), [records]);
 
-  const shown = filter === "ALL" ? records : records.filter((r) => r.category === filter);
+  const shown =
+    filter === "ALL"
+      ? records
+      : records.filter((r) => r.category === filter || r.secondaryCategories.includes(filter));
 
   async function onWithdraw(recordId: string) {
     setBusy(true);
@@ -67,6 +67,12 @@ export function SenRegisterTable({ records }: { records: SenRecord[] }) {
           />
         ))}
       </div>
+      {hasMulti && (
+        <p className="text-[11px] text-navy-3">
+          A student with more than one recorded need appears under each category, so these counts add up to
+          more than the number of students.
+        </p>
+      )}
 
       <div className="overflow-x-auto rounded-xl border border-border bg-surface">
         <table className="w-full border-collapse text-sm">
@@ -99,9 +105,23 @@ export function SenRegisterTable({ records }: { records: SenRecord[] }) {
                   </div>
                 </td>
                 <td className="px-4 py-3.5">
-                  <span className={`${pillBase} ${SEN_CATEGORY_PILL[r.category]}`}>
-                    {SEN_CATEGORY_LABEL[r.category]}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span
+                      className={`${pillBase} ${SEN_CATEGORY_PILL[r.category]}`}
+                      title="Primary (census) category"
+                    >
+                      {SEN_CATEGORY_LABEL[r.category]}
+                    </span>
+                    {SEN_CATEGORY_ORDER.filter((c) => r.secondaryCategories.includes(c)).map((c) => (
+                      <span
+                        key={c}
+                        title="Additional category"
+                        className="inline-flex items-center rounded-pill border border-border bg-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-navy-3"
+                      >
+                        {SEN_CATEGORY_LABEL[c]}
+                      </span>
+                    ))}
+                  </div>
                 </td>
                 <td className="px-4 py-3.5">
                   {r.severity ? (

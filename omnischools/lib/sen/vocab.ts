@@ -50,3 +50,13 @@ export const SEN_SEVERITY_PILL: Record<SenSeverityKey, string> = {
 export function sexNoun(sex: string): string {
   return sex === "MALE" ? "boy" : sex === "FEMALE" ? "girl" : "—";
 }
+
+/** First two initials of a name, upper-cased — the avatar glyph shared by the register table + grantee card. */
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+}

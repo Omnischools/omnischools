@@ -19,6 +19,7 @@ const capCls = "text-[11px] font-semibold uppercase tracking-wide text-navy-3";
 export function RecordSupportNeedForm({ candidates }: { candidates: SenCandidateStudent[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [category, setCategory] = useState(""); // primary — drives which secondaries are offerable
   const [consent, setConsent] = useState<"GRANTED" | "PENDING">("GRANTED");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +38,17 @@ export function RecordSupportNeedForm({ candidates }: { candidates: SenCandidate
           .map((s) => s.trim())
           .filter(Boolean)
       : null;
+    // Additional categories (R445) — a category tag, not detail, so recorded regardless of consent state.
+    const secondaryCategories = [...new Set(fd.getAll("secondaryCategories").map(String))].filter(
+      (c) => c !== category,
+    );
 
     setBusy(true);
     setError(null);
     const res = await recordSupportNeed({
       studentId: String(fd.get("studentId") ?? ""),
-      category: String(fd.get("category") ?? ""),
+      category,
+      secondaryCategories,
       consentState: consent,
       severity: granted ? strOpt("severity") : null,
       supportNotes: granted ? strOpt("supportNotes") : null,
@@ -108,8 +114,14 @@ export function RecordSupportNeedForm({ candidates }: { candidates: SenCandidate
           </select>
         </label>
         <label className="block">
-          <span className={capCls}>Support category</span>
-          <select name="category" required defaultValue="" className={inputCls}>
+          <span className={capCls}>Primary category</span>
+          <select
+            name="category"
+            required
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className={inputCls}
+          >
             <option value="" disabled>
               Select a category…
             </option>
@@ -121,6 +133,24 @@ export function RecordSupportNeedForm({ candidates }: { candidates: SenCandidate
           </select>
         </label>
       </div>
+
+      {category && (
+        <fieldset className="rounded-lg border border-border bg-bg p-3">
+          <span className={capCls}>Additional categories (optional)</span>
+          <p className="mt-0.5 text-[11px] text-navy-3">
+            A child can have more than one support need. The primary category is used for the GES census;
+            these extras are recorded for planning.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+            {SEN_CATEGORY_ORDER.filter((c) => c !== category).map((c) => (
+              <label key={c} className="flex cursor-pointer items-center gap-1.5 text-sm text-navy-2">
+                <input type="checkbox" name="secondaryCategories" value={c} />
+                {SEN_CATEGORY_LABEL[c]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <fieldset className="rounded-lg border border-border bg-bg p-3">
         <span className={capCls}>Parental consent</span>
