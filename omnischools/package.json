@@ -62,6 +62,7 @@
     "db:verify-pta-minutes": "tsx --tsconfig scripts/tsconfig.json scripts/verify-pta-minutes.ts",
     "db:verify-sen": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sen-register.ts",
     "db:verify-sen-grant": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sen-grant.ts",
+    "db:verify-sen-multicategory": "tsx --tsconfig scripts/tsconfig.json scripts/verify-sen-multicategory.ts",
     "db:verify-census": "tsx --tsconfig scripts/tsconfig.json scripts/verify-census-handfill.ts"
   },
   "dependencies": {

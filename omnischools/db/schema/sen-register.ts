@@ -64,7 +64,18 @@ export const senRegister = pgTable(
     studentId: uuid("student_id").notNull(),
 
     // The census bucket — NOT NULL even on a pending row (R409). The 6 values = the §5 6×2 grid.
+    // This is the designated PRIMARY / census category (OC-SEN-MULTI-CATEGORY, R445, GOV10-42):
+    // the §5 reader counts each student ONCE under this column only.
     category: senCategoryEnum("category").notNull(),
+    // Zero-or-more ADDITIONAL SEN categories on the SAME one-parent-row (R445, GOV10-41/43). Each
+    // value is from the same 6-value sen_category enum. null/empty = no secondaries (GOV10-54: the
+    // backfill no-op — existing rows stay null, keep `category` as their sole/primary bucket, and the
+    // §5 aggregate over them is byte-identical). These are CENSUS/OPERATIONAL TAGS, NOT the detail
+    // cluster (GOV10-44/45): they are deliberately OUTSIDE sen_register_pending_no_detail, so a PENDING
+    // row may carry a full category set with every detail column NULL. The §5 census reader
+    // (getCensusSpecialNeeds) reads `category` ONLY and NEVER this column, so the honesty invariant
+    // total == Σ12 == distinct headcount is untouched (GOV10-46/47).
+    secondaryCategories: senCategoryEnum("secondary_categories").array(),
     // OPERATIONAL ONLY — NEVER read into the census (R408). Nullable.
     severity: senSeverityEnum("severity"),
 
@@ -99,9 +110,21 @@ export const senRegister = pgTable(
       columns: [t.schoolId, t.studentId],
       foreignColumns: [students.schoolId, students.id],
     }).onDelete("cascade"),
-    // One SEN row per (school × student) (R415; OC-SEN-MULTI-CATEGORY deferred). Its (school_id) prefix
+    // One SEN row per (school × student) (R415). Multi-category (R445) is an attribute SET on this one
+    // row (secondaryCategories), NEVER a second row — so this UNIQUE STAYS. Its (school_id) prefix
     // serves the per-school reads, so no separate school index.
     uniqStudent: unique("uniq_sen_register_student").on(t.schoolId, t.studentId),
+
+    // GOV10-43 (R445): a category appears at most ONCE per student — the primary must NOT also be a
+    // secondary. Cleanly DB-enforceable (a NULL/empty secondary set passes; `= ANY('{}')` is false).
+    // NOTE — the no-DUPLICATE-within-the-array half of GOV10-43 is NOT enforced here: Postgres CHECK
+    // forbids the subquery an array-dedup needs (no immutable "array is a set" predicate exists), so
+    // secondary-set dedup is belt-and-suspenders in the write action, not the DB. This CHECK covers
+    // the primary∈secondary case cleanly; the array-internal-dup case is app-layer by necessity.
+    secondaryNotPrimary: check(
+      "sen_register_secondary_not_primary",
+      sql`${t.secondaryCategories} IS NULL OR NOT (${t.category} = ANY(${t.secondaryCategories}))`,
+    ),
 
     // R410 defense-in-depth: a PENDING-consent row must NOT carry any sensitive detail — only
     // (student_id, category) are permitted; the whole detail cluster stays NULL. GRANTED unlocks it.

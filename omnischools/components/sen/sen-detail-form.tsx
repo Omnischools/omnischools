@@ -24,6 +24,7 @@ export function SenDetailForm(props: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rec = props.mode === "edit" ? props.record : null;
+  const [category, setCategory] = useState(rec?.category ?? ""); // edit mode: drives offerable secondaries
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -48,12 +49,16 @@ export function SenDetailForm(props: Props) {
 
     setBusy(true);
     setError(null);
+    const secondaryCategories = [...new Set(fd.getAll("secondaryCategories").map(String))].filter(
+      (c) => c !== category,
+    );
     const res =
       props.mode === "consent"
         ? await grantSenConsent({ recordId: props.recordId, consentOnFileAt: str("consentOnFileAt"), ...detail })
         : await editSenRecord({
             recordId: props.record.id,
-            category: String(fd.get("category") ?? props.record.category),
+            category,
+            secondaryCategories,
             consentOnFileAt: str("consentOnFileAt"),
             ...detail,
           });
@@ -71,8 +76,13 @@ export function SenDetailForm(props: Props) {
       <div className="grid gap-3 sm:grid-cols-3">
         {props.mode === "edit" ? (
           <label className="block">
-            <span className={capCls}>Category</span>
-            <select name="category" defaultValue={rec!.category} className={inputCls}>
+            <span className={capCls}>Primary category</span>
+            <select
+              name="category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className={inputCls}
+            >
               {SEN_CATEGORY_ORDER.map((c) => (
                 <option key={c} value={c}>
                   {SEN_CATEGORY_LABEL[c]}
@@ -101,6 +111,24 @@ export function SenDetailForm(props: Props) {
           />
         </label>
       </div>
+      {props.mode === "edit" && category && (
+        <fieldset className="rounded-lg border border-border bg-surface p-2.5">
+          <span className={capCls}>Additional categories</span>
+          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1.5">
+            {SEN_CATEGORY_ORDER.filter((c) => c !== category).map((c) => (
+              <label key={c} className="flex cursor-pointer items-center gap-1.5 text-sm text-navy-2">
+                <input
+                  type="checkbox"
+                  name="secondaryCategories"
+                  value={c}
+                  defaultChecked={rec?.secondaryCategories.includes(c) ?? false}
+                />
+                {SEN_CATEGORY_LABEL[c]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       <label className="block">
         <span className={capCls}>Support notes</span>
         <textarea name="supportNotes" rows={2} maxLength={500} defaultValue={rec?.supportNotes ?? ""} className={inputCls} />

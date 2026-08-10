@@ -62,6 +62,19 @@ export async function enableSenRegister(): Promise<SenActionResult> {
 
 const CATEGORY = z.enum(["VISUAL", "HEARING", "PHYSICAL", "INTELLECTUAL", "SPEECH", "OTHER"]);
 
+// GOV-10c (R445) · zero-or-more ADDITIONAL categories a student carries beyond their primary/census bucket.
+// Categories are census/operational tags, NOT the detail cluster — so they are permitted on a PENDING row
+// (they are set in the base insert values, never via senDetailBag). Each category appears at most once per
+// student: the DB `sen_register_secondary_not_primary` CHECK bars primary∈secondary; the array-internal
+// no-duplicate rule is enforced here (a Postgres CHECK cannot express array-is-a-set), and both are re-checked
+// by `categoriesDistinct` below so a hand-crafted request is refused (GOV10-43), not silently cleaned.
+const SECONDARY_CATEGORIES = z.array(CATEGORY).max(5).optional();
+const categoriesDistinct = (v: { category: string; secondaryCategories?: string[] }): boolean => {
+  const sec = v.secondaryCategories ?? [];
+  return !sec.includes(v.category) && new Set(sec).size === sec.length;
+};
+const CATEGORIES_MSG = { message: "Each support category can be listed only once per student." };
+
 // The confidential DETAIL fields — HONOURED ONLY when consentState === GRANTED (R410); a PENDING row stores
 // category only. Shared across create / edit / grant-consent so those paths can never drift (R439).
 const DETAIL_FIELDS = {
@@ -77,12 +90,15 @@ const DETAIL_FIELDS = {
 const senDetailShape = z.object(DETAIL_FIELDS);
 type SenDetail = z.infer<typeof senDetailShape>;
 
-const RecordShape = z.object({
-  studentId: z.string().uuid(),
-  category: CATEGORY,
-  consentState: z.enum(["GRANTED", "PENDING"]),
-  ...DETAIL_FIELDS,
-});
+const RecordShape = z
+  .object({
+    studentId: z.string().uuid(),
+    category: CATEGORY,
+    secondaryCategories: SECONDARY_CATEGORIES,
+    consentState: z.enum(["GRANTED", "PENDING"]),
+    ...DETAIL_FIELDS,
+  })
+  .refine(categoriesDistinct, CATEGORIES_MSG);
 
 const nullish = <T>(v: T | null | undefined): T | null => (v == null ? null : v);
 
@@ -128,6 +144,7 @@ export async function recordSupportNeed(input: unknown): Promise<SenActionResult
     schoolId: school.id,
     studentId: d.studentId,
     category: d.category,
+    secondaryCategories: d.secondaryCategories ?? [],
     consentState: d.consentState,
     ...senDetailBag(d, granted),
   };
@@ -291,7 +308,14 @@ export async function revokeSenAccess(input: unknown): Promise<SenActionResult> 
 
 // ── GOV-10b · record editing & consent lifecycle (R439–R441) ───────────────────────────────────────────
 
-const EditShape = z.object({ recordId: z.string().uuid(), category: CATEGORY, ...DETAIL_FIELDS });
+const EditShape = z
+  .object({
+    recordId: z.string().uuid(),
+    category: CATEGORY,
+    secondaryCategories: SECONDARY_CATEGORIES,
+    ...DETAIL_FIELDS,
+  })
+  .refine(categoriesDistinct, CATEGORIES_MSG);
 
 /** Edit a GRANTED record's detail (R439). `updatedAt` advances; audit carries ONLY the consent state — no
  *  field value, no before-snapshot (GOV10-18 forbids history). Only a GRANTED row is editable. */
@@ -306,7 +330,12 @@ export async function editSenRecord(input: unknown): Promise<SenActionResult> {
     const result = await withSchool(school.id, async (tx) => {
       const rows = await tx
         .update(senRegister)
-        .set({ category: d.category, ...senDetailBag(d, true), updatedAt: new Date() })
+        .set({
+          category: d.category,
+          secondaryCategories: d.secondaryCategories ?? [],
+          ...senDetailBag(d, true),
+          updatedAt: new Date(),
+        })
         .where(
           and(
             eq(senRegister.schoolId, school.id),

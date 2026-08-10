@@ -69,7 +69,14 @@ function _accommodationTypeFence(rec: SenAccommodationRecord) {
 type _AccKeys = keyof SenAccommodationRecord;
 const _accKeyFence: Exclude<
   _AccKeys,
-  "studentName" | "className" | "level" | "category" | "severity" | "supportNotes" | "accommodations"
+  | "studentName"
+  | "className"
+  | "level"
+  | "category"
+  | "secondaryCategories"
+  | "severity"
+  | "supportNotes"
+  | "accommodations"
 > extends never
   ? true
   : false = true;
