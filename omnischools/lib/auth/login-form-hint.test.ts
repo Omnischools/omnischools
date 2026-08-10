@@ -18,8 +18,9 @@ const AUTH_ACTIONS = readCode("lib/actions/auth.ts");
 const visible = (html: string) =>
   html
     .replace(/<[^>]*>/g, " ")
-    .replace(/&amp;/g, "&")
     .replace(/&apos;|&#x27;/g, "'")
+    // Ampersand LAST: unescaping &amp; before the named entities can double-unescape (CodeQL js/double-escaping).
+    .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();
 

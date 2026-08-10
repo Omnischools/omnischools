@@ -30,8 +30,9 @@ const render = (otpLive: boolean) =>
 const visible = (html: string) =>
   html
     .replace(/<[^>]*>/g, " ")
-    .replace(/&amp;/g, "&")
     .replace(/&apos;|&#x27;/g, "'")
+    // Ampersand LAST: unescaping &amp; before the named entities can double-unescape (CodeQL js/double-escaping).
+    .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();
 
