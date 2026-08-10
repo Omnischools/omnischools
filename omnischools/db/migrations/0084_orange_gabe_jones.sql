@@ -1,0 +1,2 @@
+ALTER TABLE "sen_register" ADD COLUMN "secondary_categories" "sen_category"[];--> statement-breakpoint
+ALTER TABLE "sen_register" ADD CONSTRAINT "sen_register_secondary_not_primary" CHECK ("sen_register"."secondary_categories" IS NULL OR NOT ("sen_register"."category" = ANY("sen_register"."secondary_categories")));
