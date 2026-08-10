@@ -666,7 +666,7 @@ function PasswordStep({
 
 /* ----------------------------------------------------------------------- done */
 
-function DonePanel({
+export function DonePanel({
   result,
   schoolName,
 }: {
@@ -749,7 +749,7 @@ function DonePanel({
  * /dashboard (`verifyLogin`). The account already exists (tx committed before this renders), so a failed
  * send/verify never orphans anything — the "Go to sign in" link below reaches the same OTP tab at /login.
  */
-function OnboardingOtpFinish({ phone }: { phone: string }) {
+export function OnboardingOtpFinish({ phone }: { phone: string }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
