@@ -12,7 +12,7 @@ import {
 } from "@/lib/onboarding";
 import { withoutTenantScope, pgError } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
-import { normalizeGhanaPhone, createPasswordUser } from "@/lib/auth";
+import { normalizeGhanaPhone, createPasswordUser, otpLoginRequired } from "@/lib/auth";
 import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { captureEvent, captureError } from "@/lib/observability";
@@ -504,6 +504,10 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
       schoolId: result.schoolId,
       academicYear,
       periodsCreated: result.periodsCreated,
+      // INCR-AUTH-OTP — Option A: the done phase auto-signs-in the creator via an OTP to this number
+      // (when otpLive). No server-side password sign-in, no admin-confirm.
+      adminPhone: result.adminPhone,
+      otpLive: otpLoginRequired(),
     };
   } catch (err) {
     captureError(err, { action: "onboardSchool", gesCode: d.gesCode });

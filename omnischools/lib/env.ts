@@ -58,6 +58,19 @@ const schema = z.object({
   // It exists because the clinical module is MATRON-gated and the shim otherwise pins every dev
   // session to ADMIN, making the sickbay UI and every clinical mutation unreachable in dev.
   AUTH_DEV_ROLES: z.string().optional(),
+
+  // OTP-first-login enforcement toggle (INCR-AUTH-OTP). Defaults "false" — FAIL CLOSED: the app shows
+  // the OTP-first flow (onboarding OTP step + first-login messaging) ONLY once SMS is proven live on
+  // prod. Read ONLY when `authIsLive()` is true (see `otpLoginRequired`). It is SEPARATE from
+  // AUTH_DEV_BYPASS and from merely having the Supabase URL set: `authIsLive()` means "auth wired", NOT
+  // "SMS provider attached" — a prod with the URL but no provider is `authIsLive()==true` yet
+  // OTP-undeliverable, so enabling OTP-first there would lock everyone out. Owner sets this LAST (P4),
+  // after P1 Supabase SMS provider + P2 a real test OTP to a Ghana number + P3 Supabase "Confirm phone"
+  // ON. See docs/senior/incr-auth-otp-first-login-ruling.md §5.
+  AUTH_OTP_LIVE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export const env = schema.parse(process.env);

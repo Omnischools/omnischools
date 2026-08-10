@@ -117,6 +117,17 @@ export function authIsLive(): boolean {
   return !env.AUTH_DEV_BYPASS && !!env.NEXT_PUBLIC_SUPABASE_URL;
 }
 
+/**
+ * INCR-AUTH-OTP — is OTP-first login ENFORCED (show the onboarding OTP step + first-login messaging)?
+ * True only when auth is live AND the owner has flipped `AUTH_OTP_LIVE` (P4) — which they do ONLY after
+ * the Supabase SMS provider + "Confirm phone" are on (P1–P3). Inert under dev-bypass. This gates the
+ * UI/flow ONLY; the actual "an unconfirmed phone cannot password-login" guarantee is GoTrue-native
+ * (Supabase "Confirm phone"), never an app check — we never admin-confirm a phone.
+ */
+export function otpLoginRequired(): boolean {
+  return authIsLive() && env.AUTH_OTP_LIVE;
+}
+
 /** Normalise Ghanaian phone numbers to E.164 (+233XXXXXXXXX). */
 export function normalizeGhanaPhone(input: string): string {
   const digits = input.replace(/[^\d+]/g, "");

@@ -405,5 +405,15 @@ export const OnboardSchema = z.object({
 
 export type OnboardInput = z.infer<typeof OnboardSchema>;
 export type OnboardResult =
-  | { ok: true; schoolId: string; academicYear: string; periodsCreated: number }
+  | {
+      ok: true;
+      schoolId: string;
+      academicYear: string;
+      periodsCreated: number;
+      // INCR-AUTH-OTP — the creator's admin phone (for the done-phase auto-sign-in OTP) + whether the
+      // OTP-first flow is live. When `otpLive`, the wizard's done phase runs the OTP step; else it links
+      // to /login. `adminPhone` is the effective (post adminSameAsHead) number, already normalized.
+      adminPhone: string;
+      otpLive: boolean;
+    }
   | { ok: false; error: string };
