@@ -24,7 +24,11 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request) {
   const { user, school } = await requireSchoolRole(CENSUS_WRITE_ROLES);
-  const yearParam = new URL(req.url).searchParams.get("year") ?? undefined;
+  const searchParams = new URL(req.url).searchParams;
+  const yearParam = searchParams.get("year") ?? undefined;
+  // GOV-9b — cadence-selectable; default ANNUAL (the GOV-9 link had no cadence param).
+  const cadence: "MID_YEAR" | "ANNUAL" =
+    (searchParams.get("cadence") ?? "").toUpperCase().replace(/-/g, "_") === "MID_YEAR" ? "MID_YEAR" : "ANNUAL";
 
   const row = await withSchool(school.id, async (tx) => {
     const rows = await tx
@@ -40,18 +44,19 @@ export async function GET(req: Request) {
         yearParam
           ? and(
               eq(censusReturn.schoolId, school.id),
-              eq(censusReturn.cadence, "ANNUAL"),
+              eq(censusReturn.cadence, cadence),
               eq(censusReturn.academicYear, yearParam),
             )
-          : and(eq(censusReturn.schoolId, school.id), eq(censusReturn.cadence, "ANNUAL")),
+          : and(eq(censusReturn.schoolId, school.id), eq(censusReturn.cadence, cadence)),
       )
       .orderBy(desc(censusReturn.generatedAt))
       .limit(1);
     return rows[0] ?? null;
   });
 
+  const cadenceLabel = cadence === "MID_YEAR" ? "Mid-year" : "Annual";
   if (!row) {
-    return new Response("No annual census has been generated yet. Generate it first, then download.", {
+    return new Response(`No ${cadenceLabel.toLowerCase()} census has been generated yet. Generate it first, then download.`, {
       status: 404,
       headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
     });
@@ -65,6 +70,7 @@ export async function GET(req: Request) {
     handFill,
     meta: {
       schoolInitials: initialsOf(school.name),
+      cadence,
       status: row.status,
       generatedAtLabel: fmtDateTime(row.generatedAt),
       // OC-CENSUS-HEADTEACHER-NAME: signer's name as the printed label (a fallback the OC permits); the
@@ -78,7 +84,7 @@ export async function GET(req: Request) {
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="Annual-census-${yr}.pdf"`,
+      "Content-Disposition": `attachment; filename="${cadenceLabel}-census-${yr}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   });

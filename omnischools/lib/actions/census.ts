@@ -204,11 +204,14 @@ export async function markCensusCompleted(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { school } = await requireSchool();
   await assertAnyRole(CENSUS_WRITE_ROLES);
-  const parsed = z.object({ academicYear: z.string().min(1) }).safeParse(input);
+  const parsed = z
+    .object({ academicYear: z.string().min(1), cadence: z.enum(["MID_YEAR", "ANNUAL"]).default("ANNUAL") })
+    .safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request." };
   }
-  const { academicYear } = parsed.data;
+  const { academicYear, cadence } = parsed.data;
+  const label = cadence === "MID_YEAR" ? "mid-year" : "annual";
   const actor = await resolveActor(school.id);
   try {
     const result = await withSchool(school.id, async (tx) => {
@@ -218,7 +221,7 @@ export async function markCensusCompleted(
         .where(
           and(
             eq(censusReturn.schoolId, school.id),
-            eq(censusReturn.cadence, "ANNUAL"),
+            eq(censusReturn.cadence, cadence),
             eq(censusReturn.academicYear, academicYear),
             eq(censusReturn.status, "DRAFT"),
           ),
@@ -231,21 +234,21 @@ export async function markCensusCompleted(
         actorRole: actor.role,
         actionType: "completed",
         entityType: "census_return",
-        after: { academicYear },
-        reason: "Annual census marked completed (locked)",
+        after: { academicYear, cadence },
+        reason: `${cadence === "MID_YEAR" ? "Mid-year" : "Annual"} census marked completed (locked)`,
       });
       return { updated: true as const };
     });
     if (!result.updated) {
       return {
         ok: false,
-        error: "No draft annual census to complete — it is missing or already completed.",
+        error: `No draft ${label} census to complete — it is missing or already completed.`,
       };
     }
     safeRevalidate("/reports/statutory/generate-annual-census");
     return { ok: true };
   } catch (err) {
-    captureError(err, { action: "markCensusCompleted", academicYear });
+    captureError(err, { action: "markCensusCompleted", academicYear, cadence });
     return { ok: false, error: "Could not complete the census. Please try again." };
   }
 }

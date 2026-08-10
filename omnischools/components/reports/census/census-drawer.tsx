@@ -7,8 +7,8 @@ import { CensusGenerateButton } from "@/components/reports/census/census-generat
 /**
  * GOV-8 · the GES census GENERATION drawer (Lucy's map). Every Auto/Partial/Manual tag and the "% auto-filled"
  * are COMPUTED from the `view` (live section coverage) — never the surface's static demo numbers (GOV8-17).
- * Annual-only sections render greyed with an `Annual` tag in a mid-year run. The annual print-and-sign PDF +
- * hand-fill live in the sibling CensusAnnualPanel (GOV-9); no electronic upload (print-and-sign only).
+ * Annual-only sections render greyed with an `Annual` tag in a mid-year run. Both cadences get a print-and-sign
+ * PDF (annual adds a hand-fill) in the sibling CensusCompletionPanel (GOV-9 / GOV-9b); no electronic upload.
  *
  * Token discipline: the warn rows + partial tags use the SOLID `border-gold-soft` tint (not `border-warn/30`)
  * to dodge the raw-hex slash-opacity trap ([[no-alpha-token-opacity]]); the hatch is an arbitrary-value
