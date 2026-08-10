@@ -80,11 +80,16 @@ function makeSnapshot(sectionsOver: Partial<CensusSections> = {}): CensusSnapsho
   };
 }
 
-function makeData(snapshot: CensusSnapshot, handFill: CensusHandFill = { version: 1 }, status = "DRAFT"): CensusPdfData {
+function makeData(
+  snapshot: CensusSnapshot,
+  handFill: CensusHandFill = { version: 1 },
+  status = "DRAFT",
+  cadence: "MID_YEAR" | "ANNUAL" = "ANNUAL",
+): CensusPdfData {
   return {
     snapshot,
     handFill,
-    meta: { schoolInitials: "AS", status, generatedAtLabel: "9 Aug 2026 · 12:00", headteacherName: null },
+    meta: { schoolInitials: "AS", cadence, status, generatedAtLabel: "9 Aug 2026 · 12:00", headteacherName: null },
   };
 }
 
@@ -206,9 +211,10 @@ describe("GOV9-09/13/16/17/18/19 · the download route", () => {
     expect(route).not.toMatch(/generateCensusSnapshot/);
   });
 
-  it("targets ANNUAL cadence only (18)", () => {
-    expect(route).toMatch(/eq\(\s*censusReturn\.cadence,\s*["'`]ANNUAL["'`]\s*\)/);
-    expect(route).not.toMatch(/MID_YEAR/);
+  it("is cadence-selectable — reads a `cadence` param, supports MID_YEAR, defaults ANNUAL (18/GOV-9b)", () => {
+    expect(route).toMatch(/searchParams\.get\(\s*["'`]cadence["'`]\s*\)/);
+    expect(route).toMatch(/MID_YEAR/);
+    expect(route).toMatch(/eq\(\s*censusReturn\.cadence,\s*cadence\s*\)/);
   });
 
   it("is downloadable in DRAFT — it does NOT require status COMPLETED (13)", () => {
@@ -218,9 +224,9 @@ describe("GOV9-09/13/16/17/18/19 · the download route", () => {
     expect(route).toMatch(/runtime\s*=\s*["'`]nodejs["'`]/);
   });
 
-  it("404s when no ANNUAL row exists — no row → no PDF (16)", () => {
+  it("404s when no row exists for the cadence — no row → no PDF (16)", () => {
     expect(route).toMatch(/status:\s*404/);
-    expect(route).toMatch(/No annual census has been generated/);
+    expect(route).toMatch(/census has been generated yet/);
   });
 
   it("is a GET-only download — no submit/upload/POST path (19)", () => {
@@ -229,23 +235,26 @@ describe("GOV9-09/13/16/17/18/19 · the download route", () => {
   });
 });
 
-// ── cadence / access wiring on the page + actions (18/17) ─────────────────────────────────────────
-describe("GOV9-18/17 · the annual panel + actions are ANNUAL-only + management-gated", () => {
-  it("the census page mounts the completion panel ONLY for cadence ANNUAL (mid-year is unchanged)", () => {
+// ── cadence / access wiring on the page + actions (18/17) — GOV-9b cadence-aware ───────────────────
+describe("GOV9-18/17 · the completion panel + actions are cadence-aware + management-gated", () => {
+  it("the census page mounts CensusCompletionPanel for BOTH cadences, passing the cadence (GOV-9b)", () => {
     const page = readFileSync(
       resolve(cwd(), "app/(app)/reports/statutory/generate-annual-census/page.tsx"),
       "utf8",
     );
-    expect(page).toMatch(/cadence === "ANNUAL"\s*&&\s*[\s\S]*CensusAnnualPanel/);
+    expect(page).toMatch(/CensusCompletionPanel/);
+    expect(page).toMatch(/cadence=\{cadence\}/);
+    // no longer gated on ANNUAL — mid-year gets the panel too.
+    expect(page).not.toMatch(/cadence === "ANNUAL"\s*&&\s*[\s\S]*CensusCompletionPanel/);
   });
 
-  it("both hand-fill actions gate on CENSUS_WRITE_ROLES and target the ANNUAL DRAFT row only", () => {
+  it("both actions gate on CENSUS_WRITE_ROLES + a DRAFT lock; saveCensusHandFill is ANNUAL-only, markCensusCompleted is cadence-aware", () => {
     const actions = readFileSync(resolve(cwd(), "lib/actions/census.ts"), "utf8");
-    // both actions re-check the write gate and lock on DRAFT + ANNUAL.
     expect(actions).toMatch(/saveCensusHandFill/);
     expect(actions).toMatch(/markCensusCompleted/);
-    const annualDraftGuards = actions.match(/eq\(\s*censusReturn\.cadence,\s*["'`]ANNUAL["'`]\s*\)/g) ?? [];
-    expect(annualDraftGuards.length).toBeGreaterThanOrEqual(2);
+    // hand-fill is annual-only (its sections don't exist mid-year); completion is cadence-parameterised.
+    expect(actions).toMatch(/eq\(\s*censusReturn\.cadence,\s*["'`]ANNUAL["'`]\s*\)/);
+    expect(actions).toMatch(/eq\(\s*censusReturn\.cadence,\s*cadence\s*\)/);
     const draftLocks = actions.match(/eq\(\s*censusReturn\.status,\s*["'`]DRAFT["'`]\s*\)/g) ?? [];
     expect(draftLocks.length).toBeGreaterThanOrEqual(2);
   });

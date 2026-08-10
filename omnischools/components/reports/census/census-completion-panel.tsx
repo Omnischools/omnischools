@@ -6,11 +6,12 @@ import type { CensusHandFill } from "@/lib/reports/census/hand-fill-schema";
 import { SEN_CATEGORY_ORDER, SEN_CATEGORY_LABEL } from "@/lib/sen/vocab";
 
 /**
- * GOV-9 · the ANNUAL census completion panel (management-gated by the page + the actions). Appears only for
- * `?cadence=ANNUAL`, once a DRAFT row exists: the hand-fill form for the sections Omnischools doesn't track
- * (an un-entered section stays blank → the PDF prints a hatched blank, never a 0), a Download-PDF link (DRAFT
- * or COMPLETED), and Mark-completed (which locks the filing). SEN §5 is hand-filled here ONLY when the SEN
- * register is not adopted — otherwise it auto-fills.
+ * GOV-9 / GOV-9b · the census completion panel (management-gated by the page + the actions). Appears once a
+ * DRAFT row exists: a Download-PDF link (DRAFT or COMPLETED) + Mark-completed (which locks the filing). For an
+ * **ANNUAL** run it also shows the hand-fill form for the sections Omnischools doesn't track (an un-entered
+ * section stays blank → the PDF prints a hatched blank, never a 0); §5 is hand-filled here ONLY when the SEN
+ * register is not adopted. A **MID_YEAR** run has NO hand-fill (every mid-year section is auto) — just download
+ * + complete.
  */
 
 const inputCls =
@@ -18,12 +19,15 @@ const inputCls =
 const capCls = "text-[11px] font-semibold uppercase tracking-wide text-navy-3";
 
 type Existing = { status: string; handFill: CensusHandFill } | null;
+type Cadence = "MID_YEAR" | "ANNUAL";
 
-export function CensusAnnualPanel({
+export function CensusCompletionPanel({
+  cadence,
   academicYear,
   existing,
   senAdopted,
 }: {
+  cadence: Cadence;
   academicYear: string;
   existing: Existing;
   senAdopted: boolean;
@@ -35,15 +39,16 @@ export function CensusAnnualPanel({
   const hf = existing?.handFill ?? { version: 1 as const };
   const status = existing?.status ?? null;
   const locked = status === "COMPLETED";
-  const pdfHref = `/api/reports/statutory/census?year=${encodeURIComponent(academicYear)}`;
+  const annual = cadence === "ANNUAL";
+  const label = annual ? "annual" : "mid-year";
+  const pdfHref = `/api/reports/statutory/census?cadence=${cadence}&year=${encodeURIComponent(academicYear)}`;
 
   if (status === null) {
     return (
       <section className="rounded-xl border border-border bg-surface p-5">
-        <h2 className="font-display text-lg font-semibold text-navy">Complete & file the annual census</h2>
+        <h2 className="font-display text-lg font-semibold text-navy">Complete &amp; file the {label} census</h2>
         <p className="mt-1 text-sm text-navy-3">
-          Generate the census above first. Then you can hand-fill the sections Omnischools doesn&apos;t track,
-          download the print-and-sign PDF, and mark it completed.
+          Generate the census above first. Then you can{annual ? " hand-fill the sections Omnischools doesn't track," : ""} download the print-and-sign PDF and mark it completed.
         </p>
       </section>
     );
@@ -110,7 +115,7 @@ export function CensusAnnualPanel({
   async function onComplete() {
     setBusy(true);
     setMsg(null);
-    const res = await markCensusCompleted({ academicYear });
+    const res = await markCensusCompleted({ academicYear, cadence });
     setBusy(false);
     if (res.ok) {
       setMsg({ ok: true, text: "Census marked completed and locked." });
@@ -124,18 +129,20 @@ export function CensusAnnualPanel({
     <section className="space-y-4 rounded-xl border border-border bg-surface p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-display text-lg font-semibold text-navy">Complete & file the annual census</h2>
+          <h2 className="font-display text-lg font-semibold text-navy">Complete &amp; file the {label} census</h2>
           <p className="text-sm text-navy-3">
             {locked ? (
               <>
-                <b className="text-green">Completed & locked.</b> Download the official filing to print, sign
+                <b className="text-green">Completed &amp; locked.</b> Download the official filing to print, sign
                 and stamp.
               </>
-            ) : (
+            ) : annual ? (
               <>
                 Hand-fill the sections below (leave blank to complete in pen), then download the print-and-sign
                 PDF. Marking completed locks the filing.
               </>
+            ) : (
+              <>Download the print-and-sign PDF, then sign and stamp. Marking completed locks the filing.</>
             )}
           </p>
         </div>
@@ -147,7 +154,7 @@ export function CensusAnnualPanel({
         </a>
       </div>
 
-      {!locked && (
+      {annual && !locked && (
         <form onSubmit={onSave} className="space-y-4">
           <Group title="Repetition (repeaters)">
             <Num name="rep_m" label="Boys" def={hf.repetition?.male} />
@@ -193,22 +200,34 @@ export function CensusAnnualPanel({
             >
               {busy ? "Saving…" : "Save hand-fill"}
             </button>
-            <button
-              type="button"
-              onClick={onComplete}
-              disabled={busy}
-              className="rounded-md bg-green px-4 py-2.5 text-sm font-bold text-bg hover:opacity-90 disabled:opacity-60"
-            >
-              Mark completed & lock
-            </button>
-            {msg && (
-              <span className={`text-sm ${msg.ok ? "text-green" : "text-terra"}`}>{msg.text}</span>
-            )}
+            <CompleteButton onClick={onComplete} busy={busy} />
+            {msg && <span className={`text-sm ${msg.ok ? "text-green" : "text-terra"}`}>{msg.text}</span>}
           </div>
         </form>
       )}
+
+      {!annual && !locked && (
+        <div className="flex flex-wrap items-center gap-3">
+          <CompleteButton onClick={onComplete} busy={busy} />
+          {msg && <span className={`text-sm ${msg.ok ? "text-green" : "text-terra"}`}>{msg.text}</span>}
+        </div>
+      )}
+
       {locked && msg && <span className={`text-sm ${msg.ok ? "text-green" : "text-terra"}`}>{msg.text}</span>}
     </section>
+  );
+}
+
+function CompleteButton({ onClick, busy }: { onClick: () => void; busy: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      className="rounded-md bg-green px-4 py-2.5 text-sm font-bold text-bg hover:opacity-90 disabled:opacity-60"
+    >
+      Mark completed &amp; lock
+    </button>
   );
 }
 

@@ -19,16 +19,20 @@ import type {
 } from "@/lib/reports/census/schema";
 
 /**
- * GOV-9 · the ANNUAL GES census PDF (A4 portrait) — the print-and-sign statutory return. Presentational only:
- * fed the FROZEN `auto_snapshot` ARMS + `hand_fill` VERBATIM (R427), it branches on each `arm.coverage` via
- * the `census-parts` seam — a numeric render for a NONE/NOT_APPLICABLE section is a COMPILE ERROR (GOV9-10),
- * an un-entered HAND section prints a hatched blank (GOV9-06), and the signature/stamp are WET — an empty
- * signature line + typed name label, never a forged glyph (R426/GOV9-12). Core PDF fonts stand in for brand.
+ * GOV-9 · the GES census PDF (A4 portrait) — the print-and-sign statutory return. Presentational only: fed the
+ * FROZEN `auto_snapshot` ARMS + `hand_fill` VERBATIM (R427), it branches on each `arm.coverage` via the
+ * `census-parts` seam — a numeric render for a NONE/NOT_APPLICABLE section is a COMPILE ERROR (GOV9-10), an
+ * un-entered HAND section prints a hatched blank (GOV9-06), and the signature/stamp are WET (R426).
+ *
+ * GOV-9b · cadence-aware. An ANNUAL run renders all 13 sections; a MID_YEAR run renders ONLY the mid-year set
+ * (identification / enrolment / age / movement-admissions / staff+PTR / attendance) — the annual-only sections
+ * (SEN §5, repetition, qualifications, salary, terminal, performance, infrastructure, feeding, textbooks) are
+ * OMITTED (they belong to the annual return; showing them hatched on a mid-year return would be noise). Mirrors
+ * the `view.ts` cadence gating (annual-only rows are `cadences: ANNUAL`).
  */
 
 // design tokens (hex; @react-pdf can't use CSS vars)
 const NAVY = "#1A2B47";
-const NAVY2 = "#2D3F5C";
 const NAVY3 = "#5C6675";
 const GOLD = "#C8975B";
 const GOLD_SOFT = "#E8D4B8";
@@ -43,6 +47,7 @@ export type CensusPdfData = {
   handFill: CensusHandFill;
   meta: {
     schoolInitials: string;
+    cadence: "MID_YEAR" | "ANNUAL"; // GOV-9b — gates the annual-only sections + the cover/declaration copy
     status: string; // "DRAFT" | "COMPLETED"
     generatedAtLabel: string;
     headteacherName: string | null; // profile → signer → null (R426: blank line, never fabricated)
@@ -58,9 +63,9 @@ const s = StyleSheet.create({
   coverKicker: { fontSize: 8, color: NAVY3, fontWeight: "bold", letterSpacing: 1.5, marginBottom: 4 },
   coverSchool: { fontFamily: SERIF, fontWeight: "bold", fontSize: 20, color: NAVY, textAlign: "center" },
   coverTitle: { fontFamily: SERIF, fontSize: 12, color: NAVY, marginTop: 4, textAlign: "center" },
-  coverMeta: { fontFamily: MONO, fontSize: 9, color: NAVY2, marginTop: 7 },
+  coverMeta: { fontFamily: MONO, fontSize: 9, color: NAVY, marginTop: 7 },
   coverGen: { fontSize: 8, color: NAVY3, marginTop: 3 },
-  statusPill: { marginTop: 8, fontFamily: MONO, fontSize: 8, fontWeight: "bold", letterSpacing: 1, paddingVertical: 3, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: GOLD_SOFT, color: NAVY2 },
+  statusPill: { marginTop: 8, fontFamily: MONO, fontSize: 8, fontWeight: "bold", letterSpacing: 1, paddingVertical: 3, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: GOLD_SOFT, color: NAVY },
 
   body: { paddingHorizontal: 40, paddingTop: 12 },
   section: { marginBottom: 13 },
@@ -71,26 +76,23 @@ const s = StyleSheet.create({
 
   line: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 1.5 },
   lineLbl: { fontSize: 9, color: NAVY3 },
-  lineVal: { fontFamily: MONO, fontSize: 9, color: NAVY2 },
+  lineVal: { fontFamily: MONO, fontSize: 9, color: NAVY },
   lineValStrong: { fontFamily: SERIF, fontWeight: "bold", fontSize: 10, color: NAVY },
 
-  // hatched "complete by hand" block (honest empty — never a 0)
   hatch: { borderWidth: 1, borderStyle: "dashed", borderColor: GOLD_SOFT, backgroundColor: BG, borderRadius: 5, padding: 9, marginTop: 4 },
   hatchLbl: { fontSize: 8, color: WARN, fontWeight: "bold", letterSpacing: 0.6, marginBottom: 2 },
   hatchText: { fontSize: 8.5, color: NAVY3, lineHeight: 1.5 },
 
-  // grid table (enrolment / SEN)
   tRow: { flexDirection: "row", borderBottomWidth: 1, borderColor: BORDER },
   tHead: { backgroundColor: BG },
-  tCell: { paddingVertical: 3, paddingHorizontal: 5, fontSize: 8.5, color: NAVY2 },
+  tCell: { paddingVertical: 3, paddingHorizontal: 5, fontSize: 8.5, color: NAVY },
   tCellHead: { fontSize: 7.5, color: NAVY3, fontWeight: "bold", letterSpacing: 0.4 },
   tNum: { fontFamily: MONO, textAlign: "right" },
 
   small: { fontSize: 7.5, color: NAVY3, lineHeight: 1.5, marginTop: 3 },
 
-  // declaration
   declTitle: { fontFamily: SERIF, fontSize: 14, color: NAVY, marginBottom: 6 },
-  declText: { fontSize: 9.5, color: NAVY2, lineHeight: 1.6, marginBottom: 12 },
+  declText: { fontSize: 9.5, color: NAVY, lineHeight: 1.6, marginBottom: 12 },
   sigRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 24 },
   sigBlock: { width: "46%" },
   sigLine: { borderTopWidth: 1, borderColor: NAVY3, marginTop: 26, paddingTop: 3 },
@@ -125,7 +127,6 @@ function Line({ label, value, strong }: { label: string; value: string; strong?:
     </View>
   );
 }
-/** Honest empty — a hatched "complete by hand" block carrying the reader's reason. NEVER a 0 (R422/GOV9-06). */
 function Hatch({ reason }: { reason: string }) {
   return (
     <View style={s.hatch}>
@@ -136,11 +137,11 @@ function Hatch({ reason }: { reason: string }) {
 }
 
 /* ── sections ── */
-function Identification({ snap }: { snap: CensusSnapshot }) {
+function Identification({ snap, n }: { snap: CensusSnapshot; n: string }) {
   const id = snap.identification;
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="1" title="School identification" />
+      <SectionHead n={n} title="School identification" />
       <Line label="School name" value={id.schoolName || "—"} strong />
       <Line label="GES school ID" value={id.gesCode || "—"} />
       <Line label="School type" value={id.schoolType || "—"} />
@@ -153,11 +154,11 @@ function Identification({ snap }: { snap: CensusSnapshot }) {
   );
 }
 
-function Enrolment({ arm }: { arm: CensusSnapshot["sections"]["enrolment"] }) {
+function Enrolment({ arm, n }: { arm: CensusSnapshot["sections"]["enrolment"]; n: string }) {
   const v = armView<CensusEnrolment>(arm);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="2" title="Enrolment by class & sex" meta={v.shown ? `${num(v.data.roll)} on roll` : undefined} />
+      <SectionHead n={n} title="Enrolment by class & sex" meta={v.shown ? `${num(v.data.roll)} on roll` : undefined} />
       {!v.shown ? (
         <Hatch reason={v.reason} />
       ) : (
@@ -188,11 +189,11 @@ function Enrolment({ arm }: { arm: CensusSnapshot["sections"]["enrolment"] }) {
   );
 }
 
-function AgeDistribution({ arm }: { arm: CensusSnapshot["sections"]["ageDistribution"] }) {
+function AgeDistribution({ arm, n }: { arm: CensusSnapshot["sections"]["ageDistribution"]; n: string }) {
   const v = armView<CensusAgeSummary>(arm);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="3" title="Age distribution" />
+      <SectionHead n={n} title="Age distribution" />
       {!v.shown ? (
         <Hatch reason={v.reason} />
       ) : (
@@ -206,15 +207,14 @@ function AgeDistribution({ arm }: { arm: CensusSnapshot["sections"]["ageDistribu
   );
 }
 
-function SpecialNeeds({ arm, hand }: { arm: CensusSnapshot["sections"]["specialNeeds"]; hand: CensusHandFill["specialNeeds"] }) {
+function SpecialNeeds({ arm, hand, n }: { arm: CensusSnapshot["sections"]["specialNeeds"]; hand: CensusHandFill["specialNeeds"]; n: string }) {
   const v = armView<CensusSpecialNeeds>(arm);
-  // Adopted → the frozen de-id aggregate; not-adopted → the hand-fill counts (if entered) else hatched.
   const grid: Partial<Record<string, { male: number; female: number }>> | null = v.shown
     ? v.data.byCategory
     : (hand ?? null);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="4" title="Special-needs enrolment (§5)" meta={v.shown ? "auto · from the SEN register" : undefined} />
+      <SectionHead n={n} title="Special-needs enrolment (§5)" meta={v.shown ? "auto · from the SEN register" : undefined} />
       {grid ? (
         <View>
           <View style={[s.tRow, s.tHead]}>
@@ -241,25 +241,27 @@ function SpecialNeeds({ arm, hand }: { arm: CensusSnapshot["sections"]["specialN
   );
 }
 
-function Movement({ arm, hand }: { arm: CensusSnapshot["sections"]["movement"]; hand: CensusHandFill["movementExits"] }) {
+function Movement({ arm, hand, n, annual }: { arm: CensusSnapshot["sections"]["movement"]; hand: CensusHandFill["movementExits"]; n: string; annual: boolean }) {
   const v = armView<CensusMovement>(arm);
   const h = handView(hand);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="5" title="Movement — admissions & exits" />
+      <SectionHead n={n} title={annual ? "Movement — admissions & exits" : "Admissions this period"} />
       {v.shown ? (
         <Line label="Admissions this period" value={`${dash(v.data.admissionsThisPeriod)} · ${dash(v.data.intakeMale)}B · ${dash(v.data.intakeFemale)}G`} />
       ) : (
         <Hatch reason={v.reason} />
       )}
-      {h.filled ? (
-        <View style={{ marginTop: 4 }}>
-          <Line label="Withdrawals (year)" value={num(h.data.withdrawals)} />
-          <Line label="Transfers in / out" value={`${num(h.data.transfersIn)} / ${num(h.data.transfersOut)}`} />
-        </View>
-      ) : (
-        <Hatch reason="Full-year withdrawals and transfers by reason are hand-filled (in-app movement is admissions-only)." />
-      )}
+      {annual ? (
+        h.filled ? (
+          <View style={{ marginTop: 4 }}>
+            <Line label="Withdrawals (year)" value={num(h.data.withdrawals)} />
+            <Line label="Transfers in / out" value={`${num(h.data.transfersIn)} / ${num(h.data.transfersOut)}`} />
+          </View>
+        ) : (
+          <Hatch reason="Full-year withdrawals and transfers by reason are hand-filled (in-app movement is admissions-only)." />
+        )
+      ) : null}
     </View>
   );
 }
@@ -273,43 +275,47 @@ function StaffGroup({ arm, label }: { arm: CensusSnapshot["sections"]["teachingS
   );
 }
 
-function Staff({ snap, hand }: { snap: CensusSnapshot; hand: CensusHandFill["qualifications"] }) {
+function Staff({ snap, hand, n, annual }: { snap: CensusSnapshot; hand: CensusHandFill["qualifications"]; n: string; annual: boolean }) {
   const ptr = armView<CensusPtr>(snap.sections.ptr);
   const sal = armView<CensusSalaryStatus>(snap.sections.salaryStatus);
   const h = handView(hand);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="6" title="Staff, ratio & salary" />
+      <SectionHead n={n} title={annual ? "Staff, ratio & salary" : "Staff & pupil–teacher ratio"} />
       <StaffGroup arm={snap.sections.teachingStaff} label="Teaching staff" />
       <StaffGroup arm={snap.sections.nonTeachingStaff} label="Non-teaching staff" />
       <Line label="Pupil–teacher ratio" value={ptr.shown && ptr.data.ratio != null ? `1 : ${ptr.data.ratio}` : "—"} />
-      <Line
-        label="Salary status"
-        value={
-          snap.sections.salaryStatus.coverage === "NOT_APPLICABLE"
-            ? "No payroll in Omnischools"
-            : sal.shown
-              ? `${num(sal.data.schoolPaid)} school · ${num(sal.data.gesPaid)} GES · ${num(sal.data.allowance)} allowance`
-              : "—"
-        }
-      />
-      {h.filled ? (
-        <View style={{ marginTop: 4 }}>
-          <Line label="Trained (M / F)" value={`${num(h.data.trainedMale)} / ${num(h.data.trainedFemale)}`} />
-          <Line label="Untrained (M / F)" value={`${num(h.data.untrainedMale)} / ${num(h.data.untrainedFemale)}`} />
-        </View>
-      ) : (
-        <Hatch reason="Trained / untrained split is hand-filled (no training flag on staff profiles)." />
-      )}
+      {annual ? (
+        <>
+          <Line
+            label="Salary status"
+            value={
+              snap.sections.salaryStatus.coverage === "NOT_APPLICABLE"
+                ? "No payroll in Omnischools"
+                : sal.shown
+                  ? `${num(sal.data.schoolPaid)} school · ${num(sal.data.gesPaid)} GES · ${num(sal.data.allowance)} allowance`
+                  : "—"
+            }
+          />
+          {h.filled ? (
+            <View style={{ marginTop: 4 }}>
+              <Line label="Trained (M / F)" value={`${num(h.data.trainedMale)} / ${num(h.data.trainedFemale)}`} />
+              <Line label="Untrained (M / F)" value={`${num(h.data.untrainedMale)} / ${num(h.data.untrainedFemale)}`} />
+            </View>
+          ) : (
+            <Hatch reason="Trained / untrained split is hand-filled (no training flag on staff profiles)." />
+          )}
+        </>
+      ) : null}
     </View>
   );
 }
 
-function Attendance({ arm }: { arm: CensusSnapshot["sections"]["attendance"] }) {
+function Attendance({ arm, n }: { arm: CensusSnapshot["sections"]["attendance"]; n: string }) {
   const v = armView<CensusAttendance>(arm);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="7" title="Attendance" />
+      <SectionHead n={n} title="Attendance" />
       {v.shown ? (
         <Line label="School attendance rate" value={`${pct(v.data.schoolRate)} · ${num(v.data.totalMarked)} marks`} />
       ) : (
@@ -319,18 +325,18 @@ function Attendance({ arm }: { arm: CensusSnapshot["sections"]["attendance"] }) 
   );
 }
 
-function Terminal({ arm }: { arm: CensusSnapshot["sections"]["terminalResults"] }) {
+function Terminal({ arm, n }: { arm: CensusSnapshot["sections"]["terminalResults"]; n: string }) {
   const v = armView<CensusTerminal>(arm);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="8" title="Terminal results (BECE / WASSCE)" />
+      <SectionHead n={n} title="Terminal results (BECE / WASSCE)" />
       {v.shown ? (
         <View>
           {v.data.bece ? <Line label={`BECE ${v.data.bece.year}`} value={`${v.data.bece.passRate}% · ${num(v.data.bece.passedCount)}/${num(v.data.bece.totalCandidates)}`} /> : null}
           {v.data.wassce ? <Line label={`WASSCE ${v.data.wassce.year}`} value={`${v.data.wassce.passRate}% · ${num(v.data.wassce.passedCount)}/${num(v.data.wassce.totalCandidates)}`} /> : null}
           {!v.data.bece && !v.data.wassce ? <Text style={s.small}>No terminal results captured.</Text> : null}
         </View>
-      ) : v.shown === false && arm.coverage === "NOT_APPLICABLE" ? (
+      ) : arm.coverage === "NOT_APPLICABLE" ? (
         <Text style={s.small}>{v.reason}</Text>
       ) : (
         <Hatch reason={v.reason} />
@@ -339,11 +345,11 @@ function Terminal({ arm }: { arm: CensusSnapshot["sections"]["terminalResults"] 
   );
 }
 
-function Performance({ arm }: { arm: CensusSnapshot["sections"]["academicPerformance"] }) {
+function Performance({ arm, n }: { arm: CensusSnapshot["sections"]["academicPerformance"]; n: string }) {
   const v = armView<CensusPerformance>(arm);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="9" title="Academic performance" />
+      <SectionHead n={n} title="Academic performance" />
       {v.shown ? (
         <View>
           {v.data.basic ? <Line label="Basic gradebook average" value={`${pct(v.data.basic.overallAverage)} · ${pct(v.data.basic.passRate)} pass · ${num(v.data.basic.gradedClasses)} classes`} /> : null}
@@ -356,12 +362,12 @@ function Performance({ arm }: { arm: CensusSnapshot["sections"]["academicPerform
   );
 }
 
-function Infrastructure({ arm }: { arm: CensusSnapshot["sections"]["infrastructure"] }) {
+function Infrastructure({ arm, n }: { arm: CensusSnapshot["sections"]["infrastructure"]; n: string }) {
   const v = armView<FacilitiesSnapshotRow>(arm);
   const yn = (b: boolean) => (b ? "Yes" : "No");
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="10" title="Infrastructure & facilities" />
+      <SectionHead n={n} title="Infrastructure & facilities" />
       {!v.shown ? (
         <Hatch reason={v.reason} />
       ) : (
@@ -376,11 +382,11 @@ function Infrastructure({ arm }: { arm: CensusSnapshot["sections"]["infrastructu
   );
 }
 
-function Repetition({ hand }: { hand: CensusHandFill["repetition"] }) {
+function Repetition({ hand, n }: { hand: CensusHandFill["repetition"]; n: string }) {
   const h = handView(hand);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="11" title="Repetition (repeaters)" />
+      <SectionHead n={n} title="Repetition (repeaters)" />
       {h.filled ? (
         <Line label="Repeaters (B / G)" value={`${num(h.data.male)} / ${num(h.data.female)}`} strong />
       ) : (
@@ -390,11 +396,11 @@ function Repetition({ hand }: { hand: CensusHandFill["repetition"] }) {
   );
 }
 
-function Feeding({ hand }: { hand: CensusHandFill["feeding"] }) {
+function Feeding({ hand, n }: { hand: CensusHandFill["feeding"]; n: string }) {
   const h = handView(hand);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="12" title="School feeding (GSFP)" />
+      <SectionHead n={n} title="School feeding (GSFP)" />
       {h.filled ? (
         <Line label="GSFP participation" value={`${h.data.participates ? "Participating" : "Not participating"}${h.data.pupilsFed != null ? ` · ${num(h.data.pupilsFed)} fed daily` : ""}${h.data.caterer ? ` · ${h.data.caterer}` : ""}`} />
       ) : (
@@ -404,11 +410,11 @@ function Feeding({ hand }: { hand: CensusHandFill["feeding"] }) {
   );
 }
 
-function Textbooks({ hand }: { hand: CensusHandFill["textbooks"] }) {
+function Textbooks({ hand, n }: { hand: CensusHandFill["textbooks"]; n: string }) {
   const h = handView(hand);
   return (
     <View style={s.section} wrap={false}>
-      <SectionHead n="13" title="Textbooks" />
+      <SectionHead n={n} title="Textbooks" />
       {h.filled ? (
         <Line label="Textbook availability" value={`${h.data.adequate ? "Adequate" : "Inadequate"}${h.data.note ? ` · ${h.data.note}` : ""}`} />
       ) : (
@@ -420,12 +426,13 @@ function Textbooks({ hand }: { hand: CensusHandFill["textbooks"] }) {
 
 function Declaration({ snap, meta }: { snap: CensusSnapshot; meta: CensusPdfData["meta"] }) {
   const id = snap.identification;
+  const cad = meta.cadence === "MID_YEAR" ? "mid-year" : "annual";
   return (
     <View style={s.section} break>
       <Text style={s.declTitle}>Declaration</Text>
       <Text style={s.declText}>
         I, the undersigned headteacher of {id.schoolName || "________________"}, GES School ID{" "}
-        {id.gesCode || "____________"}, certify that the information contained in this annual census for the
+        {id.gesCode || "____________"}, certify that the information contained in this {cad} census for the
         academic year {snap.academicYear} is, to the best of my knowledge, accurate and complete. I understand
         that auto-filled sections derived from Omnischools records and manually-completed sections filled in by
         hand are equally my responsibility. I confirm that this census has been prepared in accordance with the
@@ -470,8 +477,10 @@ function Declaration({ snap, meta }: { snap: CensusSnapshot; meta: CensusPdfData
 export function CensusDocument({ data }: { data: CensusPdfData }) {
   const { snapshot: snap, handFill: hf, meta } = data;
   const id = snap.identification;
+  const annual = meta.cadence === "ANNUAL";
+  const cadenceLabel = annual ? "Annual" : "Mid-year";
   return (
-    <Document title={`Annual GES Census — ${id.schoolName}`} author="Omnischools" subject={`Annual census · ${snap.academicYear}`}>
+    <Document title={`${cadenceLabel} GES Census — ${id.schoolName}`} author="Omnischools" subject={`${cadenceLabel} census · ${snap.academicYear}`}>
       <Page size="A4" style={s.page}>
         <View style={s.strip} fixed />
 
@@ -479,28 +488,28 @@ export function CensusDocument({ data }: { data: CensusPdfData }) {
           <View style={s.mark}>
             <Text style={s.markText}>{meta.schoolInitials}</Text>
           </View>
-          <Text style={s.coverKicker}>GHANA EDUCATION SERVICE · ANNUAL SCHOOL CENSUS</Text>
+          <Text style={s.coverKicker}>GHANA EDUCATION SERVICE · {annual ? "ANNUAL" : "MID-YEAR"} SCHOOL CENSUS</Text>
           <Text style={s.coverSchool}>{id.schoolName || "—"}</Text>
-          <Text style={s.coverTitle}>Annual census return · {snap.academicYear}</Text>
+          <Text style={s.coverTitle}>{cadenceLabel} census return · {snap.academicYear}</Text>
           <Text style={s.coverMeta}>GES ID {id.gesCode || "—"} · census date {snap.censusDate}</Text>
           <Text style={s.coverGen}>Generated {meta.generatedAtLabel}</Text>
           <Text style={s.statusPill}>{meta.status === "COMPLETED" ? "COMPLETED — OFFICIAL FILING" : "DRAFT — FOR COMPLETION BY HAND"}</Text>
         </View>
 
         <View style={s.body}>
-          <Identification snap={snap} />
-          <Enrolment arm={snap.sections.enrolment} />
-          <AgeDistribution arm={snap.sections.ageDistribution} />
-          <SpecialNeeds arm={snap.sections.specialNeeds} hand={hf.specialNeeds} />
-          <Movement arm={snap.sections.movement} hand={hf.movementExits} />
-          <Staff snap={snap} hand={hf.qualifications} />
-          <Attendance arm={snap.sections.attendance} />
-          <Terminal arm={snap.sections.terminalResults} />
-          <Performance arm={snap.sections.academicPerformance} />
-          <Infrastructure arm={snap.sections.infrastructure} />
-          <Repetition hand={hf.repetition} />
-          <Feeding hand={hf.feeding} />
-          <Textbooks hand={hf.textbooks} />
+          <Identification snap={snap} n="1" />
+          <Enrolment arm={snap.sections.enrolment} n="2" />
+          <AgeDistribution arm={snap.sections.ageDistribution} n="3" />
+          {annual && <SpecialNeeds arm={snap.sections.specialNeeds} hand={hf.specialNeeds} n="4" />}
+          <Movement arm={snap.sections.movement} hand={annual ? hf.movementExits : undefined} annual={annual} n={annual ? "5" : "4"} />
+          <Staff snap={snap} hand={annual ? hf.qualifications : undefined} annual={annual} n={annual ? "6" : "5"} />
+          <Attendance arm={snap.sections.attendance} n={annual ? "7" : "6"} />
+          {annual && <Terminal arm={snap.sections.terminalResults} n="8" />}
+          {annual && <Performance arm={snap.sections.academicPerformance} n="9" />}
+          {annual && <Infrastructure arm={snap.sections.infrastructure} n="10" />}
+          {annual && <Repetition hand={hf.repetition} n="11" />}
+          {annual && <Feeding hand={hf.feeding} n="12" />}
+          {annual && <Textbooks hand={hf.textbooks} n="13" />}
           <Declaration snap={snap} meta={meta} />
         </View>
 
@@ -508,7 +517,7 @@ export function CensusDocument({ data }: { data: CensusPdfData }) {
           <Text style={s.footerText}>
             Prepared on <Text style={s.goldEm}>Omnischools</Text> · print-and-sign GES census
           </Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${id.schoolName} · Annual census · ${pageNumber}/${totalPages}`} fixed />
+          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${id.schoolName} · ${cadenceLabel} census · ${pageNumber}/${totalPages}`} fixed />
         </View>
       </Page>
     </Document>
