@@ -201,7 +201,8 @@ BEGIN
     'facilities_snapshot',
     'census_return',
     'sen_register',
-    'sen_module_adoption'
+    'sen_module_adoption',
+    'sen_support_grant'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);

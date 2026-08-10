@@ -582,6 +582,13 @@
       "when": 1786301177009,
       "tag": "0082_great_richard_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1786344463506,
+      "tag": "0083_strong_patch",
+      "breakpoints": true
     }
   ]
 }

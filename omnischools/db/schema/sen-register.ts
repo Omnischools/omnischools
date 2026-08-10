@@ -1,4 +1,15 @@
-import { pgTable, uuid, text, date, smallint, timestamp, unique, check, foreignKey } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  date,
+  smallint,
+  timestamp,
+  unique,
+  check,
+  foreignKey,
+  index,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { schools } from "./tenancy";
 import { users } from "./identity";
@@ -133,3 +144,77 @@ export const senModuleAdoption = pgTable("sen_module_adoption", {
   // Audit stamp — single-column SET NULL → the GLOBAL ref_user.
   enabledBy: uuid("enabled_by").references(() => users.id, { onDelete: "set null" }),
 });
+
+/**
+ * GOV-10b SEN support-grant (Kofi R434) — a per-student, expiring, APPEND-ONLY grant that lets an
+ * administrator hand ONE named teacher read access to a single child's ACCOMMODATIONS (never the
+ * diagnosis cluster — that exclusion is app-layer, R436) for accommodation planning. The gate
+ * (R435, lib/sen/grants.ts) reads THIS table in-tx to answer "does this user hold a live grant on
+ * this student?"; a grant is live iff `revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())`.
+ *
+ * This is the STRIPPED sibling of sickbay_chronic_grant: there is exactly ONE teacher scope, so
+ * NO scope enum, NO scope_label/directive_note, NO house tie, and NO clinical/policy-bit columns.
+ * One row per grant (a re-grant is a new row; a revoke stamps the row, never deletes it).
+ *
+ * TENANT / management-facing (NOT parent-facing): ENABLE + FORCE RLS + tenant_isolation, IDENTICAL
+ * to sen_register (db:policies on dev; db/sql/prod-paste-0089-sen-support-grant.sql by hand on prod
+ * — ⚠ RLS is NOT auto-applied on prod). It carries NO parent_scope, so the catalog-driven RESTRICTIVE
+ * parent_deny loop in db/sql/policies.sql auto-denies it (FORCE-RLS + school_id + no parent_scope).
+ *
+ * FKs ([[composite-tenant-fks]]): school_id → ref_school CASCADE (tenant ROOT, single-col). A COMPOSITE
+ * (school_id, student_id) → students(school_id, id) CASCADE (target students_tenant_uk) so a cross-tenant
+ * grant is structurally impossible — mirrors sen_register's studentFk. grantee_user_id → the GLOBAL
+ * ref_user CASCADE and NOT NULL (a grant with no grantee is not a grant — the chronic idiom: NOT NULL ⇒
+ * CASCADE, not SET NULL). granted_by/revoked_by → ref_user SET NULL (audit stamps survive a removed user).
+ * LEAF — nothing FKs here → NO tenant_uk.
+ *
+ * ⚠ Deliberately NO "one live grant" unique index (the chronic-grant lesson, R832-note above): `live`
+ * depends on now() which is not immutable and cannot appear in an index predicate, and a bare
+ * `WHERE revoked_at IS NULL` is worse than nothing (an EXPIRED grant is not a revoked one → a lawful
+ * re-grant would collide with a dead row). Duplicate live grants are idempotent; the gate resolves a
+ * SET of live grants anyway.
+ */
+export const senSupportGrant = pgTable(
+  "sen_support_grant",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    // Composite-FK member (see studentFk): (school_id, student_id) → students, intra-tenant.
+    studentId: uuid("student_id").notNull(),
+    // NOT NULL: a grant with no grantee is not a grant. Single-column FK to the GLOBAL ref_user;
+    // CASCADE rather than SET NULL precisely because it is NOT NULL (the chronic-grant idiom).
+    granteeUserId: uuid("grantee_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // The admin's accommodation-planning justification. NOT NULL.
+    reason: text("reason").notNull(),
+    // Audit stamp — single-column SET NULL → the GLOBAL ref_user.
+    grantedByUserId: uuid("granted_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+    // NULL ⇒ no expiry. Evaluated against the DB's now() in the same statement that reads the row
+    // (R435) — never a session claim.
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    // APPEND-ONLY revoke: the row is never deleted, only stamped.
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedByUserId: uuid("revoked_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => ({
+    // THE HOT PATH (R435): the gate's "does this user hold a live grant" read, on every query behind
+    // the grantee view.
+    byGrantee: index("sen_support_grant_grantee_idx").on(t.schoolId, t.granteeUserId),
+    // The admin's per-student grant list.
+    byStudent: index("sen_support_grant_student_idx").on(t.schoolId, t.studentId),
+    // Composite intra-tenant FK to the student. Target = students_tenant_uk (school_id, id) — a
+    // cross-tenant grant is structurally impossible. CASCADE: removing the student removes the grant.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
+    }).onDelete("cascade"),
+  }),
+);
