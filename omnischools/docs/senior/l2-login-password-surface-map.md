@@ -83,15 +83,19 @@ For a **change** (vs first-set), add a current-password field on top:
 3. **Confirm password** — `type="password"`. Label **"Confirm password"** (verbatim from accept-form).
 - Submit-on-Enter (`onKeyDown … Enter`) like accept-form.
 
-### 3.2 Validation copy (reuse the exact strings)
-- `newPassword.length < 8` → **`"Password must be at least 8 characters."`** (verbatim, accept-form line 19).
-- `newPassword !== confirm` → **`"Passwords don't match."`** (verbatim, accept-form line 23).
-- Error render: single line under the form, `<p className="text-sm text-terra">…</p>` (matches accept-form + security-form's `msg` pattern). No per-field red outline (design has none).
+### 3.2 Validation copy (single-sourced via `passwordProblem` — do NOT re-hardcode)
+`change-password-form.tsx` validates `newPassword` through **`passwordProblem` (`lib/password.ts`, PR #244)** — the same helper accept-form / set-new-password use. The rule is **min 8 + at least one letter + at least one number (max 128)**; the messages, in check order, are:
+- **`"Password must be at least 8 characters"`** (< 8)
+- **`"Password must include at least one letter"`** (no letter)
+- **`"Password must include at least one number"`** (no digit)
+- **`"Password must be at most 128 characters"`** (> 128)
+- then `newPassword !== confirm` → **`"Passwords don't match."`**
+- **Render:** the live inline hint (`text-[12px] text-terra`) shows the current failing rule `.`-suffixed (`{pwProblem}.`) plus the mismatch line; the submit-time error (`text-sm text-terra`) shows the raw `passwordProblem` message. No per-field red outline (design has none).
 - `current` empty / wrong → server-side; surface as the same `text-terra` line (e.g. *"Current password is incorrect."* — new string, honest and minimal).
 
 ### 3.3 What NOT to add
-- **No strength meter, no complexity rules** beyond min-8. The archive surface has a strength meter (for its **12-char** archive key) — **do not copy it here**; the account pattern (accept-form) is min-8, meterless. Adding one would drift from the live set-password screen. (Flagged in §8.)
-- Min-length is **8** for the account (accept-form), **not** 12 (that's archive-only).
+- **No strength meter.** The archive surface has a strength meter (for its **12-char** archive key) — **do not copy it here**; the account pattern is meterless. The account rule is the shared `passwordSchema` — **min-8 + at least one letter + at least one number (max-128)** (`lib/password.ts`, PR #244), validated through `passwordProblem` — not just min-8, and not re-hardcoded per form. Adding a meter would drift from the live screens. (Flagged in §8.)
+- Min-length is **8** for the account, **not** 12 (that's archive-only).
 
 ### 3.4 Field styling & container (reuse `security-form.tsx` + `accept-form.tsx`)
 Put the three inputs in a card matching the surrounding SecurityForm blocks:
@@ -103,6 +107,13 @@ Put the three inputs in a card matching the surrounding SecurityForm blocks:
 | Save button | `rounded-md bg-navy px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-50` (security-form Save) |
 | Save label | **"Change password"** / busy **"Saving…"**; success `text-green` **"Saved."**, error `text-terra` (mirror security-form's `msg` render) |
 | Disabled-until | `disabled={busy || !dirty}` idiom from security-form (dirty = all three fields non-empty) |
+
+### 3.5 Login-card first-login hint (INCR-AUTH-OTP / PR #243) — always shown, NOT flag-gated
+
+Distinct surface, captured here per the sync brief: the **`/login` card** (`components/auth/login-form.tsx`, mapped in `l3-forgot-password-surface-map.md` §1) now renders a **static first-login hint on the Password tab** — always present, never varying with whether the number exists / is confirmed (enumeration-safe; **not** gated by `AUTH_OTP_LIVE`, unlike the onboarding OTP-finish step in `l1-signup-surface-map.md` §3.3). A brand-new account must verify by OTP once (which confirms the phone) before password sign-in works.
+- Copy (verbatim): **"First time signing in? Verify your number on the Phone OTP tab first — your password works after that."**
+- Container: `rounded-md bg-bg px-3 py-2 text-[12px] leading-relaxed text-navy-3`; the phrases **"First time signing in?"** and **"Phone OTP"** are `<b className="text-navy-2">`.
+- Placement: top of the Password-tab branch, above the phone / password inputs.
 
 ---
 
@@ -159,14 +170,15 @@ Design mapping only; the schema calls below are the implementer's, but the surfa
 
 ## 8. Drift / notes log
 
-1. **Zero authored surfaces** for either the change-password form or the user table — both are net-new UI, but fully constrained by `accept-form.tsx` (password fields, min-8, exact validation strings), `security-form.tsx` (card/field/button styling), `staff-table.tsx`/`staff-row.tsx`/`role-editor.tsx` (the list + roles + per-row actions), and `confirm-dialog.tsx` (destructive pattern). Assemble; do not invent.
+1. **Zero authored surfaces** for either the change-password form or the user table — both are net-new UI, but fully constrained by `accept-form.tsx` (password fields + the shared `passwordProblem` validation), `security-form.tsx` (card/field/button styling), `staff-table.tsx`/`staff-row.tsx`/`role-editor.tsx` (the list + roles + per-row actions), and `confirm-dialog.tsx` (destructive pattern). Assemble; do not invent.
 2. **Both homes already exist and are named** in `lib/settings-nav.ts`: `Login & password → /settings/security` (self) and `Roles & access → /staff` (admin). Don't create new routes.
 3. **Reset password = re-issue invite link.** The row's existing Invite/"Copy invite link" is the reset mechanism; relabel for active users. No separate reset flow.
 4. **Block is school-scoped**, not a global `ref_user` disable — multi-school login integrity (§7.2). Strong recommendation, but the column/mechanism is the data owner's call.
 5. **Status pills are prescribed, not authored** — 3 (+1) states on the green/warn/terra/(neutral) tri-state the codebase already uses; solid `-bg` tints only, no slash-opacity. Verify contrast in the live preview.
-6. **No strength meter, min-8 not min-12.** The archive surface's meter + 12-char rule are for the data-export ZIP key, a different concern; the account pattern is meterless min-8. Keep it that way.
+6. **No strength meter; the account rule is min-8 + a letter + a number, not min-12.** The archive surface's meter + 12-char rule are for the data-export ZIP key, a different concern; the account pattern is meterless and single-sourced in `lib/password.ts` (`passwordSchema`/`passwordProblem`, PR #244). Keep it that way.
 7. **`last-active` column skipped** — no `lastLogin` field, no surface authors it. The "login activity log" is the separate `/settings/audit` (`schoolup-audit-log-viewer.html`), adjacent to but out of L2 scope.
 8. **2FA stays where it is.** The existing `require2fa` toggle in `security-form.tsx` is the "2FA for admins" of the Login & password card; the change-password card sits above it on the same page. `schoolup-2fa-enrolment.html` is the (Tier-4) enrolment walkthrough, a future addition, not part of INCR-34.
+9. **Login-card first-login hint (INCR-AUTH-OTP / PR #243).** The `/login` Password tab now always shows a static, enumeration-safe first-login-OTP hint (§3.5) — **not** gated by `AUTH_OTP_LIVE`. It lives on `login-form.tsx` (mapped in the L3 map §1), a different surface from L2's change-password / user-management; captured here per the sync brief. Password validation across all these forms is single-sourced in `lib/password.ts` (PR #244).
 
 ---
 

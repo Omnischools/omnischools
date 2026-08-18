@@ -83,20 +83,38 @@ This is the existing, live set-password screen — port its exact field styling,
 - `fieldClass = "w-full rounded-md border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface"`.
 - Labels verbatim: **`Set a password`**, **`Confirm password`** (title case, no help text on the accept screen; the wireframe adds the `*` required markers — keep them for signup).
 - Both inputs `type="password"`, submit-on-Enter (`onKeyDown … Enter`).
-- **Validation (reuse these exact strings):**
-  - `password.length < 8` → **`"Password must be at least 8 characters."`**
-  - `password !== confirm` → **`"Passwords don't match."`**
+- **Validation — single-sourced via `passwordProblem` (`lib/password.ts`, PR #244); do NOT re-hardcode:** the accept screen calls `passwordProblem(password)` and, on a non-null result, sets the error to `` `${problem}.` `` (a period is appended). The rule is **min 8 + at least one letter + at least one number (max 128)**; the messages, in check order, are:
+  - **`"Password must be at least 8 characters"`** (< 8)
+  - **`"Password must include at least one letter"`** (no letter)
+  - **`"Password must include at least one number"`** (no digit)
+  - **`"Password must be at most 128 characters"`** (> 128)
+  - then `password !== confirm` → **`"Passwords don't match."`**
   - Error render: `<p className="text-sm text-terra">…</p>`.
-- No strength meter, no complexity rules beyond min-8 — the accept screen has none; do not add one (YAGNI, and it would drift from the existing pattern).
+- No strength meter — the rule is exactly `passwordSchema` (min-8 + letter + number, max-128), single-sourced in `lib/password.ts`; do not add a meter or extra rules, and do not re-hardcode the strings.
 - Button: `w-full rounded-md bg-navy px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-navy-deep disabled:opacity-60`, label `Accept & continue →` / busy `Setting up…`.
 
 ### 3.2 Placement recommendation (design-faithful, minimal)
 The live wizard's `IdentityStep` already has a **"Your details · you sign in first"** sub-section (Full name / Phone (login) / Email — optional) followed by the Terms checkbox and the `Launch school →` CTA. The wireframe surface puts password/confirm **inside that same "Your details" block, right after the contact fields and before Terms.**
 
-- **Recommended: inline, inside "Your details"** — add a 2-col row `Set a password *` / `Confirm password *` between the phone/email grid and the Terms `<label>`. This is 1:1 with the authored precedent, keeps the flow at **2 steps** (no counter/pill changes), and reuses the AcceptForm validation. Use the live wizard's own `Field` + `inputCls` wrappers (see §4) so it matches the surrounding fields, not the accept-screen card exactly — i.e. `<Field label="Password" req help="At least 8 characters."><input type="password" className={inputCls(!!…)} /></Field>` and a confirm `<Field>`. Wire the two validators into `identityError()` before the existing `termsAccepted` check.
+- **Recommended: inline, inside "Your details"** — add a 2-col row `Set a password *` / `Confirm password *` between the phone/email grid and the Terms `<label>`. This is 1:1 with the authored precedent, keeps the flow at **2 steps** (no counter/pill changes), and reuses the AcceptForm validation. Use the live wizard's own `Field` + `inputCls` wrappers (see §4) so it matches the surrounding fields, not the accept-screen card exactly — i.e. `<Field label="Password" req help="At least 8 characters, with a letter and a number."><input type="password" className={inputCls(!!…)} /></Field>` and a confirm `<Field>`. Wire the two validators into `identityError()` before the existing `termsAccepted` check.
 - **Alternative: a literal 3rd step** ("Step 3 of 3 · Create your password", standalone like the accept card). Only take this if product wants password isolated from PII entry. If so, the implementer MUST also update: the two step-pill strings, the footer meta line, and the `"Step 1 of 2"/"Step 2 of 2"` counters to `… of 3`. **No authored surface shows this** — flag before choosing. Default to inline.
 
 Either way the password is validated **client-side before `onboardSchool`**, and `onboardSchool`/`OnboardSchema` must accept the new `adminPassword` value (schema field addition — Kofi/Claude Code's call, not mapped here).
+
+### 3.3 Done-phase OTP-finish step (INCR-AUTH-OTP / PR #243 — **gated by `AUTH_OTP_LIVE`**)
+
+Shipped after INCR-33: the wizard's **done phase** (`DonePanel`) branches on `result.otpLive` (= `otpLoginRequired()` = `authIsLive() && env.AUTH_OTP_LIVE`; default **OFF** — full behaviour in `docs/senior/incr-auth-otp-first-login-ruling.md`).
+
+- **OTP-first ON (`result.otpLive` true)** — the success card's gold `Sign in →` button is **hidden**, and an OTP-finish card (`OnboardingOtpFinish`) renders below it. It auto-issues exactly **one** `requestOtp(phone)` on mount, then verify → confirms the phone + establishes the session + redirects to `/dashboard` (`verifyLogin`).
+  - Container: `mt-5 rounded-xl border border-gold-soft bg-gold-bg px-6 py-5`.
+  - Heading (`font-display text-base font-semibold text-navy`): **"Finish signing in — verify your number"**
+  - Body (`text-[13px] leading-relaxed text-navy-2`): **"We sent a one-time code to {phone}. Enter the latest code to confirm your number and go straight to your dashboard. You'll be able to sign in with your password after this."**
+  - OTP input: placeholder **"••••••"**, `inputMode="numeric"`, `w-40 … text-center font-mono text-lg tracking-[0.3em]` (mono, like the login OTP field).
+  - Primary button (`bg-navy … text-bg`): **"Verify & go to dashboard"** / busy **"Verifying…"**
+  - Resend link (`text-xs font-semibold text-navy-3 hover:text-navy`): **"Resend code"** → **"Code re-sent ✓"**
+  - Error: `mt-2 text-sm text-terra`
+- **OTP-first OFF (`result.otpLive` false — the default)** — no OTP card; the success card keeps the gold **"Sign in →"** → `/login?accepted=1`.
+- **Always present (both states, AC-07 no-orphan escape)** — the terminal **"Go to sign in"** link → `/login?accepted=1` (`border border-border-2 bg-surface …`) plus the `school id · {schoolId}` mono line. The school + account are committed before the OTP step, so a failed send/verify never blocks — the same OTP tab at `/login` completes first login.
 
 ---
 
@@ -143,8 +161,10 @@ If password becomes a literal 3rd step, its own CTA should be the **navy** `Cont
 ## 5. INCR-33 change-list (the mechanical port)
 
 1. **Remove CSSPS** — delete the `CSSPS school code` `<Field>` from `IdentityStep` (`wizard.tsx` ~438–445); change that grid from `sm:grid-cols-3` to `sm:grid-cols-2` (GES code + Year founded remain). Leave `csspsCode` out of the submitted `form`; the optional schema key can stay or be dropped by the data owner. No review-row cleanup needed in the live "done" panel.
-2. **Add password** — inside `IdentityStep`'s "Your details · you sign in first" block, after the name/phone/email grid and before the Terms `<label>`, add a 2-col row of `Password *` + `Confirm password *` (`type="password"`, live `Field`/`inputCls` wrappers, help "At least 8 characters."). Add the two validators (`< 8` → "Password must be at least 8 characters."; mismatch → "Passwords don't match.") into `identityError()` ahead of the terms check. Reuse `AcceptForm`'s strings/rules exactly. Flow stays 2 steps.
+2. **Add password** — inside `IdentityStep`'s "Your details · you sign in first" block, after the name/phone/email grid and before the Terms `<label>`, add a 2-col row of `Password *` + `Confirm password *` (`type="password"`, live `Field`/`inputCls` wrappers, help "At least 8 characters, with a letter and a number."). Validate through the shared `passwordProblem` (`lib/password.ts`, PR #244) — min-8 + at least one letter + at least one number (max-128), surfaced as the failing-rule inline hint (`.`-suffixed) — plus mismatch → "Passwords don't match.", wired ahead of the terms check. Reuse `AcceptForm`'s rules exactly (same helper). Flow stays 2 steps.
 3. **PROPRIETOR role** — brief says **no visible wizard change**. The live wizard has **no role picker for the creator** (they become the ADMIN by construction), so nothing renders differently. The only authored place a self-role appears is the wireframe's `Your role` select (`Headmistress / Headmaster / Proprietor / IT lead / Other`) — a *different* surface not in the live flow. Registering PROPRIETOR is an RBAC/role-model addition (see `lib/access.ts`, `lib/staff-roles.ts`), out of my cartography scope — hand to Kofi/Sarah/Claude Code. Confirmed: **no signup UI element to map for this item.**
+
+4. **Done-phase OTP-finish (INCR-AUTH-OTP / PR #243 — gated by `AUTH_OTP_LIVE`)** — when `result.otpLive` is true, `DonePanel` hides the `Sign in →` button and renders `OnboardingOtpFinish` (auto-`requestOtp` on mount → **"Verify & go to dashboard"** → `/dashboard`); when false, the gold `Sign in →` → `/login?accepted=1` stays. The `Go to sign in` → `/login?accepted=1` link is always present (AC-07 no-orphan). Full copy/tokens in §3.3.
 
 ---
 
@@ -160,13 +180,14 @@ If password becomes a literal 3rd step, its own CTA should be the **navy** `Cont
 
 ## 7. Drift / notes log
 
-1. **Primary surface has no password step.** INCR-33's password step is *new design*, not a port — but it is fully constrained by (a) the wireframe precedent (fields, order, confirm rationale, `*` markers) and (b) the live `AcceptForm` (styling, labels, min-8 + match validation). Assemble from those two; do not invent strength meters or complexity rules.
+1. **Primary surface has no password step.** INCR-33's password step is *new design*, not a port — but it is fully constrained by (a) the wireframe precedent (fields, order, confirm rationale, `*` markers) and (b) the live `AcceptForm` (styling, labels, and the shared `passwordProblem` validation). The rule is **min-8 + at least one letter + at least one number (max-128)**, single-sourced in `lib/password.ts` (`passwordSchema`/`passwordProblem`, PR #244) — reuse that helper; do not add a strength meter or re-hardcode the strings.
 2. **"Step" is ambiguous.** Live flow is 2 steps; unified surface is 6→8. Recommended: password **inline** in the identity step (no counter change). A literal 3rd step is allowed but unshown in any surface — if chosen, update all counter/pill strings.
 3. **CSSPS is optional in schema** (`csspsCode … .optional()`). Removing the UI field is safe; whether to drop the schema/type key is a data-model decision (out of scope — Kofi/Claude Code).
 4. **Phone-first login vs password.** The current admin signs in by phone/OTP ("Sign in with your phone number", `DonePanel`). Adding a password at signup is additive; confirm with product whether phone/OTP remains a parallel path (the AcceptForm footnote "You can also sign in with your phone via OTP" suggests both coexist) — affects the identity-step lede copy ("you sign in with your phone number").
 5. **Proprietor role has a wireframe precedent but no live-wizard slot.** Item (3) is invisible in signup UI as briefed; the only authored `Proprietor` appears in a non-live surface's role select. Nothing to render.
 6. **`full-wizard.tsx` is not the target.** It mirrors the unified surface's long flow and is used for super-admin tenant setup. Build the password step in `wizard.tsx` only.
 7. **No-alpha discipline.** New password fields use `border-border-2` / `bg-gold-bg` (filled tint) / `focus:border-gold` — all solid tokens. Verify in the live preview, not the build (memory *no-alpha-token-opacity*).
+8. **OTP-first is flag-gated.** The done-phase OTP-finish step (§3.3) renders only when `otpLoginRequired()` (`authIsLive() && AUTH_OTP_LIVE`) is true; default OFF, so the default done panel keeps the `Sign in →` / `Go to sign in` links to `/login?accepted=1`. The password rule (min-8 + letter + number) is single-sourced in `lib/password.ts` (PR #244). Verify both against the flag/helper, not a build snapshot — see `docs/senior/incr-auth-otp-first-login-ruling.md`.
 
 ---
 
