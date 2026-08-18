@@ -36,14 +36,17 @@ const nextConfig = {
 const csp = [
   "default-src 'self'",
   // Next injects inline hydration/bootstrap scripts; no nonce middleware yet, so 'unsafe-inline'.
-  "script-src 'self' 'unsafe-inline'",
+  // Cloudflare Turnstile (INCR-AUTH-CAPTCHA) loads its script from challenges.cloudflare.com.
+  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
   // Tailwind + styled-jsx emit inline styles.
   "style-src 'self' 'unsafe-inline'",
   // School logo/stamp are Supabase-storage <img>; data:/blob: for embedded assets.
   "img-src 'self' data: blob: https://*.supabase.co",
   "font-src 'self' data:",
-  // Supabase Auth/REST/Realtime (wss for realtime).
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  // Supabase Auth/REST/Realtime (wss for realtime) + Turnstile's siteverify/telemetry.
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com",
+  // Turnstile renders its challenge inside an iframe from challenges.cloudflare.com.
+  "frame-src 'self' https://challenges.cloudflare.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

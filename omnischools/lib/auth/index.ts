@@ -144,8 +144,10 @@ export function normalizeGhanaPhone(input: string): string {
  * @supabase/* type copies can drop methods from `SupabaseAuthClient` in some install
  * layouts (passes locally, failed on Vercel). Runtime is unchanged — the methods exist.
  */
+// INCR-AUTH-CAPTCHA — the friction endpoints accept `options.captchaToken` (Supabase native captcha).
+type Captcha = { captchaToken?: string };
 type SupabaseAuthApi = {
-  signInWithOtp(creds: { phone: string }): Promise<{ error: { message: string } | null }>;
+  signInWithOtp(creds: { phone: string; options?: Captcha }): Promise<{ error: { message: string } | null }>;
   verifyOtp(creds: {
     phone: string;
     token: string;
@@ -154,10 +156,12 @@ type SupabaseAuthApi = {
   signUp(creds: {
     phone: string;
     password: string;
+    options?: Captcha;
   }): Promise<{ error: { message: string } | null }>;
   signInWithPassword(creds: {
     phone: string;
     password: string;
+    options?: Captcha;
   }): Promise<{ error: { message: string } | null }>;
   // INCR-34 (L2a) — change the CURRENT session's own password (self-service; no target id).
   updateUser(attrs: { password: string }): Promise<{ error: { message: string } | null }>;
@@ -166,7 +170,7 @@ type SupabaseAuthApi = {
   // No token row on our side (seam-only).
   resetPasswordForEmail(
     email: string,
-    options: { redirectTo: string },
+    options: { redirectTo: string } & Captcha,
   ): Promise<{ error: { message: string } | null }>;
   // INCR-36 (L3) — exchange the PKCE `?code=…` on the reset-password landing for a recovery session.
   exchangeCodeForSession(
@@ -186,9 +190,11 @@ async function authApi(): Promise<SupabaseAuthApi> {
   return (await createClient()).auth as unknown as SupabaseAuthApi;
 }
 
-/** Begin phone-OTP sign-in (sends an SMS code in live mode). */
+/** Begin phone-OTP sign-in (sends an SMS code in live mode). `captchaToken` is forwarded when the
+ *  Supabase native captcha is enabled (INCR-AUTH-CAPTCHA); undefined otherwise (inert). */
 export async function signInWithPhone(
   phone: string,
+  captchaToken?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const normalized = normalizeGhanaPhone(phone);
   if (!authIsLive()) {
@@ -202,7 +208,10 @@ export async function signInWithPhone(
   // no known-vs-unknown oracle. A legitimate `ref_user` with no Supabase account yet IS "known" here, so
   // their first OTP still creates + links their account normally.
   if (!(await phoneIsRegistered(normalized))) return { ok: true };
-  const { error } = await (await authApi()).signInWithOtp({ phone: normalized });
+  const { error } = await (await authApi()).signInWithOtp({
+    phone: normalized,
+    options: captchaToken ? { captchaToken } : undefined,
+  });
   // Enumeration-safety (Sarah, INCR-38): an unknown phone never reaches GoTrue (can't rate-limit), so a
   // REGISTERED phone must NOT be the only one able to return {ok:false} — that asymmetry is an existence
   // oracle (a target that ever rate-limits is registered). Swallow + log server-side; return the SAME
@@ -247,6 +256,7 @@ export async function verifyPhoneOtp(
 export async function createPasswordUser(
   phone: string,
   password: string,
+  captchaToken?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!authIsLive()) return { ok: true };
   const { error } = await (
@@ -254,6 +264,7 @@ export async function createPasswordUser(
   ).signUp({
     phone: normalizeGhanaPhone(phone),
     password,
+    options: captchaToken ? { captchaToken } : undefined,
   });
   if (error && !/already (registered|exists)/i.test(error.message)) {
     return { ok: false, error: error.message };
@@ -265,6 +276,7 @@ export async function createPasswordUser(
 export async function signInWithPassword(
   phone: string,
   password: string,
+  captchaToken?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!authIsLive()) return { ok: true };
   const { error } = await (
@@ -272,6 +284,7 @@ export async function signInWithPassword(
   ).signInWithPassword({
     phone: normalizeGhanaPhone(phone),
     password,
+    options: captchaToken ? { captchaToken } : undefined,
   });
   return error ? { ok: false, error: error.message } : { ok: true };
 }
@@ -299,9 +312,13 @@ export async function updatePassword(
 export async function sendPasswordResetEmail(
   email: string,
   redirectTo: string,
+  captchaToken?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!authIsLive()) return { ok: true };
-  const { error } = await (await authApi()).resetPasswordForEmail(email, { redirectTo });
+  const { error } = await (await authApi()).resetPasswordForEmail(email, {
+    redirectTo,
+    ...(captchaToken ? { captchaToken } : {}),
+  });
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 

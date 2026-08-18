@@ -76,7 +76,7 @@ describe("L1 · the signup password step", () => {
   });
 
   it("L1-8 · live-mode signup creates the Supabase password credential (before the tx)", () => {
-    expect(ACTION).toContain("createPasswordUser(adminPhone, d.password)");
+    expect(ACTION).toContain("createPasswordUser(adminPhone, d.password"); // + optional captchaToken
     // ordered BEFORE the DB transaction (mirrors acceptInvite — no orphaned school on auth failure)
     expect(ACTION.indexOf("createPasswordUser(adminPhone")).toBeLessThan(
       ACTION.indexOf("await withoutTenantScope"),

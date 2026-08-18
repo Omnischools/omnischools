@@ -76,7 +76,7 @@ export async function onboardSchool(input: unknown): Promise<OnboardResult> {
   // "already registered"); a no-op returning ok in dev-bypass. The ref_user row is linked by phone in
   // the tx below (adminPhone reused). The owner can still also sign in via OTP.
   const adminPhone = normalizeGhanaPhone(d.adminPhone);
-  const auth = await createPasswordUser(adminPhone, d.password);
+  const auth = await createPasswordUser(adminPhone, d.password, d.captchaToken);
   if (!auth.ok) return { ok: false, error: auth.error ?? "Could not set your password." };
   const nz = (v?: string) => (v && v.trim() ? v.trim() : null);
   const academicYear = nz(d.academicYear) ?? currentAcademicYear();

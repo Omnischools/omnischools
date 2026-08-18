@@ -113,8 +113,8 @@ describe("L3 · forgot-password", () => {
 
   it("L3 · the reset flow reuses the login-card idioms + set-new-password has no current-password field", () => {
     // both prove-identity paths are offered (owner: BOTH), not auto-routed
-    expect(RESET_FORM).toContain('requestOtp(phone)');
-    expect(RESET_FORM).toContain("requestPasswordReset({ email })");
+    expect(RESET_FORM).toContain("requestOtp(phone,"); // + optional captchaToken (INCR-AUTH-CAPTCHA)
+    expect(RESET_FORM).toContain("requestPasswordReset({ email,");
     expect(RESET_FORM).toContain("verifyResetOtp(phone, otp)");
     // the OTP input reuses the login-card mono treatment
     expect(RESET_FORM).toContain("text-center font-mono text-lg tracking-[0.3em]");

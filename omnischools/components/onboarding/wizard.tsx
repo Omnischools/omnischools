@@ -23,6 +23,7 @@ import {
 import { onboardSchool } from "@/lib/actions/onboarding";
 import { requestOtp, verifyLogin } from "@/lib/actions/auth";
 import { passwordProblem } from "@/lib/password";
+import { CaptchaWidget, useCaptcha } from "@/components/auth/captcha-widget";
 
 type Form = Partial<OnboardInput> & { subtype?: SchoolSubtype; confirmPassword?: string };
 
@@ -55,6 +56,7 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Extract<OnboardResult, { ok: true }> | null>(null);
+  const captcha = useCaptcha();
 
   const set = (k: keyof Form, v: string) => setForm((prev) => ({ ...prev, [k]: v }));
   const f = (k: keyof Form) => (form[k] as string) ?? "";
@@ -121,14 +123,18 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
     // Defensive re-check of both steps; onboardSchool re-validates everything server-side too.
     const err = identityError() ?? passwordError();
     if (err) return setError(err);
+    if (captcha.missing()) return setError("Please complete the verification below.");
     setSubmitting(true);
     setError(null);
-    const res = await onboardSchool(form);
+    const res = await onboardSchool({ ...form, captchaToken: captcha.token || undefined });
     setSubmitting(false);
     if (res.ok) {
       setResult(res);
       setPhase("done");
-    } else setError(res.error);
+    } else {
+      captcha.reset();
+      setError(res.error);
+    }
   }
 
   const schoolInitial = (form.schoolName?.trim()?.[0] ?? "S").toUpperCase();
@@ -200,7 +206,12 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
               onChangeType={backToType}
             />
           ) : (
-            <PasswordStep form={form} f={f} set={set} />
+            <>
+              <PasswordStep form={form} f={f} set={set} />
+              <div className="mt-4 max-w-[460px]">
+                <CaptchaWidget onToken={captcha.setToken} resetKey={captcha.resetKey} />
+              </div>
+            </>
           )}
 
           {error && <p className="mt-4 text-sm text-terra">{error}</p>}

@@ -17,10 +17,11 @@ import { recordAudit } from "@/lib/db/audit";
 
 export async function requestOtp(
   phone: string,
+  captchaToken?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!phone || phone.length < 7)
     return { ok: false, error: "Enter a valid phone number." };
-  return signInWithPhone(phone);
+  return signInWithPhone(phone, captchaToken);
 }
 
 export async function verifyLogin(
@@ -35,9 +36,10 @@ export async function verifyLogin(
 export async function passwordLogin(
   phone: string,
   password: string,
+  captchaToken?: string,
 ): Promise<{ ok: false; error: string }> {
   if (!phone || !password) return { ok: false, error: "Enter your phone and password." };
-  const res = await signInWithPassword(phone, password);
+  const res = await signInWithPassword(phone, password, captchaToken);
   if (!res.ok) return { ok: false, error: res.error ?? "Invalid phone or password." };
   redirect("/dashboard");
 }
@@ -108,14 +110,17 @@ export async function changeOwnPassword(input: {
  * Supabase — so the UI can never tell a registered address from an unknown one. `redirectTo` is built
  * from NEXT_PUBLIC_SITE_URL, mirroring `createInvite`'s link (invites.ts).
  */
-export async function requestPasswordReset(input: { email: string }): Promise<{ ok: true }> {
+export async function requestPasswordReset(input: {
+  email: string;
+  captchaToken?: string;
+}): Promise<{ ok: true }> {
   const email = input?.email?.trim() ?? "";
   try {
     // The recovery link lands on a ROUTE HANDLER (not the /reset-password Server Component): only a
     // route handler / server action can PERSIST the exchanged session cookie (a Server Component's
     // cookie write is a silent no-op — lib/supabase/server.ts setAll catch, no refresh middleware).
     const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/reset-callback`;
-    const res = await sendPasswordResetEmail(email, redirectTo);
+    const res = await sendPasswordResetEmail(email, redirectTo, input?.captchaToken);
     if (res.error) console.error("[auth] reset email send error (swallowed for R273):", res.error);
   } catch (err) {
     console.error("[auth] requestPasswordReset threw (swallowed for R273):", err);

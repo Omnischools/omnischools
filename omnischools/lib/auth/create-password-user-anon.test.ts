@@ -55,7 +55,7 @@ describe("AUTH-OTP-05 · createPasswordUser uses anon signUp, never admin-confir
 
 describe("AUTH-OTP-05 · both onboarding AND invite-accept route through createPasswordUser", () => {
   it("onboardSchool creates the credential via createPasswordUser", () => {
-    expect(ONBOARD_ACTION).toContain("createPasswordUser(adminPhone, d.password)");
+    expect(ONBOARD_ACTION).toContain("createPasswordUser(adminPhone, d.password"); // + optional captchaToken
   });
 
   it("acceptInvite creates the credential via createPasswordUser (no admin-confirm either)", () => {

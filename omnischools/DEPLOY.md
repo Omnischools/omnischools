@@ -39,6 +39,12 @@ SMS/email behind `lib/{sms,email}`, jobs as HTTP POST + shared secret. Hosting t
 
    See `docs/senior/incr-auth-otp-first-login-ruling.md` §5. `AUTH_OTP_LIVE` stays `false` until P1–P3 are done.
 
+   **CAPTCHA rollout (INCR-AUTH-CAPTCHA, audit #4) — optional bot protection; coordinate in order:**
+   - **C1.** Create a Cloudflare **Turnstile** widget → get the **site key** (public) + **secret key**; add your prod domain + `localhost` to its allowed hostnames.
+   - **C2.** Supabase **Auth → Protection → enable CAPTCHA → Turnstile → paste the secret key**. (This makes GoTrue REQUIRE a token on every auth call.)
+   - **C3.** Set **`NEXT_PUBLIC_TURNSTILE_SITE_KEY`** (env table) to the site key.
+   Do **C2 + C3 together** — enabling Supabase captcha without the site key set makes auth require a token the client isn't sending. With both unset it is fully inert (no widget, no token). See `docs/senior/incr-auth-captcha-plan.md`. (To use hCaptcha instead: pick it in C2, and the site key in C3 is the hCaptcha site key — the widget lib/CSP origin would need swapping.)
+
 ## 2 · Apply schema + RLS to prod (run locally, once)
 Run from `omnischools/` with the **direct** connection string. These are safe on an empty DB.
 Run as the project's `postgres` user so the RLS bypass role is granted to it.
@@ -66,6 +72,7 @@ Tip: `pnpm db:rls-test` against prod should pass (cross-tenant reads blocked).
    | `SUPABASE_SERVICE_ROLE_KEY` | service_role key |
    | `AUTH_DEV_BYPASS` | `false`  ← flips on real phone-OTP auth |
    | `AUTH_OTP_LIVE` | `false` until P1–P3 done, then `true`  ← OTP-mandatory first login (INCR-AUTH-OTP) |
+   | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | optional — Cloudflare Turnstile site key; unset = captcha inert (INCR-AUTH-CAPTCHA) |
    | `NEXT_PUBLIC_SITE_URL` | your Vercel URL (e.g. `https://omnischools.vercel.app`) |
    | `CRON_SECRET` | a long random string |
    | `HUBTEL_CLIENT_ID` / `_SECRET` / `_SENDER_ID` | optional (SMS goes live when set) |

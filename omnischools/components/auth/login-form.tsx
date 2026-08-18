@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { requestOtp, verifyLogin, passwordLogin } from "@/lib/actions/auth";
+import { CaptchaWidget, useCaptcha } from "@/components/auth/captcha-widget";
 
 const fieldClass =
   "w-full rounded-md border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
@@ -20,30 +21,39 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const captcha = useCaptcha();
 
   async function sendCode() {
+    if (captcha.missing()) return setError("Please complete the verification below.");
     setBusy(true);
     setError(null);
-    const res = await requestOtp(phone);
+    const res = await requestOtp(phone, captcha.token || undefined);
     setBusy(false);
     if (res.ok) setStep("otp");
-    else setError(res.error ?? "Could not send code.");
+    else {
+      captcha.reset();
+      setError(res.error ?? "Could not send code.");
+    }
   }
 
   async function verify() {
     setBusy(true);
     setError(null);
-    const res = await verifyLogin(phone, otp);
+    const res = await verifyLogin(phone, otp); // verify (2nd step) is not captcha-gated
     setBusy(false);
     if (res && !res.ok) setError(res.error);
   }
 
   async function signInPassword() {
+    if (captcha.missing()) return setError("Please complete the verification below.");
     setBusy(true);
     setError(null);
-    const res = await passwordLogin(phone, password);
+    const res = await passwordLogin(phone, password, captcha.token || undefined);
     setBusy(false);
-    if (res && !res.ok) setError(res.error);
+    if (res && !res.ok) {
+      captcha.reset();
+      setError(res.error);
+    }
   }
 
   const tab = (m: "otp" | "password", label: string) => (
@@ -93,6 +103,7 @@ export function LoginForm({
               onChange={(e) => setPhone(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendCode()}
             />
+            <CaptchaWidget onToken={captcha.setToken} resetKey={captcha.resetKey} />
             <button
               onClick={sendCode}
               disabled={busy}
@@ -162,6 +173,7 @@ export function LoginForm({
           >
             Forgot password?
           </Link>
+          <CaptchaWidget onToken={captcha.setToken} resetKey={captcha.resetKey} />
           <button
             onClick={signInPassword}
             disabled={busy}
