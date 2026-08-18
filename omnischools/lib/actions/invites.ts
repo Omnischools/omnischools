@@ -5,6 +5,7 @@ import { withSchool, withoutTenantScope } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor } from "@/lib/auth/server";
 import { normalizeGhanaPhone, createPasswordUser } from "@/lib/auth";
+import { passwordSchema } from "@/lib/password";
 import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { safeRevalidate } from "@/lib/revalidate";
@@ -188,7 +189,7 @@ export async function revokeInvite(input: unknown): Promise<Result> {
 // ----------------------------------------------------------------- accept
 const AcceptSchema = z.object({
   token: z.string().min(6),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: passwordSchema, // shared app-side policy (audit #5): min-8 + a letter + a number
 });
 
 export async function acceptInvite(input: unknown): Promise<Result> {

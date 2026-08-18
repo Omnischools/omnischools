@@ -11,6 +11,7 @@ import {
   getSessionId,
 } from "@/lib/auth";
 import { requireUser, resolveActor } from "@/lib/auth/server";
+import { passwordProblem } from "@/lib/password";
 import { withSchool } from "@/lib/db/rls";
 import { recordAudit } from "@/lib/db/audit";
 
@@ -59,8 +60,9 @@ export async function changeOwnPassword(input: {
 }): Promise<{ ok: boolean; error?: string; newSessionId?: string }> {
   const currentPassword = input?.currentPassword ?? "";
   const newPassword = input?.newPassword ?? "";
-  if (newPassword.length < 8) {
-    return { ok: false, error: "Password must be at least 8 characters" };
+  const pwProblem = passwordProblem(newPassword);
+  if (pwProblem) {
+    return { ok: false, error: pwProblem };
   }
   const user = await requireUser();
   // Prove the current password before changing it (blocks a walk-up attacker on an unlocked session).
@@ -154,8 +156,9 @@ export async function completePasswordReset(input: {
   newPassword: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const newPassword = input?.newPassword ?? "";
-  if (newPassword.length < 8) {
-    return { ok: false, error: "Password must be at least 8 characters" };
+  const pwProblem = passwordProblem(newPassword);
+  if (pwProblem) {
+    return { ok: false, error: pwProblem };
   }
   const methods = await sessionAuthMethods();
   const passwordOnly = methods.length > 0 && methods.every((m) => m === "password");

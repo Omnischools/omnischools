@@ -30,10 +30,10 @@ describe("L2a · self change-password action", () => {
     expect(ACTION.indexOf("!reauth.ok")).toBeLessThan(ACTION.indexOf("updatePassword(newPassword)"));
   });
 
-  it("L2-3 · min-8 is enforced BEFORE any auth call", () => {
-    expect(ACTION).toContain("newPassword.length < 8");
+  it("L2-3 · the password policy is enforced BEFORE any auth call", () => {
+    expect(ACTION).toContain("passwordProblem(newPassword)");
     // scope to changeOwnPassword's own re-auth call (signInWithPassword( also appears in passwordLogin)
-    expect(ACTION.indexOf("newPassword.length < 8")).toBeLessThan(
+    expect(ACTION.indexOf("passwordProblem(newPassword)")).toBeLessThan(
       ACTION.indexOf("signInWithPassword(user.phone, currentPassword)"),
     );
   });

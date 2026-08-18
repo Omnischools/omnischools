@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { completePasswordReset } from "@/lib/actions/auth";
+import { passwordProblem } from "@/lib/password";
 
 /**
  * INCR-36 (L3) — Step 3 of the reset flow: set a NEW password on the already-proven session (phone OTP
@@ -23,13 +24,14 @@ export function SetNewPassword({ redirectTo }: { redirectTo: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const tooShort = next.length > 0 && next.length < 8;
+  const pwProblem = next.length > 0 ? passwordProblem(next) : null;
   const mismatch = confirm.length > 0 && next !== confirm;
-  const canSubmit = next.length >= 8 && next === confirm && !busy;
+  const canSubmit = !passwordProblem(next) && next === confirm && !busy;
 
   async function submit() {
     setError(null);
-    if (next.length < 8) return setError("Password must be at least 8 characters");
+    const problem = passwordProblem(next);
+    if (problem) return setError(problem);
     if (next !== confirm) return setError("Passwords don't match.");
     setBusy(true);
     const res = await completePasswordReset({ newPassword: next });
@@ -68,7 +70,7 @@ export function SetNewPassword({ redirectTo }: { redirectTo: string }) {
         />
       </div>
 
-      {tooShort && <p className="text-[12px] text-terra">Password must be at least 8 characters.</p>}
+      {pwProblem && <p className="text-[12px] text-terra">{pwProblem}.</p>}
       {mismatch && <p className="text-[12px] text-terra">Passwords don&apos;t match.</p>}
       {error && <p className="text-sm text-terra">{error}</p>}
 

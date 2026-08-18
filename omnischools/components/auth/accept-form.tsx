@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { acceptInvite } from "@/lib/actions/invites";
+import { passwordProblem } from "@/lib/password";
 
 const fieldClass =
   "w-full rounded-md border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
@@ -15,8 +16,9 @@ export function AcceptForm({ token, contact }: { token: string; contact: string 
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    const problem = passwordProblem(password);
+    if (problem) {
+      setError(`${problem}.`);
       return;
     }
     if (password !== confirm) {
