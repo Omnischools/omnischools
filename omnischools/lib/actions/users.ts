@@ -124,6 +124,18 @@ export async function activateUser(input: { targetUserId: string }): Promise<Res
 export async function initiatePasswordReset(input: { targetUserId: string }): Promise<Result> {
   const { user, school } = await requireSchool();
   await assertAnyRole(USER_ADMIN_ROLES);
+  // INCR-AUTH-CAPTCHA (up-front, before any audit/DB work): this admin-initiated OTP send hits GoTrue's
+  // captcha-gated signInWithOtp, but the TARGET user isn't here to solve a challenge. When captcha is on,
+  // refuse HONESTLY — no `reset_initiated` audit for a reset that won't happen, no SMS for a code GoTrue
+  // rejected — and point to the user's own captcha-solvable reset. (System-wide condition, target-agnostic
+  // message, so refusing before the target-gate leaks nothing.)
+  if (captchaEnabled()) {
+    return {
+      ok: false,
+      error:
+        "Bot-protection is on, so a reset code can't be sent from here. Ask this user to reset their own password from the sign-in screen (“Forgot password?”).",
+    };
+  }
   const targetUserId = input?.targetUserId ?? "";
   const actor = await resolveActor(school.id);
 
@@ -144,17 +156,6 @@ export async function initiatePasswordReset(input: { targetUserId: string }): Pr
   });
   if (!gated.ok) return gated;
   if (!gated.phone) return { ok: false, error: "That user has no phone on file to send a code to." };
-
-  // INCR-AUTH-CAPTCHA — this admin-initiated OTP send hits GoTrue's captcha-gated signInWithOtp, but the
-  // TARGET user isn't here to solve a challenge (the admin is the one clicking). When captcha is on, refuse
-  // HONESTLY and point to the user's own captcha-solvable reset — rather than SMS a code GoTrue rejected.
-  if (captchaEnabled()) {
-    return {
-      ok: false,
-      error:
-        "Bot-protection is on, so a reset code can't be sent from here. Ask this user to reset their own password from the sign-in screen (“Forgot password?”).",
-    };
-  }
 
   // Dispatch a one-time code to the target's OWN stored phone; they sign in and set a new password
   // themselves (L2a). The admin never sets or sees a password. Console-degrades with no SMS creds.
