@@ -96,7 +96,7 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
     setError(null);
     setStep("identity");
   };
-  // Same policy as the invite/accept flow (min-8) + a confirm-match guard (R257b).
+  // Same policy as the invite/accept flow (shared passwordSchema) + a confirm-match guard (R257b).
   const passwordError = (): string | null => {
     const problem = passwordProblem(form.password ?? "");
     if (problem) return problem;

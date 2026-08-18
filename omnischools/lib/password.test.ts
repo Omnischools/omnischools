@@ -32,6 +32,10 @@ describe("password policy · min-8 + a letter + a number", () => {
     expect(passwordProblem("12345678")).toMatch(/letter/i);
   });
 
+  it("rejects an over-long password (> 128 chars)", () => {
+    expect(passwordProblem("a1".repeat(70))).toMatch(/at most 128/i); // 140 chars, letter+digit present
+  });
+
   it("passwordProblem returns null exactly when the schema passes (they agree)", () => {
     for (const pw of ["short", "12345678", "password", "abcd1234", "", "ok1"]) {
       expect(passwordProblem(pw) === null).toBe(passwordSchema.safeParse(pw).success);

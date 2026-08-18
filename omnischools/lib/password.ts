@@ -17,7 +17,10 @@ export const passwordSchema = z
   .string()
   .min(PASSWORD_MIN, `Password must be at least ${PASSWORD_MIN} characters`)
   .regex(/\p{L}/u, "Password must include at least one letter")
-  .regex(/\d/, "Password must include at least one number");
+  .regex(/\d/, "Password must include at least one number")
+  // Defense-in-depth cap (Sarah): the lone otherwise-unbounded string on these forms. GoTrue rejects
+  // >72-char passwords downstream anyway; this just bounds the input with a friendly message first.
+  .max(128, "Password must be at most 128 characters");
 
 /**
  * The first password-policy problem, or null if the password passes. For the imperative (non-Zod) call
