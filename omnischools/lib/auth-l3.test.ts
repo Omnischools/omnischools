@@ -72,7 +72,7 @@ describe("L3 · forgot-password", () => {
     expect(reset).not.toContain("signInWithPassword");
     // contrast: the Settings self-serve change KEEPS its current-password re-auth
     expect(change).toContain("currentPassword");
-    expect(change).toContain("signInWithPassword(user.phone, currentPassword)");
+    expect(change).toContain("signInWithPassword(user.phone, currentPassword");
   });
 
   it("R276 · completePasswordReset reads amr and refuses a password-only session", () => {

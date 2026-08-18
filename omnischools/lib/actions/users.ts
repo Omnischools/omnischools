@@ -2,6 +2,7 @@
 import { and, eq, gte, isNull, lte, or } from "drizzle-orm";
 import { requireSchool, resolveActor, assertAnyRole } from "@/lib/auth/server";
 import { signInWithPhone } from "@/lib/auth";
+import { captchaEnabled } from "@/lib/captcha";
 import { sendSms } from "@/lib/sms";
 import { USER_ADMIN_ROLES, canManageTarget } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
@@ -143,6 +144,17 @@ export async function initiatePasswordReset(input: { targetUserId: string }): Pr
   });
   if (!gated.ok) return gated;
   if (!gated.phone) return { ok: false, error: "That user has no phone on file to send a code to." };
+
+  // INCR-AUTH-CAPTCHA — this admin-initiated OTP send hits GoTrue's captcha-gated signInWithOtp, but the
+  // TARGET user isn't here to solve a challenge (the admin is the one clicking). When captcha is on, refuse
+  // HONESTLY and point to the user's own captcha-solvable reset — rather than SMS a code GoTrue rejected.
+  if (captchaEnabled()) {
+    return {
+      ok: false,
+      error:
+        "Bot-protection is on, so a reset code can't be sent from here. Ask this user to reset their own password from the sign-in screen (“Forgot password?”).",
+    };
+  }
 
   // Dispatch a one-time code to the target's OWN stored phone; they sign in and set a new password
   // themselves (L2a). The admin never sets or sees a password. Console-degrades with no SMS creds.

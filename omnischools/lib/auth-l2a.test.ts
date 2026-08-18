@@ -14,9 +14,9 @@ const FORM = readCode("components/auth/change-password-form.tsx");
 
 describe("L2a · self change-password action", () => {
   it("L2-1 · re-auths with the current password, THEN updates; current-session only (no target id)", () => {
-    expect(ACTION).toContain("signInWithPassword(user.phone, currentPassword)");
+    expect(ACTION).toContain("signInWithPassword(user.phone, currentPassword");
     expect(ACTION).toContain("updatePassword(newPassword)");
-    expect(ACTION.indexOf("signInWithPassword(user.phone, currentPassword)")).toBeLessThan(
+    expect(ACTION.indexOf("signInWithPassword(user.phone, currentPassword")).toBeLessThan(
       ACTION.indexOf("updatePassword(newPassword)"),
     );
     // the action input is {currentPassword, newPassword} only — no admin/other-account target.
@@ -34,7 +34,7 @@ describe("L2a · self change-password action", () => {
     expect(ACTION).toContain("passwordProblem(newPassword)");
     // scope to changeOwnPassword's own re-auth call (signInWithPassword( also appears in passwordLogin)
     expect(ACTION.indexOf("passwordProblem(newPassword)")).toBeLessThan(
-      ACTION.indexOf("signInWithPassword(user.phone, currentPassword)"),
+      ACTION.indexOf("signInWithPassword(user.phone, currentPassword"),
     );
   });
 
@@ -71,7 +71,9 @@ describe("L2a · self change-password action", () => {
     expect(FORM).toContain("Current password");
     expect(FORM).toContain("New password");
     expect(FORM).toContain("Confirm new password");
-    expect(FORM).toContain("changeOwnPassword({ currentPassword: current, newPassword: next })");
+    expect(FORM).toContain("changeOwnPassword({");
+    expect(FORM).toContain("currentPassword: current");
+    expect(FORM).toContain("newPassword: next");
     expect(FORM).toContain("Passwords don't match.");
     expect((FORM.match(/type="password"/g) ?? []).length).toBe(3);
   });

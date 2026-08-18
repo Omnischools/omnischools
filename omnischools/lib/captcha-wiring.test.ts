@@ -210,3 +210,33 @@ describe("seam (runtime) · the token lands in the Supabase call, absent when un
     );
   });
 });
+
+/* -------------------------------------------------- M1 (Dex) · the 3 other captcha-gated call sites */
+describe("M1 · the non-form captcha-gated callers are handled (completeness)", () => {
+  const CHANGE_FORM = readCode("components/auth/change-password-form.tsx");
+  const USERS_ACTION = readCode("lib/actions/users.ts");
+  const WIZARD = readCode("components/onboarding/wizard.tsx");
+
+  it("changeOwnPassword forwards captchaToken to the re-auth signInWithPassword", () => {
+    const b = body(AUTH_ACTION, "changeOwnPassword");
+    expect(b).toContain("captchaToken?: string");
+    expect(b).toContain("signInWithPassword(user.phone, currentPassword, input?.captchaToken)");
+  });
+
+  it("the change-password form renders the widget, gates missing(), threads the token", () => {
+    expect(CHANGE_FORM).toContain("<CaptchaWidget");
+    expect(CHANGE_FORM).toContain("useCaptcha()");
+    expect(CHANGE_FORM).toContain("captcha.missing()");
+    expect(CHANGE_FORM).toContain("captchaToken: captcha.token");
+  });
+
+  it("initiatePasswordReset refuses honestly when captchaEnabled(), BEFORE the OTP send (no lie-SMS)", () => {
+    const b = body(USERS_ACTION, "initiatePasswordReset");
+    expect(b).toContain("captchaEnabled()");
+    expect(b.indexOf("captchaEnabled()")).toBeLessThan(b.indexOf("signInWithPhone(gated.phone)"));
+  });
+
+  it("the onboarding OTP-finish panel is skipped when captchaEnabled() (routes to the /login card)", () => {
+    expect(WIZARD).toContain("result.otpLive && !captchaEnabled() && <OnboardingOtpFinish");
+  });
+});

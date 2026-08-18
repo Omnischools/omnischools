@@ -24,6 +24,7 @@ import { onboardSchool } from "@/lib/actions/onboarding";
 import { requestOtp, verifyLogin } from "@/lib/actions/auth";
 import { passwordProblem } from "@/lib/password";
 import { CaptchaWidget, useCaptcha } from "@/components/auth/captcha-widget";
+import { captchaEnabled } from "@/lib/captcha";
 
 type Form = Partial<OnboardInput> & { subtype?: SchoolSubtype; confirmPassword?: string };
 
@@ -703,8 +704,9 @@ export function DonePanel({
               we&apos;ll guide you through the rest from a checklist.
             </p>
           </div>
-          {/* When OTP-first is live, the OTP card below is the sign-in action; else link to /login. */}
-          {!result.otpLive && (
+          {/* When OTP-first is live AND captcha is off, the OTP card below is the sign-in action; else
+              link to /login (whose OTP send IS captcha-wired — the onboarding auto-send is not). */}
+          {(!result.otpLive || captchaEnabled()) && (
             <Link
               href="/login?accepted=1"
               className="rounded-lg bg-gold px-6 py-3.5 text-sm font-bold text-navy transition-colors hover:brightness-95"
@@ -716,7 +718,9 @@ export function DonePanel({
       </div>
 
       {/* INCR-AUTH-OTP · auto-sign-in (Option A): verify the phone via OTP → confirms it + lands in /dashboard. */}
-      {result.otpLive && <OnboardingOtpFinish phone={result.adminPhone} />}
+      {/* The onboarding auto-send is NOT captcha-wired (no user interaction before the send), so when
+          captcha is on we skip it and route to /login above, whose OTP send solves a captcha. */}
+      {result.otpLive && !captchaEnabled() && <OnboardingOtpFinish phone={result.adminPhone} />}
 
       <div className="mt-6">
         <div className="mb-3 font-display text-base font-medium text-navy">

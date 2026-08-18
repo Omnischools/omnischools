@@ -18,5 +18,11 @@ Supabase Auth has native CAPTCHA support (Auth → Protection). When enabled, Go
 3. Set **`NEXT_PUBLIC_TURNSTILE_SITE_KEY`** (env) to the site key + add your domain (and `localhost` for testing) to the Turnstile widget's allowed hostnames.
 Do 1→2→3 together: enabling Supabase captcha (step 2) makes GoTrue require a token, and the client only sends one once the site key is set (step 3). With both unset it's fully inert. To switch to hCaptcha instead: pick hCaptcha in step 2, and swap the widget lib + the CSP origin (the seam/token flow is identical).
 
+## The non-form captcha-gated call sites (Dex M1 — completeness)
+Three OTHER callers hit the same captcha-gated GoTrue endpoints and would break once captcha is enabled. Handled so nothing silently no-sends:
+- **`changeOwnPassword`** (self-service, `lib/actions/auth.ts`) — its R264 re-auth `signInWithPassword` is interactive, so the change-password form now renders `<CaptchaWidget>` and threads `captchaToken`. Fully supported with captcha on.
+- **`initiatePasswordReset`** (admin resets a user, `lib/actions/users.ts`) — server-triggered, no target user present to solve a challenge. **Decision: refuse honestly when `captchaEnabled()`** — return an error directing the admin to have the user self-reset at `/reset` (which IS captcha-wired), instead of SMSing a code GoTrue rejected. Admin-triggered phone reset is unavailable while captcha is on; self-reset covers it.
+- **`OnboardingOtpFinish`** (the OTP-first done-panel auto-sign-in) — auto-sends on mount, incompatible with a mandatory pre-send challenge. **Decision: when `captchaEnabled()`, skip the panel and route to `/login`** (whose OTP send is captcha-wired). Only relevant when BOTH `AUTH_OTP_LIVE` and captcha are on.
+
 ## Gate note
 No live demo possible here (dev-bypass makes auth inert + no site key + the running dev server is a different worktree). Verified by source + `tsc`/build/suite; the widget lifecycle is delegated to the maintained `@marsidev/react-turnstile`.

@@ -59,6 +59,7 @@ export async function signOutAction(): Promise<void> {
 export async function changeOwnPassword(input: {
   currentPassword: string;
   newPassword: string;
+  captchaToken?: string;
 }): Promise<{ ok: boolean; error?: string; newSessionId?: string }> {
   const currentPassword = input?.currentPassword ?? "";
   const newPassword = input?.newPassword ?? "";
@@ -68,7 +69,8 @@ export async function changeOwnPassword(input: {
   }
   const user = await requireUser();
   // Prove the current password before changing it (blocks a walk-up attacker on an unlocked session).
-  const reauth = await signInWithPassword(user.phone, currentPassword);
+  // The re-auth hits GoTrue's captcha-gated signInWithPassword, so forward the token (INCR-AUTH-CAPTCHA).
+  const reauth = await signInWithPassword(user.phone, currentPassword, input?.captchaToken);
   if (!reauth.ok) return { ok: false, error: "Current password is incorrect." };
   const res = await updatePassword(newPassword);
   if (!res.ok) return { ok: false, error: res.error ?? "Could not update your password." };
