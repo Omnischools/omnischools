@@ -1,5 +1,9 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 
+// Each test does vi.resetModules() + a fresh dynamic re-import of the module graph; under full-suite
+// loader contention that occasionally exceeds the 5s default. Raise the file's timeout (no DB work here).
+vi.setConfig({ testTimeout: 20_000 });
+
 /**
  * INCR-AUTH-OTP · AUTH-OTP-11 (+ notes for S5) — the OTP-first gate `otpLoginRequired()` and the
  * fail-closed `AUTH_OTP_LIVE` env flag. `env` is parsed once at `@/lib/env` load from `process.env`,

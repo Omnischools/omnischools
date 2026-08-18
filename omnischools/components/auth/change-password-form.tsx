@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { changeOwnPassword } from "@/lib/actions/auth";
+import { passwordProblem } from "@/lib/password";
 import { rekeySnapshots } from "@/lib/score-ledger/pwa-store";
 
 /**
@@ -21,14 +22,15 @@ export function ChangePasswordForm({ sessionId }: { sessionId?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  const tooShort = next.length > 0 && next.length < 8;
+  const pwProblem = next.length > 0 ? passwordProblem(next) : null;
   const mismatch = confirm.length > 0 && next !== confirm;
-  const canSubmit = !!current && next.length >= 8 && next === confirm && !busy;
+  const canSubmit = !!current && !passwordProblem(next) && next === confirm && !busy;
 
   async function submit() {
     setError(null);
     setDone(false);
-    if (next.length < 8) return setError("Password must be at least 8 characters");
+    const problem = passwordProblem(next);
+    if (problem) return setError(problem);
     if (next !== confirm) return setError("Passwords don't match.");
     setBusy(true);
     const res = await changeOwnPassword({ currentPassword: current, newPassword: next });
@@ -92,7 +94,7 @@ export function ChangePasswordForm({ sessionId }: { sessionId?: string }) {
         />
       </div>
 
-      {tooShort && <p className="text-[12px] text-terra">Password must be at least 8 characters.</p>}
+      {pwProblem && <p className="text-[12px] text-terra">{pwProblem}.</p>}
       {mismatch && <p className="text-[12px] text-terra">Passwords don&apos;t match.</p>}
       {error && <p className="text-sm text-terra">{error}</p>}
       {done && (

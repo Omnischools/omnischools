@@ -60,10 +60,9 @@ describe("L3 · forgot-password", () => {
     expect(b).not.toContain("targetUserId");
   });
 
-  it("L3-11 · completePasswordReset enforces min-8", () => {
+  it("L3-11 · completePasswordReset enforces the password policy", () => {
     const b = body(ACTION, "completePasswordReset");
-    expect(b).toContain("newPassword.length < 8");
-    expect(b).toContain("Password must be at least 8 characters");
+    expect(b).toContain("passwordProblem(newPassword)");
   });
 
   it("L3-12 · completePasswordReset requires NO current password (distinct from changeOwnPassword)", () => {

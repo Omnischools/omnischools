@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { passwordSchema } from "@/lib/password";
 
 // Shared onboarding constants/schema/types — importable by both the client wizard
 // and the "use server" action (a "use server" module may only export async functions).
@@ -390,8 +391,8 @@ export const OnboardSchema = z.object({
   adminPhone: z.string().min(7, "Your phone number is required").max(40),
   adminEmail: z.string().email().optional().or(z.literal("")),
   // INCR-33 (Module L / L1) — the owner sets a password at signup (mandatory, R257a), so they can sign
-  // in with either OTP or password. Same policy/message as the invite/accept flow (AcceptSchema min-8).
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  // in with either OTP or password. Shared app-side policy (audit #5): min-8 + a letter + a number.
+  password: passwordSchema,
   // Staff step — who handles billing. "ADMIN" = the admin keeps full billing access
   // (combined); "ACCOUNTANT" = a separate Accountant role, invited below.
   billingHandler: z.enum(["ADMIN", "ACCOUNTANT"]).optional(),

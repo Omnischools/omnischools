@@ -55,10 +55,11 @@ describe("L1 · the signup password step", () => {
     expect((WIZARD.match(/type="password"/g) ?? []).length).toBeGreaterThanOrEqual(2);
   });
 
-  it("L1-5 · min-8 enforced client (wizard) AND server (schema), identical message", () => {
-    expect(WIZARD).toContain("Password must be at least 8 characters");
-    expect(WIZARD).toMatch(/form\.password\.length < 8/);
-    expect(SCHEMA).toContain('password: z.string().min(8, "Password must be at least 8 characters")');
+  it("L1-5 · policy enforced client (wizard) AND server (schema) via the shared passwordProblem/passwordSchema", () => {
+    // Single-sourced in lib/password (audit #5: min-8 + a letter + a number). The behavioural proof is
+    // lib/password.test.ts; here we pin that both the client and the server route through it.
+    expect(WIZARD).toMatch(/passwordProblem\(/);
+    expect(SCHEMA).toContain("password: passwordSchema");
   });
 
   it("L1-6 · confirm-mismatch is blocked", () => {
@@ -67,12 +68,10 @@ describe("L1 · the signup password step", () => {
   });
 
   it("L1-7 · password is MANDATORY (schema required, launch guards empty)", () => {
-    // Required in the schema (not `.optional()`).
-    expect(SCHEMA).not.toMatch(
-      /password: z\.string\(\)\.min\(8, "Password must be at least 8 characters"\)\.optional/,
-    );
-    // Launch cannot proceed with an empty password.
-    expect(WIZARD).toContain("!form.password");
+    // Required in the schema (passwordSchema, not `.optional()`).
+    expect(SCHEMA).toContain("password: passwordSchema");
+    expect(SCHEMA).not.toMatch(/password: passwordSchema\.optional/);
+    // Launch cannot proceed with an empty password: passwordError → passwordProblem("") returns an error.
     expect(WIZARD).toMatch(/identityError\(\) \?\? passwordError\(\)/);
   });
 

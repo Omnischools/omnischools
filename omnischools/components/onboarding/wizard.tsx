@@ -22,6 +22,7 @@ import {
 } from "@/lib/onboarding";
 import { onboardSchool } from "@/lib/actions/onboarding";
 import { requestOtp, verifyLogin } from "@/lib/actions/auth";
+import { passwordProblem } from "@/lib/password";
 
 type Form = Partial<OnboardInput> & { subtype?: SchoolSubtype; confirmPassword?: string };
 
@@ -97,8 +98,8 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
   };
   // Same policy as the invite/accept flow (min-8) + a confirm-match guard (R257b).
   const passwordError = (): string | null => {
-    if (!form.password || form.password.length < 8)
-      return "Password must be at least 8 characters";
+    const problem = passwordProblem(form.password ?? "");
+    if (problem) return problem;
     if (form.password !== form.confirmPassword) return "Passwords don't match.";
     return null;
   };
@@ -619,7 +620,7 @@ function PasswordStep({
 }) {
   const pw = f("password");
   const confirm = f("confirmPassword");
-  const tooShort = pw.length > 0 && pw.length < 8;
+  const pwProblem = pw.length > 0 ? passwordProblem(pw) : null;
   const mismatch = confirm.length > 0 && pw !== confirm;
   return (
     <div>
@@ -630,7 +631,7 @@ function PasswordStep({
         lede="Set a password so you can sign in. You can also sign in with your phone number via a one-time code — your choice each time."
       />
       <div className="max-w-[460px] space-y-4">
-        <Field label="Set a password" req help="At least 8 characters.">
+        <Field label="Set a password" req help="At least 8 characters, with a letter and a number.">
           <input
             className={inputCls(!!pw)}
             type="password"
@@ -650,9 +651,7 @@ function PasswordStep({
             autoComplete="new-password"
           />
         </Field>
-        {tooShort && (
-          <p className="text-[12px] text-terra">Password must be at least 8 characters.</p>
-        )}
+        {pwProblem && <p className="text-[12px] text-terra">{pwProblem}.</p>}
         {mismatch && <p className="text-[12px] text-terra">Passwords don&apos;t match.</p>}
         <div className="rounded-r-lg border-l-[3px] border-gold bg-gold-bg px-4 py-3 text-[12px] leading-relaxed text-navy-2">
           <b className="text-navy">Two ways to sign in.</b> After launch you can use this password
