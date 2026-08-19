@@ -14,6 +14,7 @@ export const STUDENT_IMPORT_HEADERS = [
   "Guardian name",
   "Guardian phone",
   "Relationship (Mother/Father/Guardian)",
+  "Guardian email",
 ];
 
 export const STUDENT_IMPORT_SAMPLE: string[][] = [
@@ -27,8 +28,9 @@ export const STUDENT_IMPORT_SAMPLE: string[][] = [
     "Ama Boateng",
     "0241112222",
     "Mother",
+    "ama.boateng@example.com",
   ],
-  ["Kwame", "Mensah", "Kofi", "M", "2013-09-01", "", "", "", ""],
+  ["Kwame", "Mensah", "Kofi", "M", "2013-09-01", "", "", "", "", ""],
 ];
 
 export type RelationCode = "MOTHER" | "FATHER" | "GUARDIAN" | "OTHER";
@@ -45,6 +47,7 @@ export type StudentRow = {
   guardianName: string;
   guardianPhone: string; // normalised E.164 when valid
   relationship: RelationCode;
+  guardianEmail: string;
   errors: string[];
   warnings: string[];
 };
@@ -127,6 +130,10 @@ export function validateStudentRows(
     if (!guardianName && !guardianPhoneRaw)
       warnings.push("No guardian — parent won't be invited");
 
+    const guardianEmail = get(9);
+    if (guardianEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardianEmail))
+      errors.push("Guardian email is invalid");
+
     return {
       index: i + 1,
       firstName,
@@ -139,6 +146,7 @@ export function validateStudentRows(
       guardianName,
       guardianPhone,
       relationship: normRelation(get(8)),
+      guardianEmail,
       errors,
       warnings,
     };
