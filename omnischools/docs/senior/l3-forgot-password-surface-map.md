@@ -101,7 +101,7 @@ The two paths diverge in shape but share **enumeration-safe copy** — the confi
 *(There is no green success banner at Step 2 — nothing has changed yet; a calm neutral card, per the landing modal's register and archive-recovery's non-alarmist tone.)*
 
 ### Step 3 — Set the new password (NO current-password field)
-Reuse **`change-password-form.tsx`'s New / Confirm** block **minus the "Current password" field** — identity is already proven (OTP verified, or the email token). This is the closest sibling; it already has the min-8 + confirm-match live-validation UX.
+Reuse **`change-password-form.tsx`'s New / Confirm** block **minus the "Current password" field** — identity is already proven (OTP verified, or the email token). This is the closest sibling; it already has the shared `passwordProblem` (min-8 + a letter + a number) + confirm-match live-validation UX. (The shipped build lifts this into a dedicated `components/auth/set-new-password.tsx`.)
 
 | Field / element | Copy | Class / token (verbatim from `change-password-form.tsx`) |
 |---|---|---|
@@ -111,9 +111,9 @@ Reuse **`change-password-form.tsx`'s New / Confirm** block **minus the "Current 
 | Input 1 | placeholder **"At least 8 characters"** | `fieldClass`; `type="password"`; `autoComplete="new-password"` |
 | Label | **"Confirm new password"** | `labelClass` |
 | Input 2 | placeholder **"••••••••"** | `fieldClass`; `type="password"`; `autoComplete="new-password"`; submit-on-Enter |
-| Live validation | too-short: **"Password must be at least 8 characters."**; mismatch: **"Passwords don't match."** | `text-[12px] text-terra` (verbatim strings + tokens from `change-password-form.tsx` L82–83; identical to `accept-form.tsx`) |
-| Button | **"Set new password"** / busy **"Saving…"** | primary button; `disabled` until `next.length >= 8 && next === confirm` |
-| Success | → redirect **`/login?reset=1`** | login card shows a green banner **"Password updated — sign in below."** (mirror the `?accepted=1` banner; add a `reset` branch to `login-form.tsx`'s banner) |
+| Live validation | failing rule via `passwordProblem` (`.`-suffixed): **"Password must be at least 8 characters"** / **"Password must include at least one letter"** / **"Password must include at least one number"** / **"Password must be at most 128 characters"**; mismatch: **"Passwords don't match."** | `text-[12px] text-terra` (from `set-new-password.tsx`; rule single-sourced in `lib/password.ts` — `passwordSchema`/`passwordProblem`, PR #244 — shared with `accept-form.tsx` / `change-password-form.tsx`) |
+| Button | **"Set new password"** / busy **"Saving…"** | primary button; `disabled` until `!passwordProblem(next) && next === confirm` (min-8 + a letter + a number, max-128, and matching) |
+| Success | → redirect **`/login?reset=1`** | login card shows a green banner **"Password updated — sign in with your new password."** (the `reset` branch of `login-form.tsx`'s banner) |
 | Error | server message | `text-sm text-terra` |
 
 **Why no "Current password":** the reset-completion user is anonymous-but-proven (OTP/token), not a signed-in session. So it is `accept-form` shaped (set-from-nothing), **not** `change-password-form` shaped (re-auth the old one). We borrow `change-password-form`'s *New/Confirm* markup because it is the newest and cleanest, but drop `current` and its `signInWithPassword` re-auth.
@@ -137,7 +137,7 @@ Identical palette to the login card & accept-form; every class above is Tailwind
 | **2 Phone (OTP)** | empty 6-digit input | button **"Verifying…"**, `disabled` | wrong/expired code → `text-terra` (**"Invalid code."** verbatim from `verifyLogin`) | session established → Step 3 |
 | **2 Email** | terminal card, nothing to submit | — | — | user leaves for inbox; returns via tokened link → `reset/[token]` renders Step 3 |
 | **2 Email (bad token)** | — | — | invalid/expired token → `accept/[token]`-style guard card: **"This reset link isn't valid or has expired — request a new one."** + **"Go to reset →"** (`text-gold`) | — |
-| **3 Set password** | both fields empty, button `disabled` | button **"Saving…"** | too-short / mismatch inline (`text-[12px] text-terra`); server error `text-sm text-terra` | success → redirect `/login?reset=1` (green banner) |
+| **3 Set password** | both fields empty, button `disabled` | button **"Saving…"** | failing-rule via `passwordProblem` (min-8 + letter + number) / mismatch inline (`text-[12px] text-terra`); server error `text-sm text-terra` | success → redirect `/login?reset=1` (green banner) |
 
 **Enumeration-safety rule (states 1→2):** Step 1 must advance to Step 2 with the **same** confirmation copy **regardless** of whether the handle matches an account. Do not branch the UI on account existence. (Mechanism caveat for the implementer in §7.3.)
 
@@ -170,7 +170,7 @@ Design mapping only; the calls below are the implementer's, but the surfaces + l
 2. **Forgot link placement is authored** — below the password input, above the submit, right-aligned, 12px gold, hover underline (`.forgot`). Port to the **Password tab only** of the live card as a `Link href="/reset"`.
 3. **Both paths requested; phone is primary, email is net-new infra.** Phone reuses live OTP seams end-to-end; email needs `resetPasswordForEmail` + a recovery-token route and only serves accounts with an email on file.
 4. **No "Current password" on the reset-completion step** — identity is OTP/token-proven, so it's `accept-form`-shaped (set from nothing), not `change-password-form`-shaped (re-auth old). Borrow the latter's New/Confirm markup, drop `current` + the re-auth.
-5. **No strength meter, min-8 not min-12.** The archive surface's meter + 12-char rule are the data-export ZIP key — a different concern. The account pattern is meterless min-8; keep it.
+5. **No strength meter; the account rule is min-8 + a letter + a number, not min-12.** The archive surface's meter + 12-char rule are the data-export ZIP key — a different concern. The account pattern is meterless and single-sourced in `lib/password.ts` (`passwordSchema`/`passwordProblem`, PR #244); keep it.
 6. **Enumeration-safe copy** — Step-1→2 confirmation is identical for real and unknown handles; never "no account found." The *mechanism* (Supabase auto-create / rate leak) is a security flag for Sarah (§7.3), not a UI branch.
 7. **Home:** `app/(marketing)/reset/page.tsx` (+ `reset/[token]/page.tsx` for the email landing), unauthenticated, same chrome as `login/` and `accept/`. Success → `/login?reset=1` with a green banner mirroring `?accepted=1`.
 8. **Phone reset overlaps the OTP login tab** — a forgetful user can already sign in via OTP and change the password in Settings (L2a). The phone reset path is a convenience over that existing capability, not new capability; owner's call whether both paths ship at once or email lands later.
