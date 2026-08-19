@@ -402,6 +402,8 @@ export const OnboardSchema = z.object({
   accountantName: z.string().max(160).optional().or(z.literal("")),
   accountantPhone: z.string().max(40).optional().or(z.literal("")),
   accountantEmail: z.string().email().optional().or(z.literal("")),
+  // INCR-AUTH-CAPTCHA — forwarded to Supabase signUp when the native captcha is enabled; UI-only otherwise.
+  captchaToken: z.string().optional(),
 });
 
 export type OnboardInput = z.infer<typeof OnboardSchema>;

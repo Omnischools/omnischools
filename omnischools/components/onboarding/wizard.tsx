@@ -23,6 +23,8 @@ import {
 import { onboardSchool } from "@/lib/actions/onboarding";
 import { requestOtp, verifyLogin } from "@/lib/actions/auth";
 import { passwordProblem } from "@/lib/password";
+import { CaptchaWidget, useCaptcha } from "@/components/auth/captcha-widget";
+import { captchaEnabled } from "@/lib/captcha";
 
 type Form = Partial<OnboardInput> & { subtype?: SchoolSubtype; confirmPassword?: string };
 
@@ -55,6 +57,7 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Extract<OnboardResult, { ok: true }> | null>(null);
+  const captcha = useCaptcha();
 
   const set = (k: keyof Form, v: string) => setForm((prev) => ({ ...prev, [k]: v }));
   const f = (k: keyof Form) => (form[k] as string) ?? "";
@@ -121,14 +124,18 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
     // Defensive re-check of both steps; onboardSchool re-validates everything server-side too.
     const err = identityError() ?? passwordError();
     if (err) return setError(err);
+    if (captcha.missing()) return setError("Please complete the verification below.");
     setSubmitting(true);
     setError(null);
-    const res = await onboardSchool(form);
+    const res = await onboardSchool({ ...form, captchaToken: captcha.token || undefined });
     setSubmitting(false);
     if (res.ok) {
       setResult(res);
       setPhase("done");
-    } else setError(res.error);
+    } else {
+      captcha.reset();
+      setError(res.error);
+    }
   }
 
   const schoolInitial = (form.schoolName?.trim()?.[0] ?? "S").toUpperCase();
@@ -200,7 +207,12 @@ export function OnboardingWizard({ initialType }: { initialType?: CardId }) {
               onChangeType={backToType}
             />
           ) : (
-            <PasswordStep form={form} f={f} set={set} />
+            <>
+              <PasswordStep form={form} f={f} set={set} />
+              <div className="mt-4 max-w-[460px]">
+                <CaptchaWidget onToken={captcha.setToken} resetKey={captcha.resetKey} />
+              </div>
+            </>
           )}
 
           {error && <p className="mt-4 text-sm text-terra">{error}</p>}
@@ -692,8 +704,9 @@ export function DonePanel({
               we&apos;ll guide you through the rest from a checklist.
             </p>
           </div>
-          {/* When OTP-first is live, the OTP card below is the sign-in action; else link to /login. */}
-          {!result.otpLive && (
+          {/* When OTP-first is live AND captcha is off, the OTP card below is the sign-in action; else
+              link to /login (whose OTP send IS captcha-wired — the onboarding auto-send is not). */}
+          {(!result.otpLive || captchaEnabled()) && (
             <Link
               href="/login?accepted=1"
               className="rounded-lg bg-gold px-6 py-3.5 text-sm font-bold text-navy transition-colors hover:brightness-95"
@@ -705,7 +718,9 @@ export function DonePanel({
       </div>
 
       {/* INCR-AUTH-OTP · auto-sign-in (Option A): verify the phone via OTP → confirms it + lands in /dashboard. */}
-      {result.otpLive && <OnboardingOtpFinish phone={result.adminPhone} />}
+      {/* The onboarding auto-send is NOT captcha-wired (no user interaction before the send), so when
+          captcha is on we skip it and route to /login above, whose OTP send solves a captcha. */}
+      {result.otpLive && !captchaEnabled() && <OnboardingOtpFinish phone={result.adminPhone} />}
 
       <div className="mt-6">
         <div className="mb-3 font-display text-base font-medium text-navy">

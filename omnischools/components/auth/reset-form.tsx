@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { requestOtp, requestPasswordReset, verifyResetOtp } from "@/lib/actions/auth";
 import { SetNewPassword } from "@/components/auth/set-new-password";
+import { CaptchaWidget, useCaptcha } from "@/components/auth/captcha-widget";
 
 /**
  * INCR-36 (L3) — the reset flow (INCR-36 · Module L / L3). Two prove-identity paths (owner: BOTH), NOT
@@ -29,30 +30,36 @@ export function ResetForm() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const captcha = useCaptcha();
 
   async function sendCode() {
+    if (captcha.missing()) return setError("Please complete the verification below.");
     setBusy(true);
     setError(null);
-    const res = await requestOtp(phone);
+    const res = await requestOtp(phone, captcha.token || undefined);
     setBusy(false);
     if (res.ok) setStep("otp");
-    else setError(res.error ?? "Could not send code.");
+    else {
+      captcha.reset();
+      setError(res.error ?? "Could not send code.");
+    }
   }
 
   async function verify() {
     setBusy(true);
     setError(null);
-    const res = await verifyResetOtp(phone, otp);
+    const res = await verifyResetOtp(phone, otp); // verify is not captcha-gated
     setBusy(false);
     if (res.ok) setStep("setpw");
     else setError(res.error ?? "Invalid code.");
   }
 
   async function sendLink() {
+    if (captcha.missing()) return setError("Please complete the verification below.");
     setBusy(true);
     setError(null);
     // NEUTRAL-ALWAYS — the action never surfaces existence; we always advance to the same card.
-    await requestPasswordReset({ email });
+    await requestPasswordReset({ email, captchaToken: captcha.token || undefined });
     setBusy(false);
     setStep("sent");
   }
@@ -105,6 +112,7 @@ export function ResetForm() {
                 onChange={(e) => setPhone(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendCode()}
               />
+              <CaptchaWidget onToken={captcha.setToken} resetKey={captcha.resetKey} />
               <button onClick={sendCode} disabled={busy} className={primaryBtn}>
                 {busy ? "Sending…" : "Send code"}
               </button>
@@ -119,6 +127,7 @@ export function ResetForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendLink()}
               />
+              <CaptchaWidget onToken={captcha.setToken} resetKey={captcha.resetKey} />
               <button onClick={sendLink} disabled={busy} className={primaryBtn}>
                 {busy ? "Sending…" : "Send reset link"}
               </button>

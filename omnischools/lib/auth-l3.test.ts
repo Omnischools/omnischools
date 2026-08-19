@@ -72,7 +72,7 @@ describe("L3 · forgot-password", () => {
     expect(reset).not.toContain("signInWithPassword");
     // contrast: the Settings self-serve change KEEPS its current-password re-auth
     expect(change).toContain("currentPassword");
-    expect(change).toContain("signInWithPassword(user.phone, currentPassword)");
+    expect(change).toContain("signInWithPassword(user.phone, currentPassword");
   });
 
   it("R276 · completePasswordReset reads amr and refuses a password-only session", () => {
@@ -113,8 +113,8 @@ describe("L3 · forgot-password", () => {
 
   it("L3 · the reset flow reuses the login-card idioms + set-new-password has no current-password field", () => {
     // both prove-identity paths are offered (owner: BOTH), not auto-routed
-    expect(RESET_FORM).toContain('requestOtp(phone)');
-    expect(RESET_FORM).toContain("requestPasswordReset({ email })");
+    expect(RESET_FORM).toContain("requestOtp(phone,"); // + optional captchaToken (INCR-AUTH-CAPTCHA)
+    expect(RESET_FORM).toContain("requestPasswordReset({ email,");
     expect(RESET_FORM).toContain("verifyResetOtp(phone, otp)");
     // the OTP input reuses the login-card mono treatment
     expect(RESET_FORM).toContain("text-center font-mono text-lg tracking-[0.3em]");

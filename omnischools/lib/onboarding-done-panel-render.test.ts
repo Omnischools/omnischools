@@ -92,7 +92,7 @@ describe("AUTH-OTP-06 · OTP card auto-sends once on mount and verifies via veri
   const WIZARD = readCode("components/onboarding/wizard.tsx");
 
   it("the done phase renders OnboardingOtpFinish exactly when result.otpLive", () => {
-    expect(WIZARD).toContain("result.otpLive && <OnboardingOtpFinish");
+    expect(WIZARD).toContain("result.otpLive && !captchaEnabled() && <OnboardingOtpFinish");
     // and the plain Sign-in button is the else case (gated on NOT otpLive)
     expect(WIZARD).toContain("!result.otpLive");
   });

@@ -190,6 +190,7 @@ export async function revokeInvite(input: unknown): Promise<Result> {
 const AcceptSchema = z.object({
   token: z.string().min(6),
   password: passwordSchema, // shared app-side policy (audit #5): min-8 + a letter + a number
+  captchaToken: z.string().optional(), // INCR-AUTH-CAPTCHA — forwarded to Supabase signUp when enabled
 });
 
 export async function acceptInvite(input: unknown): Promise<Result> {
@@ -197,7 +198,7 @@ export async function acceptInvite(input: unknown): Promise<Result> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
-  const { token, password } = parsed.data;
+  const { token, password, captchaToken } = parsed.data;
 
   // 1) Look up the invite (no session yet → bypass RLS).
   const found = await withoutTenantScope(async (tx) => {
@@ -237,7 +238,7 @@ export async function acceptInvite(input: unknown): Promise<Result> {
   if (!inv.phone) return { ok: false, error: "This invite has no phone on file." };
 
   // 2) Create the password account (Supabase) — outside the DB transaction.
-  const auth = await createPasswordUser(inv.phone, password);
+  const auth = await createPasswordUser(inv.phone, password, captchaToken);
   if (!auth.ok) return { ok: false, error: auth.error };
 
   // 3) Link the ref_user + role assignment, mark accepted (bypass RLS).

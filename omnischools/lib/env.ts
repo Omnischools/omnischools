@@ -19,6 +19,11 @@ const schema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 
+  // Cloudflare Turnstile site key (INCR-AUTH-CAPTCHA, audit #4). PUBLIC (client). Its PRESENCE enables
+  // the captcha widget + token flow; unset ⇒ inert (no widget, no token). Coordinate with the Supabase
+  // Auth → Protection captcha toggle + secret (see docs/senior/incr-auth-captcha-plan.md).
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
+
   // Claude Vision — score-ledger scan extraction (Path B / Item 4). Server-only (NOT
   // NEXT_PUBLIC): the base64 photo is sent to Claude from our own API route, never the
   // client. Absent in dev/CI → the extractor falls back to the deterministic stub.

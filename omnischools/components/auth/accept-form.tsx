@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { acceptInvite } from "@/lib/actions/invites";
 import { passwordProblem } from "@/lib/password";
+import { CaptchaWidget, useCaptcha } from "@/components/auth/captcha-widget";
 
 const fieldClass =
   "w-full rounded-md border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-navy outline-none transition-colors focus:border-gold focus:bg-surface";
@@ -14,6 +15,7 @@ export function AcceptForm({ token, contact }: { token: string; contact: string 
   const [confirm, setConfirm] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const captcha = useCaptcha();
 
   async function submit() {
     const problem = passwordProblem(password);
@@ -25,12 +27,19 @@ export function AcceptForm({ token, contact }: { token: string; contact: string 
       setError("Passwords don't match.");
       return;
     }
+    if (captcha.missing()) {
+      setError("Please complete the verification below.");
+      return;
+    }
     setSaving(true);
     setError(null);
-    const res = await acceptInvite({ token, password });
+    const res = await acceptInvite({ token, password, captchaToken: captcha.token || undefined });
     setSaving(false);
     if (res.ok) router.push("/login?accepted=1");
-    else setError(res.error ?? "Could not complete sign-up.");
+    else {
+      captcha.reset();
+      setError(res.error ?? "Could not complete sign-up.");
+    }
   }
 
   return (
@@ -62,6 +71,7 @@ export function AcceptForm({ token, contact }: { token: string; contact: string 
         />
       </div>
       {error && <p className="text-sm text-terra">{error}</p>}
+      <CaptchaWidget onToken={captcha.setToken} resetKey={captcha.resetKey} />
       <button
         onClick={submit}
         disabled={saving}
