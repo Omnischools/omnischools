@@ -282,6 +282,26 @@ describe("requireSchool · non-staff branch routes a board-only session to /boar
   });
 });
 
+// ── BoardNav · the shell nav stays inside the /board* confinement (#301) ────────────────────────
+describe("BoardNav · every nav href is confined to /board* (#301)", () => {
+  // Source-assertion (the nav is a client component with usePathname — no render harness here). The
+  // read-only board shell is path-confined by requireBoard/pathAllowedForBoard; its nav must NEVER
+  // link OUT to a staff surface. If someone adds `{ href: "/dashboard", … }`, this reds.
+  const src = readFileSync(resolve(cwd(), "components/board/board-nav.tsx"), "utf8");
+  const hrefs = [...src.matchAll(/href:\s*"([^"]+)"/g)].map((m) => m[1]);
+
+  it("declares exactly the two board surfaces (Overview /board, Account /board/account)", () => {
+    expect(hrefs).toEqual(["/board", "/board/account"]);
+  });
+
+  it("no href escapes /board — and each is admitted by pathAllowedForBoard", () => {
+    for (const href of hrefs) {
+      expect(href === "/board" || href.startsWith("/board/"), href).toBe(true);
+      expect(pathAllowedForBoard(href), href).toBe(true);
+    }
+  });
+});
+
 // ── GOV2-14/15 · landing honesty (pure boardTile helper) ────────────────────────────────────────
 describe("GOV2-14/15 · boardTile honours the omit-not-fake convention", () => {
   it("GOV2-14 · a NOT_CAPTURED arm renders its reason and NEVER a number (value fn is not called)", () => {
