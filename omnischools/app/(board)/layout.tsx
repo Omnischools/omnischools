@@ -1,5 +1,6 @@
 import { requireBoard } from "@/lib/auth/server";
 import { SignOutButton } from "@/components/app/sign-out-button";
+import { BoardNav } from "@/components/board/board-nav";
 
 /**
  * The read-only BOARD/DIRECTOR shell (GOV-2 / R333) — its OWN route group, deliberately NOT the staff
@@ -20,6 +21,7 @@ export default async function BoardLayout({ children }: { children: React.ReactN
           <div className="font-display text-[15px] font-medium text-navy">{school.name}</div>
           <div className="text-[11px] text-navy-3">Board overview · read-only</div>
         </div>
+        <BoardNav />
         <SignOutButton />
       </header>
       <main className="mx-auto max-w-[980px] px-7 pb-9 pt-6">{children}</main>

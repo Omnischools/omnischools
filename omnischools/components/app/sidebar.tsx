@@ -26,12 +26,14 @@ import {
   HeartHandshake,
   Presentation,
   Landmark,
+  LineChart,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   isFinanceOnly,
   hasAnyRole,
+  INSIGHTS_READ_ROLES,
   SENIOR_LEDGER_ROLES,
   SENIOR_MANAGEMENT_ROLES,
   BOARDING_ROLES,
@@ -57,6 +59,14 @@ const NAV: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: "/inbox", label: "Inbox", Icon: MessageSquare },
   { href: "/settings", label: "Settings", Icon: Settings },
 ];
+
+/**
+ * Directors' Insights — the consolidated director/management analytics dashboard (#301). A role-gated
+ * TOP-LEVEL item (ALL tiers, not senior-only), shown only to INSIGHTS_READ_ROLES (Admin / Headmaster /
+ * Proprietor) — mirrors the page's own `requireSchoolRole(INSIGHTS_READ_ROLES)` so the link never
+ * dangles for a role that can't open it. Inserted right after Reports (analytics cluster).
+ */
+const INSIGHTS_ITEM = { href: "/insights", label: "Insights", Icon: LineChart };
 
 const TIER: Record<string, string> = {
   BASIC: "Basic",
@@ -212,12 +222,16 @@ export function AppSidebar({
           : [n],
       )
     : NAV;
+  // Directors (Admin/Headmaster/Proprietor) also get the Insights analytics dashboard, after Reports.
+  const withInsights = hasAnyRole(user.roles, INSIGHTS_READ_ROLES)
+    ? fullNav.flatMap((n) => (n.href === "/reports" ? [n, INSIGHTS_ITEM] : [n]))
+    : fullNav;
   // Finance-only staff see a billing-focused nav; everyone else sees the full set.
   const nav = isFinanceOnly(user.roles)
     ? FINANCE_NAV_ORDER.map((href) => NAV.find((n) => n.href === href)).filter(
         (n): n is (typeof NAV)[number] => !!n,
       )
-    : fullNav;
+    : withInsights;
   const roleLabel = user.roles[0] ? titleCase(user.roles[0]) : "";
 
   return (
