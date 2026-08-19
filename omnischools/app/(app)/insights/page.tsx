@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { requireSchoolRole } from "@/lib/auth/server";
 import { INSIGHTS_READ_ROLES } from "@/lib/access";
-import { getDirectorsInsights, type DirectorsInsights } from "@/lib/insights/insights-data";
+import { getDirectorsInsights, censusNudge, type DirectorsInsights } from "@/lib/insights/insights-data";
 import type {
   AttendanceArm,
   EnrolmentArm,
@@ -79,6 +79,16 @@ export default async function InsightsPage({
           </h1>
           <p className="mt-1 text-[13px] text-navy-2">{termLabel} · consolidated director dashboard</p>
         </div>
+        {/* Board-pack PDF (§17-F) — the SAME aggregate governance pack the board gets (GOV-5), re-gated for
+            directors. Streams the on-screen term; lives at /api so the download convention holds. */}
+        <a
+          href={`/api/insights/board-pack${rollup.period?.periodId ? `?periodId=${rollup.period.periodId}` : ""}`}
+          target="_blank"
+          rel="noopener"
+          className="rounded-md border border-border-2 bg-surface px-3 py-1.5 text-xs font-semibold text-navy hover:bg-bg print:hidden"
+        >
+          Board pack (PDF)
+        </a>
       </div>
 
       {/* ── Period selector (verbatim board) ── */}
@@ -225,8 +235,7 @@ const DOT: Record<ActionSeverity, string> = {
 /**
  * The conditional action rows — each rendered ONLY when its condition is genuinely true (omit-not-fake:
  * an absent problem is absent, never a green "all good" row). Every row is a school-wide count/amount or
- * a subject count — NEVER a per-student list. Deferred for v1 (no cheap signal / needs its own gated
- * route): the "Census not filed" row (§17-D) and the "Export board pack" button (§17-F).
+ * a subject count — NEVER a per-student list.
  */
 function buildAttention(d: DirectorsInsights, termLabel: string): ActionItem[] {
   const items: ActionItem[] = [];
@@ -287,6 +296,19 @@ function buildAttention(d: DirectorsInsights, termLabel: string): ActionItem[] {
       dot: "terra",
       label: "Senior readiness at risk",
       value: `${sen.data.subjectsAtRisk} subject${sen.data.subjectsAtRisk === 1 ? "" : "s"} at risk for STPSHS · ${sen.data.subjectsPartial} partial`,
+    });
+  }
+
+  // GES annual census — DRAFT (warn) or not-started (navy-2), not yet filed (§17-D, Kofi's ruling).
+  // NONE holds through an early-year grace window; DRAFT is exempt. Suppressed when no year is configured.
+  const nudge = censusNudge(d.censusFiling, rollup.terms, new Date().toISOString().slice(0, 10));
+  if (nudge) {
+    items.push({
+      key: "census",
+      href: "/reports/statutory/generate-annual-census",
+      dot: nudge.dot,
+      label: "GES annual census",
+      value: nudge.value,
     });
   }
 

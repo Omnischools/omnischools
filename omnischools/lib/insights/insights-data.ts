@@ -13,6 +13,7 @@ import {
   type SubjectPerformance,
 } from "@/lib/reports/subject-performance-data";
 import { getCensusEnrolment, type CensusEnrolment } from "@/lib/reports/census-enrolment-data";
+import { getAnnualCensusStatus, type CensusFilingStatus } from "@/lib/reports/census/filing-status";
 
 /**
  * INS · the Directors' Insights composition seam. Server-only, ZERO SQL beyond the readers it awaits
@@ -43,6 +44,11 @@ export type DirectorsInsights = {
   census: CensusEnrolment;
   /** Attendance folded by year-group; empty when the attendance arm is not CAPTURED. */
   attendanceByLevel: InsightsAttendanceLevelRow[];
+  /**
+   * This year's ANNUAL GES census filing state (INS §17-D nudge). `null` when no academic year is
+   * configured (the nudge can't name a year, so it's suppressed rather than fabricated).
+   */
+  censusFiling: { academicYear: string; status: CensusFilingStatus } | null;
 };
 
 /**
@@ -83,6 +89,61 @@ export function foldAttendanceByLevel(
     .sort((x, y) => compareLevelLabel(x.level, y.level));
 }
 
+/** The §17-D census attention row's severity + copy (Kofi's ruling); `dot` is a subset of the panel's. */
+export type CensusNudge = { dot: "warn" | "navy-2"; value: string };
+
+/**
+ * Days after a school year opens before the "not started" (NONE) census nudge appears. Ghana's annual
+ * GES/EMIS return is typically due a few weeks after schools reopen, so a school in the first weeks of a
+ * new year is not yet late — we hold the nudge through this grace window rather than nag from day one
+ * (OC-CENSUS-NUDGE-WINDOW, owner-chosen: grace, ~6 weeks). We do NOT model a hardcoded GES date; the
+ * window is a tunable offset from the year's own opening (the first term's `startsOn`), so it survives
+ * calendar changes. A started-but-unsubmitted DRAFT is EXEMPT — "finish what you started" is fair the
+ * moment the year is underway.
+ */
+export const CENSUS_NUDGE_GRACE_DAYS = 42;
+
+/** Add whole days to an ISO "YYYY-MM-DD" date, returning ISO (UTC math; Ghana is GMT so this is the local day). */
+const addDaysIso = (iso: string, days: number): string =>
+  new Date(new Date(`${iso}T00:00:00Z`).getTime() + days * 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * PURE decision for the "GES annual census" attention row (§17-D, Kofi's ruling). Returns the row's
+ * severity + copy, or `null` when no nudge is due:
+ *   • COMPLETED (filed) or no filing state (no academic year) → null (omit-not-fake; never a "filed" row).
+ *   • the resolved academic year hasn't opened yet (its earliest term's `startsOn > today`) → null — a
+ *     pre-configured future year is not yet outstanding (AC-5), so we don't nag prematurely.
+ *   • NONE still within the early-year grace window (`< opening + CENSUS_NUDGE_GRACE_DAYS`) → null.
+ * Otherwise: DRAFT → warn ("finish it", grace-EXEMPT); NONE past the window → navy-2 (gentlest).
+ * `today` is "YYYY-MM-DD" (compared lexically against the ISO `startsOn`, matching resolveSelectedTerm).
+ */
+export function censusNudge(
+  filing: { academicYear: string; status: CensusFilingStatus } | null,
+  terms: readonly { academicYear: string; startsOn: string }[],
+  today: string,
+): CensusNudge | null {
+  if (!filing || filing.status === "COMPLETED") return null;
+  // The year's opening = the earliest term start of that academic year (ISO date strings sort by date).
+  const opening = terms
+    .filter((t) => t.academicYear === filing.academicYear)
+    .map((t) => t.startsOn)
+    .sort()[0];
+  if (!opening || opening > today) return null; // year hasn't opened → not yet outstanding (AC-5)
+  if (filing.status === "DRAFT") {
+    // Grace-exempt: a saved draft should be finished regardless of the early-year window.
+    return {
+      dot: "warn",
+      value: `Draft saved for ${filing.academicYear} — review and complete it to file the return.`,
+    };
+  }
+  // NONE: hold through the honest early-year filing window, then surface it gently.
+  if (today < addDaysIso(opening, CENSUS_NUDGE_GRACE_DAYS)) return null;
+  return {
+    dot: "navy-2",
+    value: `Not started for ${filing.academicYear} — this year's return is not yet filed.`,
+  };
+}
+
 export async function getDirectorsInsights(
   schoolId: string,
   opts: { periodId?: string } = {},
@@ -106,5 +167,13 @@ export async function getDirectorsInsights(
       ? foldAttendanceByLevel(rollup.attendance.data.byClass, levelByClassId)
       : [];
 
-  return { rollup, classPerf, subjectPerf, levelPerf, census, attendanceByLevel };
+  // One cheap indexed lookup on the existing census_return table (depends on the resolved period, so it
+  // can't join the Promise.all above). Suppressed when no academic year is configured — the nudge would
+  // have no year to name.
+  const academicYear = rollup.period?.academicYear ?? null;
+  const censusFiling = academicYear
+    ? { academicYear, status: await getAnnualCensusStatus(schoolId, academicYear) }
+    : null;
+
+  return { rollup, classPerf, subjectPerf, levelPerf, census, attendanceByLevel, censusFiling };
 }

@@ -18,7 +18,7 @@ import type { AttendanceClassRow } from "@/lib/rollup/school-rollup";
  */
 vi.mock("@/lib/db/rls", () => ({ withSchool: vi.fn() }));
 
-const { foldAttendanceByLevel } = await import("./insights-data");
+const { foldAttendanceByLevel, censusNudge } = await import("./insights-data");
 
 const z = () => ({ present: 0, late: 0, excused: 0, medical: 0, absent: 0 });
 const clsRow = (
@@ -76,6 +76,69 @@ describe("foldAttendanceByLevel · lossless integer fold to year-group (INS-14)"
     for (const r of rows) {
       expect(Object.keys(r).sort()).toEqual(["counts", "level", "marked", "rate"]);
     }
+  });
+});
+
+/* ── §17-D: the "GES annual census" attention row (Kofi's ruling) ── */
+
+describe("censusNudge · GES annual census attention row (§17-D)", () => {
+  // 2025/26 opens 2025-09-01; with a 42-day grace the NONE nudge starts on 2025-10-13.
+  const started = [
+    { academicYear: "2025/26", startsOn: "2025-09-01" },
+    { academicYear: "2025/26", startsOn: "2026-01-06" },
+  ];
+  const WELL_AFTER = "2026-01-15"; // long past the grace window
+
+  it("COMPLETED → no row (omit-not-fake; never a 'filed' row) [AC-1]", () => {
+    expect(censusNudge({ academicYear: "2025/26", status: "COMPLETED" }, started, WELL_AFTER)).toBeNull();
+  });
+
+  it("NONE past the grace window → navy-2 'not started' row [AC-2]", () => {
+    const n = censusNudge({ academicYear: "2025/26", status: "NONE" }, started, WELL_AFTER);
+    expect(n).toEqual({
+      dot: "navy-2",
+      value: "Not started for 2025/26 — this year's return is not yet filed.",
+    });
+  });
+
+  it("DRAFT once the year is underway → warn 'complete it' row [AC-3]", () => {
+    const n = censusNudge({ academicYear: "2025/26", status: "DRAFT" }, started, WELL_AFTER);
+    expect(n).toEqual({
+      dot: "warn",
+      value: "Draft saved for 2025/26 — review and complete it to file the return.",
+    });
+  });
+
+  it("not-started year (all its terms start after today) → no premature row [AC-5]", () => {
+    const future = [{ academicYear: "2026/27", startsOn: "2026-09-01" }];
+    expect(censusNudge({ academicYear: "2026/27", status: "NONE" }, future, WELL_AFTER)).toBeNull();
+    // …even a DRAFT waits until the year is underway.
+    expect(censusNudge({ academicYear: "2026/27", status: "DRAFT" }, future, WELL_AFTER)).toBeNull();
+  });
+
+  it("no filing state (no academic year configured) → no row [AC-6]", () => {
+    expect(censusNudge(null, started, WELL_AFTER)).toBeNull();
+  });
+
+  it("keys only on ANNUAL status + year — the value carries no PII, only the year string [AC-8]", () => {
+    const n = censusNudge({ academicYear: "2025/26", status: "NONE" }, started, WELL_AFTER);
+    expect(n?.value).toContain("2025/26");
+    expect(n?.value).not.toMatch(/\d{4}-\d{2}-\d{2}/); // no raw dates/DOB leaked
+  });
+
+  // ── the early-year grace window (OC-CENSUS-NUDGE-WINDOW: 6 weeks / 42 days from opening) ──
+  it("NONE inside the grace window (day 41) → silent — a new year isn't yet late [grace]", () => {
+    expect(censusNudge({ academicYear: "2025/26", status: "NONE" }, started, "2025-10-12")).toBeNull();
+  });
+
+  it("NONE on the day the grace elapses (day 42, 2025-10-13) → navy-2 fires [grace boundary]", () => {
+    const n = censusNudge({ academicYear: "2025/26", status: "NONE" }, started, "2025-10-13");
+    expect(n?.dot).toBe("navy-2");
+  });
+
+  it("DRAFT is grace-EXEMPT — fires from the moment the year is underway, inside the window [grace]", () => {
+    const n = censusNudge({ academicYear: "2025/26", status: "DRAFT" }, started, "2025-09-15");
+    expect(n?.dot).toBe("warn");
   });
 });
 
