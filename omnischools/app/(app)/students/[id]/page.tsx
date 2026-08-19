@@ -578,6 +578,7 @@ export default async function StudentDetailPage(props: { params: Promise<{ id: s
                     {g.name} <span className="text-navy-3">· {cap(g.relationship)}</span>
                   </div>
                   <div className="font-mono text-xs text-navy-3">{g.phone}</div>
+                  {g.email && <div className="text-xs text-navy-3">{g.email}</div>}
                 </div>
                 <div className="flex items-center gap-3">
                   {g.isPrimary && (

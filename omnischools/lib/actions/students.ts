@@ -31,6 +31,7 @@ const CreateStudentSchema = z.object({
   guardianName: z.string().max(160).optional().or(z.literal("")),
   guardianPhone: z.string().max(40).optional().or(z.literal("")),
   guardianRelation: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("GUARDIAN"),
+  guardianEmail: z.string().max(160).email("Enter a valid guardian email address.").optional().or(z.literal("")),
 });
 
 export type CreateStudentResult =
@@ -81,6 +82,7 @@ export async function createStudent(input: unknown): Promise<CreateStudentResult
           name: d.guardianName,
           relationship: d.guardianRelation,
           phone: normalizeGhanaPhone(d.guardianPhone),
+          email: d.guardianEmail || null,
           isPrimary: true,
         });
       }
@@ -119,6 +121,7 @@ const UpdateStudentSchema = z.object({
   guardianName: z.string().max(160).optional().or(z.literal("")),
   guardianPhone: z.string().max(40).optional().or(z.literal("")),
   guardianRelation: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("GUARDIAN"),
+  guardianEmail: z.string().max(160).email("Enter a valid guardian email address.").optional().or(z.literal("")),
   // Health & emergency record (all optional)
   bloodGroup: z.string().max(8).optional().or(z.literal("")),
   allergies: z.string().max(1000).optional().or(z.literal("")),
@@ -186,7 +189,7 @@ export async function updateStudent(input: unknown): Promise<CreateStudentResult
         if (primary) {
           await tx
             .update(studentGuardians)
-            .set({ name: d.guardianName, phone, relationship: d.guardianRelation })
+            .set({ name: d.guardianName, phone, relationship: d.guardianRelation, email: d.guardianEmail || null })
             .where(eq(studentGuardians.id, primary.id));
         } else {
           await tx.insert(studentGuardians).values({
@@ -195,6 +198,7 @@ export async function updateStudent(input: unknown): Promise<CreateStudentResult
             name: d.guardianName,
             relationship: d.guardianRelation,
             phone,
+            email: d.guardianEmail || null,
             isPrimary: true,
           });
         }
@@ -262,6 +266,7 @@ const ImportRowSchema = z.object({
   guardianName: z.string().max(160).optional().or(z.literal("")),
   guardianPhone: z.string().max(40).optional().or(z.literal("")),
   guardianRelation: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("GUARDIAN"),
+  guardianEmail: z.string().max(160).email("Enter a valid guardian email address.").optional().or(z.literal("")),
 });
 const ImportStudentsSchema = z.object({
   rows: z.array(ImportRowSchema).min(1, "No rows to import").max(1000),
@@ -314,6 +319,7 @@ export async function importStudents(input: unknown): Promise<ImportStudentsResu
             name: r.guardianName,
             relationship: r.guardianRelation,
             phone: normalizeGhanaPhone(r.guardianPhone),
+            email: r.guardianEmail || null,
             isPrimary: true,
           });
         }

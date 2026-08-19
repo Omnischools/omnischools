@@ -67,6 +67,7 @@ export default async function EditStudentPage(props: { params: Promise<{ id: str
                 name: guardian.name,
                 phone: guardian.phone,
                 relationship: guardian.relationship,
+                email: guardian.email,
               }
             : null
         }
