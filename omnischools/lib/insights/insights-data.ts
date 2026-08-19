@@ -14,6 +14,7 @@ import {
 } from "@/lib/reports/subject-performance-data";
 import { getCensusEnrolment, type CensusEnrolment } from "@/lib/reports/census-enrolment-data";
 import { getAnnualCensusStatus, type CensusFilingStatus } from "@/lib/reports/census/filing-status";
+import { boardGhs } from "@/lib/board/tiles";
 
 /**
  * INS · the Directors' Insights composition seam. Server-only, ZERO SQL beyond the readers it awaits
@@ -176,4 +177,96 @@ export async function getDirectorsInsights(
     : null;
 
   return { rollup, classPerf, subjectPerf, levelPerf, census, attendanceByLevel, censusFiling };
+}
+
+/* ───────────────────────────── "Needs attention" derivation ───────────────────────────── */
+
+export type ActionSeverity = "terra" | "warn" | "navy-2";
+/** A single attention signal. `href` is consumed ONLY by `/insights` (linked); `/board` renders it
+ *  link-free (a board member is confined to `/board*`, so a link to /billing etc. is a dead end). Every
+ *  value is a school-wide count/amount or a subject count — NEVER a per-student list (aggregate-only). */
+export type ActionItem = { key: string; href: string; dot: ActionSeverity; label: string; value: string };
+
+/**
+ * The conditional attention rows — each pushed ONLY when its condition is genuinely true (omit-not-fake:
+ * an absent problem is absent, never a green "all good" row). Sorted terra → warn → navy-2. Shared by
+ * `/insights` (rendered as action links) and `/board` (rendered link-free); the derivation is identical.
+ */
+export function buildAttention(d: DirectorsInsights, termLabel: string): ActionItem[] {
+  const items: ActionItem[] = [];
+  const { rollup, classPerf } = d;
+
+  const fees = rollup.feeCollections;
+  if (fees.status === "CAPTURED" && fees.data.outstanding > 0) {
+    items.push({
+      key: "fees",
+      href: "/billing",
+      dot: fees.data.collectionRate < 60 ? "terra" : "warn",
+      label: "Outstanding fees",
+      value: `${boardGhs(fees.data.outstanding)} outstanding · ${fees.data.collectionRate}% collected`,
+    });
+  }
+
+  // Ungraded classes — Basic tier only; count from getClassPerformance (§17-E), not the rollup arm.
+  if (rollup.performance.basic.status !== "NOT_APPLICABLE") {
+    const ungraded = classPerf.totalClasses - classPerf.classesGraded;
+    if (ungraded > 0) {
+      items.push({
+        key: "ungraded",
+        href: "/gradebook",
+        dot: "warn",
+        label: "Ungraded classes",
+        value: `${ungraded} of ${classPerf.totalClasses} ${
+          classPerf.totalClasses === 1 ? "class has" : "classes have"
+        } no gradebook scores for ${termLabel}`,
+      });
+    }
+  }
+
+  if (rollup.attendance.status !== "CAPTURED") {
+    items.push({
+      key: "attendance",
+      href: "/attendance",
+      dot: "warn",
+      label: "Attendance not captured",
+      value: rollup.attendance.reason,
+    });
+  }
+
+  if (rollup.infrastructure.status !== "CAPTURED") {
+    items.push({
+      key: "facilities",
+      href: "/reports/facilities",
+      dot: "navy-2",
+      label: "Facilities snapshot missing",
+      value: rollup.infrastructure.reason,
+    });
+  }
+
+  const sen = rollup.performance.senior;
+  if (sen.status === "CAPTURED" && sen.data.subjectsAtRisk > 0) {
+    items.push({
+      key: "senior",
+      href: "/senior/headmaster-summary",
+      dot: "terra",
+      label: "Senior readiness at risk",
+      value: `${sen.data.subjectsAtRisk} subject${sen.data.subjectsAtRisk === 1 ? "" : "s"} at risk for STPSHS · ${sen.data.subjectsPartial} partial`,
+    });
+  }
+
+  // GES annual census — DRAFT (warn) or not-started (navy-2), not yet filed (§17-D, Kofi's ruling).
+  // NONE holds through an early-year grace window; DRAFT is exempt. Suppressed when no year is configured.
+  const nudge = censusNudge(d.censusFiling, rollup.terms, new Date().toISOString().slice(0, 10));
+  if (nudge) {
+    items.push({
+      key: "census",
+      href: "/reports/statutory/generate-annual-census",
+      dot: nudge.dot,
+      label: "GES annual census",
+      value: nudge.value,
+    });
+  }
+
+  const order: Record<ActionSeverity, number> = { terra: 0, warn: 1, "navy-2": 2 };
+  return items.sort((a, b) => order[a.dot] - order[b.dot]);
 }

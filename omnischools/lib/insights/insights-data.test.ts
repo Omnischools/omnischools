@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cwd } from "node:process";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import type { AttendanceClassRow } from "@/lib/rollup/school-rollup";
 
 /**
@@ -148,6 +150,11 @@ const stripComments = (s: string): string =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const seam = stripComments(readFileSync(resolve(cwd(), "lib/insights/insights-data.ts"), "utf8"));
 const page = stripComments(readFileSync(resolve(cwd(), "app/(app)/insights/page.tsx"), "utf8"));
+const boardPage = stripComments(readFileSync(resolve(cwd(), "app/(board)/board/page.tsx"), "utf8"));
+// The SHARED tiles both surfaces render — the aggregate-only invariant now lives here (INS-23 / GOV).
+const tiles = stripComments(
+  readFileSync(resolve(cwd(), "components/dashboard/insight-tiles.tsx"), "utf8"),
+);
 
 describe("Directors' Insights source · aggregate-only, no PII trap (INS-22/23)", () => {
   it("the seam never imports/calls getAttendanceSummary or its needsAttention[] PII", () => {
@@ -155,15 +162,58 @@ describe("Directors' Insights source · aggregate-only, no PII trap (INS-22/23)"
     expect(seam).not.toMatch(/needsAttention/);
   });
 
-  it("neither the seam nor the page projects a student-identifying field", () => {
+  it("neither surface's page, the seam, nor the SHARED tiles project a student-identifying field", () => {
     for (const [name, src] of [
       ["seam", seam],
-      ["page", page],
+      ["insights page", page],
+      ["board page", boardPage],
+      ["shared tiles", tiles],
     ] as const) {
       expect(src, name).not.toMatch(/getAttendanceSummary/);
       expect(src, name).not.toMatch(/dateOfBirth/);
       expect(src, name).not.toMatch(/studentCode/);
       expect(src, name).not.toMatch(/\bstudentId\b/);
     }
+  });
+
+  it("the board page reuses the SAME aggregate seam (getDirectorsInsights) — never getSchoolRollup/getAttendanceSummary directly", () => {
+    expect(boardPage).toMatch(/getDirectorsInsights/);
+    expect(boardPage).not.toMatch(/getSchoolRollup/);
+    expect(boardPage).not.toMatch(/getAttendanceSummary/);
+  });
+});
+
+/* ── the shared attention panel: LINKED on /insights, link-FREE on /board (owner decision) ── */
+
+describe("AttentionPanel · linkless mode for the confined board", async () => {
+  const { AttentionPanel } = await import("@/components/dashboard/insight-tiles");
+  const items = [
+    { key: "fees", href: "/billing", dot: "terra" as const, label: "Outstanding fees", value: "GHS 5,000 outstanding · 40% collected" },
+    { key: "ungraded", href: "/gradebook", dot: "warn" as const, label: "Ungraded classes", value: "2 of 6 classes have no gradebook scores" },
+  ];
+
+  it("/insights (default) renders each row as an action link (an <a href> per item)", () => {
+    const html = renderToStaticMarkup(createElement(AttentionPanel, { items }));
+    expect(html).toContain('href="/billing"');
+    expect(html).toContain('href="/gradebook"');
+    expect((html.match(/<a /g) ?? []).length).toBe(items.length);
+  });
+
+  it("/board (linkless) renders the SAME signals as text rows — NO <a>/href, no navigation", () => {
+    const html = renderToStaticMarkup(createElement(AttentionPanel, { items, linkless: true }));
+    // Same signal text is present…
+    expect(html).toContain("Outstanding fees");
+    expect(html).toContain("Ungraded classes");
+    // …but there is not a single anchor or href — a confined board member can't navigate away.
+    expect(html).not.toMatch(/<a[\s>]/);
+    expect(html).not.toContain("href");
+  });
+
+  it("both modes render the same NUMBER of rows (link-free is behaviour-preserving, not a subset)", () => {
+    const linked = renderToStaticMarkup(createElement(AttentionPanel, { items }));
+    const board = renderToStaticMarkup(createElement(AttentionPanel, { items, linkless: true }));
+    const rows = (h: string) => (h.match(/Outstanding fees|Ungraded classes/g) ?? []).length;
+    expect(rows(linked)).toBe(items.length);
+    expect(rows(board)).toBe(items.length);
   });
 });
