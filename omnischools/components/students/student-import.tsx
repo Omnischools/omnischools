@@ -72,6 +72,7 @@ export function StudentImport({
         guardianName: r.guardianName,
         guardianPhone: r.guardianPhone,
         guardianRelation: r.relationship,
+        guardianEmail: r.guardianEmail,
       })),
     });
     setBusy(false);
@@ -210,7 +211,12 @@ export function StudentImport({
                     <td className="px-3 py-2.5 text-navy-2">{r.sex ?? "—"}</td>
                     <td className="px-3 py-2.5 text-navy-2">{r.dateOfBirth ?? "—"}</td>
                     <td className="px-3 py-2.5 text-navy-2">{r.className || "—"}</td>
-                    <td className="px-3 py-2.5 text-navy-2">{r.guardianName || "—"}</td>
+                    <td className="px-3 py-2.5 text-navy-2">
+                      {r.guardianName || "—"}
+                      {r.guardianEmail && (
+                        <div className="text-xs text-navy-3">{r.guardianEmail}</div>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5">
                       {r.errors.length > 0 ? (
                         <span className="text-xs text-terra">{r.errors.join("; ")}</span>
