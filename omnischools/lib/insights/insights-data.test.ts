@@ -5,6 +5,7 @@ import { cwd } from "node:process";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { AttendanceClassRow } from "@/lib/rollup/school-rollup";
+import { AttentionPanel } from "@/components/dashboard/insight-tiles";
 
 /**
  * INS-14 / INS-22 / INS-23 · the Directors' Insights composition seam.
@@ -185,8 +186,7 @@ describe("Directors' Insights source · aggregate-only, no PII trap (INS-22/23)"
 
 /* ── the shared attention panel: LINKED on /insights, link-FREE on /board (owner decision) ── */
 
-describe("AttentionPanel · linkless mode for the confined board", async () => {
-  const { AttentionPanel } = await import("@/components/dashboard/insight-tiles");
+describe("AttentionPanel · linkless mode for the confined board", () => {
   const items = [
     { key: "fees", href: "/billing", dot: "terra" as const, label: "Outstanding fees", value: "GHS 5,000 outstanding · 40% collected" },
     { key: "ungraded", href: "/gradebook", dot: "warn" as const, label: "Ungraded classes", value: "2 of 6 classes have no gradebook scores" },
