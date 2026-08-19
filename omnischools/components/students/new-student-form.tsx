@@ -25,6 +25,7 @@ export function NewStudentForm({ classes }: { classes: { id: string; name: strin
       guardianName: formData.get("guardianName"),
       guardianPhone: formData.get("guardianPhone"),
       guardianRelation: formData.get("guardianRelation"),
+      guardianEmail: formData.get("guardianEmail"),
     });
     setSaving(false);
     if (res.ok) router.push(`/students/${res.studentId}`);
@@ -115,6 +116,17 @@ export function NewStudentForm({ classes }: { classes: { id: string; name: strin
               <option value="OTHER">Other</option>
             </select>
           </div>
+        </div>
+        <div className="mt-4">
+          <label className={labelClass}>
+            Email <span className="font-normal text-navy-3">(optional)</span>
+          </label>
+          <input
+            name="guardianEmail"
+            type="email"
+            placeholder="guardian@example.com"
+            className={fieldClass}
+          />
         </div>
       </div>
 

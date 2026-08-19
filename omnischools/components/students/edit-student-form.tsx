@@ -20,7 +20,7 @@ type Student = {
   classId: string | null;
   status: string;
 };
-type Guardian = { name: string; phone: string; relationship: string } | null;
+type Guardian = { name: string; phone: string; relationship: string; email: string | null } | null;
 type Health = {
   bloodGroup: string | null;
   allergies: string | null;
@@ -62,6 +62,7 @@ export function EditStudentForm({
       guardianName: formData.get("guardianName"),
       guardianPhone: formData.get("guardianPhone"),
       guardianRelation: formData.get("guardianRelation"),
+      guardianEmail: formData.get("guardianEmail"),
       bloodGroup: formData.get("bloodGroup"),
       allergies: formData.get("allergies"),
       conditions: formData.get("conditions"),
@@ -190,6 +191,18 @@ export function EditStudentForm({
               <option value="OTHER">Other</option>
             </select>
           </div>
+        </div>
+        <div className="mt-4">
+          <label className={labelClass}>
+            Email <span className="font-normal text-navy-3">(optional)</span>
+          </label>
+          <input
+            name="guardianEmail"
+            type="email"
+            defaultValue={guardian?.email ?? ""}
+            placeholder="guardian@example.com"
+            className={fieldClass}
+          />
         </div>
       </div>
 
