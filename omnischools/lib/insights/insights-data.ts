@@ -13,6 +13,7 @@ import {
   type SubjectPerformance,
 } from "@/lib/reports/subject-performance-data";
 import { getCensusEnrolment, type CensusEnrolment } from "@/lib/reports/census-enrolment-data";
+import { getAnnualCensusStatus, type CensusFilingStatus } from "@/lib/reports/census/filing-status";
 
 /**
  * INS · the Directors' Insights composition seam. Server-only, ZERO SQL beyond the readers it awaits
@@ -43,6 +44,11 @@ export type DirectorsInsights = {
   census: CensusEnrolment;
   /** Attendance folded by year-group; empty when the attendance arm is not CAPTURED. */
   attendanceByLevel: InsightsAttendanceLevelRow[];
+  /**
+   * This year's ANNUAL GES census filing state (INS §17-D nudge). `null` when no academic year is
+   * configured (the nudge can't name a year, so it's suppressed rather than fabricated).
+   */
+  censusFiling: { academicYear: string; status: CensusFilingStatus } | null;
 };
 
 /**
@@ -83,6 +89,38 @@ export function foldAttendanceByLevel(
     .sort((x, y) => compareLevelLabel(x.level, y.level));
 }
 
+/** The §17-D census attention row's severity + copy (Kofi's ruling); `dot` is a subset of the panel's. */
+export type CensusNudge = { dot: "warn" | "navy-2"; value: string };
+
+/**
+ * PURE decision for the "GES annual census" attention row (§17-D, Kofi's ruling). Returns the row's
+ * severity + copy, or `null` when no nudge is due:
+ *   • COMPLETED (filed) or no filing state (no academic year) → null (omit-not-fake; never a "filed" row).
+ *   • the resolved academic year hasn't started yet (no term with `startsOn <= today`) → null — a
+ *     pre-configured future year is not yet outstanding (AC-5), so we don't nag prematurely.
+ * Otherwise: DRAFT → warn ("finish it", window-immune); NONE → navy-2 (gentlest, the only early-year case).
+ * No modelled GES deadline — severity, not suppression, carries the early-year nuance. `today` is
+ * "YYYY-MM-DD" (compared lexically against the ISO `startsOn`, matching resolveSelectedTerm).
+ */
+export function censusNudge(
+  filing: { academicYear: string; status: CensusFilingStatus } | null,
+  terms: readonly { academicYear: string; startsOn: string }[],
+  today: string,
+): CensusNudge | null {
+  if (!filing || filing.status === "COMPLETED") return null;
+  const underway = terms.some((t) => t.academicYear === filing.academicYear && t.startsOn <= today);
+  if (!underway) return null;
+  return filing.status === "DRAFT"
+    ? {
+        dot: "warn",
+        value: `Draft saved for ${filing.academicYear} — review and complete it to file the return.`,
+      }
+    : {
+        dot: "navy-2",
+        value: `Not started for ${filing.academicYear} — this year's return is not yet filed.`,
+      };
+}
+
 export async function getDirectorsInsights(
   schoolId: string,
   opts: { periodId?: string } = {},
@@ -106,5 +144,13 @@ export async function getDirectorsInsights(
       ? foldAttendanceByLevel(rollup.attendance.data.byClass, levelByClassId)
       : [];
 
-  return { rollup, classPerf, subjectPerf, levelPerf, census, attendanceByLevel };
+  // One cheap indexed lookup on the existing census_return table (depends on the resolved period, so it
+  // can't join the Promise.all above). Suppressed when no academic year is configured — the nudge would
+  // have no year to name.
+  const academicYear = rollup.period?.academicYear ?? null;
+  const censusFiling = academicYear
+    ? { academicYear, status: await getAnnualCensusStatus(schoolId, academicYear) }
+    : null;
+
+  return { rollup, classPerf, subjectPerf, levelPerf, census, attendanceByLevel, censusFiling };
 }
