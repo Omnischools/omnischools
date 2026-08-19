@@ -13,6 +13,7 @@ import type {
   TerminalResultSummary,
 } from "@/lib/rollup/school-rollup";
 import type { ClassPerfRow, LevelPerfRow } from "@/lib/reports/class-performance-data";
+import { compareLevelLabel } from "@/lib/reports/class-performance-data";
 import type { SubjectPerfRow } from "@/lib/reports/subject-performance-data";
 import type {
   CensusEnrolment,
@@ -743,7 +744,7 @@ function EnrolmentTile({
   arm: RollupArm<EnrolmentArm>;
   census: CensusEnrolment;
 }) {
-  const byLevel = [...census.byLevel].sort((a, b) => a.level.localeCompare(b.level));
+  const byLevel = [...census.byLevel].sort((a, b) => compareLevelLabel(a.level, b.level));
 
   const dims: DrillDimension[] = [
     { key: "class", label: "By class", content: <EnrolClassBars rows={census.byClass} /> },
