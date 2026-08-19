@@ -1,0 +1,45 @@
+name: Track PRs on the project board
+
+# Adds every new PR to the Omnischools project board (org project #1) and posts a
+# tracking comment, so the owner, partners, and the AI build-loop agents coordinate
+# from one place. Pairs with the project's BUILT-IN workflows (auto-add + auto-status
+# on merge), which are toggled in the project UI — see docs/ops/project-tracking.md.
+#
+# Requires an org/repo secret PROJECT_PAT: a fine-grained PAT with Projects (read+write)
+# on the Omnischools org. The add-to-project step is `continue-on-error`, so if the
+# secret is absent the workflow still posts the comment instead of failing every PR.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add the PR to the Omnischools project board
+        continue-on-error: true
+        uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: https://github.com/orgs/Omnischools/projects/1
+          github-token: ${{ secrets.PROJECT_PAT }}
+
+      - name: Post a tracking comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          cat > "$RUNNER_TEMP/pr-comment.md" <<'EOF'
+          🤖 **Tracked on the [Omnischools project board](https://github.com/orgs/Omnischools/projects/1)** — the single source of truth for the team.
+
+          Owner / reviewers, set these on the board so partners and the AI agents stay in sync:
+          - **Status** → `In progress` while under review; `Done` on merge (the built-in workflow also flips this on merge).
+          - **Owner** → who this is on: `Kofi` · `Wells` · `Lucy` · `Claude Code` · `Quinn` · `Dex` · `Sarah` · `Pence` · `Wunpini` · `Frederick`.
+          - **Assignee** → the person if a human action is needed (provisioning, business, integration).
+          EOF
+          gh pr comment "$PR" --repo "$REPO" --body-file "$RUNNER_TEMP/pr-comment.md"
