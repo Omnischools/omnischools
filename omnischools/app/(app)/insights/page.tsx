@@ -299,8 +299,8 @@ function buildAttention(d: DirectorsInsights, termLabel: string): ActionItem[] {
     });
   }
 
-  // GES annual census — DRAFT (warn) or not-started (navy-2), only once the resolved year is underway
-  // and not yet filed (§17-D, Kofi's ruling). Suppressed when no academic year is configured.
+  // GES annual census — DRAFT (warn) or not-started (navy-2), not yet filed (§17-D, Kofi's ruling).
+  // NONE holds through an early-year grace window; DRAFT is exempt. Suppressed when no year is configured.
   const nudge = censusNudge(d.censusFiling, rollup.terms, new Date().toISOString().slice(0, 10));
   if (nudge) {
     items.push({
