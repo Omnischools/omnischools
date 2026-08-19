@@ -71,6 +71,29 @@ export const USER_ADMIN_ROLES = [
 ] as const satisfies readonly KnownAppRole[];
 
 /**
+ * 🔴 INS (Directors' Insights / `/insights`) — who may READ the consolidated director analytics
+ * dashboard (KPI scan strip · finance/academic/operational panels · aggregate drill-ins). ADMIN +
+ * HEADMASTER + PROPRIETOR — the acting director persona.
+ *
+ * A DISTINCT, purpose-named READ gate, membership initially identical to STAFF_ADMIN_ROLES /
+ * USER_ADMIN_ROLES but SEMANTICALLY SEPARATE: this is "who may read the director analytics", NOT the
+ * authorization root (STAFF_ADMIN_ROLES = "who may mint administrators") nor the login-lifecycle set
+ * (USER_ADMIN_ROLES = block/reset/activate). Naming it apart is the codebase discipline that keeps
+ * widening one gate from silently widening another, and directly answers the standing hazard
+ * [[builds-widen-ratified-authz-and-self-bless]] — gate to the spec, never reuse a wider sibling.
+ *
+ * VICE_HEADMASTER_ACADEMIC is DELIBERATELY EXCLUDED by default (OC-INS-VHA): the surface carries the
+ * finance/net-position streams (fees · books · payroll), which are governance, not academics. Finance-only
+ * staff (Accountant / Bursar), Teacher, Form Master, Student, Parent and BOARD_MEMBER never reach it.
+ * `as const satisfies` makes a typo'd code a compile error.
+ */
+export const INSIGHTS_READ_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "PROPRIETOR",
+] as const satisfies readonly KnownAppRole[];
+
+/**
  * Senior (SHS) tier role groups. The score ledger is a teaching surface (teachers + form
  * masters + academic leadership); the Vice Headmaster progress view is management-only
  * (Admin, Headmaster, Vice Headmaster Academic). STUDENT / PARENT never reach either.

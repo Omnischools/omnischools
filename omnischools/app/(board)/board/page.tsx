@@ -3,7 +3,6 @@ import { requireBoard } from "@/lib/auth/server";
 import {
   getSchoolRollup,
   type AttendanceArm,
-  type AttendanceStatusTotals,
   type EnrolmentArm,
   type InfrastructureSummary,
   type NetPositionFinanceArm,
@@ -15,9 +14,17 @@ import {
 import { boardGhs } from "@/lib/board/tiles";
 import { ReportFilters } from "@/components/reports/report-filters";
 import { PerfBar } from "@/components/reports/report-kit";
-import { ATTENDANCE_STATUS_ORDER, ATTENDANCE_STATUS_META } from "@/lib/attendance-status";
-import { TrendPill, AbsencePanel } from "@/components/board/board-tiles";
-import { cn } from "@/lib/utils";
+import {
+  TrendPill,
+  AbsencePanel,
+  SummaryCell,
+  Tile,
+  Line,
+  StreamCard,
+  StatusSplit,
+  FEMALE_HEX,
+  MALE_HEX,
+} from "@/components/board/board-tiles";
 
 /**
  * GOV-4 · the read-only board/director dashboard (`/board`, `requireBoard()` — BOARD_MEMBER only).
@@ -178,31 +185,6 @@ export default async function BoardPage({
 
 /* ───────────────────────────── Summary strip ───────────────────────────── */
 
-function SummaryCell({
-  label,
-  value,
-  sub,
-  lead,
-}: {
-  label: string;
-  value: string;
-  sub?: ReactNode;
-  lead?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-xl border px-4 py-3.5",
-        lead ? "border-gold-soft bg-gold-bg" : "border-border bg-surface",
-      )}
-    >
-      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-navy-3">{label}</div>
-      <div className="mt-1 font-display text-3xl font-medium leading-none text-navy">{value}</div>
-      {sub && <div className="mt-1.5 text-xs leading-relaxed text-navy-3">{sub}</div>}
-    </div>
-  );
-}
-
 /** Cell 3 headline: prefer the captured Basic average; else Senior readiness; else the applicable
  *  tier's honest reason. NO blend across tiers (R357) — one tier's figure, never a mixed number. */
 function academicSummary(p: PerformanceArm): { value: string; sub: ReactNode } {
@@ -227,34 +209,6 @@ function academicSummary(p: PerformanceArm): { value: string; sub: ReactNode } {
   // Neither captured — surface the reason of the tier that APPLIES (skip a NOT_APPLICABLE tier).
   const applicable = p.basic.status !== "NOT_APPLICABLE" ? p.basic : p.senior;
   return { value: "—", sub: applicable.status === "CAPTURED" ? null : applicable.reason };
-}
-
-/* ───────────────────────────── Tile shell ───────────────────────────── */
-
-function Tile({
-  title,
-  accent,
-  meta,
-  className,
-  children,
-}: {
-  title: string;
-  accent: string;
-  meta?: ReactNode;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className={cn("rounded-xl border border-border bg-surface px-[22px] py-5", className)}>
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-display text-lg font-medium text-navy">
-          {title} <em className="not-italic text-gold">{accent}</em>.
-        </h2>
-        {meta && <div className="text-[11px] text-navy-3">{meta}</div>}
-      </div>
-      {children}
-    </section>
-  );
 }
 
 /* ───────────────────────────── Finance tile ───────────────────────────── */
@@ -364,47 +318,7 @@ function AttendanceTile({ arm }: { arm: RollupArm<AttendanceArm> }) {
   );
 }
 
-/** The five-status segmented bar + a P·L·E·M·A readout — aggregate, no PII. Medical (M) is its own
- *  status (navy-2), the sickbay→attendance readout, never folded into Absent. */
-function StatusSplit({ totals }: { totals: AttendanceStatusTotals }) {
-  const total =
-    totals.present + totals.late + totals.excused + totals.medical + totals.absent;
-  return (
-    <div className="mt-4">
-      <div className="flex h-2.5 w-full overflow-hidden rounded-pill border border-border bg-bg">
-        {total > 0 &&
-          ATTENDANCE_STATUS_ORDER.map((s) => {
-            const count = totals[s.toLowerCase() as keyof AttendanceStatusTotals];
-            if (count === 0) return null;
-            return (
-              <div
-                key={s}
-                className={ATTENDANCE_STATUS_META[s].seg}
-                style={{ flexGrow: count }}
-                aria-hidden
-              />
-            );
-          })}
-      </div>
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px]">
-        {ATTENDANCE_STATUS_ORDER.map((s) => {
-          const meta = ATTENDANCE_STATUS_META[s];
-          const count = totals[s.toLowerCase() as keyof AttendanceStatusTotals];
-          return (
-            <span key={s} className={meta.num}>
-              {meta.letter} {count.toLocaleString("en-GH")}
-            </span>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 /* ───────────────────────────── Enrolment tile ───────────────────────────── */
-
-const FEMALE_HEX = "#C77B9E";
-const MALE_HEX = "#6B86B0";
 
 function EnrolmentTile({ arm }: { arm: RollupArm<EnrolmentArm> }) {
   return (
@@ -686,15 +600,6 @@ function InfrastructureBody({ d }: { d: InfrastructureSummary }) {
 
 /* ───────────────────────────── Shared stream/line bits ───────────────────────────── */
 
-function StreamCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="rounded-xl border border-border bg-surface px-[22px] py-[18px]">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-navy-3">{title}</div>
-      {children}
-    </section>
-  );
-}
-
 const Headline = ({ children }: { children: ReactNode }) => (
   <div className="mt-2 font-display text-2xl font-medium text-navy">{children}</div>
 );
@@ -704,14 +609,3 @@ const Caption = ({ children }: { children: ReactNode }) => (
 const Reason = ({ children }: { children: ReactNode }) => (
   <div className="mt-2 text-[13px] leading-relaxed text-navy-3">{children}</div>
 );
-
-function Line({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="flex items-center justify-between">
-      <dt className="text-navy-3">{label}</dt>
-      <dd className={strong ? "font-display font-medium text-navy" : "font-mono text-navy-2"}>
-        {value}
-      </dd>
-    </div>
-  );
-}

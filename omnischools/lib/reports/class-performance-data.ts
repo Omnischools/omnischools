@@ -243,3 +243,185 @@ export async function getClassPerformance(
     };
   });
 }
+
+/* ─────────────────────── Performance BY YEAR-GROUP (level) — INS ─────────────────────── */
+
+/**
+ * The ONE net-new reader Directors' Insights needs (Kofi §2). Performance grouped by
+ * `classes.level` — the year-group ladder (JHS 1 / Form 2 / Primary 5). It CANNOT be composed from
+ * `getClassPerformance` honestly: `ClassPerfRow.average` is rounded to 1 dp and carries no score-row
+ * count, so a mean-of-class-means would fabricate a figure (wrong denominator + compounded rounding).
+ * So this is a REAL per-score `GROUP BY classes.level` — the SAME per-score basis as
+ * `scopedSchoolAggregate`: AVG(total) over non-null totals, pass rate via `passRateOf`, distinct
+ * students graded — never a mean of rounded class averages (INS-12). Classes with `level IS NULL`
+ * bucket under `"Unspecified"` (mirrors census UNSPECIFIED). A level with active classes but no graded
+ * scores renders `null` (never 0) — INS-30.
+ */
+export const UNSPECIFIED_LEVEL = "Unspecified";
+
+export type LevelPerfRow = {
+  level: string;
+  average: number | null; // 1 dp; null when nothing graded in the level (never 0)
+  grade: string | null;
+  tone: PerfTone;
+  passRate: number | null; // per-score % ≥ PASS_MARK; null when nothing graded
+  studentsGraded: number;
+  classesGraded: number;
+  classes: number; // active classes in the level (denominator)
+  priorAverage: number | null;
+  delta: number | null;
+};
+
+export type LevelPerformance = {
+  terms: AcademicTerm[];
+  term: AcademicTerm | null;
+  priorTerm: AcademicTerm | null;
+  rows: LevelPerfRow[];
+  hasAnyScores: boolean;
+};
+
+/** SQL-shaped per-level aggregate (one row per distinct `classes.level`, incl. a `level: null` row). */
+export type LevelAgg = {
+  level: string | null;
+  avg: number | null;
+  passed: number;
+  graded: number;
+  students: number;
+  classesGraded: number;
+};
+/** SQL-shaped active-class count per level (the "N classes" denominator; incl. a `level: null` row). */
+export type LevelClassCount = { level: string | null; classes: number };
+
+const levelKey = (l: string | null): string => l ?? UNSPECIFIED_LEVEL;
+
+/** Ladder rank: JHS1<JHS2<JHS3 by the first integer in the label; `Unspecified` last. */
+export function compareLevelLabel(a: string, b: string): number {
+  const rank = (lvl: string) => {
+    if (lvl === UNSPECIFIED_LEVEL) return Number.POSITIVE_INFINITY;
+    const n = lvl.match(/\d+/);
+    return n ? parseInt(n[0], 10) : Number.MAX_SAFE_INTEGER - 1;
+  };
+  return rank(a) - rank(b) || a.localeCompare(b);
+}
+
+/**
+ * The PURE assembly of the per-level rows from the SQL aggregates — no DB, so it is unit-tested
+ * directly (the per-score AVG honesty lives in the `GROUP BY` SQL below; this proves the null→
+ * "Unspecified" bucketing, the null-not-zero average, pass-rate/grade/tone/delta and the ladder sort).
+ * Rows come from the set of levels that have ANY active class (a level with classes but no scores still
+ * shows, as `—`); a graded level with no active-class-count row (shouldn't happen) is unioned in defensively.
+ */
+export function assembleLevelPerformance(
+  cur: readonly LevelAgg[],
+  prior: readonly LevelAgg[],
+  classCounts: readonly LevelClassCount[],
+  bands: GradeBand[],
+): LevelPerfRow[] {
+  const curMap = new Map(cur.map((a) => [levelKey(a.level), a]));
+  const priorMap = new Map(prior.map((a) => [levelKey(a.level), a]));
+  const countMap = new Map(classCounts.map((c) => [levelKey(c.level), c.classes]));
+
+  const levels = new Set<string>([...countMap.keys(), ...curMap.keys()]);
+  const rows: LevelPerfRow[] = [...levels].map((level) => {
+    const a = curMap.get(level);
+    const p = priorMap.get(level);
+    const average = a && a.avg != null && a.graded > 0 ? round1(a.avg) : null;
+    const priorAverage = p && p.avg != null && p.graded > 0 ? round1(p.avg) : null;
+    return {
+      level,
+      average,
+      grade: average != null ? gradeForScore(bands, average) : null,
+      tone: performanceTone(average),
+      passRate: a ? passRateOf(a.passed, a.graded) : null,
+      studentsGraded: a?.students ?? 0,
+      classesGraded: a?.classesGraded ?? 0,
+      classes: countMap.get(level) ?? 0,
+      priorAverage,
+      delta: average != null && priorAverage != null ? round1(average - priorAverage) : null,
+    };
+  });
+  rows.sort((x, y) => compareLevelLabel(x.level, y.level));
+  return rows;
+}
+
+/** Per-level per-score aggregate for one period, over ACTIVE classes only (matches getClassPerformance scope). */
+async function levelAggregates(
+  tx: Tx,
+  schoolId: string,
+  periodId: string,
+): Promise<LevelAgg[]> {
+  const rows = await tx
+    .select({
+      level: classes.level,
+      avg: sql<string | null>`avg(${gradebookScores.total})`,
+      passed: sql<number>`count(*) filter (where ${gradebookScores.total} >= ${PASS_MARK})::int`,
+      graded: sql<number>`count(*) filter (where ${gradebookScores.total} is not null)::int`,
+      students: sql<number>`count(distinct ${gradebookScores.studentId}) filter (where ${gradebookScores.total} is not null)::int`,
+      classesGraded: sql<number>`count(distinct ${students.classId}) filter (where ${gradebookScores.total} is not null)::int`,
+    })
+    .from(gradebookScores)
+    .innerJoin(
+      students,
+      and(
+        eq(gradebookScores.studentId, students.id),
+        eq(gradebookScores.schoolId, students.schoolId),
+      ),
+    )
+    .innerJoin(
+      classes,
+      and(eq(students.classId, classes.id), eq(students.schoolId, classes.schoolId)),
+    )
+    .where(
+      and(
+        eq(gradebookScores.schoolId, schoolId),
+        eq(gradebookScores.periodId, periodId),
+        eq(classes.active, true),
+      ),
+    )
+    .groupBy(classes.level);
+  return rows.map((r) => ({
+    level: r.level,
+    avg: r.avg != null ? Number(r.avg) : null,
+    passed: r.passed,
+    graded: r.graded,
+    students: r.students,
+    classesGraded: r.classesGraded,
+  }));
+}
+
+export async function getLevelPerformance(
+  schoolId: string,
+  opts: { periodId?: string } = {},
+): Promise<LevelPerformance> {
+  const terms = await listAcademicTerms(schoolId);
+  const term = resolveSelectedTerm(terms, opts.periodId);
+  const prior = term ? previousTerm(terms, term) : null;
+
+  const empty: LevelPerformance = { terms, term, priorTerm: prior, rows: [], hasAnyScores: false };
+  if (!term) return empty;
+
+  return withSchool(schoolId, async (tx) => {
+    const bands: GradeBand[] = (
+      await tx
+        .select({ grade: gradeScale.grade, label: gradeScale.label, minScore: gradeScale.minScore })
+        .from(gradeScale)
+        .where(eq(gradeScale.schoolId, schoolId))
+    ).map((b) => ({ grade: b.grade, label: b.label, minScore: Number(b.minScore) }));
+
+    const classCounts: LevelClassCount[] = (
+      await tx
+        .select({ level: classes.level, classes: sql<number>`count(*)::int` })
+        .from(classes)
+        .where(and(eq(classes.schoolId, schoolId), eq(classes.active, true)))
+        .groupBy(classes.level)
+    ).map((r) => ({ level: r.level, classes: r.classes }));
+
+    const [cur, priorAgg] = await Promise.all([
+      levelAggregates(tx, schoolId, term.periodId),
+      prior ? levelAggregates(tx, schoolId, prior.periodId) : Promise.resolve([] as LevelAgg[]),
+    ]);
+
+    const rows = assembleLevelPerformance(cur, priorAgg, classCounts, bands);
+    return { terms, term, priorTerm: prior, rows, hasAnyScores: rows.some((r) => r.average != null) };
+  });
+}

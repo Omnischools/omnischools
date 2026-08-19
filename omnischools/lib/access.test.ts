@@ -9,6 +9,9 @@ import {
   SENIOR_LEDGER_ROLES,
   SENIOR_MANAGEMENT_ROLES,
   WASSCE_SETUP_ROLES,
+  INSIGHTS_READ_ROLES,
+  STAFF_ADMIN_ROLES,
+  USER_ADMIN_ROLES,
 } from "./access";
 
 describe("hasAnyRole", () => {
@@ -81,6 +84,45 @@ describe("PARENT is denied every INCR-15→18 gate group (AC D6/D7)", () => {
       expect(hasAnyRole(["PARENT"], group)).toBe(false);
     });
   }
+});
+
+describe("INSIGHTS_READ_ROLES — the Directors' Insights read gate (INS-05)", () => {
+  // The regression LOCK the AC mandates: "mutating the guard to a wider group reds a test". The gate is
+  // director analytics READ — ADMIN · HEADMASTER · PROPRIETOR — and nothing else. Widening it (appending a
+  // role, or reassigning it to a wider sibling like SENIOR_MANAGEMENT_ROLES) breaks the exact-set assertion.
+  // Directly fences [[builds-widen-ratified-authz-and-self-bless]] (a green suite must not hide a widened gate).
+  it("admits exactly ADMIN · HEADMASTER · PROPRIETOR, in that shape", () => {
+    expect([...INSIGHTS_READ_ROLES].sort()).toEqual(["ADMIN", "HEADMASTER", "PROPRIETOR"]);
+  });
+
+  it("admits the three director roles", () => {
+    for (const r of ["ADMIN", "HEADMASTER", "PROPRIETOR"]) {
+      expect(hasAnyRole([r], INSIGHTS_READ_ROLES)).toBe(true);
+    }
+  });
+
+  it("DENIES VHA (OC-INS-VHA), finance-only, teacher, form master, student, parent, board member", () => {
+    for (const r of [
+      "VICE_HEADMASTER_ACADEMIC",
+      "ACCOUNTANT",
+      "BURSAR",
+      "TEACHER",
+      "FORM_MASTER",
+      "STUDENT",
+      "PARENT",
+      "BOARD_MEMBER",
+    ]) {
+      expect(hasAnyRole([r], INSIGHTS_READ_ROLES)).toBe(false);
+    }
+  });
+
+  it("is a DISTINCT named group — not an alias/reference of a sibling gate (INS-05)", () => {
+    // A separate binding, so widening STAFF_ADMIN_ROLES / USER_ADMIN_ROLES never silently widens this.
+    expect(INSIGHTS_READ_ROLES).not.toBe(STAFF_ADMIN_ROLES);
+    expect(INSIGHTS_READ_ROLES).not.toBe(USER_ADMIN_ROLES);
+    // …and it must NOT carry SENIOR_MANAGEMENT_ROLES' membership (that set includes the excluded VHA).
+    expect([...INSIGHTS_READ_ROLES].sort()).not.toEqual([...SENIOR_MANAGEMENT_ROLES].sort());
+  });
 });
 
 describe("isStaff — the invite/manage gate (AC C1 staff-gating / A1)", () => {
