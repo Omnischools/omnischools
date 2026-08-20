@@ -16,7 +16,7 @@ import { and, eq } from "drizzle-orm";
 import type { Tx } from "@/lib/db";
 import { withSchool } from "@/lib/db/rls";
 import { students, studentGuardians } from "@/db/schema";
-import { sendSms, type SmsResult } from "@/lib/sms";
+import { flushSms, type SmsIntent } from "@/lib/sms";
 import { insertInfraction } from "./discipline-core";
 import { getCurrentPeriod } from "./period";
 import { getResumptionBoard } from "./resumption-data";
@@ -42,10 +42,10 @@ async function primaryGuardianPhone(
 }
 
 /**
- * Fire the arrival (RESUMPTION) / departure (VACATION) confirmation SMS to the boarder's primary
- * guardian (AC H4/I1). Console provider — no real send. Returns null when no phone is on file (the
- * SMS is skipped, never a hard failure that blocks the gate check). No notification row is written
- * (Kofi OQ5 — no arrival notification table).
+ * Collect the arrival (RESUMPTION) / departure (VACATION) confirmation SMS for the boarder's primary
+ * guardian (AC H4/I1). Console provider — no real send here: #253 pushes the intent onto `sms` and the
+ * caller delivers it via `flushSms` AFTER commit (a no-op when no phone is on file). No notification
+ * row is written (Kofi OQ5 — no arrival notification table).
  */
 export async function sendArrivalNotification(
   tx: Tx,
@@ -53,18 +53,19 @@ export async function sendArrivalNotification(
   studentId: string,
   mode: BoardingMode,
   schoolName: string,
-): Promise<SmsResult | null> {
+  sms: SmsIntent[],
+): Promise<void> {
   const [stu] = await tx
     .select({ firstName: students.firstName, lastName: students.lastName })
     .from(students)
     .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
     .limit(1);
-  if (!stu) return null;
+  if (!stu) return;
   const phone = await primaryGuardianPhone(tx, schoolId, studentId);
-  if (!phone) return null;
+  if (!phone) return;
   const name = `${stu.firstName.charAt(0)}. ${stu.lastName}`;
   const body = mode === "RESUMPTION" ? arrivalSms(name, schoolName) : departureSms(name, schoolName);
-  return sendSms(phone, body);
+  sms.push({ to: phone, body });
 }
 
 const UNACCOUNTED_PREFIX = "unaccounted-";
@@ -89,6 +90,9 @@ export async function runUnaccountedSweep(
   if (studentIds.length === 0) return { checked: 0, sent: 0 };
 
   let sent = 0;
+  // #253 — collect the unaccounted reminders (and any Warning+ parent-notify from insertInfraction)
+  // in-tx; deliver them via flushSms after the sweep commits (rollback → nothing goes out).
+  const sms: SmsIntent[] = [];
   await withSchool(schoolId, async (tx) => {
     const period = await getCurrentPeriod(tx, schoolId);
     for (const studentId of studentIds) {
@@ -105,7 +109,7 @@ export async function runUnaccountedSweep(
           sourceRefId: `${period.periodId}:${studentId}`,
           loggedByUserId: null,
           actorRole: "SYSTEM",
-        });
+        }, sms);
       }
       const [stu] = await tx
         .select({ firstName: students.firstName, lastName: students.lastName })
@@ -116,9 +120,10 @@ export async function runUnaccountedSweep(
       const phone = await primaryGuardianPhone(tx, schoolId, studentId);
       if (!phone) continue;
       const name = `${stu.firstName.charAt(0)}. ${stu.lastName}`;
-      await sendSms(phone, unaccountedSms(name, schoolName));
+      sms.push({ to: phone, body: unaccountedSms(name, schoolName) });
       sent += 1;
     }
   });
+  await flushSms(sms);
   return { checked: studentIds.length, sent };
 }

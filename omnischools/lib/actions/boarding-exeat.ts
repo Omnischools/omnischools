@@ -7,6 +7,7 @@ import { requireSchool, resolveActor, type ActiveSchool } from "@/lib/auth/serve
 import { getCurrentUser, type AppUser } from "@/lib/auth";
 import { hasAnyRole, BOARDING_ROLES, canAccessHouse } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
+import { flushSms, type SmsIntent } from "@/lib/sms";
 import type { Tx } from "@/lib/db";
 import { boardingExeat, students, houses } from "@/db/schema";
 import { getExeatPolicy } from "@/lib/boarding/config";
@@ -293,11 +294,14 @@ async function transition(
 
   if (out.ok) {
     safeRevalidate(EXEAT_PATH);
-    // Fire the departure SMS after the state change commits (idempotent, console provider).
+    // Fire the departure SMS after the state change commits (idempotent, console provider). #253 —
+    // the send itself now runs post-commit via flushSms; only the notification row touches the tx.
     if (to === "DEPARTED") {
+      const sms: SmsIntent[] = [];
       await withSchool(school.id, (tx) =>
-        sendExeatStage(tx, school.id, exeatId, "DEPARTURE", actor.id),
+        sendExeatStage(tx, school.id, exeatId, "DEPARTURE", actor.id, sms),
       );
+      await flushSms(sms);
     }
   }
   return out;

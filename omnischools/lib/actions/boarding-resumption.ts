@@ -7,6 +7,7 @@ import { requireSchool, resolveActor, type ActiveSchool } from "@/lib/auth/serve
 import { getCurrentUser, type AppUser } from "@/lib/auth";
 import { hasAnyRole, BOARDING_ROLES, canAccessHouse } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
+import { flushSms, type SmsIntent } from "@/lib/sms";
 import { boardingArrival, students, houses, schools } from "@/db/schema";
 import { getCurrentPeriod } from "@/lib/boarding/period";
 import { feeOwingForStudent } from "@/lib/boarding/exeat-data";
@@ -159,10 +160,13 @@ export async function recordGateCheck(input: unknown): Promise<ActionResult> {
   if (!out.ok) return out;
 
   // Fire the confirmation SMS (console) after commit, only on a first check-in (re-scan never re-sends).
+  // #253 — the send now runs post-commit via flushSms (the tx only resolves the recipient).
   if (out.isNew) {
+    const sms: SmsIntent[] = [];
     await withSchool(school.id, (tx) =>
-      sendArrivalNotification(tx, school.id, studentId, mode, out.schoolName ?? "School").then(() => undefined),
+      sendArrivalNotification(tx, school.id, studentId, mode, out.schoolName ?? "School", sms),
     );
+    await flushSms(sms);
   }
 
   safeRevalidate(opsPath(mode));

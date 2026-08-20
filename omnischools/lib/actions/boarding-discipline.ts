@@ -7,6 +7,7 @@ import { requireSchool, resolveActor, type ActiveSchool } from "@/lib/auth/serve
 import { getCurrentUser, type AppUser } from "@/lib/auth";
 import { hasAnyRole, BOARDING_ROLES, canAccessHouse } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
+import { flushSms, type SmsIntent } from "@/lib/sms";
 import type { Tx } from "@/lib/db";
 import {
   boardingInfractions,
@@ -105,6 +106,7 @@ export async function logInfraction(input: unknown): Promise<ActionResult> {
   const { school, user } = c;
   const actor = await resolveActor(school.id);
 
+  const sms: SmsIntent[] = [];
   const out = await withSchool(school.id, async (tx): Promise<ActionResult> => {
     const access = await studentHouseAccess(tx, school.id, d.studentId, user.roles, user.id);
     if (!access.ok) return { ok: false, error: access.error };
@@ -118,7 +120,7 @@ export async function logInfraction(input: unknown): Promise<ActionResult> {
       sourceRefId: null,
       loggedByUserId: actor.id,
       actorRole: actor.role,
-    });
+    }, sms);
     if (res.status === "bypassed") {
       return { ok: true, message: "Student has an active pastoral case — routed to the Dean, not laddered (no infraction written)." };
     }
@@ -134,6 +136,7 @@ export async function logInfraction(input: unknown): Promise<ActionResult> {
     return { ok: true, message: `Logged a ${d.severity.toLowerCase()} · append-only.` };
   });
 
+  await flushSms(sms); // #253 — parent-notify SMS goes out only after the infraction tx commits.
   if (out.ok) safeRevalidate(DISCIPLINE_PATH);
   return out;
 }
@@ -235,6 +238,7 @@ export async function openDeboardinization(input: unknown): Promise<ActionResult
   const { school, user } = c;
   const actor = await resolveActor(school.id);
 
+  const sms: SmsIntent[] = [];
   const out = await withSchool(school.id, async (tx): Promise<ActionResult & { recordId?: string }> => {
     const access = await studentHouseAccess(tx, school.id, d.studentId, user.roles, user.id);
     if (!access.ok) return { ok: false, error: access.error };
@@ -248,7 +252,7 @@ export async function openDeboardinization(input: unknown): Promise<ActionResult
       sourceRefId: null,
       loggedByUserId: actor.id,
       actorRole: actor.role,
-    });
+    }, sms);
     if (res.status === "bypassed") {
       return { ok: true, message: "Student has an active pastoral case — routed to the Dean, not laddered." };
     }
@@ -278,6 +282,7 @@ export async function openDeboardinization(input: unknown): Promise<ActionResult
     return { ok: true, message: "Deboardinization draft opened — needs three co-signs.", recordId: rec.id };
   });
 
+  await flushSms(sms); // #253 — parent-notify SMS goes out only after the deboardinization tx commits.
   if (out.ok) safeRevalidate(DISCIPLINE_PATH);
   return out;
 }

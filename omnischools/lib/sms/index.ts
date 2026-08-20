@@ -72,6 +72,33 @@ export async function sendSms(to: string, body: string): Promise<SmsResult> {
   return getSmsProvider().send({ to, body });
 }
 
+/**
+ * A deferred SMS send (#253). Collected INSIDE a DB transaction and delivered by `flushSms` only
+ * AFTER that transaction commits — so a rollback discards the array and nothing goes out (a false
+ * "was marked absent" can never follow a rolled-back write), and no external call is held while a
+ * row lock is open (the pre-req for switching the console stub to the real Hubtel provider).
+ *
+ * `onSent` is the optional "thread the result out" hook for sites that persist the send OUTCOME
+ * (e.g. an `exeat_notification` row): it runs post-commit with the real `SmsResult`, in its OWN
+ * fresh `withSchool` tx — never inside the committing one.
+ */
+export interface SmsIntent {
+  to: string;
+  body: string;
+  onSent?: (result: SmsResult) => Promise<void>;
+}
+
+/**
+ * Deliver intents collected in-tx, in order, after the tx has committed. Never call this INSIDE a
+ * `withSchool`/transaction callback — that would re-introduce the very bug #253 fixes.
+ */
+export async function flushSms(intents: readonly SmsIntent[]): Promise<void> {
+  for (const intent of intents) {
+    const result = await sendSms(intent.to, intent.body);
+    if (intent.onSent) await intent.onSent(result);
+  }
+}
+
 /** Estimated cost per SMS segment in GHS (Hubtel-style bulk rate). */
 export const SMS_SEGMENT_RATE_GHS = 0.035;
 
