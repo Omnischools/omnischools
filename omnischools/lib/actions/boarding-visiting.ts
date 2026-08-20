@@ -8,6 +8,7 @@ import { requireSchool, resolveActor, type ActiveSchool } from "@/lib/auth/serve
 import { getCurrentUser, type AppUser } from "@/lib/auth";
 import { hasAnyRole, BOARDING_ROLES, BOARDING_SCHOOL_SCOPED_ROLES, canAccessHouse } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
+import { flushSms, type SmsIntent } from "@/lib/sms";
 import {
   boardingVisit,
   boardingApprovedVisitor,
@@ -372,9 +373,11 @@ export async function recordVisit(input: unknown): Promise<ActionResult> {
   if (!out.ok) return out;
   if (out.fireArrival && out.visitId) {
     const policy = await getVisitingPolicy(school.id);
+    const sms: SmsIntent[] = [];
     await withSchool(school.id, (tx) =>
-      sendVisitNotification(tx, school.id, out.visitId!, "ARRIVAL_CONFIRM", policy, actor.id).then(() => undefined),
+      sendVisitNotification(tx, school.id, out.visitId!, "ARRIVAL_CONFIRM", policy, actor.id, sms).then(() => undefined),
     );
+    await flushSms(sms);
   }
   safeRevalidate(PATH);
   return { ok: true, message: out.message };
@@ -434,9 +437,11 @@ export async function arriveVisit(visitId: string, zoneKey?: string): Promise<Ac
   if (!out.ok) return out;
   if (out.fire) {
     const policy = await getVisitingPolicy(school.id);
+    const sms: SmsIntent[] = [];
     await withSchool(school.id, (tx) =>
-      sendVisitNotification(tx, school.id, visitId, "ARRIVAL_CONFIRM", policy, actor.id).then(() => undefined),
+      sendVisitNotification(tx, school.id, visitId, "ARRIVAL_CONFIRM", policy, actor.id, sms).then(() => undefined),
     );
+    await flushSms(sms);
   }
   safeRevalidate(PATH);
   return { ok: true, message: out.message };

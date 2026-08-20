@@ -29,7 +29,7 @@ import {
 } from "@/db/schema";
 import { canAccessHouse } from "@/lib/access";
 import { classFormNumber } from "@/lib/senior/form";
-import { sendSms } from "@/lib/sms";
+import { flushSms, type SmsIntent } from "@/lib/sms";
 import { insertInfraction } from "./discipline-core";
 import { hasActivePastoralFlag } from "@/lib/vlc/pastoral-flags";
 import {
@@ -98,7 +98,10 @@ export async function sendCohortReminder(
   kind: "INVITATION" | "REMINDER_T3" | "REMINDER_T1",
   actorUserId: string | null,
 ): Promise<CohortResult> {
-  return withSchool(schoolId, async (tx): Promise<CohortResult> => {
+  // #253 — collect the cohort sends in-tx, deliver them via flushSms after the guard row commits
+  // (rollback → the array is discarded, no parent is texted for a batch that never recorded).
+  const sms: SmsIntent[] = [];
+  const result = await withSchool(schoolId, async (tx): Promise<CohortResult> => {
     // Idempotency guard — one row per (event × kind), visit_id NULL.
     const existing = await tx
       .select({ id: boardingVisitNotification.id })
@@ -150,13 +153,10 @@ export async function sendCohortReminder(
       if (phone) phones.add(phone);
     }
 
-    let sent = 0;
-    for (const phone of phones) {
-      const r = await sendSms(phone, body);
-      if (r.ok) sent += 1;
-    }
+    for (const phone of phones) sms.push({ to: phone, body });
 
-    // The single event-scoped guard row (cohort marker — NO visitor PII).
+    // The single event-scoped guard row (cohort marker — NO visitor PII). Stays in-tx: it is a
+    // console marker, not a per-send result, so it never depended on the send outcome.
     await tx.insert(boardingVisitNotification).values({
       schoolId,
       visitId: null,
@@ -169,8 +169,10 @@ export async function sendCohortReminder(
       sentByUserId: actorUserId ?? undefined,
     });
 
-    return { ok: true, skipped: false, sent };
+    return { ok: true, skipped: false, sent: phones.size };
   });
+  await flushSms(sms);
+  return result;
 }
 
 export type PerVisitResult = "sent" | "skipped" | "no_phone";
@@ -188,6 +190,7 @@ export async function sendVisitNotification(
   kind: "ARRIVAL_CONFIRM" | "OVERSTAY",
   policy: VisitingPolicy,
   actorUserId: string | null,
+  sms: SmsIntent[],
 ): Promise<PerVisitResult> {
   const existing = await tx
     .select({ id: boardingVisitNotification.id })
@@ -228,7 +231,7 @@ export async function sendVisitNotification(
       sourceRefId: visitId,
       loggedByUserId: actorUserId,
       actorRole: "HOUSEMASTER",
-    });
+    }, sms);
   }
 
   const [school] = await tx.select({ name: schools.name }).from(schools).where(eq(schools.id, schoolId)).limit(1);
@@ -258,18 +261,28 @@ export async function sendVisitNotification(
     });
     return "no_phone";
   }
-  const r = await sendSms(phone, body);
-  await tx.insert(boardingVisitNotification).values({
-    schoolId,
-    visitId,
-    kind,
-    toPhone: phone,
+  // #253 — defer the HM send to post-commit (no network call under the visit's row lock; a rolled-back
+  // overstay/arrival leaves nothing out). The notification row records the REAL result via onSent, in
+  // its own fresh tx once the send returns.
+  const toPhone = phone;
+  sms.push({
+    to: toPhone,
     body,
-    provider: r.provider,
-    providerMessageId: r.id,
-    error: r.error,
-    ok: r.ok,
-    sentByUserId: actorUserId ?? undefined,
+    onSent: (r) =>
+      withSchool(schoolId, (t) =>
+        t.insert(boardingVisitNotification).values({
+          schoolId,
+          visitId,
+          kind,
+          toPhone,
+          body,
+          provider: r.provider,
+          providerMessageId: r.id,
+          error: r.error,
+          ok: r.ok,
+          sentByUserId: actorUserId ?? undefined,
+        }),
+      ).then(() => undefined),
   });
   return "sent";
 }
@@ -293,7 +306,9 @@ export async function runOverstaySweep(
   actorUserId: string | null,
   now: Date = new Date(),
 ): Promise<OverstaySummary> {
-  return withSchool(schoolId, async (tx): Promise<OverstaySummary> => {
+  // #253 — collect the overstay HM sends in-tx, deliver them via flushSms after the sweep commits.
+  const sms: SmsIntent[] = [];
+  const summary = await withSchool(schoolId, async (tx): Promise<OverstaySummary> => {
     const houseRows = await tx
       .select({ id: houses.id, hmUserId: houses.hmUserId })
       .from(houses)
@@ -323,11 +338,13 @@ export async function runOverstaySweep(
 
     let sent = 0;
     for (const r of overstaying) {
-      const res = await sendVisitNotification(tx, schoolId, r.id, "OVERSTAY", policy, actorUserId);
+      const res = await sendVisitNotification(tx, schoolId, r.id, "OVERSTAY", policy, actorUserId, sms);
       if (res === "sent") sent += 1;
     }
     return { checked: overstaying.length, sent };
   });
+  await flushSms(sms);
+  return summary;
 }
 
 // Re-export for the actions' kind typing.

@@ -13,15 +13,17 @@
  *     on-read sweep never double-logs. A MANUAL log (source_ref_id NULL) is exempt from the index and
  *     always inserts.
  *
- * Parent-notify SMS fires at Warning+ (AC I1) on a FRESH insert only, via sendSms() (console) — this
- * file NEVER provisions HUBTEL_* creds. It writes NO invoices/finance row (the #1 scope guard).
+ * Parent-notify SMS fires at Warning+ (AC I1) on a FRESH insert only. #253: the send is NOT issued
+ * here — the intent is collected onto the caller's `sms` array and delivered post-commit via flushSms
+ * (a rolled-back infraction must never leave a false alert out). This file NEVER provisions HUBTEL_*
+ * creds. It writes NO invoices/finance row (the #1 scope guard).
  */
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import type { Tx } from "@/lib/db";
 import { boardingInfractions, students, studentGuardians, schools } from "@/db/schema";
 import { recordAudit } from "@/lib/db/audit";
-import { sendSms } from "@/lib/sms";
+import type { SmsIntent } from "@/lib/sms";
 import { hasActivePastoralFlag } from "@/lib/vlc/pastoral-flags";
 import {
   disciplineParentSms,
@@ -54,8 +56,15 @@ export interface InsertInfractionArgs {
  * Insert one infraction, respecting the pastoral bypass + auto-log idempotency, and notify the parent
  * at Warning+. Runs inside the caller's tx (atomic with its own work). Returns a discriminated result
  * so callers can count inserted vs bypassed vs duplicate.
+ *
+ * #253 — the parent-notify SMS is NOT sent here: it is pushed onto `sms` and delivered by the caller
+ * via `flushSms` AFTER this tx commits (a rolled-back infraction must never leave a false alert out).
  */
-export async function insertInfraction(tx: Tx, args: InsertInfractionArgs): Promise<InsertInfractionResult> {
+export async function insertInfraction(
+  tx: Tx,
+  args: InsertInfractionArgs,
+  sms: SmsIntent[],
+): Promise<InsertInfractionResult> {
   const { schoolId, studentId, severity, sourceKind } = args;
   const sourceRefId = args.sourceRefId ?? null;
 
@@ -136,7 +145,9 @@ export async function insertInfraction(tx: Tx, args: InsertInfractionArgs): Prom
     if (g?.phone) {
       const [sch] = await tx.select({ name: schools.name }).from(schools).where(eq(schools.id, schoolId)).limit(1);
       const name = `${stu.firstName.charAt(0)}. ${stu.lastName}`;
-      await sendSms(g.phone, disciplineParentSms(name, severity, sch?.name ?? "School"));
+      // #253 — defer the send to post-commit. parents_notified_at stays in-tx: it stamps the DECISION
+      // to notify (atomic with the fresh insert), which is what keeps the send idempotent per infraction.
+      sms.push({ to: g.phone, body: disciplineParentSms(name, severity, sch?.name ?? "School") });
       await tx
         .update(boardingInfractions)
         .set({ parentsNotifiedAt: new Date() })

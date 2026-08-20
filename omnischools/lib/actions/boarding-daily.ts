@@ -7,6 +7,7 @@ import { requireSchool, resolveActor, type ActiveSchool } from "@/lib/auth/serve
 import { getCurrentUser, type AppUser } from "@/lib/auth";
 import { hasAnyRole, BOARDING_ROLES, canAccessHouse } from "@/lib/access";
 import { safeRevalidate } from "@/lib/revalidate";
+import { flushSms, type SmsIntent } from "@/lib/sms";
 import type { Tx } from "@/lib/db";
 import {
   inspections,
@@ -96,6 +97,7 @@ async function escalateInspectionFail(
   scope: { dormId: string } | { houseId: string },
   anomalies: number,
   actor: { id: string | null; role: string },
+  sms: SmsIntent[],
 ): Promise<void> {
   const studentId = await resolveResponsiblePrefect(tx, schoolId, scope);
   if (!studentId) return;
@@ -110,7 +112,7 @@ async function escalateInspectionFail(
     sourceRefId: inspectionId,
     loggedByUserId: actor.id,
     actorRole: actor.role,
-  });
+  }, sms);
 }
 
 type ActionResult = { ok: boolean; error?: string; message?: string };
@@ -178,6 +180,7 @@ export async function recordDailyInspection(input: unknown): Promise<ActionResul
   }
   const anomalies = computeAnomalies(findings.data);
 
+  const sms: SmsIntent[] = [];
   await withSchool(school.id, async (tx) => {
     const [row] = await tx
       .insert(inspections)
@@ -213,10 +216,11 @@ export async function recordDailyInspection(input: unknown): Promise<ActionResul
     });
     // INCR-13 stub (b): a FAIL logs a NOTE against the dorm prefect (FAIL only, PARTIAL none).
     if (d.result === "FAIL") {
-      await escalateInspectionFail(tx, school.id, row.id, "INSPECTION_DAILY", { dormId: d.dormId }, anomalies, actor);
+      await escalateInspectionFail(tx, school.id, row.id, "INSPECTION_DAILY", { dormId: d.dormId }, anomalies, actor, sms);
     }
   });
 
+  await flushSms(sms); // #253 — any Warning+ parent-notify goes out only after the inspection tx commits.
   safeRevalidate(todayPath(dorm.houseId));
   return { ok: true, message: `Dorm inspection recorded (${d.result.toLowerCase()}).` };
 }
@@ -267,6 +271,7 @@ export async function recordWeeklyInspection(input: unknown): Promise<ActionResu
   }
   const anomalies = computeAnomalies(findings.data);
 
+  const sms: SmsIntent[] = [];
   await withSchool(school.id, async (tx) => {
     const [row] = await tx
       .insert(inspections)
@@ -305,10 +310,11 @@ export async function recordWeeklyInspection(input: unknown): Promise<ActionResu
     });
     // INCR-13 stub (b): a FAIL logs a WARNING against a House prefect (FAIL only, PARTIAL none).
     if (d.result === "FAIL") {
-      await escalateInspectionFail(tx, school.id, row.id, "INSPECTION_WEEKLY", { houseId: d.houseId }, anomalies, actor);
+      await escalateInspectionFail(tx, school.id, row.id, "INSPECTION_WEEKLY", { houseId: d.houseId }, anomalies, actor, sms);
     }
   });
 
+  await flushSms(sms); // #253 — the weekly-FAIL Warning parent-notify goes out only after commit.
   safeRevalidate(todayPath(d.houseId));
   return { ok: true, message: `Weekly inspection recorded (${d.result.toLowerCase()}).` };
 }

@@ -19,7 +19,7 @@ import {
   students,
   studentGuardians,
 } from "@/db/schema";
-import { sendSms } from "@/lib/sms";
+import { flushSms, type SmsIntent } from "@/lib/sms";
 import { insertInfraction } from "./discipline-core";
 import { getExeatBoard } from "./exeat-data";
 import {
@@ -59,6 +59,7 @@ export async function sendExeatStage(
   exeatId: string,
   kind: NotificationKind,
   actorUserId: string | null,
+  sms: SmsIntent[],
 ): Promise<StageResult> {
   const existing = await tx
     .select({ id: exeatNotification.id })
@@ -126,20 +127,28 @@ export async function sendExeatStage(
     return "no_phone";
   }
 
-  // ponytail: sendSms runs inside the tx — negligible for the console provider; once Hubtel
-  // go-lives, move the send outside the tx (network call shouldn't hold a row lock).
-  const result = await sendSms(guardian.phone, body);
-  await tx.insert(exeatNotification).values({
-    schoolId,
-    exeatId,
-    kind,
-    toPhone: guardian.phone,
+  // #253 — defer the send to post-commit (network call must not hold the exeat's row lock, and a
+  // rolled-back tx must not leave an SMS out). The exeat_notification row records the REAL result, so
+  // it is written by the onSent hook in its own fresh tx once the send returns (never optimistically).
+  const toPhone = guardian.phone;
+  sms.push({
+    to: toPhone,
     body,
-    provider: result.provider,
-    providerMessageId: result.id,
-    error: result.error,
-    ok: result.ok,
-    sentByUserId: actorUserId ?? undefined,
+    onSent: (result) =>
+      withSchool(schoolId, (t) =>
+        t.insert(exeatNotification).values({
+          schoolId,
+          exeatId,
+          kind,
+          toPhone,
+          body,
+          provider: result.provider,
+          providerMessageId: result.id,
+          error: result.error,
+          ok: result.ok,
+          sentByUserId: actorUserId ?? undefined,
+        }),
+      ).then(() => undefined),
   });
   return "sent";
 }
@@ -168,9 +177,12 @@ export async function runOverdueChain(
   let stage3Stubs = 0;
 
   for (const row of board.late) {
+    // #253 — collect this row's sends in-tx, deliver them only after ITS tx commits (per-row, so an
+    // earlier committed row still sends even if a later row throws).
+    const sms: SmsIntent[] = [];
     await withSchool(schoolId, async (tx) => {
       for (const kind of row.dueStages) {
-        const res = await sendExeatStage(tx, schoolId, row.id, kind, actorUserId);
+        const res = await sendExeatStage(tx, schoolId, row.id, kind, actorUserId, sms);
         if (res === "sent" || res === "no_phone") {
           if (res === "sent") sent += 1;
           if (kind === "OVERDUE_STAGE_3") {
@@ -193,12 +205,13 @@ export async function runOverdueChain(
                 sourceRefId: row.id,
                 loggedByUserId: actorUserId,
                 actorRole,
-              });
+              }, sms);
             }
           }
         }
       }
     });
+    await flushSms(sms);
   }
   return { checked: board.late.length, sent, stage3Stubs };
 }
