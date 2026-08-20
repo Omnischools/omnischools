@@ -704,9 +704,9 @@ export function DonePanel({
               we&apos;ll guide you through the rest from a checklist.
             </p>
           </div>
-          {/* When OTP-first is live AND captcha is off, the OTP card below is the sign-in action; else
-              link to /login (whose OTP send IS captcha-wired — the onboarding auto-send is not). */}
-          {(!result.otpLive || captchaEnabled()) && (
+          {/* Pre-OTP flow (otpLive=false): the plain terminal button. When OTP-first IS live the sign-in
+              action lives below — the inline OTP card (captcha off) or the explicit hand-off (captcha on). */}
+          {!result.otpLive && (
             <Link
               href="/login?accepted=1"
               className="rounded-lg bg-gold px-6 py-3.5 text-sm font-bold text-navy transition-colors hover:brightness-95"
@@ -719,8 +719,34 @@ export function DonePanel({
 
       {/* INCR-AUTH-OTP · auto-sign-in (Option A): verify the phone via OTP → confirms it + lands in /dashboard. */}
       {/* The onboarding auto-send is NOT captcha-wired (no user interaction before the send), so when
-          captcha is on we skip it and route to /login above, whose OTP send solves a captcha. */}
+          captcha is on we skip it and show the explicit hand-off below instead. */}
       {result.otpLive && !captchaEnabled() && <OnboardingOtpFinish phone={result.adminPhone} />}
+
+      {/* #304 — captcha on: the app-controlled OTP auto-send can't run (no user-solved token exists before
+          the send), so auto-sign-in is impossible here. Rather than SILENTLY drop the just-onboarded admin
+          at a generic button, make the hand-off EXPLICIT: name the school, the reason, and the phone, then
+          route to /login — whose OTP send IS captcha-gated. Captcha stays in force: onboarding sign-in is a
+          public, self-service action (a brand-new user signing THEMSELVES in), never an authenticated admin
+          action, so it must NOT reuse #303's captcha-exempt service-role path. */}
+      {result.otpLive && captchaEnabled() && (
+        <div className="mt-5 rounded-xl border border-gold-soft bg-gold-bg px-6 py-5">
+          <div className="font-display text-base font-semibold text-navy">
+            One more step — finish signing in
+          </div>
+          <p className="mt-1 max-w-[520px] text-[13px] leading-relaxed text-navy-2">
+            <b className="text-navy">{schoolName}</b> is ready. For security we ask everyone to pass a
+            quick verification, so we couldn&apos;t sign you in automatically. On the sign-in page, enter{" "}
+            <b className="text-navy">{result.adminPhone}</b> to get a one-time code — or use the password
+            you just set — and you&apos;ll land on your dashboard.
+          </p>
+          <Link
+            href="/login?accepted=1"
+            className="mt-3 inline-block rounded-lg bg-navy px-5 py-2.5 text-sm font-bold text-bg transition-colors hover:bg-navy-deep"
+          >
+            Go to sign in →
+          </Link>
+        </div>
+      )}
 
       <div className="mt-6">
         <div className="mb-3 font-display text-base font-medium text-navy">
