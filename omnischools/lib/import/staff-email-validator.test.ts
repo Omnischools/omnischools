@@ -50,4 +50,14 @@ describe("staff email · preview validator agrees with server schema (#318)", ()
     expect(previewAccepts("")).toBe(true);
     expect(serverAccepts("")).toBe(true);
   });
+
+  // #318 guard: staff email is UNCAPPED (unlike the guardian schema's .max(160)). A 200+ char
+  // otherwise-valid email must be accepted by BOTH preview and server — proves no length cap was
+  // silently borrowed from the guardian schema, which would re-open divergence for 161+ char emails.
+  it("does not silently cap staff email length (no 160 regression)", () => {
+    const long = "a".repeat(190) + "@example.com"; // 202 chars, well over 160
+    expect(long.length).toBeGreaterThan(160);
+    expect(previewAccepts(long)).toBe(true);
+    expect(serverAccepts(long)).toBe(true);
+  });
 });
