@@ -10,6 +10,7 @@ import { sendSms } from "@/lib/sms";
 import { sendEmail } from "@/lib/email";
 import { safeRevalidate } from "@/lib/revalidate";
 import { resolveRole } from "@/lib/staff-roles";
+import { staffEmailSchema } from "@/lib/import/staff-import";
 import type { Tx } from "@/lib/db";
 import {
   users,
@@ -142,7 +143,7 @@ async function assign(
 const AddStaffSchema = z.object({
   fullName: z.string().min(2, "Enter the staff member's name").max(120),
   phone: z.string().min(7, "Enter a valid phone number"),
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  email: staffEmailSchema,
   role: z.string().min(2, "Choose or enter a role").max(60),
 });
 
@@ -199,7 +200,7 @@ const ImportStaffSchema = z.object({
       z.object({
         fullName: z.string().min(2).max(120),
         phone: z.string().min(7),
-        email: z.string().email().optional().or(z.literal("")),
+        email: staffEmailSchema,
         role: z.string().min(2).max(60),
         ...profileFields,
       }),
@@ -365,7 +366,7 @@ const UpdateStaffSchema = z.object({
   userId: z.string().uuid(),
   fullName: z.string().min(2, "Enter the staff member's name").max(120),
   phone: z.string().min(7, "Enter a valid phone number"),
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  email: staffEmailSchema,
 });
 
 export async function updateStaff(input: unknown): Promise<Result> {

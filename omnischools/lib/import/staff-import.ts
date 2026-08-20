@@ -1,6 +1,26 @@
+import { z } from "zod";
 import { isValidGhanaPhone, normalizePhone } from "./csv";
 import { STAFF_ROLES } from "@/lib/staff-roles";
 import { resolveQualification } from "@/lib/staff-qualifications";
+
+/**
+ * Staff email — the SINGLE source of truth shared by the CSV preview validator (below) and the
+ * server add/edit/import actions (`lib/actions/staff.ts`). Optional; blank stays valid. #318 (same
+ * class as #308): the preview ran a looser regex than the server's Zod `.email()`, so the review
+ * table could mark a row "Ready" that the server then rejected, failing the batch. Both sides now
+ * import this one schema, so no divergence is possible. Client-safe (zod runs on the client).
+ * NB: no `.max(160)` (unlike the guardian schema) — the staff `email` column is uncapped `text`
+ * and the staff server never capped it, so we keep parity with the actual staff field.
+ */
+export const staffEmailSchema = z
+  .string()
+  .email("Invalid email")
+  .optional()
+  .or(z.literal(""));
+
+/** True when a staff email is acceptable. Blank = acceptable (the field is optional). */
+export const isValidStaffEmail = (email: string): boolean =>
+  staffEmailSchema.safeParse(email).success;
 
 /**
  * Staff bulk-import spec + validator. Pure + client-safe so the review table can
@@ -113,8 +133,6 @@ for (const r of STAFF_ROLES) {
   ROLE_BY_KEY.set(r.label.toLowerCase(), r);
 }
 
-const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
-
 /** True for a real YYYY-MM-DD calendar date (rejects e.g. 2024-13-40). */
 const isIsoDate = (s: string): boolean => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
@@ -153,7 +171,7 @@ export function validateStaffRows(dataRows: string[][]): {
     }
 
     const email = get(2);
-    if (email && !isEmail(email)) errors.push("Email is invalid");
+    if (email && !isValidStaffEmail(email)) errors.push("Email is invalid");
 
     const roleRaw = get(3);
     let roleLabel = "Teacher";
