@@ -1,0 +1,105 @@
+# CI — the gates the owner currently runs by hand, now on every PR (issue #252).
+#
+# Repo layout: the git root is the worktree top; the app lives in the omnischools/ subdir,
+# so this file sits at .github/workflows/ (repo root) next to pr-project-tracking.yml, and
+# every app command runs with `pnpm -C omnischools ...`.
+#
+# Two jobs:
+#   verify           — typecheck + vitest + next build (the hand-run gates).
+#   migration-replay — apply the FULL db/migrations/* chain from an EMPTY postgres:16,
+#                      catching composite-FK / ordering regressions (the 0033 class) that
+#                      no local or verify step exercises.
+#
+# No real secrets: `next build` needs no env (lib/env.ts defaults are permissive and the app
+# is force-dynamic, so the build never opens a DB connection — proven locally). The replay
+# job talks only to a throwaway service-container Postgres.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs for the same ref (a new push to a PR kills the in-flight run).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm must be installed BEFORE setup-node so `cache: pnpm` can resolve the store path.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: omnischools/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm -C omnischools install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -C omnischools typecheck
+
+      - name: Test
+        run: pnpm -C omnischools test
+
+      - name: Build
+        run: pnpm -C omnischools build
+
+  migration-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: omnischools
+          POSTGRES_PASSWORD: omnischools
+          POSTGRES_DB: omnischools_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U omnischools -d omnischools_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # drizzle.config.ts reads process.env.DATABASE_URL (its dotenv .env.local load is a
+      # no-op in CI); point it at the throwaway service DB.
+      DATABASE_URL: postgresql://omnischools:omnischools@localhost:5432/omnischools_ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: omnischools/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm -C omnischools install --frozen-lockfile
+
+      # `drizzle-kit migrate` walks db/migrations/meta/_journal.json and applies every .sql
+      # from empty; it exits non-zero if any migration errors (e.g. a composite FK created
+      # before its target UNIQUE — the 0033 class). This is what no local step does.
+      - name: Replay migrations from empty
+        run: pnpm -C omnischools db:migrate
