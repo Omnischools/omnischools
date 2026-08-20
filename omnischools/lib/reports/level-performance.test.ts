@@ -102,4 +102,17 @@ describe("compareLevelLabel · year-group ladder", () => {
       UNSPECIFIED_LEVEL,
     ]);
   });
+
+  // #305 · the tail boundary: an unknown/custom level sorts AFTER the known ladder but BEFORE the
+  // literal "Unspecified" bucket (unknown < Unspecified, both after SHS/Form).
+  it("orders unknown custom levels after the ladder but before Unspecified", () => {
+    const shuffled = [UNSPECIFIED_LEVEL, "Creche", "Form 3", "KG 1"];
+    expect([...shuffled].sort(compareLevelLabel)).toEqual([
+      "KG 1",
+      "Form 3",
+      "Creche", // unknown → after the ladder
+      UNSPECIFIED_LEVEL, // literal bucket → strictly last
+    ]);
+    expect(compareLevelLabel("Creche", UNSPECIFIED_LEVEL)).toBeLessThan(0);
+  });
 });
