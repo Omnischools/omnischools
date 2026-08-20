@@ -1,4 +1,23 @@
+import { z } from "zod";
 import { isValidGhanaPhone, normalizePhone } from "./csv";
+
+/**
+ * Guardian email — the SINGLE source of truth shared by the CSV preview validator (below)
+ * and the server create/edit/import actions (`lib/actions/students.ts`). Optional; blank
+ * stays valid. #308: the preview used to run a looser regex than the server's Zod `.email()`,
+ * so the review table could mark a row "Ready" that the server then rejected. Both sides now
+ * import this one schema, so no divergence is possible. Client-safe (zod runs on the client).
+ */
+export const guardianEmailSchema = z
+  .string()
+  .max(160)
+  .email("Enter a valid guardian email address.")
+  .optional()
+  .or(z.literal(""));
+
+/** True when a guardian email is acceptable. Blank = acceptable (the field is optional). */
+export const isValidGuardianEmail = (email: string): boolean =>
+  guardianEmailSchema.safeParse(email).success;
 
 /**
  * Student bulk-import spec + validator. Pure + client-safe so the review table can
@@ -131,7 +150,7 @@ export function validateStudentRows(
       warnings.push("No guardian — parent won't be invited");
 
     const guardianEmail = get(9);
-    if (guardianEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardianEmail))
+    if (guardianEmail && !isValidGuardianEmail(guardianEmail))
       errors.push("Guardian email is invalid");
 
     return {

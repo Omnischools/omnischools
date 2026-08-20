@@ -7,6 +7,7 @@ import { requireSchool, resolveActor, assertWriteAccess } from "@/lib/auth/serve
 import { normalizeGhanaPhone } from "@/lib/auth";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { nextStudentCode } from "@/lib/students-helpers";
+import { guardianEmailSchema } from "@/lib/import/student-import";
 import type { Tx } from "@/lib/db";
 import {
   students,
@@ -31,7 +32,7 @@ const CreateStudentSchema = z.object({
   guardianName: z.string().max(160).optional().or(z.literal("")),
   guardianPhone: z.string().max(40).optional().or(z.literal("")),
   guardianRelation: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("GUARDIAN"),
-  guardianEmail: z.string().max(160).email("Enter a valid guardian email address.").optional().or(z.literal("")),
+  guardianEmail: guardianEmailSchema,
 });
 
 export type CreateStudentResult =
@@ -121,7 +122,7 @@ const UpdateStudentSchema = z.object({
   guardianName: z.string().max(160).optional().or(z.literal("")),
   guardianPhone: z.string().max(40).optional().or(z.literal("")),
   guardianRelation: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("GUARDIAN"),
-  guardianEmail: z.string().max(160).email("Enter a valid guardian email address.").optional().or(z.literal("")),
+  guardianEmail: guardianEmailSchema,
   // Health & emergency record (all optional)
   bloodGroup: z.string().max(8).optional().or(z.literal("")),
   allergies: z.string().max(1000).optional().or(z.literal("")),
@@ -266,7 +267,7 @@ const ImportRowSchema = z.object({
   guardianName: z.string().max(160).optional().or(z.literal("")),
   guardianPhone: z.string().max(40).optional().or(z.literal("")),
   guardianRelation: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("GUARDIAN"),
-  guardianEmail: z.string().max(160).email("Enter a valid guardian email address.").optional().or(z.literal("")),
+  guardianEmail: guardianEmailSchema,
 });
 const ImportStudentsSchema = z.object({
   rows: z.array(ImportRowSchema).min(1, "No rows to import").max(1000),
