@@ -70,6 +70,47 @@ export function civilDate(at: Date): string {
   return at.toISOString().slice(0, 10);
 }
 
+/** One effective row as the DB returned it (R49b) — the only thing the save may reason about. */
+export interface EffectiveMark {
+  studentId: string;
+  status: AttendanceStatus;
+  reasonCode: string | null;
+}
+
+/**
+ * #265 / owner OC-MED-NOTIFY = NO — the post-write summary `saveAttendance` records and messages
+ * from, derived from the EFFECTIVE rows the DB stored (R49b), NEVER from teacher input.
+ *
+ * `absentStudentIds` is the ONLY set that gets an SMS. A MEDICAL row is never in it, so no parent is
+ * told "…was marked absent" about a child the school itself sent to the sickbay (AC-265-1). The two
+ * MEDICAL counts put that (correct) suppression on the audit record instead of leaving it a silent
+ * fall-out of the absent filter:
+ *   • medicalTeacherMarked   — a teacher pressed Medical (any non-sickbay reason). Suppressed by
+ *                              policy: NO SMS (owner OC-MED-NOTIFY = NO).
+ *   • medicalSickbayDeferred — reasonCode === SICKBAY (an R48-coerced hold). Any notification is the
+ *                              sickbay comms module's job (#280), never this register-save path's.
+ *
+ * 🔒 A7 — COUNTS only: no reason code, note, or clinical string ever leaves here. A sickbay-owned
+ * row is distinguished by `reasonCode === SICKBAY_REASON_CODE` and collapsed to a tally on the spot.
+ */
+export function summariseMarks(marked: readonly EffectiveMark[]): {
+  absentStudentIds: string[];
+  medicalTeacherMarked: number;
+  medicalSickbayDeferred: number;
+} {
+  const absentStudentIds: string[] = [];
+  let medicalTeacherMarked = 0;
+  let medicalSickbayDeferred = 0;
+  for (const m of marked) {
+    if (m.status === "ABSENT") absentStudentIds.push(m.studentId);
+    else if (m.status === "MEDICAL") {
+      if (m.reasonCode === SICKBAY_REASON_CODE) medicalSickbayDeferred++;
+      else medicalTeacherMarked++;
+    }
+  }
+  return { absentStudentIds, medicalTeacherMarked, medicalSickbayDeferred };
+}
+
 /**
  * R47 — ONE mark per student per day, civil date Africa/Accra, **TODAY ONLY, never backdated**.
  * Returns the date to write, or null when the clinical event is not today (the writer then skips with
