@@ -141,6 +141,12 @@ export const SHOWN_AUDIT_ENTITIES = new Set([
   // listed here or the classify-at-creation guard fails the build (R316). —
   "vlc_session", // held-session instance (one per class × date; "held" = the row exists)
   "vlc_session_attendance", // present-by-default student P/L/A row (minutes_late/note)
+  // — VLC curriculum-library change request (SHS module 4.5 / #296) — the OPERATIONAL config-change
+  // workflow (propose/approve/reject a structural add/reorder/remove of a taught VALUE). NO pastoral
+  // PII: the payload is curriculum copy + ordinals, the same class as vlc_value / vlc_session_template.
+  // It does NOT use the reserved `vlc_pastoral_` prefix, so it MUST be listed here or the
+  // classify-at-creation guard fails the build. —
+  "vlc_value_change_request", // proposed structural change to the value library (op/payload/state)
   // — PLC programme-setup spine (SHS module 4.6 / INCR-47) — STAFF CPD config, OPERATIONAL throughout.
   // Attendees are STAFF, so there is NO confidential/pastoral layer, NO student PII, NO parent path —
   // the config cadence, the CPD-points contract, the staff PLC groups, membership and per-term focus.
