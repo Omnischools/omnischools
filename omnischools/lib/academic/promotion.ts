@@ -1,4 +1,5 @@
 import { GES_BASIC_CLASSES } from "@/lib/onboarding";
+import { compareLevelLabel, UNSPECIFIED_LEVEL } from "@/lib/reports/level-order";
 
 /**
  * Year-end promotion ladder — pure helpers shared by the promotion action and UI.
@@ -38,6 +39,23 @@ export function shiftYearIso(iso: string): string {
   d.setUTCFullYear(d.getUTCFullYear() + 1);
   if (d.getUTCMonth() !== month) d.setUTCDate(0); // overflowed (Feb 29) → last day of Feb
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Ladder-correct order for two promotion-preview rows (#320): canonical tier order on the level
+ * (#305's compareLevelLabel — KG<Primary<JHS<SHS, numeric within tier — because the ladder can't be
+ * expressed in SQL), then class name so streams within a year-group stay grouped. Null levels
+ * (UNMATCHED / level-less classes) bucket last via UNSPECIFIED_LEVEL. Callers `.sort()` a
+ * lastName-ordered array, so a stable sort keeps students in lastName order within a class.
+ */
+export function comparePromotionRows(
+  a: { fromLevel: string | null; fromClass: string },
+  b: { fromLevel: string | null; fromClass: string },
+): number {
+  return (
+    compareLevelLabel(a.fromLevel ?? UNSPECIFIED_LEVEL, b.fromLevel ?? UNSPECIFIED_LEVEL) ||
+    a.fromClass.localeCompare(b.fromClass)
+  );
 }
 
 /** The section suffix of a class name relative to its level, e.g. ("JHS 1 A","JHS 1") → "A". */

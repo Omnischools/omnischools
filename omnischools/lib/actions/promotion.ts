@@ -12,6 +12,7 @@ import {
   nextAcademicYear,
   shiftYearIso,
   sectionSuffix,
+  comparePromotionRows,
 } from "@/lib/academic/promotion";
 import type { Tx } from "@/lib/db";
 import { students, classes, academicPeriod, academicPeriodConfig } from "@/db/schema";
@@ -60,9 +61,12 @@ async function buildPlan(tx: Tx, schoolId: string): Promise<PromotionRow[]> {
     })
     .from(students)
     .where(and(eq(students.schoolId, schoolId), eq(students.status, "ACTIVE")))
-    .orderBy(asc(students.currentClassLabel), asc(students.lastName));
+    // Fetch in lastName order only; the ladder-correct level ordering can't be expressed in SQL
+    // (currentClassLabel embeds the level and sorts lexically — "JHS 1" before "Primary 2", #320)
+    // so we order in JS below. No LIMIT/pagination here, so JS-side sorting is complete.
+    .orderBy(asc(students.lastName));
 
-  return studs.map((s): PromotionRow => {
+  const rows = studs.map((s): PromotionRow => {
     const name = `${s.firstName} ${s.lastName}`.trim();
     const from = s.classId ? clsById.get(s.classId) : undefined;
     const base = {
@@ -85,6 +89,9 @@ async function buildPlan(tx: Tx, schoolId: string): Promise<PromotionRow[]> {
       targets[0];
     return { ...base, action: "PROMOTE", toClassId: target.id, toClass: target.name };
   });
+
+  rows.sort(comparePromotionRows); // stable → keeps the SQL lastName order within a class
+  return rows;
 }
 
 /** Resolve the school's current academic year and whether the next year already exists. */
