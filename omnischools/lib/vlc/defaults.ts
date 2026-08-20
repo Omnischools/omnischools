@@ -291,15 +291,11 @@ export const VLC_VALUES: readonly VlcValueDefault[] = [
   },
 ];
 
-/**
- * Frozen editorial (descriptor / capstone) keyed by ordinal — attached to stored rows by the reader.
- * ordinal-keyed: safe only while add/reorder/remove are deferred (R291). When that lands a new or
- * reordered value will mis-key/null its descriptor — at that point make descriptor/capstone stored
- * columns or drop them.
- */
-export const VLC_VALUE_BY_ORDINAL: ReadonlyMap<number, VlcValueDefault> = new Map(
-  VLC_VALUES.map((v) => [v.ordinal, v]),
-);
+// #296 — VLC_VALUE_BY_ORDINAL (the ordinal-keyed descriptor/capstone attach) is DELETED. The reader now
+// reads the STORED `vlc_value.descriptor` / `is_capstone` columns (backfilled by migration 0085), which
+// stay correct under add/reorder/remove where the ordinal key would mis-key or null a live row's editorial.
+// The frozen descriptor/capstone still live on VLC_VALUES above for the unseeded-school coalesce fallback
+// and as the ADD-value defaults source.
 
 /** The number of session templates the value set implies — DERIVED, never stored (22 for the canon). */
 export function vlcSessionCount(values: readonly { sessions: readonly unknown[] }[]): number {

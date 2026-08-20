@@ -33,7 +33,6 @@ import {
 import {
   coalesceVlcProgramme,
   VLC_VALUES,
-  VLC_VALUE_BY_ORDINAL,
   type VlcProgrammeRow,
 } from "./defaults";
 import { classFormNumber } from "@/lib/senior/form";

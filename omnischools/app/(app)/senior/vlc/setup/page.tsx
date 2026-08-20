@@ -1,10 +1,17 @@
 import { redirect } from "next/navigation";
 import { requireSchoolRole } from "@/lib/auth/server";
-import { hasAnyRole, VLC_CONFIG_READ_ROLES, VLC_CONFIG_WRITE_ROLES } from "@/lib/access";
+import {
+  hasAnyRole,
+  VLC_CONFIG_APPROVE_ROLES,
+  VLC_CONFIG_READ_ROLES,
+  VLC_CONFIG_WRITE_ROLES,
+} from "@/lib/access";
 import { getVlcSetup } from "@/lib/vlc/setup-data";
+import { getVlcPendingChanges } from "@/lib/vlc/change-request-data";
 import { VLC_TERM_ARCS } from "@/lib/vlc/defaults";
 import { RhythmEditor } from "@/components/vlc/rhythm-editor";
 import { CurriculumLibrary } from "@/components/vlc/curriculum-library";
+import { PendingChanges } from "@/components/vlc/pending-changes";
 import { SectionHead, SumCard } from "@/components/vlc/chrome";
 
 export const dynamic = "force-dynamic";
@@ -25,8 +32,12 @@ export default async function VlcSetupPage() {
   if (school.schoolType === "BASIC") redirect("/dashboard");
 
   const canEdit = hasAnyRole(user.roles, VLC_CONFIG_WRITE_ROLES);
+  const canApprove = hasAnyRole(user.roles, VLC_CONFIG_APPROVE_ROLES);
 
-  const setup = await getVlcSetup(school.id);
+  const [setup, pendingChanges] = await Promise.all([
+    getVlcSetup(school.id),
+    getVlcPendingChanges(school.id),
+  ]);
   const valuesByGroup = (g: number) => setup.values.filter((v) => v.termGroup === g);
 
   return (
@@ -76,6 +87,9 @@ export default async function VlcSetupPage() {
           Form 1 · Form 2 · Form 3 · all programmes
         </SumCard>
       </div>
+
+      {/* ── Pending curriculum changes (approval queue — Headmaster decides) ── */}
+      <PendingChanges changes={pendingChanges} canApprove={canApprove} />
 
       {/* ── The Wednesday rhythm ── */}
       <section id="rhythm" className="mb-10 scroll-mt-6">

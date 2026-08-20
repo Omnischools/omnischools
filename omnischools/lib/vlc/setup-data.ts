@@ -13,7 +13,6 @@ import { academicPeriod, classes, vlcProgramme, vlcSessionTemplate, vlcValue } f
 import {
   coalesceVlcProgramme,
   VLC_VALUES,
-  VLC_VALUE_BY_ORDINAL,
   type VlcProgramme,
 } from "./defaults";
 
@@ -75,6 +74,11 @@ export async function getVlcSetup(schoolId: string): Promise<VlcSetup> {
         ordinal: vlcValue.ordinal,
         nameEn: vlcValue.nameEn,
         nameTwi: vlcValue.nameTwi,
+        // #296 — descriptor / is_capstone are now STORED columns (backfilled from VLC_VALUES by ordinal in
+        // migration 0085), NOT attached ordinal-keyed from the frozen lib: under a reorder the ordinal key
+        // breaks, so a stored value is the only reorder-safe source.
+        descriptor: vlcValue.descriptor,
+        isCapstone: vlcValue.isCapstone,
         termGroup: vlcValue.termGroup,
       })
       .from(vlcValue)
@@ -124,7 +128,6 @@ export async function getVlcSetup(schoolId: string): Promise<VlcSetup> {
     } else {
       const bySlot = new Map(templateRows.map((t) => [`${t.valueId}:${toSlot(t.slot)}`, t]));
       values = valueRows.map((v) => {
-        const def = VLC_VALUE_BY_ORDINAL.get(v.ordinal);
         const a = bySlot.get(`${v.id}:A`);
         const b = bySlot.get(`${v.id}:B`);
         return {
@@ -132,9 +135,9 @@ export async function getVlcSetup(schoolId: string): Promise<VlcSetup> {
           ordinal: v.ordinal,
           nameEn: v.nameEn,
           nameTwi: v.nameTwi,
-          descriptor: def?.descriptor ?? null,
+          descriptor: v.descriptor,
           termGroup: v.termGroup,
-          capstone: def?.capstone ?? false,
+          capstone: v.isCapstone,
           sessionA: a ? { id: a.id, slot: "A", title: a.title, prompt: a.prompt } : null,
           sessionB: b ? { id: b.id, slot: "B", title: b.title, prompt: b.prompt } : null,
         };

@@ -236,6 +236,22 @@ export const VLC_CONFIG_READ_ROLES = [
 ] as const satisfies readonly KnownAppRole[];
 
 /**
+ * 🔴 #296 — VLC curriculum-library STRUCTURAL-change APPROVER — who may APPROVE or REJECT a proposed
+ * add / reorder / remove of a taught value. HEADMASTER ONLY (owner-ratified): an ADMIN (in
+ * VLC_CONFIG_WRITE_ROLES) may PROPOSE a structural change but CANNOT self-approve it, and the Dean who
+ * proposes cannot approve either.
+ *
+ * DELIBERATELY its own purpose-named group, NOT a reuse of any wider sibling (STAFF_ADMIN_ROLES /
+ * VLC_CONFIG_WRITE_ROLES / USER_ADMIN_ROLES) — reusing a wider set would readmit ADMIN and reopen
+ * self-approval, exactly the [[builds-widen-ratified-authz-and-self-bless]] hazard this gate exists to
+ * prevent. It gates ALL THREE structural ops (add/reorder/remove); the rename/prompt IMMEDIATE edits
+ * stay on VLC_CONFIG_WRITE_ROLES (no approval). `as const satisfies` makes a typo'd code a compile error.
+ */
+export const VLC_CONFIG_APPROVE_ROLES = [
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
+/**
  * VLC PASTORAL flag (SHS module 4.5 / INCR-42b) — the module's FIRST confidential pastoral-PII gate, and
  * a SEPARATE, tighter pair than the config gates above (mirrors the SICKBAY_CLINICAL_* narrow-gate shape,
  * owner-locked b+c). READ = WRITE = FORM_MASTER + DEAN_OF_STUDENTS ONLY.
