@@ -89,7 +89,8 @@ describe("L2b · actions double-gated, reset-as-flow, reason-channel safe (sourc
   });
 
   it("L2-22/L2-23 · reset sends an OTP to the STORED phone, sets/reveals NO password, no caller-supplied dest", () => {
-    expect(USERS).toContain("signInWithPhone(gated.phone)");
+    // #303 — via the service-role admin send (not the public captcha-gated signInWithPhone).
+    expect(USERS).toContain("adminSendPhoneOtp(gated.phone)");
     expect(USERS).not.toContain("createPasswordUser");
     expect(USERS).not.toContain("updatePassword");
     expect(USERS).not.toMatch(/input\.(phone|email|destination)/);

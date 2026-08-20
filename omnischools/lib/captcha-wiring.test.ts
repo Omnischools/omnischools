@@ -230,10 +230,13 @@ describe("M1 · the non-form captcha-gated callers are handled (completeness)", 
     expect(CHANGE_FORM).toContain("captchaToken: captcha.token");
   });
 
-  it("initiatePasswordReset refuses honestly when captchaEnabled(), BEFORE the OTP send (no lie-SMS)", () => {
+  it("#303 · initiatePasswordReset routes the OTP through the SERVICE-ROLE admin send — NOT captcha-gated", () => {
     const b = body(USERS_ACTION, "initiatePasswordReset");
-    expect(b).toContain("captchaEnabled()");
-    expect(b.indexOf("captchaEnabled()")).toBeLessThan(b.indexOf("signInWithPhone(gated.phone)"));
+    // The authenticated, role-gated admin reset must WORK with captcha on: no honest-refusal guard, and the
+    // send goes via `adminSendPhoneOtp` (service-role, captcha-bypassed), never the PUBLIC `signInWithPhone`.
+    expect(b).not.toContain("captchaEnabled()");
+    expect(b).toContain("adminSendPhoneOtp(gated.phone)");
+    expect(b).not.toContain("signInWithPhone");
   });
 
   it("the onboarding OTP-finish panel is skipped when captchaEnabled() (routes to the /login card)", () => {
