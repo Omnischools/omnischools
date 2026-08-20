@@ -38,6 +38,7 @@ import {
  */
 
 export type { MarkEntry, MarkSkipReason } from "./mark-rules";
+export { summariseMarks } from "./mark-rules";
 
 /** What the DB actually stored for one student — the only thing callers may reason about (R49b). */
 export interface MarkedRow {

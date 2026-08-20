@@ -7,7 +7,7 @@ import { requireSchool, resolveActor, assertWriteAccess } from "@/lib/auth/serve
 import { sendSms } from "@/lib/sms";
 import { safeRevalidate } from "@/lib/revalidate";
 import { ATTENDANCE_REASON_CODES, SICKBAY_REASON_CODE } from "@/lib/attendance-reasons";
-import { closedTermLabel, writeMarks } from "@/lib/attendance/mark";
+import { closedTermLabel, summariseMarks, writeMarks } from "@/lib/attendance/mark";
 import {
   classes,
   students,
@@ -188,7 +188,10 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
       // 🔴 R49b — the absent list (→ the parent SMS → the audit) comes from the EFFECTIVE statuses
       // the DB stored, NEVER from `d.entries`. A student the sickbay holds is not in it, so her
       // mother does not get "…was marked absent" while she is on bed 3 in the school's own sickbay.
-      const absent = res.marked.filter((m) => m.status === "ABSENT").map((m) => m.studentId);
+      // #265 — the same summary carries the MEDICAL split, so the (correct) SMS suppression is a
+      // recorded decision, not a silent fall-out of the absent filter (owner OC-MED-NOTIFY = NO).
+      const { absentStudentIds: absent, medicalTeacherMarked, medicalSickbayDeferred } =
+        summariseMarks(res.marked);
       await recordAudit(tx, {
         schoolId: school.id,
         actorUserId: actor.id ?? undefined,
@@ -201,6 +204,9 @@ export async function saveAttendance(input: unknown): Promise<SaveAttendanceResu
           marked: res.marked.length,
           absent: absent.length,
           heldMedical: res.held.length,
+          // MEDICAL rows that were NOT messaged, and why the silence is correct (#265 / #280).
+          medicalTeacherMarked, // teacher pressed Medical — suppressed by policy, no SMS
+          medicalSickbayDeferred, // reasonCode SICKBAY — notification deferred to the sickbay module
         },
         reason: "Attendance taken",
       });
