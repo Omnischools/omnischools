@@ -1,8 +1,7 @@
 "use server";
 import { and, eq, gte, isNull, lte, or } from "drizzle-orm";
 import { requireSchool, resolveActor, assertAnyRole } from "@/lib/auth/server";
-import { signInWithPhone } from "@/lib/auth";
-import { captchaEnabled } from "@/lib/captcha";
+import { adminSendPhoneOtp } from "@/lib/auth/admin";
 import { sendSms } from "@/lib/sms";
 import { USER_ADMIN_ROLES, canManageTarget } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
@@ -124,18 +123,11 @@ export async function activateUser(input: { targetUserId: string }): Promise<Res
 export async function initiatePasswordReset(input: { targetUserId: string }): Promise<Result> {
   const { user, school } = await requireSchool();
   await assertAnyRole(USER_ADMIN_ROLES);
-  // INCR-AUTH-CAPTCHA (up-front, before any audit/DB work): this admin-initiated OTP send hits GoTrue's
-  // captcha-gated signInWithOtp, but the TARGET user isn't here to solve a challenge. When captcha is on,
-  // refuse HONESTLY — no `reset_initiated` audit for a reset that won't happen, no SMS for a code GoTrue
-  // rejected — and point to the user's own captcha-solvable reset. (System-wide condition, target-agnostic
-  // message, so refusing before the target-gate leaks nothing.)
-  if (captchaEnabled()) {
-    return {
-      ok: false,
-      error:
-        "Bot-protection is on, so a reset code can't be sent from here. Ask this user to reset their own password from the sign-in screen (“Forgot password?”).",
-    };
-  }
+  // INCR-303: this admin-initiated reset is an AUTHENTICATED, role-gated action — NOT a public flow — so it
+  // must NOT be captcha-gated. The OTP is dispatched via the SERVICE-ROLE client (`adminSendPhoneOtp`), which
+  // GoTrue does not captcha-gate, so the admin can reset even with Turnstile enforced. The PUBLIC login/reset
+  // flows are untouched — they still call the anon, captcha-gated `signInWithPhone`. (An earlier honest-refusal
+  // guard here left the admin reset permanently dead once captcha was enabled — the #303 bug.)
   const targetUserId = input?.targetUserId ?? "";
   const actor = await resolveActor(school.id);
 
@@ -158,8 +150,9 @@ export async function initiatePasswordReset(input: { targetUserId: string }): Pr
   if (!gated.phone) return { ok: false, error: "That user has no phone on file to send a code to." };
 
   // Dispatch a one-time code to the target's OWN stored phone; they sign in and set a new password
-  // themselves (L2a). The admin never sets or sees a password. Console-degrades with no SMS creds.
-  await signInWithPhone(gated.phone);
+  // themselves (L2a). The admin never sets or sees a password. Service-role send (not captcha-gated).
+  const sent = await adminSendPhoneOtp(gated.phone);
+  if (!sent.ok) return sent;
   await sendSms(
     gated.phone,
     `${school.name}: an administrator has started a password reset for your account. Sign in with the one-time code sent to this number, then set a new password in Settings.`,
