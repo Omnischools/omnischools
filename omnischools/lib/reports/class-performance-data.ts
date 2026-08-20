@@ -15,6 +15,10 @@ import {
   previousTerm,
   type AcademicTerm,
 } from "./academic-term";
+// The canonical year-group ladder comparator lives in its own PURE module (#305); re-exported here
+// for the existing importers (insight-tiles, the level-performance test).
+import { UNSPECIFIED_LEVEL, compareLevelLabel } from "./level-order";
+export { UNSPECIFIED_LEVEL, compareLevelLabel };
 
 /**
  * "Class performance" — average of the pre-weighted `gradebook_score.total` per class for a
@@ -257,7 +261,6 @@ export async function getClassPerformance(
  * bucket under `"Unspecified"` (mirrors census UNSPECIFIED). A level with active classes but no graded
  * scores renders `null` (never 0) — INS-30.
  */
-export const UNSPECIFIED_LEVEL = "Unspecified";
 
 export type LevelPerfRow = {
   level: string;
@@ -293,16 +296,6 @@ export type LevelAgg = {
 export type LevelClassCount = { level: string | null; classes: number };
 
 const levelKey = (l: string | null): string => l ?? UNSPECIFIED_LEVEL;
-
-/** Ladder rank: JHS1<JHS2<JHS3 by the first integer in the label; `Unspecified` last. */
-export function compareLevelLabel(a: string, b: string): number {
-  const rank = (lvl: string) => {
-    if (lvl === UNSPECIFIED_LEVEL) return Number.POSITIVE_INFINITY;
-    const n = lvl.match(/\d+/);
-    return n ? parseInt(n[0], 10) : Number.MAX_SAFE_INTEGER - 1;
-  };
-  return rank(a) - rank(b) || a.localeCompare(b);
-}
 
 /**
  * The PURE assembly of the per-level rows from the SQL aggregates — no DB, so it is unit-tested

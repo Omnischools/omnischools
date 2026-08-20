@@ -16,6 +16,7 @@ import {
   students,
 } from "@/db/schema";
 import { num, daysOverdue } from "@/lib/fees-helpers";
+import { compareLevelLabel } from "@/lib/reports/level-order";
 import { InvoicesTable, type InvoiceRow } from "@/components/billing/invoices-table";
 import { CreateFeeStructureForm } from "@/components/billing/create-fee-structure-form";
 import { FeeStructureCard } from "@/components/billing/fee-structure-card";
@@ -98,8 +99,8 @@ export default async function BillingPage() {
       tx
         .selectDistinct({ level: classes.level })
         .from(classes)
-        .where(and(eq(classes.schoolId, school.id), isNotNull(classes.level)))
-        .orderBy(asc(classes.level)),
+        .where(and(eq(classes.schoolId, school.id), isNotNull(classes.level))),
+      // ↑ ladder-ordered in JS at the dropdown (#305); SQL asc() would sort "JHS 1" before "Primary 2".
     ),
     withSchool(school.id, (tx) =>
       tx
@@ -515,7 +516,10 @@ export default async function BillingPage() {
           <CreateFeeStructureForm
             defaultYear={year}
             feeItemOptions={feeCatRows.map((c) => c.name)}
-            levelOptions={levelRows.map((l) => l.level).filter((l): l is string => !!l)}
+            levelOptions={levelRows
+              .map((l) => l.level)
+              .filter((l): l is string => !!l)
+              .sort(compareLevelLabel)}
             yearOptions={yearRows.map((y) => y.year)}
           />
         </div>

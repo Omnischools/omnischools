@@ -14,6 +14,7 @@ import {
 import { liveSenGrantStudentIds } from "@/lib/sen/grants";
 import { isStaffRole } from "@/lib/access";
 import { ageAsOf } from "@/lib/reports/census-enrolment-data";
+import { compareLevelLabel } from "@/lib/reports/level-order";
 import {
   SEN_CATEGORIES,
   type SenCategory,
@@ -167,7 +168,7 @@ export async function getSenRegister(schoolId: string): Promise<SenRegisterView>
 
     const byLevel = [...levelCounts.entries()]
       .map(([level, count]) => ({ level, count }))
-      .sort((a, b) => a.level.localeCompare(b.level));
+      .sort((a, b) => compareLevelLabel(a.level, b.level));
 
     let largestCategory: { category: SenCategory; count: number } | null = null;
     for (const c of SEN_CATEGORIES) {
