@@ -2,6 +2,7 @@ import {
   pgTable,
   uuid,
   text,
+  jsonb,
   date,
   smallint,
   boolean,
@@ -122,6 +123,13 @@ export const vlcValue = pgTable(
     nameTwi: text("name_twi"),
     termGroup: smallint("term_group").notNull(),
     active: boolean("active").notNull().default(true),
+    // STORED editorial (issue #296) — REPLACES the ordinal-keyed attach in lib/vlc/defaults.ts
+    // (VLC_VALUE_BY_ORDINAL) that breaks the moment a value is added/reordered/removed (defaults.ts:296).
+    // Backfilled from VLC_VALUES by ordinal in migration 0085 so no live row loses its descriptor; the
+    // reader switches to these columns in the build slice. `descriptor` nullable (a custom value may have
+    // none); `is_capstone` NOT NULL default false (only the frozen value 11 is a capstone in the canon).
+    descriptor: text("descriptor"),
+    isCapstone: boolean("is_capstone").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -829,5 +837,73 @@ export const vlcPastoralParagraph = pgTable(
       columns: [t.schoolId, t.studentId],
       foreignColumns: [students.schoolId, students.id],
     }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * VLC Curriculum-library change request (SHS module 4.5 / issue #296, migration 0085) — ONE new tenant
+ * table `vlc_value_change_request`. Holds a proposed STRUCTURAL change to the taught-value library
+ * (ADD / REORDER / REMOVE a vlc_value) BETWEEN propose and decide. OWNER-RATIFIED (Kofi ruling):
+ * approval gates ALL THREE ops; an ADMIN proposes but CANNOT self-approve; approver = HEADMASTER ONLY;
+ * apply-on-approval is pragmatic + NON-destructive (so NO year-scoping columns are added to vlc_value).
+ * The role gate (Admin proposes / HM decides) AND the atomic apply both live in lib/vlc/ server actions,
+ * NOT the DB and NOT a trigger (portability).
+ *
+ * `payload` is SCHEMA-FREE jsonb (the GOV-9 census hand_fill / reserved-jsonb precedent): ADD carries the
+ * new-value fields, REMOVE the target value_id, REORDER the ordered value_id[]. It references vlc_value
+ * ONLY through those jsonb ids, so there is deliberately NO direct FK to vlc_value and hence NO
+ * composite tenant FK on this table (the payload ids are validated app-layer at apply time). LEAF —
+ * nothing FKs to it, so NO tenant_uk. Single-column FKs only: school_id → ref_school (CASCADE), the
+ * proposer/decider stamps → ref_user (SET NULL — the exeat actor-stamp pattern).
+ *
+ * Tenant table: ENABLE + FORCE RLS + tenant_isolation (db:policies on dev; db/sql/prod-paste-0090-
+ * vlc-value-change-request.sql by hand on prod) and — via the catalog-driven parent_deny loop in
+ * db/sql/policies.sql — parent_deny (owner #4: a parent sees NOTHING VLC-wide; FORCE-RLS + school_id, NO
+ * parent_scope, so the loop auto-denies it). `op` and `state` are text + CHECK allow-lists (the
+ * vlc_session_template.slot idiom — a bare closed domain the app owns needs no pg enum). Cross-row
+ * validation (one open request at a time, the ATOMIC ordinal renumber on a REORDER/REMOVE apply) is
+ * app-layer, never a DB trigger.
+ */
+export const vlcValueChangeRequest = pgTable(
+  "vlc_value_change_request",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    // The structural op — text + CHECK allow-list (the slot idiom), deliberately NOT a pg enum.
+    op: text("op").notNull(),
+    // SCHEMA-FREE payload (the GOV-9 reserved-jsonb precedent). Shape is op-dependent, validated app-layer.
+    payload: jsonb("payload").notNull(),
+    // Lifecycle — text + CHECK allow-list. PROPOSED until the HM decides.
+    state: text("state").notNull().default("PROPOSED"),
+    // The ADMIN who proposed (SET NULL → global ref_user actor stamp).
+    proposedByUserId: uuid("proposed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    proposedAt: timestamp("proposed_at", { withTimezone: true }).notNull().defaultNow(),
+    // The HEADMASTER who approved/rejected (SET NULL → global ref_user). NULL until decided.
+    decidedByUserId: uuid("decided_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionNote: text("decision_note"),
+    // Stamped when the approved change is applied to vlc_value (apply-on-approval). NULL until applied.
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // The HEADMASTER pending-approval queue reads (school_id, state = 'PROPOSED'); the same prefix serves
+    // the per-school history listing. One modest btree — no GIN (lookups are by id/state, never inside payload).
+    byState: index("vlc_value_change_request_state_idx").on(t.schoolId, t.state),
+    opValid: check(
+      "vlc_value_change_request_op_valid",
+      sql`${t.op} IN ('ADD', 'REORDER', 'REMOVE')`,
+    ),
+    stateValid: check(
+      "vlc_value_change_request_state_valid",
+      sql`${t.state} IN ('PROPOSED', 'APPROVED', 'REJECTED')`,
+    ),
   }),
 );

@@ -167,6 +167,7 @@ BEGIN
     'vlc_pastoral_observation',
     'vlc_pastoral_case',
     'vlc_pastoral_paragraph',
+    'vlc_value_change_request',
     'plc_programme',
     'plc',
     'plc_membership',
