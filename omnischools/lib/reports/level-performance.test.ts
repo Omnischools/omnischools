@@ -87,4 +87,32 @@ describe("compareLevelLabel · year-group ladder", () => {
     expect(compareLevelLabel("Form 1", "Form 2")).toBeLessThan(0);
     expect(compareLevelLabel("Form 2", UNSPECIFIED_LEVEL)).toBeLessThan(0);
   });
+
+  // #305 · a mixed ladder was sorted lexically ("JHS 1" before "Primary 2") or by number alone
+  // (KG/Primary/JHS/Form 1 collided). The canonical order is the GES tier then the year within it.
+  it("ranks the canonical tier KG → Primary → JHS → SHS, then numeric within tier (two-digit safe)", () => {
+    const shuffled = ["JHS 1", "Primary 2", "KG 2", "Primary 10", "Form 2", UNSPECIFIED_LEVEL, "KG 1"];
+    expect([...shuffled].sort(compareLevelLabel)).toEqual([
+      "KG 1",
+      "KG 2",
+      "Primary 2",
+      "Primary 10", // numeric, not lexical → after "Primary 2", not before it
+      "JHS 1",
+      "Form 2",
+      UNSPECIFIED_LEVEL,
+    ]);
+  });
+
+  // #305 · the tail boundary: an unknown/custom level sorts AFTER the known ladder but BEFORE the
+  // literal "Unspecified" bucket (unknown < Unspecified, both after SHS/Form).
+  it("orders unknown custom levels after the ladder but before Unspecified", () => {
+    const shuffled = [UNSPECIFIED_LEVEL, "Creche", "Form 3", "KG 1"];
+    expect([...shuffled].sort(compareLevelLabel)).toEqual([
+      "KG 1",
+      "Form 3",
+      "Creche", // unknown → after the ladder
+      UNSPECIFIED_LEVEL, // literal bucket → strictly last
+    ]);
+    expect(compareLevelLabel("Creche", UNSPECIFIED_LEVEL)).toBeLessThan(0);
+  });
 });

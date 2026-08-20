@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, eq } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import { students, classes } from "@/db/schema";
+import { compareLevelLabel } from "./level-order";
 
 /**
  * GOV-8 · the census enrolment reader — the ONE net-new reader the GES census needs (Kofi §2). Server-only,
@@ -168,7 +169,7 @@ export function aggregateCensusEnrolment(
 
   const byLevel: CensusLevelRow[] = [...byLevelAcc.entries()]
     .map(([level, s]) => ({ level, ...totalOf(s) }))
-    .sort((a, b) => a.level.localeCompare(b.level));
+    .sort((a, b) => compareLevelLabel(a.level, b.level));
 
   const ageByLevel: CensusAgeByLevel[] = [...ageAcc.entries()]
     .map(([level, e]) => ({
@@ -176,11 +177,11 @@ export function aggregateCensusEnrolment(
       byAge: [...e.ages.entries()].map(([age, s]) => ({ age, ...totalOf(s) })).sort((a, b) => a.age - b.age),
       dobUnknown: e.dobUnknown,
     }))
-    .sort((a, b) => a.level.localeCompare(b.level));
+    .sort((a, b) => compareLevelLabel(a.level, b.level));
 
   const approvedAge: CensusApprovedAge[] = [...apprAcc.entries()]
     .map(([level, a]) => ({ level, officialAge: officialAgeForLevel(level)!, ...a }))
-    .sort((a, b) => a.level.localeCompare(b.level));
+    .sort((a, b) => compareLevelLabel(a.level, b.level));
 
   return {
     censusDate: censusDate.toISOString().slice(0, 10),

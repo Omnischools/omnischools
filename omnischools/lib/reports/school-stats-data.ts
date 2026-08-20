@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull, ne, sql } from "drizzle-orm";
 import { withSchool } from "@/lib/db/rls";
 import { academicPeriod, classes, roleAssignments, roles, students, users } from "@/db/schema";
+import { compareLevelLabel } from "@/lib/reports/level-order";
 
 /**
  * "School at a glance" aggregates for Reports → School stats → At a glance.
@@ -91,9 +92,9 @@ function deriveFlag(utilisationPct: number | null): CapacityFlag | null {
   return utilisationPct < 100 ? "Ok" : "Full";
 }
 
-/** Build a short "JHS 1, 2, 3" style summary from distinct class levels. */
+/** Build a short "KG · Primary · JHS" style summary from distinct class levels, ladder-ordered. */
 function summariseLevels(levels: (string | null)[]): string {
-  const seen = Array.from(new Set(levels.filter((l): l is string => !!l)));
+  const seen = Array.from(new Set(levels.filter((l): l is string => !!l))).sort(compareLevelLabel);
   if (seen.length === 0) return "—";
   return seen.join(" · ");
 }

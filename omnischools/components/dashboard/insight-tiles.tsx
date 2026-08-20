@@ -11,7 +11,7 @@ import type {
   TerminalResultSummary,
 } from "@/lib/rollup/school-rollup";
 import type { ClassPerfRow, LevelPerfRow } from "@/lib/reports/class-performance-data";
-import { compareLevelLabel } from "@/lib/reports/class-performance-data";
+import { compareLevelLabel } from "@/lib/reports/level-order";
 import type { SubjectPerfRow } from "@/lib/reports/subject-performance-data";
 import type {
   CensusEnrolment,

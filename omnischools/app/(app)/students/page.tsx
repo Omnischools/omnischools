@@ -4,6 +4,7 @@ import { requireSchool } from "@/lib/auth/server";
 import { isFinanceOnly } from "@/lib/access";
 import { withSchool } from "@/lib/db/rls";
 import { students } from "@/db/schema";
+import { compareLevelLabel } from "@/lib/reports/level-order";
 import { StudentsBrowser } from "@/components/students/students-browser";
 import { StudentsEmpty } from "@/components/students/students-empty";
 
@@ -42,7 +43,7 @@ export default async function StudentsPage() {
 
   const classOptions = Array.from(
     new Set(rows.map((r) => r.currentClassLabel).filter((c): c is string => !!c)),
-  ).sort();
+  ).sort(compareLevelLabel); // #305 · ladder order so "Primary 2" precedes "JHS 1"
 
   return (
     <div className="mx-auto max-w-page">
