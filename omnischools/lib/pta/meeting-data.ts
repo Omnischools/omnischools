@@ -292,6 +292,39 @@ export async function loadMeetingScope(
   };
 }
 
+/**
+ * The PARENT-notify audience for a meeting scope (#297 · State-1 console-notify): the SAME primary-
+ * guardian roster the register's PARENT column derives (R436), reduced to DEDUPED, non-null phone
+ * numbers. FORM→class, HOUSE→house, GENERAL/EMERGENCY→all active students' primary guardians (no scope
+ * filter). Runs inside the caller's convene tx; the convener collects each phone as a post-commit
+ * SmsIntent (a rollback discards them). One SMS per distinct number (dedupe by phone); a guardian with no
+ * phone is silently skipped.
+ */
+export async function loadMeetingNotifyPhones(
+  tx: Tx,
+  schoolId: string,
+  scope: { tierType: PtaTierType; classId: string | null; houseId: string | null },
+): Promise<string[]> {
+  const conds = [
+    eq(students.schoolId, schoolId),
+    eq(students.status, "ACTIVE"),
+    eq(studentGuardians.isPrimary, true),
+  ];
+  if (scope.tierType === "FORM" && scope.classId) conds.push(eq(students.classId, scope.classId));
+  else if (scope.tierType === "HOUSE" && scope.houseId) conds.push(eq(students.houseId, scope.houseId));
+  const rows = await tx
+    .select({ phone: studentGuardians.phone })
+    .from(studentGuardians)
+    .innerJoin(students, and(eq(students.schoolId, studentGuardians.schoolId), eq(students.id, studentGuardians.studentId)))
+    .where(and(...conds));
+  const phones = new Set<string>();
+  for (const r of rows) {
+    const p = r.phone?.trim();
+    if (p) phones.add(p);
+  }
+  return [...phones];
+}
+
 const tierLabelOf = (t: PtaTierType): string =>
   t === "FORM" ? "Form PTA" : t === "HOUSE" ? "House PTA" : t === "EMERGENCY" ? "Emergency PTA" : "General PTA";
 const iconInitialsOf = (t: PtaTierType): string =>

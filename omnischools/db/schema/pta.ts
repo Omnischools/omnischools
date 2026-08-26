@@ -429,6 +429,11 @@ export const ptaMeeting = pgTable(
     convenedByUserId: uuid("convened_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    // Convene-instant stamp when the convener SMS-notified the scope's parent roster (#297, State-1
+    // console-notify). NULL = not notified (notifyParents=false, or a pre-#297 meeting). App-set only —
+    // NEVER surfaced to the parent projection (the frozen parent key-set must not change); the recipient
+    // COUNT lives in the audit trail, not here.
+    parentsNotifiedAt: timestamp("parents_notified_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
