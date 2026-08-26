@@ -1,0 +1,1 @@
+ALTER TABLE "pta_meeting" ADD COLUMN "parents_notified_at" timestamp with time zone;

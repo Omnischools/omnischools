@@ -35,6 +35,7 @@ const SMS_CALLERS = [
   "lib/actions/invites.ts",
   "lib/actions/onboarding.ts",
   "lib/actions/inbox.ts",
+  "lib/actions/pta-meeting.ts",
   "lib/actions/staff.ts",
   "lib/actions/users.ts",
   "lib/actions/wassce-readiness.ts",

@@ -68,17 +68,28 @@ export function OfficerMatrix({
               Housemaster as Secretary) are auto-populated and read-only.
             </p>
           </div>
-          {assignablePtas.length > 0 && (
-            <button
-              onClick={() => {
-                const first = assignablePtas[0];
-                setAssign({ ptaId: first.id, label: first.label, offices: first.offices });
-              }}
-              className="rounded-md bg-navy px-4 py-2 text-xs font-bold text-bg hover:bg-navy-deep"
+          <div className="flex items-center gap-2">
+            {/* The reserved roster-PDF slot — no longer a dead control (#297). The governance-file export
+                of THIS matrix: roster only, NO contact details. Served through /api/* (so the
+                no-html-link-for-pages rule stays satisfied); the route re-gates admin-only + session-scopes. */}
+            <a
+              href="/api/senior/pta/officers"
+              className="rounded-md border border-border-2 bg-surface px-4 py-2 text-xs font-bold text-navy hover:bg-gold-bg"
             >
-              + Assign officer
-            </button>
-          )}
+              Roster PDF
+            </a>
+            {assignablePtas.length > 0 && (
+              <button
+                onClick={() => {
+                  const first = assignablePtas[0];
+                  setAssign({ ptaId: first.id, label: first.label, offices: first.offices });
+                }}
+                className="rounded-md bg-navy px-4 py-2 text-xs font-bold text-bg hover:bg-navy-deep"
+              >
+                + Assign officer
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

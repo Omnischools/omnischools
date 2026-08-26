@@ -23,10 +23,13 @@ import { safeRevalidate } from "@/lib/revalidate";
 import { canActAsPtaOfficer, hasAnyRole, PTA_MEETING_BREAKGLASS_ROLES } from "@/lib/access";
 import {
   loadMeetingScope,
+  loadMeetingNotifyPhones,
   resolvePtaWriteAccess,
   type PtaMeetingScope,
 } from "@/lib/pta/meeting-data";
 import { coalesceGraceHours, isPtaMeetingWriteLocked } from "@/lib/pta/meeting-clock";
+import { ptaMeetingInviteSms } from "@/lib/pta/meeting-invite-sms";
+import { flushSms, type SmsIntent } from "@/lib/sms";
 import { type PtaTierType } from "@/lib/pta/defaults";
 import {
   academicPeriod,
@@ -49,6 +52,83 @@ const LIST_PATH = "/senior/pta/meetings";
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const HHMM = /^\d{2}:\d{2}$/;
 const registerPath = (meetingId: string) => `${LIST_PATH}/${meetingId}`;
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "2026-05-14" → "14 May 2026" — ASCII/GSM-7-safe (no Intl locale surprises) for the invite SMS body. */
+function asciiMeetingDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1] ?? "?"} ${m[1]}`;
+}
+
+/** The PTA display label for the invite SMS body (FORM→class, HOUSE→house, EMERGENCY, else General). */
+function convenedPtaLabel(tierType: PtaTierType, className: string | null, houseName: string | null): string {
+  return tierType === "FORM"
+    ? `${className ?? "Class"} PTA`
+    : tierType === "HOUSE"
+      ? `${houseName ?? "House"} PTA`
+      : tierType === "EMERGENCY"
+        ? "Emergency PTA"
+        : "General PTA";
+}
+
+interface ConveneDetails {
+  meetingType: string;
+  meetingDate: string;
+  startTime: string;
+  endTime: string;
+  location?: string | null;
+}
+
+/**
+ * #297 · State-1 console-notify (SHARED by both convene paths). Load the scope's PRIMARY-guardian phone
+ * roster (the SAME derivation the register renders — dedupe by phone, non-null only), pair each with the
+ * PURE invite body, and PUSH the intents onto the caller's post-commit array (delivered by `flushSms`
+ * AFTER the tx resolves; a rollback rejects before the flush line, so nothing is sent). Writes ONE SHOWN
+ * audit row — recipient COUNT + meeting id ONLY, never a phone or a body. A no-phone scope queues nothing
+ * and never throws. Staff invitees are NOT SMS'd in State-1.
+ */
+async function collectParentNotify(
+  sms: SmsIntent[],
+  tx: Tx,
+  args: {
+    schoolId: string;
+    actor: { id: string | null; role: string };
+    meetingId: string;
+    schoolName: string;
+    ptaLabel: string;
+    tierType: PtaTierType;
+    classId: string | null;
+    houseId: string | null;
+    d: ConveneDetails;
+  },
+): Promise<void> {
+  const phones = await loadMeetingNotifyPhones(tx, args.schoolId, {
+    tierType: args.tierType,
+    classId: args.classId,
+    houseId: args.houseId,
+  });
+  const body = ptaMeetingInviteSms({
+    schoolName: args.schoolName,
+    ptaLabel: args.ptaLabel,
+    meetingType: args.d.meetingType,
+    dateLabel: asciiMeetingDate(args.d.meetingDate),
+    startTime: args.d.startTime,
+    endTime: args.d.endTime,
+    location: args.d.location?.trim() || null,
+  });
+  for (const to of phones) sms.push({ to, body });
+  await recordAudit(tx, {
+    schoolId: args.schoolId,
+    actorUserId: args.actor.id ?? undefined,
+    actorRole: args.actor.role,
+    actionType: "updated",
+    entityType: "pta_meeting",
+    entityId: args.meetingId,
+    after: { parentsNotified: phones.length },
+    reason: `PTA meeting invite SMS queued to ${phones.length} parent${phones.length === 1 ? "" : "s"}`,
+  });
+}
 
 // ── shared: resolve the SENIOR academic period covering `date` (else latest begun, else last) ────────
 
@@ -149,6 +229,9 @@ const ConveneSchema = z.object({
   location: z.string().trim().max(200).nullish(),
   agendaItems: z.array(z.string().trim().min(1).max(200)).max(30).optional().default([]),
   invitedTeacherUserIds: z.array(z.string().uuid()).max(50).optional().default([]),
+  // #297 · State-1 console-notify. Default TRUE (owner-ratified): SMS the scope's parent roster on
+  // convene. The writer gate is UNCHANGED — this only toggles the post-commit notify, not who may convene.
+  notifyParents: z.boolean().optional().default(true),
 });
 
 /** Keep only the ids that are active staff of the school (drop any injected non-staff id). */
@@ -166,7 +249,11 @@ export async function conveneMeeting(input: unknown): Promise<Result> {
   const { school, user } = await requireSchool();
   const actor = await resolveActor(school.id);
   const today = new Date().toISOString().slice(0, 10);
+  const notifiedAt = new Date(); // the convene instant — the parents_notified_at stamp when notifyParents
   let newId: string | null = null;
+  // #253 post-commit fence: intents collected INSIDE the tx, flushed AFTER it resolves (rollback → the tx
+  // rejects before the flush line, so nothing is ever sent).
+  const sms: SmsIntent[] = [];
   try {
     const res = await withSchool(school.id, async (tx): Promise<Result> => {
       const [p] = await tx
@@ -174,6 +261,10 @@ export async function conveneMeeting(input: unknown): Promise<Result> {
           id: ptas.id,
           tierType: ptas.tierType,
           status: ptas.status,
+          classId: ptas.classId,
+          houseId: ptas.houseId,
+          className: classes.name,
+          houseName: houses.name,
           classTeacherUserId: classes.classTeacherUserId,
           hmUserId: houses.hmUserId,
           tierSettings: ptaTiersConfig.tierSettings,
@@ -213,6 +304,7 @@ export async function conveneMeeting(input: unknown): Promise<Result> {
           agendaJson: normaliseAgenda(d.agendaItems.map((text) => ({ text }))),
           invitedTeacherUserIds: invited,
           convenedByUserId: actor.id ?? undefined,
+          parentsNotifiedAt: d.notifyParents ? notifiedAt : null,
         })
         .returning({ id: ptaMeeting.id });
       newId = row.id;
@@ -226,9 +318,25 @@ export async function conveneMeeting(input: unknown): Promise<Result> {
         after: { ptaId: d.ptaId, meetingType: d.meetingType, meetingDate: d.meetingDate, academicPeriodId: periodId },
         reason: "PTA meeting convened",
       });
+      // #297 · State-1 console-notify: collect the parent-roster invite intents INSIDE the tx (flushed
+      // post-commit). Staff invitees are NOT SMS'd in State-1. Audience = the scope's PRIMARY guardians.
+      if (d.notifyParents) {
+        await collectParentNotify(sms, tx, {
+          schoolId: school.id,
+          actor,
+          meetingId: row.id,
+          schoolName: school.name,
+          ptaLabel: convenedPtaLabel(scope.tierType, p.className, p.houseName),
+          tierType: scope.tierType,
+          classId: p.classId,
+          houseId: p.houseId,
+          d,
+        });
+      }
       return { ok: true };
     });
     if (!res.ok) return res;
+    await flushSms(sms); // #253 — delivered ONLY after the tx committed (rollback rejects before here)
     safeRevalidate(LIST_PATH);
     if (newId) safeRevalidate(registerPath(newId));
     return { ok: true, meetingId: newId ?? undefined };
@@ -249,7 +357,9 @@ export async function conveneEmergencyMeeting(input: unknown): Promise<Result> {
   const { school, user } = await requireSchool();
   const actor = await resolveActor(school.id);
   const today = new Date().toISOString().slice(0, 10);
+  const notifiedAt = new Date(); // the convene instant — the parents_notified_at stamp when notifyParents
   let newId: string | null = null;
+  const sms: SmsIntent[] = []; // #253 post-commit fence — collected in-tx, flushed after commit
   try {
     const res = await withSchool(school.id, async (tx): Promise<Result> => {
       // Convener gate (R440): break-glass ∥ the GENERAL PTA "Chair" BY IDENTITY (a stored office).
@@ -318,6 +428,7 @@ export async function conveneEmergencyMeeting(input: unknown): Promise<Result> {
           agendaJson: normaliseAgenda(d.agendaItems.map((text) => ({ text }))),
           invitedTeacherUserIds: invited,
           convenedByUserId: actor.id ?? undefined,
+          parentsNotifiedAt: d.notifyParents ? notifiedAt : null,
         })
         .returning({ id: ptaMeeting.id });
       newId = row.id;
@@ -331,9 +442,24 @@ export async function conveneEmergencyMeeting(input: unknown): Promise<Result> {
         after: { ptaId: ptaRow.id, meetingType: d.meetingType, meetingDate: d.meetingDate, emergency: true },
         reason: "Emergency PTA meeting convened",
       });
+      // #297 · State-1 console-notify. EMERGENCY scope → all active students' primary guardians.
+      if (d.notifyParents) {
+        await collectParentNotify(sms, tx, {
+          schoolId: school.id,
+          actor,
+          meetingId: row.id,
+          schoolName: school.name,
+          ptaLabel: convenedPtaLabel("EMERGENCY", null, null),
+          tierType: "EMERGENCY",
+          classId: null,
+          houseId: null,
+          d,
+        });
+      }
       return { ok: true };
     });
     if (!res.ok) return res;
+    await flushSms(sms); // #253 — delivered ONLY after the tx committed (rollback rejects before here)
     safeRevalidate(LIST_PATH);
     if (newId) safeRevalidate(registerPath(newId));
     return { ok: true, meetingId: newId ?? undefined };
