@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, type Dirent } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { resolve as resolvePath, relative as relativePath } from "node:path";
 import { getTableName, and, eq, type SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { houses } from "@/db/schema";
@@ -11,8 +12,12 @@ import { houses } from "@/db/schema";
  * houses ONLY. Each read carries its own `eq(houses.kind, "BOARDING")` predicate (they share no helper).
  *
  * Two layers of proof:
- *   1. SOURCE-SCAN — every one of the 11 enumerator sites literally carries the kind predicate (drop one
- *      → its file's count falls → RED). This is the per-predicate mutation guard the AC demands.
+ *   1. DYNAMIC SOURCE-SCAN — glob every source file under lib/ · app/ · features/ and find each
+ *      school-scoped `houses` read (`.from(houses)` / `Join(houses`). A read is an ENUMERATOR unless its
+ *      statement binds `houses.id` (a by-id point read / by-id join — those are safe and skipped). Every
+ *      enumerator MUST carry `eq(houses.kind, "BOARDING")` — or be a listed sports-house surface that
+ *      instead fences `eq(houses.kind, "SPORTS")`. No hardcoded site list: a 12th unfenced enumerator
+ *      added anywhere reds this on its own.
  *   2. BEHAVIOURAL — a filtering fake tx returns BOTH houses when a query's WHERE lacks the BOARDING
  *      param and BOARDING-only when it carries it (serialised via PgDialect). The boarding landing and
  *      the PTA House-PTA auto-create are run against it: the sports house appears in NEITHER. Removing
@@ -45,33 +50,106 @@ describe("filtering fake tx mechanism is not vacuous", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 1) SOURCE-SCAN — every enumerator site carries eq(houses.kind, "BOARDING").
+// 1) DYNAMIC SOURCE-SCAN — every school-scoped houses ENUMERATOR carries the kind fence.
+//    No hardcoded site list: a new unfenced enumerator reds this test on its own.
 // ---------------------------------------------------------------------------
-const FENCE_SITES: Array<[string, number]> = [
-  ["../boarding/roster-data.ts", 1],
-  ["../boarding/discipline-data.ts", 1],
-  ["../boarding/visiting-notify.ts", 2], // two enumerators in one file
-  ["../boarding/resumption-data.ts", 1],
-  ["../boarding/visiting-data.ts", 1],
-  ["../boarding/programme-data.ts", 1],
-  ["../wassce/cohort-data.ts", 1],
-  ["./pta.ts", 1],
-  ["../pta/setup-data.ts", 1],
-  ["../sickbay/chronic-reads.ts", 1],
+// Test file lives at <repo>/lib/actions; the app root is two levels up.
+const REPO_ROOT = resolvePath(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
+const SCAN_DIRS = ["lib", "app", "features"];
+
+// The Basic sports-house surfaces read `kind='SPORTS'` (the roster picker + the settings list). They are
+// deliberately NOT boarding-fenced. Each is asserted below to carry an explicit `eq(houses.kind, "SPORTS")`
+// fence, so an allowlist entry can never hide an unfenced boarding leak. Genuine by-id point reads / by-id
+// joins need no entry — they are auto-skipped because their statement binds `houses.id`.
+const SPORTS_SURFACE_ALLOWLIST = [
+  "app/(app)/classes/[id]/page.tsx",
+  "app/(app)/settings/houses/page.tsx",
 ];
 
-describe("🔴 every all-house enumerator literally carries the kind fence (mutation-per-predicate)", () => {
-  for (const [rel, expected] of FENCE_SITES) {
-    it(`${rel} fences ${expected} house enumerator(s)`, () => {
-      const src = readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
-      const count = src.split(`eq(houses.kind, "BOARDING")`).length - 1;
-      expect(count).toBe(expected);
-    });
+function walkTsFiles(dir: string): string[] {
+  let out: string[] = [];
+  let entries: Dirent[];
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out; // dir absent (e.g. no features/) — skip
   }
+  for (const e of entries) {
+    const full = resolvePath(dir, e.name);
+    if (e.isDirectory()) {
+      if (e.name === "node_modules" || e.name === ".next") continue;
+      out = out.concat(walkTsFiles(full));
+    } else if (/\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name)) {
+      out.push(full);
+    }
+  }
+  return out;
+}
 
-  it("the fence total across all sites is 11", () => {
-    const total = FENCE_SITES.reduce((n, [, c]) => n + c, 0);
-    expect(total).toBe(11);
+type Site = { file: string; line: number; window: string };
+
+// Every `.from(houses)` / `Join(houses` read + its statement text (from the read line through the first
+// line that closes the statement with a `;`). Drizzle read chains are single semicolon-terminated
+// statements, so this reliably captures the WHERE / join-ON predicates that belong to THIS read.
+function houseReadSites(): Site[] {
+  const sites: Site[] = [];
+  for (const rel of SCAN_DIRS) {
+    for (const file of walkTsFiles(resolvePath(REPO_ROOT, rel))) {
+      const lines = readFileSync(file, "utf8").split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        if (!/\.from\(houses\)|Join\(houses/.test(lines[i])) continue;
+        const parts: string[] = [];
+        for (let j = i; j < lines.length && j < i + 30; j++) {
+          parts.push(lines[j]);
+          if (lines[j].includes(";")) break;
+        }
+        sites.push({
+          file: relativePath(REPO_ROOT, file).replace(/\\/g, "/"),
+          line: i + 1,
+          window: parts.join("\n"),
+        });
+      }
+    }
+  }
+  return sites;
+}
+
+describe("🔴 every school-scoped houses enumerator carries the kind fence (dynamic source-scan)", () => {
+  const sites = houseReadSites();
+  const byId = sites.filter((s) => s.window.includes("houses.id"));
+  const enumerators = sites.filter((s) => !s.window.includes("houses.id"));
+  const boardingFenced = enumerators.filter((s) =>
+    s.window.includes(`eq(houses.kind, "BOARDING")`),
+  );
+  const notBoarding = enumerators.filter(
+    (s) => !s.window.includes(`eq(houses.kind, "BOARDING")`),
+  );
+  const sportsSurface = notBoarding.filter((s) =>
+    SPORTS_SURFACE_ALLOWLIST.includes(s.file),
+  );
+  const unfenced = notBoarding.filter((s) => !SPORTS_SURFACE_ALLOWLIST.includes(s.file));
+
+  it("the scan is live — it finds by-id point reads AND boarding-fenced enumerators (never vacuous)", () => {
+    expect(sites.length).toBeGreaterThan(0);
+    expect(byId.length).toBeGreaterThan(0);
+    expect(boardingFenced.length).toBeGreaterThan(0);
+  });
+
+  it("every allowlist entry is a real sports-surface read that explicitly fences kind='SPORTS'", () => {
+    for (const f of SPORTS_SURFACE_ALLOWLIST) {
+      const hit = sportsSurface.find((s) => s.file === f);
+      expect(hit, `stale allowlist entry — no unfenced houses read in ${f}`).toBeTruthy();
+      expect(hit!.window, `${f} must fence kind='SPORTS'`).toContain(
+        `eq(houses.kind, "SPORTS")`,
+      );
+    }
+  });
+
+  it("NO school-scoped houses enumerator is unfenced — a new one reds this on its own", () => {
+    expect(
+      unfenced.map((s) => `${s.file}:${s.line}`),
+      'unfenced houses enumerator(s) — add eq(houses.kind, "BOARDING") or the SPORTS-surface allowlist',
+    ).toEqual([]);
   });
 });
 

@@ -287,6 +287,33 @@ export async function assignStudentHouse(input: unknown): Promise<Result> {
   const actor = await resolveActor(school.id);
   try {
     const outcome = await withSchool(school.id, async (tx) => {
+      // 🔴 BOARDER-DETACHMENT GUARD (Sarah #5): students.house_id is the LIVE pointer the fenced
+      // boarding rosters read. A hand-crafted POST must not assign a sports house — or null — to a
+      // boarding-population pupil and clobber/detach that pointer, vanishing them from those rosters.
+      // Refuse when the student sits in an SHS class (class.programme IS NOT NULL) OR their current
+      // house resolves to a BOARDING house. Runs BEFORE any write, so it covers BOTH the sports-assign
+      // and the null-clear paths. The UI picker-suppression is client-only; this is the real fence.
+      const [pupil] = await tx
+        .select({ programme: classes.programme, currentHouseKind: houses.kind })
+        .from(students)
+        .leftJoin(
+          classes,
+          and(eq(classes.schoolId, students.schoolId), eq(classes.id, students.classId)),
+        )
+        .leftJoin(
+          houses,
+          and(eq(houses.schoolId, students.schoolId), eq(houses.id, students.houseId)),
+        )
+        .where(and(eq(students.id, studentId), eq(students.schoolId, school.id)))
+        .limit(1);
+      if (!pupil) return { error: "That student is not available." };
+      if (pupil.programme !== null || pupil.currentHouseKind === "BOARDING") {
+        return {
+          error:
+            "This student is in the boarding population — a sports house cannot be set here.",
+        };
+      }
+
       // 🔴 Validate the target house BEFORE writing: same-tenant AND kind='SPORTS' AND active. A
       // hand-crafted POST cannot cross-assign an SHS boarding house (or another school's house, or
       // an archived one) to a basic pupil — the kind check is the load-bearing fence, not the UI.
