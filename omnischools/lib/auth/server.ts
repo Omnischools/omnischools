@@ -4,8 +4,17 @@ import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { withoutTenantScope } from "@/lib/db/rls";
 import { schools, roleAssignments, roles, users, districts, regions } from "@/db/schema";
-import { getCurrentUser, authIsLive, sessionLoginAtMs, type AppUser, type AppRole } from "@/lib/auth";
+import {
+  getCurrentUser,
+  authIsLive,
+  sessionLoginAtMs,
+  sessionAuthMethods,
+  otpLoginRequired,
+  type AppUser,
+  type AppRole,
+} from "@/lib/auth";
 import { sessionAgeExceeded } from "@/lib/auth/session-age";
+import { twoFactorStepUpRequired } from "@/lib/auth/two-factor";
 import {
   isFinanceOnly,
   pathAllowedForFinance,
@@ -15,6 +24,7 @@ import {
   BOARD_HOME,
   hasAnyRole,
   isStaff,
+  TWO_FACTOR_ADMIN_ROLES,
 } from "@/lib/access";
 
 export interface ActiveSchool {
@@ -27,6 +37,8 @@ export interface ActiveSchool {
   location: string | null;
   /** "Session length" security setting (hours); null = the school never configured a limit. */
   sessionHours: number | null;
+  /** "Require two-factor for administrators" security setting; null/false = off (the default). */
+  require2fa: boolean | null;
 }
 
 /**
@@ -52,6 +64,7 @@ export async function getActiveSchool(forUser?: AppUser): Promise<ActiveSchool |
     gesCode: schools.gesCode,
     schoolType: schools.schoolType,
     sessionHours: schools.sessionHours,
+    require2fa: schools.require2fa,
     districtName: districts.name,
     regionName: regions.name,
   };
@@ -117,6 +130,40 @@ async function enforceSessionAge(school: ActiveSchool): Promise<void> {
   }
 }
 
+/**
+ * INCR-254 (deferred half) — enforce the school's "Require two-factor for administrators" setting
+ * (ref_school.require_2fa). When ON, a signed-in admin-tier user (TWO_FACTOR_ADMIN_ROLES) whose session
+ * completed only a password factor (no OTP in its `amr`) is sent to `/login?stepup=1` to re-authenticate
+ * through the EXISTING phone-OTP path (the login form defaults to its Phone-OTP tab; no new flow). The
+ * decision lives in the pure `twoFactorStepUpRequired`; this only reads the setting/roles/amr and redirects.
+ *
+ * 🔴 FAIL-SAFE (Sarah), the deliberate inverse of enforceSessionAge: enforcement fires ONLY when OTP is
+ * genuinely DELIVERABLE (`otpLoginRequired()` — the same gate that decides whether OTP is required at
+ * login). If OTP can't be delivered yet (pre-#260, SMS console-only), forcing it would permanently lock
+ * out the school's ONLY admins — so no-deliverable-OTP ⇒ do NOT block. Also inert under dev-bypass /
+ * `!authIsLive()` (both fold into `otpLoginRequired()` being false) and whenever the setting is off. The
+ * full reasoning + the amr-readability asymmetry are on `twoFactorStepUpRequired`.
+ *
+ * The cheap `!school.require2fa` short-circuit (default OFF for ~every school) skips the getSession()
+ * round-trip on the hot path; the pure fn re-checks it and remains the tested authority.
+ */
+async function enforceRequireTwoFactor(school: ActiveSchool, user: AppUser): Promise<void> {
+  if (!school.require2fa) return;
+  const isAdmin = hasAnyRole(user.roles, TWO_FACTOR_ADMIN_ROLES);
+  if (!isAdmin) return;
+  const amr = await sessionAuthMethods();
+  if (
+    twoFactorStepUpRequired({
+      require2fa: school.require2fa,
+      isAdmin,
+      otpDeliverable: otpLoginRequired(),
+      amr,
+    })
+  ) {
+    redirect("/login?stepup=1");
+  }
+}
+
 /** For app pages: ensure a signed-in user, else send to login. */
 export async function requireUser(): Promise<AppUser> {
   const user = await getCurrentUser();
@@ -168,6 +215,10 @@ export async function requireSchool(
   const school = await getActiveSchool(user);
   if (!school) redirect("/start");
   await enforceSessionAge(school);
+  // AFTER school-resolve, alongside session-age: an admin the school requires to 2FA but who is
+  // password-only is bounced to step-up. Fail-SAFE (never blocks when OTP is undeliverable) — see
+  // enforceRequireTwoFactor. Placed here so it covers every (app) page's own render, like the staff gate.
+  await enforceRequireTwoFactor(school, user);
   if (!opts?.allowNonStaff && !isStaff(user.roles)) {
     // A board-only session hitting a staff URL lands on its own read-only overview FIRST (GOV-2 / R334);
     // a parent has somewhere to be; a student-only session has no portal yet, and `/start` is the honest

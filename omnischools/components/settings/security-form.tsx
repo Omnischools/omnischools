@@ -57,8 +57,9 @@ export function SecurityForm({
               Require two-factor for administrators
             </span>
             <span className="mt-0.5 block text-[12px] leading-relaxed text-navy-3">
-              Admins must confirm an SMS code on sign-in, in addition to their password. The
-              enrolment flow ships with the auth release; this records the requirement now.
+              Admins must confirm an SMS code on sign-in, in addition to their password. Takes
+              effect once phone-OTP sign-in is live — until then it stays recorded but inert, so
+              no admin is locked out.
             </span>
           </span>
         </label>
