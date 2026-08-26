@@ -4,7 +4,8 @@ import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { withoutTenantScope } from "@/lib/db/rls";
 import { schools, roleAssignments, roles, users, districts, regions } from "@/db/schema";
-import { getCurrentUser, type AppUser, type AppRole } from "@/lib/auth";
+import { getCurrentUser, authIsLive, sessionLoginAtMs, type AppUser, type AppRole } from "@/lib/auth";
+import { sessionAgeExceeded } from "@/lib/auth/session-age";
 import {
   isFinanceOnly,
   pathAllowedForFinance,
@@ -24,6 +25,8 @@ export interface ActiveSchool {
   schoolType: "BASIC" | "SENIOR" | "COMBINED";
   /** District (or region) name, for the sidebar "tier · location" line. */
   location: string | null;
+  /** "Session length" security setting (hours); null = the school never configured a limit. */
+  sessionHours: number | null;
 }
 
 /**
@@ -48,6 +51,7 @@ export async function getActiveSchool(forUser?: AppUser): Promise<ActiveSchool |
     shortName: schools.shortName,
     gesCode: schools.gesCode,
     schoolType: schools.schoolType,
+    sessionHours: schools.sessionHours,
     districtName: districts.name,
     regionName: regions.name,
   };
@@ -90,6 +94,27 @@ export async function getActiveSchool(forUser?: AppUser): Promise<ActiveSchool |
   if (!row) return null;
   const { districtName, regionName, ...rest } = row;
   return { ...rest, location: districtName ?? regionName ?? null };
+}
+
+/**
+ * INCR-254 — enforce the school's "Session length" security setting (ref_school.session_hours). The
+ * signed-in session must be younger than the configured number of hours, measured as an ABSOLUTE age
+ * from the original login (not idle time — the copy is "8 hours (a school day)", i.e. a wall-clock
+ * span). Over-age ⇒ redirect to /login to re-authenticate; the login page renders its form for an
+ * authed-but-stale session (it does not bounce back), so there is no loop, and every (app) guard keeps
+ * refusing the stale session until a fresh login resets its age.
+ *
+ * FAIL-CLOSED (Sarah): a configured limit whose age can't be read forces re-auth. Inert when the
+ * school set no limit (null) or under dev-bypass (no real session). ponytail: guard-level block — the
+ * GoTrue refresh token stays valid but reaches no (app) page; a hard token revocation would need a
+ * route handler (SC cookie writes are no-ops here), add if token-level kill is ever required.
+ */
+async function enforceSessionAge(school: ActiveSchool): Promise<void> {
+  if (school.sessionHours == null || !authIsLive()) return;
+  const loginAtMs = await sessionLoginAtMs();
+  if (sessionAgeExceeded({ limitHours: school.sessionHours, isLive: true, loginAtMs })) {
+    redirect("/login?expired=1");
+  }
 }
 
 /** For app pages: ensure a signed-in user, else send to login. */
@@ -142,6 +167,7 @@ export async function requireSchool(
   const user = await requireUser();
   const school = await getActiveSchool(user);
   if (!school) redirect("/start");
+  await enforceSessionAge(school);
   if (!opts?.allowNonStaff && !isStaff(user.roles)) {
     // A board-only session hitting a staff URL lands on its own read-only overview FIRST (GOV-2 / R334);
     // a parent has somewhere to be; a student-only session has no portal yet, and `/start` is the honest
@@ -207,6 +233,7 @@ export async function requireParent(): Promise<{ user: AppUser; school: ActiveSc
   if (!user.roles.includes("PARENT")) redirect("/dashboard");
   const school = await getActiveSchool(user);
   if (!school) redirect("/start");
+  await enforceSessionAge(school);
   return { user, school };
 }
 
@@ -224,6 +251,7 @@ export async function requireBoard(): Promise<{ user: AppUser; school: ActiveSch
   if (!user.roles.includes("BOARD_MEMBER")) redirect("/dashboard");
   const school = await getActiveSchool(user);
   if (!school) redirect("/start");
+  await enforceSessionAge(school);
   const pathname = (await headers()).get("x-pathname") ?? "";
   if (pathname && !pathAllowedForBoard(pathname)) redirect(BOARD_HOME);
   return { user, school };
