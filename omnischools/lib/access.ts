@@ -94,6 +94,26 @@ export const INSIGHTS_READ_ROLES = [
 ] as const satisfies readonly KnownAppRole[];
 
 /**
+ * 🔴 INCR-254 (deferred half) — the "administrators" the school's "Require two-factor for
+ * administrators" security setting (ref_school.require_2fa) applies to: when that setting is ON, a
+ * member of this set must complete a phone-OTP factor in their session (not password-only) or be sent
+ * to step-up. The school's leadership/admin tier — ADMIN + HEADMASTER + PROPRIETOR — matching the
+ * setting copy ("administrators").
+ *
+ * A DISTINCT, purpose-named gate whose membership happens to match STAFF_ADMIN_ROLES / USER_ADMIN_ROLES
+ * / INSIGHTS_READ_ROLES today but is SEMANTICALLY SEPARATE ("who must 2FA when required", not "who mints
+ * administrators" / "who runs login-lifecycle verbs" / "who reads director analytics"). Naming it apart
+ * is the standing discipline that keeps widening one gate from silently widening another
+ * ([[builds-widen-ratified-authz-and-self-bless]]) — do NOT collapse it into a sibling. `as const
+ * satisfies` makes a typo'd code a compile error.
+ */
+export const TWO_FACTOR_ADMIN_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+  "PROPRIETOR",
+] as const satisfies readonly KnownAppRole[];
+
+/**
  * Senior (SHS) tier role groups. The score ledger is a teaching surface (teachers + form
  * masters + academic leadership); the Vice Headmaster progress view is management-only
  * (Admin, Headmaster, Vice Headmaster Academic). STUDENT / PARENT never reach either.
