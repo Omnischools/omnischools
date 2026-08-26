@@ -23,7 +23,7 @@ vi.mock("@/lib/auth/server", () => ({
   resolveActor: () => resolveActor(),
 }));
 
-const recordAudit = vi.fn(async () => {});
+const recordAudit = vi.fn(async (..._a: unknown[]) => {});
 vi.mock("@/lib/db/audit", () => ({ recordAudit: (...a: unknown[]) => recordAudit(...a) }));
 vi.mock("@/lib/revalidate", () => ({ safeRevalidate: vi.fn() }));
 
@@ -92,7 +92,7 @@ const validInput = (over: Record<string, unknown> = {}) => ({
 });
 
 const smsLogs = (spy: ReturnType<typeof vi.spyOn>) =>
-  spy.mock.calls.map((c) => String(c[0])).filter((s) => s.includes("[sms:console]"));
+  (spy.mock.calls as unknown[][]).map((c) => String(c[0])).filter((s) => s.includes("[sms:console]"));
 
 let infoSpy: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
