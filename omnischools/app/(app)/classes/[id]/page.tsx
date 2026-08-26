@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { requireSchool } from "@/lib/auth/server";
 import { withSchool } from "@/lib/db/rls";
-import { classes, students, subjects, timetableSlots, users } from "@/db/schema";
+import { classes, students, subjects, timetableSlots, users, houses } from "@/db/schema";
 import { loadStaffOptions } from "@/lib/data/staff-options";
 import { ClassTeacherSelect } from "@/components/classes/class-teacher-select";
 import { RosterManager } from "@/components/classes/roster-manager";
@@ -30,6 +30,7 @@ export default async function ClassDetailPage(props: { params: Promise<{ id: str
         name: classes.name,
         level: classes.level,
         teacherId: classes.classTeacherUserId,
+        programme: classes.programme,
       })
       .from(classes)
       .where(and(eq(classes.id, classId), eq(classes.schoolId, school.id))),
@@ -44,11 +45,22 @@ export default async function ClassDetailPage(props: { params: Promise<{ id: str
     otherNames: students.otherNames,
   };
 
-  const [roster, unassigned, staff, subjectRows, slotRows] = await Promise.all([
+  const [roster, unassigned, staff, subjectRows, slotRows, sportsHouses] = await Promise.all([
     withSchool(school.id, (tx) =>
       tx
-        .select(studentCols)
+        // House (sports) display — join by student.house_id (a by-id lookup, already tenant-safe).
+        // With a single students.house_id, this shows each pupil's House whatever its kind.
+        .select({
+          ...studentCols,
+          houseId: students.houseId,
+          houseColour: houses.colour,
+          houseName: houses.name,
+        })
         .from(students)
+        .leftJoin(
+          houses,
+          and(eq(houses.schoolId, students.schoolId), eq(houses.id, students.houseId)),
+        )
         .where(and(eq(students.schoolId, school.id), eq(students.classId, classId)))
         .orderBy(asc(students.lastName)),
     ),
@@ -90,9 +102,32 @@ export default async function ClassDetailPage(props: { params: Promise<{ id: str
           ),
         ),
     ),
+    // Sports houses for the roster picker — SPORTS + active only (empty for a pure SENIOR school,
+    // so the picker simply doesn't render there). Fenced to kind='SPORTS' so a boarding house is
+    // never an assignable option.
+    withSchool(school.id, (tx) =>
+      tx
+        .select({ id: houses.id, name: houses.name, colour: houses.colour })
+        .from(houses)
+        .where(
+          and(
+            eq(houses.schoolId, school.id),
+            eq(houses.kind, "SPORTS"),
+            eq(houses.active, true),
+          ),
+        )
+        .orderBy(asc(houses.name)),
+    ),
   ]);
 
-  const inClass = roster.map((s) => ({ id: s.id, code: s.code, name: studentName(s) }));
+  const inClass = roster.map((s) => ({
+    id: s.id,
+    code: s.code,
+    name: studentName(s),
+    houseId: s.houseId,
+    houseColour: s.houseColour,
+    houseName: s.houseName,
+  }));
   const free = unassigned.map((s) => ({ id: s.id, code: s.code, name: studentName(s) }));
 
   return (
@@ -111,7 +146,15 @@ export default async function ClassDetailPage(props: { params: Promise<{ id: str
         </div>
       </div>
 
-      <RosterManager classId={cls.id} inClass={inClass} unassigned={free} />
+      <RosterManager
+        classId={cls.id}
+        inClass={inClass}
+        unassigned={free}
+        // Sports-house assignment is a Basic-class concern. Offer the picker only on Basic classes
+        // (programme is null) so it can never overwrite an SHS boarder's boarding house_id in a
+        // COMBINED school (one students.house_id serves both — owner OC default).
+        sportsHouses={cls.programme ? [] : sportsHouses}
+      />
 
       <SubjectsManager subjects={subjectRows} />
 

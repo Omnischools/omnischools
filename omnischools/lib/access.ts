@@ -534,6 +534,20 @@ export const BOARDING_SCHOOL_SCOPED_ROLES = [
 ] as const satisfies readonly KnownAppRole[];
 
 /**
+ * 🔴 OC-295-A — who may create / edit / archive a Basic SPORTS house (/settings/houses). Management
+ * only — ADMIN + HEADMASTER. A SEPARATE, purpose-named group, NOT the wider boarding set: a sports
+ * house is a Basic-school config surface, so it deliberately excludes DEAN_OF_BOARDING (a boarding
+ * role with no remit over Basic sports houses) and every housemaster/boarding role. Gated on BOTH
+ * the settings route (`requireSchoolRole`) AND every mutating action (`hasAnyRole`) — a hand-crafted
+ * POST that never touched the UI is still refused. `as const satisfies` makes a typo'd code a
+ * compile error.
+ */
+export const SPORTS_HOUSE_WRITE_ROLES = [
+  "ADMIN",
+  "HEADMASTER",
+] as const satisfies readonly KnownAppRole[];
+
+/**
  * True when the user may view/reassign within a given House (Kofi G4). School-scoped roles
  * (Admin/Headmaster/Dean) reach any House; a plain HOUSEMASTER only the House whose
  * `hm_user_id` is their own user id. Pure — used by the page guard and the reassign action.

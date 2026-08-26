@@ -1161,7 +1161,8 @@ export async function getGrantFormOptions(
     const houseRows = await tx
       .select({ id: houses.id, name: houses.name })
       .from(houses)
-      .where(eq(houses.schoolId, schoolId));
+      // FENCE (OC-295-A): sickbay house filter enumerates BOARDING houses only.
+      .where(and(eq(houses.schoolId, schoolId), eq(houses.kind, "BOARDING")));
 
     return {
       staff: [...staffById.values()].sort((a, b) => a.name.localeCompare(b.name)),

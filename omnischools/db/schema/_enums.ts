@@ -170,6 +170,14 @@ export const residencyEnum = pgEnum("residency", ["BOARDER", "DAY", "DEBOARDINIZ
 // Gender-vs-student-sex is enforced at the app reassign/placement action, not the DB
 // (a cross-table check would need a forbidden trigger — Kofi trap J3).
 export const houseGenderEnum = pgEnum("house_gender", ["BOYS", "GIRLS", "COED"]);
+// Basic sports-house discriminator (OC-295-A). ONE `houses` table serves BOTH the SHS boarding
+// house and the Basic sports/athletics house; `kind` is the named discriminator every tenant read
+// fences on (`and(eq(houses.kind, "BOARDING"))`) so a COMBINED school's boarding surfaces never
+// pick up a sports house. NOT NULL DEFAULT 'BOARDING' backfills every existing row correctly — all
+// houses that exist today are boarding houses. `kind` is immutable after create (the CRUD never
+// accepts it on edit). Modelled as a pgEnum (not a bool) to match the houseGender idiom and give a
+// named value; append-only if a third house-kind ever lands.
+export const houseKindEnum = pgEnum("house_kind", ["BOARDING", "SPORTS"]);
 // The five prefect designations. Nullable on a bunk: a set value marks that bunk's
 // occupant a prefect (display-only in F0; appointment workflow deferred — Kofi OQ4).
 export const prefectRoleEnum = pgEnum("prefect_role", [

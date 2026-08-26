@@ -331,7 +331,9 @@ export async function listAccessibleHouses(
       })
       .from(houses)
       .leftJoin(users, eq(houses.hmUserId, users.id))
-      .where(eq(houses.schoolId, schoolId))
+      // FENCE (OC-295-A): boarding surfaces enumerate BOARDING houses only — a COMBINED school's
+      // sports houses must never appear on the boarding landing.
+      .where(and(eq(houses.schoolId, schoolId), eq(houses.kind, "BOARDING")))
       .orderBy(asc(houses.name));
 
     const boarderCounts = await tx

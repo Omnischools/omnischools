@@ -270,7 +270,15 @@ export async function generatePtas(): Promise<Result> {
       const activeHouses = await tx
         .select({ id: houses.id })
         .from(houses)
-        .where(and(eq(houses.schoolId, gate.schoolId), eq(houses.active, true)));
+        // FENCE (OC-295-A): House-PTA auto-create covers BOARDING houses only — a sports house
+        // is NOT a governance body and must never spawn a House-PTA row.
+        .where(
+          and(
+            eq(houses.schoolId, gate.schoolId),
+            eq(houses.active, true),
+            eq(houses.kind, "BOARDING"),
+          ),
+        );
 
       const existing = await tx
         .select({

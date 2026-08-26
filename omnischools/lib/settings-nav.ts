@@ -16,6 +16,7 @@ export type SettingsCard = {
   href: string;
   soon?: boolean;
   external?: boolean; // links to an existing module rather than a /settings sub-page
+  basicOnly?: boolean; // Basic-tier feature — hidden on a pure SENIOR school (e.g. sports houses)
 };
 
 export type SettingsGroup = {
@@ -96,6 +97,16 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         desc: "Subjects, the report card and the weighting between continuous assessment and end-of-term exams.",
         href: "/gradebook",
         external: true,
+      },
+      {
+        key: "houses",
+        name: "Sports",
+        em: "houses",
+        icon: "SH",
+        tone: "terra",
+        desc: "The Houses pupils are grouped into for sports and inter-house competition — name and colour. Shown as a dot on the class roster.",
+        href: "/settings/houses",
+        basicOnly: true,
       },
     ],
   },

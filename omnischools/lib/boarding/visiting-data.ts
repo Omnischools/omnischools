@@ -248,7 +248,8 @@ export async function getVisitingBoard(
       })
       .from(houses)
       .leftJoin(users, eq(houses.hmUserId, users.id))
-      .where(eq(houses.schoolId, schoolId));
+      // FENCE (OC-295-A): visiting enumerates BOARDING houses only.
+      .where(and(eq(houses.schoolId, schoolId), eq(houses.kind, "BOARDING")));
     const accessibleHouses = houseRows.filter((h) => canAccessHouse(roles, userId, h.hmUserId));
     const houseIds = accessibleHouses.map((h) => h.id);
     const houseById = new Map(accessibleHouses.map((h) => [h.id, h]));

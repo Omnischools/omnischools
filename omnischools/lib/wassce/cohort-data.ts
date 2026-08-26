@@ -628,7 +628,8 @@ export async function loadCohortReadiness(
     })
     .from(houses)
     .leftJoin(users, eq(users.id, houses.hmUserId))
-    .where(eq(houses.schoolId, schoolId))
+    // FENCE (OC-295-A): WASSCE house×tier enumerates BOARDING houses only.
+    .where(and(eq(houses.schoolId, schoolId), eq(houses.kind, "BOARDING")))
     .orderBy(asc(houses.name));
 
   const openSc12For = (ids: string[]) =>

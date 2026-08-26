@@ -111,7 +111,9 @@ export default async function SettingsPage() {
               {h.ok ? "✓" : "!"}
             </div>
             <div className="min-w-0">
-              <div className="font-display text-sm font-semibold text-navy">{h.label}</div>
+              <div className="font-display text-sm font-semibold text-navy">
+                {h.label}
+              </div>
               <div className="truncate text-[11px] text-navy-3">{h.meta}</div>
             </div>
           </div>
@@ -127,7 +129,8 @@ export default async function SettingsPage() {
                 {g.num}
               </span>
               <h2 className="font-display text-xl font-medium text-navy">
-                {g.title} <em className="not-italic text-gold [font-style:italic]">{g.em}</em>
+                {g.title}{" "}
+                <em className="not-italic text-gold [font-style:italic]">{g.em}</em>
               </h2>
               <div className="h-px flex-1 bg-border" />
               <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-navy-3">
@@ -136,60 +139,67 @@ export default async function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-              {g.cards.map((c) => {
-                const inner = (
-                  <>
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg font-display text-sm font-semibold ${TONE_TILE[c.tone]}`}
-                      >
-                        {c.icon}
+              {g.cards
+                .filter((c) => !(c.basicOnly && school.schoolType === "SENIOR"))
+                .map((c) => {
+                  const inner = (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-9 w-9 items-center justify-center rounded-lg font-display text-sm font-semibold ${TONE_TILE[c.tone]}`}
+                        >
+                          {c.icon}
+                        </div>
+                        <div className="font-display text-[15px] font-medium text-navy">
+                          {c.name}{" "}
+                          <em className="not-italic text-gold [font-style:italic]">
+                            {c.em}
+                          </em>
+                        </div>
                       </div>
-                      <div className="font-display text-[15px] font-medium text-navy">
-                        {c.name}{" "}
-                        <em className="not-italic text-gold [font-style:italic]">{c.em}</em>
-                      </div>
-                    </div>
-                    <p className="mt-2.5 text-[12px] leading-relaxed text-navy-3">{c.desc}</p>
-                    <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5 text-[11px]">
-                      {c.soon ? (
-                        <span className="rounded-full bg-bg px-2 py-0.5 font-semibold uppercase tracking-[0.1em] text-navy-3">
-                          Soon
+                      <p className="mt-2.5 text-[12px] leading-relaxed text-navy-3">
+                        {c.desc}
+                      </p>
+                      <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5 text-[11px]">
+                        {c.soon ? (
+                          <span className="rounded-full bg-bg px-2 py-0.5 font-semibold uppercase tracking-[0.1em] text-navy-3">
+                            Soon
+                          </span>
+                        ) : c.external ? (
+                          <span className="font-semibold text-navy-3">
+                            Opens {c.href}
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-green">Ready</span>
+                        )}
+                        <span className="font-semibold text-gold">
+                          {c.soon ? "" : c.external ? "Open →" : "Configure →"}
                         </span>
-                      ) : c.external ? (
-                        <span className="font-semibold text-navy-3">Opens {c.href}</span>
-                      ) : (
-                        <span className="font-semibold text-green">Ready</span>
-                      )}
-                      <span className="font-semibold text-gold">
-                        {c.soon ? "" : c.external ? "Open →" : "Configure →"}
-                      </span>
-                    </div>
-                  </>
-                );
+                      </div>
+                    </>
+                  );
 
-                const base =
-                  "block rounded-xl border bg-surface p-5 transition-colors";
-                if (c.soon) {
+                  const base = "block rounded-xl border bg-surface p-5 transition-colors";
+                  if (c.soon) {
+                    return (
+                      <div
+                        key={c.key}
+                        className={`${base} border-dashed border-border-2 opacity-70`}
+                      >
+                        {inner}
+                      </div>
+                    );
+                  }
                   return (
-                    <div
+                    <Link
                       key={c.key}
-                      className={`${base} border-dashed border-border-2 opacity-70`}
+                      href={c.href}
+                      className={`${base} border-border hover:border-gold hover:shadow-sm`}
                     >
                       {inner}
-                    </div>
+                    </Link>
                   );
-                }
-                return (
-                  <Link
-                    key={c.key}
-                    href={c.href}
-                    className={`${base} border-border hover:border-gold hover:shadow-sm`}
-                  >
-                    {inner}
-                  </Link>
-                );
-              })}
+                })}
             </div>
           </section>
         ))}
