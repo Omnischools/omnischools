@@ -471,6 +471,32 @@ export async function sessionAuthMethods(): Promise<string[]> {
   return session?.access_token ? amrFromJwt(session.access_token) : [];
 }
 
+/**
+ * INCR-254 — the ORIGINAL login time (ms since epoch) of the CURRENT session, or null. Decoded from
+ * the access-token JWT UNVERIFIED, exactly like `sessionAuthMethods` — it only feeds the "Session
+ * length" security setting (ref_school.session_hours), never an authorization decision (RLS remains
+ * the boundary). The value is the earliest `amr` timestamp (see loginAtMsFromClaims: survives the
+ * hourly refresh, unlike `iat`). `getSession()` reads the local cookie (no GoTrue round-trip), so
+ * this stays cheap. Returns null under dev-bypass (no JWT) or when nothing is readable — the caller
+ * (enforceSessionAge) treats null-under-a-set-limit as fail-closed.
+ */
+export async function sessionLoginAtMs(): Promise<number | null> {
+  if (!authIsLive()) return null;
+  const {
+    data: { session },
+  } = await (await authApi()).getSession();
+  if (!session?.access_token) return null;
+  try {
+    const payload = session.access_token.split(".")[1];
+    if (!payload) return null;
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    const { loginAtMsFromClaims } = await import("./session-age");
+    return loginAtMsFromClaims(claims);
+  } catch {
+    return null;
+  }
+}
+
 /** Decode the `amr[].method` list from a Supabase access-token JWT (unverified — R276 gate only). */
 function amrFromJwt(jwt: string): string[] {
   try {
