@@ -88,7 +88,9 @@ export async function getPtaSetup(schoolId: string): Promise<PtaSetup> {
     const activeHouseRows = await tx
       .select({ id: houses.id })
       .from(houses)
-      .where(and(eq(houses.schoolId, schoolId), eq(houses.active, true)));
+      // FENCE (OC-295-A): the House-PTA preview count covers BOARDING houses only (mirrors the
+      // reconcile fence in lib/actions/pta.ts) — a sports house is not a PTA governance body.
+      .where(and(eq(houses.schoolId, schoolId), eq(houses.active, true), eq(houses.kind, "BOARDING")));
     const activeClasses = activeClassRows.length;
     const activeHouses = activeHouseRows.length;
 

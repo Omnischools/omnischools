@@ -167,7 +167,8 @@ export async function getDisciplineBoard(
     const houseRows = await tx
       .select({ id: houses.id, name: houses.name, hmUserId: houses.hmUserId })
       .from(houses)
-      .where(eq(houses.schoolId, schoolId));
+      // FENCE (OC-295-A): boarding discipline enumerates BOARDING houses only.
+      .where(and(eq(houses.schoolId, schoolId), eq(houses.kind, "BOARDING")));
     const accessible = houseRows.filter((h) => canAccessHouse(roles, userId, h.hmUserId));
     const houseIds = accessible.map((h) => h.id);
     const houseNameById = new Map(houseRows.map((h) => [h.id, h.name]));

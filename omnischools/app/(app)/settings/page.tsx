@@ -136,7 +136,9 @@ export default async function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-              {g.cards.map((c) => {
+              {g.cards
+                .filter((c) => !(c.basicOnly && school.schoolType === "SENIOR"))
+                .map((c) => {
                 const inner = (
                   <>
                     <div className="flex items-center gap-3">

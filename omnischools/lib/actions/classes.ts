@@ -6,7 +6,7 @@ import { recordAudit } from "@/lib/db/audit";
 import { requireSchool, resolveActor, assertWriteAccess } from "@/lib/auth/server";
 import { safeRevalidate } from "@/lib/revalidate";
 import type { Tx } from "@/lib/db";
-import { classes, students, subjects, timetableSlots } from "@/db/schema";
+import { classes, students, subjects, timetableSlots, houses } from "@/db/schema";
 
 type Result = { ok: boolean; error?: string; id?: string };
 
@@ -267,6 +267,65 @@ export async function removeStudentFromClass(input: unknown): Promise<Result> {
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not remove student." };
+  }
+}
+
+// -------------------------------------------------------------- house (sports)
+// Per-student SPORTS-house assignment from the class roster (OC-295-A). Reuses assertWriteAccess()
+// — same weight as class assignment. houseId null = "None" (detach).
+const AssignHouseSchema = z.object({
+  studentId: z.string().uuid(),
+  houseId: z.string().uuid().nullable(),
+});
+
+export async function assignStudentHouse(input: unknown): Promise<Result> {
+  const { school } = await requireSchool();
+  await assertWriteAccess();
+  const parsed = AssignHouseSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input" };
+  const { studentId, houseId } = parsed.data;
+  const actor = await resolveActor(school.id);
+  try {
+    const outcome = await withSchool(school.id, async (tx) => {
+      // 🔴 Validate the target house BEFORE writing: same-tenant AND kind='SPORTS' AND active. A
+      // hand-crafted POST cannot cross-assign an SHS boarding house (or another school's house, or
+      // an archived one) to a basic pupil — the kind check is the load-bearing fence, not the UI.
+      if (houseId) {
+        const [house] = await tx
+          .select({ id: houses.id })
+          .from(houses)
+          .where(
+            and(
+              eq(houses.schoolId, school.id),
+              eq(houses.id, houseId),
+              eq(houses.kind, "SPORTS"),
+              eq(houses.active, true),
+            ),
+          )
+          .limit(1);
+        if (!house) return { error: "That sports house is not available." };
+      }
+      await tx
+        .update(students)
+        .set({ houseId })
+        .where(and(eq(students.id, studentId), eq(students.schoolId, school.id)));
+      await recordAudit(tx, {
+        schoolId: school.id,
+        actorUserId: actor.id ?? undefined,
+        actorRole: actor.role,
+        actionType: "updated",
+        entityType: "student",
+        entityId: studentId,
+        after: { houseId },
+        reason: houseId ? "House assigned" : "House cleared",
+      });
+      return { ok: true as const };
+    });
+    if ("error" in outcome) return { ok: false, error: outcome.error };
+    safeRevalidate("/classes");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not update the house." };
   }
 }
 

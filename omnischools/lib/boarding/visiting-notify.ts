@@ -124,7 +124,8 @@ export async function sendCohortReminder(
     const houseRows = await tx
       .select({ id: houses.id, hmUserId: houses.hmUserId })
       .from(houses)
-      .where(eq(houses.schoolId, schoolId));
+      // FENCE (OC-295-A): notify only BOARDING houses — a sports house has no boarding HM chain.
+      .where(and(eq(houses.schoolId, schoolId), eq(houses.kind, "BOARDING")));
     const houseIds = houseRows.filter((h) => canAccessHouse(roles, userId, h.hmUserId)).map((h) => h.id);
     if (houseIds.length === 0) return { ok: false, skipped: false, sent: 0, error: "No Houses in scope." };
 
@@ -312,7 +313,8 @@ export async function runOverstaySweep(
     const houseRows = await tx
       .select({ id: houses.id, hmUserId: houses.hmUserId })
       .from(houses)
-      .where(eq(houses.schoolId, schoolId));
+      // FENCE (OC-295-A): notify only BOARDING houses — a sports house has no boarding HM chain.
+      .where(and(eq(houses.schoolId, schoolId), eq(houses.kind, "BOARDING")));
     const houseIds = houseRows.filter((h) => canAccessHouse(roles, userId, h.hmUserId)).map((h) => h.id);
     if (houseIds.length === 0) return { checked: 0, sent: 0 };
 

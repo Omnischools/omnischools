@@ -122,7 +122,8 @@ async function readHousesAndSummary(schoolId: string): Promise<{
       })
       .from(houses)
       .leftJoin(users, eq(houses.hmUserId, users.id))
-      .where(eq(houses.schoolId, schoolId))
+      // FENCE (OC-295-A): the boarding programme surface lists BOARDING houses only.
+      .where(and(eq(houses.schoolId, schoolId), eq(houses.kind, "BOARDING")))
       .orderBy(asc(houses.name));
 
     // Dorm + bed counts per House.

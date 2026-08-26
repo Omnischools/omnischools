@@ -20,6 +20,7 @@ import {
   programmeEnum,
   residencyEnum,
   houseGenderEnum,
+  houseKindEnum,
 } from "./_enums";
 import { schools } from "./tenancy";
 import { users } from "./identity";
@@ -96,6 +97,11 @@ export const houses = pgTable(
       .references(() => schools.id, { onDelete: "cascade" }),
     name: text("name").notNull(), // "Aggrey", "Guggisberg", ...
     colour: text("colour"), // hex e.g. "#D87794" — rendered as a House dot via inline style
+    // Discriminator (OC-295-A): BOARDING (SHS boarding house — every pre-existing row) vs SPORTS
+    // (Basic sports/athletics house). NOT NULL DEFAULT 'BOARDING' backfills all existing rows. Every
+    // all-house tenant read fences on `kind='BOARDING'` so a COMBINED school never mixes the two; the
+    // Basic sports roster picker lists only `kind='SPORTS' AND active`. Immutable after create.
+    kind: houseKindEnum("kind").notNull().default("BOARDING"),
     // Boarding F0 (INCR-7) — all nullable, backward-compatible with Basic/day schools.
     gender: houseGenderEnum("gender"), // BOYS/GIRLS/COED; null → identity strip renders no gender pill
     capacity: integer("capacity"), // planning figure (advisory), NOT a hard cap — real limit is physical bunks
