@@ -82,7 +82,9 @@ const INSERT_ROW = [{ id: "m1" }];
 const OFFICER_ROWS: unknown[] = []; // no stored offices — ADMIN passes via break-glass
 
 const validInput = (over: Record<string, unknown> = {}) => ({
-  ptaId: "11111111-1111-1111-1111-111111111111",
+  // A valid RFC-4122 UUID (version 4, variant 8): Zod's .uuid() enforces the version+variant nibbles,
+  // so an all-1s literal fails ConveneSchema and aborts the convene before any query — the earlier bug.
+  ptaId: "11111111-1111-4111-8111-111111111111",
   meetingType: "Regular PTA meeting",
   meetingDate: "2026-06-01",
   startTime: "10:00",
