@@ -300,6 +300,7 @@ export function RosterBoard({
       {/* Student detail card — neutral default, terra when pastorally flagged. */}
       {selected && (
         <DetailCard
+          key={selected.studentId}
           occupant={selected}
           houseName={house.name}
           prefectRole={selectedPrefectRole}

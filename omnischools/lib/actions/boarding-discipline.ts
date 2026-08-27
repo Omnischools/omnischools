@@ -16,6 +16,7 @@ import {
   students,
   houses,
   bunkAllocation,
+  boardingBunk,
   schools,
 } from "@/db/schema";
 import { insertInfraction } from "@/lib/boarding/discipline-core";
@@ -416,6 +417,34 @@ export async function commitDeboardinization(input: unknown): Promise<ActionResu
       .update(students)
       .set({ residency: "DEBOARDINIZED", currentBunkId: null })
       .where(and(eq(students.schoolId, school.id), eq(students.id, rec.studentId)));
+
+    // 4) a released bunk must not keep a prefect tag (INCR #298). Otherwise the title strands on the
+    // now-vacant bunk and the next occupant — placed by a reassign that isn't itself carrying a tag —
+    // is silently mis-attributed the role, and the SICKBAY derived read follows the ghost. Clear it in
+    // the same tx (mirrors reassignBunk's clear-source), auditing a revoke iff a role was actually held.
+    if (stu.currentBunkId) {
+      const [rel] = await tx
+        .select({ role: boardingBunk.prefectRole })
+        .from(boardingBunk)
+        .where(and(eq(boardingBunk.schoolId, school.id), eq(boardingBunk.id, stu.currentBunkId)));
+      if (rel?.role) {
+        await tx
+          .update(boardingBunk)
+          .set({ prefectRole: null })
+          .where(and(eq(boardingBunk.schoolId, school.id), eq(boardingBunk.id, stu.currentBunkId)));
+        await recordAudit(tx, {
+          schoolId: school.id,
+          actorUserId: actor.id ?? undefined,
+          actorRole: actor.role,
+          actionType: "BOARDING_PREFECT_REVOKED",
+          entityType: "student",
+          entityId: rec.studentId,
+          before: { prefectRole: rel.role },
+          after: { prefectRole: null },
+          reason: "Prefect role released on deboardinization",
+        });
+      }
+    }
 
     await recordAudit(tx, {
       schoolId: school.id,

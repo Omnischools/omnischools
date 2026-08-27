@@ -113,6 +113,35 @@ describe("assembleDorms — data-driven N×M, ordered (AC A5/B1/J5)", () => {
     expect(strip[1].occupant).toBeNull(); // DINING not tagged → empty slot
   });
 
+  it("buildPrefectStrip is the ≤1-per-role backstop: two bunks tagged the SAME role → one slot, first wins (AC-A10)", () => {
+    // The DB invariant (one holder per House×role, appointPrefect AC-A2) can slip via a path the
+    // carry does not cover — e.g. a deboardinized prefect strands their tag on the vacated bunk
+    // (boarding-discipline commitDeboardinization nulls current_bunk_id but leaves prefect_role set).
+    // The strip must still render ≤1 slot per role and never fabricate an occupant onto a stranded tag.
+    const dorms: RawDorm[] = [{ id: "dA", name: "A", sectionLabel: null }];
+    const bunks: RawBunk[] = [
+      { id: "a1", dormId: "dA", position: 1, prefectRole: "HEAD" }, // occupied HEAD
+      { id: "a2", dormId: "dA", position: 2, prefectRole: "HEAD" }, // duplicate HEAD (invariant slip)
+      { id: "a3", dormId: "dA", position: 3, prefectRole: "SICKBAY" }, // tagged but VACANT (stranded)
+    ];
+    const occupants = new Map<string, RosterOccupant>([
+      ["a1", occ({ studentId: "head1" })],
+      ["a2", occ({ studentId: "head2" })],
+      // a3 deliberately has NO occupant — the stranded-tag case.
+    ]);
+    const strip = buildPrefectStrip(assembleDorms(dorms, bunks, occupants));
+
+    expect(strip).toHaveLength(5); // never more than the 5 canonical roles, even with a duplicate tag
+    const head = strip.filter((s) => s.role === "HEAD");
+    expect(head).toHaveLength(1); // ≤1 per role at the render layer
+    expect(head[0].occupant?.studentId).toBe("head1"); // first tagged bunk (A-01) wins, not A-02
+    expect(head[0].addressShort).toBe("A-01");
+
+    const sickbay = strip.find((s) => s.role === "SICKBAY")!;
+    expect(sickbay.occupant).toBeNull(); // a stranded tag is NEVER given a fabricated occupant
+    expect(sickbay.addressShort).toBe("A-03"); // it does surface the stranded bunk's address (ghost slot)
+  });
+
   it("summarize derives totals (vacant = total − filled) and unallocated tray count", () => {
     const s = summarize(result, /*boarderCount*/ 4, /*unallocatedCount*/ 1);
     expect(s.totalBunks).toBe(5);

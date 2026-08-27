@@ -287,6 +287,12 @@ export async function appointPrefect(input: unknown): Promise<Result> {
     }
 
     // AC-A2 — clear the current holder of this role in this House (bunk tag lives via dorm→house).
+    // ponytail: the one-holder-per-(House×role) rule is app-enforced (clear-prior then set) with no DB
+    // backstop — Kofi's zero-schema ruling forbids the partial-unique that would close it, because
+    // `boarding_bunk` has no house_id (house is via the dorm join). Two concurrent same-role appoints at
+    // READ COMMITTED can transiently double-tag; readers tolerate it (buildPrefectStrip is first-wins,
+    // getHealthPrefects would list two, the next appoint self-heals). Low contention, self-healing.
+    // Upgrade path: add house_id to boarding_bunk + a partial-unique on (school_id, house_id, prefect_role).
     const priorBunks = await tx
       .select({ id: boardingBunk.id })
       .from(boardingBunk)

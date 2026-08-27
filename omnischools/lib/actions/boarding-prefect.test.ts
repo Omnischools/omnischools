@@ -89,6 +89,20 @@ describe("reassignBunk · carries the prefect tag with its holder (AC-A8)", () =
   });
 });
 
+describe("deboardinization releases the prefect tag too (AC-A9 strand — #298 fast-follow)", () => {
+  it("commitDeboardinization clears the released bunk's prefect_role + audits a revoke, same tx", () => {
+    const s = readCode("lib/actions/boarding-discipline.ts");
+    // the vacate: residency flip nulls the bunk; the tag must be cleared right after so it never strands.
+    const nulled = s.indexOf("currentBunkId: null");
+    expect(nulled, "the deboard vacate path exists").toBeGreaterThan(-1);
+    const after = s.slice(nulled);
+    const clear = after.indexOf("prefectRole: null");
+    const audit = after.indexOf('actionType: "BOARDING_PREFECT_REVOKED"');
+    expect(clear, "clears the released bunk's tag after the vacate").toBeGreaterThan(-1);
+    expect(audit, "and audits a revoke").toBeGreaterThan(-1);
+  });
+});
+
 describe("the two readers my zero-schema model depends on still read the bunk tag (AC-A9/A10)", () => {
   it("getHealthPrefects still derives the sickbay roster from boarding_bunk.prefect_role='SICKBAY'", () => {
     const s = readCode("lib/sickbay/config.ts");
