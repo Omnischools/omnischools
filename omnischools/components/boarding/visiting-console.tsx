@@ -13,6 +13,7 @@ import {
   sendVisitingReminder,
   runVisitingOverstayChecks,
 } from "@/lib/actions/boarding-visiting";
+import { issueRsvpToken } from "@/lib/actions/boarding-rsvp";
 import { VISITOR_ZONES } from "@/lib/boarding/visiting";
 import type { VisitStatus, VisitVerification, ListMatchKind } from "@/lib/boarding/visiting";
 import type {
@@ -126,6 +127,61 @@ export function VisitRowActions({
         </button>
       )}
       {status === "DEPARTED" && <span className="text-[10px] font-semibold uppercase text-navy-3">Departed</span>}
+    </div>
+  );
+}
+
+/**
+ * Issue a public parent RSVP link (INCR #298 part B). Pick a boarder → the link is SMS'd to their stored
+ * guardian phone; the parent confirms the visit after entering the child's date of birth. Same
+ * BOARDING_ROLES + own-House authority as recording a visit (re-checked server-side).
+ */
+export function IssueLinkPanel({ eventId, boarders }: { eventId: string | null; boarders: BoarderOption[] }) {
+  const { pending, error, note, run } = useAction();
+  const [open, setOpen] = useState(false);
+  const [studentId, setStudentId] = useState("");
+
+  if (!eventId) return null;
+
+  return (
+    <div className="relative">
+      <button className={btnPlain} onClick={() => setOpen((o) => !o)}>
+        Send parent link
+      </button>
+      {open && (
+        <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-border bg-surface p-4 shadow-xl">
+          <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-gold">Parent RSVP link</div>
+          <p className="mb-3 text-[11px] leading-snug text-navy-3">
+            Texts a private link to the boarder&apos;s guardian on file. They confirm the visit after
+            entering the child&apos;s date of birth — no login needed.
+          </p>
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-navy-3">
+            Boarder
+            <select className={input} value={studentId} onChange={(e) => setStudentId(e.target.value)}>
+              <option value="">Select a boarder…</option>
+              {boarders.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} · {b.formLabel} · {b.houseName}
+                </option>
+              ))}
+            </select>
+          </label>
+          {error && <p className="mt-2 text-[11px] font-semibold text-terra">{error}</p>}
+          {note && <p className="mt-2 text-[11px] font-semibold text-green">{note}</p>}
+          <div className="mt-3 flex justify-end gap-2">
+            <button className={btnPlain} onClick={() => setOpen(false)} disabled={pending}>
+              Close
+            </button>
+            <button
+              className={btnPrimary}
+              disabled={pending || !studentId}
+              onClick={() => run(() => issueRsvpToken({ studentId, calendarEventId: eventId }), () => setStudentId(""))}
+            >
+              {pending ? "Sending…" : "Send link"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -18,7 +18,7 @@ import {
 import { sql } from "drizzle-orm";
 import { schools } from "./tenancy";
 import { users } from "./identity";
-import { houses, students } from "./students";
+import { houses, students, studentGuardians } from "./students";
 import { academicPeriod } from "./periods";
 import {
   prefectRoleEnum,
@@ -1146,6 +1146,107 @@ export const deboardinizationRecords = pgTable(
     infractionFk: foreignKey({
       columns: [t.schoolId, t.infractionId],
       foreignColumns: [boardingInfractions.schoolId, boardingInfractions.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+/* ============================================================================
+ * Boarding visiting-day PUBLIC parent RSVP link (SHS module 4.2 / INCR-298 part B) — ONE new LEAF
+ * tenant table `boarding_visit_rsvp_token`. A parent gets an SMS link carrying a raw 192-bit token; they
+ * open it, pass a SECOND FACTOR = the ward's date of birth (verified live against students.date_of_birth
+ * at submit time — NEVER stored on this row), and submit ONE idempotent boarding_visit at status=RSVP /
+ * verification=FLAGGED. The submit endpoint (lib/, NOT this schema) resolves scope from the token via
+ * withoutTenantScope and writes the visit; the idempotency link lives on THIS row (visit_id), so
+ * boarding_visit itself is UNCHANGED (no new column added there).
+ *
+ * SECURITY POSTURE
+ *   • The RAW token is NEVER a column. `token_hash` is its SHA-256 hex (hashed before insert; the raw
+ *     lives only in the SMS link) and is the PUBLIC lookup key — a SINGLE-COLUMN UNIQUE that is GLOBALLY
+ *     unique, NOT school-scoped: the public path looks it up WITHOUT tenant scope, so the token alone must
+ *     resolve the school. Its unique index serves the hot lookup (no extra index needed).
+ *   • `attempts` is a per-token wrong-DOB counter — the endpoint increments it on each failed second
+ *     factor and rejects past a cap (~8). The 192-bit token is unguessable, but DOB is low-entropy, so a
+ *     leaked/known token needs a brute-force fence. The token is short-lived (expires event-day-end), so a
+ *     lock-until-expiry is acceptable. Plain counter, no constraint.
+ *   • REUSABLE token (AC-B9): repeat submits update the SAME visit via `visit_id` — deliberately NO
+ *     single-use/consumed flag. `revoked_at` nulls the link out; `expires_at` time-bounds it.
+ *   • `issued_to_phone` is the ONLY PII on the row (an E.164 snapshot of the ward's guardian phone, the
+ *     delivery target). There is NO second-factor / DOB column — DOB is checked live against students.
+ *
+ * RLS: a school_id tenant table → ENABLE + FORCE + tenant_isolation (db:policies dev +
+ * prod-paste-0091-boarding-rsvp-token.sql prod). Owner exempt; Data API denied. NO parent_scope /
+ * parent_deny of its own — authenticated parents NEVER read this table; the public path is a server-side
+ * withoutTenantScope bypass in lib/, not a parent-role read (the catalog-driven parent_deny loop already
+ * on prod auto-covers it structurally, like every other non-parent-readable FORCE-RLS + school_id table).
+ *
+ * LEAF table (nothing references it) → NO composite (school_id, id) tenant UK (mirror exeat_notification /
+ * boarding_visit_notification).
+ *
+ * FK SHAPES
+ *   • (school_id, student_id) → students_tenant_uk, CASCADE — the composite intra-tenant hard FK (the
+ *     ward; a cross-tenant reference is structurally impossible).
+ *   • calendar_event_id — nullable SINGLE-COLUMN SET NULL → boarding_calendar_event(id): the exeat
+ *     calendar_event_id exemption (a whole-school visiting Sunday may carry none; a composite SET NULL
+ *     would null the NOT-NULL school_id; weak informational link to a HARD-deletable target).
+ *   • visit_id — nullable SINGLE-COLUMN SET NULL → boarding_visit(id) [the PK, NOT the tenant UK]: the
+ *     idempotency link. DEVIATION from Kofi's "composite" — SET NULL STAYS SINGLE-COLUMN: a composite SET
+ *     NULL would try to null the NOT-NULL school_id on an independent boarding_visit delete (de-facto
+ *     RESTRICT — the score-ledger supersedesFk trap). Same posture as boarding_visit.approved_visitor_id
+ *     (also a single-column SET NULL FK to a durable+referenced boarding table); RLS + the tenant-scoped
+ *     server write already prevent a cross-tenant visit_id reaching the insert.
+ *   • guardian_id — nullable SINGLE-COLUMN SET NULL → student_guardian(id): which parent this link was
+ *     issued to. DEVIATION from Kofi's "composite if a tenant UK exists" — student_guardian has NO
+ *     (school_id, id) tenant UK, and a SET NULL FK stays single-column anyway.
+ *   • issued_by_user_id — single-column SET NULL → ref_user (global table + SET NULL).
+ *   • school_id — single-column → ref_school, CASCADE.
+ *
+ * Index (school_id, calendar_event_id) serves the per-event issued-token read.
+ */
+export const boardingVisitRsvpToken = pgTable(
+  "boarding_visit_rsvp_token",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    // Nullable single-column SET NULL FK — the VISITING event (exeat exemption; a whole-school Sunday may carry none).
+    calendarEventId: uuid("calendar_event_id").references(() => boardingCalendarEvent.id, {
+      onDelete: "set null",
+    }),
+    // SHA-256 hex of the raw token — the PUBLIC lookup key. GLOBALLY unique (not school-scoped): the public
+    // path resolves the school FROM the token. The raw token is NEVER stored (lives only in the SMS link).
+    tokenHash: text("token_hash").notNull(),
+    // E.164 snapshot of the ward's guardian phone (delivery target only) — the ONLY PII on the row. Nullable.
+    issuedToPhone: text("issued_to_phone"),
+    // Nullable single-column SET NULL FK — which parent (student_guardian has no tenant UK → single-column).
+    guardianId: uuid("guardian_id").references(() => studentGuardians.id, {
+      onDelete: "set null",
+    }),
+    // Nullable single-column SET NULL FK → boarding_visit(id) — the idempotency link (repeat submits update
+    // the same visit). SET NULL stays single-column (see table doc). NULL until the first submit.
+    visitId: uuid("visit_id").references(() => boardingVisit.id, {
+      onDelete: "set null",
+    }),
+    // Per-token wrong-DOB counter — brute-force fence on the low-entropy second factor (endpoint caps ~8).
+    attempts: integer("attempts").notNull().default(0),
+    // Global-table SET NULL → single column (the staff member who issued the link; NULL for system-issued).
+    issuedByUserId: uuid("issued_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }), // nullable — set to kill the link early
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // The PUBLIC lookup key — globally unique SHA-256 hex; its unique index serves the hot withoutTenantScope read.
+    uniqTokenHash: unique("uniq_boarding_visit_rsvp_token_hash").on(t.tokenHash),
+    // Per-event issued-token read.
+    byEvent: index("boarding_visit_rsvp_token_event_idx").on(t.schoolId, t.calendarEventId),
+    // Composite intra-tenant FK — a cross-tenant student reference is structurally impossible. CASCADE.
+    studentFk: foreignKey({
+      columns: [t.schoolId, t.studentId],
+      foreignColumns: [students.schoolId, students.id],
     }).onDelete("cascade"),
   }),
 );
