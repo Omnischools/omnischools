@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { BOARDING_ROLES } from "@/lib/access";
 import { getVisitingBoard, type IndicatedArrival, type HouseRsvpCard, type ZoneCard } from "@/lib/boarding/visiting-data";
 import type { ListMatchKind } from "@/lib/boarding/visiting";
-import { HeaderActions, GateCheckPanel, VisitRowActions, ApprovedVisitorEditor } from "@/components/boarding/visiting-console";
+import { HeaderActions, GateCheckPanel, IssueLinkPanel, VisitRowActions, ApprovedVisitorEditor } from "@/components/boarding/visiting-console";
 
 export const dynamic = "force-dynamic";
 
@@ -181,11 +181,14 @@ export default async function VisitingDayPage(props: {
             title="The Visitor's Book · matched to the approved list"
             meta={`${board.arrivals.length} recorded · phones masked · no photo/QR`}
             actions={
-              <GateCheckPanel
-                eventId={board.eventId}
-                boarders={board.boarderOptions}
-                approvedByStudent={board.approvedByStudent}
-              />
+              <div className="flex items-center gap-2">
+                <IssueLinkPanel eventId={board.eventId} boarders={board.boarderOptions} />
+                <GateCheckPanel
+                  eventId={board.eventId}
+                  boarders={board.boarderOptions}
+                  approvedByStudent={board.approvedByStudent}
+                />
+              </div>
             }
           >
             <div className="overflow-hidden rounded-xl border border-border bg-surface">
