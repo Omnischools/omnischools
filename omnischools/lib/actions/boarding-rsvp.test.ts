@@ -90,9 +90,31 @@ describe("submitParentRsvp · scope-from-token-only, DOB fail-closed, no-oracle,
     const branch = s.indexOf("if (t.visitId)");
     expect(branch, "branches on the token's stored visitId").toBeGreaterThan(-1);
     // first submit inserts then stores the visit id back on the token; repeat submits update it.
-    expect(s).toMatch(/set\(\{ visitId: row\.id \}\)/);
-    expect(s).toContain('status: "RSVP"');
-    expect(s).toContain('verification: "FLAGGED"');
+    expect(s).toMatch(/resolvedVisitId = row\.id/);
+    expect(s).toMatch(/set\(\{ visitId: resolvedVisitId \}\)/);
+    expect(s).toContain('status: "RSVP"'); // the INSERT branch lands RSVP…
+    expect(s).toContain('verification: "FLAGGED"'); // …/FLAGGED on first submit
     expect(s).toMatch(/rsvpByUserId:\s*null/); // parent origin — never a staff actor
+  });
+
+  // QA regression lock (Quinn, INCR-298B). The token is REUSABLE and stays live until end of the event
+  // day — the SAME boarding_visit row the parent's visit_id points to is what staff progress at the gate
+  // (arriveVisit RSVP→ARRIVED, departVisit →DEPARTED, authoriseVisit FLAGGED→HM_AUTHORISED). The replay
+  // branch here must therefore be STATE-SAFE: a parent re-opening the still-valid link after check-in must
+  // not revert the visit to RSVP/FLAGGED. Accept EITHER fix — the replay update guards on the current
+  // status, OR it no longer force-writes status back to RSVP. RED until one lands.
+  it("replay-safe: a repeat parent submit must not revert a staff-progressed visit to RSVP/FLAGGED", () => {
+    const s = b();
+    const start = s.indexOf("if (t.visitId)");
+    const end = s.indexOf("} else", start);
+    const replay = s.slice(start, end === -1 ? undefined : end);
+    const forcesStatusBack = /status:\s*"RSVP"/.test(replay);
+    const guardsOnStatus = /boardingVisit\.status/.test(replay);
+    expect(
+      !forcesStatusBack || guardsOnStatus,
+      "the idempotent replay update unconditionally forces status:'RSVP'/verification:'FLAGGED' with no " +
+        "status guard — a parent re-opening the live link after the gate arrived/HM-authorised them reverts " +
+        "staff gate state and leaves an inconsistent row (status=RSVP but arrivedAt/authorisedAt set).",
+    ).toBe(true);
   });
 });

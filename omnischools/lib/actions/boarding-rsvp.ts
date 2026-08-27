@@ -60,6 +60,14 @@ export async function issueRsvpToken(input: unknown): Promise<Result> {
   const { studentId, calendarEventId } = parsed.data;
   const actor = await resolveActor(school.id);
 
+  // The SMS link is the ENTIRE payload here (unlike the receipt, which supplements a PDF). If the public
+  // base URL is unset the link would be a useless relative path and the parent permanently stranded with
+  // a committed dead token — so fail BEFORE minting anything (Dex MINOR-1).
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  if (!base) {
+    return { ok: false, error: "The public site address isn't configured, so a parent link can't be created yet. Contact support." };
+  }
+
   // Generated OUTSIDE the tx so only the hash is ever persisted; the raw exists only here + the SMS.
   const raw = randomBytes(24).toString("base64url"); // 192-bit CSPRNG
   const tokenHash = hashRsvpToken(raw);
@@ -148,7 +156,6 @@ export async function issueRsvpToken(input: unknown): Promise<Result> {
       reason: "Parent RSVP link issued",
     });
 
-    const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
     const link = `${base}/rsvp/${raw}`;
     const sender = school.shortName ?? "Omnischools";
     sms.push({
@@ -188,21 +195,25 @@ export async function revokeRsvpToken(input: unknown): Promise<Result> {
       .where(and(eq(boardingVisitRsvpToken.schoolId, school.id), eq(boardingVisitRsvpToken.id, tokenId)))
       .limit(1);
     if (!t) return { error: "That link does not exist." };
-    // Own-House fence via the ward.
+    // Own-House fence via the ward — ALWAYS enforced. A ward off any House (houseId null) yields a null
+    // hmUserId, so canAccessHouse denies a plain HOUSEMASTER (fail-closed) while still allowing a
+    // school-scoped role (Admin/Headmaster/Dean) — never an unfenced revoke (Quinn MINOR).
     const [stu] = await tx
       .select({ houseId: students.houseId })
       .from(students)
       .where(and(eq(students.schoolId, school.id), eq(students.id, t.studentId)))
       .limit(1);
+    let hmUserId: string | null | undefined;
     if (stu?.houseId) {
       const [house] = await tx
         .select({ hmUserId: houses.hmUserId })
         .from(houses)
         .where(and(eq(houses.schoolId, school.id), eq(houses.id, stu.houseId)))
         .limit(1);
-      if (!canAccessHouse(user.roles, user.id, house?.hmUserId)) {
-        return { error: "You can only manage the House you are assigned to." };
-      }
+      hmUserId = house?.hmUserId;
+    }
+    if (!canAccessHouse(user.roles, user.id, hmUserId)) {
+      return { error: "You can only manage the House you are assigned to." };
     }
     if (t.revokedAt) return { ok: true as const }; // idempotent
     await tx
@@ -265,7 +276,8 @@ export async function submitParentRsvp(input: unknown): Promise<SubmitRsvpResult
         })
         .from(boardingVisitRsvpToken)
         .where(eq(boardingVisitRsvpToken.tokenHash, tokenHash))
-        .limit(1);
+        .limit(1)
+        .for("update"); // lock the token row so concurrent submits serialize (no duplicate first-insert)
       // No oracle: a bad/expired/revoked/locked link all return the SAME generic message.
       if (!t || t.revokedAt || t.expiresAt.getTime() < Date.now()) return { kind: "bad" as const };
       if (t.attempts >= DOB_ATTEMPT_CAP) return { kind: "locked" as const };
@@ -285,12 +297,18 @@ export async function submitParentRsvp(input: unknown): Promise<SubmitRsvpResult
         return { kind: "bad" as const };
       }
 
-      // Passed. Write ONE idempotent boarding_visit at RSVP/FLAGGED, scoped to the TOKEN's school.
+      // Passed. Write ONE idempotent boarding_visit scoped to the TOKEN's school. The token is REUSABLE
+      // and lives until the event day ends, and its visit_id points at the SAME row staff progress at the
+      // gate — so a replay must be STATE-SAFE: refresh ONLY the parent-editable fields and NEVER force
+      // status/verification back. A parent re-opening the live link after arrive/HM-authorise must not
+      // rewind that (Quinn MAJOR). First submit lands RSVP/FLAGGED; gate staff verify on arrival.
+      let resolvedVisitId: string;
       if (t.visitId) {
         await tx
           .update(boardingVisit)
-          .set({ visitorName, note: note ?? null, verification: "FLAGGED", status: "RSVP" })
+          .set({ visitorName, note: note ?? null })
           .where(and(eq(boardingVisit.schoolId, t.schoolId), eq(boardingVisit.id, t.visitId)));
+        resolvedVisitId = t.visitId;
       } else {
         const [row] = await tx
           .insert(boardingVisit)
@@ -307,9 +325,10 @@ export async function submitParentRsvp(input: unknown): Promise<SubmitRsvpResult
             rsvpByUserId: null, // NULL rsvp_by + a token row = the parent-self-RSVP origin
           })
           .returning({ id: boardingVisit.id });
+        resolvedVisitId = row.id;
         await tx
           .update(boardingVisitRsvpToken)
-          .set({ visitId: row.id })
+          .set({ visitId: resolvedVisitId })
           .where(eq(boardingVisitRsvpToken.id, t.id));
       }
       // Clear the brute-force counter on success.
@@ -322,7 +341,8 @@ export async function submitParentRsvp(input: unknown): Promise<SubmitRsvpResult
         schoolId: t.schoolId,
         actionType: "BOARDING_VISIT_RSVP",
         entityType: "boarding_visit",
-        after: { origin: "parent-link", status: "RSVP", verification: "FLAGGED" },
+        entityId: resolvedVisitId,
+        after: { origin: "parent-link" },
         reason: "Parent self-RSVP via link",
       });
       return { kind: "ok" as const, wardName: stu.firstName };
