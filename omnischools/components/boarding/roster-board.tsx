@@ -1,10 +1,12 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { reassignBunk } from "@/lib/actions/boarding";
+import { reassignBunk, appointPrefect, revokePrefect } from "@/lib/actions/boarding";
 import {
   PREFECT_LABEL,
+  PREFECT_ORDER,
   type BunkState,
+  type PrefectRole,
   type PrefectSlot,
   type RosterDorm,
   type RosterOccupant,
@@ -49,15 +51,23 @@ export function RosterBoard({
   const [target, setTarget] = useState<{ bunkId: string; address: string } | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [apptError, setApptError] = useState<string | null>(null);
 
   const bunkById = useMemo(() => {
-    const m = new Map<string, { occupant: RosterOccupant | null; address: string }>();
+    const m = new Map<
+      string,
+      { occupant: RosterOccupant | null; address: string; prefectRole: PrefectRole | null }
+    >();
     for (const d of dorms)
-      for (const b of d.bunks) m.set(b.id, { occupant: b.occupant, address: b.address });
+      for (const b of d.bunks)
+        m.set(b.id, { occupant: b.occupant, address: b.address, prefectRole: b.prefectRole });
     return m;
   }, [dorms]);
 
   const selected = selectedBunkId ? bunkById.get(selectedBunkId)?.occupant ?? null : null;
+  const selectedPrefectRole = selectedBunkId
+    ? bunkById.get(selectedBunkId)?.prefectRole ?? null
+    : null;
 
   function onBunkClick(bunkId: string, state: BunkState) {
     setError(null);
@@ -100,13 +110,43 @@ export function RosterBoard({
     });
   }
 
+  function appoint(role: PrefectRole) {
+    if (!selected) return;
+    setApptError(null);
+    startTransition(async () => {
+      const res = await appointPrefect({ studentId: selected.studentId, role });
+      if (!res.ok) {
+        setApptError(res.error ?? "Could not appoint this prefect.");
+        return;
+      }
+      setSelectedBunkId(null);
+      router.refresh();
+    });
+  }
+
+  function revoke() {
+    if (!selected) return;
+    setApptError(null);
+    startTransition(async () => {
+      const res = await revokePrefect({ studentId: selected.studentId });
+      if (!res.ok) {
+        setApptError(res.error ?? "Could not revoke this prefect.");
+        return;
+      }
+      setSelectedBunkId(null);
+      router.refresh();
+    });
+  }
+
   return (
     <div className="space-y-6">
-      {/* Prefect strip — display-only (appointment workflow is a later increment). */}
+      {/* Prefect strip — appointment via a selected boarder's card (INCR #298). */}
       <div className="rounded-xl border border-gold-soft bg-gold-bg p-5">
         <div className="mb-3.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold">
           House prefects ·{" "}
-          <em className="font-medium not-italic text-navy">five roles, display-only</em>
+          <em className="font-medium not-italic text-navy">
+            {canReassign ? "select a boarder to appoint" : "five roles"}
+          </em>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {prefects.map((p) => (
@@ -260,11 +300,21 @@ export function RosterBoard({
       {/* Student detail card — neutral default, terra when pastorally flagged. */}
       {selected && (
         <DetailCard
+          key={selected.studentId}
           occupant={selected}
           houseName={house.name}
+          prefectRole={selectedPrefectRole}
           canReassign={canReassign}
+          canAppoint={canReassign}
+          pending={pending}
+          apptError={apptError}
           onMove={() => beginMove(selected)}
-          onClose={() => setSelectedBunkId(null)}
+          onAppoint={appoint}
+          onRevoke={revoke}
+          onClose={() => {
+            setSelectedBunkId(null);
+            setApptError(null);
+          }}
         />
       )}
 
@@ -318,17 +368,30 @@ export function RosterBoard({
 function DetailCard({
   occupant,
   houseName,
+  prefectRole,
   canReassign,
+  canAppoint,
+  pending,
+  apptError,
   onMove,
+  onAppoint,
+  onRevoke,
   onClose,
 }: {
   occupant: RosterOccupant;
   houseName: string;
+  prefectRole: PrefectRole | null;
   canReassign: boolean;
+  canAppoint: boolean;
+  pending: boolean;
+  apptError: string | null;
   onMove: () => void;
+  onAppoint: (role: PrefectRole) => void;
+  onRevoke: () => void;
   onClose: () => void;
 }) {
   const flagged = occupant.flagged;
+  const [pickRole, setPickRole] = useState<PrefectRole>("HEAD");
   return (
     <div
       className={`overflow-hidden rounded-xl border bg-surface ${
@@ -398,6 +461,49 @@ function DetailCard({
           </button>
         )}
       </div>
+
+      {/* Prefect appointment (INCR #298) — same authority as a bunk move. */}
+      {canAppoint && (
+        <div className="border-t border-border px-5 py-4">
+          {prefectRole ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-[12px] text-navy-2">
+                Prefect · <b className="text-navy">{PREFECT_LABEL[prefectRole]}</b>
+              </div>
+              <button
+                onClick={onRevoke}
+                disabled={pending}
+                className="rounded-md border border-terra bg-terra-bg px-3 py-1.5 text-xs font-semibold text-terra disabled:opacity-50"
+              >
+                {pending ? "Working…" : "Revoke prefect"}
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[12px] text-navy-3">Appoint as prefect:</span>
+              <select
+                value={pickRole}
+                onChange={(e) => setPickRole(e.target.value as PrefectRole)}
+                className="rounded-md border border-border-2 bg-bg px-2 py-1 text-xs font-semibold text-navy outline-none focus:border-gold"
+              >
+                {PREFECT_ORDER.map((r) => (
+                  <option key={r} value={r}>
+                    {PREFECT_LABEL[r]}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => onAppoint(pickRole)}
+                disabled={pending}
+                className="rounded-md bg-gold px-3 py-1.5 text-xs font-semibold text-navy disabled:opacity-50"
+              >
+                {pending ? "Working…" : "Appoint"}
+              </button>
+            </div>
+          )}
+          {apptError && <p className="mt-2 text-xs font-semibold text-terra">{apptError}</p>}
+        </div>
+      )}
     </div>
   );
 }
