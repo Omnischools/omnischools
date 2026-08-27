@@ -97,26 +97,39 @@ describe("GOV-5 · board-grain formatters", () => {
   });
 });
 
-// ── route gate (source-level, airtight) ────────────────────────────────────────────────────────
-describe("GOV-5 · /board/board-pack route is board-gated + session-scoped", () => {
-  const route = readFileSync(
-    resolve(cwd(), "app/(board)/board/board-pack/route.ts"),
-    "utf8",
-  );
+// ── route gates + shared builder (source-level, airtight) ────────────────────────────────────────
+// #309 de-cloned the two board-pack routes: both now GATE and delegate to the shared
+// `buildBoardPackResponse`, which holds the (session-scoped) data assembly + the pdf response.
+const src = (p: string) => readFileSync(resolve(cwd(), p), "utf8");
 
-  it("gates on requireBoard() (a non-board session is redirected before the handler runs)", () => {
-    expect(route).toMatch(/requireBoard\s*\(\s*\)/);
+describe("GOV-5/§17-F · board-pack routes are gated, session-scoped, and share ONE builder (#309)", () => {
+  const boardRoute = src("app/(board)/board/board-pack/route.ts");
+  const insightsRoute = src("app/api/insights/board-pack/route.ts");
+  const shared = src("lib/pdf/board-pack-response.ts");
+
+  it("the /board route gates on requireBoard() and runs on the node runtime", () => {
+    expect(boardRoute).toMatch(/requireBoard\s*\(\s*\)/);
+    expect(boardRoute).toMatch(/runtime\s*=\s*["'`]nodejs["'`]/);
   });
 
-  it("derives the rollup from the SESSION school id, never a URL school id (R339)", () => {
-    expect(route).toMatch(/getSchoolRollup\s*\(\s*school\.id/);
-    // no client-supplied school id: the only searchParams read is periodId (the term).
-    expect(route).not.toMatch(/searchParams\.get\(\s*["'`]schoolId/);
+  it("the /api/insights route gates on INSIGHTS_READ_ROLES and runs on the node runtime", () => {
+    expect(insightsRoute).toMatch(/requireSchoolRole\s*\(\s*INSIGHTS_READ_ROLES/);
+    expect(insightsRoute).toMatch(/runtime\s*=\s*["'`]nodejs["'`]/);
   });
 
-  it("runs on the node runtime and streams application/pdf inline", () => {
-    expect(route).toMatch(/runtime\s*=\s*["'`]nodejs["'`]/);
-    expect(route).toMatch(/application\/pdf/);
-    expect(route).toMatch(/inline; filename=/);
+  it("both routes delegate to the SHARED buildBoardPackResponse — the clone is gone", () => {
+    expect(boardRoute).toMatch(/buildBoardPackResponse\s*\(\s*school/);
+    expect(insightsRoute).toMatch(/buildBoardPackResponse\s*\(\s*school/);
+  });
+
+  it("neither route trusts a URL school id — only periodId is read (R339)", () => {
+    expect(boardRoute).not.toMatch(/searchParams\.get\(\s*["'`]schoolId/);
+    expect(insightsRoute).not.toMatch(/searchParams\.get\(\s*["'`]schoolId/);
+  });
+
+  it("the shared builder is session-scoped (getDirectorsInsights on school.id) and streams pdf inline", () => {
+    expect(shared).toMatch(/getDirectorsInsights\s*\(\s*school\.id/);
+    expect(shared).toMatch(/application\/pdf/);
+    expect(shared).toMatch(/inline; filename=/);
   });
 });
