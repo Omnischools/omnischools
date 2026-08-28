@@ -288,7 +288,7 @@ export default async function WassceSubjectTeacherPage(props: {
       <section id="plan" className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-2xl font-medium text-navy">
-            The <em className="italic text-gold">final</em> 24 days
+            The <em className="italic text-gold">final</em> stretch
           </h2>
           <span className="rounded-full bg-bg px-2 py-0.5 text-[10px] uppercase tracking-wide text-navy-3">
             not yet built

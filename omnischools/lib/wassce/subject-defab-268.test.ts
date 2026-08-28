@@ -31,6 +31,8 @@ describe("#268 · the WASSCE subject-teacher fabrications are gone", () => {
     for (const fake of ["after-school tutoring", "parent SMS", "past-paper", "5 Jun", "24 May", "boost session"]) {
       expect(src, `fabricated plan string "${fake}" must be gone`).not.toContain(fake);
     }
+    // the §04 heading no longer asserts an invented day-count ("The final 24 days" — days-to-paper is "—").
+    expect(src).not.toMatch(/final<\/em>\s*\d+\s*days/);
   });
 
   it("the §03 and §04 shells survive with an honest, zero-number placeholder (AC-268-03)", () => {
