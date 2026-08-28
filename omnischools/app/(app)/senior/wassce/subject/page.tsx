@@ -19,8 +19,9 @@ export const dynamic = "force-dynamic";
  * subject. `?subjectId` / `?cohortId` are tenant-scoped view selectors (never a teacher id).
  *
  * Frames 01 (histogram + credit/distinction/mean), 02 (mark-entry grid) and 05 (benchmark "my cohort")
- * DERIVE from real `mock_results` (AC7/8/9). Frames 03 (topic heatmap) + 04 (intervention plan) + the
- * CPD/NTC/practical fields render SEEDED/STATIC — no per-topic table, no aggregate, no projection (AC16).
+ * DERIVE from real `mock_results` (AC7/8/9). The §01 persona is the SESSION user (real name + initials);
+ * NTC licence / PLC / CPD are OMITTED — dropped, not faked (R404-deferred). Frames 03 (per-topic) + 04
+ * (intervention plan) are honest empty shells (#268) — the backing data does not exist yet.
  */
 export default async function WassceSubjectTeacherPage(props: {
   searchParams: Promise<{ subjectId?: string; cohortId?: string }>;
@@ -128,33 +129,23 @@ export default async function WassceSubjectTeacherPage(props: {
 
       {/* ================= §01 — My cohort ================= */}
       <section id="cohort" className="space-y-4">
-        {/* teacher identity — persona is static (cross-module HR/NTC); the assignment count derives */}
+        {/* teacher identity — the SESSION user (real name/initials). NTC/PLC/CPD are omitted (dropped,
+            not faked — R404-deferred); only the derived subject + candidate count are shown. */}
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-xl border border-border bg-surface p-4">
           <span
             className="flex h-[60px] w-[60px] items-center justify-center rounded-xl font-display text-[22px] text-gold"
             style={{ background: "linear-gradient(135deg, var(--navy), var(--navy-2))" }}
           >
-            SA
+            {initialsOf(user.name)}
           </span>
           <div>
-            <div className="font-display text-[22px] font-medium text-navy">
-              Mr S. <em className="italic text-gold">Asiedu</em>
-            </div>
+            <div className="font-display text-[22px] font-medium text-navy">{user.name ?? "—"}</div>
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-navy-3">
               <span>
-                <b className="text-navy">Subject</b> · {subjectName} · F3
+                <b className="text-navy">Subject</b> · {subjectName}
               </span>
               <span>
-                <b className="text-navy">Form Master</b> · F3 Slessor
-              </span>
-              <span>
-                <b className="text-navy">HOD Science</b>
-              </span>
-              <span>
-                <b className="text-navy">NTC Licence</b> · GA-TL-78423 · valid to 2028
-              </span>
-              <span>
-                <b className="text-navy">PLC</b> · Science HOD PLC · 12 sessions YTD
+                <b className="text-navy">Cohort</b> · WASSCE {data.cohort.examYear}
               </span>
             </div>
           </div>
@@ -163,13 +154,13 @@ export default async function WassceSubjectTeacherPage(props: {
           </span>
         </div>
 
-        {/* countdown strip — cells 2/3/4 derive; cells 1/5 seeded (subject clock / practical attendance) */}
+        {/* countdown strip — cells 2/3/4 derive from mock_results; cells 1/5 are honest-empty (no source yet) */}
         <div className="grid gap-3 md:grid-cols-5">
           <StripCell
             accent="terra"
             label="Days to Chemistry paper"
             value="—"
-            meta="Subject clock · wassce_paper_sittings (seeded)"
+            meta="Not yet captured"
           />
           <StripCell
             accent="green"
@@ -316,18 +307,6 @@ export default async function WassceSubjectTeacherPage(props: {
             <b>Strong</b> direct measurement · <Dot cls="bg-gold" /> <b>Moderate</b> annual snapshot ·{" "}
             <Dot cls="bg-warn" /> <b>Directional</b> interpolated from coarser data.
           </div>
-          <div className="rounded-lg border border-gold-soft bg-gold-bg p-4 text-[12px] text-navy-2">
-            <div className="font-display text-[14px] font-medium text-navy">
-              Mr Asiedu&apos;s CPD record on this cohort
-            </div>
-            <p className="mt-1">
-              Three-year teaching cycle · joined them in F1 (Sep 2023) · 142 lessons taught · 18 mock
-              assessments marked · 12 Science HOD PLC sessions attended · 1 CPD-credited equilibria
-              pedagogy session led at the Western Region NTC convention (+15 CPD points). NTC licence
-              renewal eligible at end of cycle.{" "}
-              <span className="text-navy-3">(cross-module HR/NTC — static)</span>
-            </p>
-          </div>
         </section>
       )}
     </div>
@@ -335,6 +314,14 @@ export default async function WassceSubjectTeacherPage(props: {
 }
 
 /* ------------------------------- derived-frame helpers ------------------------------- */
+
+/** Avatar initials from a full name (first + last initial); "—" when the name is null/blank. */
+const initialsOf = (full: string | null | undefined) => {
+  const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 function StripCell({
   accent,
