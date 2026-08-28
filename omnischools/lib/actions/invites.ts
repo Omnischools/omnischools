@@ -63,7 +63,7 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
   let assignments = d.assignments ?? null;
   // The invite EMAIL delivery target. Staff: the caller-supplied email. Parent: the STORED guardian email
   // (#307 — consumes student_guardian.email), resolved server-side, never caller free-text; delivery only.
-  let inviteEmail: string | null = d.email ?? null;
+  let inviteEmail: string | null = d.email || null; // `||` keeps the pre-#307 staff behaviour ("" → null)
 
   if (isParentRole(d.role)) {
     role = { code: "PARENT", label: "Parent" };
