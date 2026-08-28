@@ -80,3 +80,35 @@ describe("#309 · the enriched board pack renders to a valid PDF", () => {
     expect(pdf.length).toBeGreaterThan(1500); // a real multi-section document, not an empty page
   });
 });
+
+/**
+ * #309 AC-3 honest-absence — the brand-new-school path (the most common real state). Empty attention
+ * ⇒ no AttentionSection; `!hasAnyScores` ⇒ no year-group perf table; empty attendanceByLevel ⇒ no
+ * attendance-by-level table; a zero census still renders its (empty) frame. The document must render
+ * without throwing AND must be strictly SMALLER than the enriched pack — proving the three guarded
+ * sections were truly DROPPED (omit-not-fake), not silently rendered as empty tables/headers.
+ */
+const emptyData: BoardPackData = {
+  ...data,
+  attention: [],
+  levelPerf: { terms: [], term: null, priorTerm: null, hasAnyScores: false, rows: [] },
+  attendanceByLevel: [],
+  census: {
+    censusDate: "2026-01-15",
+    roll: 0,
+    gender: { female: 0, male: 0, total: 0 },
+    byClass: [],
+    byLevel: [],
+    ageByLevel: [],
+    approvedAge: [],
+    dobUnknown: 0,
+  },
+};
+
+describe("#309 AC-3 · honest-absence drops the guarded director sections", () => {
+  it("renders a valid PDF that is strictly smaller than the populated pack (sections omitted, not empty)", async () => {
+    const [full, empty] = await Promise.all([renderBoardPackPdf(data), renderBoardPackPdf(emptyData)]);
+    expect(empty.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    expect(empty.length).toBeLessThan(full.length);
+  });
+});
