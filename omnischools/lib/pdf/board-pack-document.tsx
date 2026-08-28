@@ -23,6 +23,9 @@ import type {
   TerminalResultSummary,
   InfrastructureSummary,
 } from "@/lib/rollup/school-rollup";
+import type { ActionItem, InsightsAttendanceLevelRow } from "@/lib/insights/insights-data";
+import type { LevelPerformance } from "@/lib/reports/class-performance-data";
+import type { CensusEnrolment } from "@/lib/reports/census-enrolment-data";
 
 /**
  * GOV-5 · the board-pack PDF (A4 portrait) — a print rendering of the GOV-4 board dashboard for a
@@ -31,6 +34,11 @@ import type {
  * dashboard branches — reading `arm.data` on a non-CAPTURED arm is a COMPILE ERROR (the boardTile
  * guarantee, now enforced in print). The route pre-formats only the date + initials + term label
  * (tz/locale/session data the doc must not reach for). Core PDF fonts stand in for the brand faces.
+ *
+ * #309 · it ALSO carries the director drill-down aggregates the `/insights` (and synced `/board`)
+ * surfaces show — year-group performance, attendance-by-level, census age/gender/approved-age, and the
+ * "needs attention" rows. Unlike the rollup arms these are PRE-DERIVED aggregates (not honest-absence
+ * arms), each guarded by its own empty-check (omit-not-fake). All aggregate-only — no per-student row.
  */
 
 // --- design tokens (hex; @react-pdf can't use CSS vars) ---
@@ -65,6 +73,13 @@ const STATUS_HEX: Record<AttendanceStatus, string> = {
 export type BoardPackData = {
   /** The rollup arms verbatim — the document branches on each `arm.status` (§0.1 compile-fence). */
   rollup: SchoolRollup;
+  // Director drill-downs (INS §17-F / #309) — the aggregate arms the /insights page adds beyond the
+  // board rollup. All aggregate-only (year-group / age-band), never a per-student row. Both the board
+  // and directors' packs carry them (the two surfaces are synced), so the document is shared, not cloned.
+  attention: ActionItem[];
+  levelPerf: LevelPerformance;
+  attendanceByLevel: InsightsAttendanceLevelRow[];
+  census: CensusEnrolment;
   meta: {
     schoolName: string;
     schoolInitials: string;
@@ -212,7 +227,26 @@ const s = StyleSheet.create({
   },
   footerText: { fontSize: 7.5, color: NAVY3, letterSpacing: 0.4 },
   goldEm: { color: GOLD, fontWeight: "bold" },
+
+  // director drill-down tables + attention rows (#309)
+  tr: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderColor: BORDER,
+    paddingVertical: 3,
+  },
+  trHead: { backgroundColor: BG, borderBottomWidth: 1, borderColor: GOLD_SOFT },
+  thText: { fontSize: 7.5, fontWeight: "bold", color: NAVY3, letterSpacing: 0.4, paddingHorizontal: 3 },
+  tdText: { fontFamily: MONO, fontSize: 9, color: NAVY2, paddingHorizontal: 3 },
+  tdLabel: { fontSize: 9, color: NAVY, paddingHorizontal: 3 },
+  attnRow: { flexDirection: "row", alignItems: "flex-start", gap: 7, paddingVertical: 4 },
+  dot: { width: 7, height: 7, borderRadius: 4, marginTop: 2 },
+  attnLabel: { fontSize: 10, fontWeight: "bold", color: NAVY },
+  attnValue: { fontSize: 9, color: NAVY3, marginTop: 1 },
 });
+
+// ActionItem severity → hex (greyscale-safe order terra → warn → navy-2, as on the dashboard).
+const ATTN_HEX: Record<ActionItem["dot"], string> = { terra: TERRA, warn: WARN, "navy-2": NAVY2 };
 
 /* ─────────────────────────── small presentational bits ─────────────────────────── */
 
@@ -659,10 +693,134 @@ function InfrastructureBody({ d }: { d: InfrastructureSummary }) {
   );
 }
 
+/* ─────────────────────────── director drill-downs (#309) ─────────────────────────── */
+
+/** A flex-weighted table row. First cell left-aligns (the label), the rest right-align (figures). */
+function Tr({ cells, widths, head }: { cells: string[]; widths: number[]; head?: boolean }) {
+  return (
+    <View style={[s.tr, head ? s.trHead : {}]}>
+      {cells.map((c, i) => (
+        <Text
+          key={i}
+          style={[
+            head ? s.thText : i === 0 ? s.tdLabel : s.tdText,
+            { flexGrow: widths[i], flexBasis: 0, textAlign: i === 0 ? "left" : "right" },
+          ]}
+        >
+          {c}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+/** "Needs your attention" — the conditional action rows (omit-not-fake: no rows ⇒ the section is absent). */
+function AttentionSection({ items }: { items: ActionItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <View style={s.section} wrap={false}>
+      <SectionHead lead="Needs your" accent="attention" meta={`${items.length} ${items.length === 1 ? "item" : "items"}`} />
+      {items.map((it) => (
+        <View key={it.key} style={s.attnRow}>
+          <View style={[s.dot, { backgroundColor: ATTN_HEX[it.dot] }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.attnLabel}>{it.label}</Text>
+            <Text style={s.attnValue}>{it.value}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Performance by year-group — the aggregate LevelPerformance rows (omitted when nothing is graded). */
+function YearGroupPerformanceSection({ perf }: { perf: LevelPerformance }) {
+  if (!perf.hasAnyScores || perf.rows.length === 0) return null;
+  return (
+    <View style={s.section} wrap={false}>
+      <SectionHead lead="Performance" accent="by year-group" meta="aggregate · this term" />
+      <Tr head widths={[3, 1.4, 1.2, 1.2, 2]} cells={["Year group", "Average", "Grade", "Pass", "Graded"]} />
+      {perf.rows.map((r) => (
+        <Tr
+          key={r.level}
+          widths={[3, 1.4, 1.2, 1.2, 2]}
+          cells={[
+            r.level,
+            pct(r.average),
+            r.grade ?? "—",
+            pct(r.passRate),
+            `${num(r.studentsGraded)} · ${r.classesGraded}/${r.classes} cls`,
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** Attendance by year-group — the lossless P/L/E/M/A fold (omitted when the attendance arm isn't captured). */
+function AttendanceByLevelSection({ rows }: { rows: InsightsAttendanceLevelRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <View style={s.section} wrap={false}>
+      <SectionHead lead="Attendance" accent="by year-group" meta="(present + late) ÷ marks" />
+      <Tr head widths={[3, 1.3, 1, 1, 1, 1, 1]} cells={["Year group", "Rate", "P", "L", "E", "M", "A"]} />
+      {rows.map((r) => (
+        <Tr
+          key={r.level}
+          widths={[3, 1.3, 1, 1, 1, 1, 1]}
+          cells={[
+            r.level,
+            pct(r.rate),
+            num(r.counts.present),
+            num(r.counts.late),
+            num(r.counts.excused),
+            num(r.counts.medical),
+            num(r.counts.absent),
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** Census · age & gender — roll + gender split + the GES "enrolment by approved age" (under/on/over). */
+function CensusSection({ census }: { census: CensusEnrolment }) {
+  return (
+    <View style={s.section} wrap={false}>
+      <SectionHead lead="Census" accent="age & gender" meta={`as of ${census.censusDate}`} />
+      <View style={s.headRow}>
+        <Text style={s.headline}>{num(census.roll)}</Text>
+        <Text style={s.caption}>
+          on roll · {census.gender.female}F · {census.gender.male}M
+        </Text>
+      </View>
+      <GenderBar female={census.gender.female} male={census.gender.male} />
+      {census.approvedAge.length > 0 ? (
+        <View style={{ marginTop: 10 }}>
+          <Text style={s.eyebrow}>ENROLMENT BY APPROVED AGE · VS GES OFFICIAL AGE</Text>
+          <Tr head widths={[3, 1.4, 1.2, 1.2, 1.2]} cells={["Year group", "Official age", "Under", "On-age", "Over"]} />
+          {census.approvedAge.map((a) => (
+            <Tr
+              key={a.level}
+              widths={[3, 1.4, 1.2, 1.2, 1.2]}
+              cells={[a.level, String(a.officialAge), num(a.under), num(a.on), num(a.over)]}
+            />
+          ))}
+        </View>
+      ) : null}
+      {census.dobUnknown > 0 ? (
+        <Text style={s.small}>
+          {num(census.dobUnknown)} pupils have no date of birth on file — excluded from the age bands.
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 /* ─────────────────────────── document ─────────────────────────── */
 
 export function BoardPackDocument({ data }: { data: BoardPackData }) {
-  const { rollup, meta } = data;
+  const { rollup, attention, levelPerf, attendanceByLevel, census, meta } = data;
   return (
     <Document
       title={`Board & Governance Overview — ${meta.schoolName}`}
@@ -688,8 +846,9 @@ export function BoardPackDocument({ data }: { data: BoardPackData }) {
           </Text>
         </View>
 
-        {/* Sections — board order */}
+        {/* Sections — board order, then the director drill-downs (#309) */}
         <View style={s.body}>
+          <AttentionSection items={attention} />
           <EnrolmentSection arm={rollup.enrolment} />
           <AttendanceSection arm={rollup.attendance} />
           <FinanceSection arm={rollup.netPositionFinance} />
@@ -698,6 +857,11 @@ export function BoardPackDocument({ data }: { data: BoardPackData }) {
           <TerminalSection arm={rollup.terminalResults} />
 
           <InfrastructureSection arm={rollup.infrastructure} />
+
+          {/* Director drill-downs — aggregate detail the /insights + synced /board surfaces show. */}
+          <YearGroupPerformanceSection perf={levelPerf} />
+          <AttendanceByLevelSection rows={attendanceByLevel} />
+          <CensusSection census={census} />
         </View>
 
         {/* Fixed footer + pagination */}
