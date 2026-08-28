@@ -28,7 +28,8 @@ export const dynamic = "force-dynamic";
  * READ-ONLY (Kofi AC-B): the surface exposes NO mutating server action and every write-looking
  * control (Edit · F2 cohort, + Late registration, freeze toggle, nav-out to unbuilt targets) is
  * rendered INERT. Export/Print/Audit are read stubs (disabled in INCR-15). No projection anywhere
- * (AC-G): Mock-2 aggregate is seeded/display-only, no tier is computed, the mock tile is static.
+ * (AC-G): no WASSCE tier/prediction is computed here. Every count/rate/amount on the page DERIVES from
+ * a reader field or a documented policy constant — no hardcoded persona, count, amount, or date.
  */
 export default async function WassceSetupPage() {
   const { school } = await requireSchoolRole(WASSCE_SETUP_ROLES);
@@ -50,6 +51,9 @@ export default async function WassceSetupPage() {
 
   const { counts, cohort, targets: t, examWindow: ew } = data;
   const examYear = cohort.examYear;
+  // Confirmed rate derives from the real counts — never a hardcoded percentage.
+  const confirmedPct =
+    counts.candidates > 0 ? Math.round((counts.confirmed / counts.candidates) * 1000) / 10 : 0;
 
   return (
     <div className="mx-auto max-w-page space-y-10">
@@ -114,8 +118,8 @@ export default async function WassceSetupPage() {
           </div>
         )}
 
-        {/* §1.3 Stat strip — counts derive; mock tile is static (INCR-16). */}
-        <div className="mb-5 grid gap-3.5 md:grid-cols-4">
+        {/* §1.3 Stat strip — all counts derive from the reader. */}
+        <div className="mb-5 grid gap-3.5 md:grid-cols-3">
           <StatTile
             live
             label="F3 cohort"
@@ -142,17 +146,6 @@ export default async function WassceSetupPage() {
               <>
                 <b className="text-navy-2">{counts.subjectsCore} core</b> · {counts.subjectsElective}{" "}
                 electives
-              </>
-            }
-          />
-          <StatTile
-            label="Mocks completed"
-            value="2"
-            unit="of 2"
-            trend={
-              <>
-                Mock 1 <b className="text-navy-2">Nov 2025</b> · Mock 2{" "}
-                <b className="text-navy-2">Mar 2026</b>
               </>
             }
           />
@@ -199,7 +192,7 @@ export default async function WassceSetupPage() {
           </div>
         </div>
 
-        {/* §1.6 Cross-module strip — static commitments, wire nothing. */}
+        {/* §1.6 Cross-module strip — GENERIC feature explainers (no per-cohort persona/data wired). */}
         <div className="grid gap-3.5 md:grid-cols-3">
           <XmodCard
             label="Cross-module · Classes"
@@ -208,8 +201,7 @@ export default async function WassceSetupPage() {
             titlePost=" mapping"
             body={
               <>
-                Each F3 student belongs to one programme via their class assignment.{" "}
-                <b className="text-bg">F3 SCI 1, F3 SCI 2, F3 BUS 1, F3 BUS 2</b>, etc. Class →
+                Each F3 student belongs to one programme via their class assignment. That class →
                 programme join carries forward into WASSCE registration.
               </>
             }
@@ -221,9 +213,8 @@ export default async function WassceSetupPage() {
             titlePost=" locked"
             body={
               <>
-                Each subject has one or more F3 teachers. <b className="text-bg">Mr S. Asiedu</b> takes
-                Chemistry across all F3 SCI classes. Subject-view surface keys off this roster —
-                readiness data flows back to each teacher.
+                Each subject has one or more F3 teachers. The subject-view surface keys off this
+                roster — readiness data flows back to each teacher.
               </>
             }
           />
@@ -234,9 +225,10 @@ export default async function WassceSetupPage() {
             titlePost=" reconciliation"
             body={
               <>
-                WAEC charges per student per paper. <b className="text-bg">GHS 1,400 per candidate</b>{" "}
-                for {examYear}. Free SHS covers core fees; private add-ons (re-sits, extra electives)
-                flow into billing as individual line items. {counts.flagged} students flagged below.
+                WAEC charges per student per paper.{" "}
+                <b className="text-bg">{formatGhs(WAEC_FEE_PER_CANDIDATE)} per candidate</b> for{" "}
+                {examYear}. Free SHS covers core fees; private add-ons (re-sits, extra electives) flow
+                into billing as individual line items. {counts.flagged} students flagged below.
               </>
             }
           />
@@ -430,10 +422,9 @@ export default async function WassceSetupPage() {
               </table>
             </div>
             <div className="mt-3 rounded-lg bg-bg px-3 py-2.5 text-[10px] leading-relaxed text-navy-3">
-              Each figure is a <b>published snapshot stamped with its reference year</b>, re-verified from
-              every university&apos;s admissions portal each admission cycle — not a live feed. Universities
-              sometimes adjust cut-offs after WASSCE results come in if the applicant pool changes. The
-              figures here are <b>indicative, not guarantees</b>. Cut-off colour is difficulty-coded and
+              Each figure is a <b>published snapshot stamped with its reference year</b> — a recorded
+              reference, not a live feed. Universities sometimes adjust cut-offs after WASSCE results come
+              in if the applicant pool changes. The figures here are <b>indicative, not guarantees</b>. Cut-off colour is difficulty-coded and
               deliberately inverted: terra = the hardest (lowest) cut-offs, green = the easiest.
             </div>
           </div>
@@ -450,9 +441,9 @@ export default async function WassceSetupPage() {
             <>
               <b className="text-navy-2">{counts.candidates} candidates registered</b> with WAEC.
               Centre code <span className="font-mono font-bold text-navy">{data.centreCode}</span>.
-              Index numbers issued Feb 2026. {counts.flagged} students flagged today — one on a medical
-              special-consideration (SC-12) process, two with NHIS-card issues affecting the WAEC fee
-              reconciliation.
+              Index numbers issued. {counts.flagged} students flagged today — {counts.medicalFlags} on a
+              medical special-consideration (SC-12) process, {counts.nhisFlags} with NHIS-card issues, and
+              {counts.feeFlags} with WAEC-fee reconciliation to resolve.
             </>
           }
           actions={[
@@ -512,13 +503,13 @@ export default async function WassceSetupPage() {
             label="Confirmed"
             value={String(counts.confirmed)}
             sub={`of ${counts.candidates}`}
-            trend="98.8% · all papers paid · index numbers issued"
+            trend={`${confirmedPct}% of the cohort · index numbers issued`}
           />
           <RosterTile
             flag
             label="Flagged today"
             value={String(counts.flagged)}
-            trend="1 medical · 2 NHIS / fee admin"
+            trend={`${counts.medicalFlags} medical · ${counts.nhisFlags} NHIS · ${counts.feeFlags} fee`}
           />
           <RosterTile
             label="Accommodations"
@@ -529,14 +520,14 @@ export default async function WassceSetupPage() {
             mono
             label="Total fees"
             value={data.totalFeesLabel}
-            trend="Free SHS covers 100% · 0 outstanding"
+            trend="Free SHS covers core registration fees"
           />
         </div>
 
         {/* §4.4 + §4.5 filter/sort strip + roster table (client view-state; no writes). */}
         <WassceRosterTable rows={data.roster} />
 
-        {/* §4.6 Cross-module strip — static; target modules unbuilt. */}
+        {/* §4.6 Cross-module strip — GENERIC explainers for cross-module integrations (target modules unbuilt). */}
         <div className="mt-5 grid gap-3.5 md:grid-cols-3">
           <XmodCard
             label="Cross-module · Sickbay"
@@ -554,28 +545,27 @@ export default async function WassceSetupPage() {
           />
           <XmodCard
             label="Cross-module · VLC"
-            titlePre="A. Quartey "
-            titleEm="pastoral"
+            titlePre="Pastoral "
+            titleEm="flag"
             titlePost=" cross-reference"
             body={
               <>
-                Pastoral flag visible to Dean only · no exam exemption granted (VLC pastoral case is
-                about the support, not the standards). She sits the same papers as everyone else; the
-                Dean checks in privately.
+                A candidate&apos;s pastoral flag is visible to the Dean only · no exam exemption granted
+                (a VLC pastoral case is about the support, not the standards). They sit the same papers
+                as everyone else; the Dean checks in privately.
               </>
             }
           />
           <XmodCard
             label="Cross-module · Billing"
             titlePre=""
-            titleEm={`${counts.flagged} fee flags`}
+            titleEm={`${counts.flagged} flags`}
             titlePost=" resolved or active"
             body={
               <>
-                P. Donkor&apos;s <b className="text-bg">GHS 240</b> is the only fee-blocking issue.
-                Bursar is working with the GES district office. Per Free SHS policy, no candidate can
-                be denied WASSCE for fee reasons — the school carries the gap if the district
-                doesn&apos;t reconcile.
+                Per Free SHS policy, no candidate can be denied WASSCE for fee reasons — where a fee gap
+                arises the bursar reconciles with the GES district office, and the school carries the gap
+                if the district doesn&apos;t.
               </>
             }
           />
@@ -625,7 +615,7 @@ export default async function WassceSetupPage() {
             </div>
             <div className="mt-1 text-[12px] text-navy-3">
               {counts.candidates} candidates registered with WAEC · {counts.programmes} programmes
-              locked · Mock 2 results posted · 11 cross-module integrations active.{" "}
+              locked.{" "}
               <b className="text-navy">WASSCE {examYear} is in progress.</b> No further setup changes
               possible until WAEC results arrive in August.
             </div>
