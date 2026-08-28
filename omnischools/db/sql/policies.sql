@@ -981,6 +981,40 @@ CREATE POLICY parent_scope ON school_holiday AS RESTRICTIVE FOR ALL TO public
     OR school_id = NULLIF(current_setting('app.current_school', true), '')::uuid
   );
 
+-- ---- INCR — PARENT ATTENDANCE: the EIGHTH widening of the 19a parent boundary (24 → 25 parent_scope
+-- tables) — the parent-portal ATTENDANCE tab (read-only, owner-authorised). A parent gains ROW access to
+-- the per-day attendance marks (attendance_record) of their OWN CHILD, so the read-only parent portal can
+-- render the child's today / this-week / this-term attendance. Kept in sync with
+-- db/sql/prod-paste-0093-parent-attendance-scope.sql — this block is DEV; that file is the hand-paste on
+-- PROD (⚠ RLS is NOT auto-applied on prod; without the paste attendance_record keeps parent_deny and the
+-- parent Attendance tab is an honest empty state — fail-closed, never a leak).
+--
+-- 🔴 PER-CHILD JOIN — NOT school-wide. Unlike the INCR-278 calendar (school-wide, keyed on current_school),
+-- attendance_record carries PER-STUDENT data, so the predicate reaches a SPECIFIC child via the SECURITY
+-- DEFINER helper parent_student_ids(school_id, pu) — byte-shaped like wassce_candidates above. A parent of
+-- school A reads ONLY their own child's rows; another child of the SAME school → 0 rows; cross-tenant → 0.
+-- `pu IS NULL` → staff/bypass session → total no-op (the permissive tenant_isolation still governs). USING
+-- doubles as WITH CHECK; there is no parent write path (Kofi R4).
+--
+-- 🔴 RLS IS ROW-LEVEL — IT CANNOT MASK COLUMNS. This policy opens the child's ROW; the reader's frozen
+-- key-set (lib/parent/parent-attendance-data.ts, under withParentScope ONLY) is the column guard and MUST
+-- omit reason_code / note / marked_by_user_id / marked_at, and fold MEDICAL→EXCUSED so "MEDICAL" never
+-- crosses the wire (OC-PARENT-ATT-KEYSET). attendance_correction (staff decision_note / requested_by_user_id
+-- / decided_by_user_id) and attendance_settings (school config) are DELIBERATELY NOT widened — they carry no
+-- parent_scope policy, so the catalog loop below re-affirms parent_deny on both, and billing stays denied too.
+
+-- attendance_record — the child's per-day attendance marks (own-child only, via parent_student_ids).
+DROP POLICY IF EXISTS parent_deny ON attendance_record;
+DROP POLICY IF EXISTS parent_scope ON attendance_record;
+CREATE POLICY parent_scope ON attendance_record AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR student_id IN (
+      SELECT parent_student_ids(
+        school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+    )
+  );
+
 -- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
 -- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
 -- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).

@@ -88,15 +88,19 @@ describe("parent-calendar-data · reader stays in the parent boundary (source-sh
   });
 });
 
-describe("parent-chrome · four live tabs, no inert spans (AC-CAL-01..04)", () => {
+describe("parent-chrome · no inert tabs, calendar live (AC-CAL-01..04)", () => {
   const nav = () => readCode("app/(parent)/parent-chrome.tsx");
   const page = () => readCode("app/(parent)/calendar/page.tsx");
 
-  it("TABS is exactly the four live routes; the three inert tabs are gone", () => {
+  // Count-robust: assert the #278 INTENT (the three inert tabs stay gone, calendar is a live route, no inert
+  // spans) rather than pinning the whole TABS literal — so adding a later live tab can't red this test.
+  it("the three inert tabs are gone and School calendar is a live route (no inert spans)", () => {
     const s = nav();
-    expect(s).toMatch(/const TABS = \["WASSCE", "Sickbay", "PTA", "School calendar"\] as const;/); // AC-CAL-01
-    expect(s).toMatch(/ParentTab = "WASSCE" \| "Sickbay" \| "PTA" \| "School calendar"/); // AC-CAL-03
-    expect(s).toMatch(/"School calendar": "\/calendar"/); // AC-CAL-03 route
+    // quoted → only TABS/HREF/the ParentTab union carry these, never the prose comment.
+    expect(s).not.toMatch(/"Communications"/); // AC-CAL-01
+    expect(s).not.toMatch(/"Billing"/);
+    expect(s).not.toMatch(/"Boarding"/);
+    expect(s).toMatch(/"School calendar": "\/calendar"/); // still a live route — AC-CAL-03
     expect(s).not.toMatch(/Partial<Record/); // HREF is total → no tab can be an inert span — AC-CAL-02
     expect(s).not.toMatch(/coming soon|disabled|greyed/i); // AC-CAL-04
     expect((s.match(/<span/g) ?? []).length).toBe(1); // the ONLY span is the active tab — AC-CAL-02
