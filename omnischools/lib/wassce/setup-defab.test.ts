@@ -42,14 +42,17 @@ describe("WASSCE setup · fabrications gone (AC-SETUP-*)", () => {
     expect(page).toMatch(/formatGhs\(WAEC_FEE_PER_CANDIDATE\)/); // WAEC fee from the single constant
     expect(page).toMatch(/const confirmedPct =/); // confirmed % derived, not "98.8"
     expect(page).toMatch(/\{confirmedPct\}%/);
-    expect(page).toMatch(/\{counts\.medicalFlags\}/); // flag split derived, not "1 medical · 2 NHIS"
+    // flag split derived + COMPLETE (medical + NHIS + fee = flagged), never a hardcoded "1 medical · 2 NHIS".
+    expect(page).toMatch(/\{counts\.medicalFlags\}/);
     expect(page).toMatch(/\{counts\.nhisFlags\}/);
+    expect(page).toMatch(/\{counts\.feeFlags\}/);
   });
 
-  it("the reader exposes the derived flag split (AC-SETUP-13a)", () => {
+  it("the reader exposes the full derived flag split — all 3 regFlag values (AC-SETUP-13a)", () => {
     expect(reader).toMatch(/medicalFlags = candRows\.filter\(\(c\) => c\.regFlag === "ON_MEDICAL"\)/);
     expect(reader).toMatch(/nhisFlags = candRows\.filter\(\(c\) => c\.regFlag === "NHIS_ISSUE"\)/);
-    expect(reader).toMatch(/medicalFlags: number/);
+    expect(reader).toMatch(/feeFlags = candRows\.filter\(\(c\) => c\.regFlag === "FEE"\)/);
+    expect(reader).toMatch(/feeFlags: number/);
   });
 
   it("the generic explainers survive (regression — don't over-delete; AC-SETUP-03/07)", () => {

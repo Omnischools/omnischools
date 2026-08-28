@@ -119,7 +119,7 @@ export default async function WassceSetupPage() {
         )}
 
         {/* §1.3 Stat strip — all counts derive from the reader. */}
-        <div className="mb-5 grid gap-3.5 md:grid-cols-4">
+        <div className="mb-5 grid gap-3.5 md:grid-cols-3">
           <StatTile
             live
             label="F3 cohort"
@@ -442,8 +442,8 @@ export default async function WassceSetupPage() {
               <b className="text-navy-2">{counts.candidates} candidates registered</b> with WAEC.
               Centre code <span className="font-mono font-bold text-navy">{data.centreCode}</span>.
               Index numbers issued. {counts.flagged} students flagged today — {counts.medicalFlags} on a
-              medical special-consideration (SC-12) process, {counts.nhisFlags} with NHIS-card issues
-              affecting the WAEC fee reconciliation.
+              medical special-consideration (SC-12) process, {counts.nhisFlags} with NHIS-card issues, and
+              {counts.feeFlags} with WAEC-fee reconciliation to resolve.
             </>
           }
           actions={[
@@ -509,7 +509,7 @@ export default async function WassceSetupPage() {
             flag
             label="Flagged today"
             value={String(counts.flagged)}
-            trend={`${counts.medicalFlags} medical · ${counts.nhisFlags} NHIS / fee admin`}
+            trend={`${counts.medicalFlags} medical · ${counts.nhisFlags} NHIS · ${counts.feeFlags} fee`}
           />
           <RosterTile
             label="Accommodations"
