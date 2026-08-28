@@ -61,6 +61,9 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
   let fullName: string;
   let studentId: string | null = null;
   let assignments = d.assignments ?? null;
+  // The invite EMAIL delivery target. Staff: the caller-supplied email. Parent: the STORED guardian email
+  // (#307 — consumes student_guardian.email), resolved server-side, never caller free-text; delivery only.
+  let inviteEmail: string | null = d.email ?? null;
 
   if (isParentRole(d.role)) {
     role = { code: "PARENT", label: "Parent" };
@@ -74,6 +77,7 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
     fullName = target.fullName;
     studentId = target.studentId;
     assignments = null; // a parent invite carries no class grants
+    inviteEmail = target.email; // #307 — deliver to the STORED guardian email (not caller-supplied)
   } else {
     role = resolveRole(d.role);
     if (!d.fullName || d.fullName.trim().length < 2) return { ok: false, error: "Enter a name" };
@@ -122,7 +126,7 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
         token,
         role: role.code,
         fullName,
-        email: d.email || null,
+        email: inviteEmail,
         phone,
         studentId,
         assignments,
@@ -150,11 +154,17 @@ export async function createInvite(input: unknown): Promise<Result & { token?: s
         ? `${sender}: Follow your child's WASSCE readiness on Omnischools. Set up your parent access: ${link}`
         : `${sender}: You've been added as ${role.label}. Set up your account: ${link}`,
     );
-    if (d.email) {
+    // Email delivery — parent: the STORED guardian email (#307); staff: the caller-supplied email. The
+    // link is the SAME token as the SMS; email only DELIVERS it. The OTP/claim destination stays the
+    // stored phone, so email is never a claim credential. Console-degrades with no Resend key (like SMS).
+    if (inviteEmail) {
       await sendEmail({
-        to: d.email,
+        to: inviteEmail,
         subject: `You're invited to ${school.name} on Omnischools`,
-        html: `<p>You've been added as <b>${role.label}</b> at ${school.name}.</p><p><a href="${link}">Accept the invite & set your password</a>.</p>`,
+        html:
+          role.code === "PARENT"
+            ? `<p>Follow your child's progress at ${school.name} on Omnischools.</p><p><a href="${link}">Set up your parent access</a> — you'll confirm with a code sent to your phone.</p>`
+            : `<p>You've been added as <b>${role.label}</b> at ${school.name}.</p><p><a href="${link}">Accept the invite & set your password</a>.</p>`,
       });
     }
     safeRevalidate(role.code === "PARENT" && studentId ? `/students/${studentId}` : "/staff");

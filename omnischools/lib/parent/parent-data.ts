@@ -29,7 +29,7 @@ import {
 // Claiming-flow seam (used by lib/actions/invites.ts) — the destination is always the STORED number.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-export type ParentInviteTarget = { phone: string; fullName: string; studentId: string };
+export type ParentInviteTarget = { phone: string; fullName: string; studentId: string; email: string | null };
 
 /**
  * AC C1/C2 — resolve the invite DESTINATION from the stored guardian row, never from caller input.
@@ -43,7 +43,7 @@ export async function resolveParentInviteTargetTx(
   guardianId: string,
 ): Promise<ParentInviteTarget | null> {
   const [g] = await tx
-    .select({ phone: studentGuardians.phone, name: studentGuardians.name })
+    .select({ phone: studentGuardians.phone, name: studentGuardians.name, email: studentGuardians.email })
     .from(studentGuardians)
     .where(
       and(
@@ -54,7 +54,9 @@ export async function resolveParentInviteTargetTx(
     )
     .limit(1);
   if (!g) return null;
-  return { phone: g.phone, fullName: g.name, studentId };
+  // `email` is the STORED guardian email — a delivery channel for the invite link ONLY. The claim/OTP
+  // destination and the phone-keyed claim stamping (AC C2/C4) are unchanged: email is never a claim key.
+  return { phone: g.phone, fullName: g.name, studentId, email: g.email };
 }
 
 /**
