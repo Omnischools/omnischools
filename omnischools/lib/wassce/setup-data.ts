@@ -135,6 +135,8 @@ export type WassceSetupData = {
     subjectsElective: number;
     confirmed: number;
     flagged: number;
+    medicalFlags: number;
+    nhisFlags: number;
     accommodations: number;
   };
   accommodationBreakdown: string; // "2 chronic · 1 sight · 1 hearing"
@@ -326,6 +328,8 @@ export async function loadWassceSetup(
         subjectsElective: 0,
         confirmed: 0,
         flagged: 0,
+        medicalFlags: 0,
+        nhisFlags: 0,
         accommodations: 0,
       },
       accommodationBreakdown: "—",
@@ -423,6 +427,8 @@ export async function loadWassceSetup(
 
   // --- derived counts (all off real rows) ---
   const flagged = roster.filter((r) => r.isFlagged).length;
+  const medicalFlags = candRows.filter((c) => c.regFlag === "ON_MEDICAL").length;
+  const nhisFlags = candRows.filter((c) => c.regFlag === "NHIS_ISSUE").length;
   const accommodations = roster.filter((r) => r.hasAccommodation).length;
   const accByType = { chronic: 0, sight: 0, hearing: 0 };
   for (const c of candRows) {
@@ -542,6 +548,8 @@ export async function loadWassceSetup(
       subjectsElective: elecNames.size,
       confirmed: candRows.length - flagged,
       flagged,
+      medicalFlags,
+      nhisFlags,
       accommodations,
     },
     accommodationBreakdown,
