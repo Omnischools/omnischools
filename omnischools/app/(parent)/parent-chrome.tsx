@@ -2,10 +2,12 @@ import Link from "next/link";
 import { avatarInitials, initialSurname } from "@/lib/wassce/parent-copy";
 
 /**
- * The shared parent-portal chrome (SHS module 4.3) — header + flat seven-tab nav, extracted from the
- * wassce page so the tab-flip lives in ONE place (INCR-29 R234: activate the inert "Sickbay" tab as a
- * live link). One child, resolved from the session (never a URL param); labels verbatim; NO faked
- * unread dot (R234). WASSCE, Sickbay, and PTA are live routes today; the other four stay inert spans.
+ * The shared parent-portal chrome (SHS module 4.3) — header + flat nav, extracted from the wassce page so
+ * the tab set lives in ONE place. One child, resolved from the session (never a URL param); labels
+ * verbatim; NO faked unread dot (R234). INCR-278: the nav is now EVERY tab a live route — WASSCE, Sickbay,
+ * PTA, School calendar — with NO inert "coming soon" spans (R234 honest-absence: a disabled tab is a faked
+ * affordance). Communications / Billing / Boarding return here each behind its own increment when it ships
+ * (Billing needs a safe scoped projection — invoice deliberately stays parent_deny, R476 tuition-leak).
  */
 
 export function ParentHeader({
@@ -50,22 +52,22 @@ export function ParentHeader({
   );
 }
 
-/** The tab whose route is built today. WASSCE + Sickbay + PTA are live links; the rest stay inert. */
-export type ParentTab = "WASSCE" | "Sickbay" | "PTA";
+/** Every tab is a live route today. */
+export type ParentTab = "WASSCE" | "Sickbay" | "PTA" | "School calendar";
 
-// INCR-55a — PTA is the 7th flat tab, placed after Billing (participation slice; 55b appends Officers +
-// Adopted minutes on the same page).
-const TABS = ["WASSCE", "Sickbay", "Communications", "Billing", "PTA", "Boarding", "School calendar"] as const;
-const HREF: Partial<Record<(typeof TABS)[number], string>> = {
+// INCR-278 — four flat tabs, ALL live routes (the inert Communications / Billing / Boarding spans are gone;
+// each returns behind its own increment). Every entry below has an HREF.
+const TABS = ["WASSCE", "Sickbay", "PTA", "School calendar"] as const;
+const HREF: Record<(typeof TABS)[number], string> = {
   WASSCE: "/wassce",
   Sickbay: "/sickbay",
   PTA: "/pta",
+  "School calendar": "/calendar",
 };
 
 /**
- * Seven flat tabs; `active` is the current one. A non-active tab with a route becomes a real <Link>; the
- * unbuilt tabs remain inert spans. NO unread dot — it would be faked with no open-episode source on this
- * render path (R234).
+ * The flat parent nav; `active` is the current one. Every non-active tab is a real <Link> (all four are live
+ * routes — no inert spans, R234). NO unread dot — it would be faked with no open-episode source (R234).
  */
 export function ParentNav({ active }: { active: ParentTab }) {
   return (
@@ -76,7 +78,8 @@ export function ParentNav({ active }: { active: ParentTab }) {
           ? "whitespace-nowrap border-b-2 border-gold px-4 py-3.5 text-[13px] font-semibold text-navy"
           : "whitespace-nowrap border-b-2 border-transparent px-4 py-3.5 text-[13px] font-medium text-navy-3";
         const href = HREF[t];
-        return href && !isActive ? (
+        // HREF is total → every tab has a route; the ONLY <span> is the active tab (no inert spans, R234).
+        return !isActive ? (
           <Link key={t} href={href} className={cls}>
             {t}
           </Link>

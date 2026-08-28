@@ -943,6 +943,44 @@ AS $$
     )
 $$;
 
+-- ---- INCR-278: the SEVENTH widening of the 19a parent boundary (22 → 24 parent_scope tables) — the
+-- parent SCHOOL CALENDAR tab (owner-authorised). A parent gains ROW access to the term/semester dates
+-- (academic_period) and the holidays/breaks/events/exam weeks (school_holiday) of their LINKED school, so
+-- the read-only parent portal can render the school calendar. Kept in sync with
+-- db/sql/prod-paste-0092-parent-calendar-scope.sql — this block is DEV; that file is the hand-paste on PROD
+-- (⚠ RLS is NOT auto-applied on prod; without the paste both tables keep parent_deny and the parent
+-- Calendar tab is an honest empty state — fail-closed, never a leak).
+--
+-- 🔴 THE SAFEST PARENT GRANT IN THE MODULE: NO PER-CHILD JOIN. Every other parent_scope policy reaches a
+-- SPECIFIC child (parent_student_ids / parent_pta_ids). These two tables are SCHOOL-WIDE — the calendar is
+-- identical for every child in the school and carries ZERO per-student data (academic_period: year / term
+-- label / dates / product_line / closed_at; school_holiday: name / dates / kind). So there is NO cross-child
+-- leak surface to fence: any parent linked to the school may read the whole school's calendar. The scope is
+-- therefore the SCHOOL itself, keyed on the SAME app.current_school GUC that withParentScope already sets
+-- (and that the PERMISSIVE tenant_isolation policy at the top of this file already enforces on every row).
+-- The restrictive predicate `pu IS NULL OR school_id = current_school` is thus a true no-op tightening — its
+-- only job is to EXIST so the catalog parent_deny loop below excludes these two tables — while re-affirming
+-- the school boundary EXPLICITLY (defence in depth; never a bare `OR TRUE` a reader could misread as "open to
+-- everyone"). USING doubles as WITH CHECK; there is no parent write path anywhere (Kofi R4).
+
+-- academic_period — the school's term/semester dates (school-wide; no per-child data).
+DROP POLICY IF EXISTS parent_deny ON academic_period;
+DROP POLICY IF EXISTS parent_scope ON academic_period;
+CREATE POLICY parent_scope ON academic_period AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR school_id = NULLIF(current_setting('app.current_school', true), '')::uuid
+  );
+
+-- school_holiday — the school's holidays / breaks / events / exam weeks (school-wide; no per-child data).
+DROP POLICY IF EXISTS parent_deny ON school_holiday;
+DROP POLICY IF EXISTS parent_scope ON school_holiday;
+CREATE POLICY parent_scope ON school_holiday AS RESTRICTIVE FOR ALL TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR school_id = NULLIF(current_setting('app.current_school', true), '')::uuid
+  );
+
 -- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
 -- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
 -- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).
