@@ -62,6 +62,9 @@ export default async function WassceSubjectTeacherPage(props: {
 
   const s = data.stats;
   const subjectName = data.subject.name;
+  // The cohort's form derives from `frozen` (exam-year cohort = F3, in-flight = F2) — the same rule the
+  // cohort switcher uses. Never hardcode "F3": an in-flight F2 cohort would then be mislabelled.
+  const cohortForm = data.cohort.frozen ? "F3" : "F2";
   const qs = (patch: Record<string, string>) => {
     const p = new URLSearchParams();
     if (searchParams.cohortId) p.set("cohortId", searchParams.cohortId);
@@ -75,11 +78,11 @@ export default async function WassceSubjectTeacherPage(props: {
       {/* ---- page head ---- */}
       <div className="border-b border-border pb-4">
         <div className="text-[11px] uppercase tracking-[0.12em] text-navy-3">
-          WASSCE {data.cohort.examYear} › {subjectName} · F3 Science
+          WASSCE {data.cohort.examYear} › {subjectName} · {cohortForm}
         </div>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <h1 className="font-display text-2xl font-medium text-navy">
-            {subjectName} · <em className="italic text-gold">F3</em> · my cohort
+            {subjectName} · <em className="italic text-gold">{cohortForm}</em> · my cohort
           </h1>
           <div className="flex flex-col items-end gap-1.5">
             {data.subjectOptions.length > 1 && (

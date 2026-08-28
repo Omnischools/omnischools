@@ -52,4 +52,11 @@ describe("WASSCE persona/CPD de-fabrication", () => {
     expect(src).not.toMatch(/CPD\/NTC\/practical fields render SEEDED\/STATIC/);
     expect(src).toMatch(/persona is the SESSION user/);
   });
+
+  it("the cohort form in the header is DERIVED (F3/F2 by frozen), not hardcoded", () => {
+    expect(src).toMatch(/const cohortForm = data\.cohort\.frozen \? "F3" : "F2"/);
+    expect(src).not.toContain("· F3 Science"); // the hardcoded breadcrumb stream is gone
+    expect(src).not.toMatch(/text-gold">F3<\/em>/); // the hardcoded form label is gone
+    expect(src).toMatch(/\{cohortForm\}/); // both header spots use the derived value
+  });
 });
