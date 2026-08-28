@@ -5,7 +5,7 @@ import { SENIOR_LEDGER_ROLES, WASSCE_SETUP_ROLES, hasAnyRole } from "@/lib/acces
 import { withSchool } from "@/lib/db/rls";
 import { loadSubjectTeacherSurface } from "@/lib/wassce/mock-data";
 import { WassceMockEntryGrid } from "@/components/senior/wassce-mock-entry-grid";
-import { GRADE_COLORS, HEAT_COLORS } from "@/lib/wassce/grade-colors";
+import { GRADE_COLORS } from "@/lib/wassce/grade-colors";
 import { benchmarkDot } from "@/lib/wassce/mock-grades";
 import type { BenchCell } from "@/lib/wassce/mock-view";
 
@@ -273,37 +273,14 @@ export default async function WassceSubjectTeacherPage(props: {
             Where the <em className="italic text-gold">cohort</em> is weak
           </h2>
           <span className="rounded-full bg-bg px-2 py-0.5 text-[10px] uppercase tracking-wide text-navy-3">
-            static · needs a per-topic table (deferred)
+            not yet captured
           </span>
         </div>
-        <div className="overflow-x-auto rounded-lg border border-border bg-surface p-4">
-          <table className="w-full min-w-[720px] border-collapse text-[11px]">
-            <thead className="text-[10px] font-bold uppercase tracking-wide text-navy-3">
-              <tr className="border-b border-border">
-                <th className="px-2 py-2 text-left">Topic</th>
-                <th className="px-2 py-2 text-center">A1</th>
-                <th className="px-2 py-2 text-center">B2–B3</th>
-                <th className="px-2 py-2 text-center">C4–C6</th>
-                <th className="px-2 py-2 text-center">D7–E8</th>
-                <th className="px-2 py-2 text-center">F9</th>
-                <th className="px-2 py-2 text-center">Cohort avg</th>
-              </tr>
-            </thead>
-            <tbody>
-              {TOPIC_HEATMAP.map((t) => (
-                <tr key={t.topic} className="border-b border-border">
-                  <td className="px-2 py-2">
-                    <div className="font-semibold text-navy">{t.topic}</div>
-                    <div className="text-[10px] text-navy-3">{t.meta}</div>
-                  </td>
-                  {t.cells.map((c, i) => (
-                    <HeatCell key={i} count={c.n} level={c.h} />
-                  ))}
-                  <HeatCell label={t.avg.g} level={t.avg.h} />
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="rounded-lg border border-dashed border-border bg-bg p-6 text-[12px] leading-relaxed text-navy-3">
+          A per-topic diagnostic needs question-level marks against the syllabus — which the mock ledger
+          does not capture (it records one grade per paper, not per topic). Rather than show invented
+          figures, this stays empty until per-topic mark capture is built. The cohort&apos;s
+          predicted-grade distribution is in the mock standings above.
         </div>
       </section>
 
@@ -311,33 +288,16 @@ export default async function WassceSubjectTeacherPage(props: {
       <section id="plan" className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-2xl font-medium text-navy">
-            The <em className="italic text-gold">final</em> 24 days
+            The <em className="italic text-gold">final</em> stretch
           </h2>
           <span className="rounded-full bg-bg px-2 py-0.5 text-[10px] uppercase tracking-wide text-navy-3">
-            static · plan text + co-sign deferred
+            not yet built
           </span>
         </div>
-        <div className="grid gap-3.5 md:grid-cols-3">
-          {INTERVENTION_TIERS.map((t) => (
-            <div
-              key={t.eyebrow}
-              className="rounded-lg border border-border bg-surface p-4"
-              style={{ borderTop: `3px solid ${t.color}` }}
-            >
-              <div className="text-[10px] font-bold uppercase" style={{ color: t.color }}>
-                {t.eyebrow}
-              </div>
-              <div className="mt-1 font-display text-[15px] font-medium text-navy">{t.title}</div>
-              <div className="mt-2 border-b border-border pb-2 text-[12px] text-navy-2">{t.students}</div>
-              <ul className="mt-2 space-y-1.5 text-[11.5px] text-navy-2">
-                {t.plan.map((p) => (
-                  <li key={p} className="before:mr-1 before:text-gold before:content-['·']">
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+        <div className="rounded-lg border border-dashed border-border bg-bg p-6 text-[12px] leading-relaxed text-navy-3">
+          A structured, co-signed intervention plan isn&apos;t built yet — so rather than show a
+          fabricated schedule, this stays empty. The bands it would target (credit-borderline, and those
+          within a one-grade lift) are visible in the mock standings above.
         </div>
       </section>
 
@@ -409,20 +369,6 @@ function SumCell({ accent, lead, body }: { accent?: "green"; lead: string; body:
   );
 }
 
-function HeatCell({ count, label, level }: { count?: number; label?: string; level: keyof typeof HEAT_COLORS }) {
-  const c = HEAT_COLORS[level];
-  return (
-    <td className="px-1 py-1 text-center">
-      <span
-        className="inline-flex h-7 w-full min-w-[34px] items-center justify-center rounded font-display text-[11px] font-semibold"
-        style={{ background: c.bg, color: c.text }}
-      >
-        {label ?? (count === 0 ? "" : count)}
-      </span>
-    </td>
-  );
-}
-
 function Dot({ cls }: { cls: string }) {
   return <span className={`inline-block h-2 w-2 rounded-full align-middle ${cls}`} />;
 }
@@ -460,66 +406,3 @@ function BenchCellView({ cell }: { cell: BenchCell }) {
     </div>
   );
 }
-
-/* ------------------------------- seeded/static section content (Lucy map §3/§4) ------------------------------- */
-
-type Heat = keyof typeof HEAT_COLORS;
-const TOPIC_HEATMAP: {
-  topic: string;
-  meta: string;
-  cells: { n: number; h: Heat }[];
-  avg: { g: string; h: Heat };
-}[] = [
-  { topic: "Organic chemistry", meta: "12 questions · 24% of paper", cells: [{ n: 12, h: "h5" }, { n: 11, h: "h4" }, { n: 5, h: "h2" }, { n: 0, h: "h0" }, { n: 0, h: "h0" }], avg: { g: "B2", h: "h4" } },
-  { topic: "Inorganic · transition metals", meta: "8 questions · 16% of paper", cells: [{ n: 9, h: "h5" }, { n: 10, h: "h4" }, { n: 7, h: "h3" }, { n: 2, h: "h1" }, { n: 0, h: "h0" }], avg: { g: "B3", h: "h3" } },
-  { topic: "Stoichiometry & mole concept", meta: "6 questions · 12% of paper", cells: [{ n: 10, h: "h5" }, { n: 12, h: "h4" }, { n: 6, h: "h2" }, { n: 0, h: "h0" }, { n: 0, h: "h0" }], avg: { g: "B2", h: "h4" } },
-  { topic: "Atomic structure & bonding", meta: "5 questions · 10% of paper", cells: [{ n: 8, h: "h5" }, { n: 13, h: "h4" }, { n: 7, h: "h3" }, { n: 0, h: "h0" }, { n: 0, h: "h0" }], avg: { g: "B3", h: "h3" } },
-  { topic: "Acids · bases · salts", meta: "5 questions · 10% of paper", cells: [{ n: 11, h: "h5" }, { n: 10, h: "h4" }, { n: 6, h: "h2" }, { n: 1, h: "h0" }, { n: 0, h: "h0" }], avg: { g: "B2", h: "h4" } },
-  { topic: "Equilibria · Le Chatelier", meta: "5 questions · 10% of paper", cells: [{ n: 4, h: "h3" }, { n: 9, h: "h3" }, { n: 12, h: "h2" }, { n: 3, h: "h1" }, { n: 0, h: "h0" }], avg: { g: "C4", h: "h2" } },
-  { topic: "Electrochemistry", meta: "4 questions · 8% of paper", cells: [{ n: 3, h: "h2" }, { n: 8, h: "h3" }, { n: 12, h: "h2" }, { n: 4, h: "h1" }, { n: 1, h: "h0" }], avg: { g: "C5", h: "h1" } },
-  { topic: "Reaction kinetics", meta: "3 questions · 6% of paper", cells: [{ n: 7, h: "h4" }, { n: 11, h: "h4" }, { n: 9, h: "h3" }, { n: 1, h: "h1" }, { n: 0, h: "h0" }], avg: { g: "B3", h: "h3" } },
-  { topic: "Energetics & thermochemistry", meta: "3 questions · 6% of paper", cells: [{ n: 6, h: "h4" }, { n: 9, h: "h3" }, { n: 10, h: "h2" }, { n: 3, h: "h1" }, { n: 0, h: "h0" }], avg: { g: "C4", h: "h2" } },
-  { topic: "Industrial chemistry · contemporary", meta: "2 questions · 4% of paper", cells: [{ n: 7, h: "h4" }, { n: 12, h: "h4" }, { n: 8, h: "h3" }, { n: 1, h: "h0" }, { n: 0, h: "h0" }], avg: { g: "B3", h: "h3" } },
-];
-
-// Frame 04 renders SEEDED/STATIC (AC16) — there is no intervention table to derive from. The dates
-// keep their day + month and DROP the weekday: the surface wrote `Sat 24 May`, and 24 May 2026 is a
-// SUNDAY. A weekday nothing computed is a claim the page cannot stand behind (R90).
-const INTERVENTION_TIERS = [
-  {
-    eyebrow: "Tier 1 · urgent intervention",
-    title: "Borderline credit",
-    color: "#B84A39",
-    students: "The C5–C6 band — the FOCUS candidates (derived from Mock-2 bands).",
-    plan: [
-      "8 hrs after-school tutoring (Mon + Wed, weeks 1–4)",
-      "Pair-tutor with a top-3 student for inorganic — Saturday mornings",
-      "Daily 20-min question set on the weakest topic (equilibria + electrochem)",
-      "Weekly parent SMS update · pre-paper boost session 5 Jun",
-    ],
-  },
-  {
-    eyebrow: "Tier 2 · focused improvement",
-    title: "Move B3 → B2 or B2 → A1",
-    color: "#C8975B",
-    students: "The B3 / newly-B2 band · all within reach of a one-grade lift in 24 days.",
-    plan: [
-      "Whole-class focus on equilibria + electrochem (2 lessons each)",
-      "WAEC past-paper practice · weekly · marked by Mr Asiedu",
-      "Topic-specific resource pack per weak topic",
-      "Mid-cycle check-in · 24 May",
-    ],
-  },
-  {
-    eyebrow: "Tier 3 · consolidate strengths",
-    title: "A1 / B2 band · hold the line",
-    color: "#2F6B47",
-    students: "The A1/B2 band · low risk of slipping if confidence is maintained.",
-    plan: [
-      "Self-directed past-paper drills · weekly check-in only",
-      "Peer-tutor assignments (top 3 paired with Tier 1 students)",
-      "Stretch material on industrial chem + contemporary issues",
-      "Pre-paper boost session optional · 5 Jun",
-    ],
-  },
-];

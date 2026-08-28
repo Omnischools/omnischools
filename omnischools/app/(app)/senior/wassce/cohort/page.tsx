@@ -718,8 +718,8 @@ function Chip({ grade, dim }: { grade: string; dim?: boolean }) {
 
 /**
  * One heatmap row. The fill of every cell is `GRADE_COLORS[column]` — CONSTANT down each column,
- * independent of the count. This is a grade gradient table, not a magnitude heatmap: `HEAT_COLORS`
- * (INCR-16's count-driven scale) would be a category error here. A genuine zero renders "0", the
+ * independent of the count. This is a grade gradient table, not a magnitude heatmap: a count-driven
+ * magnitude scale would be a category error here. A genuine zero renders "0", the
  * documented exception to the em-dash rule — the coloured cell carries the meaning.
  */
 function Row({

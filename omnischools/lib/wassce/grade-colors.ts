@@ -22,13 +22,3 @@ export const GRADE_COLORS: Record<WassceGrade, string> = {
 
 /** Chip text colour — the light bg token hex (readable on every palette-A fill). */
 export const GRADE_CHIP_TEXT = "#FAF7F2";
-
-/** Palette B (§0.2B) — heatmap 6-step scale, count-driven. h0 is the light bg (navy-3 text). */
-export const HEAT_COLORS: Record<"h0" | "h1" | "h2" | "h3" | "h4" | "h5", { bg: string; text: string }> = {
-  h5: { bg: "#1E5A35", text: "#FAF7F2" }, // strong · 14+
-  h4: { bg: "#3D8059", text: "#FAF7F2" }, // good · 10–13
-  h3: { bg: "#B59B3D", text: "#FAF7F2" }, // mixed · 6–9
-  h2: { bg: "#C58A2E", text: "#FAF7F2" }, // focus area · 3–5
-  h1: { bg: "#B84A39", text: "#FAF7F2" }, // critical gap · 0–2
-  h0: { bg: "#FAF7F2", text: "#8A93A6" }, // zero
-};
