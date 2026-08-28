@@ -34,6 +34,11 @@ import type { CensusEnrolment } from "@/lib/reports/census-enrolment-data";
  * dashboard branches — reading `arm.data` on a non-CAPTURED arm is a COMPILE ERROR (the boardTile
  * guarantee, now enforced in print). The route pre-formats only the date + initials + term label
  * (tz/locale/session data the doc must not reach for). Core PDF fonts stand in for the brand faces.
+ *
+ * #309 · it ALSO carries the director drill-down aggregates the `/insights` (and synced `/board`)
+ * surfaces show — year-group performance, attendance-by-level, census age/gender/approved-age, and the
+ * "needs attention" rows. Unlike the rollup arms these are PRE-DERIVED aggregates (not honest-absence
+ * arms), each guarded by its own empty-check (omit-not-fake). All aggregate-only — no per-student row.
  */
 
 // --- design tokens (hex; @react-pdf can't use CSS vars) ---
