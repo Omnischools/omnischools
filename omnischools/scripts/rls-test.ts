@@ -232,6 +232,112 @@ async function main() {
         if ((e as Error).message !== ROLLBACK) throw e;
       }
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // Parent BILLING (read-only) — BEHAVIORAL RLS probe (INCR — parent Billing tab, prod-paste-0095).
+    //
+    // Billing is the FIRST parent_scope that is STRUCTURALLY read-only: forging a `payment` (marking
+    // fees paid) or an `invoice` is the high-value attack, so unlike the FOR-ALL parent_scope tables
+    // the four billing tables use `parent_scope AS RESTRICTIVE FOR SELECT` + parent_no_insert/update/
+    // delete. This probe proves — as the NON-SUPERUSER omnischools_app (the dev superuser masks RLS) —
+    // that a parent READS own-child invoice/line_item/payment/receipt, sees 0 for another child / a
+    // foreign tenant, and can NEVER INSERT/UPDATE/DELETE invoice or payment. All rows are set up as the
+    // seeded (superuser) owner, then acted on as omnischools_app, in one rolled-back transaction.
+    console.log("\nParent Billing read-only path (behavioral):");
+    const bParentRows = await sql<{ id: string }[]>`select id from ref_user limit 1`;
+    const bKids = await sql<{ id: string }[]>`
+      select id from students where school_id = ${schoolId} order by id limit 2`;
+    if (bParentRows.length < 1 || bKids.length < 2) {
+      console.log("• skipped — needs ≥1 ref_user and ≥2 students in the seeded school.");
+    } else {
+      const bParent = bParentRows[0].id;
+      const bOwn = bKids[0].id;
+      const bOther = bKids[1].id; // a real child in the SAME school, NOT linked to this parent
+      const ownInv = "aaaaaaaa-0000-4000-8000-0000000c1001";
+      const othInv = "bbbbbbbb-0000-4000-8000-0000000c2002";
+      const ownPay = "cccccccc-0000-4000-8000-0000000c3003";
+      const othPay = "dddddddd-0000-4000-8000-0000000c4004";
+      const ROLLBACK_B = "__parent_billing_probe_rollback__";
+      try {
+        await sql.begin(async (tx) => {
+          // ---- superuser setup ----
+          await tx`insert into student_guardian
+                     (id, school_id, student_id, name, relationship, phone, is_primary, user_id)
+                   values (gen_random_uuid(), ${schoolId}, ${bOwn}, 'RLSTEST', 'MOTHER',
+                           '+233RLSTESTB1', true, ${bParent})`;
+          for (const [inv, kid, num, pay] of [
+            [ownInv, bOwn, "RLST-OWN", ownPay],
+            [othInv, bOther, "RLST-OTH", othPay],
+          ] as const) {
+            await tx`insert into invoice
+                       (id, school_id, student_id, invoice_number, academic_year,
+                        subtotal_amount, billed_amount, balance_amount)
+                     values (${inv}, ${schoolId}, ${kid}, ${num}, '2025/26', 300, 300, 300)`;
+            await tx`insert into invoice_line_item (id, school_id, invoice_id, description, amount)
+                     values (gen_random_uuid(), ${schoolId}, ${inv}, 'Tuition', 300)`;
+            await tx`insert into payment (id, school_id, student_id, gross_amount, net_amount, method)
+                     values (${pay}, ${schoolId}, ${kid}, 100, 100, 'CASH')`;
+            await tx`insert into receipt (id, school_id, payment_id, receipt_number, student_id)
+                     values (gen_random_uuid(), ${schoolId}, ${pay}, ${"RCPT-" + pay.slice(0, 6)}, ${kid})`;
+          }
+
+          // ---- act as the parent (RLS enforced, non-superuser) ----
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${bParent}, true)`;
+
+          // own-child READ works (all four tables)
+          const c = async (t: string, w: string) =>
+            (await tx.unsafe(`select count(*)::int n from ${t} ${w}`))[0].n as number;
+          assert("parent reads own invoice", await c("invoice", `where id='${ownInv}'`), 1);
+          assert("parent reads own line_item", await c("invoice_line_item", `where invoice_id='${ownInv}'`), 1);
+          assert("parent reads own payment", await c("payment", `where id='${ownPay}'`), 1);
+          assert("parent reads own receipt", await c("receipt", `where payment_id='${ownPay}'`), 1);
+
+          // cross-CHILD (same school, not linked) → 0 (all four)
+          assert("parent CANNOT read other-child invoice", await c("invoice", `where id='${othInv}'`), 0);
+          assert("parent CANNOT read other-child line_item", await c("invoice_line_item", `where invoice_id='${othInv}'`), 0);
+          assert("parent CANNOT read other-child payment", await c("payment", `where id='${othPay}'`), 0);
+          assert("parent CANNOT read other-child receipt", await c("receipt", `where payment_id='${othPay}'`), 0);
+
+          // WRITE DENIAL on invoice + payment — the read-only proof (savepoint so the RLS error can't poison the tx)
+          const insDenied = async (label: string, stmt: string) => {
+            let denied = false;
+            try {
+              await tx.savepoint(async (sp) => {
+                await sp.unsafe(stmt);
+              });
+            } catch {
+              denied = true;
+            }
+            assertTrue(label, denied);
+          };
+          await insDenied(
+            "parent INSERT invoice denied",
+            `insert into invoice (id, school_id, student_id, invoice_number, academic_year, subtotal_amount, billed_amount, balance_amount)
+               values (gen_random_uuid(), '${schoolId}', '${bOwn}', 'FORGE-INV', '2025/26', 1, 1, 1)`,
+          );
+          await insDenied(
+            "parent INSERT payment denied (fees-paid forge)",
+            `insert into payment (id, school_id, student_id, gross_amount, net_amount, method)
+               values (gen_random_uuid(), '${schoolId}', '${bOwn}', 999, 999, 'CASH')`,
+          );
+          assert("parent UPDATE invoice denied (rows)", (await tx`update invoice set paid_amount=300 where id=${ownInv}`).count, 0);
+          assert("parent UPDATE payment denied (rows)", (await tx`update payment set net_amount=1 where id=${ownPay}`).count, 0);
+          assert("parent DELETE invoice denied (rows)", (await tx`delete from invoice where id=${ownInv}`).count, 0);
+          assert("parent DELETE payment denied (rows)", (await tx`delete from payment where id=${ownPay}`).count, 0);
+
+          // cross-TENANT: a parent scoped to a FOREIGN school sees 0 of their own child's rows
+          await tx`select set_config('app.current_school', ${FOREIGN_ID}, true)`;
+          assert("parent in foreign tenant reads 0 invoices", await c("invoice", `where id='${ownInv}'`), 0);
+          assert("parent in foreign tenant reads 0 payments", await c("payment", `where id='${ownPay}'`), 0);
+
+          throw new Error(ROLLBACK_B); // discard all probe rows
+        });
+      } catch (e) {
+        if ((e as Error).message !== ROLLBACK_B) throw e;
+      }
+    }
   } finally {
     await sql.end();
   }

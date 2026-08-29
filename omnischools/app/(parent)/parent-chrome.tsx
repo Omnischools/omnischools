@@ -53,12 +53,19 @@ export function ParentHeader({
 }
 
 /** Every tab is a live route today. */
-export type ParentTab = "WASSCE" | "Attendance" | "Messages" | "Sickbay" | "PTA" | "School calendar";
+export type ParentTab =
+  | "WASSCE"
+  | "Attendance"
+  | "Messages"
+  | "Fees"
+  | "Sickbay"
+  | "PTA"
+  | "School calendar";
 
-// INCR-278 → +Attendance → +Messages — flat tabs, ALL live routes (Billing / Boarding return behind their
-// own increments). Attendance is second (the most-checked daily fact); "Messages" is the 2-way parent↔school
-// thread. Every entry below has an HREF.
-const TABS = ["WASSCE", "Attendance", "Messages", "Sickbay", "PTA", "School calendar"] as const;
+// INCR-278 → +Attendance → +Messages → +Fees — flat tabs, ALL live routes (Boarding returns behind its own
+// increment). "Fees" is the read-only fee statement (URL /statement — the staff routes are /fees + /billing).
+// 7 < 12, so the nav stays flat. Every entry below has an HREF.
+const TABS = ["WASSCE", "Attendance", "Messages", "Fees", "Sickbay", "PTA", "School calendar"] as const;
 const HREF: Record<(typeof TABS)[number], string> = {
   WASSCE: "/wassce",
   // URL is /attendance-summary (the /attendance path is the STAFF marking route — parent routes share the
@@ -66,6 +73,8 @@ const HREF: Record<(typeof TABS)[number], string> = {
   Attendance: "/attendance-summary",
   // URL is /messages — the STAFF route is /communication (parent routes share the (app) namespace).
   Messages: "/messages",
+  // URL is /statement — BOTH /fees and /billing are STAFF routes; the tab LABEL is "Fees".
+  Fees: "/statement",
   Sickbay: "/sickbay",
   PTA: "/pta",
   "School calendar": "/calendar",
