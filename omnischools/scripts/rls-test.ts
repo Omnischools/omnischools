@@ -52,6 +52,10 @@ function assertAtLeast(label: string, actual: number, min: number) {
   console.log(`${ok ? "✓" : "✗"} ${label}: got ${actual}, expected ≥ ${min}`);
   if (!ok) failures++;
 }
+function assertTrue(label: string, ok: boolean) {
+  console.log(`${ok ? "✓" : "✗"} ${label}`);
+  if (!ok) failures++;
+}
 
 async function main() {
   const sql = postgres(url, { max: 1 });
@@ -117,6 +121,117 @@ async function main() {
       const [{ n }] = await tx`select count(*)::int as n from ref_school`;
       assert("ref_school (unscoped)", n, 0);
     });
+
+    // ---------------------------------------------------------------------------------------------
+    // Parent Communications WRITE path — BEHAVIORAL RLS probe (Quinn MAJOR: the tenant-isolation
+    // loop above is shape-only; it can't catch a write that the superuser dev DB silently masks).
+    //
+    // A parent posts an INBOUND reply then calls parent_bump_conversation() to advance the thread's
+    // last_message_at + reopen a CLOSED thread. A naive direct `UPDATE conversation` inside the parent
+    // session hits parent_no_update → 0 ROWS SILENTLY on prod (staff never see the reply's unread /
+    // recency signal); the SECURITY DEFINER bump fn is the fix. This probe proves the fix LANDS while
+    // every forbidden write stays denied.
+    //
+    // 🔴 Run under PROD-SHAPED ownership: the fn owner is switched to the non-superuser omnischools_app
+    // so FORCE RLS actually binds the SECURITY DEFINER body. A superuser owner (the dev default) would
+    // bypass RLS inside the fn and MASK a regression — the very trap this task exists to close. All test
+    // rows AND the owner switch live in one transaction that is rolled back, so nothing persists.
+    console.log("\nParent Communications write path (behavioral):");
+    const parentRows = await sql<{ id: string }[]>`select id from ref_user limit 1`;
+    const kids = await sql<{ id: string }[]>`
+      select id from students where school_id = ${schoolId} order by id limit 2`;
+    if (parentRows.length < 1 || kids.length < 2) {
+      console.log("• skipped — needs ≥1 ref_user and ≥2 students in the seeded school.");
+    } else {
+      const parent = parentRows[0].id;
+      const ownChild = kids[0].id;
+      const otherChild = kids[1].id; // a real child in the SAME school, NOT linked to this parent
+      const ownThread = "aaaaaaaa-0000-4000-8000-00000000a001";
+      const otherThread = "bbbbbbbb-0000-4000-8000-00000000b002";
+      const OLD = "2020-01-01T00:00:00.000Z";
+      const ROLLBACK = "__parent_comms_probe_rollback__";
+      try {
+        await sql.begin(async (tx) => {
+          // ---- superuser setup (seeded owner bypasses RLS) ----
+          await tx`insert into student_guardian
+                     (id, school_id, student_id, name, relationship, phone, is_primary, user_id)
+                   values (gen_random_uuid(), ${schoolId}, ${ownChild}, 'RLSTEST', 'MOTHER',
+                           '+233RLSTEST01', true, ${parent})`;
+          await tx`insert into conversation
+                     (id, school_id, contact_phone, student_id, status, channel,
+                      last_message_at, created_at, read_at, assigned_to_user_id, topic)
+                   values (${ownThread}, ${schoolId}, '+233RLSTEST01', ${ownChild}, 'CLOSED', 'sms',
+                           ${OLD}, now(), ${OLD}, ${parent}, 'FEES')`;
+          await tx`insert into conversation
+                     (id, school_id, contact_phone, student_id, status, channel, last_message_at, created_at)
+                   values (${otherThread}, ${schoolId}, '+233OTHER02', ${otherChild}, 'CLOSED', 'sms',
+                           ${OLD}, now())`;
+          // prod-shape: definer owner = the non-superuser role subject to FORCE RLS
+          await tx`alter function parent_bump_conversation(uuid) owner to omnischools_app`;
+
+          // ---- act as the parent (RLS enforced) ----
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${parent}, true)`;
+
+          // (a) INBOUND reply into own thread → allowed + attributed to the parent
+          await tx`insert into inbox_message
+                     (id, school_id, conversation_id, direction, body, sent_by_user_id, created_at)
+                   values (gen_random_uuid(), ${schoolId}, ${ownThread}, 'INBOUND', 'RLSTEST reply',
+                           ${parent}, now())`;
+          const [msg] = await tx<{ direction: string; sent_by_user_id: string }[]>`
+            select direction, sent_by_user_id from inbox_message where body = 'RLSTEST reply'`;
+          assertTrue("parent reply row is INBOUND", msg?.direction === "INBOUND");
+          assertTrue("parent reply attributed to the parent", msg?.sent_by_user_id === parent);
+
+          // (d) OUTBOUND insert → denied (savepoint so the expected RLS error doesn't poison the tx)
+          let outboundDenied = false;
+          try {
+            await tx.savepoint(async (sp) => {
+              await sp`insert into inbox_message
+                         (id, school_id, conversation_id, direction, body, sent_by_user_id, created_at)
+                       values (gen_random_uuid(), ${schoolId}, ${ownThread}, 'OUTBOUND', 'RLSTEST forge',
+                               ${parent}, now())`;
+            });
+          } catch {
+            outboundDenied = true;
+          }
+          assertTrue("parent OUTBOUND insert denied", outboundDenied);
+
+          // (d) direct parent UPDATE conversation → denied (0 rows: the very bug a naive action hits)
+          const upd = await tx`update conversation set last_message_at = now() where id = ${ownThread}`;
+          assert("parent direct conversation UPDATE denied (rows)", upd.count, 0);
+
+          // (b) the bump fn LANDS: last_message_at advances + CLOSED → OPEN
+          const [before] = await tx<{ lma: Date }[]>`
+            select last_message_at as lma from conversation where id = ${ownThread}`;
+          await tx`select parent_bump_conversation(${ownThread})`;
+          const [after] = await tx<{ lma: Date; status: string }[]>`
+            select last_message_at as lma, status from conversation where id = ${ownThread}`;
+          assertTrue("bump advances last_message_at", after.lma > before.lma);
+          assertTrue("bump reopens the CLOSED thread", after.status === "OPEN");
+
+          // (c) bump on another child's thread → no-op (still 2020, read as superuser)
+          await tx`select parent_bump_conversation(${otherThread})`;
+          await tx`reset role`;
+          const [other] = await tx<{ lma: Date }[]>`
+            select last_message_at as lma from conversation where id = ${otherThread}`;
+          assertTrue(
+            "out-of-scope bump is a no-op",
+            other.lma.getTime() === new Date(OLD).getTime(),
+          );
+
+          // (d) parent DELETE → denied (0 rows)
+          await tx`set local role omnischools_app`;
+          const del = await tx`delete from inbox_message where conversation_id = ${ownThread}`;
+          assert("parent inbox_message DELETE denied (rows)", del.count, 0);
+
+          throw new Error(ROLLBACK); // discard all probe rows + the owner switch
+        });
+      } catch (e) {
+        if ((e as Error).message !== ROLLBACK) throw e;
+      }
+    }
   } finally {
     await sql.end();
   }

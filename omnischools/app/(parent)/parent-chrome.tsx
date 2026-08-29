@@ -53,17 +53,19 @@ export function ParentHeader({
 }
 
 /** Every tab is a live route today. */
-export type ParentTab = "WASSCE" | "Attendance" | "Sickbay" | "PTA" | "School calendar";
+export type ParentTab = "WASSCE" | "Attendance" | "Messages" | "Sickbay" | "PTA" | "School calendar";
 
-// INCR-278 → +Attendance — flat tabs, ALL live routes (the inert Communications / Billing / Boarding spans
-// are gone; each returns behind its own increment). Attendance sits second — the most-checked daily fact
-// ("is my child in school?"). Every entry below has an HREF.
-const TABS = ["WASSCE", "Attendance", "Sickbay", "PTA", "School calendar"] as const;
+// INCR-278 → +Attendance → +Messages — flat tabs, ALL live routes (Billing / Boarding return behind their
+// own increments). Attendance is second (the most-checked daily fact); "Messages" is the 2-way parent↔school
+// thread. Every entry below has an HREF.
+const TABS = ["WASSCE", "Attendance", "Messages", "Sickbay", "PTA", "School calendar"] as const;
 const HREF: Record<(typeof TABS)[number], string> = {
   WASSCE: "/wassce",
   // URL is /attendance-summary (the /attendance path is the STAFF marking route — parent routes share the
   // (app) route namespace, so the parent tab needs a unique segment); the tab LABEL stays "Attendance".
   Attendance: "/attendance-summary",
+  // URL is /messages — the STAFF route is /communication (parent routes share the (app) namespace).
+  Messages: "/messages",
   Sickbay: "/sickbay",
   PTA: "/pta",
   "School calendar": "/calendar",
