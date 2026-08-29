@@ -39,8 +39,13 @@ export async function withSchool<T>(
  * parent-readable set (their child + that child's WASSCE artefacts + their own comms). The GUC is set
  * only here, in trusted server code, never from request input, so it cannot be forged.
  *
- * Read-only by contract: there is NO parent write path (Kofi R4). Do NOT issue writes inside this
- * helper.
+ * Almost read-only: the ONLY sanctioned parent write is the Communications INBOUND message (+ its
+ * own-child/own-phone conversation, INCR-COMM). It is safe ONLY because the `parent_scope` policies are
+ * `FOR ALL` with a CONSTRAINED `WITH CHECK` (inbox_message: direction='INBOUND' AND sent_by_user_id = the
+ * parent, plus the own-child+own-phone reach; conversation: own-child + own-phone) and `parent_no_update` /
+ * `parent_no_delete` make the parent seam INSERT + SELECT only (db/sql/policies.sql, prod-paste-0094). Any
+ * OTHER write inside this helper is a bug: a tenant table without that constrained WITH CHECK would let a
+ * parent forge rows (the FOR ALL USING would double as the write gate).
  */
 export async function withParentScope<T>(
   schoolId: string,

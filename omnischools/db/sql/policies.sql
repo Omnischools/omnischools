@@ -439,10 +439,41 @@ CREATE POLICY parent_scope ON readiness_statements AS RESTRICTIVE FOR ALL TO pub
     )
   );
 
+-- ============================================================================================
+-- INCR — PARENT COMMUNICATIONS: the FIRST parent WRITE path (kept in sync with
+-- db/sql/prod-paste-0094-parent-inbox-write.sql — this block is DEV; that file is the hand-paste
+-- on PROD; ⚠ RLS is NOT auto-applied on prod). Until now the parent boundary was READ-ONLY by
+-- contract (Kofi R4) and every parent_scope policy left WITH CHECK = USING because "no app writes
+-- ever run inside withParentScope". That is no longer true: a parent posts an in-app INBOUND
+-- message to a thread about their own child, on their own stored phone (lib/parent/* under
+-- withParentScope). FOR ALL with USING-as-WITH-CHECK would over-grant that write three ways —
+-- (1) a parent could INSERT direction=OUTBOUND, forging a "from the school" message staff also
+-- see; (2) a parent could set any sent_by_user_id (impersonation / anon); (3) FOR ALL authorises
+-- UPDATE/DELETE, so a parent could edit or delete history (their own OR staff OUTBOUND) in scope.
+-- So conversation + inbox_message get a TIGHTENED write shape while their READ stays identical:
+--   • inbox_message.parent_scope keeps its read USING but gains a CONSTRAINED WITH CHECK —
+--     a parent INSERT must be direction='INBOUND' AND sent_by_user_id = the parent GUC AND land
+--     in one of the parent's own scoped threads (same reach predicate as the read).
+--   • conversation.parent_scope is UNCHANGED — its existing WITH CHECK = USING already constrains
+--     a parent INSERT to own-child (NULL student excluded) + own-phone, which is exactly the
+--     intended "start a new thread about my child" write.
+--   • Both tables gain per-command parent_no_update / parent_no_delete DENY policies so a parent
+--     can only INSERT + SELECT, never mutate or delete a row (no tampering, no reassignment, no
+--     status/topic/read_at flip on conversation).
+-- STAFF ARE UNAFFECTED (the load-bearing regression check): every new predicate is guarded
+-- `pu IS NULL OR <rule>` / `pu IS NULL` and staff (withSchool) + the inbound webhook (withSchool)
+-- + escalated (withoutTenantScope) sessions NEVER set app.current_parent_user, so `pu IS NULL` is
+-- TRUE for them → every added clause is a total no-op → the staff inbox (OUTBOUND replies, status
+-- changes, deletes) behaves byte-for-byte as before. parent_scope still EXISTS on both tables, so
+-- the catalog parent_deny loop below keeps excluding them and verify-prod-rls check B stays green.
+
 -- conversation — threads about the child AND on the parent's OWN stored phone (a co-guardian's thread
--- must not appear). NULL-student threads are excluded (NULL IN (...) is not TRUE).
+-- must not appear). NULL-student threads are excluded (NULL IN (...) is not TRUE). WITH CHECK = USING
+-- (FOR ALL): a parent INSERT is constrained to own-child + own-phone; UPDATE/DELETE are denied below.
 DROP POLICY IF EXISTS parent_deny ON conversation;
 DROP POLICY IF EXISTS parent_scope ON conversation;
+DROP POLICY IF EXISTS parent_no_update ON conversation;
+DROP POLICY IF EXISTS parent_no_delete ON conversation;
 CREATE POLICY parent_scope ON conversation AS RESTRICTIVE FOR ALL TO public
   USING (
     NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
@@ -458,10 +489,20 @@ CREATE POLICY parent_scope ON conversation AS RESTRICTIVE FOR ALL TO public
       )
     )
   );
+-- Deny a parent session UPDATE/DELETE on conversation (INSERT + SELECT only). `pu IS NULL` → staff
+-- session → TRUE → no-op; parent session → FALSE → zero rows updatable/deletable.
+CREATE POLICY parent_no_update ON conversation AS RESTRICTIVE FOR UPDATE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_delete ON conversation AS RESTRICTIVE FOR DELETE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
 
--- inbox_message — reaches the child (and the parent's own phone) through its conversation.
+-- inbox_message — reaches the child (and the parent's own phone) through its conversation. READ USING
+-- is unchanged; the WITH CHECK additionally pins a parent INSERT to direction='INBOUND' and
+-- sent_by_user_id = the parent GUC (defence in depth behind the server action). UPDATE/DELETE denied.
 DROP POLICY IF EXISTS parent_deny ON inbox_message;
 DROP POLICY IF EXISTS parent_scope ON inbox_message;
+DROP POLICY IF EXISTS parent_no_update ON inbox_message;
+DROP POLICY IF EXISTS parent_no_delete ON inbox_message;
 CREATE POLICY parent_scope ON inbox_message AS RESTRICTIVE FOR ALL TO public
   USING (
     NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
@@ -478,7 +519,83 @@ CREATE POLICY parent_scope ON inbox_message AS RESTRICTIVE FOR ALL TO public
             AND g.user_id = NULLIF(current_setting('app.current_parent_user', true), '')::uuid
         )
     )
+  )
+  WITH CHECK (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR (
+      direction = 'INBOUND'
+      AND sent_by_user_id = NULLIF(current_setting('app.current_parent_user', true), '')::uuid
+      AND conversation_id IN (
+        SELECT cv.id FROM conversation cv
+        WHERE cv.school_id = inbox_message.school_id
+          AND cv.student_id IN (
+            SELECT parent_student_ids(
+              inbox_message.school_id, NULLIF(current_setting('app.current_parent_user', true), '')::uuid)
+          )
+          AND cv.contact_phone IN (
+            SELECT g.phone FROM student_guardian g
+            WHERE g.school_id = inbox_message.school_id
+              AND g.user_id = NULLIF(current_setting('app.current_parent_user', true), '')::uuid
+          )
+      )
+    )
   );
+-- Deny a parent session UPDATE/DELETE on inbox_message (INSERT + SELECT only) — no editing or
+-- deleting history, own or staff OUTBOUND. `pu IS NULL` → staff → TRUE → no-op.
+CREATE POLICY parent_no_update ON inbox_message AS RESTRICTIVE FOR UPDATE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_delete ON inbox_message AS RESTRICTIVE FOR DELETE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+
+-- ---- the scoped bump helper: a parent reply must advance conversation.last_message_at + reopen a
+-- CLOSED thread, but parent_no_update (above) DENIES every direct parent UPDATE on conversation. The
+-- staff inbox derives unread / recency / the OPEN unread-count from those two columns (app/(app)/inbox),
+-- so without this the parent's reply is INVISIBLE to staff on prod and a CLOSED thread never reopens.
+-- 🔴 A naive `SET last_message_at=now()` inside withParentScope hits parent_no_update → 0 rows,
+-- SILENTLY. On DEV the superuser owner masks it (RLS bypassed); on PROD (non-superuser owner, FORCE
+-- RLS) it fails. This SECURITY DEFINER fn is the sanctioned bump: it CLEARS `app.current_parent_user`
+-- for exactly the one privileged UPDATE so parent_no_update passes (pu IS NULL → TRUE), then RESTORES
+-- it. Ownership CANNOT do this job here — there is no BYPASSRLS role and FORCE binds the owner too — so
+-- the GUC clear (the same portable device as app.bypass_rls) is the mechanism. `app.current_school`
+-- stays set → tenant_isolation still fences the school (defence in depth); the WHERE (own school + own
+-- child via parent_student_ids + own STORED phone, all on the CAPTURED pu) is the parent scope. Only
+-- last_message_at + status are written — never read_at / assigned_to_user_id / topic / routed_by_*.
+-- STAFF ARE UNAFFECTED: a staff/webhook/escalated session never sets app.current_parent_user, so pu IS
+-- NULL → early RETURN → total no-op; staff bump their own threads by direct UPDATE as before.
+-- 🔴 search_path = public, pg_temp (pg_temp LAST, same discipline as parent_student_ids) so a session
+-- TEMP relation cannot shadow conversation / student_guardian inside the definer body.
+-- Kept in sync with db/sql/prod-paste-0094-parent-inbox-write.sql (this block is DEV; that file is the
+-- hand-paste on PROD; ⚠ RLS/functions are NOT auto-applied on prod).
+CREATE OR REPLACE FUNCTION parent_bump_conversation(p_conversation_id uuid) RETURNS void
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+DECLARE
+  pu uuid := NULLIF(current_setting('app.current_parent_user', true), '')::uuid;
+  sc uuid := NULLIF(current_setting('app.current_school', true), '')::uuid;
+BEGIN
+  IF pu IS NULL OR sc IS NULL THEN RETURN; END IF;  -- only a parent session bumps via this fn
+  PERFORM set_config('app.current_parent_user', '', true);  -- relax parent_no_update for THIS update only
+  UPDATE conversation c
+     SET last_message_at = now(), status = 'OPEN'
+   WHERE c.id = p_conversation_id
+     AND c.school_id = sc
+     AND c.student_id IN (SELECT parent_student_ids(c.school_id, pu))
+     AND c.contact_phone IN (
+       SELECT g.phone FROM student_guardian g
+       WHERE g.school_id = c.school_id AND g.user_id = pu);
+  PERFORM set_config('app.current_parent_user', pu::text, true);  -- restore the caller's session GUC
+END;
+$$;
+-- On Supabase every public function is a PostgREST RPC and EXECUTE defaults to PUBLIC. A privileged
+-- SECURITY DEFINER write must not be anon-callable (it is a no-op without the GUCs, but harden anyway).
+REVOKE EXECUTE ON FUNCTION parent_bump_conversation(uuid) FROM PUBLIC;
+DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_app') THEN
+    GRANT EXECUTE ON FUNCTION parent_bump_conversation(uuid) TO omnischools_app;
+  END IF;
+END $$;
 
 -- ---- INCR-29: the FIRST widening of the 19a parent boundary since it shipped (9 → 11 parent_scope
 -- tables). A parent gains ROW access to their own child's sickbay_admission + sickbay_referral so the

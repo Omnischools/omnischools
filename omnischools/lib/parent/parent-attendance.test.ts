@@ -148,10 +148,11 @@ describe("parent-chrome · Attendance is the 5th live tab (source-shape)", () =>
   const nav = () => readCode("app/(parent)/parent-chrome.tsx");
   const page = () => readCode("app/(parent)/attendance-summary/page.tsx");
 
-  it("TABS/HREF/ParentTab carry Attendance → /attendance, still no inert span", () => {
+  // Count-robust: assert Attendance is a live tab at its unique URL, not the whole TABS literal — so a
+  // later tab addition can't red this test (the trap that bit the #278 calendar test when Attendance landed).
+  it("Attendance is a live tab at /attendance-summary, still no inert span", () => {
     const s = nav();
-    expect(s).toMatch(/const TABS = \["WASSCE", "Attendance", "Sickbay", "PTA", "School calendar"\] as const;/);
-    expect(s).toMatch(/ParentTab = "WASSCE" \| "Attendance" \| "Sickbay" \| "PTA" \| "School calendar"/);
+    expect(s).toMatch(/"Attendance"/); // present in TABS + the ParentTab union
     expect(s).toMatch(/Attendance: "\/attendance-summary"/); // unique parent URL (/attendance is the staff route)
     expect(s).not.toMatch(/Partial<Record/);
     expect((s.match(/<span/g) ?? []).length).toBe(1); // only the active tab is a span
