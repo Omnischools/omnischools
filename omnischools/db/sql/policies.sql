@@ -1278,6 +1278,129 @@ CREATE POLICY parent_no_update ON receipt AS RESTRICTIVE FOR UPDATE TO public
 CREATE POLICY parent_no_delete ON receipt AS RESTRICTIVE FOR DELETE TO public
   USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
 
+-- ---- INCR — PARENT BOARDING: the TENTH widening of the 19a parent boundary (29 → 31 parent_scope
+-- tables) — the parent-portal BOARDING tab (READ-ONLY, owner-authorised; lean v1). Kept in sync with
+-- db/sql/prod-paste-0097-parent-boarding.sql — this block is DEV; that file is the hand-paste on PROD
+-- (⚠ RLS/functions are NOT auto-applied on prod; without the paste boarding_calendar_event /
+-- boarding_settings keep parent_deny and parent_boarding_placement is simply absent, so the Boarding tab
+-- is an honest empty state — fail-closed, never a leak).
+--
+-- Three parts. (1) TWO school-wide READ-ONLY grants (the visiting-day calendar + the visiting-policy
+-- config) using the billing read-only posture. (2) A SECURITY DEFINER placement PROJECTION that returns
+-- ONLY the own PLACED boarder's House name + dormitory name + prefect badge — NEVER the bunk number
+-- (owner: "full placement except bunk number"). (3) boarding_bunk / boarding_dormitory / house and every
+-- other boarding table stay parent_deny (re-affirmed by the catalog loop below).
+--
+-- 🔴 (1a) boarding_calendar_event — the visiting-Sunday calendar. SCHOOL-WIDE (identical for every child;
+-- no per-student data), tenant-fenced on app.current_school (the INCR-278 calendar shape). BUT the SELECT
+-- scope is STRUCTURALLY CONSTRAINED to `event_type = 'VISITING'`: an EXEAT_WINDOW row is DENIED to a parent
+-- at the RLS layer (Kofi OC-BOARD-EXEAT belt+braces — exeat/leave is phase-2 and must not be reachable via
+-- the visiting grant, not merely filtered by the reader). READ-ONLY: a parent must not forge a visiting day,
+-- so it is the billing posture — parent_scope AS RESTRICTIVE FOR SELECT (own predicate, NO WITH CHECK) +
+-- parent_no_insert (load-bearing: without it tenant_isolation's permissive WITH CHECK admits an own-school
+-- parent INSERT — the forge hole) + parent_no_update / parent_no_delete (0 rows). `pu IS NULL` (staff /
+-- webhook / escalated) → SELECT scope AND every write-deny are TRUE → total no-op; staff calendar is
+-- byte-unchanged.
+--
+-- 🔴 (1b) boarding_settings — the per-school visiting policy (one row/school). Same school-wide read-only
+-- posture; no event_type constraint (the whole row is visiting/inspection policy config a parent may read).
+-- A parent must not forge school policy → the same parent_no_insert/update/delete deny the write.
+--
+-- 🔴 (2) parent_boarding_placement(school, pu) — the placement PROJECTION. boarding_bunk / boarding_dormitory
+-- / house are all parent_deny, so a parent cannot read the spine directly; this SECURITY DEFINER fn is the
+-- immutable column guard AND uses the GUC-CLEAR DEVICE (the parent_bump_conversation / parent_house_names
+-- idiom). Under prod's non-superuser FORCE-RLS definer owner, a plain read of those three parent_deny tables
+-- with the parent GUC still set returns 0 rows → the projection would fail-close; so it CLEARS
+-- app.current_parent_user for the one read (parent_deny's `pu IS NULL` → TRUE, the definer traverses the
+-- spine) then RESTORES it. app.current_school stays set → tenant_isolation still fences the school. Own-child
+-- fencing does NOT rely on the GUC — it uses the CAPTURED pu ARG via parent_student_ids. It returns ONLY
+-- (student_id, house_name, dorm_name, prefect_role) — NEVER bunk_position / house_id / dorm_id / bunk_id /
+-- hm_user_id / colour / capacity / gender / section_label — so a parent can never reach the bunk number or
+-- staff PII even via a mutated reader. One row per own PLACED boarder (current_bunk_id NOT NULL); an
+-- unplaced boarder → no row. STABLE, search_path public,pg_temp (pg_temp LAST). REVOKE PUBLIC + GRANT app.
+
+-- boarding_calendar_event — the visiting-Sunday calendar. SCHOOL-WIDE, CONSTRAINED to event_type='VISITING'
+-- (EXEAT_WINDOW rows are denied at the RLS layer, not just filtered). READ-ONLY.
+DROP POLICY IF EXISTS parent_deny ON boarding_calendar_event;
+DROP POLICY IF EXISTS parent_scope ON boarding_calendar_event;
+DROP POLICY IF EXISTS parent_no_insert ON boarding_calendar_event;
+DROP POLICY IF EXISTS parent_no_update ON boarding_calendar_event;
+DROP POLICY IF EXISTS parent_no_delete ON boarding_calendar_event;
+CREATE POLICY parent_scope ON boarding_calendar_event AS RESTRICTIVE FOR SELECT TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR (
+      school_id = NULLIF(current_setting('app.current_school', true), '')::uuid
+      AND event_type = 'VISITING'
+    )
+  );
+CREATE POLICY parent_no_insert ON boarding_calendar_event AS RESTRICTIVE FOR INSERT TO public
+  WITH CHECK (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_update ON boarding_calendar_event AS RESTRICTIVE FOR UPDATE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_delete ON boarding_calendar_event AS RESTRICTIVE FOR DELETE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+
+-- boarding_settings — the per-school visiting policy (one row/school). SCHOOL-WIDE. READ-ONLY.
+DROP POLICY IF EXISTS parent_deny ON boarding_settings;
+DROP POLICY IF EXISTS parent_scope ON boarding_settings;
+DROP POLICY IF EXISTS parent_no_insert ON boarding_settings;
+DROP POLICY IF EXISTS parent_no_update ON boarding_settings;
+DROP POLICY IF EXISTS parent_no_delete ON boarding_settings;
+CREATE POLICY parent_scope ON boarding_settings AS RESTRICTIVE FOR SELECT TO public
+  USING (
+    NULLIF(current_setting('app.current_parent_user', true), '') IS NULL
+    OR school_id = NULLIF(current_setting('app.current_school', true), '')::uuid
+  );
+CREATE POLICY parent_no_insert ON boarding_settings AS RESTRICTIVE FOR INSERT TO public
+  WITH CHECK (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_update ON boarding_settings AS RESTRICTIVE FOR UPDATE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+CREATE POLICY parent_no_delete ON boarding_settings AS RESTRICTIVE FOR DELETE TO public
+  USING (NULLIF(current_setting('app.current_parent_user', true), '') IS NULL);
+
+-- parent_boarding_placement — the own-PLACED-boarder placement projection (House + dorm + prefect, NEVER
+-- the bunk number). GUC-clear device: boarding_bunk / boarding_dormitory / house stay parent_deny, so this
+-- SECURITY DEFINER fn clears app.current_parent_user for the one read then restores it VERBATIM.
+CREATE OR REPLACE FUNCTION parent_boarding_placement(school uuid, pu uuid)
+  RETURNS TABLE(student_id uuid, house_name text, dorm_name text, prefect_role text)
+  LANGUAGE plpgsql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = public, pg_temp
+AS $$
+DECLARE
+  prev text := current_setting('app.current_parent_user', true);  -- caller's GUC, captured VERBATIM
+BEGIN
+  IF pu IS NULL THEN RETURN; END IF;  -- no parent arg → 0 rows (fail-closed); GUC untouched
+  -- Relax parent_deny on the spatial spine for THIS read only (parent_deny's `pu IS NULL` → TRUE). Own-child
+  -- fencing uses the CAPTURED pu ARG (parent_student_ids), NOT the now-cleared GUC; app.current_school stays
+  -- set so tenant_isolation still fences the school.
+  PERFORM set_config('app.current_parent_user', '', true);
+  RETURN QUERY
+    SELECT s.id, h.name, d.name, b.prefect_role::text
+    FROM students s
+    JOIN boarding_bunk b      ON b.school_id = s.school_id AND b.id = s.current_bunk_id
+    JOIN boarding_dormitory d ON d.school_id = b.school_id AND d.id = b.dormitory_id
+    JOIN house h              ON h.school_id = d.school_id AND h.id = d.house_id
+    WHERE s.school_id = school
+      AND s.current_bunk_id IS NOT NULL
+      AND s.id IN (SELECT parent_student_ids(school, pu));
+  -- RESTORE the caller's GUC VERBATIM. COALESCE(prev,'') because current_setting(...,true) yields NULL when
+  -- unset. NEVER pu::text: pu is a fn ARG that may differ from the caller's session GUC — a pu::text restore
+  -- would mis-scope a caller whose GUC is unset (or differs), forging a scope that was never there.
+  PERFORM set_config('app.current_parent_user', COALESCE(prev, ''), true);
+END;
+$$;
+-- On Supabase every public function is a PostgREST RPC and EXECUTE defaults to PUBLIC; a privileged
+-- SECURITY DEFINER read must not be anon-callable (no-op without the GUCs, but harden anyway).
+REVOKE EXECUTE ON FUNCTION parent_boarding_placement(uuid, uuid) FROM PUBLIC;
+DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_app') THEN
+    GRANT EXECUTE ON FUNCTION parent_boarding_placement(uuid, uuid) TO omnischools_app;
+  END IF;
+END $$;
+
 -- ---- layer 1: parent_deny on every tenant table EXCEPT the parent-readable set (CATALOG-DRIVEN) ----
 -- This USED to be a hand-maintained 77-name array; a new tenant table that got tenant_isolation but was
 -- forgotten here escaped the parent boundary silently (Dex BLOCK; student_health_record was the leak).

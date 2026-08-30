@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { eq, and } from "drizzle-orm";
@@ -279,14 +280,19 @@ export async function requireSchoolRole(
  * a school row lands on /start — never a leak. The child(ren) are resolved from the SESSION downstream
  * (resolveParentContext / loadParentPortal under withParentScope), never a URL parameter (Lucy L.2).
  */
-export async function requireParent(): Promise<{ user: AppUser; school: ActiveSchool }> {
-  const user = await requireUser();
-  if (!user.roles.includes("PARENT")) redirect("/dashboard");
-  const school = await getActiveSchool(user);
-  if (!school) redirect("/start");
-  await enforceSessionAge(school);
-  return { user, school };
-}
+// `cache()` — request-level single-flight. requireParent takes no args, so every caller in one render
+// (a page body AND the async ParentNav that self-gates on school.schoolType) shares ONE identity/school
+// resolution instead of re-running the GoTrue hop + identity/getActiveSchool reads per call (Dex INCR-BOARD).
+export const requireParent = cache(
+  async (): Promise<{ user: AppUser; school: ActiveSchool }> => {
+    const user = await requireUser();
+    if (!user.roles.includes("PARENT")) redirect("/dashboard");
+    const school = await getActiveSchool(user);
+    if (!school) redirect("/start");
+    await enforceSessionAge(school);
+    return { user, school };
+  },
+);
 
 /**
  * Page guard for the read-only BOARD/DIRECTOR overview (GOV-2 / R335) — its OWN `(board)` route group,

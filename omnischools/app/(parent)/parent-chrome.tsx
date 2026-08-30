@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { avatarInitials, initialSurname } from "@/lib/wassce/parent-copy";
+import { requireParent } from "@/lib/auth/server";
 
 /**
  * The shared parent-portal chrome (SHS module 4.3) — header + flat nav, extracted from the wassce page so
@@ -60,34 +61,39 @@ export type ParentTab =
   | "Fees"
   | "Sickbay"
   | "PTA"
+  | "Boarding"
   | "School calendar";
 
-// INCR-278 → +Attendance → +Messages → +Fees — flat tabs, ALL live routes (Boarding returns behind its own
-// increment). "Fees" is the read-only fee statement (URL /statement — the staff routes are /fees + /billing).
-// 7 < 12, so the nav stays flat. Every entry below has an HREF.
-const TABS = ["WASSCE", "Attendance", "Messages", "Fees", "Sickbay", "PTA", "School calendar"] as const;
-const HREF: Record<(typeof TABS)[number], string> = {
+// INCR-278 → +Attendance → +Messages → +Fees → +Boarding. Unique URLs where a staff route owns the obvious
+// segment (parent routes share the (app) namespace): Attendance→/attendance-summary (staff /attendance),
+// Messages→/messages (staff /communication), Fees→/statement (staff /fees + /billing). Boarding→/boarding
+// (free — staff boarding is nested at /senior/boarding) and shows ONLY at boarding schools
+// (schoolType !== "BASIC"); ParentNav gates it. 8 < 12 → the nav stays flat.
+const ALL_TABS = ["WASSCE", "Attendance", "Messages", "Fees", "Sickbay", "PTA", "Boarding", "School calendar"] as const;
+const HREF: Record<(typeof ALL_TABS)[number], string> = {
   WASSCE: "/wassce",
-  // URL is /attendance-summary (the /attendance path is the STAFF marking route — parent routes share the
-  // (app) route namespace, so the parent tab needs a unique segment); the tab LABEL stays "Attendance".
   Attendance: "/attendance-summary",
-  // URL is /messages — the STAFF route is /communication (parent routes share the (app) namespace).
   Messages: "/messages",
-  // URL is /statement — BOTH /fees and /billing are STAFF routes; the tab LABEL is "Fees".
   Fees: "/statement",
   Sickbay: "/sickbay",
   PTA: "/pta",
+  Boarding: "/boarding",
   "School calendar": "/calendar",
 };
 
 /**
- * The flat parent nav; `active` is the current one. Every non-active tab is a real <Link> (all four are live
- * routes — no inert spans, R234). NO unread dot — it would be faked with no open-episode source (R234).
+ * The flat parent nav; `active` is the current one. Every non-active tab is a real <Link> (no inert spans,
+ * R234). NO unread dot — it would be faked with no open-episode source (R234). Async server component: it
+ * self-gates the Boarding tab on the school type (via requireParent — already resolved this request), so the
+ * shipped pages need no new prop; a BASIC (non-boarding) school never sees Boarding.
  */
-export function ParentNav({ active }: { active: ParentTab }) {
+export async function ParentNav({ active }: { active: ParentTab }) {
+  const { school } = await requireParent();
+  const boardingSchool = school.schoolType !== "BASIC"; // SENIOR / COMBINED board; BASIC never does
+  const tabs = ALL_TABS.filter((t) => t !== "Boarding" || boardingSchool);
   return (
     <nav className="flex gap-0 overflow-x-auto border-b border-border bg-surface px-7">
-      {TABS.map((t) => {
+      {tabs.map((t) => {
         const isActive = t === active;
         const cls = isActive
           ? "whitespace-nowrap border-b-2 border-gold px-4 py-3.5 text-[13px] font-semibold text-navy"
