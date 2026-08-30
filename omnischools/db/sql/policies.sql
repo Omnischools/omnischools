@@ -1032,33 +1032,62 @@ CREATE POLICY parent_scope ON pta_resolution AS RESTRICTIVE FOR ALL TO public
 -- itself keeps parent_deny (re-affirmed by the catalog loop below, which still covers it — no parent_scope
 -- policy exists on it, so the NOT EXISTS(parent_scope) filter includes it).
 --
+-- 🔴 PROD-ONLY DEFECT — THE GUC-CLEAR DEVICE (fix 0096). The definer body reads `house`, a parent_deny
+-- table. On PROD the definer owner is a NON-SUPERUSER bound by FORCE RLS, so when a parent session is
+-- active (app.current_parent_user set) house.parent_deny (USING pu IS NULL) DENIES that read → the original
+-- LANGUAGE sql function returned 0 ROWS and the parent House-PTA card silently fell back to the generic
+-- "House PTA" (fail-closed — never a crash, never a leak). DEV's superuser owner bypassed RLS and MASKED
+-- it. The fix: convert to plpgsql and CLEAR app.current_parent_user for exactly the one scoped read
+-- (house.parent_deny USING pu IS NULL → TRUE) then RESTORE it — the same portable device as
+-- parent_bump_conversation. app.current_school STAYS set so tenant_isolation still fences the school
+-- (defence in depth); the own-child scope uses the CAPTURED arg `pu` (never the cleared GUC), so relaxing
+-- the GUC cannot widen the result. set_config(...,true) is transaction-local — an error mid-RETURN aborts
+-- the enclosing tx and rolls the clear back, so the caller's session GUC can never leak across statements.
+--
 -- ACYCLIC / PII GUARD: because no parent_scope policy on `house` exists (it stays denied), there is no
--- policy-reads-its-own-table concern — this is a plain definer read, the parent_student_ids / parent_pta_ids
--- idiom (STABLE, SECURITY DEFINER, search_path public,pg_temp LAST — pg_temp last so an injected temp
+-- policy-reads-its-own-table concern — this is the parent_student_ids / parent_pta_ids definer idiom
+-- (STABLE, SECURITY DEFINER, search_path public,pg_temp LAST — pg_temp last so an injected temp
 -- `house`/`students` cannot spoof the answer). The reach set = the parent's OWN children's houses via
 -- students.house_id — the SAME set as parent_in_pta's HOUSE branch above (policies.sql HOUSE tier). `pu` is
--- the GUC arg, NEVER a row column; a NULL pu → empty parent_student_ids → 0 rows (fail-closed). Kept in sync
--- with db/sql/prod-paste-0084-pta-parent-house-name.sql (the PROD hand-paste; ⚠ RLS is NOT auto-applied on
--- prod — without it the function is simply absent and the parent tab keeps the generic "House PTA" label,
--- never a leak). Depends on parent_student_ids() (prod-paste-0055), which already ships on prod.
+-- the GUC arg, NEVER a row column; a NULL pu / school → early RETURN → 0 rows (fail-closed). Kept in sync
+-- with db/sql/prod-paste-0096-fix-parent-house-names.sql (the PROD hand-paste; ⚠ RLS is NOT auto-applied on
+-- prod — without it the parent tab keeps the generic "House PTA" label, never a leak). Depends on
+-- parent_student_ids() (prod-paste-0055), which already ships on prod.
 CREATE OR REPLACE FUNCTION parent_house_names(school uuid, pu uuid)
   RETURNS TABLE(house_id uuid, house_name text)
-  LANGUAGE sql
+  LANGUAGE plpgsql
   STABLE
   SECURITY DEFINER
   SET search_path = public, pg_temp
 AS $$
-  SELECT DISTINCT h.id, h.name
-  FROM house h
-  WHERE h.school_id = school
-    AND h.id IN (
-      SELECT DISTINCT s.house_id
-      FROM students s
-      WHERE s.school_id = school
-        AND s.house_id IS NOT NULL
-        AND s.id IN (SELECT parent_student_ids(school, pu))
-    )
+DECLARE
+  prev text := current_setting('app.current_parent_user', true);  -- capture, restore verbatim (pu is an ARG)
+BEGIN
+  IF pu IS NULL OR school IS NULL THEN RETURN; END IF;
+  PERFORM set_config('app.current_parent_user', '', true);  -- relax house.parent_deny for the scoped read
+  RETURN QUERY
+    SELECT DISTINCT h.id, h.name
+    FROM house h
+    WHERE h.school_id = school
+      AND h.id IN (
+        SELECT DISTINCT s.house_id
+        FROM students s
+        WHERE s.school_id = school
+          AND s.house_id IS NOT NULL
+          AND s.id IN (SELECT parent_student_ids(school, pu))
+      );
+  PERFORM set_config('app.current_parent_user', COALESCE(prev, ''), true);  -- restore the caller's own GUC
+END;
 $$;
+-- On Supabase every public function is a PostgREST RPC and EXECUTE defaults to PUBLIC. This fn now CLEARS
+-- the parent GUC as the definer owner, so harden it: it must not be anon-callable (the owner keeps EXECUTE
+-- regardless of the REVOKE; a caller without app.current_school is still fenced by tenant_isolation).
+REVOKE EXECUTE ON FUNCTION parent_house_names(uuid, uuid) FROM PUBLIC;
+DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'omnischools_app') THEN
+    GRANT EXECUTE ON FUNCTION parent_house_names(uuid, uuid) TO omnischools_app;
+  END IF;
+END $$;
 
 -- ---- INCR-278: the SEVENTH widening of the 19a parent boundary (22 → 24 parent_scope tables) — the
 -- parent SCHOOL CALENDAR tab (owner-authorised). A parent gains ROW access to the term/semester dates
