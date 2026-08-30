@@ -416,6 +416,160 @@ async function main() {
         if ((e as Error).message !== ROLLBACK_H) throw e;
       }
     }
+
+    // Parent BOARDING (read-only, lean v1) — BEHAVIORAL RLS probe (INCR — parent Boarding tab,
+    // prod-paste-0097). Proven as the NON-SUPERUSER omnischools_app; the dev superuser masks RLS.
+    //
+    // Three things this closes that a superuser run cannot:
+    //  (1) THE GUC-CLEAR PROJECTION. boarding_bunk/boarding_dormitory/house are parent_deny, so a parent's
+    //      DIRECT read of them returns 0 (asserted below). The placement projection returns 1 row ONLY
+    //      because parent_boarding_placement() clears app.current_parent_user for the definer read — under
+    //      the PROD-SHAPED owner (omnischools_app, FORCE RLS binds the definer body) a no-clear version
+    //      would return 0. So "direct read 0" + "projection 1" together prove the clear is load-bearing.
+    //  (2) THE VISITING CONSTRAINT. A parent SELECT on boarding_calendar_event returns the VISITING row but
+    //      0 EXEAT_WINDOW rows — denied at the RLS layer, not a reader filter.
+    //  (3) READ-ONLY + prev-restore nuance. Every parent write on both config tables is denied; the fn
+    //      restores the caller's GUC VERBATIM (a pu-arg call with the GUC unset leaves it EMPTY, never
+    //      mis-scoped to pu). NO bunk_position column ever leaves the projection.
+    // All rows AND the fn owner switch live in one rolled-back transaction, so nothing persists.
+    console.log("\nParent Boarding read-only path (behavioral):");
+    const brParentRows = await sql<{ id: string }[]>`select id from ref_user limit 1`;
+    const brKids = await sql<{ id: string }[]>`
+      select id from students where school_id = ${schoolId} order by id limit 2`;
+    if (brParentRows.length < 1 || brKids.length < 2) {
+      console.log("• skipped — needs ≥1 ref_user and ≥2 students in the seeded school.");
+    } else {
+      const brParent = brParentRows[0].id;
+      const brOwn = brKids[0].id;
+      const brOther = brKids[1].id; // a real child in the SAME school, NOT linked to this parent
+      const houseId = "11111111-0000-4000-8000-0000000b0001";
+      const dormId = "22222222-0000-4000-8000-0000000b0002";
+      const bunk1 = "33333333-0000-4000-8000-0000000b0003"; // own child, prefect HEAD
+      const bunk2 = "44444444-0000-4000-8000-0000000b0004"; // other child
+      const visitEvt = "55555555-0000-4000-8000-0000000b0005"; // VISITING → parent-readable
+      const exeatEvt = "66666666-0000-4000-8000-0000000b0006"; // EXEAT_WINDOW → parent-DENIED
+      const ROLLBACK_BR = "__parent_boarding_probe_rollback__";
+      try {
+        await sql.begin(async (tx) => {
+          // ---- superuser setup (bypasses RLS) ----
+          await tx`insert into student_guardian
+                     (id, school_id, student_id, name, relationship, phone, is_primary, user_id)
+                   values (gen_random_uuid(), ${schoolId}, ${brOwn}, 'RLSTEST', 'MOTHER',
+                           '+233RLSTESTBR', true, ${brParent})`;
+          await tx`insert into house (id, school_id, name) values (${houseId}, ${schoolId}, 'RLST House')`;
+          await tx`insert into boarding_dormitory (id, school_id, house_id, name)
+                   values (${dormId}, ${schoolId}, ${houseId}, 'RLST Dorm')`;
+          await tx`insert into boarding_bunk (id, school_id, dormitory_id, position_number, prefect_role)
+                   values (${bunk1}, ${schoolId}, ${dormId}, 1, 'HEAD')`;
+          await tx`insert into boarding_bunk (id, school_id, dormitory_id, position_number)
+                   values (${bunk2}, ${schoolId}, ${dormId}, 2)`;
+          await tx`update students set current_bunk_id = ${bunk1} where id = ${brOwn}`; // own PLACED
+          await tx`update students set current_bunk_id = ${bunk2} where id = ${brOther}`; // other PLACED, unlinked
+          await tx`insert into boarding_settings (school_id) values (${schoolId})
+                   on conflict (school_id) do nothing`;
+          await tx`insert into boarding_calendar_event
+                     (id, school_id, academic_year, event_type, event_date, label)
+                   values (${visitEvt}, ${schoolId}, '2025/26', 'VISITING', '2026-03-08', 'RLST Visiting')`;
+          await tx`insert into boarding_calendar_event
+                     (id, school_id, academic_year, event_type, event_date, label)
+                   values (${exeatEvt}, ${schoolId}, '2025/26', 'EXEAT_WINDOW', '2026-03-15', 'RLST Exeat')`;
+          await tx`insert into boarding_approved_visitor (id, school_id, student_id, name, relationship)
+                   values (gen_random_uuid(), ${schoolId}, ${brOwn}, 'RLST Visitor', 'Uncle')`;
+          // prod-shape: definer owner = the non-superuser role FORCE RLS actually binds
+          await tx`alter function parent_boarding_placement(uuid, uuid) owner to omnischools_app`;
+
+          // ---- act as the parent (RLS enforced, non-superuser) ----
+          await tx`set local role omnischools_app`;
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+          await tx`select set_config('app.current_parent_user', ${brParent}, true)`;
+          const c = async (t: string, w: string) =>
+            (await tx.unsafe(`select count(*)::int n from ${t} ${w}`))[0].n as number;
+
+          // (1) placement projection — own PLACED child → exactly 1 row with REAL house+dorm+prefect,
+          // NO bunk_position (the GUC-clear works under the prod-shaped owner; a no-clear version → 0).
+          const placement = await tx<
+            { student_id: string; house_name: string; dorm_name: string; prefect_role: string }[]
+          >`select * from parent_boarding_placement(${schoolId}::uuid, ${brParent}::uuid)`;
+          assert("placement returns exactly own placed child", placement.length, 1);
+          assertTrue("placement is the OWN child (not the other placed child)", placement[0]?.student_id === brOwn);
+          assertTrue("placement house_name is the real House", placement[0]?.house_name === "RLST House");
+          assertTrue("placement dorm_name is the real dormitory", placement[0]?.dorm_name === "RLST Dorm");
+          assertTrue("placement prefect_role surfaced", placement[0]?.prefect_role === "HEAD");
+          const pkeys = Object.keys(placement[0] ?? {}).sort().join(",");
+          assertTrue(
+            "placement columns are EXACTLY {student_id,house_name,dorm_name,prefect_role} — no bunk_position/ids",
+            pkeys === "dorm_name,house_name,prefect_role,student_id",
+          );
+          assertTrue("placement row has NO bunk_position column", !("bunk_position" in (placement[0] ?? {})));
+
+          // (3a) prev-restore VERBATIM: the caller's GUC is untouched after the fn returns.
+          const [{ cur }] = await tx<{ cur: string }[]>`
+            select current_setting('app.current_parent_user', true) as cur`;
+          assertTrue("parent GUC restored VERBATIM after placement call", cur === brParent);
+
+          // (2) VISITING readable, EXEAT_WINDOW denied at the RLS layer; boarding_settings readable.
+          assert("parent reads the VISITING event", await c("boarding_calendar_event", `where id='${visitEvt}'`), 1);
+          assert("parent CANNOT read the EXEAT_WINDOW event", await c("boarding_calendar_event", `where id='${exeatEvt}'`), 0);
+          assertAtLeast("parent reads boarding_settings", await c("boarding_settings", `where school_id='${schoolId}'`), 1);
+
+          // (3b) READ-ONLY: every parent write on both config tables is denied.
+          const insDenied = async (label: string, stmt: string) => {
+            let denied = false;
+            try {
+              await tx.savepoint(async (sp) => {
+                await sp.unsafe(stmt);
+              });
+            } catch {
+              denied = true;
+            }
+            assertTrue(label, denied);
+          };
+          await insDenied(
+            "parent INSERT boarding_calendar_event denied (visiting-day forge)",
+            `insert into boarding_calendar_event (id, school_id, academic_year, event_type, event_date, label)
+               values (gen_random_uuid(), '${schoolId}', '2025/26', 'VISITING', '2026-04-12', 'FORGE')`,
+          );
+          await insDenied(
+            "parent INSERT boarding_settings denied (policy forge)",
+            `insert into boarding_settings (id, school_id) values (gen_random_uuid(), '${FOREIGN_ID}')`,
+          );
+          assert("parent UPDATE boarding_calendar_event denied (rows)", (await tx`update boarding_calendar_event set label='X' where id=${visitEvt}`).count, 0);
+          assert("parent UPDATE boarding_settings denied (rows)", (await tx`update boarding_settings set visiting_cadence='X' where school_id=${schoolId}`).count, 0);
+          assert("parent DELETE boarding_calendar_event denied (rows)", (await tx`delete from boarding_calendar_event where id=${visitEvt}`).count, 0);
+          assert("parent DELETE boarding_settings denied (rows)", (await tx`delete from boarding_settings where school_id=${schoolId}`).count, 0);
+
+          // never-widen: a parent's DIRECT read of the spine + exeat/visitor/inspection tables → 0
+          // (boarding_bunk / boarding_approved_visitor have REAL rows here, so 0 proves DENIAL, not emptiness).
+          assert("parent CANNOT read boarding_bunk (spine denied)", await c("boarding_bunk", `where school_id='${schoolId}'`), 0);
+          assert("parent CANNOT read boarding_dormitory (spine denied)", await c("boarding_dormitory", `where school_id='${schoolId}'`), 0);
+          assert("parent CANNOT read house (spine denied)", await c("house", `where id='${houseId}'`), 0);
+          assert("parent CANNOT read boarding_approved_visitor", await c("boarding_approved_visitor", `where student_id='${brOwn}'`), 0);
+          assert("parent CANNOT read boarding_exeat", await c("boarding_exeat", `where school_id='${schoolId}'`), 0);
+          assert("parent CANNOT read inspections", await c("inspections", `where school_id='${schoolId}'`), 0);
+
+          // cross-TENANT: a parent scoped to a FOREIGN school gets 0 placement rows.
+          await tx`select set_config('app.current_school', ${FOREIGN_ID}, true)`;
+          const foreignPlacement = await tx`select * from parent_boarding_placement(${schoolId}::uuid, ${brParent}::uuid)`;
+          assert("placement in foreign tenant returns 0", foreignPlacement.length, 0);
+          await tx`select set_config('app.current_school', ${schoolId}, true)`;
+
+          // (3c) prev-restore with the GUC UNSET: a pu-arg call must leave the GUC EMPTY, not mis-scoped to pu.
+          await tx`select set_config('app.current_parent_user', '', true)`; // simulate an unset caller GUC
+          await tx`select * from parent_boarding_placement(${schoolId}::uuid, ${brParent}::uuid)`;
+          const [{ cur2 }] = await tx<{ cur2: string }[]>`
+            select current_setting('app.current_parent_user', true) as cur2`;
+          assertTrue("pu-arg call with GUC unset leaves it EMPTY (never mis-scoped to pu)", cur2 === "");
+
+          // staff (no parent GUC — pu IS NULL) is byte-unchanged: sees the EXEAT_WINDOW event AND the spine.
+          assert("staff sees the EXEAT_WINDOW event (VISITING constraint is parent-only)", await c("boarding_calendar_event", `where id='${exeatEvt}'`), 1);
+          assertAtLeast("staff sees the boarding spine (≥ the 2 probe bunks)", await c("boarding_bunk", `where school_id='${schoolId}'`), 2);
+
+          throw new Error(ROLLBACK_BR); // discard all probe rows + the fn owner switch
+        });
+      } catch (e) {
+        if ((e as Error).message !== ROLLBACK_BR) throw e;
+      }
+    }
   } finally {
     await sql.end();
   }

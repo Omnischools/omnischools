@@ -97,9 +97,10 @@ describe("parent-chrome · no inert tabs, calendar live (AC-CAL-01..04)", () => 
   it("the three inert tabs are gone and School calendar is a live route (no inert spans)", () => {
     const s = nav();
     // quoted → only TABS/HREF/the ParentTab union carry these, never the prose comment.
+    // The two still-unbuilt inert tabs stay absent; "Boarding" returned as a REAL live tab (INCR-BOARD), so
+    // it's no longer asserted absent — the no-inert-span invariant is covered by the checks below.
     expect(s).not.toMatch(/"Communications"/); // AC-CAL-01
     expect(s).not.toMatch(/"Billing"/);
-    expect(s).not.toMatch(/"Boarding"/);
     expect(s).toMatch(/"School calendar": "\/calendar"/); // still a live route — AC-CAL-03
     expect(s).not.toMatch(/Partial<Record/); // HREF is total → no tab can be an inert span — AC-CAL-02
     expect(s).not.toMatch(/coming soon|disabled|greyed/i); // AC-CAL-04
